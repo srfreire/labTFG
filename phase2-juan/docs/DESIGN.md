@@ -201,14 +201,14 @@ class Environment:
 ```mermaid
 flowchart TD
     START["Para cada agente vivo"] --> A["Percepcion: el Environment construye un dict con lo que el agente ve"]
-    A --> B["Decision: decision_model.decide(perception) → Action\n(el DecisionModel actualiza su estado interno)"]
-    B --> C["Ejecucion: el Environment aplica la accion\n(mover, comer, descansar...)"]
-    C --> D["Actualizacion: posicion/alive del agente\n+ estado del environment"]
-    D --> E["Snapshot: decision_model.get_state() → dict\n(para el Observador)"]
-    E --> F["Registro: se crea un Event\n(accion + outcome + snapshot)"]
-    F --> G{"Mas agentes\nvivos?"}
+    A --> B["Decision: decision_model.decide(perception) → Action"]
+    B --> C["Ejecucion: el Environment aplica la accion"]
+    C --> D["Actualizacion: posicion/alive del agente + estado del environment"]
+    D --> E["Snapshot: decision_model.get_state() → dict"]
+    E --> F["Registro: se crea un Event con accion + outcome + snapshot"]
+    F --> G{"Mas agentes vivos?"}
     G -- si --> START
-    G -- no --> H["Actualizacion global del environment\n(regenerar recursos, etc.)"]
+    G -- no --> H["Actualizacion global del environment"]
     H --> FIN["Devolver lista de Events del step"]
 ```
 
@@ -227,19 +227,13 @@ El punto de integracion es el **Protocol `DecisionModel`**. Los `.py` generados 
 
 ```mermaid
 flowchart LR
-    U["Usuario: problema de\ntoma de decisiones"] --> P1["Fase 1 (Pablo)\nPipeline de 3 agentes"]
+    U["Usuario: problema de toma de decisiones"] --> P1["Fase 1 - Pipeline de 3 agentes"]
     P1 --> M["N x DecisionModel .py"]
-    M --> ENV["Fase 2 (Juan)\nEnvironment.add_agent()"]
+    M --> ENV["Fase 2 - Environment.add_agent()"]
     ENV --> SIM["Environment.run(steps)"]
     SIM --> OBS["Observador"]
     OBS --> AN["Analitico"]
     AN --> RED["Redactor"]
-
-    style P1 fill:#4a9eff,color:#fff
-    style ENV fill:#ff6b4a,color:#fff
-    style OBS fill:#ff6b4a,color:#fff
-    style AN fill:#ff6b4a,color:#fff
-    style RED fill:#ff6b4a,color:#fff
 ```
 
 Los modelos de la Fase 1 solo necesitan implementar:
