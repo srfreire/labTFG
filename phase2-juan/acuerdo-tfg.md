@@ -2,9 +2,7 @@
 
 **Titulo**: Laboratorio virtual para la simulacion y analisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes
 
-**Tutor**: Eduardo Manuel Sanchez Vila
-
-**Contexto**: Este TFG es la segunda parte de un proyecto mas amplio. La primera parte (complementaria) aborda el modelado: agentes que revisan literatura, sintetizan paradigmas, formalizan modelos matematicos y los traducen en agentes autonomos. Esta phase 2 es la infraestructura para poner a prueba esos modelos.
+**Contexto**: Este TFG es la segunda parte de un proyecto mas amplio. La primera parte (complementaria) aborda el modelado (phase1-pablo): agentes que revisan literatura, sintetizan paradigmas, formalizan modelos matematicos y los traducen en agentes autonomos. Esta phase 2 es la infraestructura para poner a prueba esos modelos.
 
 ---
 

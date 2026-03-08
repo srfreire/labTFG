@@ -17,10 +17,11 @@ El TFG es la **segunda parte** de un proyecto mas amplio. La primera parte (comp
 - `docs/` — Documentos de referencia
   - `TFM_v_FINAL.pdf` — Paper de referencia/inspiracion (TFM de Denis Yamunaque). NO es la tesis de Juan.
   - `survival_metabolicModel_behave_clean_Denis.py` — Script de ejemplo del paper de referencia
-- `phase2-juan/` — Trabajo del TFG de Juan
-  - `TODO.md` — Objetivos del TFG extraidos del acuerdo
-  - `DISEÑO.md` — Diseño de la arquitectura del laboratorio virtual
-  - `docs/plans/` — Planes de implementacion
+- `phase1-pablo/` — Trabajo de la Fase 1 (Pablo Pazos)
+  - `docs/DESIGN.md` — Diseno del pipeline de 3 agentes (Researcher, Reasoner, Builder)
+- `phase2-juan/` — Trabajo del TFG de Juan (Fase 2)
+  - `acuerdo-tfg.md` — Objetivos del TFG extraidos del acuerdo
+  - `docs/DESIGN.md` — Diseno del laboratorio virtual (agentes, environment, API, stack)
 
 ## Objetivos del TFG (paradigma Agentic AI)
 
