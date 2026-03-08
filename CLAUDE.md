@@ -1,36 +1,40 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-**TFG** (Trabajo de Fin de Grado, Enxenaría Informatica, USC) de Juan Freire Alvarez, dirigido por Eduardo Manuel Sanchez Vila.
+This is a **TFG** (Trabajo de Fin de Grado / Bachelor's Thesis, Computer Engineering, USC) by **Juan Freire Alvarez** and **Pablo Pazos Parada**, supervised by Eduardo Manuel Sanchez Vila.
 
-**Titulo**: Laboratorio virtual para la simulacion y analisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes
+**Title**: Virtual laboratory for simulation and analysis of human decision-making paradigms using intelligent agents.
 
-El TFG es la **segunda parte** de un proyecto mas amplio. La primera parte (complementaria) aborda el modelado de agentes autonomos basados en paradigmas de toma de decisiones. Este TFG construye la infraestructura para simular, observar, analizar y documentar el comportamiento de esos agentes.
+The project is split into **two complementary parts**, one per author:
 
-## Estructura del repositorio
+- **Phase 1 (Pablo Pazos Parada)** — Modeling autonomous agents based on decision-making paradigms. Designs the agent pipeline (Researcher, Reasoner, Builder) that builds the decision-making agents themselves.
+- **Phase 2 (Juan Freire Alvarez)** — Building the infrastructure to simulate, observe, analyze and document the behavior of those agents.
 
-- `CLAUDE.md` — Instrucciones para Claude Code
-- `Acordo_TFG_JuanFreireAlvarez_firmado.pdf` — Acuerdo oficial del TFG con los objetivos
-- `docs/` — Documentos de referencia
-  - `TFM_v_FINAL.pdf` — Paper de referencia/inspiracion (TFM de Denis Yamunaque). NO es la tesis de Juan.
-  - `survival_metabolicModel_behave_clean_Denis.py` — Script de ejemplo del paper de referencia
-- `phase1-pablo/` — Trabajo de la Fase 1 (Pablo Pazos)
-  - `docs/DESIGN.md` — Diseno del pipeline de 3 agentes (Researcher, Reasoner, Builder)
-- `phase2-juan/` — Trabajo del TFG de Juan (Fase 2)
-  - `acuerdo-tfg.md` — Objetivos del TFG extraidos del acuerdo
-  - `docs/DESIGN.md` — Diseno del laboratorio virtual (agentes, environment, API, stack)
+## Repository Structure
 
-## Objetivos del TFG (paradigma Agentic AI)
+```
+CLAUDE.md
+Acordo_TFG_JuanFreireAlvarez_firmado.pdf  — Official TFG agreement with objectives
+docs/                                      — Reference documents
+  TFM_v_FINAL.pdf                          — Reference paper (Denis Yamunaque's TFM, NOT Juan's thesis)
+  RESUMEN_TFM_Denis.md                     — Summary of the reference paper
+  survival_metabolicModel_behave_clean_Denis.py — Example script from the reference paper
+phase1-pablo/                              — Pablo's work (Phase 1)
+  docs/DESIGN.md                           — 3-agent pipeline design (Researcher, Reasoner, Builder)
+phase2-juan/                               — Juan's work (Phase 2 / the TFG)
+  acuerdo-tfg.md                           — TFG objectives extracted from the agreement
+  docs/DESIGN.md                           — Virtual lab design (agents, environment, API, stack)
+```
 
-1. **Agente Plataforma de simulacion** — entorno configurable (objetivos, recursos, restricciones)
-2. **Agente Observador** — monitoriza agentes, registra eventos, episodios y trayectorias de decision
-3. **Agente Analitico** — procesa datos del Observador, identifica patrones comportamiento-objetivos
-4. **Agente Redactor** — genera informes estructurados, conclusiones y propuestas de mejora
+## TFG Objectives (Agentic AI paradigm)
 
-## Running the reference script
+1. **Simulation Platform Agent** — configurable environment (goals, resources, constraints)
+2. **Observer Agent** — monitors agents, records events, episodes and decision trajectories
+3. **Analytical Agent** — processes Observer data, identifies behavior-objective patterns
+4. **Reporter Agent** — generates structured reports, conclusions and improvement proposals
+
+## Running the Reference Script
 
 ```bash
 python docs/survival_metabolicModel_behave_clean_Denis.py

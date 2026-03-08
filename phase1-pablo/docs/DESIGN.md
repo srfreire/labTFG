@@ -457,6 +457,8 @@ El Router gestiona el human feedback y el re-routing despues de cada etapa del p
 - **Codigo Python**: logica de flujo, prompts de feedback
 - **LLM (Claude Sonnet)**: interpretar feedback del usuario en lenguaje natural para decidir a que agente rellamar
 
+> **Nota sobre modelo**: El Router realiza clasificacion simple (a que agente rellamar). Empezamos con Sonnet, pero es candidato a downgrade a Haiku si los costes lo justifican.
+
 ### 4.2 Flujo principal
 
 ```python
@@ -605,7 +607,7 @@ outputs/
 | SDK agentes | Anthropic Agent SDK (`claude-agent-sdk`) |
 | LLM Researcher | Claude Sonnet |
 | LLM Reasoner, Builder | Claude Opus |
-| LLM Router (interpretar feedback) | Claude Sonnet |
+| LLM Router (interpretar feedback) | Claude Sonnet (candidato a Haiku) |
 | Busqueda web | Brave Search API |
 | Papers academicos | Semantic Scholar API (gratuita) |
 | Interfaz | CLI (rich/typer) → web despues |
