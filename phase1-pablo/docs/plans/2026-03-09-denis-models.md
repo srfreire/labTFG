@@ -501,6 +501,27 @@ def test_hedonic_signal():
     p = _make_perception(position=(2, 2))
     m.update(Action.STAY, 10.0, _make_perception(position=(2, 2), step=1))
     assert m.hedonic_signal((2, 2)) != 0.0
+
+
+def test_train_reduces_epsilon():
+    from denis.grid import GridWorld, GridConfig
+    params = HedonicParams(grid_size=(5, 5), epsilon=1.0, epsilon_decay=0.99)
+    m = HedonicModel(params=params)
+    grid = GridWorld(GridConfig(width=5, height=5, food_count=3, seed=42))
+    e_before = m.epsilon
+    m.train(grid, episodes=5, steps_per_episode=20)
+    assert m.epsilon < e_before
+
+
+def test_train_learns_food_location():
+    from denis.grid import GridWorld, GridConfig
+    import numpy as np
+    params = HedonicParams(grid_size=(5, 5), epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.01)
+    m = HedonicModel(params=params)
+    grid = GridWorld(GridConfig(width=5, height=5, food_count=3, seed=42))
+    m.train(grid, episodes=50, steps_per_episode=50)
+    # After training, Q-table should have non-zero values
+    assert np.any(m.q_table != 0.0)
 ```
 
 **Step 2: Run tests to verify failure**
@@ -617,6 +638,20 @@ class HedonicModel:
         """W(t) = max_a Q(state, a) for current position."""
         state_idx = self._state_index(position, food_sources)
         return float(np.max(self.q_table[state_idx]))
+
+    def train(self, grid: "GridWorld", episodes: int = 100, steps_per_episode: int = 50) -> None:
+        """Train the Q-table on a grid environment."""
+        from denis.grid import GridWorld
+
+        for _ in range(episodes):
+            grid.reset()
+            for step in range(steps_per_episode):
+                perception = grid.get_perception(step=step)
+                action = self.decide(perception)
+                grid.apply_action(action)
+                new_perception = grid.get_perception(step=step)
+                reward = 1.0 if new_perception.ate_food else -0.01
+                self.update(action, reward, new_perception)
 
     def get_state(self) -> dict:
         return {
@@ -1210,14 +1245,12 @@ git commit -m "feat[tests]: update smoke test for protocol and denis example"
 
 ---
 
-## Unresolved questions
+## Resolved decisions
 
-1. **ODE parameter values** — Table 2.1 only lists some params (K_H, K_F, K_Gly, MEAL_INTAKE). Others (cF, cGly, kG, kL, beta, tauG, tauL, gamma, Fmax, Glymax) are from Jacquier et al. (2014) — should we hunt down exact values or use reasonable defaults?
+See `docs/plans/2026-03-09-decisiones-resueltas.md` for full rationale.
 
-2. **Reward structure** — Denis's TFM uses palatability-based rewards but doesn't give the exact formula. Should we use `palatability * MEAL_INTAKE` or simpler `+1/-0.01`?
-
-3. **Q-Learning state discretization** — TFM includes physiological variables in the state optionally. Keep simple (position + food_present + palatability) or add hunger level?
-
-4. **Integration with Phase 2** — the `DecisionModel` protocol here is a placeholder. When Juan defines his, should these models adapt or should Juan adopt this protocol?
-
-5. **Training phase** — the hedonic model needs training episodes before simulation. Include a training runner now or defer?
+1. **ODE parameters** — Denis's Table 2.1 values. Missing params (Fmax, Glymax, tauG, tauL, etc.) use reasonable defaults. Jacquier's equations differ structurally — no 1:1 mapping.
+2. **Reward structure** — Simple `+1/-0.01`. `reward_fn` is a configurable parameter for integration modes.
+3. **Q-Learning state** — `(position, food_present, palatability)` only. No hunger in state. Integration modes handle hunger externally.
+4. **Protocol ownership** — Lives in `src/decisionlab/models/protocol.py`. Phase 2 imports it. Coordinate changes as needed.
+5. **Training** — Include basic `train(episodes)` method in HedonicModel from the start.
