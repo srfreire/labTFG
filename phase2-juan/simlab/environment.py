@@ -236,7 +236,7 @@ class DenisModelAdapter:
     def decide(self, perception: dict) -> Action:
         p1_perception = self._to_p1_perception(perception)
         p1_action = self._model.decide(p1_perception)
-        return Action(name=p1_action.value)
+        return Action(name=p1_action.name)
 
     def update(self, action: Action, reward: float, new_perception: dict) -> None:
         from decisionlab.models.protocol import Action as P1Action

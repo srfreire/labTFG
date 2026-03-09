@@ -33,11 +33,16 @@ class IntegratedModel:
     _hunger_mean: float = field(init=False, default=0.5)
     _hunger_history_sum: float = field(init=False, default=0.5)
     _hunger_history_count: int = field(init=False, default=1)
+    _last_position: tuple[int, int] = field(init=False, default=(0, 0))
+    _last_food_sources: list[dict] = field(init=False, default_factory=list)
 
     def decide(self, perception: Perception) -> Action:
         return self.hedonic.decide(perception)
 
     def update(self, action: Action, reward: float, new_perception: Perception) -> None:
+        self._last_position = new_perception.position
+        self._last_food_sources = new_perception.food_sources
+
         # 1. Update homeostatic physiology
         self.homeostatic.update(action, reward, new_perception)
         hunger = self.homeostatic.hunger
@@ -63,9 +68,15 @@ class IntegratedModel:
                 effective_reward = reward * (hunger / self._hunger_mean)
 
         elif self.mode == IntegrationMode.HOMEOSTATIC_TO_HEDONIC_EXPECTED:
-            # Case 3.2: modulate Q-max by H(t)/Hm
+            # Case 3.2: Qmax(t) = Qmax(t) * H(t)/Hm
+            # Scaling gamma by H/Hm is equivalent to scaling Qmax in the TD target
             if self._hunger_mean > 0:
-                effective_reward = reward * (hunger / self._hunger_mean)
+                ratio = hunger / self._hunger_mean
+                saved_gamma = self.hedonic.params.discount_factor
+                self.hedonic.params.discount_factor = saved_gamma * ratio
+                self.hedonic.update(action, reward, new_perception)
+                self.hedonic.params.discount_factor = saved_gamma
+                return
 
         # 3. Update hedonic model with (possibly modulated) reward
         self.hedonic.update(action, effective_reward, new_perception)
@@ -75,6 +86,6 @@ class IntegratedModel:
             "homeostatic": self.homeostatic.get_state(),
             "hedonic": {"epsilon": self.hedonic.epsilon},
             "hunger_signal": self.homeostatic.hunger,
-            "hedonic_signal": self.hedonic.hedonic_signal((0, 0)),
+            "hedonic_signal": self.hedonic.hedonic_signal(self._last_position, self._last_food_sources),
             "mode": self.mode.value,
         }

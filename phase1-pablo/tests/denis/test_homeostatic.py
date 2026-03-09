@@ -1,4 +1,4 @@
-from decisionlab.models.protocol import Action, Perception
+from decisionlab.models.protocol import Action, Perception, STAY
 from denis.homeostatic import HomeostaticModel
 
 
@@ -23,7 +23,7 @@ def test_hunger_increases_without_food():
     h_before = m.get_state()["hunger"]
     for t in range(100):
         p = _make_perception(step=t, ate_food=False)
-        m.update(Action.STAY, 0.0, p)
+        m.update(STAY, 0.0, p)
     h_after = m.get_state()["hunger"]
     assert h_after > h_before
 
@@ -33,17 +33,17 @@ def test_hunger_decreases_after_eating():
     m = HomeostaticModel()
     for t in range(200):
         p = _make_perception(step=t, ate_food=False)
-        m.update(Action.STAY, 0.0, p)
+        m.update(STAY, 0.0, p)
     h_before = m.get_state()["hunger"]
 
     # Eat
     p = _make_perception(step=200, ate_food=True)
-    m.update(Action.STAY, 1.0, p)
+    m.update(STAY, 1.0, p)
 
     # Let physiology settle
     for t in range(201, 220):
         p = _make_perception(step=t, ate_food=False)
-        m.update(Action.STAY, 0.0, p)
+        m.update(STAY, 0.0, p)
     h_after = m.get_state()["hunger"]
     assert h_after < h_before
 
@@ -53,7 +53,7 @@ def test_state_variables_stay_in_valid_range():
     for t in range(500):
         ate = t % 50 == 0
         p = _make_perception(step=t, ate_food=ate)
-        m.update(Action.STAY, 1.0 if ate else 0.0, p)
+        m.update(STAY, 1.0 if ate else 0.0, p)
     state = m.get_state()
     assert state["fat"] >= 0
     assert state["glycogen"] >= 0

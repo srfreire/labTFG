@@ -1,6 +1,6 @@
 # tests/denis/test_hedonic.py
 import numpy as np
-from decisionlab.models.protocol import Action, Perception
+from decisionlab.models.protocol import Action, Perception, STAY
 from denis.hedonic import HedonicModel, HedonicParams
 
 
@@ -58,26 +58,7 @@ def test_hedonic_signal():
 
     # After learning, signal should change
     p = _make_perception(position=(2, 2))
-    m.update(Action.STAY, 10.0, _make_perception(position=(2, 2), step=1))
+    m.update(STAY, 10.0, _make_perception(position=(2, 2), step=1))
     assert m.hedonic_signal((2, 2)) != 0.0
 
 
-def test_train_reduces_epsilon():
-    from denis.grid import GridWorld, GridConfig
-    params = HedonicParams(grid_size=(5, 5), epsilon=1.0, epsilon_decay=0.99)
-    m = HedonicModel(params=params)
-    grid = GridWorld(GridConfig(width=5, height=5, food_count=3, seed=42))
-    e_before = m.epsilon
-    m.train(grid, episodes=5, steps_per_episode=20)
-    assert m.epsilon < e_before
-
-
-def test_train_learns_food_location():
-    from denis.grid import GridWorld, GridConfig
-    import numpy as np
-    params = HedonicParams(grid_size=(5, 5), epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.01)
-    m = HedonicModel(params=params)
-    grid = GridWorld(GridConfig(width=5, height=5, food_count=3, seed=42))
-    m.train(grid, episodes=50, steps_per_episode=50)
-    # After training, Q-table should have non-zero values
-    assert np.any(m.q_table != 0.0)

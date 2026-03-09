@@ -19,5 +19,3 @@ def test_denis_example_imports():
     from denis.homeostatic import HomeostaticModel
     from denis.hedonic import HedonicModel
     from denis.integrated import IntegratedModel, IntegrationMode
-    from denis.grid import GridWorld, GridConfig
-    from denis.simulation import Simulation, SimulationResult

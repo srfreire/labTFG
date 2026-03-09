@@ -15,17 +15,17 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from decisionlab.models.protocol import Action, Perception
+from decisionlab.models.protocol import Action, Perception, UP, DOWN, LEFT, RIGHT, STAY
 
-_ACTIONS = list(Action)
-_ACTION_TO_IDX = {a: i for i, a in enumerate(_ACTIONS)}
+_ACTIONS = [UP, DOWN, LEFT, RIGHT, STAY]
+_ACTION_TO_IDX = {a.name: i for i, a in enumerate(_ACTIONS)}
 
-_DELTAS: dict[Action, tuple[int, int]] = {
-    Action.UP: (0, -1),
-    Action.DOWN: (0, 1),
-    Action.LEFT: (-1, 0),
-    Action.RIGHT: (1, 0),
-    Action.STAY: (0, 0),
+_DELTAS: dict[str, tuple[int, int]] = {
+    "up": (0, -1),
+    "down": (0, 1),
+    "left": (-1, 0),
+    "right": (1, 0),
+    "stay": (0, 0),
 }
 
 
@@ -63,10 +63,10 @@ class HedonicModel:
         gw, gh = self.params.grid_size
         x, y = position
 
-        if self.params.use_food_in_state and food_sources:
-            food_here = any(f["x"] == x and f["y"] == y for f in food_sources)
+        if self.params.use_food_in_state:
+            food_here = food_sources and any(f["x"] == x and f["y"] == y for f in food_sources)
             food_flag = 1 if food_here else 0
-            pals = [f["palatability"] for f in food_sources if f["x"] == x and f["y"] == y]
+            pals = [f["palatability"] for f in food_sources if f["x"] == x and f["y"] == y] if food_sources else []
             pal_level = min(int(max(pals) * self.params.n_palatability_levels), self.params.n_palatability_levels - 1) if pals else 0
             n_pal = self.params.n_palatability_levels
             return ((x * gh + y) * 2 + food_flag) * n_pal + pal_level
@@ -75,7 +75,7 @@ class HedonicModel:
 
     def _reverse_position(self, action: Action, new_position: tuple[int, int]) -> tuple[int, int]:
         """Infer previous position by reversing the action delta."""
-        dx, dy = _DELTAS[action]
+        dx, dy = _DELTAS[action.name]
         return (new_position[0] - dx, new_position[1] - dy)
 
     def decide(self, perception: Perception) -> Action:
@@ -99,7 +99,7 @@ class HedonicModel:
             )
             self._last_state_idx = self._state_index(prev_pos)
 
-        action_idx = _ACTION_TO_IDX[action]
+        action_idx = _ACTION_TO_IDX[action.name]
         new_state_idx = self._state_index(new_perception.position, new_perception.food_sources)
 
         # Q(s,a) <- Q(s,a) + alpha * [R + gamma * max_a' Q(s',a') - Q(s,a)]
@@ -110,23 +110,12 @@ class HedonicModel:
 
         # Decay epsilon
         self.epsilon = max(self.params.epsilon_min, self.epsilon * self.params.epsilon_decay)
+        self._last_state_idx = None
 
     def hedonic_signal(self, position: tuple[int, int], food_sources: list[dict] | None = None) -> float:
         """W(t) = max_a Q(state, a) for current position."""
         state_idx = self._state_index(position, food_sources)
         return float(np.max(self.q_table[state_idx]))
-
-    def train(self, grid: "GridWorld", episodes: int = 100, steps_per_episode: int = 50) -> None:
-        """Train the Q-table on a grid environment."""
-        for _ in range(episodes):
-            grid.reset()
-            for step in range(steps_per_episode):
-                perception = grid.get_perception(step=step)
-                action = self.decide(perception)
-                grid.apply_action(action)
-                new_perception = grid.get_perception(step=step + 1)
-                reward = 1.0 if new_perception.ate_food else -0.01
-                self.update(action, reward, new_perception)
 
     def get_state(self) -> dict:
         return {

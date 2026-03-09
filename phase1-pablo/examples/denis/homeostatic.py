@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from decisionlab.models.protocol import Action, Perception
+from decisionlab.models.protocol import Action, Perception, UP, DOWN, LEFT, RIGHT, STAY
 
 
 def _sigmoid(x: float) -> float:
@@ -112,16 +112,16 @@ class HomeostaticModel:
             fx, fy = perception.food_sources[0]["x"], perception.food_sources[0]["y"]
             ax, ay = perception.position
             best_dist = abs(fx - ax) + abs(fy - ay)
-            best_action = Action.STAY
-            for action, (dx, dy) in _DELTAS.items():
+            best_action = STAY
+            for action_name, (dx, dy) in _DELTAS.items():
                 nx, ny = ax + dx, ay + dy
                 if 0 <= nx < perception.grid_size[0] and 0 <= ny < perception.grid_size[1]:
                     dist = abs(fx - nx) + abs(fy - ny)
                     if dist < best_dist:
                         best_dist = dist
-                        best_action = action
+                        best_action = Action(action_name)
             return best_action
-        return Action.STAY
+        return STAY
 
     def update(self, action: Action, reward: float, new_perception: Perception) -> None:
         intake = self.params.meal_intake if new_perception.ate_food else 0.0
@@ -137,9 +137,10 @@ class HomeostaticModel:
         }
 
 
-_DELTAS: dict[Action, tuple[int, int]] = {
-    Action.UP: (0, -1),
-    Action.DOWN: (0, 1),
-    Action.LEFT: (-1, 0),
-    Action.RIGHT: (1, 0),
+_DELTAS: dict[str, tuple[int, int]] = {
+    "up": (0, -1),
+    "down": (0, 1),
+    "left": (-1, 0),
+    "right": (1, 0),
+    "stay": (0, 0),
 }
