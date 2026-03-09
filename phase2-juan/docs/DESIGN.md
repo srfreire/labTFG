@@ -40,6 +40,7 @@ El usuario **solo habla con el orquestador**. Este interpreta la peticion y dele
 | Propiedad del estado | El DecisionModel (Fase 1) es dueño de todo el estado del paradigma. El Agent solo tiene posicion y alive | Separacion limpia; el Environment no necesita conocer las variables internas de cada modelo |
 | Extensibilidad | Los nuevos paradigmas llegan como `.py` de la Fase 1 que implementan el Protocol `DecisionModel` | Se enchufa directamente sin tocar el framework |
 | Limites del Agente Plataforma | Selecciona DecisionModels y configura el Environment (grid, recursos, reglas). No genera codigo de modelos | Los modelos vienen de la Fase 1 |
+| Integracion Fase 1 | Adaptador entre el Protocol concreto de Pablo (Action enum, Perception dataclass) y el Protocol generico del Environment (Action name+params, perception dict) | El Environment no depende del codigo de Pablo; se mantiene generico |
 
 ---
 
@@ -112,8 +113,8 @@ El environment es **codigo Python puro** — no depende del Agent SDK. Los agent
 | `Grid` | Espacio 2D (ancho x alto) | Grid 10x10 |
 | `Resource` | Objeto en el grid con propiedades | Comida en (3,4) con palatabilidad=0.8 |
 | `Agent` | Contenedor minimo: posicion + decision_model + alive | Organismo en (3,4) con HomeostaticModel |
-| `DecisionModel` | Protocol con `decide()` y `get_state()`. Dueño de todo el estado interno del paradigma | HomeostaticModel (fat, ghrelin, hunger...) |
-| `Action` | Lo que un agente hace en un step | Move(dx=1,dy=0), Rest, Eat |
+| `DecisionModel` | Protocol con `decide()`, `update()` y `get_state()`. Dueño de todo el estado interno del paradigma | HomeostaticModel (fat, ghrelin, hunger...) |
+| `Action` | Lo que un agente hace en un step (generico: name + params) | Action("move", {"direction": "up"}), Action("eat"), Action("rest") |
 | `Event` | Registro de algo que paso | "agente_1 comio en (3,4) step=42" |
 | `Environment` | Orquesta el loop de simulacion | 100 steps, 5 agentes, comida escasa |
 
@@ -149,6 +150,7 @@ class Event:
 
 class DecisionModel(Protocol):
     def decide(self, perception: dict) -> Action: ...
+    def update(self, action: Action, reward: float, new_perception: dict) -> None: ...
     def get_state(self) -> dict: ...
 
 # --- Resource ---
@@ -204,7 +206,8 @@ flowchart TD
     A --> B["Decision: decision_model.decide(perception) → Action"]
     B --> C["Ejecucion: el Environment aplica la accion"]
     C --> D["Actualizacion: posicion/alive del agente + estado del environment"]
-    D --> E["Snapshot: decision_model.get_state() → dict"]
+    D --> U["Update: decision_model.update(action, reward, new_perception)"]
+    U --> E["Snapshot: decision_model.get_state() → dict"]
     E --> F["Registro: se crea un Event con accion + outcome + snapshot"]
     F --> G{"Mas agentes vivos?"}
     G -- si --> START
@@ -223,40 +226,69 @@ flowchart TD
 
 ## 5. Integracion con la Fase 1 (Pablo)
 
-El punto de integracion es el **Protocol `DecisionModel`**. Los `.py` generados por el Builder de Pablo implementan este Protocol. El Agente Plataforma los selecciona y los coloca en el Environment.
+El punto de integracion es el **Protocol `DecisionModel`**. Los `.py` generados por el Builder de Pablo implementan su propio Protocol concreto. El Environment de la Fase 2 define un Protocol generico. Un **adaptador** traduce entre ambos.
 
 ```mermaid
 flowchart LR
     U["Usuario: problema de toma de decisiones"] --> P1["Fase 1 - Pipeline de 3 agentes"]
     P1 --> M["N x DecisionModel .py"]
-    M --> ENV["Fase 2 - Environment.add_agent()"]
+    M --> AD["Adaptador"]
+    AD --> ENV["Fase 2 - Environment.add_agent()"]
     ENV --> SIM["Environment.run(steps)"]
     SIM --> OBS["Observador"]
     OBS --> AN["Analitico"]
     AN --> RED["Redactor"]
 ```
 
-Los modelos de la Fase 1 solo necesitan implementar:
+### 5.1 Por que un adaptador
+
+La Fase 1 y la Fase 2 definen tipos distintos para los mismos conceptos, y eso es intencionado:
+
+| Concepto | Fase 1 (Pablo) | Fase 2 (Environment generico) |
+|----------|---------------|-------------------------------|
+| Action | `Enum(UP, DOWN, LEFT, RIGHT, STAY)` | `Action(name: str, params: dict)` |
+| Perception | `Perception` dataclass tipado (position, food_sources, ate_food...) | `dict` generico |
+| Position | `tuple[int, int]` | `Position(x, y)` dataclass |
+
+La Fase 1 usa tipos concretos porque sus modelos son especificos (grid con comida, 5 movimientos). La Fase 2 usa tipos genericos porque el Environment tiene que servir para cualquier paradigma futuro — no solo comida en un grid.
+
+El adaptador es una capa fina que traduce entre ambos:
 
 ```python
-class HomeostaticModel:
-    # Estado interno del paradigma (variables fisiologicas, Q-tables, etc.)
-    fat_reserves: float = 50.0
-    hunger: float = 0.5
+class DenisModelAdapter:
+    """Adapta un DecisionModel de la Fase 1 al Protocol generico de la Fase 2."""
+
+    def __init__(self, phase1_model):
+        self._model = phase1_model
 
     def decide(self, perception: dict) -> Action:
-        # actualiza estado interno + decide accion
-        self._update_physiology(perception)
-        if self.hunger > 0.4 and perception.get("food_nearby"):
-            return Action(name="eat")
-        return Action(name="rest")
+        # Traduce dict generico -> Perception de Pablo
+        p1_perception = Perception(
+            position=(perception["x"], perception["y"]),
+            grid_size=(perception["grid_width"], perception["grid_height"]),
+            food_sources=perception.get("nearby_resources", []),
+            ate_food=perception.get("ate_food", False),
+            step=perception.get("step", 0),
+        )
+        # Llama al modelo de Pablo
+        p1_action = self._model.decide(p1_perception)
+        # Traduce Action enum -> Action generico
+        return Action(name=p1_action.value)
+
+    def update(self, action: Action, reward: float, new_perception: dict) -> None:
+        p1_action = P1Action(action.name)
+        p1_perception = ...  # misma traduccion
+        self._model.update(p1_action, reward, p1_perception)
 
     def get_state(self) -> dict:
-        # expone estado interno para el Observador
-        return {"fat_reserves": self.fat_reserves, "hunger": self.hunger}
+        return self._model.get_state()
 ```
 
-El valor del proyecto esta en que un mismo Environment puede ejecutar agentes con paradigmas completamente distintos (homeostatico, hedonico, prospect theory...) y comparar su comportamiento.
+Asi el Environment no depende del codigo de Pablo, y los modelos de Pablo no necesitan cambiar para funcionar en el Environment.
+
+### 5.2 Valor del proyecto
+
+Un mismo Environment puede ejecutar agentes con paradigmas completamente distintos (homeostatico, hedonico, prospect theory...) y comparar su comportamiento. Cada paradigma solo necesita un adaptador que traduzca sus tipos al Protocol generico.
 
 ---
 
