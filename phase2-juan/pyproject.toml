@@ -1,0 +1,18 @@
+[project]
+name = "simlab"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
+    "../phase1-pablo/src",
+    "../phase1-pablo/examples",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "numpy>=2.4.3",
+]
