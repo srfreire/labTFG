@@ -25,6 +25,10 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "examples", "../phase2-juan"]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests that require internet access (deselect with -k 'not integration')",
+]
 
 [dependency-groups]
 dev = [
