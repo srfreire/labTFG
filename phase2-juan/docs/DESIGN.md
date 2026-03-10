@@ -40,7 +40,7 @@ El usuario **solo habla con el orquestador**. Este interpreta la peticion y dele
 | Propiedad del estado | El DecisionModel (Fase 1) es dueño de todo el estado del paradigma. El Agent solo tiene posicion y alive | Separacion limpia; el Environment no necesita conocer las variables internas de cada modelo |
 | Extensibilidad | Los nuevos paradigmas llegan como `.py` de la Fase 1 que implementan el Protocol `DecisionModel` | Se enchufa directamente sin tocar el framework |
 | Limites del Agente Plataforma | Selecciona DecisionModels y configura el Environment (grid, recursos, reglas). No genera codigo de modelos | Los modelos vienen de la Fase 1 |
-| Integracion Fase 1 | Adaptador entre el Protocol concreto de Pablo (Action enum, Perception dataclass) y el Protocol generico del Environment (Action name+params, perception dict) | El Environment no depende del codigo de Pablo; se mantiene generico |
+| Integracion Fase 1 | Adaptador entre el Protocol concreto de Pablo (Action dataclass, Perception dataclass tipado) y el Protocol generico del Environment (Action name+params, perception dict) | El Environment no depende del codigo de Pablo; se mantiene generico |
 
 ---
 
@@ -246,13 +246,13 @@ La Fase 1 y la Fase 2 definen tipos distintos para los mismos conceptos, y eso e
 
 | Concepto | Fase 1 (Pablo) | Fase 2 (Environment generico) |
 |----------|---------------|-------------------------------|
-| Action | `Enum(UP, DOWN, LEFT, RIGHT, STAY)` | `Action(name: str, params: dict)` |
-| Perception | `Perception` dataclass tipado (position, food_sources, ate_food...) | `dict` generico |
+| Action | `Action(name: str, params: dict)` dataclass + constantes `UP`, `DOWN`, etc. | `Action(name: str, params: dict)` — mismo tipo |
+| Perception | `Perception` dataclass tipado y frozen (position, food_sources, ate_food...) | `dict` generico |
 | Position | `tuple[int, int]` | `Position(x, y)` dataclass |
 
-La Fase 1 usa tipos concretos porque sus modelos son especificos (grid con comida, 5 movimientos). La Fase 2 usa tipos genericos porque el Environment tiene que servir para cualquier paradigma futuro — no solo comida en un grid.
+Ambas fases comparten el mismo tipo `Action(name, params)` — Pablo lo alineo en su ultimo commit. La diferencia principal es la **percepcion**: la Fase 1 usa un `Perception` dataclass tipado (campos concretos para grid con comida), mientras la Fase 2 usa un `dict` generico para soportar cualquier paradigma futuro.
 
-El adaptador es una capa fina que traduce entre ambos:
+El adaptador traduce entre la percepcion tipada y el dict generico:
 
 ```python
 class DenisModelAdapter:
@@ -262,22 +262,23 @@ class DenisModelAdapter:
         self._model = phase1_model
 
     def decide(self, perception: dict) -> Action:
-        # Traduce dict generico -> Perception de Pablo
+        # Traduce dict generico -> Perception tipado de Pablo
         p1_perception = Perception(
             position=(perception["x"], perception["y"]),
             grid_size=(perception["grid_width"], perception["grid_height"]),
-            food_sources=perception.get("nearby_resources", []),
+            food_sources=tuple(perception.get("nearby_resources", [])),
             ate_food=perception.get("ate_food", False),
             step=perception.get("step", 0),
         )
-        # Llama al modelo de Pablo
+        # Llama al modelo de Pablo — Action ya es compatible directamente
         p1_action = self._model.decide(p1_perception)
-        # Traduce Action enum -> Action generico
-        return Action(name=p1_action.value)
+        return Action(name=p1_action.name)
 
     def update(self, action: Action, reward: float, new_perception: dict) -> None:
+        # Reconstruye Action y Perception de la Fase 1
+        from decisionlab.models.protocol import Action as P1Action
         p1_action = P1Action(action.name)
-        p1_perception = ...  # misma traduccion
+        p1_perception = self._to_p1_perception(new_perception)
         self._model.update(p1_action, reward, p1_perception)
 
     def get_state(self) -> dict:

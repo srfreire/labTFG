@@ -228,7 +228,7 @@ class DenisModelAdapter:
         return P1Perception(
             position=(perception["x"], perception["y"]),
             grid_size=(perception["grid_width"], perception["grid_height"]),
-            food_sources=perception.get("nearby_resources", []),
+            food_sources=tuple(perception.get("nearby_resources", [])),
             ate_food=perception.get("ate_food", False),
             step=perception.get("step", 0),
         )
