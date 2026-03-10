@@ -18,20 +18,58 @@ def test_deep_researcher_has_correct_tools():
 
 
 @pytest.mark.asyncio
-async def test_deep_researcher_run_returns_markdown():
+async def test_deep_researcher_run_returns_summary():
+    """DeepResearcher returns a concise summary, not the full report."""
+    # First call: the agentic loop (returns full report)
     text_block = MagicMock()
     text_block.type = "text"
     text_block.text = "# Homeostatic — Deep research\n\n## Foundations\nContent."
 
-    response = MagicMock()
-    response.stop_reason = "end_turn"
-    response.content = [text_block]
+    loop_response = MagicMock()
+    loop_response.stop_reason = "end_turn"
+    loop_response.content = [text_block]
+
+    # Second call: the summary extraction
+    summary_block = MagicMock()
+    summary_block.type = "text"
+    summary_block.text = "**Paradigm**: Homeostatic\n**Key authors**: Jacquier"
+
+    summary_response = MagicMock()
+    summary_response.content = [summary_block]
 
     client = AsyncMock()
-    client.messages.create.return_value = response
+    client.messages.create.side_effect = [loop_response, summary_response]
 
     dr = DeepResearcher(client=client, search=MockWebSearch())
     result = await dr.run("Homeostatic regulation")
 
     assert "Homeostatic" in result
-    assert client.messages.create.called
+    assert client.messages.create.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_deep_researcher_saves_report_to_disk(tmp_path):
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = "# Homeostatic — Deep research\n\nFull content."
+
+    loop_response = MagicMock()
+    loop_response.stop_reason = "end_turn"
+    loop_response.content = [text_block]
+
+    summary_block = MagicMock()
+    summary_block.type = "text"
+    summary_block.text = "**Paradigm**: Homeostatic"
+
+    summary_response = MagicMock()
+    summary_response.content = [summary_block]
+
+    client = AsyncMock()
+    client.messages.create.side_effect = [loop_response, summary_response]
+
+    dr = DeepResearcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    await dr.run("Homeostatic regulation")
+
+    report_file = tmp_path / "deep" / "homeostatic-regulation.md"
+    assert report_file.exists()
+    assert "Full content" in report_file.read_text()

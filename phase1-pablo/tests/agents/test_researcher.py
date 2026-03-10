@@ -18,6 +18,20 @@ def test_researcher_has_correct_tools():
     assert "launch_deep_research" in tool_names
 
 
+def test_researcher_has_read_report_when_reports_dir(tmp_path):
+    client = AsyncMock()
+    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    tool_names = [t["name"] for t in r.tools]
+    assert "read_report" in tool_names
+
+
+def test_researcher_no_read_report_without_reports_dir():
+    client = AsyncMock()
+    r = Researcher(client=client, search=MockWebSearch())
+    tool_names = [t["name"] for t in r.tools]
+    assert "read_report" not in tool_names
+
+
 def _make_tool_use_block(id: str, name: str, input: dict):
     block = MagicMock()
     block.type = "tool_use"
@@ -71,15 +85,18 @@ async def test_researcher_accumulates_deep_reports():
     final_response = _make_response("end_turn", [summary_block])
 
     client = AsyncMock()
+    # Responses: Researcher call 1, DeepResearcher loop, DeepResearcher summary, Researcher call 2
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
-    deep_response = _make_response("end_turn", [deep_text])
-    client.messages.create.side_effect = [tool_response, deep_response, final_response]
+    deep_loop_response = _make_response("end_turn", [deep_text])
+    deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
+    deep_summary_response = MagicMock()
+    deep_summary_response.content = [deep_summary_text]
+    client.messages.create.side_effect = [tool_response, deep_loop_response, deep_summary_response, final_response]
 
     r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake")
 
     assert "Homeostatic regulation" in report.deep_reports
-    assert "Deep research" in report.deep_reports["Homeostatic regulation"]
 
 
 @pytest.mark.asyncio
@@ -97,3 +114,19 @@ async def test_researcher_clears_deep_reports_between_runs():
 
     report = await r.run("new problem")
     assert "stale" not in report.deep_reports
+
+
+@pytest.mark.asyncio
+async def test_researcher_saves_summary_to_disk(tmp_path):
+    text_block = _make_text_block("# Final summary")
+    response = _make_response("end_turn", [text_block])
+
+    client = AsyncMock()
+    client.messages.create.return_value = response
+
+    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    await r.run("test problem")
+
+    report_file = tmp_path / "report.md"
+    assert report_file.exists()
+    assert "Final summary" in report_file.read_text()

@@ -2,6 +2,8 @@
 
 import asyncio
 import logging
+from datetime import date
+from pathlib import Path
 
 import anthropic
 import typer
@@ -11,11 +13,19 @@ from rich.logging import RichHandler
 from rich.markdown import Markdown
 
 from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+from decisionlab.tools.reports import _slugify
 
 load_dotenv()
 
 app = typer.Typer(name="decisionlab", help="Decision-making paradigm modeling pipeline")
 console = Console()
+
+REPORTS_ROOT = Path("reports")
+
+
+def _reports_dir(problem: str) -> Path:
+    slug = _slugify(problem)[:60]
+    return REPORTS_ROOT / f"{date.today()}-{slug}"
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -45,8 +55,10 @@ def research(
 
     from decisionlab.agents.researcher import Researcher
 
+    reports_dir = _reports_dir(problem)
+
     async def _run():
-        r = Researcher(client=_client(), search=DuckDuckGoAdapter())
+        r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await r.run(problem)
 
     report = asyncio.run(_run())
@@ -58,6 +70,8 @@ def research(
         console.print()
         console.rule(f"[bold cyan]Deep: {name}")
         console.print(Markdown(deep))
+    console.print()
+    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
 
 
 @app.command()
@@ -70,8 +84,10 @@ def deep_research(
 
     from decisionlab.agents.deep_researcher import DeepResearcher
 
+    reports_dir = _reports_dir(paradigm)
+
     async def _run():
-        dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter())
+        dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await dr.run(paradigm)
 
     result = asyncio.run(_run())
@@ -79,6 +95,8 @@ def deep_research(
     console.print()
     console.rule("[bold cyan]Deep Research Report")
     console.print(Markdown(result))
+    console.print()
+    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
 
 
 @app.command()
@@ -91,8 +109,10 @@ def run(
 
     from decisionlab.agents.researcher import Researcher
 
+    reports_dir = _reports_dir(problem)
+
     async def _run():
-        r = Researcher(client=_client(), search=DuckDuckGoAdapter())
+        r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await r.run(problem)
 
     report = asyncio.run(_run())
@@ -104,6 +124,8 @@ def run(
         console.print()
         console.rule(f"[bold cyan]Deep: {name}")
         console.print(Markdown(deep))
+    console.print()
+    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
 
 
 if __name__ == "__main__":
