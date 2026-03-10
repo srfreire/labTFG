@@ -7,7 +7,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "claude-agent-sdk>=0.1.48",
+    "anthropic>=0.52.0",
+    "ddgs>=9.11.2",
     "numpy>=2.4.3",
     "python-dotenv>=1.2.2",
     "questionary>=2.1.1",
@@ -24,8 +25,13 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "examples", "../phase2-juan"]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests that require internet access (deselect with -k 'not integration')",
+]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-asyncio>=0.26.0",
 ]
