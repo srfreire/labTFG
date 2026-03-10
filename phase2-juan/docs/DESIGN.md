@@ -23,14 +23,14 @@ flowchart TD
     O --> R["Agente Redactor — genera informes"]
 ```
 
-El usuario **solo habla con el orquestador**. Este interpreta la peticion y delega en los subagentes apropiados, coordinando el flujo completo: construccion del environment -> ejecucion -> observacion -> analisis -> informe.
+El usuario **solo habla con el orquestador**. Este interpreta la peticion y delega en los subagentes apropiados, coordinando el flujo completo: construccion del environment -&gt; ejecucion -&gt; observacion -&gt; analisis -&gt; informe.
 
 ---
 
 ## 2. Decisiones de diseno
 
 | Decision | Valor | Razon |
-|----------|-------|-------|
+| --- | --- | --- |
 | Tipo de mundo | Solo Grid 2D | YAGNI. Se amplia si hace falta |
 | Agentes de simulacion | Codigo Python (reglas, EDOs, RL) | Nunca LLM en runtime de simulacion |
 | Multi-agente | Si, desde el inicio | El script de Denis ya lo soporta |
@@ -61,8 +61,7 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Configura el Environment (tamanio grid, recursos, reglas de regeneracion)
 - Ejecuta la simulacion paso a paso
 
-**Input**: especificacion del environment en lenguaje natural (via orquestador)
-**Output**: environment configurado + datos de simulacion (Events)
+**Input**: especificacion del environment en lenguaje natural (via orquestador) **Output**: environment configurado + datos de simulacion (Events)
 
 ### 3.3 Agente Observador
 
@@ -73,8 +72,7 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Traza trayectorias de decision de cada agente
 - Accede al estado interno de los modelos via `DecisionModel.get_state()` — este metodo lo implementa la Fase 1 (Pablo) en cada modelo. Cada DecisionModel decide que variables internas exponer (ej: fat_reserves, ghrelin, hunger en el homeostatico; Q-table, epsilon en el hedonico). Sin `get_state()`, el Observador no puede registrar el estado interno de los agentes. Preferimos hacerlo así por una cuestión de separación de responsabilidades.
 
-**Input**: Events de la simulacion + snapshots del estado de cada agente (via `get_state()`)
-**Output**: log estructurado de eventos, episodios y trayectorias
+**Input**: Events de la simulacion + snapshots del estado de cada agente (via `get_state()`) **Output**: log estructurado de eventos, episodios y trayectorias
 
 ### 3.4 Agente Analitico
 
@@ -84,8 +82,7 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Detectar estrategias emergentes
 - Comparar rendimiento entre agentes o entre configuraciones
 
-**Input**: logs del Observador
-**Output**: patrones identificados, metricas, comparativas
+**Input**: logs del Observador **Output**: patrones identificados, metricas, comparativas
 
 ### 3.5 Agente Redactor
 
@@ -95,21 +92,20 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Proponer mejoras en los modelos de comportamiento
 - Generar documentacion legible (Markdown, PDF)
 
-**Input**: resultados del Agente Analitico
-**Output**: informe final estructurado
+**Input**: resultados del Agente Analitico **Output**: informe final estructurado
 
 ---
 
 ## 4. Environment base (Python)
 
-Framework generico en Python que define las abstracciones de un mundo de simulacion. Es la "caja de arena vacia" sobre la que el Agente Plataforma construye environments concretos y los DecisionModels de la Fase 1 operan como organismos.
+Framework generico en Python que define las abstracciones de un mundo de simulacion. Es la "sandbox" sobre la que el Agente Plataforma construye environments concretos y los DecisionModels de la Fase 1 operan como organismos.
 
-El environment es **codigo Python puro** — no depende del Agent SDK. Los agentes IA (orquestador, observador, etc.) usan el SDK; el environment no.
+El environment es codigo Python puro — no depende del Agent SDK. Los agentes IA (orquestador, observador, etc.) usan el SDK; el environment no.
 
 ### 4.1 Conceptos
 
 | Concepto | Que es | Ejemplo (caso Denis) |
-|----------|--------|---------------------|
+| --- | --- | --- |
 | `Grid` | Espacio 2D (ancho x alto) | Grid 10x10 |
 | `Resource` | Objeto en el grid con propiedades | Comida en (3,4) con palatabilidad=0.8 |
 | `Agent` | Contenedor minimo: posicion + decision_model + alive | Organismo en (3,4) con HomeostaticModel |
@@ -226,7 +222,7 @@ flowchart TD
 
 ## 5. Integracion con la Fase 1 (Pablo)
 
-El punto de integracion es el **Protocol `DecisionModel`**. Los `.py` generados por el Builder de Pablo implementan su propio Protocol concreto. El Environment de la Fase 2 define un Protocol generico. Un **adaptador** traduce entre ambos.
+El punto de integracion es el **Protocol** `DecisionModel`. Los `.py` generados por el Builder de Pablo implementan su propio Protocol concreto. El Environment de la Fase 2 define un Protocol generico. Un **adaptador** traduce entre ambos.
 
 ```mermaid
 flowchart LR
@@ -245,17 +241,17 @@ flowchart LR
 La Fase 1 y la Fase 2 definen tipos distintos para los mismos conceptos, y eso es intencionado:
 
 | Concepto | Fase 1 (Pablo) | Fase 2 (Environment generico) |
-|----------|---------------|-------------------------------|
+| --- | --- | --- |
 | Action | `Action(name: str, params: dict)` dataclass + constantes `UP`, `DOWN`, etc. | `Action(name: str, params: dict)` — mismo tipo |
 | Perception | `Perception` dataclass tipado y frozen (position, food_sources, ate_food...) | `dict` generico |
 | Position | `tuple[int, int]` | `Position(x, y)` dataclass |
 
-Ambas fases comparten el mismo tipo `Action(name, params)` — Pablo lo alineo en su ultimo commit. La diferencia principal es la **percepcion**: la Fase 1 usa un `Perception` dataclass tipado (campos concretos para grid con comida), mientras la Fase 2 usa un `dict` generico para soportar cualquier paradigma futuro.
+Ambas fases comparten el mismo tipo `Action(name, params)`. La diferencia principal es la **percepcion**: la Fase 1 usa un `Perception` dataclass tipado (campos concretos para grid con comida), mientras la Fase 2 usa un `dict` generico para soportar cualquier paradigma.
 
 El adaptador traduce entre la percepcion tipada y el dict generico:
 
 ```python
-class DenisModelAdapter:
+class ModelAdapter:
     """Adapta un DecisionModel de la Fase 1 al Protocol generico de la Fase 2."""
 
     def __init__(self, phase1_model):
@@ -270,7 +266,7 @@ class DenisModelAdapter:
             ate_food=perception.get("ate_food", False),
             step=perception.get("step", 0),
         )
-        # Llama al modelo de Pablo — Action ya es compatible directamente
+        # Llama al modelo de Pablo
         p1_action = self._model.decide(p1_perception)
         return Action(name=p1_action.name)
 
@@ -278,7 +274,7 @@ class DenisModelAdapter:
         # Reconstruye Action y Perception de la Fase 1
         from decisionlab.models.protocol import Action as P1Action
         p1_action = P1Action(action.name)
-        p1_perception = self._to_p1_perception(new_perception)
+        p1_perception = self._to_typed_perception(new_perception)
         self._model.update(p1_action, reward, p1_perception)
 
     def get_state(self) -> dict:
@@ -296,11 +292,11 @@ Un mismo Environment puede ejecutar agentes con paradigmas completamente distint
 ## 6. Stack tecnico
 
 | Componente | Tecnologia | Justificacion |
-|------------|------------|---------------|
-| Lenguaje | Python (uv) | Continuidad con el script de referencia; ecosistema cientifico |
+| --- | --- | --- |
+| Lenguaje | Python (uv) | Continuidad con el script de referencia |
 | LLM | Claude (Anthropic) | Capacidades de razonamiento y tool_use nativas |
-| SDK | Anthropic Agent SDK (`claude-agent-sdk`) | Loop de agentes, subagentes, tools y contexto. Mismo SDK que la Fase 1 |
-| Interfaz | CLI (rich/typer) -> web despues | MVP rapido, separar logica de presentacion |
+| SDK | Anthropic Agent SDK (`claude-agent-sdk`) | Loop de agentes, subagentes, tools y contexto. |
+| Interfaz | CLI (rich/typer) -&gt; web despues | MVP rapido, separar logica de presentacion |
 | Datos | JSON / SQLite | Logs de simulacion, resultados de analisis |
 | Tests | pytest | Validacion del framework base |
 
@@ -343,6 +339,7 @@ sequenceDiagram
 ## 8. Desarrollo incremental
 
 ### Fase 2.1 — MVP (CLI)
+
 - Environment base en Python (clases del framework)
 - Primer caso de uso concreto: modelo metabolico basado en el script de Denis
 - Orquestador basico via CLI
@@ -350,11 +347,13 @@ sequenceDiagram
 - Agente Observador basico (logging de eventos)
 
 ### Fase 2.2 — Analisis e informes
+
 - Agente Analitico funcional
 - Agente Redactor funcional
-- Pipeline completo: simulacion -> observacion -> analisis -> informe
+- Pipeline completo: simulacion -&gt; observacion -&gt; analisis -&gt; informe
 
 ### Fase 2.3 — Web UI
+
 - Interfaz web sobre la logica existente
 - Visualizacion de simulaciones en tiempo real
 - Graficas interactivas del analisis

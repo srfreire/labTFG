@@ -5,10 +5,10 @@ This module defines the core abstractions for running simulations:
 - DecisionModel Protocol (the contract Phase 1 models implement)
 - Agent wrapper (position + model + alive)
 - Environment (grid 2D + simulation loop)
-- DenisModelAdapter (translates Phase 1 concrete types to generic types)
+- ModelAdapter (translates Phase 1 concrete types to generic types)
 
 The Environment is pure Python — no LLM, no Agent SDK dependency.
-Phase 1 imports only happen inside DenisModelAdapter methods (lazy),
+Phase 1 imports only happen inside ModelAdapter methods (lazy),
 so this module works without Phase 1 installed.
 """
 from __future__ import annotations
@@ -135,40 +135,35 @@ class Environment:
             "step": self._step,
         }
 
-    def _apply_action(self, agent: Agent, action: Action) -> tuple[float, dict]:
+    def _apply_action(self, agent: Agent, action: Action) -> tuple[float, bool]:
         dx, dy = _DELTAS.get(action.name, (0, 0))
         agent.position.x = max(0, min(self.width - 1, agent.position.x + dx))
         agent.position.y = max(0, min(self.height - 1, agent.position.y + dy))
 
-        ate_food = False
-        eaten_idx = None
-        for i, r in enumerate(self._resources):
-            if (
-                r.properties.get("type") == "food"
-                and r.position.x == agent.position.x
-                and r.position.y == agent.position.y
-            ):
-                eaten_idx = i
-                break
+        eaten_idx = next(
+            (i for i, r in enumerate(self._resources)
+             if r.properties.get("type") == "food"
+             and r.position.x == agent.position.x
+             and r.position.y == agent.position.y),
+            None,
+        )
 
-        if eaten_idx is not None:
-            self._resources.pop(eaten_idx)
-            ate_food = True
-            if self.food_regenerate:
-                lo, hi = self.food_palatability_range
-                self._resource_counter += 1
-                self._resources.append(Resource(
-                    id=f"food_{self._resource_counter}",
-                    position=Position(
-                        self._rng.randint(0, self.width - 1),
-                        self._rng.randint(0, self.height - 1),
-                    ),
-                    properties={"type": "food", "palatability": self._rng.uniform(lo, hi)},
-                ))
+        if eaten_idx is None:
+            return -0.01, False
 
-        reward = 1.0 if ate_food else -0.01
-        outcome = {"ate_food": ate_food}
-        return reward, outcome
+        self._resources.pop(eaten_idx)
+        if self.food_regenerate:
+            lo, hi = self.food_palatability_range
+            self._resource_counter += 1
+            self._resources.append(Resource(
+                id=f"food_{self._resource_counter}",
+                position=Position(
+                    self._rng.randint(0, self.width - 1),
+                    self._rng.randint(0, self.height - 1),
+                ),
+                properties={"type": "food", "palatability": self._rng.uniform(lo, hi)},
+            ))
+        return 1.0, True
 
     def step(self) -> list[Event]:
         step_events: list[Event] = []
@@ -178,23 +173,22 @@ class Environment:
 
             perception = self._build_perception(agent)
             action = agent.decision_model.decide(perception)
-            reward, outcome = self._apply_action(agent, action)
+            reward, ate_food = self._apply_action(agent, action)
 
             new_perception = self._build_perception(agent)
-            new_perception["ate_food"] = outcome.get("ate_food", False)
+            new_perception["ate_food"] = ate_food
             agent.decision_model.update(action, reward, new_perception)
 
-            snapshot = agent.decision_model.get_state()
             snapshot = {
                 k: v.tolist() if hasattr(v, "tolist") else v
-                for k, v in snapshot.items()
+                for k, v in agent.decision_model.get_state().items()
             }
 
             event = Event(
                 step=self._step,
                 agent_id=agent.id,
                 action=action,
-                outcome={**outcome, "reward": reward, "model_state": snapshot},
+                outcome={"ate_food": ate_food, "reward": reward, "model_state": snapshot},
             )
             step_events.append(event)
             self._events.append(event)
@@ -213,7 +207,7 @@ class Environment:
 
 # --- Adapter for Phase 1 (Denis) models ---
 
-class DenisModelAdapter:
+class ModelAdapter:
     """Translates between Phase 1 concrete types and Phase 2 generic types.
 
     Phase 1 imports are lazy (inside methods) so this module works
@@ -223,7 +217,7 @@ class DenisModelAdapter:
     def __init__(self, phase1_model) -> None:
         self._model = phase1_model
 
-    def _to_p1_perception(self, perception: dict):
+    def _to_typed_perception(self, perception: dict):
         from decisionlab.models.protocol import Perception as P1Perception
         return P1Perception(
             position=(perception["x"], perception["y"]),
@@ -234,14 +228,14 @@ class DenisModelAdapter:
         )
 
     def decide(self, perception: dict) -> Action:
-        p1_perception = self._to_p1_perception(perception)
+        p1_perception = self._to_typed_perception(perception)
         p1_action = self._model.decide(p1_perception)
-        return Action(name=p1_action.name)
+        return Action(name=p1_action.name, params=p1_action.params)
 
     def update(self, action: Action, reward: float, new_perception: dict) -> None:
         from decisionlab.models.protocol import Action as P1Action
-        p1_action = P1Action(action.name)
-        p1_perception = self._to_p1_perception(new_perception)
+        p1_action = P1Action(action.name, action.params)
+        p1_perception = self._to_typed_perception(new_perception)
         self._model.update(p1_action, reward, p1_perception)
 
     def get_state(self) -> dict:

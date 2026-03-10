@@ -29,10 +29,10 @@ phase2-juan/                               — Juan's work (Phase 2 / the TFG)
 
 ## TFG Objectives (Agentic AI paradigm)
 
-1. **Simulation Platform Agent** — configurable environment (goals, resources, constraints)
-2. **Observer Agent** — monitors agents, records events, episodes and decision trajectories
-3. **Analytical Agent** — processes Observer data, identifies behavior-objective patterns
-4. **Reporter Agent** — generates structured reports, conclusions and improvement proposals
+1. **Architect** — configurable environment (goals, resources, constraints)
+2. **Tracker** — monitors agents, records events, episodes and decision trajectories
+3. **Analyst** — processes Tracker data, identifies behavior-objective patterns
+4. **Reporter** — generates structured reports, conclusions and improvement proposals
 
 ## Running the Reference Script
 
