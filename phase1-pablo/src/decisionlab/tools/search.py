@@ -44,8 +44,8 @@ FETCH_PAPER_SCHEMA: dict[str, Any] = {
 
 
 def create_web_search(adapter: WebSearchPort) -> Callable[[dict], Awaitable[str]]:
-    async def web_search(input: dict) -> str:
-        results = await adapter.search(input["query"])
+    async def web_search(params: dict) -> str:
+        results = await adapter.search(params["query"])
         return json.dumps(
             [{"title": r.title, "url": r.url, "snippet": r.snippet} for r in results],
             indent=2,
@@ -54,8 +54,8 @@ def create_web_search(adapter: WebSearchPort) -> Callable[[dict], Awaitable[str]
 
 
 def create_search_papers(adapter: PaperSearchPort) -> Callable[[dict], Awaitable[str]]:
-    async def search_papers(input: dict) -> str:
-        results = await adapter.search(input["query"], input.get("limit", 10))
+    async def search_papers(params: dict) -> str:
+        results = await adapter.search(params["query"], params.get("limit", 10))
         return json.dumps(
             [{"paper_id": p.paper_id, "title": p.title, "abstract": p.abstract,
               "authors": p.authors, "year": p.year} for p in results],
@@ -65,8 +65,8 @@ def create_search_papers(adapter: PaperSearchPort) -> Callable[[dict], Awaitable
 
 
 def create_fetch_paper(adapter: PaperSearchPort) -> Callable[[dict], Awaitable[str]]:
-    async def fetch_paper(input: dict) -> str:
-        paper = await adapter.fetch(input["paper_id"])
+    async def fetch_paper(params: dict) -> str:
+        paper = await adapter.fetch(params["paper_id"])
         return json.dumps(
             {"paper_id": paper.paper_id, "title": paper.title, "abstract": paper.abstract,
              "authors": paper.authors, "year": paper.year},

@@ -13,7 +13,7 @@ class DuckDuckGoAdapter:
         self._max_results = max_results
 
     async def search(self, query: str) -> list[SearchResult]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         results = await loop.run_in_executor(None, partial(self._sync_search, query))
         return results
 

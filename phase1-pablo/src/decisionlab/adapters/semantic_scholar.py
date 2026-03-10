@@ -14,11 +14,11 @@ _FIELDS = "paperId,title,abstract,authors,year"
 
 class SemanticScholarAdapter:
     async def search(self, query: str, limit: int = 10) -> list[PaperResult]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_search, query, limit))
 
     async def fetch(self, paper_id: str) -> PaperResult:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, partial(self._sync_fetch, paper_id))
 
     def _sync_search(self, query: str, limit: int) -> list[PaperResult]:
