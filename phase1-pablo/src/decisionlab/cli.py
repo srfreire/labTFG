@@ -13,7 +13,7 @@ from rich.logging import RichHandler
 from rich.markdown import Markdown
 
 from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
-from decisionlab.tools.reports import _slugify
+from decisionlab.tools.reports import slugify
 
 load_dotenv()
 
@@ -24,7 +24,8 @@ REPORTS_ROOT = Path("reports")
 
 
 def _reports_dir(problem: str) -> Path:
-    slug = _slugify(problem)[:60]
+    words = slugify(problem).split("-")[:5]
+    slug = "-".join(words)
     return REPORTS_ROOT / f"{date.today()}-{slug}"
 
 
@@ -45,6 +46,34 @@ def _client() -> anthropic.AsyncAnthropic:
     return anthropic.AsyncAnthropic()
 
 
+def _print_research_report(title: str, report, reports_dir: Path) -> None:
+    """Render a ResearchReport to the console."""
+    console.print()
+    console.rule(f"[bold green]{title}")
+    console.print(Markdown(report.summary))
+    for name, deep in report.deep_reports.items():
+        console.print()
+        console.rule(f"[bold cyan]Deep: {name}")
+        console.print(Markdown(deep))
+    console.print()
+    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
+
+
+def _run_async(coro):
+    """Run an async coroutine with user-friendly error handling."""
+    try:
+        return asyncio.run(coro)
+    except anthropic.AuthenticationError:
+        console.print("[bold red]Error: Invalid or missing ANTHROPIC_API_KEY. Set it in .env or as an environment variable.[/bold red]")
+        raise typer.Exit(code=1)
+    except anthropic.APIConnectionError:
+        console.print("[bold red]Error: Could not connect to the API. Check your network and ANTHROPIC_BASE_URL.[/bold red]")
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def research(
     problem: str = typer.Argument(help="Decision-making problem to investigate"),
@@ -61,17 +90,8 @@ def research(
         r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await r.run(problem)
 
-    report = asyncio.run(_run())
-
-    console.print()
-    console.rule("[bold green]Research Report")
-    console.print(Markdown(report.summary))
-    for name, deep in report.deep_reports.items():
-        console.print()
-        console.rule(f"[bold cyan]Deep: {name}")
-        console.print(Markdown(deep))
-    console.print()
-    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
+    report = _run_async(_run())
+    _print_research_report("Research Report", report, reports_dir)
 
 
 @app.command()
@@ -90,13 +110,13 @@ def deep_research(
         dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await dr.run(paradigm)
 
-    result = asyncio.run(_run())
+    result = _run_async(_run())
 
     console.print()
-    console.rule("[bold cyan]Deep Research Report")
+    console.rule("[bold cyan]Deep Research Summary")
     console.print(Markdown(result))
     console.print()
-    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
+    console.print(f"[bold]Full report saved to: {reports_dir}/[/bold]")
 
 
 @app.command()
@@ -115,17 +135,8 @@ def run(
         r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
         return await r.run(problem)
 
-    report = asyncio.run(_run())
-
-    console.print()
-    console.rule("[bold green]Pipeline — Research Phase Complete")
-    console.print(Markdown(report.summary))
-    for name, deep in report.deep_reports.items():
-        console.print()
-        console.rule(f"[bold cyan]Deep: {name}")
-        console.print(Markdown(deep))
-    console.print()
-    console.print(f"[bold]Reports saved to: {reports_dir}/[/bold]")
+    report = _run_async(_run())
+    _print_research_report("Pipeline \u2014 Research Phase Complete", report, reports_dir)
 
 
 if __name__ == "__main__":

@@ -11,20 +11,10 @@ class SearchResult:
 
 
 @dataclass(frozen=True)
-class PaperResult:
-    paper_id: str
-    title: str
-    abstract: str
-    authors: tuple[str, ...]
-    year: int
-
-
-@dataclass(frozen=True)
 class Paradigm:
     id: str
     name: str
     description: str
-    references: tuple[PaperResult, ...] = field(default_factory=tuple)
 
 
 @dataclass

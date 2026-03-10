@@ -2,7 +2,7 @@ import pytest
 
 from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
-    _slugify,
+    slugify,
     create_read_report,
     save_deep_report,
     save_summary_report,
@@ -15,8 +15,12 @@ def test_read_report_schema_has_required_fields():
 
 
 def test_slugify():
-    assert _slugify("Homeostatic regulation") == "homeostatic-regulation"
-    assert _slugify("Q-Learning / RL") == "q-learning---rl"
+    assert slugify("Homeostatic regulation") == "homeostatic-regulation"
+    assert slugify("Q-Learning / RL") == "q-learning-rl"
+    assert slugify("Drive: Theory") == "drive-theory"
+    assert slugify("a   b") == "a-b"
+    assert slugify("") == ""
+    assert slugify("/ leading /") == "leading"
 
 
 def test_save_deep_report(tmp_path):

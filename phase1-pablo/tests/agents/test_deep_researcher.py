@@ -73,3 +73,66 @@ async def test_deep_researcher_saves_report_to_disk(tmp_path):
     report_file = tmp_path / "deep" / "homeostatic-regulation.md"
     assert report_file.exists()
     assert "Full content" in report_file.read_text()
+
+
+@pytest.mark.asyncio
+async def test_deep_researcher_empty_report_returns_early():
+    """When agent loop returns empty text, return early without calling haiku."""
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = "   "
+
+    loop_response = MagicMock()
+    loop_response.stop_reason = "end_turn"
+    loop_response.content = [text_block]
+
+    client = AsyncMock()
+    client.messages.create.return_value = loop_response
+
+    dr = DeepResearcher(client=client, search=MockWebSearch())
+    result = await dr.run("Empty paradigm")
+
+    assert "No results found" in result
+    assert client.messages.create.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_deep_researcher_empty_report_no_disk_save(tmp_path):
+    """When agent loop returns empty text, nothing is saved to disk."""
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = ""
+
+    loop_response = MagicMock()
+    loop_response.stop_reason = "end_turn"
+    loop_response.content = [text_block]
+
+    client = AsyncMock()
+    client.messages.create.return_value = loop_response
+
+    dr = DeepResearcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    await dr.run("Empty paradigm")
+
+    deep_dir = tmp_path / "deep"
+    assert not deep_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_deep_researcher_summary_fallback_on_api_error():
+    """When haiku summary call fails, falls back to truncated report."""
+    text_block = MagicMock()
+    text_block.type = "text"
+    text_block.text = "# Paradigm report\n\nSome content here."
+
+    loop_response = MagicMock()
+    loop_response.stop_reason = "end_turn"
+    loop_response.content = [text_block]
+
+    client = AsyncMock()
+    client.messages.create.side_effect = [loop_response, Exception("API error")]
+
+    dr = DeepResearcher(client=client, search=MockWebSearch())
+    result = await dr.run("Failing paradigm")
+
+    assert "Paradigm report" in result
+    assert "[Full report saved to disk]" in result

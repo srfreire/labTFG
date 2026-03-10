@@ -99,18 +99,26 @@ class DeepResearcher:
             logger.warning("DeepResearcher produced empty output for paradigm: %s", paradigm)
             return f"No results found for paradigm: {paradigm}"
 
-        # Save full report to disk
         if self.reports_dir:
             save_deep_report(self.reports_dir, paradigm, full_report)
 
-        # Get concise summary for the Researcher's context (cheap model)
-        summary_response = await self.client.messages.create(
-            model="claude-haiku-4-5",
-            system="You summarize research reports concisely. Return ONLY the requested format.",
-            messages=[{"role": "user", "content": full_report + "\n\n" + CONCISE_SUMMARY_PROMPT}],
-            max_tokens=300,
-        )
+        try:
+            summary_response = await self.client.messages.create(
+                model="claude-haiku-4-5",
+                system="You summarize research reports concisely. Return ONLY the requested format.",
+                messages=[{"role": "user", "content": full_report + "\n\n" + CONCISE_SUMMARY_PROMPT}],
+                max_tokens=300,
+            )
+            summary = "\n".join(b.text for b in summary_response.content if b.type == "text")
+        except Exception:
+            logger.warning("Summary extraction failed for '%s'; using truncated report", paradigm, exc_info=True)
+            summary = ""
 
-        summary = "\n".join(b.text for b in summary_response.content if b.type == "text")
-        logger.info("DeepResearcher finished for: %s (report: %d chars, summary: %d chars)", paradigm, len(full_report), len(summary))
+        if not summary.strip():
+            summary = full_report[:500] + "\n\n[Full report saved to disk]"
+
+        logger.info(
+            "DeepResearcher finished for: %s (report: %d chars, summary: %d chars)",
+            paradigm, len(full_report), len(summary),
+        )
         return summary

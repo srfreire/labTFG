@@ -21,18 +21,22 @@ READ_REPORT_SCHEMA: dict[str, Any] = {
 }
 
 
-def _slugify(name: str) -> str:
-    return name.lower().replace(" ", "-").replace("/", "-").replace(":", "")
+def slugify(name: str) -> str:
+    """Turn a paradigm name into a filesystem-safe slug."""
+    import re
+
+    slug = name.lower().replace(" ", "-").replace("/", "-").replace(":", "")
+    return re.sub(r"-{2,}", "-", slug).strip("-")
 
 
 def create_read_report(reports_dir: Path) -> Callable[[dict], Awaitable[str]]:
     async def read_report(params: dict) -> str:
         if "paradigm" not in params:
             raise ValueError("read_report requires 'paradigm' parameter")
-        slug = _slugify(params["paradigm"])
+        slug = slugify(params["paradigm"])
         path = reports_dir / "deep" / f"{slug}.md"
         if not path.exists():
-            return f"No report found for '{params['paradigm']}' at {path}"
+            return f"No report found for paradigm '{params['paradigm']}'. It may not have been researched yet."
         return path.read_text()
     return read_report
 
@@ -41,7 +45,7 @@ def save_deep_report(reports_dir: Path, paradigm: str, content: str) -> Path:
     """Save a deep research report to disk. Returns the file path."""
     deep_dir = reports_dir / "deep"
     deep_dir.mkdir(parents=True, exist_ok=True)
-    slug = _slugify(paradigm)
+    slug = slugify(paradigm)
     path = deep_dir / f"{slug}.md"
     path.write_text(content)
     logger.info("Saved deep report: %s", path)
