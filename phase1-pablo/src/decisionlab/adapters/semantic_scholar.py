@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from functools import partial
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.semanticscholar.org/graph/v1"
 _FIELDS = "paperId,title,abstract,authors,year"
+_MAX_RETRIES = 3
+_INITIAL_BACKOFF = 2.0
 
 
 class SemanticScholarAdapter:
@@ -45,13 +48,20 @@ class SemanticScholarAdapter:
 
     def _get_json(self, url: str) -> dict:
         req = Request(url, headers={"User-Agent": "decisionlab/0.1"})
-        try:
-            with urlopen(req, timeout=15) as resp:
-                return json.loads(resp.read())
-        except HTTPError as e:
-            raise RuntimeError(f"Semantic Scholar HTTP {e.code} for {url}") from e
-        except URLError as e:
-            raise RuntimeError(f"Semantic Scholar connection error: {e.reason}") from e
+        for attempt in range(_MAX_RETRIES):
+            try:
+                with urlopen(req, timeout=15) as resp:
+                    return json.loads(resp.read())
+            except HTTPError as e:
+                if e.code == 429 and attempt < _MAX_RETRIES - 1:
+                    wait = _INITIAL_BACKOFF * (2 ** attempt)
+                    logger.warning("Semantic Scholar rate-limited, retrying in %.1fs (%d/%d)", wait, attempt + 1, _MAX_RETRIES)
+                    time.sleep(wait)
+                    continue
+                raise RuntimeError(f"Semantic Scholar HTTP {e.code} for {url}") from e
+            except URLError as e:
+                raise RuntimeError(f"Semantic Scholar connection error: {e.reason}") from e
+        raise RuntimeError(f"Semantic Scholar max retries exceeded for {url}")
 
     def _to_paper(self, raw: dict) -> PaperResult:
         return PaperResult(

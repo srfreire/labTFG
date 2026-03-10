@@ -4,7 +4,7 @@ import asyncio
 import logging
 from functools import partial
 
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 from decisionlab.domain.models import SearchResult
 
@@ -21,8 +21,7 @@ class DuckDuckGoAdapter:
 
     def _sync_search(self, query: str) -> list[SearchResult]:
         try:
-            with DDGS() as ddgs:
-                raw = list(ddgs.text(query, max_results=self._max_results))
+            raw = list(DDGS().text(query, max_results=self._max_results))
         except Exception as e:
             raise RuntimeError(f"DuckDuckGo search failed: {e}") from e
         return [

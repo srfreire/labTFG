@@ -2,22 +2,20 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from decisionlab.agents.researcher import Researcher, RESEARCHER_SYSTEM_PROMPT
-from decisionlab.adapters.mock import MockWebSearch, MockPaperSearch
+from decisionlab.adapters.mock import MockWebSearch
 from decisionlab.domain.models import ResearchReport
 
 
 def test_system_prompt_exists():
-    assert "breadth-first" in RESEARCHER_SYSTEM_PROMPT.lower()
+    assert "paradigm" in RESEARCHER_SYSTEM_PROMPT.lower()
 
 
 def test_researcher_has_correct_tools():
     client = AsyncMock()
-    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    r = Researcher(client=client, search=MockWebSearch())
     tool_names = [t["name"] for t in r.tools]
     assert "web_search" in tool_names
-    assert "search_papers" in tool_names
     assert "launch_deep_research" in tool_names
-    assert "fetch_paper" not in tool_names
 
 
 def _make_tool_use_block(id: str, name: str, input: dict):
@@ -54,7 +52,7 @@ async def test_researcher_run_returns_research_report():
     client = AsyncMock()
     client.messages.create.return_value = response
 
-    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake behavior")
 
     assert isinstance(report, ResearchReport)
@@ -64,24 +62,20 @@ async def test_researcher_run_returns_research_report():
 @pytest.mark.asyncio
 async def test_researcher_accumulates_deep_reports():
     """Verify that launch_deep_research calls produce deep_reports in the result."""
-    # First response: LLM calls launch_deep_research
     tool_block = _make_tool_use_block(
         "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
     )
     tool_response = _make_response("tool_use", [tool_block])
 
-    # Second response: LLM returns summary
     summary_block = _make_text_block("# Paradigms\n\n## 1. Homeostatic\nDesc")
     final_response = _make_response("end_turn", [summary_block])
 
     client = AsyncMock()
-    # The DeepResearcher's run() will also call client.messages.create
-    # So we need responses for: Researcher call 1, DeepResearcher call 1, Researcher call 2
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
     deep_response = _make_response("end_turn", [deep_text])
     client.messages.create.side_effect = [tool_response, deep_response, final_response]
 
-    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake")
 
     assert "Homeostatic regulation" in report.deep_reports
@@ -97,9 +91,8 @@ async def test_researcher_clears_deep_reports_between_runs():
     client = AsyncMock()
     client.messages.create.return_value = response
 
-    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    r = Researcher(client=client, search=MockWebSearch())
 
-    # Manually inject a stale deep report
     r._deep_reports["stale"] = "old data"
 
     report = await r.run("new problem")

@@ -17,7 +17,9 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
             logger.error(msg)
             return {"type": "tool_result", "tool_use_id": call.id, "content": msg, "is_error": True}
         try:
+            logger.info("Calling tool '%s'", call.name)
             result = await registry[call.name](call.input)
+            logger.info("Tool '%s' returned (%d chars)", call.name, len(result))
             return {"type": "tool_result", "tool_use_id": call.id, "content": result}
         except Exception as e:
             logger.error("Tool '%s' (call_id=%s) raised %s: %s", call.name, call.id, type(e).__name__, e)

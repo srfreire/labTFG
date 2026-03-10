@@ -2,20 +2,18 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from decisionlab.agents.deep_researcher import DeepResearcher, DEEP_RESEARCHER_SYSTEM_PROMPT
-from decisionlab.adapters.mock import MockWebSearch, MockPaperSearch
+from decisionlab.adapters.mock import MockWebSearch
 
 
 def test_system_prompt_exists():
-    assert "deep research specialist" in DEEP_RESEARCHER_SYSTEM_PROMPT.lower()
+    assert "paradigm" in DEEP_RESEARCHER_SYSTEM_PROMPT.lower()
 
 
 def test_deep_researcher_has_correct_tools():
     client = AsyncMock()
-    dr = DeepResearcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    dr = DeepResearcher(client=client, search=MockWebSearch())
     tool_names = [t["name"] for t in dr.tools]
     assert "web_search" in tool_names
-    assert "search_papers" in tool_names
-    assert "fetch_paper" in tool_names
     assert "launch_deep_research" not in tool_names
 
 
@@ -32,7 +30,7 @@ async def test_deep_researcher_run_returns_markdown():
     client = AsyncMock()
     client.messages.create.return_value = response
 
-    dr = DeepResearcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    dr = DeepResearcher(client=client, search=MockWebSearch())
     result = await dr.run("Homeostatic regulation")
 
     assert "Homeostatic" in result

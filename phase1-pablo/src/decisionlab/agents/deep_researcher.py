@@ -1,54 +1,46 @@
+"""DeepResearcher agent — deep-dives into a single paradigm."""
+
 from __future__ import annotations
 
 import logging
 
-from decisionlab.domain.ports import PaperSearchPort, WebSearchPort
+from decisionlab.domain.ports import WebSearchPort
+from decisionlab.runtime.loop import run_agent_loop
+from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
 
 logger = logging.getLogger(__name__)
-from decisionlab.runtime.loop import run_agent_loop
-from decisionlab.tools.search import (
-    FETCH_PAPER_SCHEMA,
-    SEARCH_PAPERS_SCHEMA,
-    WEB_SEARCH_SCHEMA,
-    create_fetch_paper,
-    create_search_papers,
-    create_web_search,
-)
 
 DEEP_RESEARCHER_SYSTEM_PROMPT = """\
-You are a deep research specialist. Your job: given a single decision-making paradigm, produce a thorough scientific report by searching for papers, reading abstracts, and synthesizing findings.
+You produce a scientific report on a single decision-making paradigm. You MUST be efficient.
 
 ## Process
 
-1. SEARCH for papers and content specific to this paradigm. Use multiple queries: the paradigm name, key authors, key mechanisms, mathematical formulations.
+1. Run 2-3 targeted web searches: paradigm name + key authors, paradigm + mathematical formulation, paradigm + review paper.
+2. Synthesize findings into the report format below.
+3. STOP. Do not search more than 3 times.
 
-2. FETCH key papers to read their abstracts and metadata. Prioritize foundational papers and recent reviews.
+## Constraints
 
-3. SYNTHESIZE findings into a structured report.
-
-## Rules
-
-- DEPTH over breadth. Exhaust this paradigm before finishing.
-- Every claim must trace to a specific paper or source from your searches.
-- Never fabricate references — only cite papers you found via search tools.
-- If you cannot find enough information, say so explicitly rather than inventing content.
+- Maximum 3 web searches. Extract maximum value from each.
+- Only cite papers/authors found in results. Never fabricate.
+- If information is insufficient, state gaps explicitly — do not invent content.
 
 ## Output format
 
 # {Paradigm name} — Deep research
 
 ## Foundations
-{What is this paradigm? Origin, key researchers, theoretical basis.}
+{Origin, key researchers, theoretical basis.}
 
 ## Postulates
-P1. {Specific, falsifiable statement} ({Author, Year})
+P1. {Falsifiable statement} ({Author, Year})
 P2. ...
 
 ## Assumptions
-- {Each assumption the model makes}
+- {Each assumption}
 
 ## Predictions
-- {Observable behaviors the model predicts}
+- {Observable behaviors predicted}
 
 ## Identified variables
 | Variable | Role | Behavior |
@@ -56,24 +48,25 @@ P2. ...
 | ... | ... | ... |
 
 ## Mathematical formulation (if applicable)
-{Equations, ODEs, update rules — as described in the literature}
+{Equations, ODEs, update rules from the literature}
 
 ## References
-- {Author (Year)} - {Title} - DOI: {if found}
+- {Author (Year)} - {Title}
 """
+
+_MAX_ITERATIONS = 5
 
 
 class DeepResearcher:
-    def __init__(self, *, client, search: WebSearchPort, papers: PaperSearchPort):
+    def __init__(self, *, client, search: WebSearchPort):
         self.client = client
-        self.tools = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA, FETCH_PAPER_SCHEMA]
+        self.tools = [WEB_SEARCH_SCHEMA]
         self.registry = {
             "web_search": create_web_search(search),
-            "search_papers": create_search_papers(papers),
-            "fetch_paper": create_fetch_paper(papers),
         }
 
     async def run(self, paradigm: str) -> str:
+        logger.info("DeepResearcher starting — paradigm: %s", paradigm)
         messages = [{"role": "user", "content": f"Research this paradigm in depth: {paradigm}"}]
 
         response = await run_agent_loop(
@@ -83,6 +76,7 @@ class DeepResearcher:
             tools=self.tools,
             messages=messages,
             registry=self.registry,
+            max_iterations=_MAX_ITERATIONS,
         )
 
         text_blocks = [b.text for b in response.content if b.type == "text"]

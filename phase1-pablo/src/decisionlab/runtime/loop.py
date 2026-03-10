@@ -22,6 +22,7 @@ async def run_agent_loop(
     messages = list(messages)
 
     for iteration in range(max_iterations):
+        logger.info("Loop iteration %d/%d — calling %s", iteration + 1, max_iterations, model)
         response = await client.messages.create(
             model=model,
             system=system,
@@ -31,6 +32,7 @@ async def run_agent_loop(
         )
 
         if response.stop_reason == "end_turn":
+            logger.info("Agent finished (end_turn) after %d iteration(s)", iteration + 1)
             return response
 
         if response.stop_reason != "tool_use":
