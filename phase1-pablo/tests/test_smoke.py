@@ -2,8 +2,12 @@
 def test_package_imports():
     import decisionlab
     from decisionlab import cli
-    from decisionlab.agents import researcher, reasoner, builder
-    from decisionlab.tools import web_search, semantic_scholar, file_io, code_runner
+    from decisionlab.agents import researcher
+    from decisionlab.agents import deep_researcher
+    from decisionlab.domain import models, ports
+    from decisionlab.adapters import mock
+    from decisionlab.runtime import dispatcher, loop
+    from decisionlab.tools import search, agents
 
 
 def test_cli_app_exists():

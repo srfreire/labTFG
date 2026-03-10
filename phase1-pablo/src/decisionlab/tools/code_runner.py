@@ -1,1 +1,0 @@
-"""Pytest subprocess runner tool."""
