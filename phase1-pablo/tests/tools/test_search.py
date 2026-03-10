@@ -44,8 +44,40 @@ async def test_search_papers_function_delegates_to_port():
 
 
 @pytest.mark.asyncio
+async def test_search_papers_uses_default_limit():
+    adapter = MockPaperSearch()
+    fn = create_search_papers(adapter)
+    result = await fn({"query": "food intake"})
+    assert "predictive model" in result.lower()
+
+
+@pytest.mark.asyncio
 async def test_fetch_paper_function_delegates_to_port():
     adapter = MockPaperSearch()
     fn = create_fetch_paper(adapter)
     result = await fn({"paper_id": "jacquier2014"})
     assert "jacquier2014" in result.lower() or "Jacquier" in result
+
+
+@pytest.mark.asyncio
+async def test_web_search_missing_query_raises():
+    adapter = MockWebSearch()
+    fn = create_web_search(adapter)
+    with pytest.raises(ValueError, match="query"):
+        await fn({})
+
+
+@pytest.mark.asyncio
+async def test_search_papers_missing_query_raises():
+    adapter = MockPaperSearch()
+    fn = create_search_papers(adapter)
+    with pytest.raises(ValueError, match="query"):
+        await fn({"limit": 5})
+
+
+@pytest.mark.asyncio
+async def test_fetch_paper_missing_paper_id_raises():
+    adapter = MockPaperSearch()
+    fn = create_fetch_paper(adapter)
+    with pytest.raises(ValueError, match="paper_id"):
+        await fn({})

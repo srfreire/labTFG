@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Any, Awaitable, Callable
 
 from decisionlab.domain.ports import PaperSearchPort, WebSearchPort
@@ -45,31 +46,26 @@ FETCH_PAPER_SCHEMA: dict[str, Any] = {
 
 def create_web_search(adapter: WebSearchPort) -> Callable[[dict], Awaitable[str]]:
     async def web_search(params: dict) -> str:
+        if "query" not in params:
+            raise ValueError("web_search requires 'query' parameter")
         results = await adapter.search(params["query"])
-        return json.dumps(
-            [{"title": r.title, "url": r.url, "snippet": r.snippet} for r in results],
-            indent=2,
-        )
+        return json.dumps([asdict(r) for r in results], indent=2)
     return web_search
 
 
 def create_search_papers(adapter: PaperSearchPort) -> Callable[[dict], Awaitable[str]]:
     async def search_papers(params: dict) -> str:
+        if "query" not in params:
+            raise ValueError("search_papers requires 'query' parameter")
         results = await adapter.search(params["query"], params.get("limit", 10))
-        return json.dumps(
-            [{"paper_id": p.paper_id, "title": p.title, "abstract": p.abstract,
-              "authors": p.authors, "year": p.year} for p in results],
-            indent=2,
-        )
+        return json.dumps([asdict(p) for p in results], indent=2)
     return search_papers
 
 
 def create_fetch_paper(adapter: PaperSearchPort) -> Callable[[dict], Awaitable[str]]:
     async def fetch_paper(params: dict) -> str:
+        if "paper_id" not in params:
+            raise ValueError("fetch_paper requires 'paper_id' parameter")
         paper = await adapter.fetch(params["paper_id"])
-        return json.dumps(
-            {"paper_id": paper.paper_id, "title": paper.title, "abstract": paper.abstract,
-             "authors": paper.authors, "year": paper.year},
-            indent=2,
-        )
+        return json.dumps(asdict(paper), indent=2)
     return fetch_paper

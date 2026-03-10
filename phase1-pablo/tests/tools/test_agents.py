@@ -16,3 +16,11 @@ async def test_launch_deep_research_calls_sub_agent():
     result = await fn({"paradigm": "Homeostatic regulation of food intake"})
     assert "Homeostatic" in result
     sub_agent_factory.assert_called_once_with("Homeostatic regulation of food intake")
+
+
+@pytest.mark.asyncio
+async def test_launch_deep_research_missing_paradigm_raises():
+    sub_agent_factory = AsyncMock()
+    fn = create_launch_deep_research(sub_agent_factory)
+    with pytest.raises(ValueError, match="paradigm"):
+        await fn({})

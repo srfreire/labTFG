@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from functools import partial
 
 from duckduckgo_search import DDGS
 
 from decisionlab.domain.models import SearchResult
+
+logger = logging.getLogger(__name__)
 
 
 class DuckDuckGoAdapter:
@@ -14,12 +17,14 @@ class DuckDuckGoAdapter:
 
     async def search(self, query: str) -> list[SearchResult]:
         loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, partial(self._sync_search, query))
-        return results
+        return await loop.run_in_executor(None, partial(self._sync_search, query))
 
     def _sync_search(self, query: str) -> list[SearchResult]:
-        with DDGS() as ddgs:
-            raw = list(ddgs.text(query, max_results=self._max_results))
+        try:
+            with DDGS() as ddgs:
+                raw = list(ddgs.text(query, max_results=self._max_results))
+        except Exception as e:
+            raise RuntimeError(f"DuckDuckGo search failed: {e}") from e
         return [
             SearchResult(title=r.get("title", ""), url=r.get("href", ""), snippet=r.get("body", ""))
             for r in raw

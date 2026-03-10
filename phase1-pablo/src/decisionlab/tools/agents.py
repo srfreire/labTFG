@@ -23,5 +23,7 @@ SubAgentFactory = Callable[[str], Awaitable[str]]
 
 def create_launch_deep_research(factory: SubAgentFactory) -> Callable[[dict], Awaitable[str]]:
     async def launch_deep_research(params: dict) -> str:
+        if "paradigm" not in params:
+            raise ValueError("launch_deep_research requires 'paradigm' parameter")
         return await factory(params["paradigm"])
     return launch_deep_research

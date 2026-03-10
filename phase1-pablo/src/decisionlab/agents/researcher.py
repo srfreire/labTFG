@@ -1,9 +1,12 @@
-# src/decisionlab/agents/researcher.py
 """Researcher agent — discovers and investigates decision-making paradigms."""
 
 from __future__ import annotations
 
+import logging
+
 from decisionlab.agents.deep_researcher import DeepResearcher
+
+logger = logging.getLogger(__name__)
 from decisionlab.domain.models import ResearchReport
 from decisionlab.domain.ports import PaperSearchPort, WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
@@ -65,18 +68,18 @@ class Researcher:
 
         self._deep_reports: dict[str, str] = {}
 
-        async def _run_deep_research(paradigm: str) -> str:
-            dr = DeepResearcher(client=client, search=search, papers=papers)
-            report = await dr.run(paradigm)
-            self._deep_reports[paradigm] = report
-            return report
-
         self.tools = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA, LAUNCH_DEEP_RESEARCH_SCHEMA]
         self.registry = {
             "web_search": create_web_search(search),
             "search_papers": create_search_papers(papers),
-            "launch_deep_research": create_launch_deep_research(_run_deep_research),
+            "launch_deep_research": create_launch_deep_research(self._run_deep_research),
         }
+
+    async def _run_deep_research(self, paradigm: str) -> str:
+        dr = DeepResearcher(client=self.client, search=self.search, papers=self.papers)
+        report = await dr.run(paradigm)
+        self._deep_reports[paradigm] = report
+        return report
 
     async def run(self, problem: str) -> ResearchReport:
         self._deep_reports.clear()
@@ -93,7 +96,10 @@ class Researcher:
         )
 
         summary = "\n".join(b.text for b in response.content if b.type == "text")
+        if not summary.strip():
+            logger.warning("Researcher produced empty summary for problem: %s", problem)
 
+        # TODO: parse paradigms from LLM summary text into structured Paradigm objects
         return ResearchReport(
             paradigms=[],
             summary=summary,

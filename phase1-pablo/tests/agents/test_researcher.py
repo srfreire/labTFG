@@ -20,15 +20,36 @@ def test_researcher_has_correct_tools():
     assert "fetch_paper" not in tool_names
 
 
+def _make_tool_use_block(id: str, name: str, input: dict):
+    block = MagicMock()
+    block.type = "tool_use"
+    block.id = id
+    block.name = name
+    block.input = input
+    return block
+
+
+def _make_text_block(text: str):
+    block = MagicMock()
+    block.type = "text"
+    block.text = text
+    return block
+
+
+def _make_response(stop_reason: str, content: list):
+    resp = MagicMock()
+    resp.stop_reason = stop_reason
+    resp.content = content
+    return resp
+
+
 @pytest.mark.asyncio
 async def test_researcher_run_returns_research_report():
-    text_block = MagicMock()
-    text_block.type = "text"
-    text_block.text = "# Decision-making paradigms: food\n\n## 1. Homeostatic\nDesc\n**Key authors**: X\n**Key concepts**: Y"
+    text_block = _make_text_block(
+        "# Decision-making paradigms: food\n\n## 1. Homeostatic\nDesc\n**Key authors**: X\n**Key concepts**: Y"
+    )
 
-    response = MagicMock()
-    response.stop_reason = "end_turn"
-    response.content = [text_block]
+    response = _make_response("end_turn", [text_block])
 
     client = AsyncMock()
     client.messages.create.return_value = response
@@ -38,3 +59,48 @@ async def test_researcher_run_returns_research_report():
 
     assert isinstance(report, ResearchReport)
     assert "food" in report.summary.lower()
+
+
+@pytest.mark.asyncio
+async def test_researcher_accumulates_deep_reports():
+    """Verify that launch_deep_research calls produce deep_reports in the result."""
+    # First response: LLM calls launch_deep_research
+    tool_block = _make_tool_use_block(
+        "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
+    )
+    tool_response = _make_response("tool_use", [tool_block])
+
+    # Second response: LLM returns summary
+    summary_block = _make_text_block("# Paradigms\n\n## 1. Homeostatic\nDesc")
+    final_response = _make_response("end_turn", [summary_block])
+
+    client = AsyncMock()
+    # The DeepResearcher's run() will also call client.messages.create
+    # So we need responses for: Researcher call 1, DeepResearcher call 1, Researcher call 2
+    deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
+    deep_response = _make_response("end_turn", [deep_text])
+    client.messages.create.side_effect = [tool_response, deep_response, final_response]
+
+    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+    report = await r.run("food intake")
+
+    assert "Homeostatic regulation" in report.deep_reports
+    assert "Deep research" in report.deep_reports["Homeostatic regulation"]
+
+
+@pytest.mark.asyncio
+async def test_researcher_clears_deep_reports_between_runs():
+    """Verify that deep_reports from a previous run don't leak into a new run."""
+    text_block = _make_text_block("# Summary")
+    response = _make_response("end_turn", [text_block])
+
+    client = AsyncMock()
+    client.messages.create.return_value = response
+
+    r = Researcher(client=client, search=MockWebSearch(), papers=MockPaperSearch())
+
+    # Manually inject a stale deep report
+    r._deep_reports["stale"] = "old data"
+
+    report = await r.run("new problem")
+    assert "stale" not in report.deep_reports

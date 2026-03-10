@@ -15,7 +15,7 @@ class PaperResult:
     paper_id: str
     title: str
     abstract: str
-    authors: list[str]
+    authors: tuple[str, ...]
     year: int
 
 
@@ -24,7 +24,7 @@ class Paradigm:
     id: str
     name: str
     description: str
-    references: list[PaperResult] = field(default_factory=list)
+    references: tuple[PaperResult, ...] = field(default_factory=tuple)
 
 
 @dataclass

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 from decisionlab.domain.ports import PaperSearchPort, WebSearchPort
+
+logger = logging.getLogger(__name__)
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.search import (
     FETCH_PAPER_SCHEMA,
@@ -82,4 +86,7 @@ class DeepResearcher:
         )
 
         text_blocks = [b.text for b in response.content if b.type == "text"]
-        return "\n".join(text_blocks)
+        result = "\n".join(text_blocks)
+        if not result.strip():
+            logger.warning("DeepResearcher produced empty output for paradigm: %s", paradigm)
+        return result

@@ -34,7 +34,7 @@ class MockPaperSearch:
                 paper_id="jacquier2014",
                 title="A predictive model of body weight dynamics",
                 abstract="We present a model of food intake regulation...",
-                authors=["Jacquier", "Alvarez"],
+                authors=("Jacquier", "Alvarez"),
                 year=2014,
             ),
         ]
@@ -46,10 +46,4 @@ class MockPaperSearch:
         for p in self._results:
             if p.paper_id == paper_id:
                 return p
-        return PaperResult(
-            paper_id=paper_id,
-            title=f"Paper {paper_id}",
-            abstract="Mock abstract.",
-            authors=["Mock Author"],
-            year=2020,
-        )
+        raise KeyError(f"Paper '{paper_id}' not found in mock data")
