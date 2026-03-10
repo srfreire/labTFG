@@ -25,7 +25,7 @@ def test_perception_creation():
     p = Perception(
         position=(2, 3),
         grid_size=(5, 5),
-        food_sources=[{"x": 1, "y": 1, "palatability": 0.8}],
+        food_sources=({"x": 1, "y": 1, "palatability": 0.8},),
         ate_food=False,
         step=10,
     )
@@ -50,6 +50,6 @@ def test_decision_model_protocol_enforced():
             return {}
 
     model: DecisionModel = DummyModel()
-    p = Perception(position=(0, 0), grid_size=(5, 5), food_sources=[], ate_food=False, step=0)
+    p = Perception(position=(0, 0), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
     assert model.decide(p) == STAY
     assert model.get_state() == {}

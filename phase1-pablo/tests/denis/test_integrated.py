@@ -5,7 +5,7 @@ from denis.integrated import IntegratedModel, IntegrationMode
 
 
 def _make_perception(**overrides) -> Perception:
-    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=[], ate_food=False, step=0)
+    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
     defaults.update(overrides)
     return Perception(**defaults)
 
@@ -58,7 +58,7 @@ def test_hedonic_to_homeostatic_modulates_hunger():
     import numpy as np
     model.hedonic.q_table[:] = 5.0
 
-    p = _make_perception(food_sources=[{"x": 2, "y": 2, "palatability": 1.0}])
+    p = _make_perception(food_sources=({"x": 2, "y": 2, "palatability": 1.0},))
     action = model.decide(p)
     model.update(action, 1.0, _make_perception(step=1))
 

@@ -5,7 +5,7 @@ from denis.hedonic import HedonicModel, HedonicParams
 
 
 def _make_perception(**overrides) -> Perception:
-    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=[], ate_food=False, step=0)
+    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
     defaults.update(overrides)
     return Perception(**defaults)
 
@@ -39,7 +39,7 @@ def test_q_value_updates_after_reward():
     m = HedonicModel(params=params)
 
     # Place food at (2, 2), agent at (2, 2)
-    p = _make_perception(position=(2, 2), food_sources=[{"x": 2, "y": 2, "palatability": 1.0}])
+    p = _make_perception(position=(2, 2), food_sources=({"x": 2, "y": 2, "palatability": 1.0},))
     action = m.decide(p)
 
     # Give reward

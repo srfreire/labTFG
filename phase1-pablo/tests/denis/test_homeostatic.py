@@ -3,7 +3,7 @@ from denis.homeostatic import HomeostaticModel
 
 
 def _make_perception(**overrides) -> Perception:
-    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=[], ate_food=False, step=0)
+    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
     defaults.update(overrides)
     return Perception(**defaults)
 
@@ -65,7 +65,7 @@ def test_state_variables_stay_in_valid_range():
 def test_decide_returns_action():
     m = HomeostaticModel()
     p = _make_perception(
-        food_sources=[{"x": 3, "y": 3, "palatability": 0.8}],
+        food_sources=({"x": 3, "y": 3, "palatability": 0.8},),
     )
     action = m.decide(p)
     assert isinstance(action, Action)
