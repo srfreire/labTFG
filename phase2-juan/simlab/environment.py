@@ -107,20 +107,40 @@ class Environment:
         self,
         width: int,
         height: int,
+        actions: list[ActionRule],
+        resources: list[ResourceRule],
         seed: int | None = None,
-        food_regenerate: bool = True,
-        food_palatability_range: tuple[float, float] = (0.1, 1.0),
     ) -> None:
         self.width = width
         self.height = height
-        self.food_regenerate = food_regenerate
-        self.food_palatability_range = food_palatability_range
+        self._action_registry: dict[str, ActionRule] = {a.name: a for a in actions}
+        self._resource_rules: dict[str, ResourceRule] = {r.type: r for r in resources}
         self._rng = random.Random(seed)
         self._agents: list[Agent] = []
         self._resources: list[Resource] = []
         self._step: int = 0
         self._events: list[Event] = []
         self._resource_counter: int = 0
+        self._spawn_initial_resources()
+
+    def _spawn_initial_resources(self) -> None:
+        for rule in self._resource_rules.values():
+            for _ in range(rule.count):
+                self._spawn_resource(rule)
+
+    def _spawn_resource(self, rule: ResourceRule) -> None:
+        self._resource_counter += 1
+        properties: dict = {"type": rule.type}
+        for key, value in rule.properties.items():
+            if isinstance(value, tuple) and len(value) == 2:
+                properties[key] = self._rng.uniform(value[0], value[1])
+            else:
+                properties[key] = value
+        self._resources.append(Resource(
+            id=f"{rule.type}_{self._resource_counter}",
+            position=Position(self._rng.randint(0, self.width - 1), self._rng.randint(0, self.height - 1)),
+            properties=properties,
+        ))
 
     def add_agent(self, agent: Agent) -> None:
         self._agents.append(agent)
@@ -150,74 +170,86 @@ class Environment:
             "y": agent.position.y,
             "grid_width": self.width,
             "grid_height": self.height,
-            "nearby_resources": [
-                {"x": r.position.x, "y": r.position.y, **r.properties}
-                for r in self._resources
-            ],
-            "ate_food": False,
             "step": self._step,
+            "resources": {
+                rtype: [
+                    {"x": r.position.x, "y": r.position.y, **r.properties}
+                    for r in self._resources
+                    if r.properties.get("type") == rtype
+                ]
+                for rtype in self._resource_rules
+            },
+            "last_action_result": {},
         }
 
-    def _apply_action(self, agent: Agent, action: Action) -> tuple[float, bool]:
-        dx, dy = _DELTAS.get(action.name, (0, 0))
-        agent.position.x = max(0, min(self.width - 1, agent.position.x + dx))
-        agent.position.y = max(0, min(self.height - 1, agent.position.y + dy))
+    def _apply_action(self, agent: Agent, action: Action) -> tuple[float, dict]:
+        rule = self._action_registry.get(action.name)
+        if rule is None:
+            return 0.0, {"error": "unknown_action"}
+        effect = rule.effect
+        if isinstance(effect, MoveEffect):
+            return self._apply_move(agent, effect)
+        elif isinstance(effect, ConsumeEffect):
+            return self._apply_consume(agent, effect)
+        elif isinstance(effect, NoopEffect):
+            return effect.reward, {}
+        else:
+            return 0.0, {"error": f"unhandled_effect: {type(effect).__name__}"}
 
-        eaten_idx = next(
+    def _apply_move(self, agent: Agent, effect: MoveEffect) -> tuple[float, dict]:
+        agent.position.x = max(0, min(self.width - 1, agent.position.x + effect.dx))
+        agent.position.y = max(0, min(self.height - 1, agent.position.y + effect.dy))
+        return effect.reward, {}
+
+    def _apply_consume(self, agent: Agent, effect: ConsumeEffect) -> tuple[float, dict]:
+        idx = next(
             (i for i, r in enumerate(self._resources)
-             if r.properties.get("type") == "food"
+             if r.properties.get("type") == effect.resource_type
              and r.position.x == agent.position.x
              and r.position.y == agent.position.y),
             None,
         )
-
-        if eaten_idx is None:
-            return -0.01, False
-
-        self._resources.pop(eaten_idx)
-        if self.food_regenerate:
-            lo, hi = self.food_palatability_range
-            self._resource_counter += 1
-            self._resources.append(Resource(
-                id=f"food_{self._resource_counter}",
-                position=Position(
-                    self._rng.randint(0, self.width - 1),
-                    self._rng.randint(0, self.height - 1),
-                ),
-                properties={"type": "food", "palatability": self._rng.uniform(lo, hi)},
-            ))
-        return 1.0, True
+        if idx is None:
+            return 0.0, {"consumed": False}
+        self._resources.pop(idx)
+        rule = self._resource_rules.get(effect.resource_type)
+        if rule and rule.regenerate:
+            self._spawn_resource(rule)
+        return effect.reward, {"consumed": True, "resource_type": effect.resource_type}
 
     def step(self) -> list[Event]:
         step_events: list[Event] = []
         for agent in self._agents:
             if not agent.alive or agent.decision_model is None:
                 continue
-
             perception = self._build_perception(agent)
             action = agent.decision_model.decide(perception)
-            reward, ate_food = self._apply_action(agent, action)
-
+            reward, action_result = self._apply_action(agent, action)
             new_perception = self._build_perception(agent)
-            new_perception["ate_food"] = ate_food
+            new_perception["last_action_result"] = action_result
             agent.decision_model.update(action, reward, new_perception)
-
             snapshot = {
                 k: v.tolist() if hasattr(v, "tolist") else v
                 for k, v in agent.decision_model.get_state().items()
             }
-
             event = Event(
-                step=self._step,
-                agent_id=agent.id,
-                action=action,
-                outcome={"ate_food": ate_food, "reward": reward, "model_state": snapshot},
+                step=self._step, agent_id=agent.id, action=action,
+                outcome={"action_result": action_result, "reward": reward, "model_state": snapshot},
             )
             step_events.append(event)
             self._events.append(event)
-
         self._step += 1
         return step_events
+
+    def get_spec(self) -> dict:
+        return {
+            "available_actions": list(self._action_registry.keys()),
+            "resource_types": {
+                rtype: {"properties": rule.properties, "count": rule.count, "regenerate": rule.regenerate}
+                for rtype, rule in self._resource_rules.items()
+            },
+            "grid": {"width": self.width, "height": self.height},
+        }
 
     def run(self, steps: int) -> list[Event]:
         all_events: list[Event] = []
@@ -242,11 +274,17 @@ class ModelAdapter:
 
     def _to_typed_perception(self, perception: dict):
         from decisionlab.models.protocol import Perception as P1Perception
+        # Support both new grouped format (resources dict) and legacy flat list (nearby_resources)
+        resources_dict = perception.get("resources", {})
+        food_list = resources_dict.get("food", []) if isinstance(resources_dict, dict) else []
+        nearby = perception.get("nearby_resources", food_list)
+        action_result = perception.get("last_action_result", {})
+        ate_food = perception.get("ate_food", action_result.get("consumed", False))
         return P1Perception(
             position=(perception["x"], perception["y"]),
             grid_size=(perception["grid_width"], perception["grid_height"]),
-            food_sources=tuple(perception.get("nearby_resources", [])),
-            ate_food=perception.get("ate_food", False),
+            food_sources=tuple(nearby),
+            ate_food=ate_food,
             step=perception.get("step", 0),
         )
 
