@@ -23,7 +23,18 @@ flowchart TD
     O --> R["Agente Redactor — genera informes"]
 ```
 
-El usuario **solo habla con el orquestador**. Este interpreta la peticion y delega en los subagentes apropiados, coordinando el flujo completo: construccion del environment -&gt; ejecucion -&gt; observacion -&gt; analisis -&gt; informe.
+El usuario **solo habla con el orquestador**. Este interpreta la peticion y delega en los subagentes apropiados, coordinando el flujo completo: construccion del environment -> ejecucion -> observacion -> analisis -> informe.
+
+### Flujo iterativo entre fases
+
+La integracion entre Fase 1 y Fase 2 es un proceso iterativo acordado con el tutor:
+
+1. Pablo describe de que tratan sus agentes (texto informal)
+2. El Environment (Agente Plataforma) crea la sandbox con recursos y acciones apropiados
+3. Se devuelve a Pablo una **spec declarativa**: `{"available_actions": [...], "resource_types": {...}, "grid": {...}}`
+4. Pablo programa sus DecisionModels contra esa spec
+
+Ni las acciones ni los recursos estan predefinidos — se configuran dinamicamente segun lo que Pablo necesite.
 
 ---
 
@@ -37,10 +48,12 @@ El usuario **solo habla con el orquestador**. Este interpreta la peticion y dele
 | Mix de paradigmas | Si | Cada agente puede tener distinto DecisionModel |
 | Visualizacion | Fuera del environment | Responsabilidad del Observador/Redactor |
 | Arquitectura | Composicion con Protocol | Flexible, intercambiable, Pythonico |
-| Propiedad del estado | El DecisionModel (Fase 1) es dueño de todo el estado del paradigma. El Agent solo tiene posicion y alive | Separacion limpia; el Environment no necesita conocer las variables internas de cada modelo |
+| Propiedad del estado | El DecisionModel (Fase 1) es dueno de todo el estado del paradigma. El Agent solo tiene posicion y alive | Separacion limpia; el Environment no necesita conocer las variables internas de cada modelo |
 | Extensibilidad | Los nuevos paradigmas llegan como `.py` de la Fase 1 que implementan el Protocol `DecisionModel` | Se enchufa directamente sin tocar el framework |
+| Configuracion de acciones/recursos | Dataclasses (`ActionRule`, `ResourceRule`) | Tipado, validable, serializable a/desde dict para que un LLM lo genere |
+| Acciones atomicas | Mover y consumir son acciones separadas | Cada accion tiene un unico efecto, sistema mas generico y composable |
 | Limites del Agente Plataforma | Selecciona DecisionModels y configura el Environment (grid, recursos, reglas). No genera codigo de modelos | Los modelos vienen de la Fase 1 |
-| Integracion Fase 1 | Adaptador entre el Protocol concreto de Pablo (Action dataclass, Perception dataclass tipado) y el Protocol generico del Environment (Action name+params, perception dict) | El Environment no depende del codigo de Pablo; se mantiene generico |
+| Integracion Fase 1 | ModelAdapter con `perception_mapper` callback | El Environment no depende del codigo de Pablo; se mantiene generico |
 
 ---
 
@@ -48,7 +61,7 @@ El usuario **solo habla con el orquestador**. Este interpreta la peticion y dele
 
 ### 3.1 Orquestador
 
-**Rol**: punto de entrada del usuario. Interpreta peticiones en lenguaje natural y coordina a los subagentes en función de las peticiones que reciba para modelar el environment y los agentes subsecuentes.
+**Rol**: punto de entrada del usuario. Interpreta peticiones en lenguaje natural y coordina a los subagentes en funcion de las peticiones que reciba para modelar el environment y los agentes subsecuentes.
 
 Es el agente principal del Agent SDK. Decide que subagentes invocar y en que orden segun la peticion del usuario. Cada subagente corre con contexto aislado — solo el resumen final vuelve al orquestador.
 
@@ -57,11 +70,13 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 **Rol**: construir y configurar environments de simulacion sobre el framework base en Python.
 
 - Recibe especificaciones del orquestador (objetivos, recursos, restricciones, numero de agentes)
+- Crea `ActionRule` y `ResourceRule` segun lo que Pablo necesite
 - Selecciona los DecisionModels (de la Fase 1) e instancia Agents (wrappers) con ellos
-- Configura el Environment (tamanio grid, recursos, reglas de regeneracion)
-- Ejecuta la simulacion paso a paso
+- Configura el Environment y ejecuta la simulacion paso a paso
+- Devuelve la spec declarativa via `get_spec()` para que Pablo programe contra ella
 
-**Input**: especificacion del environment en lenguaje natural (via orquestador) **Output**: environment configurado + datos de simulacion (Events)
+**Input**: especificacion del environment en lenguaje natural (via orquestador)
+**Output**: environment configurado + spec declarativa + datos de simulacion (Events)
 
 ### 3.3 Agente Observador
 
@@ -70,9 +85,10 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Registra eventos relevantes en cada paso
 - Captura episodios (secuencias de eventos significativas)
 - Traza trayectorias de decision de cada agente
-- Accede al estado interno de los modelos via `DecisionModel.get_state()` — este metodo lo implementa la Fase 1 (Pablo) en cada modelo. Cada DecisionModel decide que variables internas exponer (ej: fat_reserves, ghrelin, hunger en el homeostatico; Q-table, epsilon en el hedonico). Sin `get_state()`, el Observador no puede registrar el estado interno de los agentes. Preferimos hacerlo así por una cuestión de separación de responsabilidades.
+- Accede al estado interno de los modelos via `DecisionModel.get_state()` — este metodo lo implementa la Fase 1 (Pablo) en cada modelo. Cada DecisionModel decide que variables internas exponer (ej: fat_reserves, ghrelin, hunger en el homeostatico; Q-table, epsilon en el hedonico). Sin `get_state()`, el Observador no puede registrar el estado interno de los agentes. Preferimos hacerlo asi por una cuestion de separacion de responsabilidades.
 
-**Input**: Events de la simulacion + snapshots del estado de cada agente (via `get_state()`) **Output**: log estructurado de eventos, episodios y trayectorias
+**Input**: Events de la simulacion + snapshots del estado de cada agente (via `get_state()`)
+**Output**: log estructurado de eventos, episodios y trayectorias
 
 ### 3.4 Agente Analitico
 
@@ -82,7 +98,8 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Detectar estrategias emergentes
 - Comparar rendimiento entre agentes o entre configuraciones
 
-**Input**: logs del Observador **Output**: patrones identificados, metricas, comparativas
+**Input**: logs del Observador
+**Output**: patrones identificados, metricas, comparativas
 
 ### 3.5 Agente Redactor
 
@@ -92,7 +109,8 @@ Es el agente principal del Agent SDK. Decide que subagentes invocar y en que ord
 - Proponer mejoras en los modelos de comportamiento
 - Generar documentacion legible (Markdown, PDF)
 
-**Input**: resultados del Agente Analitico **Output**: informe final estructurado
+**Input**: resultados del Agente Analitico
+**Output**: informe final estructurado
 
 ---
 
@@ -104,22 +122,63 @@ El environment es codigo Python puro — no depende del Agent SDK. Los agentes I
 
 ### 4.1 Conceptos
 
-| Concepto | Que es | Ejemplo (caso Denis) |
+| Concepto | Que es | Ejemplo |
 | --- | --- | --- |
 | `Grid` | Espacio 2D (ancho x alto) | Grid 10x10 |
 | `Resource` | Objeto en el grid con propiedades | Comida en (3,4) con palatabilidad=0.8 |
+| `ResourceRule` | Define un tipo de recurso y como se genera | `ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=5)` |
 | `Agent` | Contenedor minimo: posicion + decision_model + alive | Organismo en (3,4) con HomeostaticModel |
-| `DecisionModel` | Protocol con `decide()`, `update()` y `get_state()`. Dueño de todo el estado interno del paradigma | HomeostaticModel (fat, ghrelin, hunger...) |
-| `Action` | Lo que un agente hace en un step (generico: name + params) | Action("move", {"direction": "up"}), Action("eat"), Action("rest") |
+| `DecisionModel` | Protocol con `decide()`, `update()` y `get_state()`. Dueno de todo el estado interno del paradigma | HomeostaticModel (fat, ghrelin, hunger...) |
+| `Action` | Lo que un agente hace en un step (name + params) | `Action("eat")`, `Action("dance")` |
+| `ActionRule` | Conecta un nombre de accion con un efecto en el mundo | `ActionRule("eat", ConsumeEffect("food", 1.0))` |
+| `Effect` | Mecanica del mundo que se aplica al ejecutar una accion | `MoveEffect(dx=1, dy=0)`, `ConsumeEffect("food", 1.0)`, `NoopEffect()` |
 | `Event` | Registro de algo que paso | "agente_1 comio en (3,4) step=42" |
 | `Environment` | Orquesta el loop de simulacion | 100 steps, 5 agentes, comida escasa |
 
-### 4.2 API
+### 4.2 Effect types
+
+Mecanicas del mundo — que puede pasar cuando un agente actua. Conjunto fijo, extensible anadiendo nuevos tipos cuando se necesiten.
 
 ```python
-from dataclasses import dataclass, field
-from typing import Protocol
+@dataclass
+class MoveEffect:
+    dx: int
+    dy: int
+    reward: float = 0.0
 
+@dataclass
+class ConsumeEffect:
+    resource_type: str
+    reward: float
+
+@dataclass
+class NoopEffect:
+    reward: float = 0.0
+
+Effect = MoveEffect | ConsumeEffect | NoopEffect
+```
+
+### 4.3 Configuracion: ActionRule y ResourceRule
+
+Los nombres de acciones son libres — los define Pablo segun su paradigma. Los effects son las mecanicas del mundo que el Environment conoce.
+
+```python
+@dataclass
+class ActionRule:
+    name: str       # nombre libre: "drink", "dance", "move_up"...
+    effect: Effect  # que pasa en el mundo
+
+@dataclass
+class ResourceRule:
+    type: str                   # "food", "water", "gold"...
+    properties: dict            # propiedades con rangos, ej: {"palatability": (0.1, 1.0)}
+    count: int                  # instancias iniciales en el grid
+    regenerate: bool = True     # si se regenera al consumirse
+```
+
+### 4.4 API
+
+```python
 # --- Tipos basicos ---
 
 @dataclass
@@ -139,28 +198,20 @@ class Event:
     action: Action
     outcome: dict = field(default_factory=dict)
 
+@dataclass
+class Resource:
+    id: str
+    position: Position
+    properties: dict = field(default_factory=dict)
+
 # --- Protocol para paradigmas de decision (Fase 1 lo implementa) ---
-# El DecisionModel es dueno de todo el estado interno del paradigma.
-# El Environment no gestiona estado del modelo — solo posicion y alive.
-# El Observador accede al estado interno via get_state().
 
 class DecisionModel(Protocol):
     def decide(self, perception: dict) -> Action: ...
     def update(self, action: Action, reward: float, new_perception: dict) -> None: ...
     def get_state(self) -> dict: ...
 
-# --- Resource ---
-
-@dataclass
-class Resource:
-    id: str
-    position: Position
-    properties: dict = field(default_factory=dict)
-    # properties puede ser: {"type": "food", "palatability": 0.8, "energy": 10}
-
-# --- Agent (contenedor minimo, no decide por si mismo) ---
-# Todo el estado del paradigma vive en el DecisionModel.
-# El Agent solo tiene posicion, alive, y una referencia al modelo.
+# --- Agent (contenedor minimo) ---
 
 @dataclass
 class Agent:
@@ -172,46 +223,79 @@ class Agent:
 # --- Environment ---
 
 class Environment:
-    def __init__(self, width: int, height: int, seed: int | None = None): ...
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        actions: list[ActionRule],
+        resources: list[ResourceRule],
+        seed: int | None = None,
+    ) -> None: ...
 
     def add_agent(self, agent: Agent) -> None: ...
     def add_resource(self, resource: Resource) -> None: ...
 
-    def step(self) -> list[Event]:
-        """Avanza un paso: percepcion -> decision -> accion -> actualizacion."""
-        ...
-
-    def run(self, steps: int) -> list[Event]:
-        """Ejecuta N pasos y devuelve todos los eventos."""
-        ...
-
-    def is_finished(self) -> bool:
-        """Condicion de terminacion (todos muertos, objetivo cumplido, etc.)."""
-        ...
-
-    def get_state(self) -> dict:
-        """Snapshot serializable del estado actual (para el Observador)."""
-        ...
+    def step(self) -> list[Event]: ...
+    def run(self, steps: int) -> list[Event]: ...
+    def is_finished(self) -> bool: ...
+    def get_state(self) -> dict: ...
+    def get_spec(self) -> dict: ...
 ```
 
-### 4.3 Flujo de un step (lo que tenía Denis)
+### 4.5 Detalles internos del Environment
+
+**Constructor**: valida que no haya `ActionRule` o `ResourceRule` con nombres/tipos duplicados (`ValueError`). Construye registros internos (`_action_registry`, `_resource_rules`) y genera las instancias iniciales de recursos segun cada `ResourceRule.count`.
+
+**`_apply_action`**: despacha por tipo de efecto en vez de logica fija. Devuelve `tuple[float, dict]` (reward + resultado de la accion). Acciones desconocidas devuelven `{"error": "unknown_action"}`.
+
+**`_build_perception`**: devuelve un dict generico con recursos agrupados por tipo. Observabilidad completa: cada agente ve todos los recursos del grid. Incluye `last_action_result` (dict generico que se rellena tras aplicar la accion).
+
+```python
+# Ejemplo de percepcion generada:
+{
+    "x": 2, "y": 3,
+    "grid_width": 10, "grid_height": 10,
+    "step": 5,
+    "resources": {
+        "food": [{"x": 3, "y": 3, "type": "food", "palatability": 0.8}, ...],
+        "water": [{"x": 1, "y": 1, "type": "water"}, ...],
+    },
+    "last_action_result": {"consumed": True, "resource_type": "food"},
+}
+```
+
+**`get_spec()`**: devuelve la spec declarativa que se le manda a Pablo:
+
+```python
+# Ejemplo:
+{
+    "available_actions": ["move_up", "move_down", "eat", "rest"],
+    "resource_types": {
+        "food": {"properties": {"palatability": (0.1, 1.0)}, "count": 5, "regenerate": True}
+    },
+    "grid": {"width": 10, "height": 10},
+}
+```
+
+**`Event.outcome`**: contiene `{"action_result": dict, "reward": float, "model_state": dict}`.
+
+### 4.6 Flujo de un step
 
 ```mermaid
 flowchart TD
-    START["Para cada agente vivo"] --> A["Percepcion: el Environment construye un dict con lo que el agente ve"]
+    START["Para cada agente vivo"] --> A["Percepcion: _build_perception(agent) → dict"]
     A --> B["Decision: decision_model.decide(perception) → Action"]
-    B --> C["Ejecucion: el Environment aplica la accion"]
-    C --> D["Actualizacion: posicion/alive del agente + estado del environment"]
+    B --> C["Ejecucion: _apply_action(agent, action) → reward, action_result"]
+    C --> D["Nueva percepcion: _build_perception(agent)"]
     D --> U["Update: decision_model.update(action, reward, new_perception)"]
     U --> E["Snapshot: decision_model.get_state() → dict"]
-    E --> F["Registro: se crea un Event con accion + outcome + snapshot"]
+    E --> F["Registro: Event con accion + outcome"]
     F --> G{"Mas agentes vivos?"}
     G -- si --> START
-    G -- no --> H["Actualizacion global del environment"]
-    H --> FIN["Devolver lista de Events del step"]
+    G -- no --> FIN["Devolver lista de Events del step"]
 ```
 
-### 4.4 Que NO hace el environment base
+### 4.7 Que NO hace el environment base
 
 - No implementa ningun paradigma de decision (eso es Fase 1)
 - No visualiza nada (eso es el Observador/Redactor)
@@ -222,13 +306,13 @@ flowchart TD
 
 ## 5. Integracion con la Fase 1 (Pablo)
 
-El punto de integracion es el **Protocol** `DecisionModel`. Los `.py` generados por el Builder de Pablo implementan su propio Protocol concreto. El Environment de la Fase 2 define un Protocol generico. Un **adaptador** traduce entre ambos.
+El punto de integracion es el **Protocol** `DecisionModel`. Los `.py` generados por el Builder de Pablo implementan su propio Protocol concreto. El Environment de la Fase 2 define un Protocol generico. Un **ModelAdapter** traduce entre ambos.
 
 ```mermaid
 flowchart LR
     U["Usuario: problema de toma de decisiones"] --> P1["Fase 1 - Pipeline de 3 agentes"]
     P1 --> M["N x DecisionModel .py"]
-    M --> AD["Adaptador"]
+    M --> AD["ModelAdapter + perception_mapper"]
     AD --> ENV["Fase 2 - Environment.add_agent()"]
     ENV --> SIM["Environment.run(steps)"]
     SIM --> OBS["Observador"]
@@ -236,56 +320,66 @@ flowchart LR
     AN --> RED["Redactor"]
 ```
 
-### 5.1 Por que un adaptador
+### 5.1 ModelAdapter
 
-La Fase 1 y la Fase 2 definen tipos distintos para los mismos conceptos, y eso es intencionado:
-
-| Concepto | Fase 1 (Pablo) | Fase 2 (Environment generico) |
-| --- | --- | --- |
-| Action | `Action(name: str, params: dict)` dataclass + constantes `UP`, `DOWN`, etc. | `Action(name: str, params: dict)` — mismo tipo |
-| Perception | `Perception` dataclass tipado y frozen (position, food_sources, ate_food...) | `dict` generico |
-| Position | `tuple[int, int]` | `Position(x, y)` dataclass |
-
-Ambas fases comparten el mismo tipo `Action(name, params)`. La diferencia principal es la **percepcion**: la Fase 1 usa un `Perception` dataclass tipado (campos concretos para grid con comida), mientras la Fase 2 usa un `dict` generico para soportar cualquier paradigma.
-
-El adaptador traduce entre la percepcion tipada y el dict generico:
+El adapter recibe un `perception_mapper` opcional que traduce la percepcion generica al formato concreto de Pablo:
 
 ```python
 class ModelAdapter:
-    """Adapta un DecisionModel de la Fase 1 al Protocol generico de la Fase 2."""
-
-    def __init__(self, phase1_model):
+    def __init__(self, phase1_model, perception_mapper=None) -> None:
         self._model = phase1_model
+        self._mapper = perception_mapper
 
     def decide(self, perception: dict) -> Action:
-        # Traduce dict generico -> Perception tipado de Pablo
-        p1_perception = Perception(
-            position=(perception["x"], perception["y"]),
-            grid_size=(perception["grid_width"], perception["grid_height"]),
-            food_sources=tuple(perception.get("nearby_resources", [])),
-            ate_food=perception.get("ate_food", False),
-            step=perception.get("step", 0),
-        )
-        # Llama al modelo de Pablo
-        p1_action = self._model.decide(p1_perception)
-        return Action(name=p1_action.name)
+        mapped = self._mapper(perception) if self._mapper else perception
+        p1_action = self._model.decide(mapped)
+        return Action(name=p1_action.name, params=p1_action.params)
 
     def update(self, action: Action, reward: float, new_perception: dict) -> None:
-        # Reconstruye Action y Perception de la Fase 1
         from decisionlab.models.protocol import Action as P1Action
-        p1_action = P1Action(action.name)
-        p1_perception = self._to_typed_perception(new_perception)
-        self._model.update(p1_action, reward, p1_perception)
+        p1_action = P1Action(action.name, action.params)
+        mapped = self._mapper(new_perception) if self._mapper else new_perception
+        self._model.update(p1_action, reward, mapped)
 
     def get_state(self) -> dict:
         return self._model.get_state()
 ```
 
-Asi el Environment no depende del codigo de Pablo, y los modelos de Pablo no necesitan cambiar para funcionar en el Environment.
+Sin mapper, la percepcion pasa directamente (pass-through). Cada paradigma nuevo solo necesita su propio mapper.
 
-### 5.2 Valor del proyecto
+### 5.2 Perception mapper (ejemplo homeostatico)
 
-Un mismo Environment puede ejecutar agentes con paradigmas completamente distintos (homeostatico, hedonico, prospect theory...) y comparar su comportamiento. Cada paradigma solo necesita un adaptador que traduzca sus tipos al Protocol generico.
+```python
+def homeostatic_perception_mapper(perception: dict):
+    from decisionlab.models.protocol import Perception as P1Perception
+    food_sources = tuple(
+        {k: v for k, v in r.items() if k != "type"}
+        for r in perception.get("resources", {}).get("food", [])
+    )
+    return P1Perception(
+        position=(perception["x"], perception["y"]),
+        grid_size=(perception["grid_width"], perception["grid_height"]),
+        food_sources=food_sources,
+        ate_food=perception.get("last_action_result", {}).get("consumed", False),
+        step=perception.get("step", 0),
+    )
+```
+
+Nota: los dicts de recursos incluyen una clave `"type"` extra (inyectada por `_spawn_resource`), que el mapper filtra antes de pasarla a `P1Perception`.
+
+### 5.3 Por que un adaptador
+
+La Fase 1 y la Fase 2 definen tipos distintos para los mismos conceptos, y eso es intencionado:
+
+| Concepto | Fase 1 (Pablo) | Fase 2 (Environment generico) |
+| --- | --- | --- |
+| Action | `Action(name, params)` dataclass + constantes | `Action(name, params)` — mismo tipo |
+| Perception | `Perception` dataclass tipado y frozen | `dict` generico |
+| Position | `tuple[int, int]` | `Position(x, y)` dataclass |
+
+### 5.4 Valor del proyecto
+
+Un mismo Environment puede ejecutar agentes con paradigmas completamente distintos (homeostatico, hedonico, prospect theory...) y comparar su comportamiento. Cada paradigma solo necesita un mapper que traduzca la percepcion generica al formato esperado por el modelo.
 
 ---
 
@@ -296,7 +390,7 @@ Un mismo Environment puede ejecutar agentes con paradigmas completamente distint
 | Lenguaje | Python (uv) | Continuidad con el script de referencia |
 | LLM | Claude (Anthropic) | Capacidades de razonamiento y tool_use nativas |
 | SDK | Anthropic Agent SDK (`claude-agent-sdk`) | Loop de agentes, subagentes, tools y contexto. |
-| Interfaz | CLI (rich/typer) -&gt; web despues | MVP rapido, separar logica de presentacion |
+| Interfaz | CLI (rich/typer) -> web despues | MVP rapido, separar logica de presentacion |
 | Datos | JSON / SQLite | Logs de simulacion, resultados de analisis |
 | Tests | pytest | Validacion del framework base |
 
@@ -323,8 +417,8 @@ sequenceDiagram
     participant R as Agente Redactor
 
     U->>O: "Simula 100 pasos con 5 organismos,<br>comida escasa, estrategias de busqueda"
-    O->>P: Configura environment<br>(5 agentes, recursos escasos, 100 steps)
-    P-->>O: Events de la simulacion
+    O->>P: Configura environment<br>(ActionRules + ResourceRules + agentes)
+    P-->>O: Events de la simulacion + spec
     O->>OB: Procesa Events,<br>registra episodios y trayectorias
     OB-->>O: Logs estructurados
     O->>AN: Analiza logs,<br>identifica patrones
@@ -340,8 +434,9 @@ sequenceDiagram
 
 ### Fase 2.1 — MVP (CLI)
 
-- Environment base en Python (clases del framework)
-- Primer caso de uso concreto: modelo metabolico basado en el script de Denis
+- Environment base generico en Python (effect types, ActionRule, ResourceRule)
+- ModelAdapter con perception_mapper para integracion con Fase 1
+- Primer caso de uso: modelo metabolico/homeostatico de Pablo
 - Orquestador basico via CLI
 - Agente Plataforma funcional
 - Agente Observador basico (logging de eventos)
@@ -350,7 +445,7 @@ sequenceDiagram
 
 - Agente Analitico funcional
 - Agente Redactor funcional
-- Pipeline completo: simulacion -&gt; observacion -&gt; analisis -&gt; informe
+- Pipeline completo: simulacion -> observacion -> analisis -> informe
 
 ### Fase 2.3 — Web UI
 

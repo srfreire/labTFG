@@ -67,8 +67,11 @@ def test_adapter_with_mapper_decide():
 def test_adapter_with_mapper_update():
     model = HomeostaticModel(HomeostaticParams())
     adapter = ModelAdapter(model, perception_mapper=homeostatic_perception_mapper)
+    state_before = adapter.get_state()
     action = adapter.decide(_make_perception_dict())
     adapter.update(action, -0.01, _make_perception_dict(step=1))
+    state_after = adapter.get_state()
+    assert state_after["hunger"] != state_before["hunger"] or state_after["fat"] != state_before["fat"]
 
 def test_adapter_get_state_returns_homeostatic_keys():
     model = HomeostaticModel(HomeostaticParams())
