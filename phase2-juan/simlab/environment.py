@@ -269,35 +269,42 @@ class ModelAdapter:
     without Phase 1 installed — only adapter calls require it.
     """
 
-    def __init__(self, phase1_model) -> None:
+    def __init__(self, phase1_model, perception_mapper=None) -> None:
         self._model = phase1_model
-
-    def _to_typed_perception(self, perception: dict):
-        from decisionlab.models.protocol import Perception as P1Perception
-        # Support both new grouped format (resources dict) and legacy flat list (nearby_resources)
-        resources_dict = perception.get("resources", {})
-        food_list = resources_dict.get("food", []) if isinstance(resources_dict, dict) else []
-        nearby = perception.get("nearby_resources", food_list)
-        action_result = perception.get("last_action_result", {})
-        ate_food = perception.get("ate_food", action_result.get("consumed", False))
-        return P1Perception(
-            position=(perception["x"], perception["y"]),
-            grid_size=(perception["grid_width"], perception["grid_height"]),
-            food_sources=tuple(nearby),
-            ate_food=ate_food,
-            step=perception.get("step", 0),
-        )
+        self._mapper = perception_mapper
 
     def decide(self, perception: dict) -> Action:
-        p1_perception = self._to_typed_perception(perception)
-        p1_action = self._model.decide(p1_perception)
+        if self._mapper:
+            mapped = self._mapper(perception)
+        else:
+            mapped = perception
+        p1_action = self._model.decide(mapped)
         return Action(name=p1_action.name, params=p1_action.params)
 
     def update(self, action: Action, reward: float, new_perception: dict) -> None:
         from decisionlab.models.protocol import Action as P1Action
         p1_action = P1Action(action.name, action.params)
-        p1_perception = self._to_typed_perception(new_perception)
-        self._model.update(p1_action, reward, p1_perception)
+        if self._mapper:
+            mapped = self._mapper(new_perception)
+        else:
+            mapped = new_perception
+        self._model.update(p1_action, reward, mapped)
 
     def get_state(self) -> dict:
         return self._model.get_state()
+
+
+def homeostatic_perception_mapper(perception: dict):
+    """Mapper for the food/homeostatic paradigm from Phase 1."""
+    from decisionlab.models.protocol import Perception as P1Perception
+    food_sources = tuple(
+        {k: v for k, v in r.items() if k != "type"}
+        for r in perception.get("resources", {}).get("food", [])
+    )
+    return P1Perception(
+        position=(perception["x"], perception["y"]),
+        grid_size=(perception["grid_width"], perception["grid_height"]),
+        food_sources=food_sources,
+        ate_food=perception.get("last_action_result", {}).get("consumed", False),
+        step=perception.get("step", 0),
+    )
