@@ -47,6 +47,40 @@ class Resource:
     properties: dict = field(default_factory=dict)
 
 
+# --- Effect types ---
+
+@dataclass
+class MoveEffect:
+    dx: int
+    dy: int
+    reward: float = 0.0
+
+@dataclass
+class ConsumeEffect:
+    resource_type: str
+    reward: float
+
+@dataclass
+class NoopEffect:
+    reward: float = 0.0
+
+Effect = MoveEffect | ConsumeEffect | NoopEffect
+
+# --- Configuration ---
+
+@dataclass
+class ActionRule:
+    name: str
+    effect: Effect
+
+@dataclass
+class ResourceRule:
+    type: str
+    properties: dict = field(default_factory=dict)
+    count: int = 0
+    regenerate: bool = True
+
+
 # --- Protocol for decision paradigms (Phase 1 implements this) ---
 
 @runtime_checkable
@@ -64,17 +98,6 @@ class Agent:
     position: Position
     decision_model: DecisionModel | None = None
     alive: bool = True
-
-
-# --- Movement deltas ---
-
-_DELTAS: dict[str, tuple[int, int]] = {
-    "up": (0, -1),
-    "down": (0, 1),
-    "left": (-1, 0),
-    "right": (1, 0),
-    "stay": (0, 0),
-}
 
 
 # --- Environment ---

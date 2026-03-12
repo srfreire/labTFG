@@ -3,12 +3,17 @@ from __future__ import annotations
 
 from simlab.environment import (
     Action,
+    ActionRule,
     Agent,
+    ConsumeEffect,
     DecisionModel,
     Environment,
     Event,
+    MoveEffect,
+    NoopEffect,
     Position,
     Resource,
+    ResourceRule,
 )
 
 
@@ -217,3 +222,44 @@ def test_step_records_model_state():
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay()))
     events = env.step()
     assert events[0].outcome["model_state"] == {"dummy": True}
+
+
+# --- Effect types and config dataclass tests ---
+
+def test_move_effect_dataclass():
+    e = MoveEffect(dx=1, dy=0)
+    assert e.dx == 1
+    assert e.reward == 0.0
+
+
+def test_move_effect_custom_reward():
+    e = MoveEffect(dx=0, dy=-1, reward=-0.01)
+    assert e.reward == -0.01
+
+
+def test_consume_effect_dataclass():
+    e = ConsumeEffect(resource_type="food", reward=1.0)
+    assert e.resource_type == "food"
+
+
+def test_noop_effect_dataclass():
+    e = NoopEffect()
+    assert e.reward == 0.0
+
+
+def test_action_rule_dataclass():
+    rule = ActionRule(name="move_up", effect=MoveEffect(dx=0, dy=-1))
+    assert rule.name == "move_up"
+    assert isinstance(rule.effect, MoveEffect)
+
+
+def test_resource_rule_dataclass():
+    rule = ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=5)
+    assert rule.type == "food"
+    assert rule.regenerate is True
+
+
+def test_resource_rule_defaults():
+    rule = ResourceRule(type="water", count=3)
+    assert rule.properties == {}
+    assert rule.regenerate is True
