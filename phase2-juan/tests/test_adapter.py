@@ -92,9 +92,19 @@ def test_adapter_with_integrated_model():
 # --- Full integration: adapter inside Environment ---
 
 def test_environment_run_with_homeostatic_adapter():
+    from simlab.environment import ActionRule, MoveEffect, NoopEffect, ConsumeEffect, ResourceRule
     model = HomeostaticModel(HomeostaticParams())
     adapter = ModelAdapter(model)
-    env = Environment(5, 5, seed=42, food_regenerate=True)
+    actions = [
+        ActionRule("right", MoveEffect(dx=1, dy=0)),
+        ActionRule("left", MoveEffect(dx=-1, dy=0)),
+        ActionRule("up", MoveEffect(dx=0, dy=-1)),
+        ActionRule("down", MoveEffect(dx=0, dy=1)),
+        ActionRule("stay", NoopEffect()),
+        ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
+    ]
+    food_rule = ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=0, regenerate=True)
+    env = Environment(5, 5, actions=actions, resources=[food_rule], seed=42)
     env.add_resource(Resource(id="f1", position=Position(1, 0), properties={"type": "food", "palatability": 0.8}))
     env.add_resource(Resource(id="f2", position=Position(3, 3), properties={"type": "food", "palatability": 0.6}))
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=adapter))
@@ -103,12 +113,22 @@ def test_environment_run_with_homeostatic_adapter():
 
 
 def test_perception_dict_keys():
-    env = Environment(5, 5)
+    from simlab.environment import ActionRule, MoveEffect, NoopEffect, ConsumeEffect, ResourceRule
+    actions = [
+        ActionRule("right", MoveEffect(dx=1, dy=0)),
+        ActionRule("left", MoveEffect(dx=-1, dy=0)),
+        ActionRule("up", MoveEffect(dx=0, dy=-1)),
+        ActionRule("down", MoveEffect(dx=0, dy=1)),
+        ActionRule("stay", NoopEffect()),
+        ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
+    ]
+    food_rule = ResourceRule(type="food", properties={}, count=0)
+    env = Environment(5, 5, actions=actions, resources=[food_rule])
     env.add_resource(Resource(id="f1", position=Position(2, 2), properties={"type": "food", "palatability": 0.5}))
     agent = Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStayDummy())
     env.add_agent(agent)
     perception = env._build_perception(agent)
-    expected_keys = {"x", "y", "grid_width", "grid_height", "nearby_resources", "ate_food", "step"}
+    expected_keys = {"x", "y", "grid_width", "grid_height", "resources", "last_action_result", "step"}
     assert set(perception.keys()) == expected_keys
 
 
