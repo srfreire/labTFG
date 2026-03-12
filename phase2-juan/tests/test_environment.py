@@ -398,3 +398,77 @@ def test_step_records_model_state():
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay()))
     events = env.step()
     assert events[0].outcome["model_state"] == {"dummy": True}
+
+
+# --- Duplicate name validation ---
+
+def test_duplicate_action_names_raises():
+    import pytest
+    actions = [
+        ActionRule("move", MoveEffect(dx=1, dy=0)),
+        ActionRule("move", MoveEffect(dx=-1, dy=0)),
+    ]
+    with pytest.raises(ValueError, match="Duplicate action names"):
+        Environment(5, 5, actions=actions, resources=[])
+
+
+def test_duplicate_resource_types_raises():
+    import pytest
+    resources = [
+        ResourceRule(type="food", count=1),
+        ResourceRule(type="food", count=2),
+    ]
+    with pytest.raises(ValueError, match="Duplicate resource types"):
+        Environment(5, 5, actions=[], resources=resources)
+
+
+# --- MoveEffect reward propagation ---
+
+def test_move_reward_propagates_to_event():
+    actions = [ActionRule("walk", MoveEffect(dx=1, dy=0, reward=-0.01))]
+    env = Environment(5, 5, actions=actions, resources=[])
+
+    class _AlwaysWalk:
+        def decide(self, perception: dict) -> Action:
+            return Action("walk")
+        def update(self, action, reward, new_perception):
+            pass
+        def get_state(self) -> dict:
+            return {}
+
+    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysWalk()))
+    events = env.step()
+    assert events[0].outcome["reward"] == -0.01
+
+
+# --- Consume wrong resource type ---
+
+def test_consume_wrong_type_at_same_position():
+    actions = [ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0))]
+    env = Environment(5, 5, actions=actions, resources=[])
+    env.add_resource(Resource(id="w1", position=Position(0, 0), properties={"type": "water"}))
+
+    class _AlwaysEat:
+        def decide(self, perception: dict) -> Action:
+            return Action("eat")
+        def update(self, action, reward, new_perception):
+            pass
+        def get_state(self) -> dict:
+            return {}
+
+    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysEat()))
+    events = env.step()
+    assert events[0].outcome["action_result"]["consumed"] is False
+    assert len(env.get_state()["resources"]) == 1  # water still there
+
+
+# --- Manual resources with unregistered type visible in perception ---
+
+def test_manual_resource_unregistered_type_visible():
+    env = Environment(5, 5, actions=_basic_actions(), resources=[])
+    env.add_resource(Resource(id="g1", position=Position(1, 1), properties={"type": "gold", "value": 100}))
+    agent = Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay())
+    env.add_agent(agent)
+    perception = env._build_perception(agent)
+    assert "gold" in perception["resources"]
+    assert len(perception["resources"]["gold"]) == 1
