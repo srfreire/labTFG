@@ -9,9 +9,9 @@
 
 ## 1. Vision general
 
-Pipeline de 3 agentes LLM que, dado un problema de toma de decisiones (ej: "comportamiento alimentario"), produce N agentes autonomos (codigo Python) listos para ejecutarse en la plataforma de simulacion de la Fase 2.
+Pipeline de 4 agentes LLM que, dado un problema de toma de decisiones (ej: "comportamiento alimentario"), produce N agentes autonomos (codigo Python) listos para ejecutarse en la plataforma de simulacion de la Fase 2.
 
-El pipeline busca en literatura cientifica real, identifica multiples paradigmas, formaliza cada uno como pseudocodigo/reglas, los implementa como clases `DecisionModel` y valida que la implementacion cumple la especificacion.
+El pipeline busca en literatura cientifica real, identifica multiples paradigmas, genera formulaciones matematicas alternativas para cada uno, y — una vez el humano selecciona las formulaciones y Juan provee el environment — las adapta y las implementa como clases `DecisionModel`.
 
 Un **Router** (orquestador Python + LLM) gestiona el human feedback despues de cada etapa y decide a que agente rellamar cuando algo necesita correccion.
 
@@ -20,9 +20,9 @@ flowchart TD
     U["Usuario: problema de toma de decisiones"] --> RES[Researcher]
 
     RES -- "web search (amplitud)" --> RES
-    RES -- "lanza por paradigma" --> S1[Sub-agent 1]
-    RES -- "lanza por paradigma" --> S2[Sub-agent 2]
-    RES -- "lanza por paradigma" --> SN[Sub-agent N]
+    RES -- "lanza por paradigma" --> S1[Deep Researcher 1]
+    RES -- "lanza por paradigma" --> S2[Deep Researcher 2]
+    RES -- "lanza por paradigma" --> SN[Deep Researcher N]
 
     S1 -- ".md" --> RES
     S2 -- ".md" --> RES
@@ -31,36 +31,55 @@ flowchart TD
     RES -- "evalua cobertura\ndecide si buscar mas" --> RES
     RES -- "terminado" --> HF1{Human Feedback}
 
-    HF1 -- "aprobar / pedir mas paradigmas" --> REASON[Reasoner]
+    HF1 -- "aprobar / pedir mas paradigmas" --> FORM[Formalizer]
     HF1 -. "nuevo paradigma" .-> RES
 
-    REASON -- ".json" --> HF2{Human Feedback}
-    HF2 -- "aprobar / corregir reglas" --> BUILD[Builder]
-    HF2 -. "correccion" .-> REASON
+    FORM -- "lanza por paradigma" --> F1[Sub-agent Opus 1]
+    FORM -- "lanza por paradigma" --> F2[Sub-agent Opus 2]
+    FORM -- "lanza por paradigma" --> FN[Sub-agent Opus N]
+
+    F1 -- ".md" --> FORM
+    F2 -- ".md" --> FORM
+    FN -- ".md" --> FORM
+
+    FORM -- "terminado" --> HF2{Human Feedback}
+    HF2 -- "selecciona paradigmas\ny formulaciones" --> ENV_WAIT
+
+    ENV_WAIT["Espera env spec de Juan (Fase 2)"] --> REASON[Reasoner]
+
+    REASON -- ".json" --> HF3{Human Feedback}
+    HF3 -- "aprobar / corregir reglas" --> BUILD[Builder]
+    HF3 -. "correccion" .-> REASON
 
     BUILD -- "escribe .py" --> BUILD
     BUILD -- "ejecuta tests" --> BUILD
-    BUILD -- "tests pasan" --> HF3{Human Feedback}
+    BUILD -- "tests pasan" --> HF4{Human Feedback}
 
-    HF3 -- "todo ok" --> OUT["N x DecisionModel .py"]
-    HF3 -. "pseudocodigo mal" .-> REASON
-    HF3 -. "implementacion mal" .-> BUILD
-    HF3 -. "paradigma mal investigado" .-> RES
+    HF4 -- "todo ok" --> OUT["N x DecisionModel .py"]
+    HF4 -. "pseudocodigo mal" .-> REASON
+    HF4 -. "implementacion mal" .-> BUILD
+    HF4 -. "paradigma mal investigado" .-> RES
 
-    OUT --> F2["Fase 2 (Juan): Environment + Simulacion"]
+    OUT --> F2_ENV["Fase 2 (Juan): Environment + Simulacion"]
 
     style RES fill:#4a9eff,color:#fff
     style S1 fill:#4a9eff,color:#fff
     style S2 fill:#4a9eff,color:#fff
     style SN fill:#4a9eff,color:#fff
+    style FORM fill:#9b59b6,color:#fff
+    style F1 fill:#9b59b6,color:#fff
+    style F2 fill:#9b59b6,color:#fff
+    style FN fill:#9b59b6,color:#fff
     style REASON fill:#ff6b4a,color:#fff
     style BUILD fill:#ff6b4a,color:#fff
     style HF1 fill:#ffd700,color:#000
     style HF2 fill:#ffd700,color:#000
     style HF3 fill:#ffd700,color:#000
+    style HF4 fill:#ffd700,color:#000
+    style ENV_WAIT fill:#2ecc71,color:#fff
 ```
 
-**Leyenda**: azul = Sonnet, rojo = Opus, amarillo = human feedback
+**Leyenda**: azul = Sonnet (investigacion), morado = Opus (formalizacion), rojo = Opus (razonamiento/codigo), amarillo = human feedback, verde = integracion con Fase 2
 
 ---
 
@@ -70,41 +89,46 @@ flowchart TD
 |----------|-------|-------|
 | Tecnologia agentes | Anthropic Agent SDK | Balance control/productividad, 100% Anthropic |
 | Modelo LLM (Researcher) | Claude Sonnet | Busqueda y sintesis no requieren razonamiento extremo |
-| Modelo LLM (Reasoner, Builder) | Claude Opus | Formalizacion, generacion de codigo y validacion requieren mayor capacidad |
-| Fuentes de busqueda | Web search + Semantic Scholar API | Descubrimiento amplio + metadata academica verificable |
-| Formato Researcher → Reasoner | Markdown | La investigacion profunda es texto narrativo |
+| Modelo LLM (Formalizer) | Claude Opus (subagentes) | Formalizacion matematica requiere capacidad maxima |
+| Modelo LLM (Reasoner, Builder) | Claude Opus | Adaptacion a env y generacion de codigo requieren mayor capacidad |
+| Fuentes de busqueda | Web search (DuckDuckGo) | Descubrimiento amplio, gratuito |
+| Formato Researcher → Formalizer | Markdown | Investigacion profunda es texto narrativo |
+| Formato Formalizer → Human | Markdown + LaTeX | Formulaciones matematicas legibles |
 | Formato Reasoner → Builder | JSON | Datos estructurados para generar codigo |
 | Interfaz | CLI primero, web despues | MVP rapido, separar logica de presentacion |
 | Output final | `.py` compatible con `DecisionModel` (Fase 2) | Se enchufa directamente en el Environment de Juan |
-| Sub-agentes del Researcher | En paralelo, 1 por paradigma | Cada uno investiga de forma independiente |
-| Reasoner, Builder | 1 agente cada uno, procesa secuencialmente | No necesitan contexto cruzado entre paradigmas |
-| Loop de tests del Builder | Automatico (max N reintentos) | Solo escala al humano si no converge |
+| Sub-agentes del Researcher | En paralelo, 1 por paradigma (Sonnet) | Cada uno investiga de forma independiente |
+| Sub-agentes del Formalizer | En paralelo, 1 por paradigma (Opus) | Cada uno genera n formulaciones independientemente |
+| Reasoner, Builder | 1 agente cada uno, procesa secuencialmente | No necesitan contexto cruzado entre formulaciones |
+| Loop de tests del Builder | Automatico (max 3 reintentos) | Solo escala al humano si no converge |
+| Modelos generados | Independientes (sin IntegratedModel) | No todas las formulaciones son combinables; la integracion queda para el humano |
 
-### Por que 3 agentes y no menos?
+### Por que 4 agentes y no menos?
 
-Tecnicamente los agentes se podrian fusionar mas — el Researcher ya tiene todo el conocimiento para producir reglas formalizadas, y el Builder podria incluir el paso de formalizacion del Reasoner. Sin embargo, la separacion en 3 existe por los **puntos de human feedback**:
+La separacion existe por dos razones: **puntos de human feedback** y **separacion de responsabilidades cognitivas**.
 
 ```
-Researcher ──(md)──> [usuario revisa investigacion] ──> Reasoner ──(json)──> [usuario revisa spec] ──> Builder
+Researcher ──(md)──> [usuario revisa investigacion]
+    ──> Formalizer ──(md+latex)──> [usuario selecciona formulaciones]
+    ──> [Juan genera env spec] ──> Reasoner ──(json)──> [usuario revisa spec]
+    ──> Builder
 ```
 
-Cada frontera entre agentes corresponde a un punto donde el usuario interviene:
+1. **Despues del Researcher**: el usuario revisa paradigmas descubiertos.
+2. **Despues del Formalizer**: el usuario selecciona paradigmas y formulaciones. Doble nivel: primero paradigmas, luego formulaciones dentro de cada uno.
+3. **Espera de env spec**: el pipeline de Juan genera el Environment basandose en los paradigmas. Esto ocurre antes del Reasoner.
+4. **Despues del Reasoner**: el usuario revisa las specs adaptadas al environment.
+5. **Despues del Builder**: el usuario revisa implementacion final.
 
-1. **Despues del Researcher**: el usuario revisa la investigacion y puede pedir mas paradigmas o senalar investigaciones incompletas. Sin esta frontera, la formalizacion procederia sobre investigacion potencialmente erronea o insuficiente.
-2. **Despues del Reasoner**: el usuario revisa el pseudocodigo/reglas y puede corregirlas antes de que se genere codigo. Esto es critico — corregir una regla mal en JSON es mucho mas barato que depurar codigo generado que implementa una regla incorrecta.
-3. **Despues del Builder**: el usuario revisa la implementacion final y los resultados de tests. Si algo esta mal, el Router determina si rellamar al Reasoner (problema de spec) o al Builder (problema de implementacion).
-
-Ademas, el Researcher usa **Sonnet** (mas barato, suficiente para busqueda/sintesis) mientras que el Reasoner y Builder usan **Opus** (necesario para formalizacion matematica y generacion de codigo). Fusionarlos obligaria a usar el modelo mas caro para todo el pipeline.
-
-Si se eliminase el human-in-the-loop, Researcher + Reasoner podrian fusionarse sin problema. Pero el feedback es un requisito de diseno central.
+La separacion Researcher/Formalizer es critica: el Researcher (Sonnet) investiga teorias; el Formalizer (Opus) genera matematicas. Mezclarlos obligaria a usar Opus para busqueda web (caro e innecesario) o Sonnet para formalizacion matematica (insuficiente).
 
 ---
 
-## 3. Los 3 agentes
+## 3. Los 4 agentes
 
 ### 3.1 Researcher
 
-**Rol**: Dado un problema de toma de decisiones, buscar en la web para identificar paradigmas relevantes (amplitud), y luego lanzar sub-agentes para investigar cada paradigma en profundidad. Evalua la cobertura de los resultados y decide si seguir buscando.
+**Rol**: Dado un problema de toma de decisiones, buscar en la web para identificar paradigmas relevantes (amplitud), y luego lanzar sub-agentes para investigar cada paradigma en profundidad. No produce formulaciones matematicas.
 
 **Modelo LLM**: Claude Sonnet
 
@@ -112,184 +136,227 @@ Si se eliminase el human-in-the-loop, Researcher + Reasoner podrian fusionarse s
 
 | Tool | Descripcion | Implementacion |
 |------|-------------|----------------|
-| `web_search(query)` | Busqueda web general | Brave Search API |
-| `search_papers(query, limit)` | Buscar papers academicos | Semantic Scholar API |
-| `fetch_paper(paper_id)` | Obtener abstract y metadata | Semantic Scholar API |
-| `launch_deep_research(paradigm)` | Lanzar un sub-agente para investigar un paradigma en profundidad | Spawn de sub-agente (Sonnet) |
+| `web_search(query)` | Busqueda web general | DuckDuckGo |
+| `launch_deep_research(paradigm)` | Lanzar sub-agente para investigar un paradigma | Spawn de sub-agente (Sonnet) |
+| `read_report(paradigm)` | Leer deep report completo (si se necesita mas detalle) | Lectura de fichero |
 
 **Input**: Problema de toma de decisiones en lenguaje natural (string del usuario).
 
 **Mecanismo**:
-1. El Researcher realiza multiples busquedas (puede llamar `web_search` y `search_papers` en paralelo)
-2. Cuando identifica un paradigma que merece investigacion, llama a `launch_deep_research(paradigm)` que lanza un sub-agente
-3. El sub-agente investiga el paradigma en profundidad (busca papers especificos, lee abstracts, sintetiza) y devuelve un report en markdown
-4. El Researcher recibe el resultado del sub-agente y evalua la cobertura general
-5. Si considera la cobertura insuficiente, busca mas y lanza sub-agentes adicionales
-6. Cuando esta satisfecho, produce `paradigms.md` como report resumen y termina
+1. El Researcher realiza 2-3 busquedas web con diferentes angulos
+2. Cuando identifica un paradigma, llama a `launch_deep_research(paradigm)`
+3. El sub-agente investiga en profundidad (fundamentos, postulados, variables) y devuelve resumen
+4. El Researcher evalua cobertura y puede lanzar sub-agentes adicionales
+5. Produce `paradigms.md` como report resumen
 
-**Tools de los sub-agentes** (mismas tools de busqueda, enfocadas en un paradigma):
+**Tools de los sub-agentes (DeepResearcher)**:
 
 | Tool | Descripcion | Implementacion |
 |------|-------------|----------------|
-| `web_search(query)` | Buscar contenido especifico del paradigma | Brave Search API |
-| `search_papers(query, limit)` | Buscar papers especificos | Semantic Scholar API |
-| `fetch_paper(paper_id)` | Obtener detalles de un paper | Semantic Scholar API |
+| `web_search(query)` | Buscar contenido especifico del paradigma | DuckDuckGo |
 
 **Output**:
 
 ```
 outputs/<run_id>/01_researcher/
-├── paradigms.md            # Report resumen para el usuario
-├── homeostatic.md          # Investigacion profunda (de sub-agente)
-├── hedonic.md              # Investigacion profunda (de sub-agente)
-└── prospect_theory.md      # Investigacion profunda (de sub-agente)
+├── paradigms.md            # Report resumen
+├── homeostatic.md          # Deep report (sin matematicas)
+├── hedonic.md
+└── prospect_theory.md
 ```
 
-`paradigms.md` — resumen de todos los paradigmas encontrados:
+`paradigms.md` — resumen:
 
 ```markdown
 # Decision-making paradigms: food intake behavior
 
 ## 1. Homeostatic model
-Physiological hunger regulation based on hormonal signals
-(ghrelin, leptin) and energy reserves (fat, glycogen).
+Physiological hunger regulation based on hormonal signals...
 
-**Authors**: Jacquier et al. (2014), Woods & Ramsay (2011)
-**Key concepts**: ghrelin, leptin, energy balance, ODEs
-**References**:
-- Jacquier et al. (2014) - DOI: 10.1371/journal.pone.0100073
-- ...
-
-## 2. Hedonic model (Q-Learning)
-...
+**Key authors**: Jacquier et al. (2014), Woods & Ramsay (2011)
+**Key concepts**: ghrelin, leptin, energy balance
 ```
 
-Cada `<paradigm>.md` — investigacion profunda por paradigma:
+Cada `<paradigm>.md` — deep report:
 
 ```markdown
 # Homeostatic model — Deep research
 
 ## Foundations
-Homeostatic regulation maintains the organism's energy balance
-through a system of hormonal signals...
+{Origin, key researchers, theoretical basis}
 
 ## Postulates
-P1. Hunger is proportional to ghrelin and inversely proportional
-    to leptin (Jacquier et al., 2014)
-P2. Ghrelin increases when glycogen reserves drop
-P3. Leptin increases proportionally to fat reserves
-P4. ...
+P1. {Falsifiable statement} ({Author, Year})
 
 ## Assumptions
-- The organism has finite fat and glycogen reserves
-- Hormones degrade with constant half-life
-- ...
+- {Each assumption}
 
 ## Predictions
-- Hunger increases when glycogen reserves drop
-- Eating reduces ghrelin and increases reserves
-- ...
+- {Observable behaviors predicted}
 
 ## Identified variables
 | Variable | Role | Behavior |
 |----------|------|----------|
-| Ghrelin | Hunger signal | Increases with low glycogen |
-| Leptin | Satiety signal | Increases with high fat |
-| Fat | Energy reserve | Grows with intake, decreases with use |
-| Glycogen | Fast energy reserve | Consumed by activity |
 
 ## References
-- ...
+- {Author (Year)} - {Title}
 ```
+
+**Nota**: los deep reports NO incluyen seccion de formulacion matematica. Eso es responsabilidad del Formalizer.
 
 ---
 
-### 3.2 Reasoner
+### 3.2 Formalizer
 
-**Rol**: Para cada markdown de investigacion, traducir los postulados cualitativos a pseudocodigo y/o reglas formales, produciendo un JSON estructurado que sirve como especificacion para el Builder y como contrato de validacion.
+**Rol**: Dado el output del Researcher (deep reports sin mates), generar n formulaciones matematicas alternativas por paradigma. Lanza un subagente Opus por paradigma en paralelo.
+
+**Modelo LLM**: Claude Opus (subagentes)
+
+**Mecanismo**:
+1. El Router le pasa la lista de paradigmas aprobados + sus deep reports
+2. Por cada paradigma, lanza un subagente Opus en paralelo (`asyncio.gather`)
+3. Cada subagente decide cuantas formulaciones tiene sentido generar (tipicamente 2-5)
+4. Output: markdown con LaTeX por paradigma
+
+**Tools (orquestador)**:
+
+| Tool | Descripcion | Implementacion |
+|------|-------------|----------------|
+| `read_file(path)` | Leer deep report del Researcher | Lectura de fichero |
+| `launch_formalization(paradigm)` | Lanzar subagente Opus para un paradigma | Spawn de sub-agente (Opus) |
+
+**Tools de cada subagente Opus**:
+
+| Tool | Descripcion | Implementacion |
+|------|-------------|----------------|
+| `web_search(query)` | Buscar formulaciones matematicas en literatura | DuckDuckGo |
+
+**System prompt del subagente Opus**:
+
+```
+You are a mathematical modeler. Given a decision-making paradigm's
+theoretical foundations, produce multiple alternative mathematical
+formulations.
+
+## Process
+
+1. Read the theoretical foundations provided.
+2. Run 2-3 web searches for existing mathematical formulations
+   of this paradigm in the literature.
+3. Produce N alternative formulations (as many as meaningfully
+   distinct approaches exist — typically 2-5).
+4. Each formulation must be self-contained and independently viable.
+
+## Constraints
+
+- Only propose formulations grounded in the literature or
+  logically derivable from the postulates.
+- Never fabricate references.
+- Each formulation must differ meaningfully (different equation
+  types, different variable relationships, different assumptions).
+
+## Output format
+
+# {Paradigm name} — Mathematical formulations
+
+## Formulation 1: {descriptive name}
+**Approach**: {one-line description}
+**Based on**: {Author (Year) or "derived from postulates P1, P3"}
+
+### Variables
+| Symbol | Name | Description | Type |
+|--------|------|-------------|------|
+
+### Parameters
+| Symbol | Name | Default | Source |
+|--------|------|---------|--------|
+
+### Equations
+$$
+{LaTeX equations}
+$$
+
+### Decision logic
+{How the agent decides based on this formulation}
+
+## Formulation 2: {descriptive name}
+...
+```
+
+**Output**:
+
+```
+outputs/<run_id>/02_formalizer/
+├── homeostatic.md          # N formulaciones
+├── hedonic.md
+└── prospect_theory.md
+```
+
+**Seleccion humana (dos niveles)**:
+1. El humano revisa los paradigmas y descarta los que no le interesan
+2. Dentro de cada paradigma seleccionado, elige las formulaciones que quiere convertir en agentes
+
+---
+
+### 3.3 Reasoner
+
+**Rol**: Adaptar cada formulacion seleccionada al environment concreto de Juan (Fase 2) y producir un JSON spec estructurado para el Builder.
 
 **Modelo LLM**: Claude Opus
+
+**Input**:
+- Formulaciones seleccionadas (markdown + LaTeX, del Formalizer)
+- Env spec (output de `Environment.get_spec()` de Juan)
+- Deep report del Researcher (contexto teorico)
 
 **Tools**:
 
 | Tool | Descripcion | Implementacion |
 |------|-------------|----------------|
-| `web_search(query)` | Buscar formulaciones matematicas existentes | Brave Search API |
-| `search_papers(query, limit)` | Buscar papers con modelos formales | Semantic Scholar API |
-| `fetch_paper(paper_id)` | Obtener detalles | Semantic Scholar API |
-| `read_file(path)` | Leer markdown del Researcher | Lectura de fichero |
+| `read_file(path)` | Leer formulaciones, deep report, env spec | Lectura de fichero |
 
-**Input**: Markdown de investigacion del Researcher (`<paradigm>.md`).
+Sin web search — el Formalizer ya hizo la busqueda. El Reasoner es puro razonamiento.
 
-**Ejecucion**: 1 agente, procesa cada paradigma secuencialmente.
+**Ejecucion**: 1 agente, procesa cada formulacion secuencialmente.
 
-**Output** (por paradigma):
+**Que hace concretamente**:
+1. Lee env spec → sabe acciones disponibles, recursos, grid
+2. Lee formulacion → tiene ecuaciones, variables, parametros
+3. Mapea variables ↔ environment
+4. Genera JSON spec con `env_mapping`
+
+**Output** (un JSON por formulacion seleccionada):
 
 ```
-outputs/<run_id>/02_reasoner/
-├── homeostatic.json
-├── hedonic.json
-└── prospect_theory.json
+outputs/<run_id>/03_reasoner/
+├── homeostatic_ode_v2.json
+├── hedonic_td_v1.json
+└── hedonic_rw_v3.json
 ```
 
 Estructura JSON:
 
 ```json
 {
-  "paradigm_id": "homeostatic",
-  "name": "Homeostatic model",
-  "description": "Physiological hunger regulation based on hormonal signals",
+  "formulation_id": "homeostatic_ode_v2",
+  "paradigm": "homeostatic",
+  "name": "Homeostatic ODE model (Jacquier variant)",
+  "description": "...",
   "variables": [
     {
       "symbol": "F",
       "name": "fat_reserves",
       "description": "Body fat reserves",
       "type": "float",
-      "unit": "g",
       "initial_value": 50.0,
       "range": [0, 100]
-    },
-    {
-      "symbol": "Gly",
-      "name": "glycogen",
-      "description": "Hepatic glycogen",
-      "type": "float",
-      "unit": "g",
-      "initial_value": 20.0,
-      "range": [0, 50]
-    },
-    {
-      "symbol": "G",
-      "name": "ghrelin",
-      "description": "Ghrelin concentration",
-      "type": "float",
-      "unit": "concentration",
-      "initial_value": 0.1,
-      "range": [0, 1]
-    },
-    {
-      "symbol": "H",
-      "name": "hunger",
-      "description": "Hunger signal",
-      "type": "float",
-      "unit": "dimensionless",
-      "initial_value": 0.5,
-      "range": [0, 1]
     }
   ],
   "parameters": [
     {
       "symbol": "cF",
       "name": "fat_conversion_rate",
-      "description": "Energy to fat conversion coefficient",
       "default": 0.3,
-      "source": "Jacquier et al., 2014"
-    },
-    {
-      "symbol": "alphaF",
-      "name": "fat_usage_rate",
-      "description": "Basal fat utilization rate",
-      "default": 0.01,
       "source": "Jacquier et al., 2014"
     }
   ],
@@ -300,56 +367,41 @@ Estructura JSON:
       "type": "ODE",
       "pseudocode": "dF_dt = cF * intake - alphaF * F",
       "source_postulate": "P1"
-    },
-    {
-      "id": "R2",
-      "description": "Glycogen update",
-      "type": "ODE",
-      "pseudocode": "dGly_dt = cGly * intake - alphaGly * Gly - beta * activity",
-      "source_postulate": "P2"
-    },
-    {
-      "id": "R3",
-      "description": "Hunger signal calculation",
-      "type": "formula",
-      "pseudocode": "H = max(0, ghrelin - gamma * leptin * sigmoid(F / Fmax - 0.5))",
-      "source_postulate": "P1"
     }
   ],
   "decision_logic": {
     "description": "Agent decision rule",
     "pseudocode": [
-      "if hunger > threshold AND food_nearby: return EAT",
-      "if hunger > threshold: return MOVE_TO_FOOD",
-      "else: return REST"
+      "if hunger > threshold AND food at position: return Action('eat')",
+      "if hunger > threshold: return Action(move toward nearest food)",
+      "else: return Action('stay')"
     ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "ate_food": "last_action_result.consumed == true",
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food"
+    },
+    "actions_used": ["up", "down", "left", "right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward"
   },
   "expected_behaviors": [
     {
       "id": "B1",
-      "description": "If the agent doesn't eat for many steps, hunger must increase",
-      "test_pseudocode": "run 100 steps without food -> assert hunger increases"
-    },
-    {
-      "id": "B2",
-      "description": "After eating, hunger must decrease",
-      "test_pseudocode": "eat -> assert hunger decreases in next steps"
+      "description": "Hunger increases without eating",
+      "test_pseudocode": "run 100 steps without food → assert hunger increases"
     }
   ],
   "references": []
 }
 ```
 
-Campos clave:
-- `rules`: pseudocodigo de cada regla/ecuacion, vinculado al postulado de origen
-- `decision_logic`: logica de decision del agente (lo que el Builder implementa en `decide()`)
-- `expected_behaviors`: criterios de validacion que el Builder usa para testear la implementacion
-
 ---
 
-### 3.3 Builder
+### 3.4 Builder
 
-**Rol**: Implementar cada JSON del Reasoner como codigo Python que cumple el Protocol `DecisionModel` de la Fase 2, generar tests basados en `expected_behaviors`, ejecutarlos y autocorregir si fallan (max N reintentos). Si no converge, escala al humano.
+**Rol**: Implementar cada JSON del Reasoner como codigo Python que cumple el Protocol `DecisionModel` de la Fase 2. Genera modelos independientes (sin IntegratedModel). Incluye tests y perception mapper.
 
 **Modelo LLM**: Claude Opus
 
@@ -358,25 +410,26 @@ Campos clave:
 | Tool | Descripcion | Implementacion |
 |------|-------------|----------------|
 | `read_file(path)` | Leer JSON del Reasoner | Lectura de fichero |
-| `read_framework_api(path)` | Leer la API del environment de Juan | Lectura de fichero |
+| `read_framework_api(path)` | Leer API del environment de Juan | Lectura de fichero |
 | `write_code(path, content)` | Escribir fichero Python | Escritura a disco |
 | `run_tests(path)` | Ejecutar pytest | Subprocess |
 
-**Input**: JSON del Reasoner (`<paradigm>.json`) + API del framework de la Fase 2.
+**Ejecucion**: 1 agente, procesa cada formulacion secuencialmente. Loop interno de test-fix.
 
-**Ejecucion**: 1 agente, procesa cada paradigma secuencialmente. Loop interno de test-fix.
-
-**Output** (por paradigma):
+**Output** (por formulacion):
 
 ```
-outputs/<run_id>/03_builder/
-├── homeostatic_model.py
-├── test_homeostatic_model.py
-├── hedonic_model.py
-├── test_hedonic_model.py
-├── prospect_theory_model.py
-└── test_prospect_theory_model.py
+outputs/<run_id>/04_builder/
+├── homeostatic_ode_v2_model.py
+├── homeostatic_ode_v2_mapper.py
+├── test_homeostatic_ode_v2.py
+├── hedonic_td_v1_model.py
+├── hedonic_td_v1_mapper.py
+├── test_hedonic_td_v1.py
+└── ...
 ```
+
+El `_mapper.py` contiene la funcion `perception_mapper` para el `ModelAdapter` de Juan.
 
 Loop interno:
 
@@ -384,67 +437,15 @@ Loop interno:
 Builder lee JSON spec
     |
     v
-Genera implementacion (.py) + tests (de expected_behaviors)
+Genera model.py + mapper.py + tests
     |
     v
 Ejecuta pytest
     |
-    ├── PASS → terminado, pasa al siguiente paradigma
+    ├── PASS → siguiente formulacion
     |
-    └── FAIL → lee errores, corrige codigo, re-testea
+    └── FAIL → lee errores, corrige, re-testea
               (max 3 reintentos, luego escala al humano)
-```
-
-Ejemplo de codigo generado:
-
-```python
-from dataclasses import dataclass
-from simlab.environment import Action, DecisionModel
-
-
-@dataclass
-class HomeostaticModel:
-    """Homeostatic model for food intake regulation.
-    Based on Jacquier et al. (2014).
-    """
-
-    # State variables (from JSON: variables[])
-    fat_reserves: float = 50.0
-    glycogen: float = 20.0
-    ghrelin: float = 0.1
-    leptin: float = 0.8
-    hunger: float = 0.5
-
-    # Parameters (from JSON: parameters[])
-    fat_conversion_rate: float = 0.3
-    fat_usage_rate: float = 0.01
-    hunger_threshold: float = 0.4
-
-    def decide(self, perception: dict) -> Action:
-        """Implements decision_logic from JSON."""
-        self._update_physiology(perception)
-
-        if self.hunger > self.hunger_threshold and perception.get("food_nearby"):
-            return Action(name="eat")
-        elif self.hunger > self.hunger_threshold:
-            return Action(name="move", params=self._toward_food(perception))
-        else:
-            return Action(name="rest")
-
-    def _update_physiology(self, perception: dict) -> None:
-        """Implements rules[] from JSON."""
-        dt = 1
-        intake = perception.get("last_intake", 0)
-
-        # R1: dF_dt = cF * intake - alphaF * F
-        self.fat_reserves += (self.fat_conversion_rate * intake
-                              - self.fat_usage_rate * self.fat_reserves) * dt
-
-        # R2, R3, etc.
-        ...
-
-        # R3: H = max(0, ghrelin - Leff)
-        self.hunger = max(0, self.ghrelin - self._effective_leptin())
 ```
 
 ---
@@ -453,70 +454,54 @@ class HomeostaticModel:
 
 ### 4.1 Rol
 
-El Router gestiona el human feedback y el re-routing despues de cada etapa del pipeline. NO interviene en el flujo inicial (el usuario promptea al Researcher directamente). Es una combinacion de:
+El Router gestiona el human feedback, la seleccion de formulaciones, la espera de env spec de Juan, y el re-routing. Es una combinacion de:
 - **Codigo Python**: logica de flujo, prompts de feedback
-- **LLM (Claude Sonnet)**: interpretar feedback del usuario en lenguaje natural para decidir a que agente rellamar
-
-> **Nota sobre modelo**: El Router realiza clasificacion simple (a que agente rellamar). Empezamos con Sonnet, pero es candidato a downgrade a Haiku si los costes lo justifican.
+- **LLM (Claude Sonnet)**: interpretar feedback del usuario para decidir a que agente rellamar
 
 ### 4.2 Flujo principal
 
 ```python
-# Router pseudocode
-
 def run_pipeline(problem: str):
-    # 1. Researcher (el usuario promptea directamente)
+    # 1. Researcher
     researcher_result = researcher.run(problem)
-    # researcher_result incluye:
-    #   - paradigms.md (resumen)
-    #   - N x <paradigm>.md (investigacion profunda de sub-agentes)
-    save("01_researcher/paradigms.md", researcher_result.summary)
-    for p in researcher_result.paradigms:
-        save(f"01_researcher/{p.id}.md", p.research)
 
     # --- Human feedback ---
-    # El usuario puede:
-    #   - Aprobar y continuar
-    #   - Pedir investigar paradigmas adicionales
     feedback = ask_user_feedback()
     while feedback.wants_more:
-        new_result = researcher.run_extra(feedback.new_paradigm)
-        save(f"01_researcher/{feedback.new_paradigm.id}.md", new_result)
-        researcher_result.paradigms.append(new_result)
+        researcher.run_extra(feedback.new_paradigm)
         feedback = ask_user_feedback()
 
-    # 2. Reasoner (secuencial)
-    for p in researcher_result.paradigms:
-        spec_json = reasoner.run(read(f"01_researcher/{p.id}.md"))
-        save(f"02_reasoner/{p.id}.json", spec_json)
+    # 2. Formalizer (subagentes Opus en paralelo)
+    formulations = formalizer.run(approved_paradigms)
+
+    # --- Human feedback (doble nivel) ---
+    selected = ask_user_selection(formulations)
+    # Nivel 1: seleccionar paradigmas
+    # Nivel 2: seleccionar formulaciones dentro de cada paradigma
+
+    # --- Espera env spec de Juan (Fase 2) ---
+    env_spec = ask_user_input("Paste env spec JSON from Phase 2")
+
+    # 3. Reasoner (secuencial)
+    for f in selected_formulations:
+        spec = reasoner.run(f, env_spec)
 
     # --- Human feedback ---
-    # El usuario puede corregir pseudocodigo/reglas
     feedback = ask_user_feedback()
     while feedback.has_corrections:
-        corrected = reasoner.run(feedback.corrections, rerun=p.id)
-        save(f"02_reasoner/{p.id}.json", corrected)
+        reasoner.rerun(feedback.corrections)
         feedback = ask_user_feedback()
 
-    # 3. Builder (secuencial con loop interno de tests)
-    for p in researcher_result.paradigms:
-        spec = read(f"02_reasoner/{p.id}.json")
+    # 4. Builder (secuencial con loop interno)
+    for spec in approved_specs:
         result = builder.run(spec)
-        save(f"03_builder/{p.id}_model.py", result.code)
-        save(f"03_builder/test_{p.id}_model.py", result.tests)
-
         if not result.tests_passed:
-            escalate_to_user(p, result.errors)
+            escalate_to_user(result.errors)
 
     # --- Human feedback ---
-    # El usuario revisa los resultados finales
-    # Si algo esta mal, el Router interpreta y decide:
     feedback = ask_user_feedback()
     while feedback.has_issues:
         target = router_llm.decide_target(feedback)
-        #   "pseudocodigo mal"    → rellamar Reasoner
-        #   "implementacion mal"  → rellamar Builder
-        #   "paradigma mal investigado" → rellamar Researcher
         rerun_agent(target, feedback)
         feedback = ask_user_feedback()
 
@@ -544,57 +529,58 @@ Router LLM analiza:
 ### 5.1 Flujo de datos y formatos
 
 ```
-Researcher                          Reasoner               Builder
-(1 agente + N sub-agentes)          (1 agente)             (1 agente)
+Researcher          Formalizer          Reasoner            Builder
+(Sonnet + subs)     (Opus subs)         (Opus)              (Opus)
 
-[web_search]                        [web_search]           [read_file]
-[search_papers]                     [search_papers]        [read_framework_api]
-[fetch_paper]                       [fetch_paper]          [write_code]
-[launch_deep_research]              [read_file]            [run_tests]
+[web_search]        [web_search]        [read_file]         [read_file]
+[launch_deep_res]   [launch_formal]                         [read_framework_api]
+[read_report]       [read_file]                             [write_code]
+                                                            [run_tests]
 
-     |                                   |                      |
-     v                                   v                      v
-paradigms.md                       <paradigm>.json         <paradigm>_model.py
-<paradigm>.md ──(md)──────────>     (json)──────────────>  test_<paradigm>_model.py
-                                        |                      |
-                                        |            ┌─────────┘
-                                        |            | (loop interno de tests)
-                                        |            └──> run tests
-                                        |                   |
-                                        |              PASS / FAIL
-                                        |                   |
-                                        └───────────────────┘ (FAIL: relee spec)
+     |                   |                   |                   |
+     v                   v                   v                   v
+paradigms.md        <form>.md           <form>.json         <form>_model.py
+<paradigm>.md ─(md)─> (md+latex) ─(md)─> (json) ──────────> <form>_mapper.py
+                                                            test_<form>.py
 ```
 
 ### 5.2 Puntos de human feedback
 
 | Momento | Que puede hacer el usuario | Que hace el Router |
 |---------|---------------------------|-------------------|
-| Despues del Researcher | Aprobar o pedir investigar paradigmas adicionales | Rellamar Researcher para el nuevo paradigma |
-| Despues del Reasoner | Aprobar o corregir reglas/pseudocodigo | Rellamar Reasoner para ese paradigma |
-| Despues del Builder | Reportar que un agente falla o que el pseudocodigo esta mal | Interpretar feedback y rellamar Reasoner, Builder o Researcher segun corresponda |
+| Despues del Researcher | Aprobar o pedir paradigmas adicionales | Rellamar Researcher |
+| Despues del Formalizer | Seleccionar paradigmas y formulaciones (doble nivel) | Filtrar para Reasoner |
+| Espera env spec | Proveer env spec de Juan (Fase 2) | Pasar a Reasoner |
+| Despues del Reasoner | Aprobar o corregir specs | Rellamar Reasoner |
+| Despues del Builder | Reportar fallos | Interpretar y rellamar agente correspondiente |
 
 ### 5.3 Estructura de ficheros de un run completo
 
 ```
 outputs/
-└── 2026-03-07_food_intake/
+└── 2026-03-14_food_intake/
     ├── 01_researcher/
     │   ├── paradigms.md
     │   ├── homeostatic.md
     │   ├── hedonic.md
     │   └── prospect_theory.md
-    ├── 02_reasoner/
-    │   ├── homeostatic.json
-    │   ├── hedonic.json
-    │   └── prospect_theory.json
-    └── 03_builder/
-        ├── homeostatic_model.py
-        ├── test_homeostatic_model.py
-        ├── hedonic_model.py
-        ├── test_hedonic_model.py
-        ├── prospect_theory_model.py
-        └── test_prospect_theory_model.py
+    ├── 02_formalizer/
+    │   ├── homeostatic.md          # N formulaciones
+    │   ├── hedonic.md
+    │   └── prospect_theory.md
+    ├── 03_reasoner/
+    │   ├── homeostatic_ode_v2.json
+    │   ├── hedonic_td_v1.json
+    │   └── hedonic_rw_v3.json
+    ├── env_spec.json               # De Juan (Fase 2)
+    └── 04_builder/
+        ├── homeostatic_ode_v2_model.py
+        ├── homeostatic_ode_v2_mapper.py
+        ├── test_homeostatic_ode_v2.py
+        ├── hedonic_td_v1_model.py
+        ├── hedonic_td_v1_mapper.py
+        ├── test_hedonic_td_v1.py
+        └── ...
 ```
 
 ---
@@ -604,12 +590,12 @@ outputs/
 | Componente | Tecnologia |
 |------------|------------|
 | Lenguaje | Python (uv) |
-| SDK agentes | Anthropic Agent SDK (`claude-agent-sdk`) |
+| SDK agentes | Anthropic Agent SDK |
 | LLM Researcher | Claude Sonnet |
+| LLM Formalizer (subagentes) | Claude Opus |
 | LLM Reasoner, Builder | Claude Opus |
 | LLM Router (interpretar feedback) | Claude Sonnet (candidato a Haiku) |
-| Busqueda web | Brave Search API |
-| Papers academicos | Semantic Scholar API (gratuita) |
+| Busqueda web | DuckDuckGo (ddgs) |
 | Interfaz | CLI (rich/typer) → web despues |
 | Persistencia | Markdown + JSON en disco |
 | Tests | pytest |
@@ -619,22 +605,37 @@ outputs/
 
 ## 7. Relacion con la Fase 2 (Juan)
 
-El punto de integracion es el **Protocol `DecisionModel`** de la Fase 2:
+El punto de integracion es el **Protocol `DecisionModel`** de la Fase 2 y el **env spec**:
 
 ```python
 # Definido en la Fase 2
 class DecisionModel(Protocol):
     def decide(self, perception: dict) -> Action: ...
+    def update(self, action: Action, reward: float, new_perception: dict) -> None: ...
+    def get_state(self) -> dict: ...
 ```
 
-Los `.py` generados por el Builder implementan este Protocol. Juan los importa en su Environment y ejecuta simulaciones comparando agentes con distintos paradigmas en el mismo entorno.
+El flujo cross-phase:
 
 ```
-Fase 1 (este TFG)                              Fase 2 (Juan)
-
-"alimentacion" ──> Pipeline ──> N x model.py ──> Environment.add_agent(agent)
-                                              ──> Environment.run(steps)
-                                              ──> Observer → Analyst → Reporter
+Fase 1: Researcher → paradigmas → humano aprueba
+Fase 1: Formalizer → formulaciones → humano selecciona
+Fase 2: Juan genera Environment basandose en paradigmas → env spec
+Fase 1: Reasoner (con env spec) → JSON specs
+Fase 1: Builder → N x DecisionModel .py + perception_mapper .py
+Fase 2: Environment.add_agent(ModelAdapter(model, mapper)) → simulacion
 ```
 
-El valor esta en que un mismo entorno de simulacion puede ejecutar agentes con paradigmas completamente distintos (homeostatico, hedonico, prospect theory...) y comparar su comportamiento.
+El `env_spec` es el output de `Environment.get_spec()`:
+
+```json
+{
+  "available_actions": ["up", "down", "left", "right", "stay", "eat"],
+  "resource_types": {
+    "food": {"properties": {"palatability": [0.1, 1.0]}, "count": 2, "regenerate": true}
+  },
+  "grid": {"width": 5, "height": 5}
+}
+```
+
+Los `.py` generados por el Builder incluyen un `perception_mapper` para el `ModelAdapter` de Juan, de modo que se enchufan directamente en el Environment sin adaptacion manual.

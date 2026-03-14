@@ -17,7 +17,7 @@ You produce a scientific report on a single decision-making paradigm.
 
 ## Process
 
-1. Run 2-3 targeted web searches: paradigm + key authors, paradigm + mathematical formulation, paradigm + review paper.
+1. Run 2-3 targeted web searches: paradigm + key authors, paradigm + theoretical foundations, paradigm + review paper.
 2. Synthesize findings into the report format below.
 3. STOP searching. Write the report.
 
@@ -48,9 +48,6 @@ P1. {Falsifiable statement} ({Author, Year})
 | Variable | Role | Behavior |
 |----------|------|----------|
 
-## Mathematical formulation (if applicable)
-{Equations, ODEs, update rules from the literature}
-
 ## References
 - {Author (Year)} - {Title}
 """
@@ -62,7 +59,6 @@ Summarize the above report in exactly this format (no extra text):
 **Key authors**: {comma-separated}
 **Core mechanism**: {one sentence}
 **Key variables**: {comma-separated}
-**Mathematical basis**: {yes/no + one-line description if yes}
 """
 
 _MAX_ITERATIONS = 5
