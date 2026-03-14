@@ -1,26 +1,43 @@
 """Integration tests — our models running inside Juan's Environment."""
 from simlab.environment import (
+    ActionRule,
     Agent,
-    ModelAdapter,
+    ConsumeEffect,
     Environment,
+    ModelAdapter,
+    MoveEffect,
+    NoopEffect,
     Position,
-    Resource,
+    ResourceRule,
+    homeostatic_perception_mapper,
 )
-from denis.homeostatic import HomeostaticModel, HomeostaticParams
+from denis.homeostatic import HomeostaticModel
 from denis.hedonic import HedonicModel, HedonicParams
 from denis.integrated import IntegratedModel, IntegrationMode
 
 
 def _make_env(seed=42):
-    env = Environment(5, 5, seed=seed, food_regenerate=True)
-    env.add_resource(Resource(id="f1", position=Position(1, 0), properties={"type": "food", "palatability": 0.8}))
-    env.add_resource(Resource(id="f2", position=Position(3, 3), properties={"type": "food", "palatability": 0.5}))
-    return env
+    actions = [
+        ActionRule("up", MoveEffect(dx=0, dy=-1)),
+        ActionRule("down", MoveEffect(dx=0, dy=1)),
+        ActionRule("left", MoveEffect(dx=-1, dy=0)),
+        ActionRule("right", MoveEffect(dx=1, dy=0)),
+        ActionRule("stay", NoopEffect()),
+        ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
+    ]
+    resources = [
+        ResourceRule(type="food", properties={"palatability": (0.3, 0.9)}, count=2, regenerate=True),
+    ]
+    return Environment(5, 5, actions=actions, resources=resources, seed=seed)
+
+
+def _adapter(model):
+    return ModelAdapter(model, perception_mapper=homeostatic_perception_mapper)
 
 
 def test_homeostatic_runs_in_environment():
     env = _make_env()
-    adapter = ModelAdapter(HomeostaticModel())
+    adapter = _adapter(HomeostaticModel())
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=adapter))
     events = env.run(50)
     assert len(events) == 50
@@ -29,11 +46,10 @@ def test_homeostatic_runs_in_environment():
 
 def test_hedonic_runs_in_environment():
     env = _make_env()
-    adapter = ModelAdapter(HedonicModel(HedonicParams(grid_size=(5, 5))))
+    adapter = _adapter(HedonicModel(HedonicParams(grid_size=(5, 5))))
     env.add_agent(Agent(id="a1", position=Position(2, 2), decision_model=adapter))
     events = env.run(50)
     assert len(events) == 50
-    # Epsilon should have decayed
     assert adapter.get_state()["epsilon"] < 1.0
 
 
@@ -44,7 +60,7 @@ def test_integrated_runs_in_environment():
         hedonic=HedonicModel(HedonicParams(grid_size=(5, 5))),
         mode=IntegrationMode.INDEPENDENT,
     )
-    adapter = ModelAdapter(model)
+    adapter = _adapter(model)
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=adapter))
     events = env.run(50)
     assert len(events) == 50
@@ -58,12 +74,12 @@ def test_multiple_agents_different_models():
     env.add_agent(Agent(
         id="homeo",
         position=Position(0, 0),
-        decision_model=ModelAdapter(HomeostaticModel()),
+        decision_model=_adapter(HomeostaticModel()),
     ))
     env.add_agent(Agent(
         id="hedonic",
         position=Position(4, 4),
-        decision_model=ModelAdapter(HedonicModel(HedonicParams(grid_size=(5, 5)))),
+        decision_model=_adapter(HedonicModel(HedonicParams(grid_size=(5, 5)))),
     ))
     events = env.run(30)
     assert len(events) == 60  # 2 agents x 30 steps
@@ -73,7 +89,7 @@ def test_multiple_agents_different_models():
 
 def test_events_contain_model_state():
     env = _make_env()
-    adapter = ModelAdapter(HomeostaticModel())
+    adapter = _adapter(HomeostaticModel())
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=adapter))
     events = env.run(5)
     for e in events:
@@ -90,7 +106,7 @@ def test_all_integration_modes_run():
             hedonic=HedonicModel(HedonicParams(grid_size=(5, 5))),
             mode=mode,
         )
-        adapter = ModelAdapter(model)
+        adapter = _adapter(model)
         env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=adapter))
         events = env.run(20)
         assert len(events) == 20
