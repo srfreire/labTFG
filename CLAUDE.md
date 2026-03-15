@@ -45,3 +45,11 @@ Requires: Python 3 with `tkinter` (built-in), `matplotlib`, `numpy`.
 ### Known bug in reference script
 
 Line 341: uses global `threshold_hungry` instead of `organism.threshold_hungry`.
+
+## Next Session TODO
+
+- [ ] Probar la Web UI en vivo (`uvicorn simlab.api:app --port 8000` + `cd web && npm run dev`)
+- [ ] Pulir frontend: animaciones de agentes, data cards más ricas, responsive
+- [ ] Mejorar el backend WebSocket: emitir estados de agentes en tiempo real (no solo al final)
+- [ ] Integrar modelos reales de Pablo cuando tenga el Builder listo
+- [ ] Considerar: visualización del grid de simulación en la web
