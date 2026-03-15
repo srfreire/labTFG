@@ -3,7 +3,7 @@
 __pycache__/
 *.pyc
 phase1-pablo/outputs/
-docs/specs/
-docs/plans/
+**/docs/specs/
+**/docs/plans/
 .superpowers/
 .worktrees/
