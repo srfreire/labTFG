@@ -68,7 +68,7 @@ VALIDATE_SPEC_TOOL = {
     },
 }
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
 
 async def _validate_spec_tool(params: dict) -> str:
