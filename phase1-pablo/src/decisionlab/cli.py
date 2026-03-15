@@ -219,19 +219,41 @@ def run(
     problem: str = typer.Argument(help="Decision-making problem to investigate"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
-    """Run the full pipeline: research -> reason -> build (only research implemented)."""
+    """Run the full pipeline with interactive human feedback."""
     _setup_logging(verbose)
 
-    from decisionlab.agents.researcher import Researcher
+    from decisionlab.router import PipelineState, Router, Stage
 
     reports_dir = _reports_dir(problem)
+    state = PipelineState(stage=Stage.RESEARCH, problem=problem, reports_dir=reports_dir)
+    state.save()
+    router = Router(
+        client=_client(), state=state,
+        search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+    )
+    _run_async(router.run())
 
-    async def _run():
-        r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
-        return await r.run(problem)
 
-    report = _run_async(_run())
-    _print_research_report("Pipeline \u2014 Research Phase Complete", report, reports_dir)
+@app.command()
+def resume(
+    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing pipeline run"),
+    from_stage: str = typer.Option(None, "--from", help="Jump to specific stage"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
+):
+    """Resume a pipeline from saved state or from a specific stage."""
+    _setup_logging(verbose)
+
+    from decisionlab.router import PipelineState, Router, Stage
+
+    state = PipelineState.load(reports_dir)
+    if from_stage:
+        state.stage = Stage[from_stage.upper()]
+        state.save()
+    router = Router(
+        client=_client(), state=state,
+        search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+    )
+    _run_async(router.run())
 
 
 if __name__ == "__main__":
