@@ -2,11 +2,23 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
 from simlab.runtime import run_agent_loop, Registry
 from simlab.utils import extract_text
+
+
+def _fix_markdown_in_latex(content: str) -> str:
+    """Convert Markdown remnants to valid LaTeX."""
+    # **bold** → \textbf{bold}
+    content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
+    # *italic* → \textit{italic}
+    content = re.sub(r'\*(.+?)\*', r'\\textit{\1}', content)
+    # `code` → \texttt{code}
+    content = re.sub(r'`([^`]+)`', r'\\texttt{\1}', content)
+    return content
 
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
@@ -75,7 +87,7 @@ def _build_tools(
         return resolved.read_text()
 
     async def compile_report(params: dict) -> str:
-        content = params["content"]
+        content = _fix_markdown_in_latex(params["content"])
         if not _TEMPLATE_PATH.exists():
             return json.dumps({"success": False, "errors": [f"LaTeX template not found at {_TEMPLATE_PATH}"]})
 
