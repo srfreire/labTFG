@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import shutil
 from datetime import date
 from pathlib import Path
 
@@ -143,6 +144,42 @@ def formalize(
 
     console.print()
     for paradigm, content in report.formulations.items():
+        console.rule(f"[bold cyan]{paradigm}")
+        console.print(Markdown(content))
+        console.print()
+
+
+@app.command()
+def reason(
+    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
+    env_spec: Path = typer.Option(..., "--env-spec", help="Path to env_spec.json (environment specification)"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to reason about (discovers from disk if empty)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
+):
+    """Run the Reasoner agent — produces agent specs from formalized models and an environment."""
+    _setup_logging(verbose)
+
+    formulations_dir = reports_dir / "formulations"
+    if not formulations_dir.exists():
+        console.print(f"[bold red]Error: formulations/ subdirectory not found in {reports_dir}[/bold red]")
+        raise typer.Exit(code=1)
+
+    if not env_spec.exists():
+        console.print(f"[bold red]Error: env_spec file not found at {env_spec}[/bold red]")
+        raise typer.Exit(code=1)
+
+    shutil.copy2(env_spec, reports_dir / "env_spec.json")
+
+    from decisionlab.agents.reasoner import Reasoner
+
+    async def _run():
+        r = Reasoner(client=_client(), reports_dir=reports_dir)
+        return await r.run(paradigms)
+
+    report = _run_async(_run())
+
+    console.print()
+    for paradigm, content in report.specs.items():
         console.rule(f"[bold cyan]{paradigm}")
         console.print(Markdown(content))
         console.print()
