@@ -59,14 +59,13 @@ Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
 
 - All 5 agents implemented and working (CLI + Web)
 - Phase 1 Builder operational — generates self-contained Python models
-- Models in `phase1-pablo/examples/sample-run/builder/` are compatible with Phase 2 Environment
-- Web UI: functional but needs polish (grid visualization, data cards, responsive)
+- Dynamic model loader: discovers and loads Phase 1 models from `builder/`
+- Orchestrator presents available models to user before simulation
+- Web UI: simulation grid with animated replay, rich data cards, responsive layout
+- Phase 1 ↔ Phase 2 integration complete (duck typing, no adapter)
 
 ## Next Steps
 
-- [ ] Dynamic model loader: discover + load Phase 1 models from `builder/`
-- [ ] Orchestrator: present available models to user before simulation
-- [ ] Web UI: simulation grid with animated replay
-- [ ] Web UI: richer data cards (tracker metrics, analyst patterns)
-- [ ] Web UI: responsive layout, animation polish
-- [ ] Future: real-time WebSocket streaming during simulation
+- [ ] Test Web UI end-to-end with real Phase 1 models
+- [ ] Real-time WebSocket streaming during simulation (not just post-hoc replay)
+- [ ] More decision paradigms from Phase 1 (when Pablo adds them)
