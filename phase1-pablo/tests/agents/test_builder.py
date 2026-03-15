@@ -27,7 +27,7 @@ async def test_builder_run_collects_results(tmp_path):
     project_root = tmp_path / "project"
     b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
 
-    async def fake_run(slug, spec_paths):
+    async def fake_run(slug, _spec_paths):
         return f"# {slug} built"
 
     with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
@@ -56,7 +56,7 @@ async def test_builder_run_discovers_paradigms_from_disk(tmp_path):
     project_root = tmp_path / "project"
     b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
 
-    async def fake_run(slug, spec_paths):
+    async def fake_run(slug, _spec_paths):
         return f"# {slug} content"
 
     with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
@@ -80,7 +80,7 @@ async def test_builder_run_handles_partial_failure(tmp_path):
     project_root = tmp_path / "project"
     b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
 
-    async def fake_run(slug, spec_paths):
+    async def fake_run(slug, _spec_paths):
         if slug == "fail-me":
             raise RuntimeError("LLM exploded")
         return f"# {slug} ok"
@@ -109,7 +109,7 @@ async def test_builder_run_filters_by_paradigm_slugs(tmp_path):
     project_root = tmp_path / "project"
     b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
 
-    async def fake_run(slug, spec_paths):
+    async def fake_run(slug, _spec_paths):
         return f"# {slug} built"
 
     with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
