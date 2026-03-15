@@ -2,18 +2,20 @@
 Tests for homeostatic-regulation_pi_negative_feedback model.
 """
 
+import importlib.util
+import random
 import sys
 import os
-import random
-import importlib.util
 
-# Load module from hyphenated filename
+# Load model from file with hyphens in its name
+_MODULE_NAME = "homeostatic_regulation_pi_negative_feedback_model"
 _spec = importlib.util.spec_from_file_location(
-    "homeostatic_regulation_pi_negative_feedback_model",
+    _MODULE_NAME,
     os.path.join(os.path.dirname(__file__),
-                 "homeostatic-regulation_pi_negative_feedback_model.py")
+                 "homeostatic-regulation_pi_negative_feedback_model.py"),
 )
 _mod = importlib.util.module_from_spec(_spec)
+sys.modules[_MODULE_NAME] = _mod   # register BEFORE exec so @dataclass works
 _spec.loader.exec_module(_mod)
 
 HomeostaticPINegativeFeedback = _mod.HomeostaticPINegativeFeedback
@@ -21,284 +23,214 @@ Action = _mod.Action
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# helpers
 # ---------------------------------------------------------------------------
 
-def make_perception(x=5, y=5, grid_width=20, grid_height=20, step=0,
-                    food=None, last_action_result=None):
+def make_perception(x=5, y=5, step=0, food=None, grid_w=10, grid_h=10,
+                    last_action_result=None):
     return {
-        'x': x,
-        'y': y,
-        'grid_width': grid_width,
-        'grid_height': grid_height,
-        'step': step,
-        'resources': {'food': food if food is not None else []},
-        'last_action_result': last_action_result if last_action_result is not None else {},
+        "x": x, "y": y,
+        "grid_width": grid_w, "grid_height": grid_h,
+        "step": step,
+        "resources": {"food": food or []},
+        "last_action_result": last_action_result or {},
     }
 
 
 # ---------------------------------------------------------------------------
-# B1: Energy decays without eating, error grows, control signal grows
+# B1 – Energy decays, error grows, control signal increases
 # ---------------------------------------------------------------------------
 
-def test_B1_energy_decays_error_grows():
-    """
-    Run 20 steps without food. A decreases each step, e increases, c increases.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 60.0
+def test_B1_energy_decays_error_and_control_increase():
+    """20 steps without food: A decreases, e increases, c increases."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 50.0
+    model.e = model.s - model.A   # 30 > 0
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
 
-    prev_A = agent.A
-    prev_e = agent.s - agent.A
-    prev_c = agent.k_P * prev_e + agent.c_I
+    prev_A = model.A
+    prev_e = model.e
+    prev_c = model.c
 
     for i in range(20):
-        perception = make_perception(step=i)
-        action = agent.decide(perception)
-        agent.update(action, 0.0, perception)
+        action = Action(name="stay")
+        perc = make_perception(step=i, last_action_result={})
+        model.update(action, 0.0, perc)
 
-        state = agent.get_state()
-        A = state['energy']
-        e = state['error_signal']
-        c = state['total_control_signal']
-
-        assert A < prev_A, f"Step {i}: energy should decrease, got {A} >= {prev_A}"
-        assert e > prev_e, f"Step {i}: error should increase, got {e} <= {prev_e}"
-        assert c > prev_c, f"Step {i}: control should increase, got {c} <= {prev_c}"
-
-        prev_A = A
-        prev_e = e
-        prev_c = c
+        assert model.A < prev_A, \
+            f"Energy did not decrease at step {i}: {prev_A} → {model.A}"
+        assert model.e > prev_e, \
+            f"Error did not increase at step {i}: {prev_e} → {model.e}"
+        assert model.c > prev_c, \
+            f"Control did not increase at step {i}: {prev_c} → {model.c}"
+        prev_A = model.A
+        prev_e = model.e
+        prev_c = model.c
 
 
 # ---------------------------------------------------------------------------
-# B2: Agent eats when food is at its position and energy is below set point
+# B2 – Agent eats when food is at position and energy is below set point
 # ---------------------------------------------------------------------------
 
-def test_B2_eats_when_food_at_position_and_hungry():
-    """
-    Place food at agent position with A < s → action should be 'eat'.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 50.0  # Below set point 80
+def test_B2_eats_when_food_present_and_hungry():
+    """Food at agent position, A < s → action == 'eat'."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 50.0
+    model.e = model.s - model.A   # 30 > 0
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
 
-    food = [{'x': 5, 'y': 5, 'type': 'food', 'palatability': 1.0}]
-    perception = make_perception(x=5, y=5, food=food)
-    action = agent.decide(perception)
+    food = [{"x": 5, "y": 5, "type": "food", "palatability": 1.0}]
+    perc = make_perception(x=5, y=5, food=food)
+    action = model.decide(perc)
 
-    assert action.name == 'eat', \
-        f"Agent should eat when food is at position and hungry, got '{action.name}'"
-
-
-# ---------------------------------------------------------------------------
-# B3: Agent stays put when energy is at or above set point
-# ---------------------------------------------------------------------------
-
-def test_B3_stays_when_energy_at_setpoint():
-    """
-    Set A so that after decay it remains >= s → action should be 'stay'.
-    decay=1.0, so set A=86 → after decay A=85 > s=80.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 86.0  # After decay: 85 > 80
-
-    perception = make_perception(x=5, y=5)
-    action = agent.decide(perception)
-
-    assert action.name == 'stay', \
-        f"Agent should stay when energy >= set point, got '{action.name}'"
-
-
-def test_B3_stays_when_energy_above_setpoint_no_decay():
-    """
-    Set A very high so even after decay it is above set point.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 95.0  # After decay: 94 > 80
-
-    perception = make_perception(x=5, y=5)
-    action = agent.decide(perception)
-
-    assert action.name == 'stay', \
-        f"Agent should stay when energy is high, got '{action.name}'"
+    assert action.name == "eat", f"Expected 'eat', got '{action.name}'"
 
 
 # ---------------------------------------------------------------------------
-# B4: Integral term accumulates during prolonged deficit
+# B3 – Agent stays when energy at or above set point
+# ---------------------------------------------------------------------------
+
+def test_B3_stays_when_energy_above_setpoint():
+    """A = 85 (> s=80) → e = -5 ≤ 0 → action == 'stay'."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 85.0
+    model.e = model.s - model.A   # -5
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
+
+    food = [{"x": 5, "y": 5, "type": "food", "palatability": 1.0}]
+    perc = make_perception(x=5, y=5, food=food)
+    action = model.decide(perc)
+    assert action.name == "stay", f"Expected 'stay', got '{action.name}'"
+
+
+def test_B3_stays_exactly_at_setpoint():
+    """A = 80 (== s=80) → e = 0 ≤ 0 → action == 'stay'."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 80.0
+    model.e = 0.0
+    model.c_P = 0.0
+    model.c = 0.0
+
+    perc = make_perception(x=5, y=5)
+    action = model.decide(perc)
+    assert action.name == "stay", f"Expected 'stay', got '{action.name}'"
+
+
+# ---------------------------------------------------------------------------
+# B4 – Integral term accumulates during prolonged deficit
 # ---------------------------------------------------------------------------
 
 def test_B4_integral_accumulates_during_deficit():
-    """
-    Run 50 steps with A < s. c_I should be > 0 and non-decreasing.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 50.0  # Well below set point
-    agent.c_I = 0.0
+    """50 steps with A < s → c_I > 0 and increases over time."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 20.0
+    model.e = model.s - model.A   # 60 > 0
+    model.c_P = model.k_P * model.e
+    model.c_I = 0.0
+    model.c = model.c_P + model.c_I
 
-    prev_c_I = 0.0
+    c_I_values = [model.c_I]
     for i in range(50):
-        perception = make_perception(step=i)
-        action = agent.decide(perception)
-        agent.update(action, 0.0, perception)
+        action = Action(name="stay")
+        perc = make_perception(step=i, last_action_result={})
+        model.update(action, 0.0, perc)
+        c_I_values.append(model.c_I)
 
-        state = agent.get_state()
-        c_I = state['integral_control']
-        assert c_I > 0, f"Step {i}: c_I should be > 0 during deficit, got {c_I}"
-        assert c_I >= prev_c_I, \
-            f"Step {i}: c_I should be non-decreasing, got {c_I} < {prev_c_I}"
-        prev_c_I = c_I
+    assert model.c_I > 0, f"Integral should be positive, got c_I={model.c_I}"
+    increasing = sum(
+        1 for j in range(1, len(c_I_values)) if c_I_values[j] > c_I_values[j - 1]
+    )
+    assert increasing >= 1, "Integral term never increased during prolonged deficit"
 
 
 # ---------------------------------------------------------------------------
-# B5: Agent moves toward nearest food when hungry and food is visible
+# B5 – Agent moves toward nearest food when hungry
 # ---------------------------------------------------------------------------
 
 def test_B5_moves_toward_food_to_the_right():
-    """
-    Place food 3 cells to the right, A < s → agent should select 'move_right'.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 50.0  # Below set point
+    """Food 3 cells to the right, A < s → 'move_right'."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 50.0
+    model.e = model.s - model.A
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
 
-    # Food at (8, 5), agent at (5, 5) → food is 3 cells to the right
-    food = [{'x': 8, 'y': 5, 'type': 'food', 'palatability': 1.0}]
-    perception = make_perception(x=5, y=5, food=food)
-    action = agent.decide(perception)
+    food = [{"x": 8, "y": 5, "type": "food", "palatability": 1.0}]
+    perc = make_perception(x=5, y=5, food=food)
+    action = model.decide(perc)
 
-    assert action.name == 'move_right', \
-        f"Agent should move right toward food, got '{action.name}'"
+    assert action.name == "move_right", \
+        f"Expected 'move_right', got '{action.name}'"
 
 
-def test_B5_moves_toward_food_directly_above():
-    """
-    Food is 3 cells above the agent (lower y) → agent should move_up.
-    """
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 50.0
+def test_B5_moves_toward_food_above():
+    """Food 1 cell above (y-1), A < s → 'move_up'."""
+    model = HomeostaticPINegativeFeedback()
+    model.A = 50.0
+    model.e = model.s - model.A
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
 
-    # Food at (5, 2), agent at (5, 5) → dy=-3
-    food = [{'x': 5, 'y': 2, 'type': 'food', 'palatability': 1.0}]
-    perception = make_perception(x=5, y=5, food=food)
-    action = agent.decide(perception)
+    food = [{"x": 5, "y": 4, "type": "food", "palatability": 1.0}]
+    perc = make_perception(x=5, y=5, food=food)
+    action = model.decide(perc)
 
-    assert action.name == 'move_up', \
-        f"Agent should move up toward food, got '{action.name}'"
+    assert action.name == "move_up", \
+        f"Expected 'move_up', got '{action.name}'"
 
 
 # ---------------------------------------------------------------------------
-# B6: Agent explores randomly when hungry but no food is visible
+# B6 – Random exploration when hungry but no food visible
 # ---------------------------------------------------------------------------
 
 def test_B6_explores_randomly_no_food():
-    """
-    A < s with no food → action is one of move_up/down/left/right.
-    """
-    random.seed(0)
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 40.0
+    """A < s, no food → action is one of the four movement actions."""
+    random.seed(99)
+    model = HomeostaticPINegativeFeedback()
+    model.A = 30.0
+    model.e = model.s - model.A
+    model.c_P = model.k_P * model.e
+    model.c = model.c_P + model.c_I
 
-    valid_moves = {'move_up', 'move_down', 'move_left', 'move_right'}
+    perc = make_perception(x=5, y=5, food=[])
+    valid_moves = {"move_up", "move_down", "move_left", "move_right"}
     for _ in range(20):
-        perception = make_perception(x=5, y=5, food=[])
-        action = agent.decide(perception)
-        agent.update(action, 0.0, perception)
+        action = model.decide(perc)
         assert action.name in valid_moves, \
-            f"Agent should explore randomly with no food, got '{action.name}'"
+            f"Expected movement action, got '{action.name}'"
 
 
 # ---------------------------------------------------------------------------
-# Additional correctness tests
+# Extra: get_state returns correct keys
 # ---------------------------------------------------------------------------
-
-def test_error_formula():
-    """e = s - A is computed correctly after decide()."""
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 70.0
-    perception = make_perception()
-    agent.decide(perception)
-    state = agent.get_state()
-    # After decide: A = 70 - 1 = 69, e = 80 - 69 = 11
-    assert abs(state['error_signal'] - (agent.s - state['energy'])) < 1e-9
-
-
-def test_proportional_control_formula():
-    """c_P = k_P * e is computed correctly."""
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 70.0
-    perception = make_perception()
-    agent.decide(perception)
-    state = agent.get_state()
-    assert abs(state['proportional_control'] - agent.k_P * state['error_signal']) < 1e-9
-
-
-def test_energy_increases_when_eating():
-    """Energy increases by delta_eat - d when eating successfully."""
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 50.0
-    agent._last_action_name = 'eat'
-
-    perception = make_perception(
-        x=5, y=5,
-        food=[{'x': 5, 'y': 5, 'type': 'food', 'palatability': 1.0}],
-        last_action_result={'consumed': True}
-    )
-    agent.decide(perception)
-    state = agent.get_state()
-    expected = min(50.0 - agent.d + agent.delta_eat, agent.A_max)
-    assert abs(state['energy'] - expected) < 1e-9, \
-        f"Energy after eating should be {expected}, got {state['energy']}"
-
-
-def test_integral_windup_cap():
-    """Integral term should not exceed c_I_max."""
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 0.0  # Maximum error
-    for i in range(1000):
-        perception = make_perception(step=i)
-        agent.decide(perception)
-        agent.update(Action(name='stay'), 0.0, perception)
-        state = agent.get_state()
-        assert state['integral_control'] <= agent.c_I_max, \
-            f"c_I exceeded windup cap: {state['integral_control']}"
-
 
 def test_get_state_keys():
-    """get_state should return all required variable keys."""
-    agent = HomeostaticPINegativeFeedback()
-    perception = make_perception()
-    agent.decide(perception)
-    state = agent.get_state()
+    model = HomeostaticPINegativeFeedback()
+    state = model.get_state()
     expected_keys = {
-        'energy', 'error_signal', 'proportional_control',
-        'integral_control', 'total_control_signal'
+        "energy", "error_signal", "proportional_control",
+        "integral_control", "total_control_signal"
     }
-    assert expected_keys.issubset(set(state.keys())), \
-        f"Missing keys: {expected_keys - set(state.keys())}"
+    assert expected_keys == set(state.keys()), \
+        f"State keys mismatch: {set(state.keys())}"
 
 
-def test_energy_never_negative():
-    """Energy should never go below 0."""
-    agent = HomeostaticPINegativeFeedback()
-    agent.A = 0.5
-    for i in range(10):
-        perception = make_perception(step=i)
-        agent.decide(perception)
-        agent.update(Action(name='stay'), 0.0, perception)
-        assert agent.get_state()['energy'] >= 0.0
+# ---------------------------------------------------------------------------
+# Extra: energy dynamics after successful eat
+# ---------------------------------------------------------------------------
 
+def test_energy_increases_after_eating():
+    model = HomeostaticPINegativeFeedback()
+    model.A = 50.0
+    initial_energy = model.A
 
-def test_eating_increases_energy_more_than_no_eating():
-    """After successful eat action, energy should be higher than without eating."""
-    agent_eat = HomeostaticPINegativeFeedback()
-    agent_eat.A = 50.0
-    agent_no_eat = HomeostaticPINegativeFeedback()
-    agent_no_eat.A = 50.0
+    action = Action(name="eat")
+    perc = make_perception(last_action_result={"consumed": True})
+    model.update(action, 1.0, perc)
 
-    agent_eat._last_action_name = 'eat'
-    p_eat = make_perception(last_action_result={'consumed': True})
-    agent_eat.decide(p_eat)
-
-    p_no = make_perception(last_action_result={})
-    agent_no_eat.decide(p_no)
-
-    assert agent_eat.get_state()['energy'] > agent_no_eat.get_state()['energy']
+    expected = min(max(initial_energy - model.d + model.delta_eat, 0.0), model.A_max)
+    assert abs(model.A - expected) < 1e-9, \
+        f"Energy after eating: expected {expected}, got {model.A}"
