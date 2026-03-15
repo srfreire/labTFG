@@ -28,6 +28,7 @@ app.add_middleware(
 
 RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
+BUILDER_DIR = RESEARCH_DIR / "builder"
 
 
 @app.get("/health")
@@ -44,6 +45,7 @@ async def websocket_chat(ws: WebSocket):
         client=client,
         research_dir=RESEARCH_DIR,
         output_dir=OUTPUT_DIR,
+        builder_dir=BUILDER_DIR,
     )
 
     # Send initial agent states
@@ -72,83 +74,6 @@ async def websocket_chat(ws: WebSocket):
 
             # Run orchestrator
             try:
-                # Update agent states based on what the orchestrator does
-                # We patch the orchestrator's tools to emit state updates
-                original_build = orch._build_tools
-
-                def patched_build():
-                    tools, registry = original_build()
-
-                    async def wrap_tool(name, fn):
-                        async def wrapper(params):
-                            # Notify agent started
-                            agent_map = {
-                                "create_environment": "Architect",
-                                "run_simulation": None,
-                                "observe_simulation": "Tracker",
-                                "analyze_results": "Analyst",
-                                "generate_report": "Reporter",
-                            }
-                            agent = agent_map.get(name)
-                            if agent:
-                                await ws.send_json({
-                                    "type": "agent_status",
-                                    "agent": agent,
-                                    "status": "working",
-                                })
-                            result = await fn(params)
-                            if agent:
-                                await ws.send_json({
-                                    "type": "agent_status",
-                                    "agent": agent,
-                                    "status": "done",
-                                })
-                            return result
-                        return wrapper
-
-                    wrapped_registry = {}
-                    for tool_name, fn in registry.items():
-                        wrapped_registry[tool_name] = asyncio.get_event_loop().run_until_complete(
-                            wrap_tool(tool_name, fn)
-                        ) if False else None  # Can't await in sync context
-
-                    # Simpler approach: just wrap inline
-                    new_registry = {}
-                    for tool_name, fn in registry.items():
-                        agent_map = {
-                            "create_environment": "Architect",
-                            "observe_simulation": "Tracker",
-                            "analyze_results": "Analyst",
-                            "generate_report": "Reporter",
-                        }
-
-                        if tool_name in agent_map:
-                            agent = agent_map[tool_name]
-
-                            async def make_wrapper(agent_name, original_fn):
-                                async def wrapper(params):
-                                    await ws.send_json({"type": "agent_status", "agent": agent_name, "status": "working"})
-                                    result = await original_fn(params)
-                                    await ws.send_json({"type": "agent_status", "agent": agent_name, "status": "done"})
-                                    return result
-                                return wrapper
-
-                            # Need to capture correctly in closure
-                            async def _make(a, f):
-                                async def _w(p):
-                                    await ws.send_json({"type": "agent_status", "agent": a, "status": "working"})
-                                    r = await f(p)
-                                    await ws.send_json({"type": "agent_status", "agent": a, "status": "done"})
-                                    return r
-                                return _w
-
-                            new_registry[tool_name] = asyncio.ensure_future(_make(agent, fn)).__class__  # wrong approach
-                        else:
-                            new_registry[tool_name] = fn
-
-                    return tools, registry  # Use original for now, we'll emit states differently
-
-                # Simpler: just run and emit states from the orchestrator's _state changes
                 response = await orch.chat(user_text)
 
                 # Determine which agents ran based on state
@@ -229,6 +154,20 @@ async def websocket_chat(ws: WebSocket):
                             response_data["analyst"] = analyst
                     except (json.JSONDecodeError, TypeError):
                         pass
+
+                if state.get("replay"):
+                    response_data["replay"] = state["replay"]
+
+                if state.get("events") and state.get("replay"):
+                    sim_summary = {
+                        "title": "Simulación completada",
+                        "data": {
+                            "Steps": str(state["replay"]["total_steps"]),
+                            "Agentes": str(len(state["replay"]["frames"][0]["agents"]) if state["replay"]["frames"] else 0),
+                        },
+                    }
+                    if not response_data.get("card"):
+                        response_data["card"] = sim_summary
 
                 await ws.send_json(response_data)
 
