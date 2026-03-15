@@ -339,6 +339,10 @@ class Router:
                     client=self.client,
                     feedback=user_feedback,
                     paradigms=self.state.approved_paradigms,
+                    build_output="\n\n".join(
+                        f"--- {slug} ---\n{content}"
+                        for slug, content in build_results.items()
+                    ) or None,
                 )
             except Exception as exc:
                 self.console.print(
