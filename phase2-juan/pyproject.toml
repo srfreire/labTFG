@@ -3,7 +3,7 @@ name = "simlab"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "claude-agent-sdk",
+    "anthropic>=0.52.0",
 ]
 
 [tool.pytest.ini_options]
