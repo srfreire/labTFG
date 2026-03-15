@@ -1,0 +1,70 @@
+% DecisionLab Report Template — compiled with tectonic (XeLaTeX)
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!60!black,
+    citecolor=blue!60!black,
+}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small DecisionLab}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Section styling
+\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries}{}{0em}{}
+
+\begin{document}
+
+% --- Cover page ---
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Large\textsc{Universidade de Santiago de Compostela}}\\[0.5cm]
+{\large Grao en Enxeñaría Informática}\\[2cm]
+
+{\Huge\bfseries Laboratorio Virtual para Simulación\\[0.3cm]
+y Análisis de Paradigmas de\\[0.3cm]
+Toma de Decisiones}\\[1.5cm]
+
+{\Large Informe de Simulación}\\[2cm]
+
+\begin{tabular}{rl}
+\textbf{Autores:} & Juan Freire Álvarez \\
+                   & Pablo Pazos Parada \\[0.3cm]
+\textbf{Tutor:}   & Eduardo Manuel Sánchez Vila \\[0.3cm]
+\textbf{Fecha:}   & \today \\
+\end{tabular}
+
+\vfill
+{\small Trabajo de Fin de Grado --- Curso 2025/2026}
+\end{titlepage}
+
+% --- Table of contents ---
+\tableofcontents
+\newpage
+
+%% CONTENT_PLACEHOLDER %%
+
+\end{document}
