@@ -388,20 +388,22 @@ Un mismo Environment puede ejecutar agentes con paradigmas completamente distint
 | Componente | Tecnologia | Justificacion |
 | --- | --- | --- |
 | Lenguaje | Python (uv) | Continuidad con el script de referencia |
-| LLM | Claude (Anthropic) | Capacidades de razonamiento y tool_use nativas |
-| SDK | Anthropic Agent SDK (`claude-agent-sdk`) | Loop de agentes, subagentes, tools y contexto. |
-| Interfaz | CLI (rich/typer) -> web despues | MVP rapido, separar logica de presentacion |
-| Datos | JSON / SQLite | Logs de simulacion, resultados de analisis |
-| Tests | pytest | Validacion del framework base |
+| LLM | Claude via Anthropic SDK | Capacidades de razonamiento y tool_use nativas |
+| API | `anthropic` (SDK oficial) con loop manual de tool use | Mismo patron que la Fase 1 (Pablo). Compatible con OpenRouter |
+| Modelos | Haiku 4.5 (Architect, Reporter) + Sonnet 4.5 (Tracker, Analyst, Orchestrator) | Haiku para JSON/LaTeX, Sonnet para razonamiento |
+| Informes | LaTeX (tectonic) -> PDF | Portada USC, indice, tablas, formulas |
+| Interfaz | CLI (pendiente) -> web despues | MVP rapido, separar logica de presentacion |
+| Datos | JSON | Specs, logs de observacion, analisis |
+| Tests | pytest | 80 unit + 7 integration |
 
-### Por que Agent SDK y no frameworks de terceros
+### Por que API directa y no Agent SDK
 
-Se opta por el **Anthropic Agent SDK** en vez de frameworks como LangGraph, CrewAI o AutoGen:
+Se opta por usar la API de Anthropic directamente (`anthropic` SDK + loop manual de tool use) en vez del Agent SDK (`claude-agent-sdk`) o frameworks como LangGraph:
 
-1. **SDK oficial de Anthropic** — no es un framework de terceros, sino la herramienta oficial para construir agentes con Claude
-2. **Consistencia con la Fase 1** — Pablo usa el mismo SDK para su pipeline, lo que unifica el stack del proyecto
-3. **Subagentes nativos** — soporta directamente la arquitectura orquestador + subagentes especializados, cada uno con sus propias tools y contexto aislado
-4. **Control sin boilerplate** — se define que tools tiene cada agente y que instrucciones recibe, sin escribir manualmente el loop de tool_use
+1. **Compatibilidad con OpenRouter** — el Agent SDK es un wrapper del CLI de Claude Code, no funciona con proveedores alternativos
+2. **Consistencia con la Fase 1** — Pablo usa el mismo patron (loop manual + dispatcher + registry)
+3. **Simplicidad** — el loop de tool use son 55 lineas reutilizables (`runtime/loop.py`), no necesitamos mas
+4. **Control total** — cada agente define sus tools, prompt, y modelo sin abstracciones intermedias
 
 ---
 
@@ -430,25 +432,25 @@ sequenceDiagram
 
 ---
 
-## 8. Desarrollo incremental
+## 8. Estado de implementacion
 
-### Fase 2.1 — MVP (CLI)
+### Completado
 
 - Environment base generico en Python (effect types, ActionRule, ResourceRule)
 - ModelAdapter con perception_mapper para integracion con Fase 1
-- Primer caso de uso: modelo metabolico/homeostatico de Pablo
-- Orchestrator basico via CLI
-- Architect funcional
-- Tracker basico (logging de eventos)
+- Spec validation + conversion (`spec.py`)
+- Runtime agentico compartido (`runtime/loop.py`, `runtime/dispatcher.py`)
+- Tools compartidas para datos de simulacion (`tools.py`)
+- **Architect** — genera JSON specs desde lenguaje natural (Haiku)
+- **Tracker** — observa simulaciones, identifica episodios (Sonnet)
+- **Analyst** — detecta patrones y compara agentes (Sonnet)
+- **Reporter** — genera informes PDF en LaTeX (Haiku + tectonic)
+- **Orchestrator** — coordina los 4 agentes, conversacional (Sonnet)
+- Pipeline completo: una frase del usuario -> PDF generado (~3 min)
 
-### Fase 2.2 — Analisis e informes
+### Pendiente
 
-- Analyst funcional
-- Reporter funcional
-- Pipeline completo: simulacion -> observacion -> analisis -> informe
-
-### Fase 2.3 — Web UI
-
-- Interfaz web sobre la logica existente
-- Visualizacion de simulaciones en tiempo real
-- Graficas interactivas del analisis
+- CLI con typer/rich (punto de entrada para el usuario)
+- Integracion con DecisionModels reales de la Fase 1 (Pablo)
+- Web UI
+- Persistencia de simulaciones (SQLite)
