@@ -104,8 +104,12 @@ _EFFECT_TYPES: dict[str, type] = {
 
 def _parse_effect(effect_dict: dict) -> Effect:
     """Convert a JSON effect dict to an Effect dataclass instance."""
-    cls = _EFFECT_TYPES[effect_dict["type"]]
-    kwargs = {k: v for k, v in effect_dict.items() if k != "type"}
+    etype = effect_dict.get("type")
+    cls = _EFFECT_TYPES.get(etype)
+    if cls is None:
+        raise ValueError(f"Unknown effect type '{etype}'. Valid: {set(_EFFECT_TYPES)}")
+    valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
+    kwargs = {k: v for k, v in effect_dict.items() if k != "type" and k in valid_fields}
     return cls(**kwargs)
 
 
@@ -124,6 +128,9 @@ def _convert_ranges(properties: dict) -> dict:
 
 def spec_to_environment(spec: dict, seed: int | None = None) -> Environment:
     """Build an Environment from a validated JSON spec."""
+    errors = validate_spec_dict(spec)
+    if errors:
+        raise ValueError(f"Invalid spec: {'; '.join(errors)}")
     actions = [
         ActionRule(name=a["name"], effect=_parse_effect(a["effect"]))
         for a in spec["actions"]

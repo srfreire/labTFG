@@ -25,6 +25,13 @@ def strip_markdown_fences(text: str) -> str:
 
 
 def extract_text(response: Any) -> str:
-    """Extract and clean the text content from an LLM response."""
-    text = next((b.text for b in response.content if b.type == "text"), "")
+    """Extract and clean the text content from an LLM response.
+
+    Raises RuntimeError if the response contains no text blocks.
+    """
+    text = next((b.text for b in response.content if b.type == "text"), None)
+    if not text or not text.strip():
+        raise RuntimeError(
+            f"LLM produced no text output (stop_reason={response.stop_reason})"
+        )
     return strip_markdown_fences(text)

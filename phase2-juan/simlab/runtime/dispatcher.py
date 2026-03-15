@@ -25,7 +25,7 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
             logger.info("Tool '%s' returned (%d chars)", call.name, len(result))
             return {"type": "tool_result", "tool_use_id": call.id, "content": result}
         except Exception as e:
-            logger.error("Tool '%s' (call_id=%s) raised %s: %s", call.name, call.id, type(e).__name__, e)
+            logger.error("Tool '%s' (call_id=%s) raised %s: %s", call.name, call.id, type(e).__name__, e, exc_info=True)
             return {"type": "tool_result", "tool_use_id": call.id, "content": f"[{type(e).__name__}] {e}", "is_error": True}
 
     return list(await asyncio.gather(*(run_one(call) for call in tool_calls)))

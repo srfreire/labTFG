@@ -79,6 +79,9 @@ def _build_tools(
 
     async def compile_report(params: dict) -> str:
         content = params["content"]
+        if not _TEMPLATE_PATH.exists():
+            return json.dumps({"success": False, "errors": [f"LaTeX template not found at {_TEMPLATE_PATH}"]})
+
         template = _TEMPLATE_PATH.read_text()
         full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
 
@@ -102,6 +105,8 @@ def _build_tools(
                     "errors": error_lines[:10] if error_lines else result.stderr[-500:],
                 })
             return json.dumps({"success": True, "pdf_path": str(pdf_path)})
+        except FileNotFoundError:
+            return json.dumps({"success": False, "errors": ["'tectonic' not installed. Run: brew install tectonic"]})
         except subprocess.TimeoutExpired:
             return json.dumps({"success": False, "errors": ["Compilation timed out after 120s"]})
 
