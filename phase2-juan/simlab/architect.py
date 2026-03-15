@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import json
-import logging
 
 import anthropic
 
+from simlab.runtime import run_agent_loop, Registry
 from simlab.spec import validate_spec_dict
-
-logger = logging.getLogger(__name__)
 
 ARCHITECT_SYSTEM_PROMPT = """\
 You generate JSON environment specs for a 2D grid simulation lab.
@@ -74,14 +72,17 @@ VALIDATE_SPEC_TOOL = {
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
 
-def _dispatch_tool(name: str, input_data: dict) -> str:
-    """Execute a tool call and return the result as a string."""
-    if name == "validate_spec":
-        errors = validate_spec_dict(input_data.get("spec", {}))
-        if errors:
-            return json.dumps({"valid": False, "errors": errors})
-        return json.dumps({"valid": True})
-    return json.dumps({"error": f"Unknown tool: {name}"})
+async def _validate_spec_tool(params: dict) -> str:
+    """Tool function for the agent loop registry."""
+    errors = validate_spec_dict(params.get("spec", {}))
+    if errors:
+        return json.dumps({"valid": False, "errors": errors})
+    return json.dumps({"valid": True})
+
+
+ARCHITECT_REGISTRY: Registry = {
+    "validate_spec": _validate_spec_tool,
+}
 
 
 async def run_architect(
@@ -92,38 +93,29 @@ async def run_architect(
 ) -> str:
     """Run the Architect agent and return the generated JSON spec as a string."""
     client = anthropic.AsyncAnthropic()
-    messages = [{"role": "user", "content": prompt}]
 
-    for iteration in range(max_iterations):
-        logger.info("Architect iteration %d/%d", iteration + 1, max_iterations)
-        response = await client.messages.create(
-            model=model,
-            system=ARCHITECT_SYSTEM_PROMPT,
-            tools=[VALIDATE_SPEC_TOOL],
-            messages=messages,
-            max_tokens=4096,
-        )
+    response = await run_agent_loop(
+        client=client,
+        model=model,
+        system=ARCHITECT_SYSTEM_PROMPT,
+        tools=[VALIDATE_SPEC_TOOL],
+        messages=[{"role": "user", "content": prompt}],
+        registry=ARCHITECT_REGISTRY,
+        max_iterations=max_iterations,
+    )
 
-        if response.stop_reason == "end_turn":
-            text = next((b.text for b in response.content if b.type == "text"), "")
-            return text
+    text = next((b.text for b in response.content if b.type == "text"), "")
+    return _strip_markdown_fences(text)
 
-        if response.stop_reason != "tool_use":
-            text = next((b.text for b in response.content if b.type == "text"), "")
-            return text
 
-        # Process tool calls
-        tool_calls = [b for b in response.content if b.type == "tool_use"]
-        messages.append({"role": "assistant", "content": response.content})
-
-        tool_results = []
-        for tc in tool_calls:
-            result = _dispatch_tool(tc.name, tc.input)
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": tc.id,
-                "content": result,
-            })
-        messages.append({"role": "user", "content": tool_results})
-
-    raise RuntimeError(f"Architect exceeded max iterations ({max_iterations})")
+def _strip_markdown_fences(text: str) -> str:
+    """Remove ```json ... ``` fences if the LLM wraps the output."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        # Remove first line (```json or ```) and last line (```)
+        lines = stripped.split("\n")
+        lines = lines[1:]  # drop opening fence
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]  # drop closing fence
+        return "\n".join(lines).strip()
+    return stripped
