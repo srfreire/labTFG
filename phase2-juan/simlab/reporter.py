@@ -8,7 +8,7 @@ from pathlib import Path
 from simlab.runtime import run_agent_loop, Registry
 from simlab.utils import extract_text
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
 
@@ -128,12 +128,11 @@ You have 2 tools:
 ## Process
 
 1. Read the Tracker and Analyst data provided in the user message
-2. Call read_research with "report.md" to get the state-of-the-art summary
-3. Optionally read specific paradigm analyses from "deep/<paradigm>.md"
-4. Write LaTeX content for the report body
-5. Call compile_report with your content
-6. If compilation fails, fix the LaTeX errors and try again
-7. Return the path to the generated PDF
+2. Call read_research with "report.md" — this contains a complete summary of ALL paradigms. \
+DO NOT read individual deep/<paradigm>.md files unless report.md is missing.
+3. Write LaTeX content for the report body in a SINGLE compile_report call
+4. If compilation fails, fix the LaTeX errors and try again
+5. Return the path to the generated PDF
 
 ## Report structure
 
