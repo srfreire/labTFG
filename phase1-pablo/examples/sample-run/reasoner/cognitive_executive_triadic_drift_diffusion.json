@@ -1,0 +1,159 @@
+{
+  "formulation_id": "cognitive_executive_triadic_drift_diffusion",
+  "paradigm": "cognitive-executive-control-of-eating-behavior",
+  "name": "Triadic Drift-Diffusion Model of Eat/Restrain Decisions",
+  "description": "A stochastic evidence-accumulation (drift-diffusion) model where a decision variable integrating reward drive, executive control, and valuation drifts toward an 'eat' or 'restrain' boundary over deliberation micro-steps. The drift rate is computed from the triadic brain-systems model (reward, executive control, valuation) plus homeostatic hunger. Executive control capacity depletes when food cues are present and recovers when absent, capturing the DLPFC hypoactivity and ego-depletion-adjacent dynamics described in the literature. The valuation signal is updated via reward learning that contrasts health-oriented vs. hedonic outcomes.",
+  "variables": [
+    {"symbol": "x", "name": "decision_variable", "description": "Accumulated evidence: positive favors eating, negative favors restraint. Reset each timestep.", "type": "float", "initial_value": 0.0, "range": [-2.0, 2.0]},
+    {"symbol": "R", "name": "reward_drive", "description": "Hedonic/reward activation from current food cue, derived from food palatability and proximity", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "C", "name": "executive_control", "description": "Current effective DLPFC-mediated cognitive control capacity; depletes near food, recovers away from food", "type": "float", "initial_value": 0.8, "range": [0.0, 1.0]},
+    {"symbol": "V", "name": "valuation_bias", "description": "Net goal-congruent valuation signal: positive favors long-term health goals, negative favors immediate gratification. Updated via reward learning.", "type": "float", "initial_value": 0.0, "range": [-1.0, 1.0]},
+    {"symbol": "H", "name": "hunger", "description": "Homeostatic hunger signal; increases each step, decreases on eating", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "nu", "name": "drift_rate", "description": "Computed drift rate: positive drifts toward eat boundary, negative toward restrain", "type": "float", "initial_value": 0.0, "range": [-3.0, 3.0]}
+  ],
+  "parameters": [
+    {"symbol": "alpha", "name": "reward_weight", "default": 1.0, "source": "Triadic model (ScienceDirect / Current Opinion in Behavioral Sciences, 2022)"},
+    {"symbol": "beta", "name": "control_weight", "default": 1.2, "source": "Set > alpha reflecting effective top-down regulation in healthy individuals (Springer, 2021)"},
+    {"symbol": "gamma", "name": "valuation_weight", "default": 0.5, "source": "Intermediate weighting in triadic model (ScienceDirect, 2022)"},
+    {"symbol": "eta", "name": "hunger_amplification", "default": 0.8, "source": "Homeostatic drive scaling (Springer, 2021)"},
+    {"symbol": "sigma", "name": "noise_intensity", "default": 0.3, "source": "Standard drift-diffusion noise range"},
+    {"symbol": "a_eat", "name": "eat_boundary", "default": 1.0, "source": "Normalized DDM boundary"},
+    {"symbol": "a_restrain", "name": "restrain_boundary", "default": -1.0, "source": "Symmetric DDM boundary"},
+    {"symbol": "delta_C", "name": "control_depletion_rate", "default": 0.05, "source": "Per-timestep depletion under food cue exposure (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "rho_C", "name": "control_recovery_rate", "default": 0.03, "source": "Per-timestep recovery when not near food cues (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "C_max", "name": "max_control_capacity", "default": 1.0, "source": "Normalized ceiling"},
+    {"symbol": "lambda_V", "name": "valuation_learning_rate", "default": 0.1, "source": "Reward learning for valuation update (ScienceDirect, 2022)"},
+    {"symbol": "delta_H", "name": "hunger_increase_rate", "default": 0.02, "source": "Gradual hunger increase per timestep (Springer, 2021)"},
+    {"symbol": "phi", "name": "hunger_reduction_on_eat", "default": 0.4, "source": "Hunger reduction from eating (Springer, 2021)"},
+    {"symbol": "N_micro", "name": "micro_steps", "default": 10, "source": "Number of DDM micro-steps per decision"},
+    {"symbol": "dt", "name": "micro_step_size", "default": 0.1, "source": "Time increment per micro-step"},
+    {"symbol": "palatability_threshold", "name": "high_palatability_threshold", "default": 0.6, "source": "Threshold to classify food as high-palatability for health reward computation"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Compute reward drive R from nearest food's palatability and distance",
+      "type": "algebraic",
+      "pseudocode": "foods = perception.resources.food\nif foods:\n    nearest = min(foods, key=lambda f: abs(f.x - perception.x) + abs(f.y - perception.y))\n    dist = abs(nearest.x - perception.x) + abs(nearest.y - perception.y)\n    R = nearest.palatability / (1.0 + dist)\nelse:\n    R = 0.0",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Compute drift rate nu from triadic competition: reward + hunger vs control, modulated by valuation",
+      "type": "algebraic",
+      "pseudocode": "nu = alpha * R + eta * H - beta * C + gamma * V",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Evidence accumulation via drift-diffusion with Gaussian noise over N_micro micro-steps",
+      "type": "stochastic",
+      "pseudocode": "x = 0.0\ndecision = 'undecided'\nfor i in range(N_micro):\n    noise = random.gauss(0, 1)\n    x = x + nu * dt + sigma * sqrt(dt) * noise\n    if x >= a_eat:\n        decision = 'eat'\n        break\n    if x <= a_restrain:\n        decision = 'restrain'\n        break",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Executive control depletion near food cues and recovery when away",
+      "type": "state_update",
+      "pseudocode": "food_cue_present = len(perception.resources.food) > 0 and min_food_distance <= 4\nif food_cue_present:\n    C = min(C_max, C - delta_C)\nelse:\n    C = min(C_max, C + rho_C)\nC = max(0.0, C)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Valuation update based on health vs hedonic reward contrast after eating",
+      "type": "state_update",
+      "pseudocode": "if ate_last_step:\n    r_hedonic = last_food_palatability\n    r_health = 1.0 - last_food_palatability  # low-palatability food is healthier\n    V = clip(V + lambda_V * (r_health - r_hedonic), -1.0, 1.0)\nelse:\n    # small drift toward health goal when not eating\n    V = clip(V + 0.01, -1.0, 1.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R6",
+      "description": "Hunger increases each step, decreases substantially when agent eats",
+      "type": "state_update",
+      "pseudocode": "if ate_last_step:\n    H = clip(H - phi, 0.0, 1.0)\nelse:\n    H = clip(H + delta_H, 0.0, 1.0)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "At each timestep, compute reward drive from food perception, run DDM evidence accumulation to decide eat vs restrain, then translate to grid action. Eat boundary reached → approach/eat food; restrain boundary reached → move away or stay; undecided → stay.",
+    "pseudocode": [
+      "# 1. Update internal states from last step",
+      "ate_last_step = (last_action_result is not None) and last_action_result.get('consumed', False)",
+      "Update H using rule R6",
+      "Update C using rule R4",
+      "Update V using rule R5 (if ate, use last food's palatability)",
+      "",
+      "# 2. Compute reward drive R",
+      "Compute R using rule R1 from perception.resources.food",
+      "",
+      "# 3. Compute drift rate",
+      "nu = alpha * R + eta * H - beta * C + gamma * V",
+      "",
+      "# 4. Run DDM evidence accumulation (rule R3)",
+      "x = 0.0; decision = 'undecided'",
+      "for i in range(N_micro):",
+      "    x += nu * dt + sigma * sqrt(dt) * random.gauss(0,1)",
+      "    if x >= a_eat: decision = 'eat'; break",
+      "    if x <= a_restrain: decision = 'restrain'; break",
+      "",
+      "# 5. Translate decision to grid action",
+      "if decision == 'eat':",
+      "    nearest_food = find nearest food in perception.resources.food",
+      "    dist = manhattan_distance(agent_pos, nearest_food_pos)",
+      "    if dist <= 1: return Action('eat')",
+      "    else: return Action(move_toward(nearest_food_pos))",
+      "elif decision == 'restrain':",
+      "    if any food within distance 2: return Action(move_away_from_nearest_food)",
+      "    else: return Action('stay')",
+      "else:  # undecided",
+      "    return Action('stay')"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_palatability": "each food item's .palatability property (float 0.1–1.0)",
+      "food_distance": "manhattan distance from (perception.x, perception.y) to each food (x, y)",
+      "ate_last_step": "last_action_result.get('consumed', False) after an eat action",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0); internal valuation uses palatability to compute health vs hedonic contrast"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Executive control depletes when agent spends many steps near food, eventually crossing eat boundary even when previously restraining",
+      "test_pseudocode": "Place agent adjacent to high-palatability food for 20 steps with initial C=0.8 → assert C decreases and eventually decision shifts from 'restrain' to 'eat'"
+    },
+    {
+      "id": "B2",
+      "description": "High hunger increases drift rate toward eating, making eat decisions faster/more likely",
+      "test_pseudocode": "Set H=0.9 with food nearby → run 10 decisions → assert majority are 'eat'; Set H=0.1 → assert majority are 'restrain'"
+    },
+    {
+      "id": "B3",
+      "description": "Valuation bias shifts toward restraint after eating high-palatability food (hedonic > health reward)",
+      "test_pseudocode": "Agent eats food with palatability=0.9 → assert V decreases (shifts negative); agent eats food with palatability=0.2 → assert V increases"
+    },
+    {
+      "id": "B4",
+      "description": "Stochastic noise creates variability: same conditions produce different decisions across runs",
+      "test_pseudocode": "Fix all state variables, run DDM 100 times → assert both 'eat' and 'restrain' outcomes occur (not 100% one outcome)"
+    },
+    {
+      "id": "B5",
+      "description": "Control recovery when agent moves away from food",
+      "test_pseudocode": "Deplete C to 0.3, then move agent far from food for 15 steps → assert C increases toward C_max"
+    }
+  ],
+  "references": [
+    "ScienceDirect / Current Opinion in Behavioral Sciences (2022) — The brain bases of regulation of eating behaviors",
+    "APA PsycNet (2023) — The brain bases of regulation of eating behaviors",
+    "CORE / Frontiers in Psychology (2016) — Impulsivity and Inhibitory Control Deficits Are Associated with Obesity",
+    "Springer / Reviews in Endocrine and Metabolic Disorders (2021) — Neurobiological regulation of eating behavior",
+    "ScienceDirect / Appetite (2017) — Executive functions and the self-regulation of eating behavior: A review",
+    "PMC (2017) — Executive functioning and dietary intake"
+  ]
+}

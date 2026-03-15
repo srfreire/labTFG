@@ -1,0 +1,301 @@
+{
+  "formulation_id": "hedonic_ode_dynamical_system",
+  "paradigm": "hedonic-reward-based-regulation-of-food-intake",
+  "name": "ODE-Based Hedonic-Homeostatic Dynamical System",
+  "description": "Continuous-time ordinary differential equations governing three interacting state variables: homeostatic deficit (hunger), wanting (dopaminergic incentive salience), and liking (opioid/endocannabinoid hedonic tone). Hunger drifts upward with a time constant and is reduced by eating. Wanting is driven by sensory food cues and amplified by hunger, but decays in the absence of stimuli. Liking recovers toward baseline but is depleted by repeated consumption (sensory-specific satiety) while also boosted by hedonic impact during consumption of palatable food. Action selection uses two separate drive signals: an approach drive (wanting + hunger) and an eat drive (wanting * liking + hunger). The wanting*liking product for eating ensures both motivational and hedonic components must be present, capturing the Berridge & Robinson (1998) dissociation. Integration uses forward Euler with dt=1. This formulation produces emergent behaviors including hedonic overeating, cue-triggered wanting without hunger, sensory-specific satiety, and hunger amplification of food reward.",
+  "variables": [
+    {
+      "symbol": "h",
+      "name": "homeostatic_deficit",
+      "description": "Continuous hunger signal; rises toward 1.0 without food via a time constant, drops upon eating. Represents cumulative energy deficit.",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w",
+      "name": "wanting_incentive_salience",
+      "description": "Dopaminergic motivational drive toward food; evolves dynamically driven by sensory cues and hunger, decays without stimulation. Represents mesolimbic dopamine activity.",
+      "type": "float",
+      "initial_value": 0.1,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "ell",
+      "name": "liking_hedonic_tone",
+      "description": "Opioid/endocannabinoid-mediated hedonic capacity; recovers toward baseline, depleted by repeated consumption (sensory-specific satiety), boosted by palatability during eating. Represents NAc shell hedonic hotspot activity.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "S",
+      "name": "sensory_cue_intensity",
+      "description": "Strength of external food cues reaching the agent; computed from nearest food palatability decayed by distance. Represents sight/smell/anticipatory cue salience.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "E",
+      "name": "eating_event",
+      "description": "Binary indicator: 1 if agent successfully ate last step, 0 otherwise. Drives the consumption-dependent terms in the ODEs.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    },
+    {
+      "symbol": "Phi",
+      "name": "approach_drive",
+      "description": "Net behavioral drive for movement toward food; combining wanting and a direct hunger component",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "Phi_eat",
+      "name": "eat_drive",
+      "description": "Drive to consume food; requires both wanting and liking to be present (their product), plus homeostatic pressure. Captures the liking/wanting dissociation.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "d_food",
+      "name": "distance_to_nearest_food",
+      "description": "Manhattan distance to the nearest food resource",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 18]
+    },
+    {
+      "symbol": "p_food",
+      "name": "palatability_of_nearest_food",
+      "description": "Palatability property of nearest food resource from env_spec",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.1, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "tau_h",
+      "name": "hunger_time_constant",
+      "default": 20.0,
+      "source": "~20 steps to reach strong hunger; calibrated to grid-world timescale (Lutter & Nestler, 2009)"
+    },
+    {
+      "symbol": "tau_w",
+      "name": "wanting_decay_time_constant",
+      "default": 8.0,
+      "source": "Wanting dissipates faster than hunger when cues vanish (Berridge, 2004)"
+    },
+    {
+      "symbol": "tau_ell",
+      "name": "liking_recovery_time_constant",
+      "default": 15.0,
+      "source": "Hedonic capacity recovers moderately slowly; allosthetic satiety dynamics"
+    },
+    {
+      "symbol": "mu",
+      "name": "hunger_wanting_coupling",
+      "default": 0.6,
+      "source": "Hunger amplifies wanting (P4); AJPH (2014) interaction term"
+    },
+    {
+      "symbol": "sigma",
+      "name": "sensory_cue_wanting_coupling",
+      "default": 0.8,
+      "source": "External cues are strong drivers of wanting (Kelley & Berridge, 2002)"
+    },
+    {
+      "symbol": "eta",
+      "name": "palatability_liking_coupling",
+      "default": 0.7,
+      "source": "Opioid hotspot response to taste (Berridge & Robinson, 1998)"
+    },
+    {
+      "symbol": "rho",
+      "name": "satiation_rate_on_liking",
+      "default": 0.4,
+      "source": "Eating temporarily reduces liking via sensory-specific satiety mechanism"
+    },
+    {
+      "symbol": "k_h",
+      "name": "hunger_reduction_upon_eating",
+      "default": 0.5,
+      "source": "Partial hunger reset per eating event; reflects meal-driven satiation"
+    },
+    {
+      "symbol": "phi_eat",
+      "name": "eat_threshold",
+      "default": 0.45,
+      "source": "Agent eats when combined eat drive is sufficiently high"
+    },
+    {
+      "symbol": "phi_seek",
+      "name": "seek_threshold",
+      "default": 0.25,
+      "source": "Agent approaches food above this approach drive"
+    },
+    {
+      "symbol": "cue_decay",
+      "name": "sensory_cue_distance_decay",
+      "default": 0.3,
+      "source": "Sensory cue salience decays exponentially with distance (Kelley & Berridge, 2002)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Sensory cue intensity: palatability of nearest food decayed exponentially by Manhattan distance",
+      "type": "algebraic",
+      "pseudocode": "S = p_food * exp(-cue_decay * d_food)\n# If no food visible: S = 0.0",
+      "source_postulate": "P1 (sensory inputs trigger hedonic circuits independently of metabolic state; Kelley & Berridge, 2002)"
+    },
+    {
+      "id": "R2",
+      "description": "Homeostatic deficit ODE: hunger drifts toward 1.0 with time constant tau_h, reduced by eating events",
+      "type": "ODE",
+      "pseudocode": "dh_dt = (1.0 - h) / tau_h - k_h * E\nh = clip(h + dh_dt, 0.0, 1.0)",
+      "source_postulate": "P4 (energy deficit modulates hedonic system; Lutter & Nestler, 2009)"
+    },
+    {
+      "id": "R3",
+      "description": "Wanting ODE: decays without cues, driven by sensory cues, amplified by hunger*cue interaction",
+      "type": "ODE",
+      "pseudocode": "dw_dt = -w / tau_w + mu * h * S + sigma * S\nw = clip(w + dw_dt, 0.0, 1.0)",
+      "source_postulate": "P1 (wanting can occur without hunger via sigma*S term), P4 (hunger amplifies wanting via mu*h*S term; Toates, 1986; Berridge, 2004)"
+    },
+    {
+      "id": "R4",
+      "description": "Liking ODE: recovers toward baseline, depleted by eating (sensory-specific satiety), boosted by hedonic impact of palatable food during consumption",
+      "type": "ODE",
+      "pseudocode": "dell_dt = (1.0 - ell) / tau_ell - rho * E * p_food + eta * p_food * E * (1.0 - ell)\nell = clip(ell + dell_dt, 0.0, 1.0)",
+      "source_postulate": "P2 (liking is dissociable from wanting; Berridge & Robinson, 1998), P6 (opioid/endocannabinoid systems mediate pleasure in hedonic hotspots)"
+    },
+    {
+      "id": "R5",
+      "description": "Approach drive: primarily wanting-driven with a smaller direct hunger contribution",
+      "type": "algebraic",
+      "pseudocode": "Phi = w + 0.3 * h",
+      "source_postulate": "P2 (wanting drives approach/seeking behavior; Berridge, 2004)"
+    },
+    {
+      "id": "R6",
+      "description": "Eat drive: requires both wanting AND liking (their product) plus homeostatic pressure. Captures liking/wanting dissociation: high wanting with depleted liking does not trigger eating.",
+      "type": "algebraic",
+      "pseudocode": "Phi_eat = w * ell + 0.4 * h",
+      "source_postulate": "P2 (liking and wanting dissociation; Berridge & Robinson, 1998), P3 (hedonic override of satiety when both components high)"
+    }
+  ],
+  "decision_logic": {
+    "description": "Threshold-based action selection driven by the dynamical system state. Two separate thresholds: phi_seek for approach behavior and phi_eat for consumption. The eat drive requires the product of wanting and liking, enforcing the dissociation principle. Euler integration with dt=1 advances the ODE state each step. When multiple food sources are equidistant, the agent prefers higher palatability (greedy hedonic selection).",
+    "pseudocode": [
+      "# 1. Determine eating event from last step",
+      "E = 1 if (last_action was 'eat' and reward > 0) else 0",
+      "# Store p_food of consumed food for liking update",
+      "p_consumed = palatability of food that was consumed if E == 1 else 0.0",
+      "",
+      "# 2. Compute sensory cue from current perception",
+      "foods = perception.resources.food",
+      "if len(foods) == 0:",
+      "    S = 0.0; nearest = None; d_food = 999; p_food = 0.0",
+      "else:",
+      "    for each f in foods: dist = abs(f.x - perception.x) + abs(f.y - perception.y)",
+      "    nearest = food with minimum dist (ties broken by higher palatability)",
+      "    d_food = dist to nearest",
+      "    p_food = nearest.palatability",
+      "    S = p_food * exp(-cue_decay * d_food)",
+      "",
+      "# 3. Euler-integrate ODEs (dt = 1)",
+      "# Use p_consumed (from last eat) for E-dependent terms in liking/hunger",
+      "dh_dt = (1.0 - h) / tau_h - k_h * E",
+      "h = clip(h + dh_dt, 0.0, 1.0)",
+      "",
+      "dw_dt = -w / tau_w + mu * h * S + sigma * S",
+      "w = clip(w + dw_dt, 0.0, 1.0)",
+      "",
+      "p_for_liking = p_consumed if E == 1 else 0.0",
+      "dell_dt = (1.0 - ell) / tau_ell - rho * E * p_for_liking + eta * p_for_liking * E * (1.0 - ell)",
+      "ell = clip(ell + dell_dt, 0.0, 1.0)",
+      "",
+      "# 4. Compute behavioral drives",
+      "Phi = w + 0.3 * h",
+      "Phi_eat = w * ell + 0.4 * h",
+      "",
+      "# 5. Action selection",
+      "on_food = any(f.x == perception.x and f.y == perception.y for f in foods)",
+      "",
+      "if on_food and Phi_eat >= phi_eat:",
+      "    return 'eat'",
+      "elif Phi >= phi_seek and nearest is not None:",
+      "    # Move toward nearest food (greedy Manhattan-distance step)",
+      "    dx = nearest.x - perception.x",
+      "    dy = nearest.y - perception.y",
+      "    if abs(dx) >= abs(dy):",
+      "        return 'move_right' if dx > 0 else 'move_left'",
+      "    else:",
+      "        return 'move_down' if dy > 0 else 'move_up'",
+      "elif Phi < phi_seek:",
+      "    # Low drive: random walk or stay",
+      "    return random.choice(['move_up', 'move_down', 'move_left', 'move_right', 'stay'])",
+      "else:",
+      "    return random.choice(['move_up', 'move_down', 'move_left', 'move_right', 'stay'])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "p_food": "nearest_food.palatability  # float in [0.1, 1.0] from env_spec",
+      "d_food": "abs(nearest_food.x - perception.x) + abs(nearest_food.y - perception.y)",
+      "ate_last_step": "determined in update() method: action was 'eat' and reward > 0",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0 when food is at agent position; used to detect successful eating events (E flag)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hedonic overeating (P1, P3): agent eats highly palatable food even at low hunger because sensory cues drive wanting via sigma*S term",
+      "test_pseudocode": "set h=0.1, place food with palatability=1.0 at agent position → S=1.0, w grows via sigma*S=0.8, Phi_eat = w*ell + 0.4*0.1 → exceeds phi_eat → agent eats despite low hunger"
+    },
+    {
+      "id": "B2",
+      "description": "Sensory-specific satiety: repeated eating depletes liking, eventually stopping consumption even if wanting persists",
+      "test_pseudocode": "place agent on food with p=0.8, force 5 consecutive eat steps → ell decreases via -rho*p_food each step → Phi_eat = w*ell drops below phi_eat → agent stops eating"
+    },
+    {
+      "id": "B3",
+      "description": "Hunger amplification of food reward (P4): hungry agent develops much stronger wanting from same cues",
+      "test_pseudocode": "compare w after 5 steps near food (d=1, p=0.7) with h=0.9 vs h=0.1 → w(h=0.9) >> w(h=0.1) due to mu*h*S term"
+    },
+    {
+      "id": "B4",
+      "description": "Cue-triggered wanting without hunger (P1): sensory cues from palatable food drive wanting even in sated agent",
+      "test_pseudocode": "set h=0.0, place food with p=1.0 at d=1 → S=1.0*exp(-0.3)=0.74, dw_dt includes sigma*0.74=0.59 → w rises from 0 → agent approaches food"
+    },
+    {
+      "id": "B5",
+      "description": "Wanting decays without cues: if no food is visible, wanting drops to zero over ~tau_w steps",
+      "test_pseudocode": "set w=0.8, remove all food → S=0, dw_dt=-w/tau_w → w decays exponentially → after 16 steps, w ≈ 0.1"
+    },
+    {
+      "id": "B6",
+      "description": "Liking/wanting dissociation (P2): agent with high wanting but depleted liking will approach food but NOT eat",
+      "test_pseudocode": "set w=0.8, ell=0.1, h=0.1 → Phi=0.8+0.03=0.83 (approach), but Phi_eat=0.08+0.04=0.12 < phi_eat → agent moves toward food but does not consume"
+    }
+  ],
+  "references": [
+    "Lutter & Nestler (2009) — Homeostatic and Hedonic Signals Interact in the Regulation of Food Intake — Journal of Nutrition (PMC2714382)",
+    "AJPH (2014) — Dynamic Interplay Among Homeostatic, Hedonic, and Cognitive Feedback Circuits Regulating Body Weight — doi:10.2105/AJPH.2014.301931",
+    "Berridge (2004) — Incentive theory of motivation applied to ingestive behavior — as cited in ScienceDirect S0195666322002379",
+    "Berridge & Robinson (1998) — What is the role of dopamine in reward: hedonic impact, reward learning, and incentive salience? — Brain Research Reviews (PubMed 9858756)",
+    "Toates (1986) — Incentive theory of motivation — as cited in ScienceDirect S0195666322002379",
+    "Kelley & Berridge (2002) — The Need to Feed: Homeostatic and Hedonic Control of Eating — Neuron (ScienceDirect S0896627302009698)",
+    "Volkow et al. (2011) — Hedonic mechanisms and reward hyperfunction in obesity — as cited in PMC5940344"
+  ]
+}

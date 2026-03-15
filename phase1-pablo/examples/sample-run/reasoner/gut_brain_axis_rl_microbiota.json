@@ -1,0 +1,174 @@
+{
+  "formulation_id": "gut_brain_axis_rl_microbiota",
+  "paradigm": "gut-brain-axis-signaling-in-food-intake-regulation",
+  "name": "Reinforcement-Learning Agent with Microbiota-Modulated Reward Shaping",
+  "description": "Tabular Q-learning agent whose reward signal is shaped by a dynamic gut microbiota state. The microbiota produces SCFAs that stimulate GLP-1 secretion, which in turn attenuates the perceived reward of eating when the agent is sated. Diet diversity maintains microbiota health. This models the microbiota→SCFA→GLP-1 cascade from Nature Signal Transduction (2022) and MDPI Nutrients (2023), with Q-learning providing the adaptive decision-making layer. The key distinction from other formulations is that learning itself is modulated by gut state — the agent's reward landscape shifts based on its microbiome history.",
+  "variables": [
+    {"symbol": "Q", "name": "q_table", "description": "Action-value function Q(s,a) mapping discrete states to expected cumulative reward for each action. Initialized to zeros.", "type": "dict", "initial_value": {}, "range": [-100.0, 100.0]},
+    {"symbol": "M", "name": "microbiota_health", "description": "Index of gut microbiome diversity/health, slowly adapts to diet diversity", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "SCFA", "name": "scfa_level", "description": "Short-chain fatty acid level produced by gut microbiota upon eating", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "H_GLP1", "name": "glp1_level", "description": "Plasma GLP-1 driven by SCFA stimulation of L-cells and direct nutrient sensing", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "E", "name": "energy_reserve", "description": "Internal energy level depleted each tick and replenished by eating", "type": "float", "initial_value": 5.0, "range": [0.0, 20.0]},
+    {"symbol": "D", "name": "diet_diversity", "description": "Rolling exponential average of recent eating activity, representing diet variety", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "R_shaped", "name": "shaped_reward", "description": "Internal reward signal perceived by the agent, modulated by GLP-1 satiety and energy state", "type": "float", "initial_value": 0.0, "range": [-5.0, 5.0]},
+    {"symbol": "s_prev", "name": "previous_state", "description": "Discretized state from previous tick for Q-learning update", "type": "tuple", "initial_value": [1, 0, 0], "range": "discrete"},
+    {"symbol": "a_prev", "name": "previous_action", "description": "Action taken on the previous tick", "type": "string", "initial_value": "stay", "range": "action_set"},
+    {"symbol": "ate_last_tick", "name": "ate_last_tick", "description": "Binary indicator of whether the agent ate last tick", "type": "int", "initial_value": 0, "range": [0, 1]}
+  ],
+  "parameters": [
+    {"symbol": "alpha_lr", "name": "q_learning_rate", "default": 0.1, "source": "Standard RL parameter"},
+    {"symbol": "gamma_disc", "name": "discount_factor", "default": 0.95, "source": "Standard RL parameter"},
+    {"symbol": "epsilon_greedy", "name": "exploration_rate", "default": 0.15, "source": "Epsilon-greedy exploration"},
+    {"symbol": "k_SCFA", "name": "scfa_production_rate", "default": 0.4, "source": "Nature Signal Transduction (2022): SCFA production proportional to microbiota health"},
+    {"symbol": "k_SCFA_decay", "name": "scfa_clearance_rate", "default": 0.2, "source": "Metabolic clearance of SCFAs"},
+    {"symbol": "k_GLP1_SCFA", "name": "scfa_glp1_coupling", "default": 0.5, "source": "MDPI Nutrients (2023): SCFAs stimulate L-cell GLP-1 secretion"},
+    {"symbol": "k_GLP1_decay", "name": "glp1_decay_rate", "default": 0.3, "source": "Yoo & Park (2021): DPP-4 mediated GLP-1 clearance"},
+    {"symbol": "mu_adapt", "name": "microbiota_adaptation_rate", "default": 0.05, "source": "Frontiers (2023): slow diet-driven microbiome remodeling"},
+    {"symbol": "phi_sat", "name": "satiety_reward_shaping_coeff", "default": 0.5, "source": "PMC11483575 (2024): GLP-1 reduces hedonic value of food"},
+    {"symbol": "phi_energy", "name": "energy_depletion_penalty", "default": -0.3, "source": "Starvation penalty when energy critically low"},
+    {"symbol": "E_threshold", "name": "low_energy_threshold", "default": 1.0, "source": "Below this threshold, starvation penalty activates"},
+    {"symbol": "E_cost", "name": "per_tick_energy_cost", "default": 0.05, "source": "Basal metabolic drain per tick"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Microbiota health adapts slowly toward current diet diversity",
+      "type": "difference_equation",
+      "pseudocode": "M = M + mu_adapt * (D - M)\nM = max(0.0, min(1.0, M))",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Diet diversity: rolling exponential average of eating activity",
+      "type": "difference_equation",
+      "pseudocode": "D = 0.9 * D + 0.1 * ate_last_tick",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "SCFA production: depends on microbiota health and eating, decays metabolically",
+      "type": "difference_equation",
+      "pseudocode": "SCFA = (1.0 - k_SCFA_decay) * SCFA + k_SCFA * M * ate_last_tick\nSCFA = max(SCFA, 0.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "GLP-1 from SCFA cascade: the microbiota → EEC → peptide pathway",
+      "type": "difference_equation",
+      "pseudocode": "H_GLP1 = (1.0 - k_GLP1_decay) * H_GLP1 + k_GLP1_SCFA * SCFA * ate_last_tick\nH_GLP1 = max(H_GLP1, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Energy dynamics: depleted by basal cost, replenished by eating",
+      "type": "difference_equation",
+      "pseudocode": "E = E - E_cost + ate_last_tick * 1.0\nE = max(E, 0.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Shaped reward: environment reward attenuated by GLP-1 satiety, plus energy depletion penalty",
+      "type": "algebraic",
+      "pseudocode": "satiety_factor = 1.0 - phi_sat * H_GLP1\nsatiety_factor = max(satiety_factor, 0.0)\nenergy_penalty = phi_energy * max(0.0, E_threshold - E)\nR_shaped = R_env * satiety_factor + energy_penalty",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R7",
+      "description": "Q-learning update with shaped reward",
+      "type": "update_rule",
+      "pseudocode": "s_curr = discretize_state(H_GLP1, food_nearby, M)\nmax_Q_next = max(Q.get((s_curr, a), 0.0) for a in all_actions)\nold_Q = Q.get((s_prev, a_prev), 0.0)\nQ[(s_prev, a_prev)] = old_Q + alpha_lr * (R_shaped + gamma_disc * max_Q_next - old_Q)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R8",
+      "description": "State discretization: maps continuous variables to 12-state discrete space",
+      "type": "algebraic",
+      "pseudocode": "# Hunger bin: high GLP-1 means low hunger\nh_bin = int(min(2, max(0, floor(3.0 * (1.0 - min(H_GLP1, 1.0))))))\n# Food nearby: 1 if any food at current position or adjacent cells, else 0\nf_near = 1 if any food within Manhattan distance 1 else 0\n# Microbiota bin: 1 if healthy, 0 if unhealthy\nm_bin = 1 if M > 0.5 else 0\ns = (h_bin, f_near, m_bin)",
+      "source_postulate": "P4"
+    }
+  ],
+  "decision_logic": {
+    "description": "Tabular Q-learning with epsilon-greedy action selection. The agent updates its internal gut-microbiota cascade, computes shaped reward from the previous action, updates Q-values, discretizes the current state, and selects an action. The eat action is constrained to only be chosen when food is at the current position.",
+    "pseudocode": [
+      "# 1. Update gut-microbiota cascade",
+      "apply_rules(R2, R1, R3, R4, R5)  # update D, M, SCFA, H_GLP1, E",
+      "",
+      "# 2. Compute shaped reward for previous action",
+      "R_env = reward  # reward from environment for previous action",
+      "apply_rule(R6)  # compute R_shaped",
+      "",
+      "# 3. Discretize current state",
+      "apply_rule(R8)  # compute s_curr = (h_bin, f_near, m_bin)",
+      "",
+      "# 4. Q-learning update for previous (state, action) pair",
+      "apply_rule(R7)  # update Q(s_prev, a_prev)",
+      "",
+      "# 5. Action selection (epsilon-greedy)",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "available_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if food_here:",
+      "    available_actions.append('eat')",
+      "",
+      "if random() < epsilon_greedy:",
+      "    action = random_choice(available_actions)",
+      "else:",
+      "    action = argmax(Q.get((s_curr, a), 0.0) for a in available_actions)",
+      "",
+      "# 6. Store state and action for next tick's Q-update",
+      "s_prev = s_curr",
+      "a_prev = action",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "ate_last_tick": "1 if last action was 'eat' and reward > 0, else 0",
+      "R_env": "reward parameter from update(action, reward, new_perception)",
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food (list of {x, y, type, palatability})",
+      "food_nearby": "any food with Manhattan distance <= 1 from (perception.x, perception.y)",
+      "grid_dimensions": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0, then shaped via R6 with GLP-1 satiety attenuation and energy penalty"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Eating when GLP-1 is high yields diminished shaped reward, discouraging overeating",
+      "test_pseudocode": "agent eats twice in a row → assert R_shaped for second eat is lower than first due to elevated H_GLP1"
+    },
+    {
+      "id": "B2",
+      "description": "Energy depletion drives urgent foraging behavior via energy penalty in shaped reward",
+      "test_pseudocode": "set E below E_threshold → assert R_shaped includes negative penalty → agent Q-values favor eating/movement toward food"
+    },
+    {
+      "id": "B3",
+      "description": "Microbiota health improves with regular eating, amplifying SCFA→GLP-1 cascade",
+      "test_pseudocode": "agent eats regularly for 50 ticks → assert M increases toward D → SCFA production per meal increases"
+    },
+    {
+      "id": "B4",
+      "description": "Agent learns to avoid eating when already sated (Q-value for eat decreases in low-hunger state)",
+      "test_pseudocode": "after 200 steps of learning → in state (h_bin=0, f_near=1, m_bin=1), assert Q(s, eat) < Q(s, stay)"
+    },
+    {
+      "id": "B5",
+      "description": "Healthy microbiota state (m_bin=1) yields different Q-values than unhealthy (m_bin=0)",
+      "test_pseudocode": "after training → assert Q((2,1,1), eat) != Q((2,1,0), eat) — microbiota modulates learned policy"
+    },
+    {
+      "id": "B6",
+      "description": "Starvation-level energy triggers proactive food-seeking even if GLP-1 hasn't fully cleared",
+      "test_pseudocode": "E = 0.5, H_GLP1 = 0.3 → energy_penalty dominates → agent moves toward food"
+    }
+  ],
+  "references": [
+    "MDPI Nutrients (2023) — The Mechanism of the Gut-Brain Axis in Regulating Food Intake — Nutrients 15(17):3728 (PubMed 37686760)",
+    "Nature Signal Transduction and Targeted Therapy (2022) — Gut microbes regulate the feeding center: a new discovery of gut-brain axis",
+    "Frontiers in Cellular and Infection Microbiology (2023) — Dynamical alterations of brain function and gut microbiota in obesity",
+    "Yoo, J.Y. & Park, S. (2021) — Role of the gut-brain axis in energy and glucose metabolism — npj Science of Food / Nature",
+    "Pharmacology Research & Perspectives (2024) — The gut-brain axis in appetite, satiety, food intake, and eating disorders — PMC11483575"
+  ]
+}

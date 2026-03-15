@@ -1,0 +1,172 @@
+{
+  "formulation_id": "incentive_salience_bayesian_cue_wanting",
+  "paradigm": "incentive-salience-theory",
+  "name": "Probabilistic Cue-Triggered Wanting with Bayesian State Estimation",
+  "description": "A probabilistic framework where the agent maintains a belief map over resource locations (approximate Bayesian) and a learned cue-association map linking grid cells to reward history. Incentive salience is computed as the belief-weighted cue strength raised to a supra-linear power of the dopaminergic drive, creating a spatial 'wanting map' that acts as a motivational attractor field. Action selection is proportional to the directional pull of this attractor field. This captures cue-triggered wanting (P4), sensitization (P5), and the non-conscious motivational magnetism of reward-predictive stimuli (P6). Based on Berridge (2007) and Robinson & Berridge (1993).",
+  "variables": [
+    {"symbol": "b_t", "name": "belief_map", "description": "Probability that each grid cell (x,y) contains a food resource, based on observations. Updated via approximate Bayesian learning.", "type": "dict[tuple[int,int], float]", "initial_value": 0.05, "range": [0, 1]},
+    {"symbol": "phi", "name": "cue_association_map", "description": "Learned associative strength between each grid cell and reward receipt. Built via Pavlovian conditioning (P4).", "type": "dict[tuple[int,int], float]", "initial_value": 0.0, "range": [0, 1]},
+    {"symbol": "sigma_t", "name": "incentive_salience_map", "description": "Motivational attractiveness of each grid cell, computed as D_t^omega * b_t(s) * phi(s). The spatial wanting signal.", "type": "dict[tuple[int,int], float]", "initial_value": 0.0, "range": [0, 100]},
+    {"symbol": "D_t", "name": "dopaminergic_drive", "description": "Scalar motivational amplifier representing tonic dopaminergic tone. Sensitizes with repeated reward encounters.", "type": "float", "initial_value": 1.0, "range": [1.0, 4.0]},
+    {"symbol": "H_t", "name": "hedonic_register", "description": "Cumulative liking experienced across all consumption events. Tracked for analysis but NOT used in decision-making (P1, P3).", "type": "float", "initial_value": 0.0, "range": [0, 10000]},
+    {"symbol": "A_t", "name": "attraction_map", "description": "Spatially-discounted attraction for each grid cell, derived from incentive salience map and distance.", "type": "dict[tuple[int,int], float]", "initial_value": 0.0, "range": [0, 100]}
+  ],
+  "parameters": [
+    {"symbol": "D_0", "name": "baseline_dopaminergic_drive", "default": 1.0, "source": "Normative baseline"},
+    {"symbol": "eta_s", "name": "sensitization_increment", "default": 0.03, "source": "Robinson & Berridge (1993): gradual mesolimbic sensitization"},
+    {"symbol": "lambda_D", "name": "drive_decay_rate", "default": 0.01, "source": "Slow return to baseline"},
+    {"symbol": "D_max", "name": "max_dopaminergic_drive", "default": 4.0, "source": "Robinson & Berridge (2016): upper bound on sensitization"},
+    {"symbol": "alpha_b", "name": "belief_learning_rate", "default": 0.15, "source": "Bayesian-approximate update rate"},
+    {"symbol": "alpha_phi", "name": "cue_association_learning_rate", "default": 0.1, "source": "Pavlovian conditioning rate (Berridge, 2007)"},
+    {"symbol": "omega", "name": "wanting_exponent", "default": 1.5, "source": "Supra-linear wanting scaling (Redish, 2004)"},
+    {"symbol": "tau", "name": "distance_discount", "default": 0.8, "source": "Spatial discounting per Manhattan distance step"},
+    {"symbol": "belief_decay", "name": "belief_decay_rate", "default": 0.01, "source": "Uncertainty growth for unobserved cells"},
+    {"symbol": "epsilon", "name": "stay_baseline_score", "default": 0.01, "source": "Small baseline to prevent zero-division"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Belief update (approximate Bayesian): beliefs about food presence are updated toward observed reality for visible cells. Unobserved cell beliefs decay slowly.",
+      "type": "update",
+      "pseudocode": "for each cell s in grid:\n    if s has food visible in perception:\n        b[s] = b[s] + alpha_b * (1.0 - b[s])\n    elif s is visible but has no food:\n        b[s] = b[s] + alpha_b * (0.0 - b[s])\n    else:  # unobserved\n        b[s] = (1 - belief_decay) * b[s]",
+      "source_postulate": "P4, P6"
+    },
+    {
+      "id": "R2",
+      "description": "Cue-association learning (Pavlovian conditioning): phi(s) tracks the associative strength between visiting cell s and receiving reward. Implements P4: cues acquire motivational magnetism.",
+      "type": "update",
+      "pseudocode": "if agent ate at s_t and received reward r_t:\n    phi[s_t] = phi[s_t] + alpha_phi * (r_t - phi[s_t])\nelse:\n    # No update for non-visited cells this step",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Incentive salience map computation: wanting for each cell is belief-weighted cue strength amplified supra-linearly by dopaminergic drive. omega > 1 means wanting grows faster than actual reward probability.",
+      "type": "algebraic",
+      "pseudocode": "for each cell s:\n    sigma[s] = (D_t ** omega) * b[s] * phi[s]",
+      "source_postulate": "P2, P4, P5"
+    },
+    {
+      "id": "R4",
+      "description": "Spatially-discounted attraction: each cell's incentive salience is discounted by distance from the agent's current position.",
+      "type": "algebraic",
+      "pseudocode": "for each cell s:\n    dist = abs(s[0] - x) + abs(s[1] - y)  # Manhattan distance\n    A[s] = sigma[s] * (tau ** dist)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Action scoring: each movement action's score is the sum of attractions toward all cells that the action moves the agent closer to. 'eat' score depends on incentive salience at current cell. 'stay' gets a small baseline.",
+      "type": "policy",
+      "pseudocode": "for each movement action a in [move_up, move_down, move_left, move_right]:\n    next_pos = apply_action(current_pos, a)\n    score[a] = sum(A[s] for s in all_cells if manhattan(next_pos, s) < manhattan(current_pos, s))\nscore['eat'] = (D_t ** omega) * phi[current_pos] if food_at_current_pos else 0.0\nscore['stay'] = epsilon\n# Ensure all scores are >= 0\nfor a in all_actions: score[a] = max(score[a], 0.0)",
+      "source_postulate": "P4, P6"
+    },
+    {
+      "id": "R6",
+      "description": "Action selection: probability of choosing action a is proportional to its score (normalized). Implements cue-triggered wanting as a probabilistic attractor.",
+      "type": "policy",
+      "pseudocode": "total = sum(score[a] for a in actions)\nif total <= 0: choose uniformly random action\nelse: pi(a) = score[a] / total\nchosen_action = sample_from(pi)",
+      "source_postulate": "P4, P6"
+    },
+    {
+      "id": "R7",
+      "description": "Hedonic register update (liking). Accumulates raw reward but does NOT influence action selection. Implements the wanting-liking dissociation (P1, P3).",
+      "type": "update",
+      "pseudocode": "H_t = H_t + r_t",
+      "source_postulate": "P1, P3"
+    },
+    {
+      "id": "R8",
+      "description": "Dopaminergic sensitization: drive increases with each reward encounter and decays slowly toward baseline. Clamped to [D_0, D_max].",
+      "type": "ODE",
+      "pseudocode": "D_next = D_t + eta_s * (1 if r_t > 0 else 0) - lambda_D * (D_t - D_0)\nD_next = clip(D_next, D_0, D_max)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "At each step: (1) Update belief map b(s) for all cells based on current perception of food locations (R1). All food items in perception['resources']['food'] are treated as visible; cells not containing food are treated as observed-empty. (2) Compute incentive salience map sigma(s) for all cells (R3). (3) Compute spatially-discounted attraction A(s) for all cells (R4). (4) For each action, compute a directional score: movement actions get the sum of attractions toward cells they move closer to; 'eat' gets wanting-based score if food is present; 'stay' gets a small baseline (R5). (5) Normalize scores to probabilities and sample action (R6). (6) After acting, observe reward and update: cue associations phi(s) via R2, hedonic register H via R7, dopaminergic drive D_t via R8. KEY DIFFERENCE from Formulation 1: No Q-learning or TD errors. Instead, decisions are driven entirely by a spatial belief-weighted incentive salience field. The agent doesn't learn action values — it learns WHERE reward tends to occur (beliefs + cue associations) and is then PULLED toward those locations by the wanting field.",
+    "pseudocode": [
+      "# Step 1: Update beliefs from perception",
+      "food_positions = set((f['x'], f['y']) for f in perception['resources']['food'])",
+      "for x in range(grid_width):",
+      "    for y in range(grid_height):",
+      "        s = (x, y)",
+      "        if s in food_positions:",
+      "            b[s] = b[s] + alpha_b * (1.0 - b[s])",
+      "        else:",
+      "            b[s] = b[s] + alpha_b * (0.0 - b[s])",
+      "",
+      "# Step 2: Compute incentive salience map",
+      "for s in all_cells:",
+      "    sigma[s] = (D_t ** omega) * b[s] * phi[s]",
+      "",
+      "# Step 3: Compute attraction map",
+      "cur = (perception['x'], perception['y'])",
+      "for s in all_cells:",
+      "    dist = abs(s[0] - cur[0]) + abs(s[1] - cur[1])",
+      "    A[s] = sigma[s] * (tau ** dist)",
+      "",
+      "# Step 4: Score each action",
+      "scores = {}",
+      "for action in ['move_up', 'move_down', 'move_left', 'move_right']:",
+      "    next_pos = apply_move(cur, action)  # respecting grid boundaries",
+      "    scores[action] = sum(A[s] for s in all_cells if manhattan(next_pos, s) < manhattan(cur, s))",
+      "    scores[action] = max(scores[action], 0.0)",
+      "food_here = cur in food_positions",
+      "scores['eat'] = (D_t ** omega) * phi.get(cur, 0.0) if food_here else 0.0",
+      "scores['stay'] = epsilon",
+      "",
+      "# Step 5: Normalize and sample",
+      "total = sum(scores.values())",
+      "if total <= 0:",
+      "    return random.choice(all_actions)",
+      "probs = {a: scores[a] / total for a in all_actions}",
+      "return sample_from(probs)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_positions": "set((f['x'], f['y']) for f in perception['resources']['food'])",
+      "food_at_current_cell": "(perception['x'], perception['y']) in food_positions",
+      "reward": "reward parameter from update(action, reward, new_perception)",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0). The reward from update() drives cue-association learning (phi) and dopaminergic sensitization."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent develops beliefs about food locations and builds cue associations for cells where food has been consumed, creating a spatial wanting map.",
+      "test_pseudocode": "run 300 steps → assert phi values at previously-rewarded cells are > 0 and b values track food presence"
+    },
+    {
+      "id": "B2",
+      "description": "Agent is attracted toward cells with high incentive salience (high belief * high cue association), approaching food sources preferentially.",
+      "test_pseudocode": "place food at fixed locations → run 500 steps → assert agent visits food-containing cells more often than empty cells"
+    },
+    {
+      "id": "B3",
+      "description": "Supra-linear sensitization: as D_t increases through repeated consumption, the incentive salience sigma grows faster than linearly (omega=1.5), causing increasingly vigorous food-seeking even though hedonic returns are constant.",
+      "test_pseudocode": "track sigma values and D_t over 1000 steps → assert sigma grows supra-linearly with D_t while H per eating event stays constant"
+    },
+    {
+      "id": "B4",
+      "description": "Wanting-liking dissociation: cumulative liking H grows linearly with consumption events, but approach vigor (measured by average steps-to-food) decreases over time as sensitization amplifies wanting.",
+      "test_pseudocode": "run 1000 steps → compute liking-per-eat (constant ~1.0) vs approach-speed (increasing) → assert dissociation"
+    },
+    {
+      "id": "B5",
+      "description": "When food regenerates at new locations, the belief map adapts, and the agent redirects toward new high-salience locations.",
+      "test_pseudocode": "move food after 500 steps → run 500 more → assert agent discovers and approaches new food locations within ~100 steps"
+    }
+  ],
+  "references": [
+    "Berridge, K.C. (2007). The debate over dopamine's role in reward: the case for incentive salience. Psychopharmacology, 191(3), 391-431.",
+    "Robinson, T.E. & Berridge, K.C. (1993). The neural basis of drug craving: An incentive-sensitization theory of addiction. Brain Research Reviews, 18(3), 247-291.",
+    "Redish, A.D. (2004). Addiction as a computational process gone awry. Science, 306(5703), 1944-1947.",
+    "Berridge, K.C. & Robinson, T.E. (2016). Liking, Wanting and the Incentive-Sensitization Theory of Addiction. PMC5171207.",
+    "Robinson, T.E. & Berridge, K.C. (2024). The Incentive-Sensitization Theory of Addiction: 30 Years On. Annual Review of Psychology.",
+    "Berridge, K.C., Robinson, T.E., & Aldridge, J.W. (APA). Wanting, Liking, and Their Relation to Consciousness."
+  ]
+}

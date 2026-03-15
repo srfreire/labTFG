@@ -1,0 +1,268 @@
+{
+  "formulation_id": "associative_learning_bayesian_cue_belief",
+  "paradigm": "associative-learning-and-conditioned-appetite",
+  "name": "Bayesian Cue-Belief Agent with Motivational Gating",
+  "description": "A probabilistic Bayesian belief-updating agent that maintains posterior Beta distributions over cue-food contingencies rather than point-estimate associative weights. Each grid cell's cues (spatial features, nearby resource identifiers) have associated Beta(a_i, b_i) posteriors representing the agent's belief about the probability that cue i predicts food. A leaky decay factor (omega) on pseudo-counts implements recency weighting, naturally producing extinction and spontaneous recovery. The agent combines cue posteriors via noisy-OR to estimate food probability at each cell, then selects actions by maximizing expected utility that blends hunger-modulated exploitation with an epistemic exploration bonus proportional to posterior uncertainty. This is fundamentally different from the error-correction (Rescorla-Wagner) and temporal-difference approaches: it uses full distributions, principled uncertainty quantification, and information-seeking exploration.",
+  "variables": [
+    {
+      "symbol": "a_i",
+      "name": "beta_alpha_params",
+      "description": "Dictionary mapping cue identifiers to the 'a' (success count) parameter of a Beta(a,b) posterior distribution over the cue's food-prediction probability.",
+      "type": "dict[str, float]",
+      "initial_value": {},
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "b_i",
+      "name": "beta_beta_params",
+      "description": "Dictionary mapping cue identifiers to the 'b' (failure count) parameter of the Beta(a,b) posterior.",
+      "type": "dict[str, float]",
+      "initial_value": {},
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "theta_hat_i",
+      "name": "posterior_mean",
+      "description": "Point estimate of food probability for cue i: theta_hat_i = a_i / (a_i + b_i)",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "U_i",
+      "name": "posterior_uncertainty",
+      "description": "Variance of the Beta posterior for cue i: U_i = a_i*b_i / ((a_i+b_i)^2 * (a_i+b_i+1)). Higher uncertainty drives exploration.",
+      "type": "float",
+      "initial_value": 0.25,
+      "range": [0.0, 0.25]
+    },
+    {
+      "symbol": "P_food",
+      "name": "food_probability",
+      "description": "Estimated probability of food at a cell, combined from all cue posteriors via noisy-OR: P_food(s) = 1 - prod(1 - theta_hat_i for i in cues(s))",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger",
+      "description": "Internal hunger/drive state. Rises each step, drops upon eating. Gates the exploitation component of expected utility.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "EU",
+      "name": "expected_utility",
+      "description": "Expected utility of each candidate action, combining hunger-modulated food probability (exploitation) and uncertainty bonus (exploration).",
+      "type": "dict[str, float]",
+      "initial_value": {},
+      "range": [-10.0, 10.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "a_0",
+      "name": "prior_alpha",
+      "default": 1.0,
+      "source": "Uniform Beta(1,1) prior — maximum ignorance"
+    },
+    {
+      "symbol": "b_0",
+      "name": "prior_beta",
+      "default": 1.0,
+      "source": "Uniform Beta(1,1) prior — maximum ignorance"
+    },
+    {
+      "symbol": "omega",
+      "name": "prior_decay_rate",
+      "default": 0.995,
+      "source": "Nature Communications (2025); ensures non-stationarity adaptation via leaky Bayesian update"
+    },
+    {
+      "symbol": "w_explore",
+      "name": "exploration_bonus_weight",
+      "default": 0.3,
+      "source": "Free parameter; reflects information-seeking drive"
+    },
+    {
+      "symbol": "phi",
+      "name": "hunger_modulation_exponent",
+      "default": 1.5,
+      "source": "Researchgate (2017); motivational gating of appetitive responses"
+    },
+    {
+      "symbol": "kappa",
+      "name": "hunger_recovery_rate",
+      "default": 0.05,
+      "source": "Derived from postulate P6"
+    },
+    {
+      "symbol": "eta_sat",
+      "name": "satiation_decrement",
+      "default": 0.4,
+      "source": "Normalised assumption"
+    },
+    {
+      "symbol": "d_max",
+      "name": "perception_radius",
+      "default": 2,
+      "source": "Grid-world constraint; agent evaluates cells within this Manhattan distance"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Cue identification: Each cell generates cues based on spatial coordinates and nearby food resource positions, similar to Formulation 1 but used for Bayesian posteriors.",
+      "type": "mapping",
+      "pseudocode": "cues_at_cell = ['cell_' + str(sx) + '_' + str(sy)]; for f in perception.resources.food: if abs(f.x - sx) <= 1 and abs(f.y - sy) <= 1: cues_at_cell.append('food_near_' + str(f.x) + '_' + str(f.y))",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Leaky Bayesian posterior update: decay existing pseudo-counts then incorporate new observation. Decay applies to all known cues to implement recency weighting.",
+      "type": "algebraic",
+      "pseudocode": "# Global decay on all tracked cues each step:\nfor cue in all_tracked_cues: a_i[cue] = omega * a_i[cue]; b_i[cue] = omega * b_i[cue]; a_i[cue] = max(a_i[cue], 0.01); b_i[cue] = max(b_i[cue], 0.01)\n# Update cues at the cell where outcome was observed:\nfor cue in cues_at_outcome_cell: if ate_food: a_i[cue] = a_i.get(cue, a_0) + 1.0; else: b_i[cue] = b_i.get(cue, b_0) + 1.0",
+      "source_postulate": "P2, P7"
+    },
+    {
+      "id": "R3",
+      "description": "Posterior mean: point estimate of food probability for each cue",
+      "type": "algebraic",
+      "pseudocode": "theta_hat_i = a_i[cue] / (a_i[cue] + b_i[cue])",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R4",
+      "description": "Posterior uncertainty: variance of Beta distribution, drives exploration bonus",
+      "type": "algebraic",
+      "pseudocode": "U_i = (a_i[cue] * b_i[cue]) / ((a_i[cue] + b_i[cue]) ** 2 * (a_i[cue] + b_i[cue] + 1))",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Food probability at a cell via noisy-OR combination of cue posteriors",
+      "type": "algebraic",
+      "pseudocode": "P_food_s = 1.0 - product((1.0 - theta_hat(cue)) for cue in cues_at_cell(s))",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Expected utility for movement/stay actions: exploitation (hunger-modulated food probability) plus exploration bonus (uncertainty)",
+      "type": "algebraic",
+      "pseudocode": "exploration_bonus = w_explore * max(sqrt(U_i(cue)) for cue in cues_at_cell(s_dest)) if cues_at_cell(s_dest) else 0.0; EU[action] = (H ** phi) * P_food(s_dest) + exploration_bonus",
+      "source_postulate": "P1, P6"
+    },
+    {
+      "id": "R7",
+      "description": "Expected utility for eat action: only valid if food is perceived at current cell",
+      "type": "algebraic",
+      "pseudocode": "if food_at_current_cell: EU['eat'] = (H ** phi) * P_food(s_current) + (H ** phi); else: EU['eat'] = -999.0",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R8",
+      "description": "Hunger dynamics: identical hunger model across all formulations",
+      "type": "algebraic",
+      "pseudocode": "ate_flag = 1.0 if ate_food else 0.0; H = min(1.0, max(0.0, H + kappa - eta_sat * ate_flag))",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R9",
+      "description": "Greedy action selection: pick action with highest expected utility, break ties randomly",
+      "type": "algebraic",
+      "pseudocode": "a_star = argmax(EU); if multiple actions tied at max EU: a_star = random_choice(tied_actions); return a_star",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent maintains Beta-distribution beliefs over cue-food contingencies. For each reachable cell, it computes food probability via noisy-OR over cue posteriors, then evaluates expected utility as a hunger-gated exploitation term plus an uncertainty-driven exploration bonus. Selects action with highest EU. After observing the outcome, it applies leaky Bayesian updates to all cues at the outcome cell.",
+    "pseudocode": [
+      "# 1. Identify reachable cells and their cues",
+      "candidates = {}",
+      "for action in ['move_up', 'move_down', 'move_left', 'move_right', 'stay']:",
+      "    dest = compute_destination(action, perception.x, perception.y, grid_width, grid_height)",
+      "    cues = get_cues_at_cell(dest, perception.resources.food)",
+      "    # Initialize any new cues with prior Beta(a_0, b_0)",
+      "    for cue in cues:",
+      "        if cue not in a_i: a_i[cue] = a_0; b_i[cue] = b_0",
+      "",
+      "    # Compute posterior means and food probability via noisy-OR",
+      "    theta_hats = [a_i[c] / (a_i[c] + b_i[c]) for c in cues]",
+      "    P_food_dest = 1.0 - product(1.0 - th for th in theta_hats) if theta_hats else 0.0",
+      "",
+      "    # Compute exploration bonus from max uncertainty",
+      "    uncertainties = [a_i[c]*b_i[c] / ((a_i[c]+b_i[c])**2 * (a_i[c]+b_i[c]+1)) for c in cues]",
+      "    explore_bonus = w_explore * sqrt(max(uncertainties)) if uncertainties else 0.0",
+      "",
+      "    candidates[action] = (H ** phi) * P_food_dest + explore_bonus",
+      "",
+      "# 2. Evaluate eat action",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "if food_here:",
+      "    candidates['eat'] = (H ** phi) * P_food_current + (H ** phi)",
+      "else:",
+      "    candidates['eat'] = -999.0",
+      "",
+      "# 3. Greedy selection with random tie-breaking",
+      "max_eu = max(candidates.values())",
+      "best_actions = [a for a, eu in candidates.items() if abs(eu - max_eu) < 1e-6]",
+      "return random_choice(best_actions)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_cell": "[f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y']]",
+      "ate_food": "if action was 'eat' and reward > 0 then outcome o=1 else o=0",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']",
+      "palatability": "food['palatability'] from resource properties (range 0.1 to 1.0)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action -> ConsumeEffect reward=1.0 when food present; used as binary outcome signal for Bayesian updates"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Posterior convergence: after repeated food encounters at a location, Beta posteriors for cues at that location converge to high theta_hat (near 1.0) with low uncertainty",
+      "test_pseudocode": "run 200 steps with stable food at (5,5) -> assert theta_hat for cues at (5,5) > 0.7 and U < 0.05"
+    },
+    {
+      "id": "B2",
+      "description": "Leaky extinction: when food is removed, the decay factor omega causes pseudo-counts to shrink, naturally reverting the posterior toward the prior (theta_hat -> 0.5)",
+      "test_pseudocode": "train 100 steps with food, remove food, run 200 steps -> assert theta_hat for former food cues < 0.6"
+    },
+    {
+      "id": "B3",
+      "description": "Exploration of uncertain cues: agent preferentially visits cells with high posterior variance (novel or ambiguous cues) even if mean food probability is moderate",
+      "test_pseudocode": "introduce a new cue at a cell agent hasn't visited -> assert agent visits within 20 steps due to exploration bonus"
+    },
+    {
+      "id": "B4",
+      "description": "Noisy-OR cue interaction: cells with multiple food-predicting cues have higher estimated food probability than cells with a single cue",
+      "test_pseudocode": "cell A has 1 cue with theta_hat=0.5, cell B has 2 cues each theta_hat=0.5 -> assert P_food(B) > P_food(A)"
+    },
+    {
+      "id": "B5",
+      "description": "Hunger gating: low hunger reduces expected utility of food-seeking, causing agent to explore more or stay in place",
+      "test_pseudocode": "compare movement patterns at H=0.1 vs H=0.9 -> assert more exploration-driven actions at low H and more food-directed actions at high H"
+    },
+    {
+      "id": "B6",
+      "description": "Spontaneous recovery analog: after extinction, the leaky prior slowly restores partial belief, so re-encountering a former food location causes rapid re-acquisition",
+      "test_pseudocode": "train, extinguish, wait 100 steps, re-introduce food -> assert re-acquisition is faster than original acquisition"
+    }
+  ],
+  "references": [
+    "Ghirlanda, S. (2020) — A-Learning: A New Formulation of Associative Learning Theory — Psychonomic Bulletin & Review",
+    "Oxford / Cerebral Cortex (2008) — A Dual Role for Prediction Error in Associative Learning",
+    "Nature Communications (2025) — Reconciling Time and Prediction Error Theories of Associative Learning",
+    "Pavlov, I.P. (1927) — Conditioned Reflexes",
+    "Rescorla, R.A. & Wagner, A.R. (1972) — A Theory of Pavlovian Conditioning",
+    "Researchgate (2017) — Motivational State Controls the Prediction Error in Pavlovian Appetitive-Aversive Interactions",
+    "PMC3702630 (2013) — Extinction of Goal-Tracking Also Eliminates the Conditioned Appetitive Response"
+  ]
+}

@@ -1,0 +1,243 @@
+{
+  "formulation_id": "hedonic_dual_process_algebraic_drive",
+  "paradigm": "hedonic-reward-based-regulation-of-food-intake",
+  "name": "Dual-Process Algebraic Drive Model",
+  "description": "Algebraic computation of a composite intake drive from separate homeostatic and hedonic signals with a multiplicative interaction term, used directly to threshold action selection. The total intake drive I(t) integrates an independent homeostatic hunger signal H(t), a hedonic liking signal L(t) based on food palatability, and a wanting signal W(t) that multiplicatively combines reward value with motivational state. This follows the dual-process architecture from Lutter & Nestler (2009) and AJPH (2014), with the incentive-salience formulation from Toates (1986) and Berridge (2004). The agent eats when drive exceeds a threshold, approaches food when drive is moderate, and stays/wanders when drive is low.",
+  "variables": [
+    {
+      "symbol": "H",
+      "name": "homeostatic_hunger",
+      "description": "Energy deficit proxy; increases each timestep without eating, resets to a low residual value upon eating",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "R",
+      "name": "hedonic_reward_signal",
+      "description": "Palatability-driven hedonic value of nearest visible food, decaying with distance (sensory cue salience)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "W",
+      "name": "wanting_incentive_salience",
+      "description": "Motivational drive toward food; product of reward value and motivational state (Toates/Berridge incentive salience)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "L",
+      "name": "liking_hedonic_impact",
+      "description": "Anticipated pleasure of consumption; primarily driven by palatability but modulated upward by hunger",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "I",
+      "name": "total_intake_drive",
+      "description": "Composite signal from homeostatic, hedonic liking, and wanting components that determines whether the agent seeks or consumes food",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "d_food",
+      "name": "distance_to_nearest_food",
+      "description": "Manhattan distance on the grid to the nearest visible food resource",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 18]
+    },
+    {
+      "symbol": "p_food",
+      "name": "palatability_of_nearest_food",
+      "description": "Intrinsic hedonic value of the nearest food item from env_spec palatability property",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.1, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha",
+      "name": "homeostatic_weight",
+      "default": 0.4,
+      "source": "Derived from dual-process balance in Lutter & Nestler (2009): hedonic can override homeostatic, so beta > alpha"
+    },
+    {
+      "symbol": "beta",
+      "name": "hedonic_weight",
+      "default": 0.5,
+      "source": "Reflects hedonic dominance in palatable-food environments (Lutter & Nestler, 2009)"
+    },
+    {
+      "symbol": "gamma",
+      "name": "interaction_coefficient",
+      "default": 0.3,
+      "source": "Captures hunger-amplification of reward (AJPH, 2014)"
+    },
+    {
+      "symbol": "lambda_H",
+      "name": "hunger_growth_rate",
+      "default": 0.05,
+      "source": "Calibrated to ~20 steps to reach strong hunger; biological hunger accumulation rate"
+    },
+    {
+      "symbol": "theta_eat",
+      "name": "eat_threshold",
+      "default": 0.35,
+      "source": "Tuning parameter: agent eats when total intake drive exceeds this"
+    },
+    {
+      "symbol": "theta_seek",
+      "name": "seek_threshold",
+      "default": 0.20,
+      "source": "Below eat threshold but above this: agent moves toward food"
+    },
+    {
+      "symbol": "H_reset",
+      "name": "post_meal_hunger_reset",
+      "default": 0.05,
+      "source": "Small residual hunger after eating, reflecting incomplete satiation"
+    },
+    {
+      "symbol": "cue_decay",
+      "name": "sensory_cue_distance_decay",
+      "default": 0.3,
+      "source": "Sensory cue salience decays with distance; food cues stronger when proximal (Kelley & Berridge, 2002)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger accumulation: hunger increases linearly each step without eating, capped at 1.0",
+      "type": "algebraic_update",
+      "pseudocode": "if not ate_last_step: H = min(1.0, H + lambda_H)",
+      "source_postulate": "P4 (energy deficit amplifies hedonic response)"
+    },
+    {
+      "id": "R2",
+      "description": "Hunger reset upon eating: hunger drops to a small residual after successful consumption",
+      "type": "algebraic_update",
+      "pseudocode": "if ate_last_step: H = H_reset",
+      "source_postulate": "P4 (satiety attenuates hedonic circuits)"
+    },
+    {
+      "id": "R3",
+      "description": "Hedonic reward signal: palatability of nearest food decayed by Manhattan distance, modeling sensory cue salience",
+      "type": "algebraic",
+      "pseudocode": "R = p_food * exp(-cue_decay * d_food)",
+      "source_postulate": "P1, P6 (sensory inputs trigger hedonic circuits independently of metabolic state; Kelley & Berridge, 2002)"
+    },
+    {
+      "id": "R4",
+      "description": "Wanting (incentive salience): multiplicative interaction of reward value and hunger state (Toates/Berridge formulation)",
+      "type": "algebraic",
+      "pseudocode": "W = R * H",
+      "source_postulate": "P2 (wanting is dissociable component; Berridge, 2004; Toates, 1986)"
+    },
+    {
+      "id": "R5",
+      "description": "Liking (hedonic impact): primarily palatability-driven with hunger modulation and a floor ensuring palatable food is liked even when sated",
+      "type": "algebraic",
+      "pseudocode": "L = p_food * (0.6 + 0.4 * H)",
+      "source_postulate": "P1, P2 (liking is dissociable; palatability alone is sufficient to drive some consumption)"
+    },
+    {
+      "id": "R6",
+      "description": "Total intake drive: dual-process composite of homeostatic, hedonic liking, and wanting terms (AJPH, 2014 model)",
+      "type": "algebraic",
+      "pseudocode": "I = alpha * H + beta * L + gamma * W",
+      "source_postulate": "P3 (hedonic pathway can override homeostatic satiety); P4 (hunger amplifies reward)"
+    }
+  ],
+  "decision_logic": {
+    "description": "Threshold-based action selection using total intake drive I(t). Agent eats if on food and drive is high, approaches food if drive is moderate, or wanders/stays when drive is low. When no food is visible, the agent performs a random walk.",
+    "pseudocode": [
+      "# 1. Update hunger H based on whether agent ate last step",
+      "if last_action_result indicates successful eat: H = H_reset",
+      "else: H = min(1.0, H + lambda_H)",
+      "",
+      "# 2. Find nearest food from perception.resources.food",
+      "foods = perception.resources.food",
+      "if len(foods) == 0: nearest = None; d_food = 999; p_food = 0.0",
+      "else:",
+      "    for each f in foods: dist = abs(f.x - perception.x) + abs(f.y - perception.y)",
+      "    nearest = food with minimum dist",
+      "    d_food = min dist",
+      "    p_food = nearest.palatability",
+      "",
+      "# 3. Compute derived signals",
+      "R = p_food * exp(-cue_decay * d_food)",
+      "W = R * H",
+      "L = p_food * (0.6 + 0.4 * H)",
+      "I = alpha * H + beta * L + gamma * W",
+      "",
+      "# 4. Action selection",
+      "if d_food == 0 and I >= theta_eat:",
+      "    return 'eat'",
+      "elif I >= theta_seek and nearest is not None:",
+      "    # Move toward nearest food (greedy Manhattan-distance reduction)",
+      "    dx = nearest.x - perception.x",
+      "    dy = nearest.y - perception.y",
+      "    if abs(dx) >= abs(dy):",
+      "        return 'move_right' if dx > 0 else 'move_left'",
+      "    else:",
+      "        return 'move_down' if dy > 0 else 'move_up'",
+      "else:",
+      "    # Low drive: random walk or stay",
+      "    return random.choice(['move_up', 'move_down', 'move_left', 'move_right', 'stay'])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "p_food": "nearest_food.palatability  # float in [0.1, 1.0] from env_spec",
+      "d_food": "abs(nearest_food.x - perception.x) + abs(nearest_food.y - perception.y)",
+      "ate_last_step": "last_action was 'eat' and reward > 0 (from update method's reward parameter)",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0 when food is at agent position"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases monotonically without eating",
+      "test_pseudocode": "run 20 steps with no food on grid → assert H increases by ~lambda_H per step toward 1.0"
+    },
+    {
+      "id": "B2",
+      "description": "Hedonic overeating: agent eats highly palatable food even at low hunger (P1, P3)",
+      "test_pseudocode": "set H = 0.1, place food with palatability=1.0 at agent position → L = 1.0*(0.6+0.04)=0.64, I = 0.04+0.32+... > theta_eat → agent eats"
+    },
+    {
+      "id": "B3",
+      "description": "Low-palatability food ignored when sated: agent does not eat bland food unless hungry",
+      "test_pseudocode": "set H = 0.1, place food with palatability=0.1 at agent → I = alpha*0.1 + beta*0.1*0.64 + gamma*small ≈ 0.07 < theta_eat → agent does NOT eat"
+    },
+    {
+      "id": "B4",
+      "description": "Hunger amplifies food seeking: hungry agent approaches food from greater distance",
+      "test_pseudocode": "set H = 0.9, food at distance 5 with palatability=0.5 → I is larger than when H=0.1 → agent seeks food"
+    },
+    {
+      "id": "B5",
+      "description": "Sensory cue decay: distant food produces weaker hedonic signal than proximal food",
+      "test_pseudocode": "compare R for d_food=1 vs d_food=8 with same palatability → R(d=1) >> R(d=8)"
+    }
+  ],
+  "references": [
+    "Lutter & Nestler (2009) — Homeostatic and Hedonic Signals Interact in the Regulation of Food Intake — Journal of Nutrition (PMC2714382)",
+    "AJPH (2014) — Dynamic Interplay Among Homeostatic, Hedonic, and Cognitive Feedback Circuits Regulating Body Weight — doi:10.2105/AJPH.2014.301931",
+    "Toates (1986) — Incentive theory of motivation — as cited in ScienceDirect S0195666322002379",
+    "Berridge (2004) — Incentive theory of motivation applied to ingestive behavior — as cited in ScienceDirect S0195666322002379",
+    "Berridge & Robinson (1998) — What is the role of dopamine in reward: hedonic impact, reward learning, and incentive salience? — Brain Research Reviews (PubMed 9858756)",
+    "Kelley & Berridge (2002) — The Need to Feed: Homeostatic and Hedonic Control of Eating — Neuron (ScienceDirect S0896627302009698)"
+  ]
+}

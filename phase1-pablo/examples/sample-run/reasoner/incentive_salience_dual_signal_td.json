@@ -1,0 +1,152 @@
+{
+  "formulation_id": "incentive_salience_dual_signal_td",
+  "paradigm": "incentive-salience-theory",
+  "name": "Dual-Signal Temporal-Difference Model with Dopaminergic Incentive Bias",
+  "description": "A reinforcement-learning framework where a standard TD-learned Q-value function (representing 'liking'-driven learning) is modulated at action-selection time by a separate, state-dependent dopaminergic incentive salience signal (representing 'wanting'). Dopamine plays a dual role: it contributes to the TD prediction error (learning) and to a multiplicative incentive bias on action values (motivation). The dopaminergic state sensitizes with repeated reward encounters and slowly decays, producing the hallmark wanting–liking dissociation of incentive salience theory. Based on Montague, Daw & colleagues (2003) and Redish (2004).",
+  "variables": [
+    {"symbol": "Q", "name": "action_value_table", "description": "Learned Q-values Q(s,a) for each state-action pair. State is encoded as (x,y) grid position. Actions are the 6 available actions.", "type": "dict[tuple[int,int], dict[str,float]]", "initial_value": 0.0, "range": [-10, 100]},
+    {"symbol": "d_t", "name": "dopaminergic_state", "description": "Current tonic dopamine level, modulating incentive salience (wanting). Increases with each reward encounter (sensitization), decays slowly toward baseline.", "type": "float", "initial_value": 1.0, "range": [1.0, 3.0]},
+    {"symbol": "delta_t", "name": "td_error", "description": "Temporal-difference prediction error at time t, used for Q-value learning updates.", "type": "float", "initial_value": 0.0, "range": [-100, 100]},
+    {"symbol": "L_t", "name": "liking", "description": "Hedonic impact experienced upon consuming a resource. Equals the raw reward signal and is dopamine-independent (P3). Recorded but does NOT influence action selection.", "type": "float", "initial_value": 0.0, "range": [0, 10]},
+    {"symbol": "W_s", "name": "wanting", "description": "Incentive salience for the current state, computed as d_t * max_a Q(s,a). Drives the motivational bias on action selection.", "type": "float", "initial_value": 0.0, "range": [0, 100]},
+    {"symbol": "cumulative_liking", "name": "cumulative_liking", "description": "Running total of hedonic impact (liking) experienced across all consumption events. Tracked for behavioral analysis.", "type": "float", "initial_value": 0.0, "range": [0, 10000]}
+  ],
+  "parameters": [
+    {"symbol": "alpha", "name": "learning_rate", "default": 0.1, "source": "Standard RL (Sutton & Barto, 1998)"},
+    {"symbol": "gamma", "name": "discount_factor", "default": 0.9, "source": "Standard RL (Sutton & Barto, 1998)"},
+    {"symbol": "beta", "name": "softmax_temperature", "default": 5.0, "source": "Daw et al. (2003)"},
+    {"symbol": "kappa", "name": "incentive_salience_weight", "default": 0.5, "source": "Derived from dual-role dopamine model (Montague et al., 2003)"},
+    {"symbol": "eta", "name": "sensitization_rate", "default": 0.02, "source": "Robinson & Berridge (1993): gradual sensitization over repeated exposures"},
+    {"symbol": "d_0", "name": "baseline_dopaminergic_state", "default": 1.0, "source": "Normative baseline"},
+    {"symbol": "d_max", "name": "max_dopaminergic_state", "default": 3.0, "source": "Upper bound on sensitization (Robinson & Berridge, 2016)"},
+    {"symbol": "lam", "name": "dopamine_decay_rate", "default": 0.005, "source": "Slow tonic decay toward baseline"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "TD prediction error: difference between observed return and predicted value. Uses Q-learning (max over next-state actions).",
+      "type": "algebraic",
+      "pseudocode": "delta_t = r_t + gamma * max(Q[s_next][a] for a in actions) - Q[s_t][a_t]",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Q-value update via TD learning. This learning is driven by hedonic reward (liking) and is independent of dopaminergic wanting modulation.",
+      "type": "update",
+      "pseudocode": "Q[s_t][a_t] = Q[s_t][a_t] + alpha * delta_t",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Liking is the raw hedonic impact of consumption, equal to the reward signal. It is dopamine-independent per P3.",
+      "type": "algebraic",
+      "pseudocode": "L_t = r_t",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Incentive salience (wanting) for a state is the learned value scaled by dopaminergic state. Captures P2: dopamine modulates wanting but not liking.",
+      "type": "algebraic",
+      "pseudocode": "W_s = d_t * max(Q[s][a] for a in actions)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Effective action utility combines learned Q-value with incentive salience bias. The kappa * d_t term captures motivational amplification by dopamine.",
+      "type": "algebraic",
+      "pseudocode": "U(s, a) = (1 + kappa * d_t) * Q[s][a]",
+      "source_postulate": "P2, P4"
+    },
+    {
+      "id": "R6",
+      "description": "Softmax action selection over effective utilities. Implements stochastic policy biased toward high-wanting actions.",
+      "type": "policy",
+      "pseudocode": "pi(a | s) = exp(beta * U(s, a)) / sum(exp(beta * U(s, a_prime)) for a_prime in actions)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R7",
+      "description": "Dopaminergic state sensitization: increases by eta on each reward encounter, decays slowly toward baseline d_0. Clamped to [d_0, d_max].",
+      "type": "ODE",
+      "pseudocode": "d_next = d_t + eta * (1 if r_t > 0 else 0) - lam * (d_t - d_0)\nd_next = clip(d_next, d_0, d_max)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R8",
+      "description": "Cumulative liking is a running total of hedonic experience, tracked for behavioral analysis but not used in decision-making.",
+      "type": "update",
+      "pseudocode": "cumulative_liking = cumulative_liking + L_t",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "At each step: (1) Encode current state as (x,y). (2) For each of the 6 available actions, compute effective utility U(s,a) = (1 + kappa * d_t) * Q[s][a]. For movement actions, the state s is the current position; Q[s][a] reflects learned value of moving in that direction from this cell. For 'eat', Q[s][eat] reflects learned value of eating here. For 'stay', Q[s][stay] reflects learned value of staying. (3) Apply softmax with temperature beta to get action probabilities. (4) Sample action from distribution. (5) After acting, observe reward and new position, compute TD error, update Q-values (R1-R2), record liking (R3), update dopaminergic state (R7). NOTE: All Q-values are initialized to a small positive value (0.1) to encourage initial exploration. The 'eat' action Q-value at cells where food was previously found will grow through learning, creating attraction. Liking is recorded but never feeds back into action selection — only wanting (through U) drives behavior, implementing the P1/P3 wanting-liking dissociation.",
+    "pseudocode": [
+      "s_t = (perception['x'], perception['y'])",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "# Initialize Q-values for unseen states to 0.1",
+      "if s_t not in Q: Q[s_t] = {a: 0.1 for a in actions}",
+      "# Compute effective utility for each action",
+      "for a in actions:",
+      "    U[a] = (1.0 + kappa * d_t) * Q[s_t][a]",
+      "# Check if food is present at current cell; if not, set U['eat'] = -1000 (impossible action penalty)",
+      "food_here = any(f for f in perception['resources']['food'] if f['x'] == s_t[0] and f['y'] == s_t[1])",
+      "if not food_here: U['eat'] = -1000.0",
+      "# Softmax action selection",
+      "max_U = max(U.values())",
+      "exp_vals = {a: exp(beta * (U[a] - max_U)) for a in actions}",
+      "total = sum(exp_vals.values())",
+      "probs = {a: exp_vals[a] / total for a in actions}",
+      "chosen_action = sample_from(probs)",
+      "return Action(chosen_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_cell": "any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "reward": "reward parameter from update(action, reward, new_perception)",
+      "next_state": "(new_perception['x'], new_perception['y'])",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 * palatability implicitly). The reward from update() is used as r_t for TD learning and liking."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent learns to approach and eat food through TD learning, developing positive Q-values for actions leading toward food cells.",
+      "test_pseudocode": "run 500 steps → assert agent has eaten food multiple times and Q-values near food locations are positive"
+    },
+    {
+      "id": "B2",
+      "description": "Dopaminergic state sensitizes over time with repeated reward encounters, causing the wanting signal to amplify.",
+      "test_pseudocode": "run 1000 steps with food available → assert d_t > d_0 after multiple consumption events"
+    },
+    {
+      "id": "B3",
+      "description": "Wanting-liking dissociation: the effective utility U grows over time (due to rising d_t amplifying Q-values) even though liking (raw reward) remains constant. The agent becomes more vigorous in pursuit without getting more pleasure.",
+      "test_pseudocode": "track U values and L values over 1000 steps → assert U trend is increasing while L per consumption event remains ~constant"
+    },
+    {
+      "id": "B4",
+      "description": "Without food available, Q-values for eat action decay and agent explores the grid via softmax exploration.",
+      "test_pseudocode": "remove all food → run 200 steps → assert agent moves around grid rather than staying in one place"
+    },
+    {
+      "id": "B5",
+      "description": "Higher kappa (incentive salience weight) causes more aggressive food-seeking behavior.",
+      "test_pseudocode": "compare agent with kappa=0.1 vs kappa=1.0 over 500 steps → assert high-kappa agent eats more frequently"
+    }
+  ],
+  "references": [
+    "Montague, P.R., Daw, N., & colleagues (2003). A computational substrate for incentive salience. Trends in Neurosciences.",
+    "Daw, N. & Montague, P.R. (2003). doi:10.1016/S0166-2236(03)00177-2.",
+    "Redish, A.D. (2004). Addiction as a computational process gone awry. Science, 306(5703), 1944-1947.",
+    "Robinson, T.E. & Berridge, K.C. (1993). The neural basis of drug craving: An incentive-sensitization theory of addiction. Brain Research Reviews, 18(3), 247-291.",
+    "Berridge, K.C. & Robinson, T.E. (1998). What is the role of dopamine in reward: hedonic impact, reward learning, or incentive salience? Brain Research Reviews, 28(3), 309-369.",
+    "Berridge, K.C. & Robinson, T.E. (2016). Liking, Wanting and the Incentive-Sensitization Theory of Addiction. PMC5171207.",
+    "Sutton, R.S. & Barto, A.G. (1998). Reinforcement Learning: An Introduction. MIT Press."
+  ]
+}

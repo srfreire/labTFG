@@ -1,0 +1,233 @@
+{
+  "formulation_id": "associative_learning_td_eligibility",
+  "paradigm": "associative-learning-and-conditioned-appetite",
+  "name": "Temporal-Difference Learning Agent with Eligibility Traces",
+  "description": "A multi-step temporal-difference reinforcement learning agent (TD(lambda)) that learns state values over the grid, using eligibility traces to propagate reward prediction errors backwards through recently visited states. This models the empirical finding (Schultz et al.) that dopamine prediction-error signals transfer from the time of reward delivery (US) to earlier predictive cues (CS). Unlike the Rescorla-Wagner formulation which learns cue-outcome associations, this agent learns a value function V(s) over grid cells and uses eligibility traces for temporal credit assignment. Hunger modulates the reward signal, and action selection uses epsilon-softmax over one-step lookahead Q-values.",
+  "variables": [
+    {
+      "symbol": "V",
+      "name": "state_values",
+      "description": "Dictionary mapping grid cell coordinates (x,y) to expected discounted future reward from that state. Learned via TD updates.",
+      "type": "dict[tuple, float]",
+      "initial_value": {},
+      "range": [0.0, 10.0]
+    },
+    {
+      "symbol": "e",
+      "name": "eligibility_traces",
+      "description": "Dictionary mapping grid cell coordinates to eligibility trace values. Traces decay by gamma*lambda_trace each step and are incremented by 1 when a state is visited, enabling multi-step credit assignment.",
+      "type": "dict[tuple, float]",
+      "initial_value": {},
+      "range": [0.0, 5.0]
+    },
+    {
+      "symbol": "delta_td",
+      "name": "td_error",
+      "description": "Temporal-difference prediction error: delta(t) = r(t) + gamma * V(s(t+1)) - V(s(t)). Analogous to phasic dopamine response.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "r",
+      "name": "reward_signal",
+      "description": "Immediate reward at step t, motivationally gated: r(t) = H^phi * 1[ate] * palatability",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger",
+      "description": "Internal hunger/drive state. Rises by kappa per step, drops by eta_sat upon eating. Modulates reward magnitude.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "s_prev",
+      "name": "previous_state",
+      "description": "The grid cell (x,y) the agent occupied on the previous step, needed for TD error computation.",
+      "type": "tuple",
+      "initial_value": null,
+      "range": "grid coordinates"
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount",
+      "default": 0.90,
+      "source": "Sutton & Barto (1998); models delay-of-gratification"
+    },
+    {
+      "symbol": "alpha_td",
+      "name": "td_learning_rate",
+      "default": 0.10,
+      "source": "Standard RL; Schultz et al. implicitly assume moderate rates"
+    },
+    {
+      "symbol": "lambda_trace",
+      "name": "eligibility_decay",
+      "default": 0.70,
+      "source": "Sutton & Barto (1998); lambda parameter in TD(lambda)"
+    },
+    {
+      "symbol": "tau",
+      "name": "softmax_temperature",
+      "default": 0.25,
+      "source": "Free parameter"
+    },
+    {
+      "symbol": "epsilon",
+      "name": "exploration_rate",
+      "default": 0.05,
+      "source": "Standard RL epsilon-greedy exploration"
+    },
+    {
+      "symbol": "kappa",
+      "name": "hunger_recovery_rate",
+      "default": 0.05,
+      "source": "Derived from postulate P6; Researchgate (2017)"
+    },
+    {
+      "symbol": "phi",
+      "name": "hunger_modulation_exponent",
+      "default": 1.5,
+      "source": "Researchgate (2017); motivational gating"
+    },
+    {
+      "symbol": "eta_sat",
+      "name": "satiation_decrement",
+      "default": 0.4,
+      "source": "Normalised assumption"
+    },
+    {
+      "symbol": "trace_threshold",
+      "name": "trace_pruning_threshold",
+      "default": 0.01,
+      "source": "Implementation efficiency; prune near-zero traces"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Reward signal: motivationally gated by hunger when food is consumed",
+      "type": "algebraic",
+      "pseudocode": "ate = (action_was_eat and reward_received > 0); r = (H ** phi) * (1.0 if ate else 0.0)",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R2",
+      "description": "TD prediction error: difference between observed return and predicted value, incorporating temporal discounting of future state value",
+      "type": "algebraic",
+      "pseudocode": "s_curr = (perception.x, perception.y); delta_td = r + gamma * V.get(s_curr, 0.0) - V.get(s_prev, 0.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Eligibility trace update: decay all traces, then increment the trace for the previous state visited",
+      "type": "algebraic",
+      "pseudocode": "for s in e: e[s] = gamma * lambda_trace * e[s]; e[s_prev] = e.get(s_prev, 0.0) + 1.0; prune entries where e[s] < trace_threshold",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Value update: propagate TD error to all states proportional to their eligibility trace",
+      "type": "algebraic",
+      "pseudocode": "for s in e: V[s] = V.get(s, 0.0) + alpha_td * delta_td * e[s]; V[s] = max(V[s], 0.0)",
+      "source_postulate": "P2, P4"
+    },
+    {
+      "id": "R5",
+      "description": "Hunger dynamics: hunger increases each step and decreases upon eating",
+      "type": "algebraic",
+      "pseudocode": "ate_flag = 1.0 if ate else 0.0; H = min(1.0, max(0.0, H + kappa - eta_sat * ate_flag))",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R6",
+      "description": "Action-value approximation via one-step lookahead using state values",
+      "type": "algebraic",
+      "pseudocode": "for action in available_actions: s_prime = destination(action, x, y, grid_w, grid_h); r_imm = (H ** phi) if (action == 'eat' and food_at_current) else 0.0; Q[action] = r_imm + gamma * V.get(s_prime, 0.0)",
+      "source_postulate": "P2, P4"
+    },
+    {
+      "id": "R7",
+      "description": "Epsilon-softmax action selection: mixture of softmax exploitation and uniform exploration",
+      "type": "algebraic",
+      "pseudocode": "max_q = max(Q.values()); exp_q = {a: exp((Q[a] - max_q) / tau) for a in Q}; total = sum(exp_q.values()); softmax_probs = {a: exp_q[a] / total for a in exp_q}; probs = {a: (1 - epsilon) * softmax_probs[a] + epsilon / len(Q) for a in Q}; return sample(actions, probs)",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent uses one-step lookahead with learned state values to compute Q-values for all actions, selects via epsilon-softmax. After observing outcome, computes TD error and propagates it backward through eligibility traces to update all recently-visited states, implementing temporal credit assignment analogous to dopamine signal transfer.",
+    "pseudocode": [
+      "# 1. Compute Q-values for each action via one-step lookahead",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "Q = {}",
+      "for action in ['move_up', 'move_down', 'move_left', 'move_right', 'stay']:",
+      "    s_prime = compute_destination(action, perception.x, perception.y, grid_width, grid_height)",
+      "    Q[action] = gamma * V.get(s_prime, 0.0)",
+      "",
+      "if food_here:",
+      "    Q['eat'] = (H ** phi) + gamma * V.get((perception.x, perception.y), 0.0)",
+      "else:",
+      "    Q['eat'] = -999.0",
+      "",
+      "# 2. Epsilon-softmax action selection",
+      "max_q = max(Q.values())",
+      "exp_q = {a: exp((Q[a] - max_q) / tau) for a in Q}",
+      "total = sum(exp_q.values())",
+      "probs = {a: (1 - epsilon) * (exp_q[a] / total) + epsilon / 6.0 for a in Q}",
+      "selected_action = sample(Q.keys(), probs)",
+      "return selected_action"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y']) -> s_curr",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_cell": "[f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y']]",
+      "ate_food": "if action was 'eat' and reward > 0 then ate=True",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action -> ConsumeEffect reward=1.0 when food is present; used as the 'ate' flag for internal reward computation"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Value propagation: cells on the path to food acquire positive V-values that decay with distance (temporal discount chain)",
+      "test_pseudocode": "after 500 steps with stable food -> assert V[cells_adjacent_to_food] > V[cells_far_from_food]"
+    },
+    {
+      "id": "B2",
+      "description": "Dopamine signal transfer: early in training, TD error spikes at food consumption; later, TD error shifts to earlier states on the approach path",
+      "test_pseudocode": "log delta_td by position -> after training, assert delta_td at food cell decreases while delta_td at approach cells increases"
+    },
+    {
+      "id": "B3",
+      "description": "Eligibility trace effect: states visited 2-3 steps before eating receive value updates, enabling faster learning of approach paths compared to a TD(0) agent",
+      "test_pseudocode": "compare learning speed (steps to first 10 eats) of TD(lambda=0.7) vs TD(lambda=0) -> assert lambda>0 agent is faster"
+    },
+    {
+      "id": "B4",
+      "description": "Extinction: when food is removed, repeated visits without reward drive V-values down through negative TD errors",
+      "test_pseudocode": "train 200 steps, remove food, run 200 more -> assert V at former food location < 0.1"
+    },
+    {
+      "id": "B5",
+      "description": "Hunger modulation: effective reward is gated by hunger, so well-fed agent shows reduced food-seeking",
+      "test_pseudocode": "force H=0.1 -> assert fewer eat actions per 100 steps compared to H=0.9"
+    }
+  ],
+  "references": [
+    "Sutton, R.S. & Barto, A.G. (1998) — Reinforcement Learning: An Introduction (TD(lambda) framework)",
+    "Schultz, W. et al. — Frontiers in Neuroscience (2023) — Reward Prediction Error in Learning-Related Behaviors",
+    "Rescorla, R.A. & Wagner, A.R. (1972) — A Theory of Pavlovian Conditioning",
+    "Researchgate (2017) — Motivational State Controls the Prediction Error in Pavlovian Appetitive-Aversive Interactions",
+    "PMC3702630 (2013) — Extinction of Goal-Tracking Also Eliminates the Conditioned Appetitive Response"
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "formulation_id": "hedonic_td_reward_learning",
+  "paradigm": "hedonic-reward-based-regulation-of-food-intake",
+  "name": "Temporal-Difference Reward-Learning Agent",
+  "description": "Reinforcement learning agent using temporal-difference (TD) Q-learning with separate liking and wanting channels. The reward signal upon eating combines an opioid-mediated liking component (pure palatability) and a homeostatic relief component, both gated by D2 receptor availability which models reward tolerance from chronic overconsumption. Dopaminergic reward prediction errors drive Q-value updates (wanting/motivation learning). D2 receptors downregulate with repeated palatable food intake and slowly recover, capturing the addiction-like tolerance dynamics described by Volkow et al. (2011). State is discretized as relative position to nearest food and binned hunger level. This formulation produces an agent that learns which actions lead to rewarding food, but whose effective reward sensitivity degrades with chronic overconsumption.",
+  "variables": [
+    {
+      "symbol": "H",
+      "name": "hunger_level",
+      "description": "Discretized energy deficit; increases each step without eating, resets upon eating. Used as part of state representation and to compute homeostatic reward.",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "D2",
+      "name": "d2_receptor_availability",
+      "description": "Reward sensitivity scalar modeling striatal D2 receptor density; decreases with chronic palatable food consumption (tolerance), slowly recovers toward 1.0",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.2, 1.0]
+    },
+    {
+      "symbol": "Q",
+      "name": "action_value_table",
+      "description": "Q-table mapping (state, action) pairs to expected cumulative reward. State is (dx_bin, dy_bin, hunger_bin). Initialized to zeros.",
+      "type": "dict",
+      "initial_value": "{}  # defaultdict(float), keys are (state_tuple, action_name)",
+      "range": "unbounded"
+    },
+    {
+      "symbol": "r_like",
+      "name": "liking_reward",
+      "description": "Opioid-mediated hedonic pleasure upon eating; equals palatability of consumed food (Berridge & Robinson, 1998)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_homeo",
+      "name": "homeostatic_reward",
+      "description": "Reward from reducing energy deficit; proportional to hunger level at time of eating",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "delta",
+      "name": "reward_prediction_error",
+      "description": "Dopaminergic TD error signal; positive = reward better than expected (dopamine burst, increases wanting), negative = worse than expected (dopamine dip)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": "unbounded"
+    },
+    {
+      "symbol": "s_t",
+      "name": "current_state",
+      "description": "Discretized state tuple: (dx_bin, dy_bin, hunger_bin) where dx_bin/dy_bin are binned relative position to nearest food",
+      "type": "tuple",
+      "initial_value": "(0, 0, 1)",
+      "range": "discrete"
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_Q",
+      "name": "learning_rate",
+      "default": 0.10,
+      "source": "Standard TD learning rate; moderate for non-stationary food environment"
+    },
+    {
+      "symbol": "gamma_TD",
+      "name": "temporal_discount_factor",
+      "default": 0.90,
+      "source": "Agents prefer sooner rewards; consistent with impulsivity in hedonic eating (Volkow et al., 2011)"
+    },
+    {
+      "symbol": "epsilon",
+      "name": "exploration_rate",
+      "default": 0.10,
+      "source": "Epsilon-greedy exploration for action selection"
+    },
+    {
+      "symbol": "kappa",
+      "name": "d2_downregulation_rate",
+      "default": 0.02,
+      "source": "Slow tolerance mirroring chronic D2 receptor loss in obesity (Volkow et al., 2011)"
+    },
+    {
+      "symbol": "kappa_r",
+      "name": "d2_recovery_rate",
+      "default": 0.005,
+      "source": "Slower recovery than downregulation, asymmetric as in addiction literature (Volkow et al., 2011)"
+    },
+    {
+      "symbol": "w_like",
+      "name": "liking_reward_weight",
+      "default": 0.6,
+      "source": "Hedonic component dominates reward signal (Berridge & Robinson, 1998)"
+    },
+    {
+      "symbol": "w_homeo",
+      "name": "homeostatic_reward_weight",
+      "default": 0.4,
+      "source": "Homeostatic relief is rewarding but secondary in palatable contexts"
+    },
+    {
+      "symbol": "lambda_H",
+      "name": "hunger_growth_rate",
+      "default": 0.05,
+      "source": "Calibrated to ~20 steps to reach strong hunger"
+    },
+    {
+      "symbol": "H_reset",
+      "name": "post_meal_hunger_reset",
+      "default": 0.05,
+      "source": "Small residual hunger after eating"
+    },
+    {
+      "symbol": "hunger_cost",
+      "name": "hunger_aversion_cost",
+      "default": -0.01,
+      "source": "Small negative signal proportional to hunger; aversive cost of unmet homeostatic need"
+    },
+    {
+      "symbol": "n_hunger_bins",
+      "name": "number_of_hunger_bins",
+      "default": 5,
+      "source": "Discretization granularity for hunger in state space"
+    },
+    {
+      "symbol": "n_pos_bins",
+      "name": "number_of_position_bins",
+      "default": 5,
+      "source": "Discretization bins for relative position to nearest food: [-far, -near, 0, +near, +far]"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger accumulation: hunger increases linearly each step without eating, capped at 1.0",
+      "type": "algebraic_update",
+      "pseudocode": "if not ate_last_step: H = min(1.0, H + lambda_H)\nif ate_last_step: H = H_reset",
+      "source_postulate": "P4 (energy deficit modulates hedonic circuits)"
+    },
+    {
+      "id": "R2",
+      "description": "Composite reward upon eating: liking (palatability) + homeostatic relief, gated by D2 receptor availability",
+      "type": "algebraic",
+      "pseudocode": "r_like = consumed_food_palatability\nr_homeo = H  # hunger level at time of eating\nr = D2 * (w_like * r_like + w_homeo * r_homeo)",
+      "source_postulate": "P2 (liking and wanting dissociation; Berridge & Robinson, 1998), P5 (D2 gating; Volkow et al., 2011)"
+    },
+    {
+      "id": "R3",
+      "description": "Reward when not eating: small aversive cost proportional to hunger",
+      "type": "algebraic",
+      "pseudocode": "r = hunger_cost * H",
+      "source_postulate": "P4 (unmet homeostatic need is aversive)"
+    },
+    {
+      "id": "R4",
+      "description": "TD reward prediction error (dopamine signal): standard temporal-difference error driving wanting updates",
+      "type": "algebraic",
+      "pseudocode": "delta = r + gamma_TD * max(Q[s_next, a'] for all a') - Q[s_t, a_t]",
+      "source_postulate": "P6 (dopamine mediates wanting via prediction errors; Berridge & Robinson, 1998; Schultz framework)"
+    },
+    {
+      "id": "R5",
+      "description": "Q-value update: action-value updated by learning rate times prediction error",
+      "type": "algebraic_update",
+      "pseudocode": "Q[s_t, a_t] = Q[s_t, a_t] + alpha_Q * delta",
+      "source_postulate": "P6 (dopamine-driven learning of incentive salience)"
+    },
+    {
+      "id": "R6",
+      "description": "D2 receptor downregulation: eating palatable food reduces D2, with slow recovery toward baseline",
+      "type": "algebraic_update",
+      "pseudocode": "if ate_last_step: D2 = D2 - kappa * consumed_food_palatability\nD2 = D2 + kappa_r * (1.0 - D2)\nD2 = clip(D2, 0.2, 1.0)",
+      "source_postulate": "P5 (chronic overconsumption downregulates D2 receptors; Volkow et al., 2011)"
+    },
+    {
+      "id": "R7",
+      "description": "State discretization: agent state is binned relative position to nearest food and binned hunger level",
+      "type": "algebraic",
+      "pseudocode": "dx = nearest_food.x - perception.x\ndy = nearest_food.y - perception.y\ndx_bin = clip(round(dx * n_pos_bins / grid_width), -n_pos_bins, n_pos_bins)\ndy_bin = clip(round(dy * n_pos_bins / grid_height), -n_pos_bins, n_pos_bins)\nhunger_bin = int(H * n_hunger_bins)\nif no food visible: dx_bin = 0; dy_bin = 0\ns_t = (dx_bin, dy_bin, hunger_bin)",
+      "source_postulate": "Discretization for tractable Q-learning in grid world"
+    }
+  ],
+  "decision_logic": {
+    "description": "Epsilon-greedy action selection over learned Q-values. The agent learns from composite hedonic+homeostatic reward signals gated by D2 receptor availability. EAT is only considered feasible when on a food tile. Over time, D2 downregulation blunts reward signal, requiring the agent to consume more to achieve the same Q-value updates, modeling tolerance/addiction dynamics.",
+    "pseudocode": [
+      "# 1. Determine previous reward and update internal state",
+      "ate_last_step = (last_action was 'eat' and reward > 0)",
+      "",
+      "# Update hunger",
+      "if ate_last_step: H = H_reset",
+      "else: H = min(1.0, H + lambda_H)",
+      "",
+      "# Record palatability of consumed food if ate",
+      "consumed_palatability = stored from last step's food palatability if ate_last_step else 0.0",
+      "",
+      "# Update D2 receptors",
+      "if ate_last_step: D2 = D2 - kappa * consumed_palatability",
+      "D2 = D2 + kappa_r * (1.0 - D2)",
+      "D2 = clip(D2, 0.2, 1.0)",
+      "",
+      "# 2. Compute reward signal for last step",
+      "if ate_last_step:",
+      "    r_like = consumed_palatability",
+      "    r_homeo = prev_hunger  # hunger BEFORE eating",
+      "    r = D2 * (w_like * r_like + w_homeo * r_homeo)",
+      "else:",
+      "    r = hunger_cost * H",
+      "",
+      "# 3. Compute new state",
+      "foods = perception.resources.food",
+      "if len(foods) > 0:",
+      "    nearest = food with min Manhattan distance",
+      "    dx = nearest.x - perception.x",
+      "    dy = nearest.y - perception.y",
+      "    dx_bin = clip(round(dx * n_pos_bins / perception.grid_width), -n_pos_bins, n_pos_bins)",
+      "    dy_bin = clip(round(dy * n_pos_bins / perception.grid_height), -n_pos_bins, n_pos_bins)",
+      "else:",
+      "    dx_bin = 0; dy_bin = 0",
+      "hunger_bin = min(int(H * n_hunger_bins), n_hunger_bins - 1)",
+      "s_new = (dx_bin, dy_bin, hunger_bin)",
+      "",
+      "# 4. TD update (if not first step)",
+      "if prev_state is not None:",
+      "    all_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "    max_q_next = max(Q.get((s_new, a), 0.0) for a in all_actions)",
+      "    delta = r + gamma_TD * max_q_next - Q.get((prev_state, prev_action), 0.0)",
+      "    Q[(prev_state, prev_action)] = Q.get((prev_state, prev_action), 0.0) + alpha_Q * delta",
+      "",
+      "# 5. Action selection (epsilon-greedy)",
+      "on_food = any(f.x == perception.x and f.y == perception.y for f in foods)",
+      "feasible_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if on_food: feasible_actions.append('eat')",
+      "",
+      "if random.random() < epsilon:",
+      "    action = random.choice(feasible_actions)",
+      "else:",
+      "    action = argmax over feasible_actions of Q.get((s_new, a), 0.0)",
+      "    # break ties randomly",
+      "",
+      "# 6. Store state for next update",
+      "prev_state = s_new",
+      "prev_action = action",
+      "prev_hunger = H",
+      "return action"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "consumed_food_palatability": "stored from food at agent position before eat action; retrieved from perception.resources.food where f.x == perception.x and f.y == perception.y",
+      "ate_last_step": "determined in update() method: action was 'eat' and reward > 0",
+      "grid_dimensions": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0; this env reward signals successful consumption, but the agent internally computes its own composite reward (r_like + r_homeo gated by D2)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent learns to approach and eat food: Q-values for actions moving toward food increase over episodes",
+      "test_pseudocode": "run 500 steps → compare Q-values for move_toward_food vs move_away_from_food actions → assert toward > away"
+    },
+    {
+      "id": "B2",
+      "description": "D2 receptor downregulation with chronic overconsumption (P5): after many eating events, D2 decreases",
+      "test_pseudocode": "run 200 steps with abundant high-palatability food → assert D2 < 0.8"
+    },
+    {
+      "id": "B3",
+      "description": "Blunted reward from tolerance: effective reward per meal decreases as D2 declines",
+      "test_pseudocode": "compare r for first eat (D2~1.0) vs 50th eat (D2~0.6) with same palatability → r_50th < r_1st"
+    },
+    {
+      "id": "B4",
+      "description": "Positive prediction error for unexpected palatable food (dopamine burst)",
+      "test_pseudocode": "agent encounters food with high palatability for first time → delta > 0 (reward better than expected from Q=0)"
+    },
+    {
+      "id": "B5",
+      "description": "Hedonic reward dominates: agent prefers high-palatability food over low-palatability food even at low hunger",
+      "test_pseudocode": "after learning, place two foods equidistant (palatability 1.0 vs 0.1) → agent approaches palatability 1.0"
+    },
+    {
+      "id": "B6",
+      "description": "Hunger aversion: agent experiences small negative reward accumulation when hungry and not eating",
+      "test_pseudocode": "run 20 steps without food → cumulative r is negative and proportional to hunger growth"
+    }
+  ],
+  "references": [
+    "Berridge & Robinson (1998) — What is the role of dopamine in reward: hedonic impact, reward learning, and incentive salience? — Brain Research Reviews (PubMed 9858756)",
+    "Volkow et al. (2011) — Hedonic mechanisms and reward hyperfunction in obesity — as cited in PMC5940344",
+    "Lutter & Nestler (2009) — Homeostatic and Hedonic Signals Interact in the Regulation of Food Intake — Journal of Nutrition (PMC2714382)",
+    "AJPH (2014) — Dynamic Interplay Among Homeostatic, Hedonic, and Cognitive Feedback Circuits Regulating Body Weight — doi:10.2105/AJPH.2014.301931",
+    "Berridge (2004) — Incentive theory of motivation applied to ingestive behavior — as cited in ScienceDirect S0195666322002379",
+    "Toates (1986) — Incentive theory of motivation — as cited in ScienceDirect S0195666322002379",
+    "Kelley & Berridge (2002) — The Need to Feed: Homeostatic and Hedonic Control of Eating — Neuron (ScienceDirect S0896627302009698)"
+  ]
+}

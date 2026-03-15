@@ -1,0 +1,186 @@
+{
+  "formulation_id": "allostatic_opponent_bayesian_utility",
+  "paradigm": "allostatic-opponent-process-model-of-food-intake",
+  "name": "Discrete Bayesian Belief-Utility Model with Affective Priors",
+  "description": "Probabilistic decision-theoretic framework where the agent maintains Bayesian beliefs about food locations and computes expected utility of each action under opponent-process-shaped utility functions that shift with allostatic load. Affective dynamics (hedonic state h, opponent state o) update in discrete time. A dysphoria index D captures reward deficit relative to the drifting allostatic set-point theta. Actions are selected via softmax over expected utilities, where utility is the product of dysphoria-weighted expected food reward plus an exploration bonus minus movement cost. As allostatic load accumulates, the dysphoria term dominates and the agent becomes compulsively food-focused, modelling narrowing of motivational repertoire (Koob & Le Moal, 2008 P4).",
+  "variables": [
+    {"symbol": "h", "name": "hedonic_state", "description": "Latent hedonic affective valence — the a-process analogue; updated by food reward", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "o", "name": "opponent_state", "description": "Latent aversive accumulator — the b-process analogue; driven by hedonic state, decays slowly", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "A", "name": "net_affect", "description": "Net affective state: A = h - o", "type": "float", "initial_value": 0.0, "range": [-10.0, 10.0]},
+    {"symbol": "theta", "name": "allostatic_set_point", "description": "Reward reference level; drifts downward with chronic opponent-process activity", "type": "float", "initial_value": 1.0, "range": [-5.0, 1.0]},
+    {"symbol": "D", "name": "dysphoria_index", "description": "Reward deficit driving negative-reinforcement motivation: D = max(0, theta - A)", "type": "float", "initial_value": 1.0, "range": [0.0, 15.0]},
+    {"symbol": "f_beliefs", "name": "food_belief_map", "description": "Map from (x,y) grid cell to probability of food being present at that cell", "type": "dict", "initial_value": {}, "range": [0.0, 1.0]},
+    {"symbol": "r", "name": "observed_reward", "description": "Binary reward from last step: 1 if food consumed, 0 otherwise", "type": "int", "initial_value": 0, "range": [0, 1]}
+  ],
+  "parameters": [
+    {"symbol": "alpha_h", "name": "hedonic_decay_rate", "default": 0.6, "source": "Solomon & Corbit (1974): fast a-process decay"},
+    {"symbol": "alpha_o", "name": "opponent_decay_rate", "default": 0.15, "source": "Solomon & Corbit (1974): slow b-process decay"},
+    {"symbol": "gamma", "name": "opponent_recruitment_gain", "default": 0.4, "source": "Solomon & Corbit (1974): coupling strength from a to b"},
+    {"symbol": "eta", "name": "allostatic_drift_rate", "default": 0.03, "source": "Koob & Le Moal (2008): rate of set-point degradation"},
+    {"symbol": "rho", "name": "set_point_recovery_rate", "default": 0.005, "source": "Koob & Le Moal (2008): slow recovery toward baseline"},
+    {"symbol": "theta_0", "name": "baseline_set_point", "default": 1.0, "source": "Normalised baseline per Koob & Le Moal (2001)"},
+    {"symbol": "phi", "name": "palatability_boost", "default": 1.0, "source": "Normalised stimulus intensity; overridden by food's palatability property"},
+    {"symbol": "xi", "name": "stress_load_increment", "default": 0.05, "source": "Yau & Potenza (2013): stress accelerates allostatic drift"},
+    {"symbol": "w_food", "name": "food_seeking_utility_weight", "default": 2.0, "source": "Derived from P3-P4: eating has high negative-reinforcement utility"},
+    {"symbol": "w_explore", "name": "exploration_utility_weight", "default": 0.5, "source": "Baseline exploratory drive"},
+    {"symbol": "tau", "name": "softmax_temperature", "default": 0.2, "source": "Controls stochasticity of action selection"},
+    {"symbol": "p_prior", "name": "food_prior_probability", "default": 0.1, "source": "Environmental assumption: prior belief food exists in unseen cell"},
+    {"symbol": "move_cost", "name": "movement_action_cost", "default": 0.01, "source": "Small cost to penalise unnecessary movement"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hedonic state update: decays toward zero, boosted by food consumption scaled by palatability",
+      "type": "difference_equation",
+      "pseudocode": "h = (1 - alpha_h) * h + phi * r",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Opponent state update: decays slowly, recruited proportionally to current hedonic state via fixed gain gamma",
+      "type": "difference_equation",
+      "pseudocode": "o = (1 - alpha_o) * o + gamma * h",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R3",
+      "description": "Net affect computation",
+      "type": "algebraic",
+      "pseudocode": "A = h - o",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Dysphoria index: how far below the set-point the agent's affect currently is",
+      "type": "algebraic",
+      "pseudocode": "D = max(0.0, theta - A)",
+      "source_postulate": "P3, P4"
+    },
+    {
+      "id": "R5",
+      "description": "Allostatic set-point drift: theta degrades proportionally to opponent state, with slow recovery",
+      "type": "difference_equation",
+      "pseudocode": "theta = theta - eta * o + rho * (theta_0 - theta)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R6",
+      "description": "Bayesian food belief update: observed cells get probability 1 (food present) or 0 (empty); unobserved cells keep prior",
+      "type": "bayesian_update",
+      "pseudocode": "for each cell c in grid:\n    if c in perception['resources']['food'] as food item:\n        f_beliefs[c] = 1.0\n    elif c is visible (within perception range) and no food there:\n        f_beliefs[c] = 0.0\n    else:\n        f_beliefs[c] = f_beliefs.get(c, p_prior)",
+      "source_postulate": "N/A (decision-theoretic scaffolding)"
+    },
+    {
+      "id": "R7",
+      "description": "Expected utility computation for each action, combining dysphoria-weighted food reward, exploration value, and movement cost",
+      "type": "algebraic",
+      "pseudocode": "for action in available_actions:\n    if action == 'eat':\n        food_here = any food at (my_x, my_y)\n        expected_reward = 1.0 if food_here else 0.0\n        U[action] = w_food * D * expected_reward\n    elif action in ['move_up','move_down','move_left','move_right']:\n        target_x, target_y = compute_target(action)\n        # Expected reward = food probability at target, discounted further by distance to nearest food beyond\n        expected_reward = f_beliefs.get((target_x, target_y), p_prior)\n        # Also consider how move gets us closer to known food\n        if known_food_positions:\n            nearest_food = min(known_food_positions, key=manhattan_dist_from_target)\n            dist = manhattan_distance(target, nearest_food)\n            distance_discount = 1.0 / (1.0 + dist)\n            expected_reward = max(expected_reward, distance_discount)\n        info_gain = count_new_cells_revealed(target_x, target_y)\n        U[action] = w_food * D * expected_reward + w_explore * info_gain - move_cost\n    elif action == 'stay':\n        U[action] = 0.0",
+      "source_postulate": "P3, P4"
+    },
+    {
+      "id": "R8",
+      "description": "Softmax action selection: probability of each action proportional to exp(U / tau)",
+      "type": "stochastic_selection",
+      "pseudocode": "for each action a:\n    prob[a] = exp(U[a] / tau)\nprob = normalise(prob)\nchosen_action = sample_from(prob)",
+      "source_postulate": "P4"
+    }
+  ],
+  "decision_logic": {
+    "description": "Probabilistic (softmax) action selection over expected utilities. The expected utility of eating is proportional to dysphoria D times the certainty of food at current position. Moving toward food is weighted by D times the probability of food at/near the destination. Exploration contributes via information gain. As allostatic load accumulates and D grows, food-seeking utility dominates, modelling compulsive narrowing of the behavioural repertoire.",
+    "pseudocode": [
+      "# 1. Update food beliefs from perception",
+      "visible_food_positions = {(f['x'], f['y']): f for f in perception['resources']['food']}",
+      "# Mark all visible cells; cells with food get prob=1, empty visible cells get prob=0",
+      "# Unobserved cells retain their prior or last-known belief",
+      "",
+      "# 2. Update internal affective state using reward from last step",
+      "r = 1 if last_action_was_eat_and_succeeded else 0",
+      "phi_actual = consumed_food_palatability if r == 1 else phi",
+      "h = (1 - alpha_h) * h + phi_actual * r",
+      "o = (1 - alpha_o) * o + gamma * h",
+      "A = h - o",
+      "D = max(0.0, theta - A)",
+      "",
+      "# 3. Update allostatic set-point",
+      "theta = theta - eta * o + rho * (theta_0 - theta)",
+      "",
+      "# 4. Compute expected utility for each action",
+      "U = {}",
+      "my_x, my_y = perception['x'], perception['y']",
+      "food_here = (my_x, my_y) in visible_food_positions",
+      "",
+      "U['eat'] = w_food * D * (1.0 if food_here else 0.0)",
+      "",
+      "for direction in ['move_up', 'move_down', 'move_left', 'move_right']:",
+      "    tx, ty = target_of(direction, my_x, my_y)",
+      "    # Clip to grid bounds",
+      "    tx = clip(tx, 0, grid_width - 1)",
+      "    ty = clip(ty, 0, grid_height - 1)",
+      "    p_food_target = f_beliefs.get((tx, ty), p_prior)",
+      "    # Also consider proximity to nearest known food",
+      "    if visible_food_positions:",
+      "        nearest_dist = min(abs(fx - tx) + abs(fy - ty) for fx, fy in visible_food_positions)",
+      "        proximity_value = 1.0 / (1.0 + nearest_dist)",
+      "        expected_food = max(p_food_target, proximity_value)",
+      "    else:",
+      "        expected_food = p_food_target",
+      "    info_gain = 1.0 if (tx, ty) not in f_beliefs else 0.0",
+      "    U[direction] = w_food * D * expected_food + w_explore * info_gain - move_cost",
+      "",
+      "U['stay'] = 0.0",
+      "",
+      "# 5. Softmax selection",
+      "max_u = max(U.values())",
+      "exp_u = {a: exp((u - max_u) / tau) for a, u in U.items()}",
+      "total = sum(exp_u.values())",
+      "probs = {a: v / total for a, v in exp_u.items()}",
+      "chosen_action = weighted_random_choice(probs)",
+      "return Action(chosen_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "palatability": "food['palatability'] for consumed food item — used as phi_actual in R1",
+      "reward_signal": "reward parameter from update(action, reward, new_perception): 1.0 if ate food, else 0.0 → maps to r",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; food palatability property [0.1, 1.0] used as phi_actual multiplier"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Probabilistic food-seeking intensifies with allostatic load: as D grows, the softmax distribution concentrates on food-approaching actions",
+      "test_pseudocode": "track entropy of action distribution over 200 steps → assert entropy decreases as theta drifts down"
+    },
+    {
+      "id": "B2",
+      "description": "Dysphoria-driven eating: after chronic exposure, eating occurs primarily when D > 0 (negative reinforcement), not when h is high (positive reinforcement)",
+      "test_pseudocode": "in last 50 eat events, assert D > 0.5 in majority"
+    },
+    {
+      "id": "B3",
+      "description": "Exploration suppression under high allostatic load: when D is large, exploration component becomes negligible relative to food-seeking",
+      "test_pseudocode": "compute ratio of w_food*D to w_explore over time → assert ratio grows as theta drops"
+    },
+    {
+      "id": "B4",
+      "description": "Allostatic set-point drift: theta decreases over repeated eating episodes",
+      "test_pseudocode": "run 200 steps with food available → assert theta at step 200 < theta at step 0"
+    },
+    {
+      "id": "B5",
+      "description": "Withdrawal affect during abstinence: removing food after chronic exposure causes D to remain elevated and A to be negative",
+      "test_pseudocode": "feed agent for 100 steps, remove food for 50 steps → assert average A < 0 during abstinence"
+    }
+  ],
+  "references": [
+    "Solomon, R.L. & Corbit, J.D. (1974). An opponent-process theory of motivation: I. Temporal dynamics of affect. Psychological Review, 81(2), 119–145.",
+    "Koob, G.F. & Le Moal, M. (2001). Drug addiction, dysregulation of reward, and allostasis. Neuropsychopharmacology, 24(2), 97–129.",
+    "Koob, G.F. & Le Moal, M. (2008). Neurobiological mechanisms for opponent motivational processes in addiction. Philosophical Transactions of the Royal Society B, 363(1507), 3113–3123.",
+    "Yau, Y.H.C. & Potenza, M.N. (2013). Stress and eating behaviors. Minerva Endocrinologica, 38(3), 255–267."
+  ]
+}

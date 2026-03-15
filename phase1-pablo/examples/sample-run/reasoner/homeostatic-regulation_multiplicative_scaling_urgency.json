@@ -1,0 +1,172 @@
+{
+  "formulation_id": "homeostatic-regulation_multiplicative_scaling_urgency",
+  "paradigm": "homeostatic-regulation",
+  "name": "Multiplicative Homeostatic Scaling with Urgency Threshold",
+  "description": "An algebraic rule-based agent inspired by Turrigiano et al. (1998) homeostatic synaptic scaling. The agent maintains a multiplicative gain g(t) = s / A_bar(t) that scales behavioral activation — analogous to how synaptic weights are scaled by the ratio of target to actual firing rate. Combined with a hysteresis-based urgency threshold that switches between foraging and resting modes, this produces anticipatory regulation (Cannon, 1932; P5). The key differentiator from the PI controller is: (a) multiplicative rather than additive control, (b) exponential moving average rather than integral memory, (c) binary mode switching with hysteresis rather than continuous utility-based decisions. Implements postulates P1, P2, P4 (synaptic scaling analogy), and P5 (anticipatory regulation).",
+  "variables": [
+    {"symbol": "A", "name": "energy", "description": "Internal energy level of the agent (regulated variable)", "type": "float", "initial_value": 50.0, "range": [0, 100]},
+    {"symbol": "s", "name": "set_point", "description": "Target energy level", "type": "float", "initial_value": 80.0, "range": [0, 100]},
+    {"symbol": "A_bar", "name": "smoothed_energy", "description": "Exponential moving average of recent energy levels (analogous to mean firing rate in Turrigiano's model)", "type": "float", "initial_value": 50.0, "range": [0, 100]},
+    {"symbol": "g", "name": "homeostatic_gain", "description": "Multiplicative scaling factor for behavioral activation: g = s / (A_bar + epsilon). When A_bar < s, gain > 1 (upscaling); when A_bar > s, gain < 1 (downscaling). Mirrors w_i * <r*> / <r(t)> from Turrigiano et al. (1998)", "type": "float", "initial_value": 1.57, "range": [0.1, 5.0]},
+    {"symbol": "u", "name": "urgency_mode", "description": "Binary behavioral mode: 1 = urgent foraging, 0 = resting. Switches with hysteresis thresholds to implement anticipatory regulation (P5)", "type": "int", "initial_value": 1, "range": [0, 1]},
+    {"symbol": "ate", "name": "ate_last_tick", "description": "Whether the agent successfully consumed food on the previous tick", "type": "bool", "initial_value": false, "range": [false, true]}
+  ],
+  "parameters": [
+    {"symbol": "s", "name": "energy_set_point", "default": 80.0, "source": "Consistent across formulations; Keramati & Gutkin (2011)"},
+    {"symbol": "A_max", "name": "max_energy", "default": 100.0, "source": "Normalization ceiling"},
+    {"symbol": "d", "name": "passive_energy_decay", "default": 1.0, "source": "Basal metabolism; Gross et al. (2024)"},
+    {"symbol": "Delta_eat", "name": "energy_per_eat", "default": 15.0, "source": "Tuned to interaction with decay rate"},
+    {"symbol": "tau", "name": "ema_smoothing_constant", "default": 0.2, "source": "Controls memory of recent energy; inspired by firing-rate averaging in Turrigiano et al. (1998)"},
+    {"symbol": "theta_low", "name": "low_urgency_threshold", "default": 48.0, "source": "0.6 * s; critical depletion level triggering urgent foraging; Cannon (1932) proportional response"},
+    {"symbol": "theta_high", "name": "high_satiety_threshold", "default": 76.0, "source": "0.95 * s; near set point threshold for resting mode"},
+    {"symbol": "g_min", "name": "minimum_gain", "default": 0.1, "source": "Prevents complete behavioral shutdown; engineering bound"},
+    {"symbol": "g_max", "name": "maximum_gain", "default": 5.0, "source": "Caps maximum behavioral activation; prevents pathological over-response"},
+    {"symbol": "epsilon", "name": "division_safety", "default": 1.0, "source": "Prevents division by zero in gain computation"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: passive decay plus food intake",
+      "type": "discrete_update",
+      "pseudocode": "A = clamp(A - d + Delta_eat * (1 if ate else 0), 0, A_max)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Exponential moving average of energy: smoothed estimate of recent energy level (analogous to mean firing rate estimation)",
+      "type": "discrete_update",
+      "pseudocode": "A_bar = (1 - tau) * A_bar + tau * A",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Multiplicative homeostatic gain: ratio of target to actual smoothed energy, mirroring synaptic scaling rule w_i * <r_star> / <r(t)> from Turrigiano et al. (1998)",
+      "type": "algebraic",
+      "pseudocode": "g = clamp(s / (A_bar + epsilon), g_min, g_max)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Urgency mode with hysteresis: switches to foraging when smoothed energy drops below theta_low, switches to resting when it exceeds theta_high, otherwise maintains current mode. Hysteresis prevents oscillatory switching and implements anticipatory regulation (P5).",
+      "type": "conditional_update",
+      "pseudocode": "if A_bar < theta_low:\n    u = 1  # urgent foraging\nelif A_bar > theta_high:\n    u = 0  # resting\n# else: u remains unchanged (hysteresis)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R5",
+      "description": "Directional utility for movement: gain-scaled inverse distance to nearest food",
+      "type": "algebraic",
+      "pseudocode": "V(p_prime) = g * (1.0 / (1 + min_manhattan_distance(p_prime, food_positions)))",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Two-mode behavioral controller with multiplicative gain modulation. In resting mode (u=0), the agent stays unless food is opportunistically available and energy is still below set point. In foraging mode (u=1), the agent eats if food is present, moves toward nearest food weighted by the homeostatic gain, or explores randomly. The gain amplifies approach behavior when energy is depleted (high g) and dampens it near satiation (low g), reproducing multiplicative synaptic scaling dynamics.",
+    "pseudocode": [
+      "# Update internal state from last action",
+      "ate = last_action_result indicates successful consumption",
+      "A = clamp(A - d + Delta_eat * (1 if ate else 0), 0, A_max)",
+      "A_bar = (1 - tau) * A_bar + tau * A",
+      "g = clamp(s / (A_bar + epsilon), g_min, g_max)",
+      "",
+      "# Urgency mode update with hysteresis",
+      "if A_bar < theta_low:",
+      "    u = 1",
+      "elif A_bar > theta_high:",
+      "    u = 0",
+      "# else: u stays the same",
+      "",
+      "# Read environment",
+      "position = (perception.x, perception.y)",
+      "food_list = perception.resources.food",
+      "food_at_position = any f in food_list where f.x == position[0] and f.y == position[1]",
+      "",
+      "# === RESTING MODE (u == 0) ===",
+      "if u == 0:",
+      "    if food_at_position and A < s:",
+      "        # Opportunistic feeding: food is here and energy still below set point",
+      "        return Action('eat')",
+      "    else:",
+      "        return Action('stay')",
+      "",
+      "# === FORAGING MODE (u == 1) ===",
+      "if food_at_position:",
+      "    return Action('eat')",
+      "",
+      "if len(food_list) > 0:",
+      "    # Move toward nearest food, weighted by gain",
+      "    best_action = None",
+      "    best_V = -infinity",
+      "    for action_name, (dx, dy) in [('move_up',0,-1),('move_down',0,1),('move_left',-1,0),('move_right',1,0)]:",
+      "        p_prime = (position[0] + dx, position[1] + dy)",
+      "        if p_prime out of grid bounds: continue",
+      "        dist = min Manhattan distance from p_prime to any food in food_list",
+      "        V = g * (1.0 / (1 + dist))",
+      "        if V > best_V:",
+      "            best_V = V",
+      "            best_action = action_name",
+      "    return Action(best_action)",
+      "",
+      "# No food visible; random exploration while in foraging mode",
+      "valid_moves = [a for a, (dx,dy) in moves if (position[0]+dx, position[1]+dy) is within grid]",
+      "return Action(random_choice(valid_moves))"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_at_position": "any f in perception.resources.food where f.x == perception.x and f.y == perception.y",
+      "ate_food": "perception.last_action_result — check if eat action was successful (consumed == true or reward > 0)",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; the agent uses this as a signal for successful eating to update energy A(t). Decision-making is driven entirely by the internal multiplicative gain g(t) and urgency mode u(t), not the environment reward."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Gain increases as smoothed energy drops below set point (multiplicative upscaling)",
+      "test_pseudocode": "run 30 steps with no food → assert g increases over time, g > 1.0 throughout"
+    },
+    {
+      "id": "B2",
+      "description": "Gain decreases below 1.0 when energy is above set point (multiplicative downscaling)",
+      "test_pseudocode": "set A=90, A_bar=90 → compute g → assert g < 1.0"
+    },
+    {
+      "id": "B3",
+      "description": "Urgency mode switches to foraging when A_bar drops below theta_low",
+      "test_pseudocode": "start with A_bar=50, u=0 → run steps with no food until A_bar < 48 → assert u switches to 1"
+    },
+    {
+      "id": "B4",
+      "description": "Hysteresis prevents oscillatory mode switching: agent in foraging mode continues foraging until A_bar exceeds theta_high",
+      "test_pseudocode": "set u=1, A_bar=55 (between theta_low and theta_high) → assert u remains 1 (does not switch to resting)"
+    },
+    {
+      "id": "B5",
+      "description": "Anticipatory regulation: agent keeps foraging past theta_low until theta_high is reached",
+      "test_pseudocode": "start u=1, let agent eat until A_bar=60 (above theta_low but below theta_high) → assert agent still forages"
+    },
+    {
+      "id": "B6",
+      "description": "Agent rests when satiated and urgency mode is 0",
+      "test_pseudocode": "set u=0, A_bar=80 → assert agent selects 'stay' when no food at position"
+    },
+    {
+      "id": "B7",
+      "description": "Opportunistic feeding in rest mode: agent eats available food even in rest mode if energy is below set point",
+      "test_pseudocode": "set u=0, A=70 (below s=80), place food at agent position → assert agent selects 'eat'"
+    }
+  ],
+  "references": [
+    "Turrigiano, G.G. et al. (1998) — Activity-dependent scaling of quantal amplitude in neocortical neurons — homeostatic synaptic plasticity/scaling",
+    "Cannon, W.B. (1932) — The Wisdom of the Body — proportional response and negative feedback",
+    "Keramati, M. & Gutkin, B. (2011) — A Reinforcement Learning Theory for Homeostatic Regulation — NeurIPS (set point concept)",
+    "Gross, F. et al. (2024) — A Functional Approach to Homeostatic Regulation — Biology Direct",
+    "NCBI Bookshelf — Neurobiology of Body Fluid Homeostasis (anticipatory/feedforward regulation)",
+    "Bernard, C. (1865) — Introduction à l'étude de la médecine expérimentale"
+  ]
+}

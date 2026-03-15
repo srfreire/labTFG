@@ -1,0 +1,179 @@
+{
+  "formulation_id": "allostatic_opponent_td_reward_shaping",
+  "paradigm": "allostatic-opponent-process-model-of-food-intake",
+  "name": "Reinforcement-Learning Temporal-Difference Model with Opponent-Process Reward Shaping",
+  "description": "Model-free Q-learning agent whose internal reward signal is shaped by opponent-process dynamics and an allostatic baseline. The agent learns state-action values (Q-values) via TD(0), but the reward it experiences is not the raw environment reward — it is transformed through a hedonic trace (a-process), an opponent trace (b-process), and an allostatic baseline theta that degrades with chronic intake. Early in training, eating yields positive shaped reward (positive reinforcement). As allostatic load accumulates, abstinence produces negative shaped reward (aversive) while eating provides relief (negative reinforcement), causing the learned policy to shift from pleasure-seeking to compulsion-relieving. Exploration rate is modulated by dysphoria, capturing motivational narrowing. Based on Koob & Le Moal (2001, 2008) allostatic framework applied to a Q-learning architecture inspired by Keramati & Gutkin (2014) homeostatic RL.",
+  "variables": [
+    {"symbol": "Q", "name": "q_table", "description": "Action-value function mapping (state, action) pairs to expected shaped reward. State is a tuple of (agent_x, agent_y, discretised_h, discretised_o, food_at_position_flag).", "type": "dict", "initial_value": {}, "range": [-100.0, 100.0]},
+    {"symbol": "h", "name": "hedonic_trace", "description": "Decaying trace of recent food rewards; a-process proxy", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "o", "name": "opponent_trace", "description": "Decaying aversive accumulator; b-process proxy that grows with sensitised gain", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "theta", "name": "allostatic_baseline", "description": "Shifting reference for internal reward; degrades with chronic intake, making abstinence aversive", "type": "float", "initial_value": 0.0, "range": [-5.0, 0.0]},
+    {"symbol": "r_tilde", "name": "shaped_internal_reward", "description": "Opponent-process-modulated reward signal the agent actually experiences: r_tilde = (r_ext + h - o) - theta", "type": "float", "initial_value": 0.0, "range": [-10.0, 10.0]},
+    {"symbol": "r_ext", "name": "external_reward", "description": "Raw environment reward: 1.0 if ate food, 0.0 otherwise", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "N", "name": "cumulative_eating_count", "description": "Total food consumption episodes to date; drives opponent gain sensitisation", "type": "int", "initial_value": 0, "range": [0, 100000]},
+    {"symbol": "g", "name": "opponent_gain", "description": "Current opponent coupling gain, grows with N (sensitisation)", "type": "float", "initial_value": 0.3, "range": [0.3, 5.0]},
+    {"symbol": "D", "name": "dysphoria", "description": "Reward deficit: D = max(0, theta - (h - o)); modulates exploration rate", "type": "float", "initial_value": 0.0, "range": [0.0, 15.0]},
+    {"symbol": "epsilon", "name": "exploration_rate", "description": "Current epsilon for epsilon-greedy policy; decays with eating count and narrows with dysphoria", "type": "float", "initial_value": 0.2, "range": [0.0, 1.0]}
+  ],
+  "parameters": [
+    {"symbol": "alpha_Q", "name": "q_learning_rate", "default": 0.1, "source": "Standard RL default"},
+    {"symbol": "gamma_rl", "name": "discount_factor", "default": 0.95, "source": "Standard RL default"},
+    {"symbol": "epsilon_0", "name": "initial_exploration_rate", "default": 0.2, "source": "Epsilon-greedy baseline"},
+    {"symbol": "alpha_h", "name": "hedonic_trace_decay", "default": 0.5, "source": "Solomon & Corbit (1974): fast a-process decay"},
+    {"symbol": "alpha_o", "name": "opponent_trace_decay", "default": 0.1, "source": "Solomon & Corbit (1974): slow b-process decay"},
+    {"symbol": "g_0", "name": "initial_opponent_gain", "default": 0.3, "source": "Solomon & Corbit (1974): initial coupling strength"},
+    {"symbol": "delta_g", "name": "gain_growth_per_episode", "default": 0.01, "source": "Koob & Le Moal (2001): b-process sensitisation with repetition"},
+    {"symbol": "lam", "name": "allostatic_drift_rate", "default": 0.02, "source": "Koob & Le Moal (2008): rate of baseline degradation"},
+    {"symbol": "rho", "name": "set_point_recovery_rate", "default": 0.003, "source": "Koob & Le Moal (2008): slow, incomplete recovery"},
+    {"symbol": "theta_0", "name": "initial_hedonic_baseline", "default": 0.0, "source": "Normalised zero-baseline for RL shaped reward"},
+    {"symbol": "kappa", "name": "stress_loading_factor", "default": 0.05, "source": "Yau & Potenza (2013): stress accelerates allostatic degradation"},
+    {"symbol": "h_bins", "name": "hedonic_discretisation_bins", "default": 5, "source": "For tractable tabular RL state representation"},
+    {"symbol": "o_bins", "name": "opponent_discretisation_bins", "default": 5, "source": "For tractable tabular RL state representation"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hedonic trace update: decays toward zero, boosted by external food reward",
+      "type": "difference_equation",
+      "pseudocode": "h = (1 - alpha_h) * h + r_ext",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Opponent trace update: decays slowly, recruited proportionally to hedonic trace via sensitising gain",
+      "type": "difference_equation",
+      "pseudocode": "o = (1 - alpha_o) * o + g * h",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R3",
+      "description": "Opponent gain sensitisation: coupling gain grows linearly with cumulative eating count",
+      "type": "algebraic",
+      "pseudocode": "g = g_0 + delta_g * N",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Allostatic baseline drift: theta degrades proportionally to opponent trace, with very slow recovery",
+      "type": "difference_equation",
+      "pseudocode": "theta = theta - lam * o + rho * (theta_0 - theta)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Shaped internal reward: what the agent 'experiences' as reward, combining raw reward, affective traces, and allostatic baseline",
+      "type": "algebraic",
+      "pseudocode": "r_tilde = (r_ext + h - o) - theta",
+      "source_postulate": "P3, P4"
+    },
+    {
+      "id": "R6",
+      "description": "Q-learning TD(0) update using shaped reward",
+      "type": "td_update",
+      "pseudocode": "td_error = r_tilde + gamma_rl * max(Q[s_new][a'] for a' in valid_actions(s_new)) - Q[s_old][a_old]\nQ[s_old][a_old] = Q[s_old][a_old] + alpha_Q * td_error",
+      "source_postulate": "P4 (learning driven by allostatic reward landscape)"
+    },
+    {
+      "id": "R7",
+      "description": "Dysphoria-modulated exploration rate: epsilon decays with experience and narrows with dysphoria (motivational narrowing)",
+      "type": "algebraic",
+      "pseudocode": "D = max(0.0, theta - (h - o))\nepsilon = epsilon_0 * exp(-0.01 * N) * (1.0 / (1.0 + abs(D)))",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "State discretisation: continuous h and o are binned for tabular Q-table indexing",
+      "type": "discretisation",
+      "pseudocode": "h_bin = clip(int(h * h_bins / 3.0), 0, h_bins - 1)  # scale 0..3 into bins\no_bin = clip(int(o * o_bins / 3.0), 0, o_bins - 1)\nfood_flag = 1 if food_at_current_position else 0\nstate = (agent_x, agent_y, h_bin, o_bin, food_flag)",
+      "source_postulate": "N/A (implementation scaffolding)"
+    },
+    {
+      "id": "R9",
+      "description": "Eating count increment on successful consumption",
+      "type": "event",
+      "pseudocode": "if action_was_eat and consumed:\n    N = N + 1",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Epsilon-greedy action selection over Q-values. With probability epsilon (which decreases with experience and dysphoria), the agent chooses a random valid action. Otherwise it chooses the action with highest Q-value. The 'eat' action is only valid when food is at the agent's current position. The Q-values themselves are learned from shaped internal reward (R5), so the policy naturally transitions from hedonic eating to compulsive eating as the reward landscape shifts.",
+    "pseudocode": [
+      "# 1. Construct current state",
+      "food_at_pos = any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "h_bin = clip(int(h * h_bins / 3.0), 0, h_bins - 1)",
+      "o_bin = clip(int(o * o_bins / 3.0), 0, o_bins - 1)",
+      "food_flag = 1 if food_at_pos else 0",
+      "state = (perception['x'], perception['y'], h_bin, o_bin, food_flag)",
+      "",
+      "# 2. Determine valid actions",
+      "valid_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if food_at_pos:",
+      "    valid_actions.append('eat')",
+      "",
+      "# 3. Compute exploration rate",
+      "D = max(0.0, theta - (h - o))",
+      "epsilon = epsilon_0 * exp(-0.01 * N) * (1.0 / (1.0 + abs(D)))",
+      "",
+      "# 4. Epsilon-greedy selection",
+      "if random() < epsilon:",
+      "    chosen_action = random_choice(valid_actions)",
+      "else:",
+      "    # Get Q-values for current state; default 0 for unseen state-action pairs",
+      "    q_values = {a: Q.get((state, a), 0.0) for a in valid_actions}",
+      "    chosen_action = argmax(q_values)",
+      "",
+      "return Action(chosen_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y']) — used as part of state tuple",
+      "food_sources": "perception['resources']['food'] — used to determine food_flag in state and valid actions",
+      "food_at_position": "any food in perception['resources']['food'] with matching (x, y) → food_flag",
+      "reward_signal": "reward from update(action, reward, new_perception) → r_ext (1.0 from ConsumeEffect, 0.0 otherwise)",
+      "grid_size": "(perception['grid_width'], perception['grid_height']) — for state space bounds",
+      "step": "perception['step'] — available for logging"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with raw reward 1.0 → r_ext; this is then transformed into shaped reward r_tilde via rule R5"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Reward shaping transition: early shaped rewards for eating are positive (pleasure); later shaped rewards for NOT eating become negative (aversive withdrawal)",
+      "test_pseudocode": "track r_tilde when action != eat over 200 steps → assert r_tilde becomes increasingly negative in later steps"
+    },
+    {
+      "id": "B2",
+      "description": "Policy shift from exploration to exploitation of food: Q-values for eating and moving toward food increase relative to stay/random movement",
+      "test_pseudocode": "compare average Q(state, 'eat') at step 50 vs step 200 relative to Q(state, 'stay') → assert food actions increasingly preferred"
+    },
+    {
+      "id": "B3",
+      "description": "Exploration rate collapse: epsilon shrinks as N grows and D increases, modelling motivational narrowing",
+      "test_pseudocode": "track epsilon over 200 steps → assert epsilon at step 200 < epsilon at step 1"
+    },
+    {
+      "id": "B4",
+      "description": "Allostatic baseline degradation: theta drifts below theta_0 with chronic eating",
+      "test_pseudocode": "run 200 steps with food → assert theta < theta_0 at end"
+    },
+    {
+      "id": "B5",
+      "description": "Compulsive food-seeking emerges: in late episodes, the agent moves toward food even when h > 0, because shaped reward during abstinence is negative",
+      "test_pseudocode": "in last 50 steps, count proportion of move actions directed toward food → assert > 80%"
+    },
+    {
+      "id": "B6",
+      "description": "Opponent gain sensitisation: g increases monotonically with eating episodes",
+      "test_pseudocode": "track g over time → assert g at step 200 > g at step 0 proportional to N"
+    }
+  ],
+  "references": [
+    "Solomon, R.L. & Corbit, J.D. (1974). An opponent-process theory of motivation: I. Temporal dynamics of affect. Psychological Review, 81(2), 119–145.",
+    "Koob, G.F. & Le Moal, M. (2001). Drug addiction, dysregulation of reward, and allostasis. Neuropsychopharmacology, 24(2), 97–129.",
+    "Koob, G.F. & Le Moal, M. (2008). Neurobiological mechanisms for opponent motivational processes in addiction. Philosophical Transactions of the Royal Society B, 363(1507), 3113–3123.",
+    "Yau, Y.H.C. & Potenza, M.N. (2013). Stress and eating behaviors. Minerva Endocrinologica, 38(3), 255–267.",
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife, 3, e04811."
+  ]
+}

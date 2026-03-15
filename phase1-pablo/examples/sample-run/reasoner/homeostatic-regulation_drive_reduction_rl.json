@@ -1,0 +1,242 @@
+{
+  "formulation_id": "homeostatic-regulation_drive_reduction_rl",
+  "paradigm": "homeostatic-regulation",
+  "name": "Homeostatic Reinforcement Learning (Drive-Reduction MDP)",
+  "description": "A tabular Q-learning agent where reward is redefined as drive reduction — the decrease in a quadratic discomfort function measuring deviation from a homeostatic set point. The agent maintains an internal energy state, discretizes its combined state (energy bin + relative direction to nearest food) into a finite state space, and learns action values via temporal-difference (TD) updates. Action selection uses softmax (Boltzmann) exploration over Q-values. This formulation directly implements the homeostatic RL framework of Keramati & Gutkin (2011), where behavior emerges from minimizing a multi-variable drive function, mapping homeostatic regulation onto a standard MDP. Unlike the PI controller (Formulation 1), this agent has no hardcoded decision rules — all behavior is learned from the intrinsic drive-reduction reward signal.",
+  "variables": [
+    {
+      "symbol": "x",
+      "name": "energy",
+      "description": "Internal energy level of the agent. Decreases each tick by passive decay, increases when food is consumed.",
+      "type": "float",
+      "initial_value": 50.0,
+      "range": [0, 100]
+    },
+    {
+      "symbol": "D",
+      "name": "drive",
+      "description": "Quadratic drive/discomfort function: D(x) = phi * (x - s)^2. Measures how far internal state is from set point.",
+      "type": "float",
+      "initial_value": 900.0,
+      "range": [0, 6400]
+    },
+    {
+      "symbol": "r",
+      "name": "reward",
+      "description": "Drive reduction achieved by last action: r(t) = D(x(t)) - D(x(t+1)). Positive when drive decreases.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10000, 10000]
+    },
+    {
+      "symbol": "Q",
+      "name": "q_table",
+      "description": "Tabular action-value function Q(z, a). Maps discretized state z and action a to expected cumulative discounted drive reduction.",
+      "type": "dict",
+      "initial_value": "defaultdict(0.0) — all Q-values initialized to 0",
+      "range": "unbounded"
+    },
+    {
+      "symbol": "z",
+      "name": "discretized_state",
+      "description": "Tuple (energy_bin, direction_to_nearest_food). energy_bin is floor(x * n_bins / x_max), direction is one of 9 values.",
+      "type": "tuple",
+      "initial_value": "(5, 'none')",
+      "range": "n_bins * 9 possible states"
+    },
+    {
+      "symbol": "x_prev",
+      "name": "previous_energy",
+      "description": "Energy level before the last action was taken, used to compute drive reduction reward.",
+      "type": "float",
+      "initial_value": 50.0,
+      "range": [0, 100]
+    },
+    {
+      "symbol": "z_prev",
+      "name": "previous_state",
+      "description": "Previous discretized state, used for Q-table TD update.",
+      "type": "tuple",
+      "initial_value": "(5, 'none')",
+      "range": "n_bins * 9 possible states"
+    },
+    {
+      "symbol": "a_prev",
+      "name": "previous_action",
+      "description": "The action taken in the previous step, used for Q-table TD update.",
+      "type": "string",
+      "initial_value": "stay",
+      "range": "one of the 6 available actions"
+    }
+  ],
+  "parameters": [
+    {"symbol": "s", "name": "energy_set_point", "default": 80.0, "source": "Keramati & Gutkin (2011)"},
+    {"symbol": "phi", "name": "drive_weight", "default": 1.0, "source": "Keramati & Gutkin (2011): per-variable weight, single resource here"},
+    {"symbol": "x_max", "name": "max_energy", "default": 100.0, "source": "Normalization"},
+    {"symbol": "d", "name": "passive_energy_decay", "default": 1.0, "source": "Basal metabolism"},
+    {"symbol": "delta_eat", "name": "energy_from_eating", "default": 15.0, "source": "Tuned to interaction with decay rate"},
+    {"symbol": "alpha", "name": "td_learning_rate", "default": 0.1, "source": "Standard RL default; Sutton & Barto convention"},
+    {"symbol": "gamma", "name": "discount_factor", "default": 0.95, "source": "Keramati & Gutkin (2011) use values in [0.9, 0.99]"},
+    {"symbol": "beta", "name": "softmax_inv_temperature", "default": 5.0, "source": "Controls exploration-exploitation; moderate value"},
+    {"symbol": "n_bins", "name": "energy_discretization_bins", "default": 10, "source": "Practical for tabular Q-learning"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: passive decay each tick, gain from eating",
+      "type": "difference_equation",
+      "pseudocode": "ate = 1 if (last_action == 'eat' and consumed) else 0\nx = clamp(x - d + delta_eat * ate, 0, x_max)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Drive function: quadratic discomfort from set point deviation",
+      "type": "algebraic",
+      "pseudocode": "D = phi * (x - s) ** 2",
+      "source_postulate": "P1, P6"
+    },
+    {
+      "id": "R3",
+      "description": "Reward as drive reduction: positive reward when drive decreases",
+      "type": "algebraic",
+      "pseudocode": "D_prev = phi * (x_prev - s) ** 2\nD_curr = phi * (x - s) ** 2\nr = D_prev - D_curr",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R4",
+      "description": "State discretization: bin energy level and encode direction to nearest food",
+      "type": "algebraic",
+      "pseudocode": "energy_bin = min(int(x * n_bins / x_max), n_bins - 1)\nif no food visible:\n    direction = 'none'\nelse:\n    nearest_food = food with minimum Manhattan distance from (pos_x, pos_y)\n    dx = nearest_food.x - pos_x\n    dy = nearest_food.y - pos_y\n    direction = compass_direction(dx, dy)  # one of N,NE,E,SE,S,SW,W,NW, or 'here'\nz = (energy_bin, direction)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "TD error computation for Q-learning",
+      "type": "algebraic",
+      "pseudocode": "delta = r + gamma * max(Q[z, a_prime] for a_prime in actions) - Q[z_prev, a_prev]",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R6",
+      "description": "Q-value update via TD learning",
+      "type": "difference_equation",
+      "pseudocode": "Q[z_prev, a_prev] = Q[z_prev, a_prev] + alpha * delta",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax (Boltzmann) action selection over Q-values",
+      "type": "algebraic",
+      "pseudocode": "# Mask infeasible actions: if no food at position, set Q[z, 'eat'] = -infinity\nfor each action a in actions:\n    if a == 'eat' and not food_at_position:\n        q_values[a] = -infinity\n    else:\n        q_values[a] = Q[z, a]\n# Softmax\nmax_q = max(q_values.values() that are not -inf)\nprobs = {}\nfor a in actions:\n    if q_values[a] == -infinity:\n        probs[a] = 0\n    else:\n        probs[a] = exp(beta * (q_values[a] - max_q))\ntotal = sum(probs.values())\nprobs = {a: p / total for a, p in probs.items()}\nselected_action = sample from probs",
+      "source_postulate": "P6"
+    }
+  ],
+  "decision_logic": {
+    "description": "Q-learning agent with softmax exploration. On each step: (1) update energy state, (2) compute drive-reduction reward from previous action, (3) discretize current state, (4) perform TD update on Q-table for previous state-action, (5) select new action via softmax over Q-values. Early in learning the agent explores broadly; as Q-values converge, it reliably moves toward food when energy is below set point and stays when near set point.",
+    "pseudocode": [
+      "# === Called in update(action, reward, new_perception) ===",
+      "# Store the action we just took",
+      "a_prev = action",
+      "",
+      "# === Called in decide(perception) ===",
+      "# Step 1: Update energy",
+      "ate = 1 if (a_prev == 'eat' and perception['last_action_result'].get('consumed', False)) else 0",
+      "x = clamp(x - d + delta_eat * ate, 0, x_max)",
+      "",
+      "# Step 2: Compute reward (drive reduction)",
+      "D_prev = phi * (x_prev - s) ** 2",
+      "D_curr = phi * (x - s) ** 2",
+      "r = D_prev - D_curr",
+      "",
+      "# Step 3: Discretize state",
+      "food_list = perception['resources'].get('food', [])",
+      "pos = (perception['x'], perception['y'])",
+      "food_at_position = any(f['x'] == pos[0] and f['y'] == pos[1] for f in food_list)",
+      "energy_bin = min(int(x * n_bins / x_max), n_bins - 1)",
+      "if len(food_list) == 0:",
+      "    direction = 'none'",
+      "else:",
+      "    nearest = min(food_list, key=lambda f: abs(f['x']-pos[0]) + abs(f['y']-pos[1]))",
+      "    dx_f = nearest['x'] - pos[0]",
+      "    dy_f = nearest['y'] - pos[1]",
+      "    direction = compass_direction(dx_f, dy_f)",
+      "z = (energy_bin, direction)",
+      "",
+      "# Step 4: TD update (skip on first step)",
+      "if z_prev is not None:",
+      "    best_future = max(Q.get((z, a), 0.0) for a in all_actions)",
+      "    delta = r + gamma * best_future - Q.get((z_prev, a_prev), 0.0)",
+      "    Q[(z_prev, a_prev)] = Q.get((z_prev, a_prev), 0.0) + alpha * delta",
+      "",
+      "# Step 5: Action selection via softmax",
+      "q_vals = {}",
+      "for a in ['move_up','move_down','move_left','move_right','stay','eat']:",
+      "    if a == 'eat' and not food_at_position:",
+      "        q_vals[a] = float('-inf')",
+      "    else:",
+      "        q_vals[a] = Q.get((z, a), 0.0)",
+      "# Numerically stable softmax",
+      "max_q = max(v for v in q_vals.values() if v != float('-inf'))",
+      "exp_vals = {a: (math.exp(beta * (v - max_q)) if v != float('-inf') else 0) for a, v in q_vals.items()}",
+      "total = sum(exp_vals.values())",
+      "probs = {a: ev / total for a, ev in exp_vals.items()}",
+      "selected_action = random.choices(list(probs.keys()), weights=list(probs.values()), k=1)[0]",
+      "",
+      "# Step 6: Store state for next update",
+      "x_prev = x",
+      "z_prev = z",
+      "",
+      "return selected_action"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food'] — list of {x, y, type, palatability}",
+      "ate_food": "last_action == 'eat' and perception['last_action_result'] indicates consumption success",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step'] — current simulation tick"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internal drive-reduction reward r(t) = D(x(t)) - D(x(t+1)); environment reward from eat action (1.0) is NOT used for decision-making"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Drive increases quadratically as energy falls below set point without eating",
+      "test_pseudocode": "run 30 steps with no food → assert D increases each step and D = phi * (x - s)^2"
+    },
+    {
+      "id": "B2",
+      "description": "Eating produces positive reward (drive reduction) when energy is below set point",
+      "test_pseudocode": "at x=50, eat food (gaining delta_eat) → compute r = D(50) - D(65) → assert r > 0"
+    },
+    {
+      "id": "B3",
+      "description": "Eating produces negative reward (drive increase) when energy would overshoot above set point",
+      "test_pseudocode": "at x=78, eat food (gaining 15 → x=93) → D(78)=4, D(93)=169 → assert r < 0"
+    },
+    {
+      "id": "B4",
+      "description": "Q-values converge to make agent move toward food when energy is low",
+      "test_pseudocode": "run 500 steps with food available → assert Q[(low_energy_bin, 'E'), 'move_right'] > Q[(low_energy_bin, 'E'), 'move_left'] when food is to the east"
+    },
+    {
+      "id": "B5",
+      "description": "Agent learns to stay when energy is near set point and no food is needed",
+      "test_pseudocode": "after training, set x ≈ s → assert most frequently selected action is 'stay'"
+    },
+    {
+      "id": "B6",
+      "description": "Softmax exploration decreases as Q-values differentiate",
+      "test_pseudocode": "compare action entropy at step 10 vs step 500 → assert entropy decreases"
+    }
+  ],
+  "references": [
+    "Keramati, M. & Gutkin, B. (2011) — A Reinforcement Learning Theory for Homeostatic Regulation — NeurIPS",
+    "Yin, H. (2025) — Linking Homeostasis to Reinforcement Learning: Internal State Control and Behavior — ScienceDirect",
+    "Cannon, W.B. (1932) — The Wisdom of the Body",
+    "Bernard, C. (1865) — Introduction à l'étude de la médecine expérimentale",
+    "Sutton, R.S. & Barto, A.G. (2018) — Reinforcement Learning: An Introduction (learning rate / discount conventions)"
+  ]
+}

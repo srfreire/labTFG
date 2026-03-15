@@ -1,0 +1,209 @@
+{
+  "formulation_id": "homeostatic-regulation_pi_negative_feedback",
+  "paradigm": "homeostatic-regulation",
+  "name": "Proportional-Integral (PI) Negative-Feedback Controller",
+  "description": "A continuous-time ODE-inspired control agent that maintains an internal energy variable via proportional and integral error correction. The agent computes a signed error between its current energy and a set point, then derives a control signal from proportional (instantaneous) and integral (accumulated) components. Actions are selected by evaluating utility functions weighted by this control signal: eating when food is available and drive is positive, moving toward nearest food when hungry, or staying put when satiated. The integral term provides memory of past deficits, enabling persistent foraging even after brief energy upticks, achieving zero steady-state error as in classical integral control. Based on Gross et al. (2024), Drengstig et al. (2012), and the PI glucose homeostasis model from npj Digital Medicine (2020).",
+  "variables": [
+    {
+      "symbol": "A",
+      "name": "energy",
+      "description": "Internal energy level of the agent (the regulated variable). Decreases each tick due to basal metabolism, increases when food is consumed.",
+      "type": "float",
+      "initial_value": 50.0,
+      "range": [0, 100]
+    },
+    {
+      "symbol": "e",
+      "name": "error_signal",
+      "description": "Deviation from set point: e(t) = s - A(t). Positive when energy is below target, negative when above.",
+      "type": "float",
+      "initial_value": 30.0,
+      "range": [-100, 100]
+    },
+    {
+      "symbol": "c_P",
+      "name": "proportional_control",
+      "description": "Instantaneous corrective drive proportional to the current error. c_P = k_P * e(t).",
+      "type": "float",
+      "initial_value": 15.0,
+      "range": [-50, 50]
+    },
+    {
+      "symbol": "c_I",
+      "name": "integral_control",
+      "description": "Accumulated error over time (integral memory). Clamped to prevent windup.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-50, 50]
+    },
+    {
+      "symbol": "c",
+      "name": "total_control_signal",
+      "description": "Combined drive signal: c(t) = c_P(t) + c_I(t). Drives action selection.",
+      "type": "float",
+      "initial_value": 15.0,
+      "range": [-100, 100]
+    }
+  ],
+  "parameters": [
+    {"symbol": "s", "name": "energy_set_point", "default": 80.0, "source": "Keramati & Gutkin (2011): mid-to-high satiety target"},
+    {"symbol": "k_P", "name": "proportional_gain", "default": 0.5, "source": "Tuned; consistent with PI models in npj Digital Medicine (2020)"},
+    {"symbol": "k_I", "name": "integral_gain", "default": 0.05, "source": "Tuned; lower than k_P to prevent oscillation (Drengstig et al., 2012)"},
+    {"symbol": "d", "name": "passive_energy_decay", "default": 1.0, "source": "Models basal metabolic cost; Gross et al. (2024)"},
+    {"symbol": "delta_eat", "name": "energy_from_eating", "default": 15.0, "source": "Tuned to interaction with decay rate d"},
+    {"symbol": "A_max", "name": "max_energy", "default": 100.0, "source": "Normalization ceiling"},
+    {"symbol": "c_I_max", "name": "integral_windup_cap", "default": 50.0, "source": "Standard anti-windup engineering practice; Drengstig et al. (2012)"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Error signal computation: difference between set point and current energy",
+      "type": "algebraic",
+      "pseudocode": "e = s - A",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Proportional control term: instantaneous corrective drive",
+      "type": "algebraic",
+      "pseudocode": "c_P = k_P * e",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Integral control term: accumulated error with anti-windup clamping",
+      "type": "difference_equation",
+      "pseudocode": "c_I = clamp(c_I + k_I * e, -c_I_max, c_I_max)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Total control signal: sum of proportional and integral components",
+      "type": "algebraic",
+      "pseudocode": "c = c_P + c_I",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Energy dynamics: passive decay plus food intake",
+      "type": "difference_equation",
+      "pseudocode": "ate = 1 if last_action was 'eat' and last_action_result indicates success else 0\nA = clamp(A - d + delta_eat * ate, 0, A_max)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Eat utility: control signal weighted by food presence at current position",
+      "type": "algebraic",
+      "pseudocode": "U_eat = c * (1 if food_at_position else 0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R7",
+      "description": "Move utility: control signal weighted by inverse Manhattan distance to nearest food from candidate position",
+      "type": "algebraic",
+      "pseudocode": "for each adjacent cell p_prime:\n  dist = min Manhattan distance from p_prime to any food in R\n  U_move[p_prime] = c * (1.0 / (1 + dist))",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R8",
+      "description": "Stay utility: small negative penalty proportional to absolute error",
+      "type": "algebraic",
+      "pseudocode": "U_stay = -abs(e) * 0.1",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "PI-controller driven action selection. The agent computes error, updates proportional and integral terms, then selects actions based on utility functions weighted by the total control signal c(t). When error is non-positive (energy >= set point), the agent stays. When error is positive, the agent eats if food is present, moves toward nearest food if visible, or explores randomly.",
+    "pseudocode": [
+      "# Update internal state after receiving perception",
+      "ate = 1 if (last_action == 'eat' and last_action_result.get('consumed', False)) else 0",
+      "A = clamp(A - d + delta_eat * ate, 0, A_max)",
+      "e = s - A",
+      "c_P = k_P * e",
+      "c_I = clamp(c_I + k_I * e, -c_I_max, c_I_max)",
+      "c = c_P + c_I",
+      "",
+      "# Gather food positions from perception",
+      "food_list = perception['resources'].get('food', [])",
+      "food_positions = [(f['x'], f['y']) for f in food_list]",
+      "pos = (perception['x'], perception['y'])",
+      "food_at_position = pos in food_positions",
+      "",
+      "# Decision",
+      "if e <= 0:",
+      "    return 'stay'  # Energy at or above set point; no foraging drive",
+      "",
+      "if food_at_position:",
+      "    U_eat = c  # c > 0 since e > 0",
+      "    if U_eat > 0:",
+      "        return 'eat'",
+      "",
+      "if len(food_positions) > 0:",
+      "    best_action = None",
+      "    best_utility = -inf",
+      "    for action_name, (dx, dy) in [('move_up',0,-1),('move_down',0,1),('move_left',-1,0),('move_right',1,0)]:",
+      "        p_prime = (pos[0]+dx, pos[1]+dy)",
+      "        # clamp to grid boundaries",
+      "        p_prime = (clamp(p_prime[0],0,grid_width-1), clamp(p_prime[1],0,grid_height-1))",
+      "        min_dist = min(abs(p_prime[0]-fx)+abs(p_prime[1]-fy) for fx,fy in food_positions)",
+      "        U_move = c * (1.0 / (1 + min_dist))",
+      "        if U_move > best_utility:",
+      "            best_utility = U_move",
+      "            best_action = action_name",
+      "    return best_action",
+      "",
+      "# No food visible: random exploration driven by nonzero control signal",
+      "return random_choice(['move_up','move_down','move_left','move_right'])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  — list of {x, y, type, palatability}",
+      "ate_food": "last_action == 'eat' and perception['last_action_result'] indicates consumption success",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; agent ignores env reward, uses internal PI control signal as drive"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Energy decays without eating, causing error to grow and control signal to increase",
+      "test_pseudocode": "run 20 steps without food available → assert A decreases each step, e increases, c increases"
+    },
+    {
+      "id": "B2",
+      "description": "Agent eats when food is at its position and energy is below set point",
+      "test_pseudocode": "place food at agent position with A < s → assert action == 'eat'"
+    },
+    {
+      "id": "B3",
+      "description": "Agent stays put when energy is at or above set point",
+      "test_pseudocode": "set A = 85 (> s=80) → assert action == 'stay'"
+    },
+    {
+      "id": "B4",
+      "description": "Integral term accumulates during prolonged deficit, preventing premature cessation of foraging",
+      "test_pseudocode": "run 50 steps with A < s → assert c_I > 0 and increasing"
+    },
+    {
+      "id": "B5",
+      "description": "Agent moves toward nearest food when hungry and food is visible",
+      "test_pseudocode": "place food 3 cells to the right, set A < s → assert agent selects 'move_right'"
+    },
+    {
+      "id": "B6",
+      "description": "Agent explores randomly when hungry but no food is visible",
+      "test_pseudocode": "set A < s with no food in resources → assert action is one of move_up/down/left/right"
+    }
+  ],
+  "references": [
+    "Gross, F. et al. (2024) — A Functional Approach to Homeostatic Regulation — Biology Direct",
+    "Drengstig, T. et al. (2012) — A Basic Set of Homeostatic Controller Motifs — PMC3491718",
+    "npj Digital Medicine (2020) — Homeostasis as a Proportional–Integral Control System — Nature",
+    "Keramati, M. & Gutkin, B. (2011) — A Reinforcement Learning Theory for Homeostatic Regulation — NeurIPS",
+    "Cannon, W.B. (1932) — The Wisdom of the Body",
+    "Bernard, C. (1865) — Introduction à l'étude de la médecine expérimentale"
+  ]
+}

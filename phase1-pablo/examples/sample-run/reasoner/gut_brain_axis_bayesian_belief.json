@@ -1,0 +1,161 @@
+{
+  "formulation_id": "gut_brain_axis_bayesian_belief",
+  "paradigm": "gut-brain-axis-signaling-in-food-intake-regulation",
+  "name": "Bayesian Belief-Based Foraging with Gut Signals as Priors",
+  "description": "Probabilistic decision framework where gut-derived hormonal signals (a composite satiety signal and ghrelin) shape Bayesian posterior beliefs about the agent's latent hunger state. Action values blend homeostatic need with hedonic reward evaluation, and actions are selected via softmax. Inspired by Mayer's (2011) interoceptive 'gut feelings' framework and active inference ideas, with hormonal dynamics from MDPI Nutrients (2023) and PMC11483575 (2024).",
+  "variables": [
+    {"symbol": "h_gut", "name": "gut_hormone_composite", "description": "Aggregated anorexigenic gut signal (composite of GLP-1, PYY, CCK). Decays over time, boosted by eating.", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "g", "name": "ghrelin_signal", "description": "Orexigenic interoceptive ghrelin signal. Rises during fasting, suppressed by eating.", "type": "float", "initial_value": 0.5, "range": [0.0, 5.0]},
+    {"symbol": "b_H", "name": "hunger_belief", "description": "Bayesian posterior probability that the agent is in a 'hungry' state, in [0,1]", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "V_eat", "name": "value_eat", "description": "Expected value of eating at current position, blending homeostatic need and hedonic reward", "type": "float", "initial_value": 0.0, "range": [-5.0, 5.0]},
+    {"symbol": "V_move_d", "name": "value_move", "description": "Expected value of moving in direction d, based on hunger belief and food proximity", "type": "float", "initial_value": 0.0, "range": [-5.0, 5.0]},
+    {"symbol": "V_stay", "name": "value_stay", "description": "Expected value of staying in place (higher when sated)", "type": "float", "initial_value": 0.0, "range": [-5.0, 5.0]},
+    {"symbol": "o_ate", "name": "ate_observation", "description": "Binary observation: did the agent successfully eat last tick", "type": "int", "initial_value": 0, "range": [0, 1]}
+  ],
+  "parameters": [
+    {"symbol": "lambda_hunger", "name": "hunger_drift_rate", "default": 0.08, "source": "Yoo & Park (2021): tonic ghrelin rise rate during fasting"},
+    {"symbol": "lambda_satiety", "name": "satiety_impulse", "default": 0.6, "source": "Berthoud (2011): post-meal satiety peptide surge magnitude"},
+    {"symbol": "tau_gut", "name": "gut_signal_decay", "default": 0.25, "source": "PMC11483575 (2024): composite hormone half-life"},
+    {"symbol": "sigma_intero", "name": "interoceptive_noise", "default": 0.15, "source": "Mayer (2011): interoceptive variability in gut-to-brain signaling"},
+    {"symbol": "omega_homeo", "name": "homeostatic_weight", "default": 0.7, "source": "PMC11483575 (2024): homeostatic vs hedonic balance"},
+    {"symbol": "omega_hedon", "name": "hedonic_weight", "default": 0.3, "source": "PMC11483575 (2024): hedonic override contribution"},
+    {"symbol": "R_food", "name": "food_reward_value", "default": 1.0, "source": "Environment ConsumeEffect reward"},
+    {"symbol": "C_move", "name": "movement_cost", "default": 0.02, "source": "Energy cost per movement step"},
+    {"symbol": "epsilon", "name": "exploration_temperature_base", "default": 0.1, "source": "Softmax temperature proxy for exploration"},
+    {"symbol": "g_exp_hungry", "name": "expected_ghrelin_when_hungry", "default": 1.0, "source": "MDPI Nutrients (2023): reference ghrelin level in fasted state"},
+    {"symbol": "h_exp_sated", "name": "expected_satiety_when_sated", "default": 1.0, "source": "Berthoud (2011): reference satiety hormone level post-meal"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Gut hormone composite update: decays exponentially, boosted by eating",
+      "type": "difference_equation",
+      "pseudocode": "h_gut = (1.0 - tau_gut) * h_gut + lambda_satiety * o_ate\nh_gut = max(h_gut, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Ghrelin signal update: rises during fasting, suppressed by eating",
+      "type": "difference_equation",
+      "pseudocode": "g = g + lambda_hunger * (1.0 - o_ate) - 0.5 * g * o_ate\ng = max(g, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3a",
+      "description": "Bayesian likelihood of being hungry given ghrelin observation",
+      "type": "algebraic",
+      "pseudocode": "ell_H = exp(-((g - g_exp_hungry) ** 2) / (2.0 * sigma_intero ** 2))",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R3b",
+      "description": "Bayesian likelihood of being sated given gut hormone observation",
+      "type": "algebraic",
+      "pseudocode": "ell_S = exp(-((h_gut - h_exp_sated) ** 2) / (2.0 * sigma_intero ** 2))",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Bayesian posterior hunger belief update",
+      "type": "algebraic",
+      "pseudocode": "numerator = ell_H * b_H\ndenominator = ell_H * b_H + ell_S * (1.0 - b_H)\nb_H = numerator / denominator if denominator > 1e-10 else 0.5",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R5",
+      "description": "Expected value of eating: blends homeostatic hunger belief with hedonic component attenuated by satiety",
+      "type": "algebraic",
+      "pseudocode": "V_eat = omega_homeo * b_H * R_food + omega_hedon * R_food * (1.0 / (1.0 + h_gut))",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R6",
+      "description": "Expected value of moving in direction d: scales with hunger belief and food proximity in that direction",
+      "type": "algebraic",
+      "pseudocode": "# For each direction d in [move_up, move_down, move_left, move_right]:\n# Compute position after moving in d\n# Find nearest food from that new position\n# food_proximity_d = 1.0 / (1.0 + manhattan_distance_to_nearest_food_from_new_pos)\nV_move_d = b_H * food_proximity_d * R_food - C_move",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R7",
+      "description": "Expected value of staying: rewarded when sated (no need to move)",
+      "type": "algebraic",
+      "pseudocode": "V_stay = (1.0 - b_H) * 0.1",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "The agent updates gut signals and Bayesian hunger belief, computes action values for all available actions, then selects an action via softmax probability distribution over the action values. The eat action is only considered if food is at the agent's current position.",
+    "pseudocode": [
+      "# 1. Update gut signals from last tick's outcome",
+      "apply_rules(R1, R2)  # update h_gut and g based on o_ate",
+      "",
+      "# 2. Update Bayesian hunger belief",
+      "apply_rules(R3a, R3b, R4)  # compute likelihoods and posterior b_H",
+      "",
+      "# 3. Compute action values",
+      "action_values = {}",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "if food_here:",
+      "    apply_rule(R5)  # compute V_eat",
+      "    action_values['eat'] = V_eat",
+      "",
+      "for d in ['move_up', 'move_down', 'move_left', 'move_right']:",
+      "    apply_rule(R6)  # compute V_move_d for direction d",
+      "    action_values[d] = V_move_d",
+      "",
+      "apply_rule(R7)  # compute V_stay",
+      "action_values['stay'] = V_stay",
+      "",
+      "# 4. Softmax action selection",
+      "T = epsilon + 0.05",
+      "exp_values = {a: exp(v / T) for a, v in action_values.items()}",
+      "total = sum(exp_values.values())",
+      "probs = {a: ev / total for a, ev in exp_values.items()}",
+      "return sample_action(probs)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "o_ate": "1 if last action was 'eat' and reward > 0, else 0",
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food (list of {x, y, type, palatability})",
+      "grid_dimensions": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0; used to set o_ate for next tick"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger belief rises during fasting as ghrelin increases toward expected hungry level",
+      "test_pseudocode": "run 50 steps without eating → assert b_H approaches 1.0 and g approaches g_exp_hungry"
+    },
+    {
+      "id": "B2",
+      "description": "Eating causes satiety surge that shifts belief toward sated state",
+      "test_pseudocode": "agent eats → assert h_gut increases → next tick b_H decreases significantly"
+    },
+    {
+      "id": "B3",
+      "description": "Agent probabilistically prefers stay when fully sated (b_H near 0)",
+      "test_pseudocode": "set h_gut high, g low → assert P(stay) is highest among action probabilities"
+    },
+    {
+      "id": "B4",
+      "description": "Hedonic component allows some eating even when mildly sated, if food is present",
+      "test_pseudocode": "b_H = 0.3, food at position → assert V_eat > 0 due to omega_hedon term"
+    },
+    {
+      "id": "B5",
+      "description": "Movement toward food is preferred when hungry and food is visible but distant",
+      "test_pseudocode": "b_H = 0.9, food 5 cells away → assert V_move toward food > V_stay"
+    }
+  ],
+  "references": [
+    "Mayer, E.A. (2011) — Gut feelings: the emerging biology of gut-brain communication — Neuropharmacology / ScienceDirect",
+    "Berthoud, H.R. (2011) — The role of the gut/brain axis in modulating food intake — Neuropharmacology",
+    "Yoo, J.Y. & Park, S. (2021) — Role of the gut-brain axis in energy and glucose metabolism — npj Science of Food / Nature",
+    "MDPI Nutrients (2023) — The Mechanism of the Gut-Brain Axis in Regulating Food Intake — Nutrients 15(17):3728 (PubMed 37686760)",
+    "Pharmacology Research & Perspectives (2024) — The gut-brain axis in appetite, satiety, food intake, and eating disorders — PMC11483575"
+  ]
+}

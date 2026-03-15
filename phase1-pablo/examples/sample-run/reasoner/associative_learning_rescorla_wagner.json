@@ -1,0 +1,225 @@
+{
+  "formulation_id": "associative_learning_rescorla_wagner",
+  "paradigm": "associative-learning-and-conditioned-appetite",
+  "name": "Rescorla-Wagner Prediction-Error Agent",
+  "description": "A discrete trial-by-trial associative learning agent based on the Rescorla-Wagner (1972) error-correction model. The agent maintains associative strengths (V) between spatial cues (grid cell features like nearby food positions) and food outcomes. Learning is driven by prediction error (delta = lambda - sum_V), which shrinks as predictions improve, reproducing acquisition, extinction, and blocking. A motivational hunger state gates both prediction error magnitude and action-value computation. Action selection uses softmax over hunger-modulated appetitive values of neighbouring cells.",
+  "variables": [
+    {
+      "symbol": "V",
+      "name": "associative_strengths",
+      "description": "Dictionary mapping cue identifiers (e.g., cell coordinates or resource-type keys) to learned associative weights toward food outcome. Each V_i represents how strongly cue i predicts food.",
+      "type": "dict[str, float]",
+      "initial_value": {},
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "delta",
+      "name": "prediction_error",
+      "description": "Discrepancy between actual outcome (lambda, modulated by hunger) and summed prediction (V_hat). Positive delta drives acquisition, negative drives extinction.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "V_hat",
+      "name": "predicted_appetitive_value",
+      "description": "Summed associative strength of all cues present at the current cell: V_hat(s) = sum(V_i for i in cues(s))",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "lam",
+      "name": "outcome_magnitude",
+      "description": "Actual outcome: 1.0 if food was consumed (US present), 0.0 otherwise (US absent / extinction trial)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger",
+      "description": "Internal drive state representing caloric deficit. Rises each step by kappa, drops by eta_sat when food is eaten. Modulates effective prediction error and action values.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "Q",
+      "name": "action_appetitive_values",
+      "description": "Hunger-modulated appetitive value for each candidate action/cell: Q(s') = H^phi * V_hat(s')",
+      "type": "dict[str, float]",
+      "initial_value": {},
+      "range": [-10.0, 10.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha",
+      "name": "cs_salience",
+      "default": 0.15,
+      "source": "Rescorla & Wagner (1972); typical range 0.05-0.30"
+    },
+    {
+      "symbol": "beta_plus",
+      "name": "us_learning_rate_reward",
+      "default": 0.20,
+      "source": "Rescorla & Wagner (1972)"
+    },
+    {
+      "symbol": "beta_minus",
+      "name": "us_learning_rate_extinction",
+      "default": 0.10,
+      "source": "Rescorla & Wagner (1972); extinction is typically slower"
+    },
+    {
+      "symbol": "tau",
+      "name": "softmax_temperature",
+      "default": 0.3,
+      "source": "Free parameter; controls exploration-exploitation trade-off"
+    },
+    {
+      "symbol": "kappa",
+      "name": "hunger_recovery_rate",
+      "default": 0.05,
+      "source": "Derived from postulate P6; Researchgate (2017)"
+    },
+    {
+      "symbol": "phi",
+      "name": "hunger_modulation_exponent",
+      "default": 1.5,
+      "source": "Researchgate (2017); motivational gating of prediction error"
+    },
+    {
+      "symbol": "eta_sat",
+      "name": "satiation_decrement",
+      "default": 0.4,
+      "source": "Normalised assumption"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Cue identification: Each grid cell generates cues based on its coordinates and presence of nearby resources. Cues are string keys like 'cell_x_y' or 'food_nearby_dx_dy'.",
+      "type": "mapping",
+      "pseudocode": "cues_at_cell = ['cell_' + str(sx) + '_' + str(sy)]; for each food in perception.resources.food: if abs(food.x - sx) <= 1 and abs(food.y - sy) <= 1: cues_at_cell.append('food_near_' + str(food.x) + '_' + str(food.y))",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Predicted appetitive value at a cell: sum of associative strengths for all cues present",
+      "type": "algebraic",
+      "pseudocode": "V_hat_s = sum(V.get(cue, 0.0) for cue in cues_at_cell(s))",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Prediction error: motivationally gated discrepancy between outcome and prediction",
+      "type": "algebraic",
+      "pseudocode": "lam = 1.0 if ate_food else 0.0; delta = (H ** phi) * lam - V_hat_s",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Associative strength update (Rescorla-Wagner rule): each cue present at the outcome cell is updated by prediction error scaled by learning rates",
+      "type": "algebraic",
+      "pseudocode": "beta = beta_plus if lam == 1.0 else beta_minus; for cue in cues_at_cell(s_current): V[cue] = V.get(cue, 0.0) + alpha * beta * delta; V[cue] = clip(V[cue], -1.0, 1.0)",
+      "source_postulate": "P2, P3, P5"
+    },
+    {
+      "id": "R5",
+      "description": "Hunger dynamics: hunger increases each step, decreases upon eating, clamped to [0,1]",
+      "type": "algebraic",
+      "pseudocode": "ate = 1.0 if ate_food else 0.0; H = min(1.0, max(0.0, H + kappa - eta_sat * ate))",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R6",
+      "description": "Appetitive action-value: hunger-modulated predicted value at the destination cell for each action",
+      "type": "algebraic",
+      "pseudocode": "Q[action] = (H ** phi) * V_hat(destination_cell(action))",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax action selection over appetitive values",
+      "type": "algebraic",
+      "pseudocode": "probs[a] = exp(Q[a] / tau) / sum(exp(Q[a_prime] / tau) for a_prime in actions); return sample(actions, probs)",
+      "source_postulate": "P1, P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent perceives current and neighbouring cells, computes cue-based appetitive values modulated by hunger, selects actions via softmax. Eat action is only viable when food is at the current cell.",
+    "pseudocode": [
+      "# 1. Build cue sets for current cell and each neighbour",
+      "for each action in [move_up, move_down, move_left, move_right, stay]:",
+      "    dest = destination_cell(action, perception.x, perception.y, grid_width, grid_height)",
+      "    cues = get_cues_at_cell(dest, perception.resources.food)",
+      "    V_hat_dest = sum(V.get(cue, 0.0) for cue in cues)",
+      "    Q[action] = (H ** phi) * V_hat_dest",
+      "",
+      "# 2. Evaluate eat action",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "if food_here:",
+      "    cues_here = get_cues_at_cell((perception.x, perception.y), perception.resources.food)",
+      "    V_hat_here = sum(V.get(cue, 0.0) for cue in cues_here)",
+      "    Q['eat'] = (H ** phi) * V_hat_here",
+      "    # Boost eat value slightly to prefer consuming when at food",
+      "    Q['eat'] = Q['eat'] + H ** phi",
+      "else:",
+      "    Q['eat'] = -999.0",
+      "",
+      "# 3. Softmax selection",
+      "max_q = max(Q.values())",
+      "exp_q = {a: exp((Q[a] - max_q) / tau) for a in Q}",
+      "total = sum(exp_q.values())",
+      "probs = {a: exp_q[a] / total for a in exp_q}",
+      "return sample_action(probs)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_cell": "[f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y']]",
+      "ate_food": "last_action_result gets checked: if action was 'eat' and reward > 0 then lam=1.0 else lam=0.0",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action -> ConsumeEffect reward=1.0 when food is present; movement and stay yield reward=0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Acquisition: associative strengths for cues near food locations increase across trials",
+      "test_pseudocode": "run 200 steps with stable food positions -> assert V[food_adjacent_cues] > 0.3"
+    },
+    {
+      "id": "B2",
+      "description": "Extinction: when food is removed from a location, associative strengths for cues at that location decay toward zero",
+      "test_pseudocode": "train 100 steps with food at (3,3), then remove food -> after 100 more steps assert V[cues_at_3_3] < 0.1"
+    },
+    {
+      "id": "B3",
+      "description": "Hunger modulation: agent seeks food more actively when hunger is high",
+      "test_pseudocode": "compare action entropy at H=0.9 vs H=0.1 -> assert more directed movement (lower entropy) at high hunger"
+    },
+    {
+      "id": "B4",
+      "description": "Conditioned approach: agent preferentially moves toward cells with high associative value",
+      "test_pseudocode": "after training, place agent equidistant from trained and untrained locations -> assert agent moves toward trained location > 70% of trials"
+    },
+    {
+      "id": "B5",
+      "description": "Prediction error diminishes: delta decreases across repeated successful eating trials at the same location",
+      "test_pseudocode": "log delta across 50 eat events at same location -> assert delta[last_10].mean < delta[first_10].mean"
+    }
+  ],
+  "references": [
+    "Rescorla, R.A. & Wagner, A.R. (1972) — A Theory of Pavlovian Conditioning: Variations in the Effectiveness of Reinforcement and Nonreinforcement",
+    "Pavlov, I.P. (1927) — Conditioned Reflexes",
+    "Researchgate (2017) — Motivational State Controls the Prediction Error in Pavlovian Appetitive-Aversive Interactions",
+    "PMC3702630 (2013) — Extinction of Goal-Tracking Also Eliminates the Conditioned Appetitive Response"
+  ]
+}

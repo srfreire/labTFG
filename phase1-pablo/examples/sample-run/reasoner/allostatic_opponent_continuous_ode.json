@@ -1,0 +1,163 @@
+{
+  "formulation_id": "allostatic_opponent_continuous_ode",
+  "paradigm": "allostatic-opponent-process-model-of-food-intake",
+  "name": "Continuous Opponent-Process ODE with Allostatic Set-Point Drift",
+  "description": "Coupled ordinary differential equations (Euler-integrated at each timestep) governing a fast-decaying hedonic a-process, a slow-decaying aversive b-process, and a slowly drifting allostatic reward set-point. The agent computes a motivational drive M(t) = theta(t) - A(t) and acts deterministically: eating when food is present and drive exceeds threshold, navigating toward visible food when drive is high, exploring randomly when driven but no food is visible, and staying put when drive is low. With repeated eating episodes, the opponent coupling gain gamma grows (tolerance/sensitisation), the set-point theta drifts downward (allostatic load), and the agent transitions from hedonic positive-reinforcement eating to compulsive negative-reinforcement eating.",
+  "variables": [
+    {"symbol": "a", "name": "hedonic_a_process", "description": "Primary hedonic pleasure response to eating palatable food (fast-rising, fast-decaying)", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "b", "name": "opponent_b_process", "description": "Opponent aversive counter-regulatory state (slow-rising, slow-decaying); grows stronger with repeated exposure", "type": "float", "initial_value": 0.0, "range": [0.0, 10.0]},
+    {"symbol": "A", "name": "net_affective_state", "description": "Net experienced hedonic tone: A = a - b", "type": "float", "initial_value": 0.0, "range": [-10.0, 10.0]},
+    {"symbol": "theta", "name": "hedonic_set_point", "description": "Allostatic reward baseline that drifts downward with chronic palatable food exposure", "type": "float", "initial_value": 1.0, "range": [-5.0, 1.0]},
+    {"symbol": "L", "name": "allostatic_load", "description": "Cumulative dysregulatory burden: L = theta_0 - theta", "type": "float", "initial_value": 0.0, "range": [0.0, 6.0]},
+    {"symbol": "M", "name": "motivational_drive", "description": "Discrepancy between set-point and current affective state: M = theta - A; positive values drive food-seeking", "type": "float", "initial_value": 1.0, "range": [-10.0, 10.0]},
+    {"symbol": "S", "name": "food_stimulus_input", "description": "Binary signal: 1 if agent successfully ate food this step, 0 otherwise", "type": "int", "initial_value": 0, "range": [0, 1]},
+    {"symbol": "gamma", "name": "opponent_coupling_gain", "description": "Coupling strength from a-process to b-process; increases with each eating episode (sensitisation)", "type": "float", "initial_value": 0.3, "range": [0.3, 5.0]},
+    {"symbol": "N", "name": "cumulative_eating_count", "description": "Total number of successful eating episodes to date", "type": "int", "initial_value": 0, "range": [0, 100000]}
+  ],
+  "parameters": [
+    {"symbol": "alpha", "name": "a_process_decay_rate", "default": 0.5, "source": "Solomon & Corbit (1974): a-process is fast-decaying"},
+    {"symbol": "beta", "name": "b_process_decay_rate", "default": 0.1, "source": "Solomon & Corbit (1974): b-process decays slowly (beta < alpha)"},
+    {"symbol": "gamma_0", "name": "initial_coupling_gain", "default": 0.3, "source": "Solomon & Corbit (1974): initial opponent recruitment strength"},
+    {"symbol": "delta", "name": "coupling_gain_growth_rate", "default": 0.02, "source": "Koob & Le Moal (2001): b-process strengthens with repetition"},
+    {"symbol": "lam", "name": "allostatic_loading_coefficient", "default": 0.05, "source": "Koob & Le Moal (2008): rate of set-point shift per unit b-process"},
+    {"symbol": "rho", "name": "set_point_recovery_rate", "default": 0.005, "source": "Koob & Le Moal (2008): slow, incomplete recovery of hedonic baseline"},
+    {"symbol": "theta_0", "name": "original_homeostatic_set_point", "default": 1.0, "source": "Normalised baseline per Koob & Le Moal (2001)"},
+    {"symbol": "kappa", "name": "stress_amplification_factor", "default": 0.1, "source": "Yau & Potenza (2013): stress accelerates allostatic load accumulation"},
+    {"symbol": "M_thresh", "name": "motivational_threshold", "default": 0.3, "source": "Derived from postulates P3-P4: threshold below which agent does not seek food"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "A-process dynamics: hedonic pleasure rises sharply on food stimulus, decays exponentially otherwise",
+      "type": "ODE",
+      "pseudocode": "da_dt = -alpha * a + palatability * S\na = a + da_dt  # Euler step with dt=1",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "B-process dynamics: opponent aversive state is driven by a-process via coupling gain gamma, decays slowly",
+      "type": "ODE",
+      "pseudocode": "db_dt = -beta * b + gamma * a\nb = b + db_dt  # Euler step with dt=1",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R3",
+      "description": "Coupling gain sensitisation: gamma grows with each eating episode, modelling b-process strengthening",
+      "type": "algebraic",
+      "pseudocode": "gamma = gamma_0 + delta * N",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Net affective state: experienced hedonic tone is the difference of a and b processes",
+      "type": "algebraic",
+      "pseudocode": "A = a - b",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R5",
+      "description": "Allostatic set-point drift: theta drifts down proportional to b-process, with slow recovery toward theta_0",
+      "type": "ODE",
+      "pseudocode": "dtheta_dt = -lam * b + rho * (theta_0 - theta)\ntheta = theta + dtheta_dt  # Euler step with dt=1",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R6",
+      "description": "Allostatic load is the accumulated deficit of set-point from its original baseline",
+      "type": "algebraic",
+      "pseudocode": "L = theta_0 - theta",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R7",
+      "description": "Motivational drive: positive when current affect is below the (possibly lowered) set-point",
+      "type": "algebraic",
+      "pseudocode": "M = theta - A",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "Eating event update: on successful eat, increment cumulative count and set stimulus flag",
+      "type": "event",
+      "pseudocode": "if action_was_eat and consumed:\n    N = N + 1\n    S = 1\nelse:\n    S = 0",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Deterministic threshold-based decision rule: the motivational drive M(t) is compared against M_thresh. When drive is high, the agent prioritises eating (if food at position) or navigating toward the nearest visible food. When no food is visible but drive is high, the agent explores randomly. When drive is low, the agent stays put.",
+    "pseudocode": [
+      "# 1. Get current food at agent's position",
+      "food_here = any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "",
+      "# 2. Compute motivational drive (already updated in internal state)",
+      "# M = theta - A (computed via rules R4, R7)",
+      "",
+      "# 3. Decision",
+      "if food_here and M > M_thresh:",
+      "    return Action('eat')",
+      "",
+      "if M > M_thresh:",
+      "    food_list = perception['resources']['food']",
+      "    if len(food_list) > 0:",
+      "        # Find nearest food by Manhattan distance",
+      "        nearest = min(food_list, key=lambda f: abs(f['x'] - perception['x']) + abs(f['y'] - perception['y']))",
+      "        dx = nearest['x'] - perception['x']",
+      "        dy = nearest['y'] - perception['y']",
+      "        if abs(dx) >= abs(dy):",
+      "            return Action('move_right') if dx > 0 else Action('move_left')",
+      "        else:",
+      "            return Action('move_down') if dy > 0 else Action('move_up')",
+      "    else:",
+      "        # No visible food; explore randomly",
+      "        return random_choice(['move_up', 'move_down', 'move_left', 'move_right'])",
+      "",
+      "# Drive is low, stay put",
+      "return Action('stay')"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "palatability": "food['palatability'] for the food item consumed (used as stimulus intensity p)",
+      "ate_food": "last_action_result — if action was 'eat', check if food was consumed (reward > 0)",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; palatability from food resource property [0.1, 1.0] used as stimulus intensity multiplier for the a-process"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hedonic tolerance: pleasure from eating the same food diminishes over repeated episodes as b-process grows",
+      "test_pseudocode": "track net_affect (A) at moment of eating over 50 episodes → assert A at episode 50 < A at episode 1"
+    },
+    {
+      "id": "B2",
+      "description": "Withdrawal-like negative affect: during prolonged abstinence after chronic eating, net affect drops below zero",
+      "test_pseudocode": "feed agent for 50 steps, then remove food for 50 steps → assert A < 0 during abstinence period"
+    },
+    {
+      "id": "B3",
+      "description": "Allostatic set-point drift: theta decreases over repeated eating episodes",
+      "test_pseudocode": "run 200 steps with food available → assert theta < theta_0"
+    },
+    {
+      "id": "B4",
+      "description": "Escalation of intake motivation: motivational drive M increases over long sessions as theta drifts down",
+      "test_pseudocode": "compare average M in steps 1-50 vs steps 150-200 → assert later M is higher"
+    },
+    {
+      "id": "B5",
+      "description": "Transition from positive to negative reinforcement: early eating occurs when A > 0 (pleasure-seeking); late eating occurs when A < 0 (aversion-relief)",
+      "test_pseudocode": "in first 20 eat events, majority have A > 0; in last 20 eat events (after 100+ total), majority have A < 0"
+    }
+  ],
+  "references": [
+    "Solomon, R.L. & Corbit, J.D. (1974). An opponent-process theory of motivation: I. Temporal dynamics of affect. Psychological Review, 81(2), 119–145.",
+    "Koob, G.F. & Le Moal, M. (2001). Drug addiction, dysregulation of reward, and allostasis. Neuropsychopharmacology, 24(2), 97–129.",
+    "Koob, G.F. & Le Moal, M. (2008). Neurobiological mechanisms for opponent motivational processes in addiction. Philosophical Transactions of the Royal Society B, 363(1507), 3113–3123.",
+    "Yau, Y.H.C. & Potenza, M.N. (2013). Stress and eating behaviors. Minerva Endocrinologica, 38(3), 255–267."
+  ]
+}

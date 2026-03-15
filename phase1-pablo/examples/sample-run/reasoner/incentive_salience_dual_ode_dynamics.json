@@ -1,0 +1,178 @@
+{
+  "formulation_id": "incentive_salience_dual_ode_dynamics",
+  "paradigm": "incentive-salience-theory",
+  "name": "Dual-ODE Dynamical System with Wanting-Liking Dissociation",
+  "description": "A continuous-time ODE system (Euler-discretized per simulation step) where wanting and liking evolve as coupled but dissociable dynamical variables. Wanting is driven by cue proximity (inverse distance to nearest food) and amplified by a sensitization state that accumulates with each consumption event. Liking drifts toward a hedonic set-point but develops tolerance with repeated consumption. Decision-making uses threshold-based rules: high wanting triggers approach/eat, low wanting triggers exploration. The emergent behavior is the hallmark wanting-liking dissociation: over time, cue-triggered wanting escalates (through sensitization) while hedonic liking per consumption stagnates or declines (through tolerance). Based directly on Robinson & Berridge (1993) and Berridge & Robinson (1998, 2016).",
+  "variables": [
+    {"symbol": "w_t", "name": "wanting_level", "description": "Current motivational drive / incentive salience intensity. Driven up by cue proximity, amplified by sensitization, decays without cues.", "type": "float", "initial_value": 0.0, "range": [0, 50]},
+    {"symbol": "l_t", "name": "liking_level", "description": "Current hedonic capacity / pleasure sensitivity. Drifts toward baseline set-point but decremented by consumption (tolerance). Dopamine-independent (P3).", "type": "float", "initial_value": 1.0, "range": [0.01, 2.0]},
+    {"symbol": "S_t", "name": "sensitization_state", "description": "Accumulated neural sensitization of the wanting system. Grows with each reward encounter, decays very slowly. Amplifies cue-triggered wanting.", "type": "float", "initial_value": 0.0, "range": [0, 5.0]},
+    {"symbol": "c_t", "name": "cue_proximity", "description": "Intensity of nearest reward-predictive cue. Computed as 1/(1+d_min) where d_min is Manhattan distance to nearest visible food. 0 if no food visible.", "type": "float", "initial_value": 0.0, "range": [0, 1]},
+    {"symbol": "E_t", "name": "energy", "description": "Internal energy level reflecting recent consumption minus basal metabolic cost.", "type": "float", "initial_value": 5.0, "range": [0, 100]},
+    {"symbol": "pleasure_t", "name": "experienced_pleasure", "description": "Actual hedonic experience from eating, computed as l_t * r_t. Can diminish even as wanting grows.", "type": "float", "initial_value": 0.0, "range": [0, 10]},
+    {"symbol": "last_move", "name": "last_move_direction", "description": "The last movement action taken, used for recency avoidance in exploration.", "type": "string", "initial_value": "null", "range": ["move_up", "move_down", "move_left", "move_right", "null"]}
+  ],
+  "parameters": [
+    {"symbol": "a_w", "name": "wanting_cue_reactivity", "default": 2.0, "source": "Berridge (2007): cues strongly elicit wanting"},
+    {"symbol": "b_w", "name": "wanting_decay_rate", "default": 0.3, "source": "Natural decay of motivational urge without cues"},
+    {"symbol": "a_S", "name": "sensitization_gain_on_wanting", "default": 1.0, "source": "Robinson & Berridge (1993): sensitization amplifies cue-triggered wanting"},
+    {"symbol": "eta_S", "name": "sensitization_growth_rate", "default": 0.05, "source": "Robinson & Berridge (2016): gradual and persistent"},
+    {"symbol": "lambda_S", "name": "sensitization_decay_rate", "default": 0.002, "source": "Very slow decay — sensitization is long-lasting (Robinson & Berridge, 2024)"},
+    {"symbol": "S_max", "name": "max_sensitization", "default": 5.0, "source": "Bounded upper limit"},
+    {"symbol": "l_0", "name": "baseline_liking_capacity", "default": 1.0, "source": "Normative hedonic set-point (Berridge & Robinson, 1998)"},
+    {"symbol": "mu_l", "name": "liking_restoration_rate", "default": 0.1, "source": "Hedonic adaptation back to baseline (Berridge & Robinson, 1998)"},
+    {"symbol": "delta_l", "name": "liking_tolerance_decrement", "default": 0.05, "source": "Hedonic tolerance with repeated consumption (Berridge & Robinson, 2016)"},
+    {"symbol": "theta_w", "name": "wanting_approach_threshold", "default": 0.5, "source": "Below this, agent defaults to exploration"},
+    {"symbol": "theta_e", "name": "wanting_eat_threshold", "default": 1.5, "source": "High wanting needed to trigger consumption action"},
+    {"symbol": "E_decay", "name": "energy_decay_per_step", "default": 0.05, "source": "Basal metabolic cost"},
+    {"symbol": "dt", "name": "euler_timestep", "default": 1.0, "source": "Discretization step for ODE integration (one simulation tick)"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Wanting dynamics (Euler-discretized ODE): wanting is driven up by cue proximity c_t, amplified by sensitization S_t via the (1 + a_S * S_t) multiplier, and decays naturally. This formalizes P2 and P4: wanting is cue-triggered and dopamine-amplified.",
+      "type": "ODE",
+      "pseudocode": "w_next = w_t + dt * (a_w * (1 + a_S * S_t) * c_t - b_w * w_t)\nw_next = max(w_next, 0.0)",
+      "source_postulate": "P2, P4"
+    },
+    {
+      "id": "R2",
+      "description": "Liking dynamics (Euler-discretized ODE): liking drifts back toward the hedonic set-point l_0 but is decremented by each consumption event (tolerance). Critically, liking has NO dependence on sensitization or the wanting variables — this implements P3.",
+      "type": "ODE",
+      "pseudocode": "ate = 1 if r_t > 0 else 0\nl_next = l_t + dt * (mu_l * (l_0 - l_t) - delta_l * ate)\nl_next = max(l_next, 0.01)  # floor to prevent zero",
+      "source_postulate": "P1, P3"
+    },
+    {
+      "id": "R3",
+      "description": "Sensitization dynamics (Euler-discretized ODE): sensitization grows with each reward encounter and decays very slowly. This implements P5: repeated exposure produces persistent neuroplastic amplification of wanting.",
+      "type": "ODE",
+      "pseudocode": "ate = 1 if r_t > 0 else 0\nS_next = S_t + dt * (eta_S * ate - lambda_S * S_t)\nS_next = clip(S_next, 0.0, S_max)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R4",
+      "description": "Cue proximity signal: inverse of (1 + Manhattan distance to nearest visible food). If no food is visible, c_t = 0.",
+      "type": "algebraic",
+      "pseudocode": "food_list = perception['resources']['food']\nif len(food_list) == 0:\n    c_t = 0.0\nelse:\n    d_min = min(abs(f['x'] - x) + abs(f['y'] - y) for f in food_list)\n    c_t = 1.0 / (1.0 + d_min)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Experienced pleasure from eating: actual hedonic experience scales with current liking capacity. Can diminish over time even as wanting escalates — the core wanting-liking dissociation (P5).",
+      "type": "algebraic",
+      "pseudocode": "pleasure_t = l_t * r_t",
+      "source_postulate": "P1, P5"
+    },
+    {
+      "id": "R6",
+      "description": "Energy dynamics: energy decreases each step by metabolic cost and increases when food is consumed.",
+      "type": "ODE",
+      "pseudocode": "ate = 1 if r_t > 0 else 0\nE_next = E_t - E_decay + ate * r_t\nE_next = max(E_next, 0.0)",
+      "source_postulate": "P4"
+    }
+  ],
+  "decision_logic": {
+    "description": "Threshold-based deterministic decision rules with tie-breaking. The agent's behavior is governed by the current wanting level w_t, which is a continuous dynamical variable driven by cue proximity and sensitization. Four rules are evaluated in priority order: (A) Eat if on food and wanting is high enough; (D) Stay/hover if on food but wanting hasn't reached eat threshold; (B) Approach nearest food if wanting exceeds approach threshold; (C) Explore randomly if wanting is low. This creates emergent behavioral transitions: early on (low sensitization), the agent explores; over time (high sensitization), it becomes increasingly cue-reactive and approach-dominant.",
+    "pseudocode": [
+      "# Compute cue proximity",
+      "food_list = perception['resources']['food']",
+      "x, y = perception['x'], perception['y']",
+      "food_here = any(f for f in food_list if f['x'] == x and f['y'] == y)",
+      "",
+      "if len(food_list) > 0:",
+      "    d_min = min(abs(f['x'] - x) + abs(f['y'] - y) for f in food_list)",
+      "    c_t = 1.0 / (1.0 + d_min)",
+      "else:",
+      "    c_t = 0.0",
+      "",
+      "# Update wanting BEFORE decision (so current cue proximity drives this step's behavior)",
+      "w_t = w_t + dt * (a_w * (1 + a_S * S_t) * c_t - b_w * w_t)",
+      "w_t = max(w_t, 0.0)",
+      "",
+      "# Rule A: Eat — on food and wanting is high enough",
+      "if food_here and w_t >= theta_e:",
+      "    return Action('eat')",
+      "",
+      "# Rule D: Stay/hover — on food but wanting building up",
+      "if food_here and theta_w <= w_t < theta_e:",
+      "    return Action('stay')",
+      "",
+      "# Rule B: Approach — wanting above approach threshold, food visible",
+      "if w_t >= theta_w and len(food_list) > 0:",
+      "    # Find nearest food",
+      "    nearest = min(food_list, key=lambda f: abs(f['x'] - x) + abs(f['y'] - y))",
+      "    dx = nearest['x'] - x",
+      "    dy = nearest['y'] - y",
+      "    # Move toward nearest food, preferring axis with larger distance",
+      "    if abs(dx) >= abs(dy):",
+      "        if dx > 0: return Action('move_right')",
+      "        elif dx < 0: return Action('move_left')",
+      "    if dy > 0: return Action('move_down')",
+      "    elif dy < 0: return Action('move_up')",
+      "    return Action('stay')  # already at food (shouldn't reach here normally)",
+      "",
+      "# Rule C: Explore — low wanting, random movement with recency avoidance",
+      "opposites = {'move_up': 'move_down', 'move_down': 'move_up', 'move_left': 'move_right', 'move_right': 'move_left'}",
+      "moves = ['move_up', 'move_down', 'move_left', 'move_right']",
+      "if last_move in opposites:",
+      "    preferred = [m for m in moves if m != opposites[last_move]]",
+      "else:",
+      "    preferred = moves",
+      "chosen = random.choice(preferred)",
+      "last_move = chosen",
+      "return Action(chosen)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_cell": "any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "nearest_food_distance": "min(abs(f['x'] - perception['x']) + abs(f['y'] - perception['y']) for f in food_sources) if food_sources else infinity",
+      "reward": "reward parameter from update(action, reward, new_perception)",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0). The reward r_t from update() drives sensitization growth (R3), liking tolerance (R2), energy gain (R6), and pleasure computation (R5)."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Early exploration phase: with low sensitization, wanting stays below approach threshold most of the time, and the agent explores the grid randomly (Rule C dominates).",
+      "test_pseudocode": "run first 50 steps with S_t=0 → assert agent uses all 4 movement directions roughly equally, rarely eats even near food"
+    },
+    {
+      "id": "B2",
+      "description": "Transition to approach-dominant behavior: as sensitization accumulates, wanting spikes more strongly near food cues, and the agent increasingly approaches food (Rule B dominates).",
+      "test_pseudocode": "run 1000 steps → compare fraction of Rule B actions in first 200 vs last 200 steps → assert increase"
+    },
+    {
+      "id": "B3",
+      "description": "Wanting-liking dissociation: wanting peak values increase over time (due to growing S_t amplifying cue reactivity) while liking per consumption event decreases (due to tolerance). The agent pursues food more vigorously but enjoys it less.",
+      "test_pseudocode": "track max(w_t) per 100-step window and avg(pleasure_t) per eating event → assert wanting trend up, pleasure trend down or flat"
+    },
+    {
+      "id": "B4",
+      "description": "Hovering behavior: when the agent is near food but wanting hasn't reached eat threshold, it stays in place (Rule D), modeling the build-up of craving near reward-predictive cues.",
+      "test_pseudocode": "observe agent on food cell with theta_w <= w_t < theta_e → assert agent chooses 'stay'"
+    },
+    {
+      "id": "B5",
+      "description": "Sensitization persistence: even after a long period without food, sensitization decays very slowly (lambda_S = 0.002), so when food reappears the agent rapidly returns to high-wanting approach behavior.",
+      "test_pseudocode": "let agent sensitize (S_t > 2), remove food for 200 steps → assert S_t still > 1.5 → reintroduce food → assert agent immediately approaches"
+    },
+    {
+      "id": "B6",
+      "description": "Liking recovery: after a period without consumption, liking drifts back toward baseline l_0, modeling hedonic adaptation.",
+      "test_pseudocode": "consume food until l_t < 0.7 → stop eating for 100 steps → assert l_t has increased toward l_0"
+    }
+  ],
+  "references": [
+    "Robinson, T.E. & Berridge, K.C. (1993). The neural basis of drug craving: An incentive-sensitization theory of addiction. Brain Research Reviews, 18(3), 247-291.",
+    "Berridge, K.C. & Robinson, T.E. (1998). What is the role of dopamine in reward: hedonic impact, reward learning, or incentive salience? Brain Research Reviews, 28(3), 309-369.",
+    "Berridge, K.C. (2007). The debate over dopamine's role in reward: the case for incentive salience. Psychopharmacology, 191(3), 391-431.",
+    "Berridge, K.C. & Robinson, T.E. (2016). Liking, Wanting and the Incentive-Sensitization Theory of Addiction. PMC5171207.",
+    "Robinson, T.E. & Berridge, K.C. (2024). The Incentive-Sensitization Theory of Addiction: 30 Years On. Annual Review of Psychology.",
+    "Redish, A.D. (2004). Addiction as a computational process gone awry. Science, 306(5703), 1944-1947."
+  ]
+}

@@ -1,0 +1,232 @@
+{
+  "formulation_id": "cognitive_executive_bayesian_goal_inference",
+  "paradigm": "cognitive-executive-control-of-eating-behavior",
+  "name": "Bayesian Goal-Inference Model with Executive Capacity Prior",
+  "description": "A probabilistic Bayesian framework where the agent maintains a posterior belief over whether to pursue a 'hedonic eating' goal vs. a 'dietary restraint' goal. Executive function capacity (inhibitory control and working memory) is encoded as a prior favoring restraint, while sensory evidence (food cues and hunger) updates beliefs toward eating via likelihood functions. The posterior is combined with learned Q-values for each goal to produce value-modulated action probabilities via softmax selection. This creates a principled integration of top-down executive priors with bottom-up sensory evidence, where EF depletion shifts the prior toward eating. Q-value learning allows the agent to adapt its preferences based on experienced rewards.",
+  "variables": [
+    {"symbol": "p_eat", "name": "posterior_eat_probability", "description": "Agent's posterior belief that eating is the correct goal/action on this step", "type": "float", "initial_value": 0.3, "range": [0.0, 1.0]},
+    {"symbol": "pi_restrain", "name": "prior_restraint", "description": "Executive-control-derived prior probability favoring dietary restraint", "type": "float", "initial_value": 0.7, "range": [0.0, 1.0]},
+    {"symbol": "pi_eat", "name": "prior_eat", "description": "Prior probability favoring eating (1 - pi_restrain)", "type": "float", "initial_value": 0.3, "range": [0.0, 1.0]},
+    {"symbol": "L_eat", "name": "likelihood_eat", "description": "Likelihood of current sensory evidence given eating goal (food cues + hunger)", "type": "float", "initial_value": 0.3, "range": [0.0, 1.0]},
+    {"symbol": "L_restrain", "name": "likelihood_restrain", "description": "Likelihood of current state given restraint goal (1 - L_eat)", "type": "float", "initial_value": 0.7, "range": [0.0, 1.0]},
+    {"symbol": "IC", "name": "inhibitory_control", "description": "Current inhibitory control capacity; shapes prior toward restraint", "type": "float", "initial_value": 0.75, "range": [0.0, 1.0]},
+    {"symbol": "WM", "name": "working_memory", "description": "Current working memory availability; supports goal maintenance in prior", "type": "float", "initial_value": 0.7, "range": [0.1, 1.0]},
+    {"symbol": "H", "name": "hunger", "description": "Homeostatic hunger signal feeding into likelihood of eating goal", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "S", "name": "food_cue_salience", "description": "Perceived food-cue salience from nearest/most palatable visible food", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "Q_eat", "name": "q_value_eat", "description": "Learned expected reward from eating actions", "type": "float", "initial_value": 0.5, "range": [0.0, 2.0]},
+    {"symbol": "Q_restrain", "name": "q_value_restrain", "description": "Learned expected reward from restraint actions", "type": "float", "initial_value": 0.5, "range": [0.0, 2.0]},
+    {"symbol": "U_eat", "name": "utility_eat", "description": "Value-weighted utility of eating: posterior * Q_eat", "type": "float", "initial_value": 0.15, "range": [0.0, 2.0]},
+    {"symbol": "U_restrain", "name": "utility_restrain", "description": "Value-weighted utility of restraint: (1-posterior) * Q_restrain", "type": "float", "initial_value": 0.35, "range": [0.0, 2.0]}
+  ],
+  "parameters": [
+    {"symbol": "IC_0", "name": "baseline_inhibitory_control", "default": 0.75, "source": "Healthy norm (CORE / Frontiers in Psychology, 2016)"},
+    {"symbol": "WM_0", "name": "baseline_working_memory", "default": 0.7, "source": "Moderate capacity (PMC, 2017)"},
+    {"symbol": "tau", "name": "softmax_temperature", "default": 0.2, "source": "Controls action stochasticity in softmax selection"},
+    {"symbol": "alpha_learn", "name": "q_value_learning_rate", "default": 0.1, "source": "Standard reinforcement learning rate"},
+    {"symbol": "lambda_hunger", "name": "hunger_weight_in_likelihood", "default": 1.5, "source": "Hunger strongly signals eat-goal (Springer, 2021)"},
+    {"symbol": "lambda_cue", "name": "cue_salience_weight_in_likelihood", "default": 1.0, "source": "Food cue contribution to likelihood (ScienceDirect, 2022)"},
+    {"symbol": "lambda_IC", "name": "ic_weight_in_prior", "default": 2.0, "source": "Strong effect of IC on prior (Wiley / Eating Disorders, 2023; CORE, 2016)"},
+    {"symbol": "lambda_WM", "name": "wm_weight_in_prior", "default": 1.0, "source": "WM supports goal maintenance (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "delta_IC", "name": "ic_depletion_rate", "default": 0.06, "source": "Per food-encounter IC depletion (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "rho_IC", "name": "ic_recovery_rate", "default": 0.03, "source": "Recovery rate when no food cues present"},
+    {"symbol": "delta_H", "name": "hunger_increase_rate", "default": 0.02, "source": "Gradual hunger increase per step"},
+    {"symbol": "phi_H", "name": "hunger_reduction_on_eat", "default": 0.45, "source": "Hunger reduction from eating"},
+    {"symbol": "wm_load_per_food_type", "name": "wm_load_per_food_type", "default": 0.05, "source": "Each distinct food type in view loads working memory (PMC, 2017)"},
+    {"symbol": "wm_recovery_rate", "name": "wm_recovery_rate", "default": 0.03, "source": "WM recovers when no food visible"},
+    {"symbol": "restraint_reward_no_hunger", "name": "internal_restraint_reward_no_hunger", "default": 0.3, "source": "Internal reward for restraint when not hungry"},
+    {"symbol": "restraint_penalty_hungry", "name": "internal_restraint_penalty_hungry", "default": -0.2, "source": "Internal penalty for restraint when very hungry"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Compute food-cue salience S from the most salient visible food item (highest palatability / distance ratio)",
+      "type": "algebraic",
+      "pseudocode": "foods = perception.resources.food\nif foods:\n    saliences = [f.palatability / (1.0 + abs(f.x - perception.x) + abs(f.y - perception.y)) for f in foods]\n    S = max(saliences)\nelse:\n    S = 0.0",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Compute prior toward restraint using logistic sigmoid of IC and WM",
+      "type": "algebraic",
+      "pseudocode": "z = lambda_IC * IC + lambda_WM * WM\npi_restrain = 1.0 / (1.0 + exp(-z))\npi_eat = 1.0 - pi_restrain",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Compute likelihood of sensory evidence given eating goal using logistic sigmoid of hunger and salience",
+      "type": "algebraic",
+      "pseudocode": "z = lambda_hunger * H + lambda_cue * S\nL_eat = 1.0 / (1.0 + exp(-z))\nL_restrain = 1.0 - L_eat",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Compute posterior probability of eating goal via Bayes' rule",
+      "type": "algebraic",
+      "pseudocode": "numerator = pi_eat * L_eat\ndenominator = pi_eat * L_eat + pi_restrain * L_restrain\np_eat = numerator / denominator if denominator > 0 else 0.5",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Compute value-modulated utilities by combining posterior with learned Q-values",
+      "type": "algebraic",
+      "pseudocode": "U_eat = p_eat * Q_eat\nU_restrain = (1.0 - p_eat) * Q_restrain",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R6",
+      "description": "Softmax action selection based on utilities",
+      "type": "stochastic",
+      "pseudocode": "exp_eat = exp(U_eat / tau)\nexp_restrain = exp(U_restrain / tau)\nP_choose_eat = exp_eat / (exp_eat + exp_restrain)\nu = random.uniform(0, 1)\ngoal = 'eat' if u < P_choose_eat else 'restrain'",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R7",
+      "description": "Q-value update for eating after receiving environment reward",
+      "type": "state_update",
+      "pseudocode": "if chose_eat_last_step and ate_successfully:\n    r = env_reward  # 1.0 from ConsumeEffect\n    Q_eat = Q_eat + alpha_learn * (r - Q_eat)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "Q-value update for restraint using internal reward signal",
+      "type": "state_update",
+      "pseudocode": "if chose_restrain_last_step:\n    if H < 0.4:\n        r = restraint_reward_no_hunger  # 0.3: healthy restraint\n    else:\n        r = restraint_penalty_hungry  # -0.2: fighting real hunger is costly\n    Q_restrain = Q_restrain + alpha_learn * (r - Q_restrain)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R9",
+      "description": "Inhibitory control depletion when food cues present, recovery when absent",
+      "type": "state_update",
+      "pseudocode": "food_visible = len(perception.resources.food) > 0\nif food_visible:\n    IC = clip(IC - delta_IC, 0.0, 1.0)\nelse:\n    IC = clip(IC + rho_IC, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R10",
+      "description": "Working memory dynamics: loaded by number of distinct food items visible, recovers when none visible",
+      "type": "state_update",
+      "pseudocode": "n_foods_visible = len(perception.resources.food)\nif n_foods_visible > 0:\n    WM = clip(WM - wm_load_per_food_type * n_foods_visible, 0.1, 1.0)\nelse:\n    WM = clip(WM + wm_recovery_rate, 0.1, 1.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R11",
+      "description": "Hunger increases each step, decreases when agent eats",
+      "type": "state_update",
+      "pseudocode": "if ate_last_step:\n    H = clip(H - phi_H, 0.0, 1.0)\nelse:\n    H = clip(H + delta_H, 0.0, 1.0)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Bayesian inference pipeline: (1) compute executive-control prior favoring restraint via logistic sigmoid of IC+WM, (2) compute sensory likelihood favoring eating via logistic sigmoid of hunger+salience, (3) apply Bayes' rule for posterior eat probability, (4) weight posterior by learned Q-values to get utilities, (5) softmax select between eat and restrain goals, (6) translate goal to grid action. This produces a principled probabilistic agent where EF depletion gradually shifts the prior toward eating.",
+    "pseudocode": [
+      "# 1. Update internal states from last step",
+      "ate_last_step = last_action_result.get('consumed', False)",
+      "Update H using rule R11",
+      "Update IC using rule R9",
+      "Update WM using rule R10",
+      "Update Q_eat using rule R7 (if ate last step)",
+      "Update Q_restrain using rule R8 (if restrained last step)",
+      "",
+      "# 2. Compute food-cue salience S",
+      "Compute S using rule R1 (max palatability / (1 + distance) over visible foods)",
+      "",
+      "# 3. Compute Bayesian prior (executive control → restraint bias)",
+      "z_prior = lambda_IC * IC + lambda_WM * WM",
+      "pi_restrain = sigmoid(z_prior)",
+      "pi_eat = 1.0 - pi_restrain",
+      "",
+      "# 4. Compute likelihood (sensory evidence → eating bias)",
+      "z_likelihood = lambda_hunger * H + lambda_cue * S",
+      "L_eat = sigmoid(z_likelihood)",
+      "L_restrain = 1.0 - L_eat",
+      "",
+      "# 5. Bayes' rule for posterior",
+      "p_eat = (pi_eat * L_eat) / (pi_eat * L_eat + pi_restrain * L_restrain)",
+      "",
+      "# 6. Compute utilities",
+      "U_eat = p_eat * Q_eat",
+      "U_restrain = (1 - p_eat) * Q_restrain",
+      "",
+      "# 7. Softmax action selection",
+      "P_choose_eat = exp(U_eat / tau) / (exp(U_eat / tau) + exp(U_restrain / tau))",
+      "if random() < P_choose_eat:",
+      "    goal = 'eat'",
+      "else:",
+      "    goal = 'restrain'",
+      "",
+      "# 8. Translate goal to grid action",
+      "if goal == 'eat':",
+      "    # Find most salient food (highest palatability / (1+dist))",
+      "    best_food = argmax over foods of palatability / (1 + manhattan_dist)",
+      "    dist = manhattan_distance(agent_pos, best_food_pos)",
+      "    if dist <= 1:",
+      "        action = 'eat'",
+      "    else:",
+      "        action = move_toward(best_food_pos)  # choose move_up/down/left/right",
+      "elif goal == 'restrain':",
+      "    nearest_food = find nearest food",
+      "    if nearest_food exists and manhattan_distance <= 3:",
+      "        action = move_away_from(nearest_food_pos)",
+      "    else:",
+      "        action = 'stay'",
+      "",
+      "# 9. Store choice for next step Q-value update",
+      "Store goal as last_goal for use in next step's update rules"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_palatability": "each food item's .palatability property (float 0.1–1.0); maps to hedonic value/salience",
+      "food_distance": "manhattan distance |perception.x - food.x| + |perception.y - food.y|",
+      "ate_last_step": "last_action_result.get('consumed', False) after eat action",
+      "n_foods_visible": "len(perception.resources.food)",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0) feeds into Q_eat update; restraint reward is computed internally based on hunger level for Q_restrain update"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "As inhibitory control depletes from food exposure, the prior shifts from restraint toward eating, increasing p_eat",
+      "test_pseudocode": "Start with IC=0.75 near food → after 12 steps of food exposure, assert IC < 0.5 and p_eat has increased from initial 0.3 toward 0.5+"
+    },
+    {
+      "id": "B2",
+      "description": "High hunger and high food-cue salience produce strong likelihood toward eating, overriding moderate executive prior",
+      "test_pseudocode": "Set H=0.9, S=0.8, IC=0.6, WM=0.6 → compute p_eat → assert p_eat > 0.6"
+    },
+    {
+      "id": "B3",
+      "description": "Strong executive control (high IC and WM) maintains restraint even with moderate food cues",
+      "test_pseudocode": "Set IC=0.95, WM=0.9, H=0.3, S=0.5 → compute p_eat → assert p_eat < 0.3"
+    },
+    {
+      "id": "B4",
+      "description": "Q-values adapt over time: repeated eating with reward increases Q_eat, making eat choices more likely; restraint when not hungry increases Q_restrain",
+      "test_pseudocode": "Run 50 steps where agent eats frequently with reward=1.0 → assert Q_eat > Q_restrain; then run 50 steps where agent restrains with H<0.4 → assert Q_restrain increases"
+    },
+    {
+      "id": "B5",
+      "description": "Working memory degrades when many food items are visible, weakening the restraint prior",
+      "test_pseudocode": "Set 5 food items all within close range → assert WM decreases over steps → assert pi_restrain decreases"
+    },
+    {
+      "id": "B6",
+      "description": "Softmax temperature controls exploration: low tau produces more deterministic choices aligned with higher utility",
+      "test_pseudocode": "Set tau=0.05 with U_eat > U_restrain → run 100 samples → assert >95% choose eat; set tau=1.0 → assert more balanced distribution"
+    }
+  ],
+  "references": [
+    "ScienceDirect / Current Opinion in Behavioral Sciences (2022) — The brain bases of regulation of eating behaviors",
+    "APA PsycNet (2023) — The brain bases of regulation of eating behaviors",
+    "CORE / Frontiers in Psychology (2016) — Impulsivity and Inhibitory Control Deficits Are Associated with Obesity",
+    "ScienceDirect / Appetite (2017) — Executive functions and the self-regulation of eating behavior: A review",
+    "Springer / Reviews in Endocrine and Metabolic Disorders (2021) — Neurobiological regulation of eating behavior",
+    "Wiley / International Journal of Eating Disorders (2023) — Executive functions and eating behavior",
+    "PMC (2017) — Executive functioning and dietary intake",
+    "MDPI / Nutrients (2024) — Self-Regulation in Eating Behaviors"
+  ]
+}

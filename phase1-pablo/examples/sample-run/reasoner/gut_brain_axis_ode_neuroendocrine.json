@@ -1,0 +1,155 @@
+{
+  "formulation_id": "gut_brain_axis_ode_neuroendocrine",
+  "paradigm": "gut-brain-axis-signaling-in-food-intake-regulation",
+  "name": "ODE-Based Neuroendocrine Dynamics with Hypothalamic Integration",
+  "description": "Continuous-time ODE model of gut hormone kinetics (CCK, GLP-1, PYY, ghrelin) discretized per simulation tick, with a hypothalamic feeding-drive integrator that sums orexigenic and anorexigenic signals to produce a net hunger drive. The agent eats when the feeding drive is positive and food is available, otherwise navigates toward food or stays put. Based on neuroendocrine models from Yoo & Park (2021), Berthoud (2011), and PMC11483575 (2024).",
+  "variables": [
+    {"symbol": "H_CCK", "name": "cck_level", "description": "Plasma cholecystokinin concentration — short-acting satiety signal released by fat/protein intake", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "H_GLP1", "name": "glp1_level", "description": "Plasma GLP-1 concentration — medium-acting satiety signal from ileal/colonic L-cells", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "H_PYY", "name": "pyy_level", "description": "Plasma Peptide YY concentration — longer-acting satiety signal proportional to caloric load", "type": "float", "initial_value": 0.0, "range": [0.0, 5.0]},
+    {"symbol": "G", "name": "ghrelin_level", "description": "Plasma ghrelin concentration — orexigenic hunger signal that rises during fasting", "type": "float", "initial_value": 0.5, "range": [0.0, 5.0]},
+    {"symbol": "S", "name": "stomach_fill", "description": "Gastric nutrient content representing recent food intake (0=empty, 1=full)", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "F", "name": "feeding_drive", "description": "Net hypothalamic drive to eat (positive=hungry, negative=sated). Integrates all hormonal signals.", "type": "float", "initial_value": 0.5, "range": [-10.0, 10.0]},
+    {"symbol": "E", "name": "energy_reserve", "description": "Internal energy store analogous to adiposity / leptin-signaled reserve", "type": "float", "initial_value": 5.0, "range": [0.0, 20.0]},
+    {"symbol": "ate_last_tick", "name": "ate_last_tick", "description": "Binary indicator: did the agent successfully eat on the previous tick", "type": "int", "initial_value": 0, "range": [0, 1]}
+  ],
+  "parameters": [
+    {"symbol": "k_sec_CCK", "name": "cck_secretion_rate", "default": 0.8, "source": "Berthoud (2011): CCK is rapidly released by fat/protein"},
+    {"symbol": "k_sec_GLP1", "name": "glp1_secretion_rate", "default": 0.5, "source": "Yoo & Park (2021): GLP-1 rises proportionally to caloric load"},
+    {"symbol": "k_sec_PYY", "name": "pyy_secretion_rate", "default": 0.3, "source": "PMC11483575 (2024): PYY release proportional to calories"},
+    {"symbol": "k_cl_CCK", "name": "cck_clearance_rate", "default": 0.6, "source": "Berthoud (2011): CCK has shortest half-life among satiety peptides"},
+    {"symbol": "k_cl_GLP1", "name": "glp1_clearance_rate", "default": 0.3, "source": "Yoo & Park (2021): GLP-1 half-life ~2 min, sustained by DPP-4 dynamics"},
+    {"symbol": "k_cl_PYY", "name": "pyy_clearance_rate", "default": 0.15, "source": "PMC11483575 (2024): PYY has longer half-life than CCK"},
+    {"symbol": "k_G_rise", "name": "ghrelin_rise_rate", "default": 0.1, "source": "MDPI Nutrients (2023): ghrelin rises tonically during fasting"},
+    {"symbol": "k_G_sup", "name": "ghrelin_suppression_factor", "default": 0.7, "source": "Yoo & Park (2021): post-prandial ghrelin suppression"},
+    {"symbol": "alpha", "name": "ghrelin_sensitivity", "default": 1.5, "source": "PMC11483575 (2024): orexigenic drive weight"},
+    {"symbol": "beta1", "name": "cck_sensitivity", "default": 1.0, "source": "Berthoud (2011): short-term satiety weight"},
+    {"symbol": "beta2", "name": "glp1_sensitivity", "default": 1.2, "source": "Yoo & Park (2021): medium-term satiety weight"},
+    {"symbol": "beta3", "name": "pyy_sensitivity", "default": 0.8, "source": "PMC11483575 (2024): longer-term satiety weight"},
+    {"symbol": "gamma", "name": "energy_deficit_drive", "default": 0.4, "source": "Berthoud (2011): leptin-analogue homeostatic correction concept"},
+    {"symbol": "E_set", "name": "energy_setpoint", "default": 5.0, "source": "Berthoud (2011): homeostatic setpoint concept"},
+    {"symbol": "E_cost", "name": "movement_energy_cost", "default": 0.05, "source": "Metabolic cost of movement/basal metabolism per tick"},
+    {"symbol": "E_gain", "name": "eating_energy_gain", "default": 1.0, "source": "Energy from consuming one food item"},
+    {"symbol": "delta", "name": "stomach_decay_rate", "default": 0.2, "source": "Gastric emptying rate"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "CCK kinetics: rapid secretion on eating, fast clearance",
+      "type": "ODE_discretized",
+      "pseudocode": "H_CCK = H_CCK + k_sec_CCK * ate_last_tick - k_cl_CCK * H_CCK\nH_CCK = max(H_CCK, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "GLP-1 kinetics: secretion depends on stomach fill and eating, medium clearance",
+      "type": "ODE_discretized",
+      "pseudocode": "H_GLP1 = H_GLP1 + k_sec_GLP1 * S * ate_last_tick - k_cl_GLP1 * H_GLP1\nH_GLP1 = max(H_GLP1, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "PYY kinetics: secretion proportional to stomach fill, slow clearance",
+      "type": "ODE_discretized",
+      "pseudocode": "H_PYY = H_PYY + k_sec_PYY * S - k_cl_PYY * H_PYY\nH_PYY = max(H_PYY, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Ghrelin dynamics: rises during fasting, suppressed by eating",
+      "type": "ODE_discretized",
+      "pseudocode": "G = G + k_G_rise * (1.0 - S) - k_G_sup * ate_last_tick * G\nG = max(G, 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Stomach fill: decays via gastric emptying, increased by eating",
+      "type": "ODE_discretized",
+      "pseudocode": "S = S - delta * S + ate_last_tick * (1.0 - S) * 0.5\nS = max(0.0, min(1.0, S))",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R6",
+      "description": "Energy reserve: depletes with basal cost, replenished by eating",
+      "type": "ODE_discretized",
+      "pseudocode": "E = E - E_cost + E_gain * ate_last_tick\nE = max(E, 0.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R7",
+      "description": "Hypothalamic feeding drive: net orexigenic minus anorexigenic signals plus energy deficit correction",
+      "type": "algebraic",
+      "pseudocode": "F = alpha * G - beta1 * H_CCK - beta2 * H_GLP1 - beta3 * H_PYY + gamma * (E_set - E)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent decides based on the sign and magnitude of the hypothalamic feeding drive F. When hungry (F>0), it eats if food is at current position, otherwise moves toward nearest food. When sated (F<=0), it stays put.",
+    "pseudocode": [
+      "# 1. Update internal state using rules R1-R7",
+      "apply_rules(R1, R2, R3, R4, R5, R6, R7)",
+      "",
+      "# 2. Check if food is at agent's current position",
+      "food_here = any(f for f in perception.resources.food if f.x == perception.x and f.y == perception.y)",
+      "",
+      "# 3. Decide based on feeding drive",
+      "if F > 0 and food_here:",
+      "    return Action('eat')",
+      "elif F > 0 and len(perception.resources.food) > 0:",
+      "    # Find nearest food by Manhattan distance",
+      "    nearest = min(perception.resources.food, key=lambda f: abs(f.x - perception.x) + abs(f.y - perception.y))",
+      "    dx = nearest.x - perception.x",
+      "    dy = nearest.y - perception.y",
+      "    # Move in the direction that reduces Manhattan distance most",
+      "    if abs(dx) >= abs(dy):",
+      "        return Action('move_right') if dx > 0 else Action('move_left')",
+      "    else:",
+      "        return Action('move_down') if dy > 0 else Action('move_up')",
+      "else:",
+      "    return Action('stay')"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "ate_last_tick": "1 if last_action was 'eat' and reward > 0 else 0",
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food (list of {x, y, type, palatability})",
+      "grid_dimensions": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward of 1.0 when food is at agent position"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Ghrelin rises during fasting, increasing feeding drive",
+      "test_pseudocode": "run 50 steps without food nearby → assert G increases monotonically and F increases over time"
+    },
+    {
+      "id": "B2",
+      "description": "Satiety peptides spike after eating, temporarily suppressing feeding drive",
+      "test_pseudocode": "agent eats food → assert H_CCK, H_GLP1, H_PYY all increase next tick → assert F decreases below pre-meal level"
+    },
+    {
+      "id": "B3",
+      "description": "CCK decays fastest, PYY decays slowest among satiety peptides",
+      "test_pseudocode": "after a single meal, track decay → assert H_CCK returns to baseline before H_GLP1, which returns before H_PYY"
+    },
+    {
+      "id": "B4",
+      "description": "Agent stays put when fully sated (F <= 0)",
+      "test_pseudocode": "after multiple meals in quick succession → assert agent chooses 'stay' for several ticks until F > 0"
+    },
+    {
+      "id": "B5",
+      "description": "Energy depletion increases feeding urgency even when stomach is partially full",
+      "test_pseudocode": "set E far below E_set → assert F is elevated due to gamma * (E_set - E) term"
+    }
+  ],
+  "references": [
+    "Berthoud, H.R. (2011) — The role of the gut/brain axis in modulating food intake — Neuropharmacology",
+    "Yoo, J.Y. & Park, S. (2021) — Role of the gut-brain axis in energy and glucose metabolism — npj Science of Food / Nature",
+    "MDPI Nutrients (2023) — The Mechanism of the Gut-Brain Axis in Regulating Food Intake — Nutrients 15(17):3728 (PubMed 37686760)",
+    "Pharmacology Research & Perspectives (2024) — The gut-brain axis in appetite, satiety, food intake, and eating disorders — PMC11483575"
+  ]
+}

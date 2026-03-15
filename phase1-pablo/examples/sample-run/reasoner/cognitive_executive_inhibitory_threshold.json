@@ -1,0 +1,208 @@
+{
+  "formulation_id": "cognitive_executive_inhibitory_threshold",
+  "paradigm": "cognitive-executive-control-of-eating-behavior",
+  "name": "Inhibitory Control Threshold Model with Resource Depletion",
+  "description": "A deterministic threshold-comparison model where eating occurs when hunger-amplified, affect-adjusted food-cue salience exceeds a dynamically computed self-regulation threshold. The threshold integrates three modular executive function components (inhibitory control, working memory-supported goal activation, cognitive flexibility) following the unity/diversity EF framework from Miyake et al. Inhibitory control is the primary contributor and depletes with repeated food-cue exposure, capturing ego-depletion-adjacent dynamics. Working memory load from environmental complexity degrades dietary goal activation. Cognitive flexibility tracks the agent's ability to shift strategy when the food environment changes. Affective state modulates both the threshold (positive affect helps) and effective salience (negative affect amplifies craving).",
+  "variables": [
+    {"symbol": "IC", "name": "inhibitory_control", "description": "Current available inhibitory control capacity; depletes with food-cue exposure, recovers without", "type": "float", "initial_value": 0.75, "range": [0.0, 1.0]},
+    {"symbol": "WM", "name": "working_memory_load", "description": "Current working memory occupation (0=free, 1=fully loaded); higher load = fewer resources for dietary goals", "type": "float", "initial_value": 0.2, "range": [0.0, 1.0]},
+    {"symbol": "CF", "name": "cognitive_flexibility", "description": "Ability to shift eating strategy when context changes; improves with successful adaptation, degrades with perseveration", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "S", "name": "food_cue_salience", "description": "Raw perceptual salience of nearest food cue, derived from palatability and proximity", "type": "float", "initial_value": 0.0, "range": [0.0, 1.0]},
+    {"symbol": "S_eff", "name": "effective_salience", "description": "Hunger-amplified food-cue salience", "type": "float", "initial_value": 0.0, "range": [0.0, 2.0]},
+    {"symbol": "S_star", "name": "affect_adjusted_salience", "description": "Salience after affective modulation; negative affect amplifies it", "type": "float", "initial_value": 0.0, "range": [0.0, 3.0]},
+    {"symbol": "H", "name": "hunger", "description": "Homeostatic hunger signal, increases each step, decreases on eating", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "E_aff", "name": "affective_state", "description": "Emotional valence; positive = good mood, negative = stress/negative affect", "type": "float", "initial_value": 0.0, "range": [-1.0, 1.0]},
+    {"symbol": "G", "name": "goal_activation", "description": "Strength of dietary restraint goal maintained in working memory", "type": "float", "initial_value": 0.6, "range": [0.0, 1.0]},
+    {"symbol": "Theta", "name": "effective_threshold", "description": "Computed self-regulation threshold that salience must exceed to trigger eating", "type": "float", "initial_value": 0.5, "range": [0.0, 1.0]},
+    {"symbol": "prev_decision", "name": "previous_decision", "description": "The decision made on the previous step ('eat' or 'restrain'), used for flexibility tracking", "type": "string", "initial_value": "restrain", "range": ["eat", "restrain"]},
+    {"symbol": "prev_food_config", "name": "previous_food_configuration", "description": "Hash or summary of food positions last step to detect environment changes for flexibility tracking", "type": "string", "initial_value": "", "range": []}
+  ],
+  "parameters": [
+    {"symbol": "IC_0", "name": "baseline_inhibitory_capacity", "default": 0.75, "source": "Healthy-weight norm (CORE / Frontiers in Psychology, 2016)"},
+    {"symbol": "delta_IC", "name": "ic_depletion_per_food_encounter", "default": 0.08, "source": "Estimated from repeated inhibition cost (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "rho_IC", "name": "ic_recovery_rate", "default": 0.04, "source": "Half the depletion rate; asymmetric recovery (MDPI / Nutrients, 2024)"},
+    {"symbol": "w_IC", "name": "weight_of_ic_in_threshold", "default": 0.5, "source": "Primary EF component for eating regulation (Wiley / Eating Disorders, 2023)"},
+    {"symbol": "w_WM", "name": "weight_of_wm_goal_in_threshold", "default": 0.25, "source": "Secondary EF contribution via goal maintenance (PMC, 2017)"},
+    {"symbol": "w_CF", "name": "weight_of_cf_in_threshold", "default": 0.15, "source": "Tertiary EF contribution (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "w_aff", "name": "affective_modulation_weight", "default": 0.10, "source": "Stress/affect reduces threshold (MDPI / Nutrients, 2024)"},
+    {"symbol": "kappa", "name": "hunger_amplification_of_salience", "default": 0.6, "source": "Hunger boosts effective salience (Springer, 2021)"},
+    {"symbol": "G_0", "name": "baseline_goal_activation", "default": 0.6, "source": "Moderate dietary restraint intention (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "delta_H", "name": "hunger_increase_rate", "default": 0.02, "source": "Gradual hunger per step"},
+    {"symbol": "phi_H", "name": "hunger_reduction_on_eat", "default": 0.5, "source": "Substantial hunger reduction from eating"},
+    {"symbol": "cf_improve_rate", "name": "cognitive_flexibility_improvement", "default": 0.05, "source": "CF improves with successful strategy shifts (ScienceDirect / Appetite, 2017)"},
+    {"symbol": "cf_degrade_rate", "name": "cognitive_flexibility_degradation", "default": 0.03, "source": "CF degrades with perseveration"}
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Compute raw food-cue salience S from nearest food's palatability and distance",
+      "type": "algebraic",
+      "pseudocode": "foods = perception.resources.food\nif foods:\n    nearest = min(foods, key=lambda f: abs(f.x - perception.x) + abs(f.y - perception.y))\n    dist = abs(nearest.x - perception.x) + abs(nearest.y - perception.y)\n    S = nearest.palatability / (1.0 + dist)\nelse:\n    S = 0.0",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Compute effective salience S_eff by amplifying raw salience with hunger",
+      "type": "algebraic",
+      "pseudocode": "S_eff = S * (1.0 + kappa * H)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Compute affect-adjusted salience S_star: negative affect amplifies craving",
+      "type": "algebraic",
+      "pseudocode": "if E_aff < 0:\n    S_star = S_eff * (1.0 + abs(E_aff))\nelse:\n    S_star = S_eff",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Compute goal activation G from baseline and available working memory",
+      "type": "algebraic",
+      "pseudocode": "G = G_0 * (1.0 - WM)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R5",
+      "description": "Compute effective self-regulation threshold Theta from EF components and affect",
+      "type": "algebraic",
+      "pseudocode": "Theta = w_IC * IC + w_WM * G + w_CF * CF + w_aff * max(0.0, E_aff)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Eat/restrain decision: compare affect-adjusted salience against threshold",
+      "type": "decision",
+      "pseudocode": "if S_star > Theta and adjacent_to_food:\n    decision = 'eat'\nelif S_star > Theta and not adjacent_to_food:\n    decision = 'approach'\nelse:\n    decision = 'restrain'",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R7",
+      "description": "Inhibitory control depletion when food cues present, recovery when absent",
+      "type": "state_update",
+      "pseudocode": "if S > 0:\n    IC = clip(IC - delta_IC, 0.0, 1.0)\nelse:\n    IC = clip(IC + rho_IC, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R8",
+      "description": "Hunger dynamics: increase each step, decrease on eating",
+      "type": "state_update",
+      "pseudocode": "if ate_last_step:\n    H = clip(H - phi_H, 0.0, 1.0)\nelse:\n    H = clip(H + delta_H, 0.0, 1.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R9",
+      "description": "Affective state dynamics: eating low-palatability food improves affect, high-palatability causes guilt-like negative shift, small random drift",
+      "type": "state_update",
+      "pseudocode": "if ate_last_step:\n    if last_food_palatability < 0.5:\n        E_aff = clip(E_aff + 0.05, -1.0, 1.0)  # healthy choice feels good\n    else:\n        E_aff = clip(E_aff - 0.05, -1.0, 1.0)  # indulgent choice causes guilt\nelse:\n    E_aff = clip(E_aff + 0.01 * random_sign(), -1.0, 1.0)  # small drift",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R10",
+      "description": "Working memory load: increases when multiple food items visible (choice conflict), decays otherwise",
+      "type": "state_update",
+      "pseudocode": "n_visible = len([f for f in perception.resources.food if manhattan_dist(agent, f) <= 5])\nif n_visible >= 2:\n    WM = clip(WM + 0.1, 0.0, 1.0)\nelse:\n    WM = clip(WM - 0.05, 0.0, 1.0)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R11",
+      "description": "Cognitive flexibility: improves when agent switches strategy after food config changes, degrades with perseveration",
+      "type": "state_update",
+      "pseudocode": "current_food_config = str(sorted([(f.x, f.y) for f in perception.resources.food]))\ncontext_changed = (current_food_config != prev_food_config) and (prev_food_config != '')\nif context_changed:\n    strategy_switched = (decision != prev_decision)\n    if strategy_switched:\n        CF = clip(CF + cf_improve_rate, 0.0, 1.0)\n    else:\n        CF = clip(CF - cf_degrade_rate, 0.0, 1.0)\nprev_food_config = current_food_config\nprev_decision = decision",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Deterministic threshold-based decision: compute food-cue salience (modulated by hunger and affect), compute self-regulation threshold (from IC, WM-supported goal, CF, affect), compare salience to threshold. If salience exceeds threshold, approach or eat food. Otherwise, restrain by staying or moving away. All three EF components modularly contribute to the threshold.",
+    "pseudocode": [
+      "# 1. Update internal states from last step outcome",
+      "ate_last_step = last_action_result.get('consumed', False)",
+      "Update H using rule R8",
+      "Update E_aff using rule R9",
+      "Update WM using rule R10",
+      "",
+      "# 2. Compute food-cue salience",
+      "Compute S using rule R1 (nearest food palatability / (1 + distance))",
+      "Compute S_eff = S * (1 + kappa * H)  # rule R2",
+      "Compute S_star = S_eff * (1 + |min(0, E_aff)|)  # rule R3",
+      "",
+      "# 3. Compute self-regulation threshold",
+      "G = G_0 * (1 - WM)  # rule R4",
+      "Theta = w_IC * IC + w_WM * G + w_CF * CF + w_aff * max(0, E_aff)  # rule R5",
+      "",
+      "# 4. Make decision (rule R6)",
+      "if S_star > Theta:",
+      "    nearest_food = find nearest food",
+      "    dist_to_food = manhattan_distance(agent_pos, nearest_food_pos)",
+      "    if dist_to_food <= 1:",
+      "        action = 'eat'",
+      "    else:",
+      "        action = move_toward(nearest_food_pos)  # move_up/down/left/right",
+      "elif S_star > 0.8 * Theta and S > 0:",
+      "    action = 'stay'  # borderline deliberation",
+      "else:",
+      "    if S > 0 and min_food_distance <= 2:",
+      "        action = move_away_from(nearest_food_pos)",
+      "    else:",
+      "        action = random_exploration_move()  # move in random direction",
+      "",
+      "# 5. Update remaining internal states",
+      "Update IC using rule R7",
+      "Update CF using rule R11",
+      "Store prev_decision and prev_food_config"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "food_sources": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_palatability": "each food item's .palatability (float 0.1–1.0) maps to salience; high palatability = high salience",
+      "food_distance": "manhattan distance |agent.x - food.x| + |agent.y - food.y|",
+      "ate_last_step": "last_action_result.get('consumed', False)",
+      "last_food_palatability": "stored from the food item consumed (tracked internally from nearest food at time of eat action)",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0); internal affective/threshold dynamics use palatability to differentiate healthy vs indulgent outcomes"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Inhibitory control gradually depletes when agent stays near food, eventually causing salience to exceed threshold and triggering eating",
+      "test_pseudocode": "Place agent near high-palatability food for 15+ steps without eating → assert IC decreases below 0.3 and decision eventually switches to 'eat'"
+    },
+    {
+      "id": "B2",
+      "description": "High hunger amplifies effective salience, making it easier to exceed threshold",
+      "test_pseudocode": "Set H=0.9 near medium-palatability food → assert S_eff > Theta; Set H=0.1 → assert S_eff < Theta"
+    },
+    {
+      "id": "B3",
+      "description": "Working memory load from multiple visible food items degrades goal activation, lowering threshold",
+      "test_pseudocode": "Place 4 food items within distance 5 of agent → assert WM increases and G decreases, lowering Theta compared to 1 food item scenario"
+    },
+    {
+      "id": "B4",
+      "description": "Negative affective state amplifies food-cue salience, increasing likelihood of eating",
+      "test_pseudocode": "Set E_aff = -0.8 vs E_aff = 0.5 with same food config → assert S_star is higher when E_aff is negative, leading to more eat decisions"
+    },
+    {
+      "id": "B5",
+      "description": "Cognitive flexibility improves when agent successfully shifts strategy after food environment changes",
+      "test_pseudocode": "Change food positions between steps → agent switches from 'eat' to 'restrain' → assert CF increases by cf_improve_rate"
+    },
+    {
+      "id": "B6",
+      "description": "IC recovers when agent moves away from all food items",
+      "test_pseudocode": "Deplete IC to 0.2, then ensure no food within perception for 10 steps → assert IC rises toward IC_0"
+    }
+  ],
+  "references": [
+    "CORE / Frontiers in Psychology (2016) — Impulsivity and Inhibitory Control Deficits Are Associated with Obesity",
+    "ScienceDirect / Appetite (2017) — Executive functions and the self-regulation of eating behavior: A review",
+    "MDPI / Nutrients (2024) — Self-Regulation in Eating Behaviors: The Role of Executive Function in Response to Food Stimuli",
+    "Springer / Reviews in Endocrine and Metabolic Disorders (2021) — Neurobiological regulation of eating behavior",
+    "Wiley / International Journal of Eating Disorders (2023) — Executive functions and eating behavior",
+    "PMC (2017) — Executive functioning and dietary intake"
+  ]
+}
