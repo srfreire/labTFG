@@ -2,54 +2,71 @@
 
 ## Project Overview
 
-This is a **TFG** (Trabajo de Fin de Grado / Bachelor's Thesis, Computer Engineering, USC) by **Juan Freire Alvarez** and **Pablo Pazos Parada**, supervised by Eduardo Manuel Sanchez Vila.
+**TFG** (Trabajo de Fin de Grado, Computer Engineering, USC) by **Juan Freire Alvarez** and **Pablo Pazos Parada**, supervised by Eduardo Manuel Sanchez Vila.
 
 **Title**: Virtual laboratory for simulation and analysis of human decision-making paradigms using intelligent agents.
 
-The project is split into **two complementary parts**, one per author:
-
-- **Phase 1 (Pablo Pazos Parada)** — Modeling autonomous agents based on decision-making paradigms. Designs the agent pipeline (Researcher, Reasoner, Builder) that builds the decision-making agents themselves.
-- **Phase 2 (Juan Freire Alvarez)** — Building the infrastructure to simulate, observe, analyze and document the behavior of those agents.
+- **Phase 1 (Pablo Pazos Parada)** — Agent pipeline (Researcher → Reasoner → Builder) that generates decision-making model code from paradigm descriptions.
+- **Phase 2 (Juan Freire Alvarez)** — Infrastructure to simulate, observe, analyze and report on those agents.
 
 ## Repository Structure
 
 ```
-CLAUDE.md
-Acordo_TFG_JuanFreireAlvarez_firmado.pdf  — Official TFG agreement with objectives
-docs/                                      — Reference documents
-  TFM_v_FINAL.pdf                          — Reference paper (Denis Yamunaque's TFM, NOT Juan's thesis)
-  RESUMEN_TFM_Denis.md                     — Summary of the reference paper
-  survival_metabolicModel_behave_clean_Denis.py — Example script from the reference paper
-phase1-pablo/                              — Pablo's work (Phase 1)
-  docs/DESIGN.md                           — 3-agent pipeline design (Researcher, Reasoner, Builder)
-phase2-juan/                               — Juan's work (Phase 2 / the TFG)
-  acuerdo-tfg.md                           — TFG objectives extracted from the agreement
-  docs/DESIGN.md                           — Virtual lab design (agents, environment, API, stack)
+phase1-pablo/                              — Phase 1: agent pipeline
+  src/decisionlab/agents/                  — Researcher, Reasoner, Builder agents
+  examples/sample-run/builder/             — Generated model files (*_model.py + tests)
+phase2-juan/                               — Phase 2: virtual lab
+  simlab/                                  — Python package (environment, agents, API, CLI)
+  web/                                     — React frontend (dashboard + chat)
+  docs/DESIGN.md                           — Virtual lab design doc
+docs/                                      — Reference documents (Denis Yamunaque's TFM)
 ```
 
-## TFG Objectives (Agentic AI paradigm)
+## Phase 2 Agents
 
-1. **Architect** — configurable environment (goals, resources, constraints)
-2. **Tracker** — monitors agents, records events, episodes and decision trajectories
-3. **Analyst** — processes Tracker data, identifies behavior-objective patterns
-4. **Reporter** — generates structured reports, conclusions and improvement proposals
+1. **Architect** — generates environment specs from natural language
+2. **Tracker** — records events, episodes, decision trajectories
+3. **Analyst** — identifies behavior-objective patterns
+4. **Reporter** — generates PDF reports via LaTeX
+5. **Orchestrator** — coordinates the pipeline, interactive chat
 
-## Running the Reference Script
+## DecisionModel Contract
+
+Both phases share this interface (duck typing, no adapter needed):
+
+```python
+def decide(self, perception: dict) -> Action      # read-only, pick action
+def update(self, action, reward, new_perception)   # mutate state
+def get_state(self) -> dict                        # expose internals
+```
+
+Perception keys: `x, y, grid_width, grid_height, step, resources, last_action_result`.
+
+## Running
 
 ```bash
-python docs/survival_metabolicModel_behave_clean_Denis.py
+# CLI chat
+cd phase2-juan && uv run simlab
+
+# Web UI
+uvicorn simlab.api:app --port 8000    # backend
+cd web && npm run dev                  # frontend (Vite → localhost:5173)
 ```
 
-Requires: Python 3 with `tkinter` (built-in), `matplotlib`, `numpy`.
+Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
 
-### Known bug in reference script
+## Current Status
 
-Line 341: uses global `threshold_hungry` instead of `organism.threshold_hungry`.
+- All 5 agents implemented and working (CLI + Web)
+- Phase 1 Builder operational — generates self-contained Python models
+- Models in `phase1-pablo/examples/sample-run/builder/` are compatible with Phase 2 Environment
+- Web UI: functional but needs polish (grid visualization, data cards, responsive)
 
-## Next Session TODO
+## Next Steps
 
-- [ ] Probar la Web UI en vivo (`uvicorn simlab.api:app --port 8000` + `cd web && npm run dev`)
-- [ ] Pulir frontend: animaciones de agentes, data cards más ricas, responsive
-- [ ] Mejorar el backend WebSocket: emitir estados de agentes en tiempo real (no solo al final)
-- [ ] Integrar modelos reales de Pablo cuando tenga el Builder listo
-- [ ] Considerar: visualización del grid de simulación en la web
+- [ ] Dynamic model loader: discover + load Phase 1 models from `builder/`
+- [ ] Orchestrator: present available models to user before simulation
+- [ ] Web UI: simulation grid with animated replay
+- [ ] Web UI: richer data cards (tracker metrics, analyst patterns)
+- [ ] Web UI: responsive layout, animation polish
+- [ ] Future: real-time WebSocket streaming during simulation
