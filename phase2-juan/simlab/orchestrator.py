@@ -38,6 +38,7 @@ RUN_SIMULATION_TOOL = {
             "num_agents": {"type": "integer", "description": "Number of agents to place in the simulation"},
             "steps": {"type": "integer", "description": "Number of simulation steps to run"},
             "seed": {"type": "integer", "description": "Random seed for reproducibility (optional)"},
+            "model_id": {"type": "string", "description": "Formulation ID of the model to use (from list_available_models). If omitted, uses a simple built-in model."},
         },
         "required": ["num_agents", "steps"],
     },
@@ -76,9 +77,19 @@ GENERATE_REPORT_TOOL = {
     },
 }
 
+LIST_AVAILABLE_MODELS_TOOL = {
+    "name": "list_available_models",
+    "description": "List available decision models that can be used in simulations. Call this before run_simulation to let the user choose a model.",
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+    },
+}
+
 ALL_TOOLS = [
     CREATE_ENVIRONMENT_TOOL,
     RUN_SIMULATION_TOOL,
+    LIST_AVAILABLE_MODELS_TOOL,
     OBSERVE_SIMULATION_TOOL,
     ANALYZE_RESULTS_TOOL,
     GENERATE_REPORT_TOOL,
@@ -124,6 +135,12 @@ The user guides the exploration. You propose, they decide.
 
 EXCEPTION: If the user explicitly asks for the full pipeline ("hazlo todo", "quiero un informe completo"), \
 then run all steps automatically with sensible defaults.
+
+## Model selection
+
+Before running a simulation, call list_available_models to check what decision models are available. \
+Present the options to the user and let them choose. Then pass the chosen model_id to run_simulation. \
+If no models are available, use the built-in dummy model and tell the user.
 
 ## Pipeline order
 
@@ -182,12 +199,14 @@ class Orchestrator:
         research_dir: Path,
         output_dir: Path,
         model: str = DEFAULT_MODEL,
+        builder_dir: Path | None = None,
     ):
         self.client = client
         self.decision_models = decision_models or []
         self.research_dir = research_dir
         self.output_dir = output_dir
         self.model = model
+        self.builder_dir = builder_dir
         self._state: dict = {}
         self._messages: list[dict] = []
 
@@ -224,6 +243,18 @@ class Orchestrator:
             state["analyst_output"] = None
             return spec_json
 
+        async def list_available_models(params: dict) -> str:
+            if not self.builder_dir or not self.builder_dir.exists():
+                return json.dumps({"models": [], "note": "No builder directory configured"})
+            from simlab.model_loader import discover_models
+            models = discover_models(self.builder_dir)
+            return json.dumps({
+                "models": [
+                    {"formulation_id": m.formulation_id, "class_name": m.class_name, "description": m.description}
+                    for m in models.values()
+                ]
+            })
+
         async def run_simulation(params: dict) -> str:
             if not state.get("spec"):
                 return json.dumps({"error": "No environment created yet. Call create_environment first."})
@@ -233,24 +264,62 @@ class Orchestrator:
             rng = random.Random(params.get("seed"))
             action_names = [a["name"] for a in state["spec"]["actions"]]
 
+            # Load model if model_id provided
+            model_id = params.get("model_id")
+            model_info = None
+            if model_id and self.builder_dir:
+                from simlab.model_loader import discover_models, load_model
+                available = discover_models(self.builder_dir)
+                model_info = available.get(model_id)
+
             for i in range(num_agents):
-                if i < len(self.decision_models):
+                if model_info:
+                    model = load_model(model_info, seed=rng.randint(0, 2**32))
+                elif i < len(self.decision_models):
                     model = self.decision_models[i]
                 else:
                     model = _DummyModel(action_names, random.Random(rng.randint(0, 2**32)))
                 pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
                 env.add_agent(Agent(id=f"agent_{i}", position=pos, decision_model=model))
 
-            events = env.run(steps=steps)
-            state["events"] = events
+            # Run step-by-step, capturing replay frames
+            all_events = []
+            replay_frames = []
+            for _ in range(steps):
+                if env.is_finished():
+                    break
+                env_state = env.get_state()
+                step_events = env.step()
+                all_events.extend(step_events)
+                replay_frames.append({
+                    "step": env_state["step"],
+                    "agents": env_state["agents"],
+                    "resources": [
+                        {"type": r.get("type", "unknown"), "x": r["x"], "y": r["y"]}
+                        for r in env_state["resources"]
+                    ],
+                    "actions": [
+                        {"agent_id": e.agent_id, "action": e.action.name, "reward": e.outcome.get("reward", 0)}
+                        for e in step_events
+                    ],
+                })
+
+            state["events"] = all_events
+            state["replay"] = {
+                "grid_width": env.width,
+                "grid_height": env.height,
+                "total_steps": len(replay_frames),
+                "frames": replay_frames,
+            }
             state["tracker_output"] = None
             state["analyst_output"] = None
 
             summary = {
                 "agents": num_agents,
                 "steps": steps,
-                "total_events": len(events),
+                "total_events": len(all_events),
                 "agents_alive": sum(1 for a in env._agents if a.alive),
+                "model": model_id or "dummy",
             }
             return json.dumps(summary)
 
@@ -291,6 +360,7 @@ class Orchestrator:
 
         registry: Registry = {
             "create_environment": create_environment,
+            "list_available_models": list_available_models,
             "run_simulation": run_simulation,
             "observe_simulation": observe_simulation,
             "analyze_results": analyze_results,
