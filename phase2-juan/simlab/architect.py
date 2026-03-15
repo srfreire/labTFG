@@ -5,7 +5,7 @@ import json
 
 from simlab.runtime import run_agent_loop, Registry
 from simlab.spec import validate_spec_dict
-from simlab.utils import strip_markdown_fences
+from simlab.utils import extract_text
 
 ARCHITECT_SYSTEM_PROMPT = """\
 You generate JSON environment specs for a 2D grid simulation lab.
@@ -105,5 +105,4 @@ class Architect:
             max_iterations=max_iterations,
         )
 
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        return strip_markdown_fences(text)
+        return extract_text(response)

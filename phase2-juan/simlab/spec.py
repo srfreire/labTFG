@@ -111,10 +111,15 @@ def _parse_effect(effect_dict: dict) -> Effect:
 
 def _convert_ranges(properties: dict) -> dict:
     """Convert 2-element lists to tuples (for ResourceRule range values)."""
-    return {
-        k: tuple(v) if isinstance(v, list) and len(v) == 2 else v
-        for k, v in properties.items()
-    }
+    result = {}
+    for k, v in properties.items():
+        if isinstance(v, list):
+            if len(v) != 2:
+                raise ValueError(f"Property range '{k}' must be a 2-element [min, max] list, got {len(v)} elements")
+            result[k] = tuple(v)
+        else:
+            result[k] = v
+    return result
 
 
 def spec_to_environment(spec: dict, seed: int | None = None) -> Environment:

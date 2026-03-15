@@ -3,7 +3,7 @@ import asyncio
 import json
 
 from simlab.environment import Action, Event
-from simlab.tracker import _event_to_dict, _summarize_events, _build_tools
+from simlab.tools import _event_to_dict, _summarize_events, build_simulation_tools
 
 
 def _make_event(step: int, agent_id: str, action_name: str, reward: float = 0.0) -> Event:
@@ -60,14 +60,14 @@ def _make_events() -> list[Event]:
 
 def test_get_simulation_events_returns_all():
     events = _make_events()
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_simulation_events"]({})))
     assert len(result) == 10
 
 
 def test_get_simulation_events_summarizes_large():
     events = [_make_event(i, f"agent_{i % 3}", "move_up") for i in range(501)]
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_simulation_events"]({})))
     assert "total_events" in result
     assert result["total_events"] == 501
@@ -75,7 +75,7 @@ def test_get_simulation_events_summarizes_large():
 
 def test_get_agent_trajectory():
     events = _make_events()
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_agent_trajectory"]({"agent_id": "agent_0"})))
     assert len(result) == 5
     assert all(e["agent_id"] == "agent_0" for e in result)
@@ -83,21 +83,21 @@ def test_get_agent_trajectory():
 
 def test_get_agent_trajectory_unknown_agent():
     events = _make_events()
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_agent_trajectory"]({"agent_id": "agent_99"})))
     assert result == []
 
 
 def test_get_agent_state():
     events = _make_events()
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_agent_state"]({"agent_id": "agent_0", "step": 2})))
     assert result == {"energy": 48.0}
 
 
 def test_get_agent_state_not_found():
     events = _make_events()
-    _, registry = _build_tools(events)
+    _, registry = build_simulation_tools(events)
     result = json.loads(asyncio.run(registry["get_agent_state"]({"agent_id": "agent_0", "step": 99})))
     assert "error" in result
 

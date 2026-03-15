@@ -113,12 +113,14 @@ class Environment:
     ) -> None:
         self.width = width
         self.height = height
-        duped_actions = [a.name for a in actions if sum(1 for b in actions if b.name == a.name) > 1]
-        if duped_actions:
-            raise ValueError(f"Duplicate action names: {set(duped_actions)}")
-        duped_resources = [r.type for r in resources if sum(1 for s in resources if s.type == r.type) > 1]
-        if duped_resources:
-            raise ValueError(f"Duplicate resource types: {set(duped_resources)}")
+        action_names = [a.name for a in actions]
+        if len(action_names) != len(set(action_names)):
+            duped = {n for n in action_names if action_names.count(n) > 1}
+            raise ValueError(f"Duplicate action names: {duped}")
+        resource_types = [r.type for r in resources]
+        if len(resource_types) != len(set(resource_types)):
+            duped = {t for t in resource_types if resource_types.count(t) > 1}
+            raise ValueError(f"Duplicate resource types: {duped}")
         self._action_registry: dict[str, ActionRule] = {a.name: a for a in actions}
         self._resource_rules: dict[str, ResourceRule] = {r.type: r for r in resources}
         self._rng = random.Random(seed)

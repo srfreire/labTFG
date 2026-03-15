@@ -3,14 +3,11 @@ from __future__ import annotations
 
 import json
 import subprocess
-import tempfile
-import shutil
 import logging
 from pathlib import Path
 
-from simlab.environment import Event
 from simlab.runtime import run_agent_loop, Registry
-from simlab.utils import strip_markdown_fences
+from simlab.utils import extract_text
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +93,7 @@ def _build_tools(
                 capture_output=True,
                 text=True,
                 timeout=120,
+                cwd=output_dir,
             )
             if result.returncode != 0:
                 error_lines = [l for l in result.stderr.split("\n") if "error" in l.lower()]
@@ -211,5 +209,4 @@ class Reporter:
             max_iterations=max_iterations,
             max_tokens=16384,
         )
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        return strip_markdown_fences(text)
+        return extract_text(response)

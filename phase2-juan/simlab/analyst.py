@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from simlab.environment import Event
 from simlab.runtime import run_agent_loop
-from simlab.tracker import _build_tools
-from simlab.utils import strip_markdown_fences
+from simlab.tools import build_simulation_tools
+from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
@@ -87,7 +87,7 @@ class Analyst:
         """Analyze simulation data and return structured JSON with patterns and metrics."""
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
-        tools, registry = _build_tools(events)
+        tools, registry = build_simulation_tools(events)
         user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
         response = await run_agent_loop(
             client=self.client,
@@ -98,5 +98,4 @@ class Analyst:
             registry=registry,
             max_iterations=max_iterations,
         )
-        text = next((b.text for b in response.content if b.type == "text"), "")
-        return strip_markdown_fences(text)
+        return extract_text(response)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 
 def strip_markdown_fences(text: str) -> str:
@@ -21,3 +22,9 @@ def strip_markdown_fences(text: str) -> str:
             return stripped[start : end + 1]
 
     return stripped
+
+
+def extract_text(response: Any) -> str:
+    """Extract and clean the text content from an LLM response."""
+    text = next((b.text for b in response.content if b.type == "text"), "")
+    return strip_markdown_fences(text)
