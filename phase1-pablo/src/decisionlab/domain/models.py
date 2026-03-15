@@ -37,3 +37,10 @@ class ReasonerReport:
 @dataclass(frozen=True)
 class BuilderReport:
     results: dict[str, str]  # paradigm_slug → sub-agent text response
+
+
+@dataclass
+class RerunRequest:
+    target: str    # "researcher" | "formalizer" | "reasoner" | "builder"
+    paradigm: str  # paradigm slug
+    feedback: str  # user's feedback text
