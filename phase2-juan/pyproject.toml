@@ -12,6 +12,9 @@ pythonpath = [
     "../phase1-pablo/src",
     "../phase1-pablo/examples",
 ]
+markers = [
+    "integration: tests that require external services (API keys)",
+]
 
 [dependency-groups]
 dev = [
