@@ -74,9 +74,32 @@ Every unnecessary round-trip wastes time and tokens. Minimize iterations.
 ## Model structure
 
 - `__init__`: variables from `variables[]` + parameters from `parameters[]`
-- `decide(perception)`: implement `decision_logic.pseudocode` using `env_mapping`
-- `update(action, reward, new_perception)`: apply ALL `rules[]`
+- `decide(perception)`: read-only — select an action based on CURRENT state. Never modify \
+state here.
+- `update(action, reward, new_perception)`: apply ALL `rules[]` and ALL state updates here. \
+This is the ONLY method that modifies internal state.
 - `get_state()`: return dict of all variable values
+
+### CRITICAL: decide vs update boundary
+
+The simulation calls these methods in this order:
+
+    perception = env.build_perception(agent)          # no last_action_result
+    action = model.decide(perception)                 # READ-ONLY — pick action from current state
+    reward, result = env.apply(action)                # env executes the action
+    new_perception = env.build_perception(agent)      # includes last_action_result
+    model.update(action, reward, new_perception)      # WRITE — update all state here
+
+`decide()` receives perception WITHOUT `last_action_result` (it is `{}`). \
+Only `update()` receives the result of the action via `new_perception["last_action_result"]`.
+
+Therefore:
+- ALL state mutation (energy, drive, variables, learning) goes in `update()`.
+- `decide()` ONLY reads `self.*` variables and perception to choose an action.
+- If `decision_logic.pseudocode` in the spec mixes state updates with action selection, \
+split them: state updates → `update()`, action selection → `decide()`.
+
+Putting state updates in `decide()` WILL break the simulation. No exceptions.
 
 ## Test structure
 
