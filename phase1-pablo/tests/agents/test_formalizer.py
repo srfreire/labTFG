@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from decisionlab.agents.formalizer import Formalizer

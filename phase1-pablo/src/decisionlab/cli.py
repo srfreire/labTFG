@@ -120,6 +120,35 @@ def deep_research(
 
 
 @app.command()
+def formalize(
+    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to formalize (discovers from disk if empty)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
+):
+    """Run the Formalizer agent — produces formal mathematical models from deep research."""
+    _setup_logging(verbose)
+
+    deep_dir = reports_dir / "deep"
+    if not deep_dir.exists():
+        console.print(f"[bold red]Error: deep/ subdirectory not found in {reports_dir}[/bold red]")
+        raise typer.Exit(code=1)
+
+    from decisionlab.agents.formalizer import Formalizer
+
+    async def _run():
+        f = Formalizer(client=_client(), reports_dir=reports_dir)
+        return await f.run(paradigms)
+
+    report = _run_async(_run())
+
+    console.print()
+    for paradigm, content in report.formulations.items():
+        console.rule(f"[bold cyan]{paradigm}")
+        console.print(Markdown(content))
+        console.print()
+
+
+@app.command()
 def run(
     problem: str = typer.Argument(help="Decision-making problem to investigate"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
