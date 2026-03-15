@@ -114,7 +114,7 @@ def _build_tools(events: list[Event]) -> tuple[list[dict], Registry]:
 
 # --- System prompt ---
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-4-6"
+DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
 TRACKER_SYSTEM_PROMPT = """\
 You are the Tracker agent for a simulation laboratory. You observe completed simulations \
