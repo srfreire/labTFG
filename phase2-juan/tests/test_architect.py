@@ -3,9 +3,10 @@ import asyncio
 import json
 import os
 
+import anthropic
 import pytest
 
-from simlab.architect import run_architect
+from simlab.architect import Architect
 from simlab.spec import validate_spec_dict, spec_to_environment
 
 pytestmark = pytest.mark.skipif(
@@ -14,13 +15,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _run(prompt: str) -> str:
+    """Helper: create a client, run the Architect, return the result."""
+    client = anthropic.AsyncAnthropic()
+    architect = Architect(client=client)
+    return asyncio.run(architect.run(prompt))
+
+
 @pytest.mark.integration
 def test_architect_generates_valid_spec():
-    prompt = "Grid 10x10 with food that regenerates. Agents can move in 4 directions and eat."
-    result = asyncio.run(run_architect(prompt))
+    result = _run("Grid 10x10 with food that regenerates. Agents can move in 4 directions and eat.")
 
     spec = json.loads(result)
-
     errors = validate_spec_dict(spec)
     assert errors == [], f"Validation errors: {errors}"
 
@@ -31,12 +37,11 @@ def test_architect_generates_valid_spec():
 
 @pytest.mark.integration
 def test_architect_handles_complex_prompt():
-    prompt = (
+    result = _run(
         "A 20x20 world with two resource types: food (palatability 0.1-1.0, 5 instances, regenerates) "
         "and water (purity 0.5-1.0, 3 instances, does not regenerate). "
         "Agents can move in 4 directions, eat food, drink water, and rest."
     )
-    result = asyncio.run(run_architect(prompt))
     spec = json.loads(result)
 
     errors = validate_spec_dict(spec)

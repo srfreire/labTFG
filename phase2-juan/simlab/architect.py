@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import anthropic
-
 from simlab.runtime import run_agent_loop, Registry
 from simlab.spec import validate_spec_dict
 
@@ -85,37 +83,38 @@ ARCHITECT_REGISTRY: Registry = {
 }
 
 
-async def run_architect(
-    prompt: str,
-    *,
-    model: str = DEFAULT_MODEL,
-    max_iterations: int = 10,
-) -> str:
-    """Run the Architect agent and return the generated JSON spec as a string."""
-    client = anthropic.AsyncAnthropic()
+class Architect:
+    """Architect agent — interprets natural language and produces environment specs."""
 
-    response = await run_agent_loop(
-        client=client,
-        model=model,
-        system=ARCHITECT_SYSTEM_PROMPT,
-        tools=[VALIDATE_SPEC_TOOL],
-        messages=[{"role": "user", "content": prompt}],
-        registry=ARCHITECT_REGISTRY,
-        max_iterations=max_iterations,
-    )
+    def __init__(self, *, client, model: str = DEFAULT_MODEL):
+        self.client = client
+        self.model = model
+        self.tools = [VALIDATE_SPEC_TOOL]
+        self.registry = ARCHITECT_REGISTRY
 
-    text = next((b.text for b in response.content if b.type == "text"), "")
-    return _strip_markdown_fences(text)
+    async def run(self, prompt: str, *, max_iterations: int = 10) -> str:
+        """Generate a validated JSON environment spec from a natural language prompt."""
+        response = await run_agent_loop(
+            client=self.client,
+            model=self.model,
+            system=ARCHITECT_SYSTEM_PROMPT,
+            tools=self.tools,
+            messages=[{"role": "user", "content": prompt}],
+            registry=self.registry,
+            max_iterations=max_iterations,
+        )
+
+        text = next((b.text for b in response.content if b.type == "text"), "")
+        return _strip_markdown_fences(text)
 
 
 def _strip_markdown_fences(text: str) -> str:
     """Remove ```json ... ``` fences if the LLM wraps the output."""
     stripped = text.strip()
     if stripped.startswith("```"):
-        # Remove first line (```json or ```) and last line (```)
         lines = stripped.split("\n")
-        lines = lines[1:]  # drop opening fence
+        lines = lines[1:]
         if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]  # drop closing fence
+            lines = lines[:-1]
         return "\n".join(lines).strip()
     return stripped
