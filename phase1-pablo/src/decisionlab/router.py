@@ -179,11 +179,11 @@ class Router:
         self.state.stage = Stage.REVIEW_RESEARCH
 
     async def _review_research(self) -> None:
-        from decisionlab import feedback
         from decisionlab.agents.deep_researcher import DeepResearcher
+        from decisionlab.feedback import review_research
 
         while True:
-            approved, additional = await feedback.review_research(
+            approved, additional = await review_research(
                 self.state.reports_dir,
             )
             if additional:
@@ -226,9 +226,9 @@ class Router:
         self.state.stage = Stage.REVIEW_FORMALIZE
 
     async def _review_formalize(self) -> None:
-        from decisionlab import feedback
+        from decisionlab.feedback import review_formalize
 
-        selected = await feedback.review_formalize(
+        selected = await review_formalize(
             self.state.reports_dir,
             self.state.approved_paradigms,
         )
@@ -236,12 +236,17 @@ class Router:
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
-        from decisionlab import feedback
+        from decisionlab.feedback import get_env_spec
 
-        src_path = await feedback.get_env_spec()
-        dest = self.state.reports_dir / "env_spec.json"
-        shutil.copy2(src_path, dest)
-        self.state.env_spec_path = dest
+        try:
+            src_path = await get_env_spec()
+            dest = self.state.reports_dir / "env_spec.json"
+            shutil.copy2(src_path, dest)
+            self.state.env_spec_path = dest
+        except Exception as exc:
+            self.console.print(f"[bold red]env_spec setup failed: {exc}[/bold red]")
+            logger.exception("env_spec setup failed")
+            return
         self.state.stage = Stage.REASON
 
     async def _do_reason(self) -> None:
@@ -264,18 +269,18 @@ class Router:
         self.state.stage = Stage.REVIEW_REASON
 
     async def _review_reason(self) -> None:
-        from decisionlab import feedback
         from decisionlab.agents.reasoner import Reasoner
+        from decisionlab.feedback import review_reason
 
         while True:
-            approved, rejections = await feedback.review_reason(
+            approved, rejections = await review_reason(
                 self.state.reports_dir,
             )
             if not rejections:
                 self.state.approved_specs = approved
                 break
             # Re-run Reasoner for each rejected paradigm
-            for _spec_id, paradigm_slug, _fb in rejections:
+            for _, paradigm_slug, _ in rejections:
                 self.console.print(
                     f"[bold]Re-running Reasoner for '{paradigm_slug}'...[/bold]"
                 )
@@ -316,13 +321,13 @@ class Router:
         self.state.stage = Stage.REVIEW_BUILD
 
     async def _review_build(self) -> None:
-        from decisionlab import feedback
+        from decisionlab.feedback import review_build
         from decisionlab.routing_llm import classify_feedback
 
         build_results: dict[str, str] = getattr(self, "_last_build_results", {})
 
         while True:
-            user_feedback = await feedback.review_build(build_results)
+            user_feedback = await review_build(build_results)
             if user_feedback is None:
                 self.state.stage = Stage.DONE
                 return
