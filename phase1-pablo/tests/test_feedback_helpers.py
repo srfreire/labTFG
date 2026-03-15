@@ -1,9 +1,5 @@
 """Tests for pure helper functions in feedback.py."""
 
-from pathlib import Path
-
-import pytest
-
 from decisionlab.feedback import (
     _discover_paradigm_slugs,
     _filter_formulations_md,
@@ -78,7 +74,7 @@ class TestParseFormulationHeaders:
         text = "# Preamble title\n\nIntro text.\n\n## Formulation 1: First\nContent.\n"
         headers = _parse_formulation_headers(text)
         assert len(headers) == 1
-        num, name, start, end = headers[0]
+        num, name, start, _ = headers[0]
         assert num == 1
         assert name == "First"
         # Preamble is before the first header
