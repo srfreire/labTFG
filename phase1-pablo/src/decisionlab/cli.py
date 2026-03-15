@@ -186,6 +186,35 @@ def reason(
 
 
 @app.command()
+def build(
+    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to build (discovers from disk if empty)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
+):
+    """Run the Builder agent — generates DecisionModel implementations from JSON specs."""
+    _setup_logging(verbose)
+
+    reasoner_dir = reports_dir / "reasoner"
+    if not reasoner_dir.exists():
+        console.print(f"[bold red]Error: reasoner/ subdirectory not found in {reports_dir}[/bold red]")
+        raise typer.Exit(code=1)
+
+    from decisionlab.agents.builder import Builder
+
+    async def _run():
+        b = Builder(client=_client(), reports_dir=reports_dir, project_root=Path.cwd())
+        return await b.run(paradigms)
+
+    report = _run_async(_run())
+
+    console.print()
+    for paradigm, content in report.results.items():
+        console.rule(f"[bold cyan]{paradigm}")
+        console.print(Markdown(content))
+        console.print()
+
+
+@app.command()
 def run(
     problem: str = typer.Argument(help="Decision-making problem to investigate"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),

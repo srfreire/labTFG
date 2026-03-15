@@ -32,3 +32,8 @@ class FormalizationReport:
 @dataclass(frozen=True)
 class ReasonerReport:
     specs: dict[str, str]  # paradigm_slug → sub-agent text response
+
+
+@dataclass(frozen=True)
+class BuilderReport:
+    results: dict[str, str]  # paradigm_slug → sub-agent text response

@@ -29,7 +29,7 @@ WRITE_FILE_SCHEMA: dict[str, Any] = {
 }
 
 
-def _validate_path(base_dir: Path, path: str) -> Path:
+def validate_path(base_dir: Path, path: str) -> Path:
     resolved = (base_dir / path).resolve()
     if not resolved.is_relative_to(base_dir.resolve()):
         raise ValueError(f"Path escapes base directory: {path}")
@@ -40,7 +40,7 @@ def create_read_file(base_dir: Path) -> Callable[[dict], Awaitable[str]]:
     async def read_file(params: dict) -> str:
         if "path" not in params:
             raise ValueError("read_file requires 'path' parameter")
-        resolved = _validate_path(base_dir, params["path"])
+        resolved = validate_path(base_dir, params["path"])
         if not resolved.exists():
             raise ValueError(f"File not found: {params['path']}")
         return resolved.read_text()
@@ -54,7 +54,7 @@ def create_write_file(base_dir: Path) -> Callable[[dict], Awaitable[str]]:
             raise ValueError("write_file requires 'path' parameter")
         if "content" not in params:
             raise ValueError("write_file requires 'content' parameter")
-        resolved = _validate_path(base_dir, params["path"])
+        resolved = validate_path(base_dir, params["path"])
         resolved.parent.mkdir(parents=True, exist_ok=True)
         resolved.write_text(params["content"])
         return f"Written {len(params['content'])} chars to {params['path']}"
