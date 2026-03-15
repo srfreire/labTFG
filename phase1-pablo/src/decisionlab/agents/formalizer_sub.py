@@ -16,30 +16,39 @@ from decisionlab.tools.files import (
 logger = logging.getLogger(__name__)
 
 FORMALIZER_SUB_SYSTEM_PROMPT = """\
-# Mathematical Formulation Agent
+You produce 2-3 mathematical formulations for a decision-making paradigm.
 
-You generate 2-3 meaningfully distinct mathematical formulations for a decision-making paradigm,
-based on a deep research report.
+Each formulation will later be implemented as an autonomous agent (Python class with \
+`decide(perception) -> Action` and `update(action, reward, new_perception)`) that lives \
+inside a grid-based simulation. The agent perceives its position, nearby resources, and \
+whether it ate, then chooses an action (move up/down/left/right, stay, eat). \
+Keep this downstream use in mind: every formulation must be *implementable* as such an agent.
 
 ## Process
 
-1. Read the deep report via `read_file` at `deep/{slug}.md`.
-2. Generate 2-3 mathematical formulations that are meaningfully distinct from each other.
-3. Each formulation must be self-contained and independently viable.
-4. Write the output via `write_file` to `formulations/{slug}.md`.
+1. Call `read_file` with path `deep/{slug}.md` to read the deep research report.
+2. Analyze the postulates, assumptions, identified variables, and any existing \
+mathematical formulations in the report.
+3. Design 2-3 formulations that differ in a meaningful way: different equation types \
+(ODE vs algebraic vs probabilistic), different variable relationships, or different \
+mathematical frameworks. Superficial variations (same equations, different parameter names) \
+do NOT count.
+4. Call `write_file` with path `formulations/{slug}.md` and the complete output.
 
 ## Constraints
 
-- Never fabricate references. Only cite authors/papers found in the deep report.
-- Each formulation must offer a genuinely different modelling approach.
-- Your FIRST output token MUST be `#`. Never output preamble, commentary, or thinking before the report.
+- Ground every formulation in the literature cited in the deep report. Never fabricate references.
+- Each formulation must be self-contained: a reader should understand it without the others.
+- Provide realistic default values for parameters, citing sources when possible.
+- Decision logic must specify concrete action-selection rules an agent can execute \
+(not vague descriptions like "the agent decides optimally").
 
-## Output format (follow exactly)
+## Output format (write this to file, follow exactly)
 
 # {Paradigm name} — Mathematical formulations
 
 ## Formulation 1: {descriptive name}
-**Approach**: {one-line description}
+**Approach**: {one-line description of the mathematical framework}
 **Based on**: {Author (Year) or "derived from postulates P1, P3"}
 
 ### Variables
@@ -52,11 +61,12 @@ based on a deep research report.
 
 ### Equations
 $$
-{LaTeX equations}
+{LaTeX equations — number each equation for reference}
 $$
 
 ### Decision logic
-{How the agent decides based on this formulation}
+{Step-by-step rules: given internal state + perception, which action does the agent pick? \
+Use pseudocode or numbered if/then rules. Must reference the equations above.}
 
 ## Formulation 2: {descriptive name}
 ...
@@ -82,8 +92,8 @@ class FormalizerSubAgent:
             {
                 "role": "user",
                 "content": (
-                    f"Formalize this paradigm: {paradigm_slug}\n"
-                    f"The deep report is at: deep/{paradigm_slug}.md"
+                    f"Produce mathematical formulations for the paradigm: {paradigm_slug}\n"
+                    f"Read the deep report at: deep/{paradigm_slug}.md"
                 ),
             }
         ]
