@@ -5,3 +5,4 @@ __pycache__/
 phase1-pablo/outputs/
 phase2-juan/docs/specs
 .superpowers/
+.worktrees/
