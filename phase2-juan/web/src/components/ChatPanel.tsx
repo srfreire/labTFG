@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ChatMessage } from '../types'
+import { SimulationGrid } from './SimulationGrid'
 
 interface Props {
   messages: ChatMessage[]
@@ -121,6 +122,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Simulation replay */}
+        {msg.replay && (
+          <SimulationGrid replay={msg.replay} />
         )}
       </div>
     </div>

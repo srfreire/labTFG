@@ -16,6 +16,7 @@ export interface ChatMessage {
   card?: DataCard
   tracker?: TrackerData
   analyst?: AnalystData
+  replay?: ReplayData
 }
 
 export interface DataCard {
@@ -54,4 +55,18 @@ export interface AnalystData {
     insight: string
   }>
   metrics: Record<string, Record<string, number>>
+}
+
+export interface ReplayFrame {
+  step: number
+  agents: { id: string; x: number; y: number; alive: boolean }[]
+  resources: { type: string; x: number; y: number }[]
+  actions: { agent_id: string; action: string; reward: number }[]
+}
+
+export interface ReplayData {
+  grid_width: number
+  grid_height: number
+  total_steps: number
+  frames: ReplayFrame[]
 }

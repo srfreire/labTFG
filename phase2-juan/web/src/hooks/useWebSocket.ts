@@ -45,6 +45,7 @@ export function useWebSocket() {
             card: data.card,
             tracker: data.tracker,
             analyst: data.analyst,
+            replay: data.replay,
           }])
           break
 
