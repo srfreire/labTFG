@@ -27,3 +27,8 @@ class ResearchReport:
 @dataclass(frozen=True)
 class FormalizationReport:
     formulations: dict[str, str]  # paradigm_slug → markdown content
+
+
+@dataclass(frozen=True)
+class ReasonerReport:
+    specs: dict[str, str]  # paradigm_slug → sub-agent text response
