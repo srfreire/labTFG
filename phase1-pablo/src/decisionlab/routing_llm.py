@@ -80,12 +80,16 @@ async def classify_feedback(
 
         try:
             data = json.loads(raw)
+            target = data["target"]
+            _VALID_TARGETS = {"researcher", "formalizer", "reasoner", "builder"}
+            if target not in _VALID_TARGETS:
+                raise ValueError(f"Invalid target '{target}', expected one of {_VALID_TARGETS}")
             return RerunRequest(
-                target=data["target"],
+                target=target,
                 paradigm=data["paradigm"],
                 feedback=feedback,
             )
-        except (json.JSONDecodeError, KeyError) as exc:
+        except (json.JSONDecodeError, KeyError, ValueError) as exc:
             if attempt == 0:
                 logger.warning(
                     "classify_feedback: JSON parse failed on attempt 1, retrying. raw=%r exc=%s",

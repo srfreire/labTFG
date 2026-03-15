@@ -55,6 +55,7 @@ class PipelineState:
     selected_formulations: dict[str, list[int]] = field(default_factory=dict)
     env_spec_path: Path | None = None
     approved_specs: list[str] = field(default_factory=list)
+    build_results: dict[str, str] = field(default_factory=dict)
     pending_reruns: list[RerunRequest] = field(default_factory=list)
 
     # -- persistence ---------------------------------------------------------
@@ -69,6 +70,7 @@ class PipelineState:
             "selected_formulations": self.selected_formulations,
             "env_spec_path": str(self.env_spec_path) if self.env_spec_path else None,
             "approved_specs": self.approved_specs,
+            "build_results": self.build_results,
             "pending_reruns": [
                 {"target": r.target, "paradigm": r.paradigm, "feedback": r.feedback}
                 for r in self.pending_reruns
@@ -114,6 +116,7 @@ class PipelineState:
             selected_formulations=data.get("selected_formulations", {}),
             env_spec_path=Path(env_path) if env_path else None,
             approved_specs=data.get("approved_specs", []),
+            build_results=data.get("build_results", {}),
             pending_reruns=[
                 RerunRequest(target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"])
                 for r in data.get("pending_reruns", [])
@@ -313,7 +316,7 @@ class Router:
                 project_root=self.project_root,
             )
             report = await b.run(paradigms)
-            self._last_build_results = report.results
+            self.state.build_results = report.results
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
@@ -324,7 +327,7 @@ class Router:
         from decisionlab.feedback import review_build
         from decisionlab.routing_llm import classify_feedback
 
-        build_results: dict[str, str] = getattr(self, "_last_build_results", {})
+        build_results = self.state.build_results
 
         while True:
             user_feedback = await review_build(build_results)
@@ -430,7 +433,7 @@ class Router:
                         project_root=self.project_root,
                     )
                     report = await b.run([paradigm])
-                    self._last_build_results = report.results
+                    self.state.build_results = report.results
 
             except Exception as exc:
                 self.console.print(
