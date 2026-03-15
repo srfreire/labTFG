@@ -5,6 +5,7 @@ import json
 
 from simlab.runtime import run_agent_loop, Registry
 from simlab.spec import validate_spec_dict
+from simlab.utils import strip_markdown_fences
 
 ARCHITECT_SYSTEM_PROMPT = """\
 You generate JSON environment specs for a 2D grid simulation lab.
@@ -105,16 +106,4 @@ class Architect:
         )
 
         text = next((b.text for b in response.content if b.type == "text"), "")
-        return _strip_markdown_fences(text)
-
-
-def _strip_markdown_fences(text: str) -> str:
-    """Remove ```json ... ``` fences if the LLM wraps the output."""
-    stripped = text.strip()
-    if stripped.startswith("```"):
-        lines = stripped.split("\n")
-        lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        return "\n".join(lines).strip()
-    return stripped
+        return strip_markdown_fences(text)
