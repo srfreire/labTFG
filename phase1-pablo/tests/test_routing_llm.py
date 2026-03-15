@@ -106,6 +106,22 @@ class TestClassifyFeedback:
         assert result.feedback == user_text
         assert result.feedback != "LLM reason text"
 
+    async def test_classify_feedback_strips_markdown_fences(self):
+        client = AsyncMock()
+        client.messages.create.return_value = _make_text_response(
+            '```json\n{"target": "builder", "paradigm": "homeostatic", "reason": "test failure"}\n```'
+        )
+
+        result = await classify_feedback(
+            client=client,
+            feedback="tests crash",
+            paradigms=["homeostatic"],
+        )
+
+        assert result.target == "builder"
+        assert result.paradigm == "homeostatic"
+        assert client.messages.create.call_count == 1  # no retry needed
+
     async def test_classify_feedback_builds_context(self):
         client = AsyncMock()
         client.messages.create.return_value = _make_text_response(

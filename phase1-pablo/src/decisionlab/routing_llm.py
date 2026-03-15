@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from anthropic import AsyncAnthropic
 
@@ -77,9 +78,12 @@ async def classify_feedback(
         )
 
         raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
+        # Strip markdown code fences if present (```json ... ```)
+        fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)
+        cleaned = fence_match.group(1).strip() if fence_match else raw
 
         try:
-            data = json.loads(raw)
+            data = json.loads(cleaned)
             target = data["target"]
             _VALID_TARGETS = {"researcher", "formalizer", "reasoner", "builder"}
             if target not in _VALID_TARGETS:
