@@ -1,0 +1,57 @@
+export interface AgentState {
+  name: string
+  status: 'idle' | 'working' | 'done'
+  color: string
+}
+
+export interface PipelineStep {
+  step: string
+  status: 'pending' | 'done'
+}
+
+export interface ChatMessage {
+  id: string
+  from: 'user' | 'orchestrator' | 'tracker' | 'analyst' | 'reporter'
+  text: string
+  card?: DataCard
+  tracker?: TrackerData
+  analyst?: AnalystData
+}
+
+export interface DataCard {
+  title: string
+  data: Record<string, string>
+}
+
+export interface TrackerData {
+  summary: string
+  trajectories: Record<string, {
+    steps_survived: number
+    resources_consumed: number
+    actions: Record<string, number>
+  }>
+  episodes: Array<{
+    agent: string
+    type: string
+    step?: number
+    steps?: number[]
+    description: string
+  }>
+}
+
+export interface AnalystData {
+  patterns: Array<{
+    id: string
+    type: string
+    agents: string[]
+    description: string
+    evidence: string
+  }>
+  comparisons: Array<{
+    agents: string[]
+    metric: string
+    values: Record<string, number>
+    insight: string
+  }>
+  metrics: Record<string, Record<string, number>>
+}

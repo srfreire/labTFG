@@ -7,3 +7,5 @@ output/
 test_output/
 *.pdf
 *.egg-info/
+web/node_modules/
+web/dist/
