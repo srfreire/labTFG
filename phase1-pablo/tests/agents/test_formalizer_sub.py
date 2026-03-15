@@ -1,33 +1,10 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from decisionlab.agents.formalizer_sub import (
     FormalizerSubAgent,
     FORMALIZER_SUB_SYSTEM_PROMPT,
 )
-
-
-def _make_tool_use_block(id, name, input) -> MagicMock:
-    block = MagicMock()
-    block.type = "tool_use"
-    block.id = id
-    block.name = name
-    block.input = input
-    return block
-
-
-def _make_text_block(text) -> MagicMock:
-    block = MagicMock()
-    block.type = "text"
-    block.text = text
-    return block
-
-
-def _make_response(stop_reason, content) -> MagicMock:
-    response = MagicMock()
-    response.stop_reason = stop_reason
-    response.content = content
-    return response
 
 
 def test_system_prompt_exists():
@@ -43,15 +20,17 @@ def test_formalizer_sub_has_correct_tools(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_formalizer_sub_run_returns_content(tmp_path):
+async def test_formalizer_sub_run_returns_content(
+    tmp_path, make_tool_use_block, make_text_block, make_response,
+):
     # Step 1: LLM calls read_file
-    read_call = _make_tool_use_block(
+    read_call = make_tool_use_block(
         "call_1", "read_file", {"path": "deep/homeostatic.md"}
     )
-    resp1 = _make_response("tool_use", [read_call])
+    resp1 = make_response("tool_use", [read_call])
 
     # Step 2: LLM calls write_file
-    write_call = _make_tool_use_block(
+    write_call = make_tool_use_block(
         "call_2",
         "write_file",
         {
@@ -59,13 +38,13 @@ async def test_formalizer_sub_run_returns_content(tmp_path):
             "content": "# Homeostatic — Mathematical formulations\n\n## Formulation 1",
         },
     )
-    resp2 = _make_response("tool_use", [write_call])
+    resp2 = make_response("tool_use", [write_call])
 
     # Step 3: LLM produces final text
-    final_text = _make_text_block(
+    final_text = make_text_block(
         "# Homeostatic — Mathematical formulations\n\n## Formulation 1: Energy model"
     )
-    resp3 = _make_response("end_turn", [final_text])
+    resp3 = make_response("end_turn", [final_text])
 
     # Prepare deep report so read_file succeeds
     deep_dir = tmp_path / "deep"
@@ -83,9 +62,9 @@ async def test_formalizer_sub_run_returns_content(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_formalizer_sub_uses_opus_model(tmp_path):
-    final_text = _make_text_block("# Output")
-    resp = _make_response("end_turn", [final_text])
+async def test_formalizer_sub_uses_opus_model(tmp_path, make_text_block, make_response):
+    final_text = make_text_block("# Output")
+    resp = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.return_value = resp

@@ -1,35 +1,12 @@
 import json
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from decisionlab.agents.reasoner_sub import (
     ReasonerSubAgent,
     REASONER_SUB_SYSTEM_PROMPT,
 )
-
-
-def _make_tool_use_block(id, name, input) -> MagicMock:
-    block = MagicMock()
-    block.type = "tool_use"
-    block.id = id
-    block.name = name
-    block.input = input
-    return block
-
-
-def _make_text_block(text) -> MagicMock:
-    block = MagicMock()
-    block.type = "text"
-    block.text = text
-    return block
-
-
-def _make_response(stop_reason, content) -> MagicMock:
-    response = MagicMock()
-    response.stop_reason = stop_reason
-    response.content = content
-    return response
 
 
 def test_system_prompt_exists():
@@ -46,24 +23,26 @@ def test_reasoner_sub_has_correct_tools(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_reasoner_sub_run_returns_content(tmp_path):
+async def test_reasoner_sub_run_returns_content(
+    tmp_path, make_tool_use_block, make_text_block, make_response,
+):
     # Step 1: LLM calls read_file for deep report
-    read_deep = _make_tool_use_block(
+    read_deep = make_tool_use_block(
         "call_1", "read_file", {"path": "deep/homeostatic.md"}
     )
-    resp1 = _make_response("tool_use", [read_deep])
+    resp1 = make_response("tool_use", [read_deep])
 
     # Step 2: LLM calls read_file for formulations
-    read_form = _make_tool_use_block(
+    read_form = make_tool_use_block(
         "call_2", "read_file", {"path": "formulations/homeostatic.md"}
     )
-    resp2 = _make_response("tool_use", [read_form])
+    resp2 = make_response("tool_use", [read_form])
 
     # Step 3: LLM calls read_file for env_spec
-    read_env = _make_tool_use_block(
+    read_env = make_tool_use_block(
         "call_3", "read_file", {"path": "env_spec.json"}
     )
-    resp3 = _make_response("tool_use", [read_env])
+    resp3 = make_response("tool_use", [read_env])
 
     # Step 4: LLM calls write_file with JSON spec
     spec = {
@@ -71,7 +50,7 @@ async def test_reasoner_sub_run_returns_content(tmp_path):
         "paradigm": "homeostatic",
         "name": "Homeostatic PI Controller",
     }
-    write_call = _make_tool_use_block(
+    write_call = make_tool_use_block(
         "call_4",
         "write_file",
         {
@@ -79,13 +58,13 @@ async def test_reasoner_sub_run_returns_content(tmp_path):
             "content": json.dumps(spec, indent=2),
         },
     )
-    resp4 = _make_response("tool_use", [write_call])
+    resp4 = make_response("tool_use", [write_call])
 
     # Step 5: LLM produces final text
-    final_text = _make_text_block(
+    final_text = make_text_block(
         "Produced JSON spec for homeostatic_pi_controller."
     )
-    resp5 = _make_response("end_turn", [final_text])
+    resp5 = make_response("end_turn", [final_text])
 
     # Prepare fixture files so read_file succeeds
     deep_dir = tmp_path / "deep"
@@ -114,9 +93,9 @@ async def test_reasoner_sub_run_returns_content(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_reasoner_sub_uses_opus_model(tmp_path):
-    final_text = _make_text_block("# Output")
-    resp = _make_response("end_turn", [final_text])
+async def test_reasoner_sub_uses_opus_model(tmp_path, make_text_block, make_response):
+    final_text = make_text_block("# Output")
+    resp = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.return_value = resp
