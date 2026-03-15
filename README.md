@@ -59,7 +59,16 @@ phase1-pablo/                          — Fase 1: pipeline de modelado
 phase2-juan/                           — Fase 2: laboratorio virtual
   simlab/                              — Paquete principal
     environment.py                     — Environment, Agent, Resource, Event, ModelAdapter
-  tests/                               — Tests unitarios (adapter + environment)
+    spec.py                            — Validacion y conversion de JSON specs
+    architect.py                       — Architect agent (genera specs de environment)
+    tracker.py                         — Tracker agent (observa simulaciones)
+    analyst.py                         — Analyst agent (identifica patrones)
+    reporter.py                        — Reporter agent (genera informes PDF)
+    tools.py                           — Tools compartidas (simulation data access)
+    utils.py                           — Utilidades compartidas
+    runtime/                           — Loop agentico y dispatcher de tools
+    templates/                         — Plantilla LaTeX para informes
+  tests/                               — Tests unitarios e integracion
   docs/DESIGN.md                       — Diseno de la arquitectura
 
 docs/                                  — Documentos de referencia
@@ -120,7 +129,8 @@ Requiere `tkinter`, `matplotlib`, `numpy`.
 | --- | --- |
 | Lenguaje | Python (uv) |
 | LLM | Claude (Anthropic) |
-| SDK agentes | claude-agent-sdk |
+| SDK agentes | anthropic (API directa con tool use loop) |
 | Interfaz | CLI (rich/typer) — solo Fase 1 por ahora |
 | Tests | pytest |
 | Datos | JSON (SQLite previsto) |
+| Informes | LaTeX (tectonic) → PDF |

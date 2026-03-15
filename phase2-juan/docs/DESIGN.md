@@ -17,10 +17,10 @@ El sistema se construye como una **arquitectura multi-agente** donde un usuario 
 flowchart TD
     U["Usuario (CLI / Web UI)"] --> O[Orquestador]
 
-    O --> P["Agente Plataforma — configura/construye el environment"]
-    O --> OB["Agente Observador — monitoriza la simulacion"]
-    O --> AN["Agente Analitico — analiza datos recogidos"]
-    O --> R["Agente Redactor — genera informes"]
+    O --> P["Architect — configura/construye el environment"]
+    O --> OB["Tracker — monitoriza la simulacion"]
+    O --> AN["Analyst — analiza datos recogidos"]
+    O --> R["Reporter — genera informes"]
 ```
 
 El usuario **solo habla con el orquestador**. Este interpreta la peticion y delega en los subagentes apropiados, coordinando el flujo completo: construccion del environment -> ejecucion -> observacion -> analisis -> informe.
@@ -46,77 +46,77 @@ Ni las acciones ni los recursos estan predefinidos — se configuran dinamicamen
 | Agentes de simulacion | Codigo Python (reglas, EDOs, RL) | Nunca LLM en runtime de simulacion |
 | Multi-agente | Si, desde el inicio | El script de Denis ya lo soporta |
 | Mix de paradigmas | Si | Cada agente puede tener distinto DecisionModel |
-| Visualizacion | Fuera del environment | Responsabilidad del Observador/Redactor |
+| Visualizacion | Fuera del environment | Responsabilidad del Tracker/Reporter |
 | Arquitectura | Composicion con Protocol | Flexible, intercambiable, Pythonico |
 | Propiedad del estado | El DecisionModel (Fase 1) es dueno de todo el estado del paradigma. El Agent solo tiene posicion y alive | Separacion limpia; el Environment no necesita conocer las variables internas de cada modelo |
 | Extensibilidad | Los nuevos paradigmas llegan como `.py` de la Fase 1 que implementan el Protocol `DecisionModel` | Se enchufa directamente sin tocar el framework |
 | Configuracion de acciones/recursos | Dataclasses (`ActionRule`, `ResourceRule`) | Tipado, validable, serializable a/desde dict para que un LLM lo genere |
 | Acciones atomicas | Mover y consumir son acciones separadas | Cada accion tiene un unico efecto, sistema mas generico y composable |
-| Limites del Agente Plataforma | Selecciona DecisionModels y configura el Environment (grid, recursos, reglas). No genera codigo de modelos | Los modelos vienen de la Fase 1 |
+| Limites del Architect | Genera JSON specs de Environment (grid, acciones, recursos). No instancia el Environment ni selecciona DecisionModels | Los modelos vienen de la Fase 1; instanciar el Environment es una utilidad Python |
 | Integracion Fase 1 | ModelAdapter con `perception_mapper` callback | El Environment no depende del codigo de Pablo; se mantiene generico |
 
 ---
 
-## 3. Los 4 agentes + orquestador
+## 3. Los 4 agentes + Orchestrator
 
-### 3.1 Orquestador
+### 3.1 Orchestrator
 
 **Rol**: punto de entrada del usuario. Interpreta peticiones en lenguaje natural y coordina a los subagentes en funcion de las peticiones que reciba para modelar el environment y los agentes subsecuentes.
 
-Es el agente principal del Agent SDK. Decide que subagentes invocar y en que orden segun la peticion del usuario. Cada subagente corre con contexto aislado — solo el resumen final vuelve al orquestador.
+Decide que subagentes invocar y en que orden segun la peticion del usuario. Cada subagente corre con contexto aislado — solo el resumen final vuelve al Orchestrator. Pendiente de implementar.
 
-### 3.2 Agente Plataforma de Simulacion
+### 3.2 Architect
 
-**Rol**: construir y configurar environments de simulacion sobre el framework base en Python.
+**Rol**: interpretar peticiones en lenguaje natural y generar JSON specs validos para configurar environments de simulacion.
 
-- Recibe especificaciones del orquestador (objetivos, recursos, restricciones, numero de agentes)
-- Crea `ActionRule` y `ResourceRule` segun lo que Pablo necesite
-- Selecciona los DecisionModels (de la Fase 1) e instancia Agents (wrappers) con ellos
-- Configura el Environment y ejecuta la simulacion paso a paso
-- Devuelve la spec declarativa via `get_spec()` para que Pablo programe contra ella
+- Recibe una descripcion del escenario (via Orchestrator)
+- Genera un JSON spec con grid, acciones (`ActionRule`) y recursos (`ResourceRule`)
+- Valida el spec con una tool (`validate_spec`) y se autocorrige si falla
+- No instancia el Environment (eso lo hace `spec_to_environment`, una utilidad Python)
+- No selecciona DecisionModels (eso es responsabilidad de la Fase 1)
 
-**Input**: especificacion del environment en lenguaje natural (via orquestador)
-**Output**: environment configurado + spec declarativa + datos de simulacion (Events)
+**Input**: descripcion del environment en lenguaje natural (via Orchestrator)
+**Output**: JSON spec validado (grid + actions + resources)
 
-### 3.3 Agente Observador
+### 3.3 Tracker
 
 **Rol**: monitorizar el comportamiento de los agentes durante la simulacion.
 
 - Registra eventos relevantes en cada paso
 - Captura episodios (secuencias de eventos significativas)
 - Traza trayectorias de decision de cada agente
-- Accede al estado interno de los modelos via `DecisionModel.get_state()` — este metodo lo implementa la Fase 1 (Pablo) en cada modelo. Cada DecisionModel decide que variables internas exponer (ej: fat_reserves, ghrelin, hunger en el homeostatico; Q-table, epsilon en el hedonico). Sin `get_state()`, el Observador no puede registrar el estado interno de los agentes. Preferimos hacerlo asi por una cuestion de separacion de responsabilidades.
+- Accede al estado interno de los modelos via `DecisionModel.get_state()` — este metodo lo implementa la Fase 1 (Pablo) en cada modelo. Cada DecisionModel decide que variables internas exponer (ej: fat_reserves, ghrelin, hunger en el homeostatico; Q-table, epsilon en el hedonico). Sin `get_state()`, el Tracker no puede registrar el estado interno de los agentes. Preferimos hacerlo asi por una cuestion de separacion de responsabilidades.
 
 **Input**: Events de la simulacion + snapshots del estado de cada agente (via `get_state()`)
 **Output**: log estructurado de eventos, episodios y trayectorias
 
-### 3.4 Agente Analitico
+### 3.4 Analyst
 
-**Rol**: procesar los datos del Observador para extraer patrones.
+**Rol**: procesar los datos del Tracker para extraer patrones.
 
 - Identificar correlaciones entre comportamientos y consecucion de objetivos
 - Detectar estrategias emergentes
 - Comparar rendimiento entre agentes o entre configuraciones
 
-**Input**: logs del Observador
+**Input**: logs del Tracker
 **Output**: patrones identificados, metricas, comparativas
 
-### 3.5 Agente Redactor
+### 3.5 Reporter
 
 **Rol**: generar informes estructurados con los resultados.
 
 - Sintetizar conclusiones del analisis
 - Proponer mejoras en los modelos de comportamiento
-- Generar documentacion legible (Markdown, PDF)
+- Generar documentacion legible (LaTeX -> PDF via tectonic)
 
-**Input**: resultados del Agente Analitico
+**Input**: resultados del Analyst
 **Output**: informe final estructurado
 
 ---
 
 ## 4. Environment base (Python)
 
-Framework generico en Python que define las abstracciones de un mundo de simulacion. Es la "sandbox" sobre la que el Agente Plataforma construye environments concretos y los DecisionModels de la Fase 1 operan como organismos.
+Framework generico en Python que define las abstracciones de un mundo de simulacion. Es la "sandbox" sobre la que el Architect construye environments concretos y los DecisionModels de la Fase 1 operan como organismos.
 
 El environment es codigo Python puro — no depende del Agent SDK. Los agentes IA (orquestador, observador, etc.) usan el SDK; el environment no.
 
@@ -298,7 +298,7 @@ flowchart TD
 ### 4.7 Que NO hace el environment base
 
 - No implementa ningun paradigma de decision (eso es Fase 1)
-- No visualiza nada (eso es el Observador/Redactor)
+- No visualiza nada (eso es el Tracker/Reporter)
 - No usa LLMs en runtime de simulacion
 - No persiste datos (eso lo hace el Observador con los Events)
 
@@ -410,11 +410,11 @@ Se opta por el **Anthropic Agent SDK** en vez de frameworks como LangGraph, Crew
 ```mermaid
 sequenceDiagram
     actor U as Usuario
-    participant O as Orquestador
-    participant P as Agente Plataforma
-    participant OB as Agente Observador
-    participant AN as Agente Analitico
-    participant R as Agente Redactor
+    participant O as Orchestrator
+    participant P as Architect
+    participant OB as Tracker
+    participant AN as Analyst
+    participant R as Reporter
 
     U->>O: "Simula 100 pasos con 5 organismos,<br>comida escasa, estrategias de busqueda"
     O->>P: Configura environment<br>(ActionRules + ResourceRules + agentes)
@@ -437,14 +437,14 @@ sequenceDiagram
 - Environment base generico en Python (effect types, ActionRule, ResourceRule)
 - ModelAdapter con perception_mapper para integracion con Fase 1
 - Primer caso de uso: modelo metabolico/homeostatico de Pablo
-- Orquestador basico via CLI
-- Agente Plataforma funcional
-- Agente Observador basico (logging de eventos)
+- Orchestrator basico via CLI
+- Architect funcional
+- Tracker basico (logging de eventos)
 
 ### Fase 2.2 — Analisis e informes
 
-- Agente Analitico funcional
-- Agente Redactor funcional
+- Analyst funcional
+- Reporter funcional
 - Pipeline completo: simulacion -> observacion -> analisis -> informe
 
 ### Fase 2.3 — Web UI
