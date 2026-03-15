@@ -100,3 +100,53 @@ def test_get_agent_state_not_found():
     _, registry = _build_tools(events)
     result = json.loads(asyncio.run(registry["get_agent_state"]({"agent_id": "agent_0", "step": 99})))
     assert "error" in result
+
+
+# --- Integration tests ---
+
+import os
+
+import anthropic
+import pytest
+
+from simlab.tracker import Tracker
+from simlab.environment import (
+    Environment, Agent, Position, ActionRule, ResourceRule,
+    MoveEffect, ConsumeEffect,
+)
+
+
+@pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set")
+@pytest.mark.integration
+def test_tracker_observes_simulation():
+    env = Environment(
+        width=5, height=5,
+        actions=[
+            ActionRule("move_up", MoveEffect(dx=0, dy=-1)),
+            ActionRule("move_down", MoveEffect(dx=0, dy=1)),
+            ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
+        ],
+        resources=[ResourceRule(type="food", count=3, regenerate=True)],
+        seed=42,
+    )
+
+    class DummyModel:
+        def decide(self, perception):
+            return Action(name="move_down")
+        def update(self, action, reward, new_perception):
+            pass
+        def get_state(self):
+            return {"mood": "hungry"}
+
+    env.add_agent(Agent(id="agent_0", position=Position(2, 2), decision_model=DummyModel()))
+    events = env.run(steps=20)
+
+    client = anthropic.AsyncAnthropic()
+    tracker = Tracker(client=client)
+    result = asyncio.run(tracker.run("Observa esta simulacion y reporta que paso.", events))
+
+    data = json.loads(result)
+    assert "summary" in data
+    assert "trajectories" in data
+    assert "episodes" in data
+    assert "agent_0" in data["trajectories"]
