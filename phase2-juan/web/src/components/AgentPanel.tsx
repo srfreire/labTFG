@@ -62,8 +62,8 @@ export function AgentPanel({ agents, pipeline }: Props) {
         {PIPELINE_ALL.map((step, i) => (
           <span key={step}>
             <span
-              className="text-[8px] uppercase tracking-[1px] px-1.5 py-1"
-              style={{ color: doneSteps.has(step) ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.15)' }}
+              className={`text-[8px] uppercase tracking-[1px] px-1.5 py-1 transition-colors duration-400 ${doneSteps.has(step) ? 'pipeline-step-done' : ''}`}
+              style={{ color: doneSteps.has(step) ? undefined : 'rgba(255,255,255,0.15)' }}
             >
               {step}
             </span>

@@ -48,8 +48,8 @@ export function ChatPanel({ messages, thinking, onSend }: Props) {
             <div className="text-[8px] uppercase tracking-[1px] mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
               Orchestrator
             </div>
-            <div className="px-3.5 py-2.5 border text-[11px]" style={{ borderColor: 'rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.4)' }}>
-              Pensando<span className="animate-pulse">...</span>
+            <div className="px-3.5 py-2.5 border text-[11px] typing-dots" style={{ borderColor: 'rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.4)' }}>
+              Pensando<span>.</span><span>.</span><span>.</span>
             </div>
           </div>
         )}
@@ -75,7 +75,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   const dotColor = FROM_COLORS[msg.from] || '#fff'
 
   return (
-    <div className={`max-w-[85%] ${isUser ? 'self-start' : 'self-end'}`}>
+    <div className={`max-w-[85%] animate-msg-in ${isUser ? 'self-start' : 'self-end'}`}>
       <div className="flex items-center gap-1 mb-1">
         <div className="w-1 h-1 rounded-full" style={{ background: dotColor }} />
         <span className="text-[8px] uppercase tracking-[1px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
