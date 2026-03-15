@@ -22,3 +22,8 @@ class ResearchReport:
     paradigms: list[Paradigm]
     summary: str
     deep_reports: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class FormalizationReport:
+    formulations: dict[str, str]  # paradigm_slug → markdown content

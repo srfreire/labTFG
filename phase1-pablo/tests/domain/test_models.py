@@ -1,6 +1,6 @@
 import pytest
 
-from decisionlab.domain.models import SearchResult, Paradigm, ResearchReport
+from decisionlab.domain.models import SearchResult, Paradigm, ResearchReport, FormalizationReport
 
 
 def test_search_result_creation():
@@ -23,6 +23,18 @@ def test_research_report_creation():
     )
     assert len(report.paradigms) == 1
     assert "h" in report.deep_reports
+
+
+def test_formalization_report_creation():
+    report = FormalizationReport(formulations={"homeostatic": "# Formulation"})
+    assert "homeostatic" in report.formulations
+    assert report.formulations["homeostatic"] == "# Formulation"
+
+
+def test_formalization_report_is_frozen():
+    report = FormalizationReport(formulations={"a": "b"})
+    with pytest.raises(AttributeError):
+        report.formulations = {}
 
 
 def test_frozen_dataclasses_are_immutable():
