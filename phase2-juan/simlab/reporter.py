@@ -3,13 +3,10 @@ from __future__ import annotations
 
 import json
 import subprocess
-import logging
 from pathlib import Path
 
 from simlab.runtime import run_agent_loop, Registry
 from simlab.utils import extract_text
-
-logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
