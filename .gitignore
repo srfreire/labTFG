@@ -7,3 +7,4 @@ phase1-pablo/outputs/
 **/docs/plans/
 .superpowers/
 .worktrees/
+.playwright-mcp/

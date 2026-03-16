@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { ReplayData } from '../types'
+import { AGENT_COLORS } from '../constants'
 
 interface Props {
   replay: ReplayData
 }
-
-const AGENT_COLORS = ['#4ade80', '#fbbf24', '#a78bfa', '#f472b6', '#38bdf8', '#fb923c']
 const SPEEDS = [0.5, 1, 2, 4]
 
 export function SimulationGrid({ replay }: Props) {

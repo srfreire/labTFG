@@ -2,19 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
+import { FROM_COLORS } from '../constants'
 
 interface Props {
   messages: ChatMessage[]
   thinking: boolean
   onSend: (text: string) => void
-}
-
-const FROM_COLORS: Record<string, string> = {
-  user: 'rgba(255,255,255,0.5)',
-  orchestrator: '#94a3b8',
-  tracker: '#fbbf24',
-  analyst: '#a78bfa',
-  reporter: '#f472b6',
 }
 
 export function ChatPanel({ messages, thinking, onSend }: Props) {

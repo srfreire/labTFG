@@ -61,11 +61,12 @@ Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
 - Phase 1 Builder operational — generates self-contained Python models
 - Dynamic model loader: discovers and loads Phase 1 models from `builder/`
 - Orchestrator presents available models to user before simulation
-- Web UI: simulation grid with animated replay, rich data cards, responsive layout
+- Multi-model comparison: run multiple models in same environment, side-by-side analysis
+- Web UI: dark dashboard (RecDS-style), simulation grid with animated replay, rich data cards, agent status panel with lab floor visualization
+- Full pipeline tested e2e with Playwright (greeting → simulation → tracker → analyst → reporter)
 - Phase 1 ↔ Phase 2 integration complete (duck typing, no adapter)
 
 ## Next Steps
 
-- [ ] Test Web UI end-to-end with real Phase 1 models
-- [ ] Real-time WebSocket streaming during simulation (not just post-hoc replay)
 - [ ] More decision paradigms from Phase 1 (when Pablo adds them)
+- [ ] TFG memoria/documentation

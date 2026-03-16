@@ -83,7 +83,7 @@ docs/                                  — Documentos de referencia
 
 Las dos fases se conectan a traves del **Protocol** `DecisionModel` — una interfaz con tres metodos: `decide()`, `update()` y `get_state()`.
 
-La Fase 1 implementa modelos concretos con tipos propios (percepciones tipadas como dataclass). La Fase 2 define un Protocol generico con percepciones como `dict`. Un **adaptador** (`ModelAdapter`) traduce entre ambos, permitiendo que el Environment ejecute cualquier paradigma sin depender del codigo de la Fase 1.
+La Fase 1 implementa modelos concretos con tipos propios (percepciones tipadas como dataclass). La Fase 2 usa duck typing con percepciones como `dict`, permitiendo que el Environment ejecute cualquier paradigma sin depender del codigo de la Fase 1.
 
 ---
 
@@ -96,30 +96,36 @@ Requiere Python 3.12+ y [uv](https://docs.astral.sh/uv/).
 cd phase1-pablo
 uv sync
 
-# Fase 2
+# Fase 2 (backend)
 cd phase2-juan
 uv sync
+cp .env.example .env  # Configurar OPENROUTER_API_KEY
+
+# Fase 2 (frontend)
+cd phase2-juan/web
+npm install
+```
+
+## Uso
+
+```bash
+# CLI interactivo
+cd phase2-juan && uv run simlab
+
+# Web UI
+cd phase2-juan && uv run uvicorn simlab.api:app --port 8000   # backend
+cd phase2-juan/web && npm run dev                              # frontend → localhost:5173
 ```
 
 ## Tests
 
 ```bash
-# Fase 2 (incluye tests del adapter con modelos de Fase 1)
-cd phase2-juan
-uv run pytest tests/ -v
+# Fase 2
+cd phase2-juan && uv run pytest tests/ -v
 
 # Fase 1
-cd phase1-pablo
-uv run pytest tests/ -v
+cd phase1-pablo && uv run pytest tests/ -v
 ```
-
-## Script de referencia
-
-```bash
-python docs/survival_metabolicModel_behave_clean_Denis.py
-```
-
-Requiere `tkinter`, `matplotlib`, `numpy`.
 
 ---
 
@@ -127,10 +133,10 @@ Requiere `tkinter`, `matplotlib`, `numpy`.
 
 | Componente | Tecnologia |
 | --- | --- |
-| Lenguaje | Python (uv) |
-| LLM | Claude (Anthropic) |
-| SDK agentes | anthropic (API directa con tool use loop) |
-| Interfaz | CLI (rich/typer) — solo Fase 1 por ahora |
-| Tests | pytest |
-| Datos | JSON (SQLite previsto) |
+| Lenguaje | Python 3.12+ (uv) |
+| LLM | Claude via OpenRouter (Anthropic SDK) |
+| Backend | FastAPI + WebSocket |
+| Frontend | React + Vite + Tailwind CSS |
+| Tests | pytest + Playwright (e2e) |
+| Datos | JSON en memoria |
 | Informes | LaTeX (tectonic) → PDF |
