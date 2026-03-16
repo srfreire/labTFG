@@ -9,13 +9,22 @@ from simlab.runtime import Registry
 
 # --- Helpers ---
 
+def _make_serializable(obj):
+    """Recursively convert non-serializable types (tuple keys, etc.) for JSON."""
+    if isinstance(obj, dict):
+        return {str(k): _make_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_make_serializable(item) for item in obj]
+    return obj
+
+
 def _event_to_dict(event: Event) -> dict:
     """Convert an Event dataclass to a JSON-serializable dict."""
     return {
         "step": event.step,
         "agent_id": event.agent_id,
         "action": {"name": event.action.name, "params": event.action.params},
-        "outcome": event.outcome,
+        "outcome": _make_serializable(event.outcome),
     }
 
 
@@ -100,7 +109,7 @@ def build_simulation_tools(events: list[Event]) -> tuple[list[dict], Registry]:
         event = next((e for e in agent_events if e.step == step), None)
         if event is None:
             return json.dumps({"error": f"No event for {agent_id} at step {step}"})
-        return json.dumps(event.outcome.get("model_state", {}))
+        return json.dumps(_make_serializable(event.outcome.get("model_state", {})))
 
     schemas = [GET_SIMULATION_EVENTS_TOOL, GET_AGENT_TRAJECTORY_TOOL, GET_AGENT_STATE_TOOL]
     registry: Registry = {

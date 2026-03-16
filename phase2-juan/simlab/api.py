@@ -1,7 +1,6 @@
 """FastAPI backend — WebSocket API for the Orchestrator."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from pathlib import Path
@@ -29,6 +28,14 @@ app.add_middleware(
 RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 BUILDER_DIR = RESEARCH_DIR / "builder"
+
+# Map tool names to agent names for status updates
+TOOL_AGENT_MAP = {
+    "create_environment": "Architect",
+    "observe_simulation": "Tracker",
+    "analyze_results": "Analyst",
+    "generate_report": "Reporter",
+}
 
 
 @app.get("/health")
@@ -60,6 +67,28 @@ async def websocket_chat(ws: WebSocket):
         "pipeline": [],
     })
 
+    # Wrap orchestrator tools to emit real-time agent status via WebSocket
+    original_build = orch._build_tools
+
+    def patched_build():
+        tools, registry = original_build()
+        wrapped: dict = {}
+        for tool_name, fn in registry.items():
+            agent_name = TOOL_AGENT_MAP.get(tool_name)
+            if agent_name:
+                # Use default args to capture current values in the closure
+                async def _wrapper(params, _agent=agent_name, _fn=fn):
+                    await ws.send_json({"type": "agent_status", "agent": _agent, "status": "working"})
+                    result = await _fn(params)
+                    await ws.send_json({"type": "agent_status", "agent": _agent, "status": "done"})
+                    return result
+                wrapped[tool_name] = _wrapper
+            else:
+                wrapped[tool_name] = fn
+        return tools, wrapped
+
+    orch._build_tools = patched_build
+
     try:
         while True:
             data = await ws.receive_text()
@@ -72,63 +101,32 @@ async def websocket_chat(ws: WebSocket):
             # Send "thinking" state
             await ws.send_json({"type": "status", "status": "thinking"})
 
-            # Run orchestrator
             try:
                 response = await orch.chat(user_text)
 
-                # Determine which agents ran based on state
-                agents_state = []
+                # Build final agent states from orchestrator state
                 state = orch._state
-                if state.get("spec"):
-                    agents_state.append({"name": "Architect", "status": "done", "color": "#4ade80"})
-                else:
-                    agents_state.append({"name": "Architect", "status": "idle", "color": "#4ade80"})
+                agents_state = [
+                    {"name": "Architect", "status": "done" if state.get("spec") else "idle", "color": "#4ade80"},
+                    {"name": "Tracker", "status": "done" if state.get("tracker_output") else "idle", "color": "#fbbf24"},
+                    {"name": "Analyst", "status": "done" if state.get("analyst_output") else "idle", "color": "#a78bfa"},
+                    {"name": "Reporter", "status": "done" if state.get("pdf_path") else "idle", "color": "#f472b6"},
+                ]
 
-                if state.get("tracker_output"):
-                    agents_state.append({"name": "Tracker", "status": "done", "color": "#fbbf24"})
-                elif state.get("events"):
-                    agents_state.append({"name": "Tracker", "status": "idle", "color": "#fbbf24"})
-                else:
-                    agents_state.append({"name": "Tracker", "status": "idle", "color": "#fbbf24"})
-
-                if state.get("analyst_output"):
-                    agents_state.append({"name": "Analyst", "status": "done", "color": "#a78bfa"})
-                else:
-                    agents_state.append({"name": "Analyst", "status": "idle", "color": "#a78bfa"})
-
-                if state.get("pdf_path"):
-                    agents_state.append({"name": "Reporter", "status": "done", "color": "#f472b6"})
-                else:
-                    agents_state.append({"name": "Reporter", "status": "idle", "color": "#f472b6"})
-
-                # Build pipeline status
                 pipeline = []
-                if state.get("spec"):
-                    pipeline.append({"step": "arch", "status": "done"})
-                if state.get("events"):
-                    pipeline.append({"step": "sim", "status": "done"})
-                if state.get("tracker_output"):
-                    pipeline.append({"step": "track", "status": "done"})
-                if state.get("analyst_output"):
-                    pipeline.append({"step": "anal", "status": "done"})
-                if state.get("pdf_path"):
-                    pipeline.append({"step": "repo", "status": "done"})
+                for key, step in [("spec", "arch"), ("events", "sim"), ("tracker_output", "track"), ("analyst_output", "anal"), ("pdf_path", "repo")]:
+                    if state.get(key):
+                        pipeline.append({"step": step, "status": "done"})
 
-                # Send agent states
-                await ws.send_json({
-                    "type": "agents",
-                    "agents": agents_state,
-                    "pipeline": pipeline,
-                })
+                await ws.send_json({"type": "agents", "agents": agents_state, "pipeline": pipeline})
 
-                # Send response with any data cards
+                # Build response with data cards
                 response_data: dict = {
                     "type": "message",
                     "from": "orchestrator",
                     "text": response,
                 }
 
-                # Attach structured data if available
                 if state.get("spec") and not state.get("events"):
                     response_data["card"] = {
                         "title": "Environment Spec",
@@ -173,10 +171,7 @@ async def websocket_chat(ws: WebSocket):
 
             except Exception as e:
                 logger.error("Orchestrator error: %s", e, exc_info=True)
-                await ws.send_json({
-                    "type": "error",
-                    "text": str(e),
-                })
+                await ws.send_json({"type": "error", "text": str(e)})
 
     except WebSocketDisconnect:
         logger.info("Client disconnected")
