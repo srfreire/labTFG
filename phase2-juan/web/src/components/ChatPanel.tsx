@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import type { ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 
@@ -83,14 +84,13 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         </span>
       </div>
       <div
-        className="px-3.5 py-2.5 border text-[11px] leading-relaxed"
+        className="px-3.5 py-2.5 border text-[11px] leading-relaxed msg-content"
         style={{
           borderColor: isUser ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
           background: isUser ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.02)',
-          whiteSpace: 'pre-wrap',
         }}
       >
-        {msg.text}
+        {isUser ? msg.text : <ReactMarkdown>{msg.text}</ReactMarkdown>}
 
         {/* Data card */}
         {msg.card && (

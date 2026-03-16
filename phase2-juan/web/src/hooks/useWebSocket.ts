@@ -11,8 +11,7 @@ export function useWebSocket() {
   const idRef = useRef(0)
 
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${proto}//${window.location.host}/ws`)
+    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`)
     wsRef.current = ws
 
     ws.onopen = () => setConnected(true)
