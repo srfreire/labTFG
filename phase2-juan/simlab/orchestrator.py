@@ -13,7 +13,7 @@ from simlab.environment import Agent, Position, Action
 from simlab.runtime import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
 # --- Tool schemas ---
 
