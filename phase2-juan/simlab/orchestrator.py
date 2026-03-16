@@ -31,16 +31,18 @@ CREATE_ENVIRONMENT_TOOL = {
 
 RUN_SIMULATION_TOOL = {
     "name": "run_simulation",
-    "description": "Run a simulation with the current environment spec. Requires create_environment first.",
+    "description": "Run a simulation with the current environment spec. Requires create_environment first. "
+                   "Use model_ids to run MULTIPLE models in the SAME environment for fair comparison.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "num_agents": {"type": "integer", "description": "Number of agents to place in the simulation"},
+            "num_agents": {"type": "integer", "description": "Number of agents PER MODEL to place in the simulation (default 1)"},
             "steps": {"type": "integer", "description": "Number of simulation steps to run"},
             "seed": {"type": "integer", "description": "Random seed for reproducibility (optional)"},
-            "model_id": {"type": "string", "description": "Formulation ID of the model to use (from list_available_models). If omitted, uses a simple built-in model."},
+            "model_id": {"type": "string", "description": "Single model formulation ID (use model_ids for multiple)"},
+            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model formulation IDs to compare in the same environment. Each gets num_agents agents."},
         },
-        "required": ["num_agents", "steps"],
+        "required": ["steps"],
     },
 }
 
@@ -141,6 +143,23 @@ then run all steps automatically with sensible defaults.
 Before running a simulation, call list_available_models to check what decision models are available. \
 Present the options to the user and let them choose. Then pass the chosen model_id to run_simulation. \
 If no models are available, use the built-in dummy model and tell the user.
+
+IMPORTANT: When the user asks to compare models or use "all models", pass ALL formulation IDs in the \
+model_ids array (not model_id). This runs them in the SAME environment for a fair comparison. \
+Example: model_ids=["homeostatic-regulation_drive_reduction_rl", "homeostatic-regulation_pi_negative_feedback"]. \
+Each model gets its own agent(s) in the shared environment.
+
+## Environment creation — IMPORTANT
+
+When calling create_environment, be VERY SPECIFIC in the description. The Architect generates \
+the spec from your description, so include:
+- Exact grid dimensions (e.g. "8x8")
+- Exact resource count and type (e.g. "5 food")
+- ALL required actions: move_up, move_down, move_left, move_right, eat, stay
+- The "stay" action is REQUIRED — decision models need it for energy conservation
+- The "eat" action must be a ConsumeEffect with resource_type matching the resource type
+
+Example description: "Grid 8x8, 5 food with regeneration, actions: move_up, move_down, move_left, move_right, eat (consumes food), stay"
 
 ## Pipeline order
 
@@ -259,28 +278,49 @@ class Orchestrator:
             if not state.get("spec"):
                 return json.dumps({"error": "No environment created yet. Call create_environment first."})
             env = spec_to_environment(state["spec"], seed=params.get("seed"))
-            num_agents = params["num_agents"]
+            num_agents = params.get("num_agents", 1)
             steps = params["steps"]
             rng = random.Random(params.get("seed"))
             action_names = [a["name"] for a in state["spec"]["actions"]]
 
-            # Load model if model_id provided
-            model_id = params.get("model_id")
-            model_info = None
-            if model_id and self.builder_dir:
-                from simlab.model_loader import discover_models, load_model
-                available = discover_models(self.builder_dir)
-                model_info = available.get(model_id)
+            # Resolve which models to run
+            model_ids = params.get("model_ids") or []
+            if not model_ids and params.get("model_id"):
+                model_ids = [params["model_id"]]
 
-            for i in range(num_agents):
-                if model_info:
-                    model = load_model(model_info, seed=rng.randint(0, 2**32))
-                elif i < len(self.decision_models):
-                    model = self.decision_models[i]
-                else:
-                    model = _DummyModel(action_names, random.Random(rng.randint(0, 2**32)))
-                pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
-                env.add_agent(Agent(id=f"agent_{i}", position=pos, decision_model=model))
+            available = {}
+            if model_ids and self.builder_dir:
+                from simlab.model_loader import discover_models, load_model as _load
+                available = discover_models(self.builder_dir)
+
+            # Create agents — one (or num_agents) per model
+            models_used = []
+            if model_ids:
+                for mid in model_ids:
+                    info = available.get(mid)
+                    if not info:
+                        continue
+                    # Short label: extract distinctive part from formulation ID
+                    # e.g. "homeostatic-regulation_drive_reduction_rl" → "drive_reduction_rl"
+                    # e.g. "homeostatic-regulation_pi_negative_feedback" → "pi_negative_feedback"
+                    parts = mid.split("_", 1)
+                    label = parts[1] if len(parts) > 1 else mid[:12]
+                    for i in range(num_agents):
+                        model = _load(info, seed=rng.randint(0, 2**32))
+                        pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
+                        agent_id = f"{label}_{i}" if num_agents > 1 else label
+                        env.add_agent(Agent(id=agent_id, position=pos, decision_model=model))
+                    models_used.append(mid)
+            else:
+                # Fallback: injected models or dummy
+                for i in range(num_agents):
+                    if i < len(self.decision_models):
+                        model = self.decision_models[i]
+                    else:
+                        model = _DummyModel(action_names, random.Random(rng.randint(0, 2**32)))
+                    pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
+                    env.add_agent(Agent(id=f"agent_{i}", position=pos, decision_model=model))
+                models_used.append("dummy")
 
             # Run step-by-step, capturing replay frames
             all_events = []
@@ -315,11 +355,11 @@ class Orchestrator:
             state["analyst_output"] = None
 
             summary = {
-                "agents": num_agents,
+                "agents": len(env._agents),
                 "steps": steps,
                 "total_events": len(all_events),
                 "agents_alive": sum(1 for a in env._agents if a.alive),
-                "model": model_id or "dummy",
+                "models": models_used,
             }
             return json.dumps(summary)
 

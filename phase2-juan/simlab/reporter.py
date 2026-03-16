@@ -143,7 +143,7 @@ You have 2 tools:
 2. Call read_research with "report.md" — this contains a complete summary of ALL paradigms. \
 DO NOT read individual deep/<paradigm>.md files unless report.md is missing.
 3. Write LaTeX content for the report body in a SINGLE compile_report call
-4. If compilation fails, fix the LaTeX errors and try again
+4. If compilation fails, fix the LaTeX errors and try ONCE more. If it fails again, return the error — do NOT keep retrying.
 5. Return the path to the generated PDF
 
 ## Report structure
@@ -185,6 +185,9 @@ What improvements could be made?
 - Write in Spanish
 - Be concise — aim for 3-5 pages total. Quality over quantity.
 - Generate the LaTeX in a SINGLE compile_report call — do not split across multiple calls
+- NEVER use \\textbf{} or \\textit{} inside section/subsection titles
+- Avoid nested formatting commands — keep it simple
+- If a character causes issues, remove it rather than trying to escape it
 """
 
 
@@ -203,7 +206,7 @@ class Reporter:
         *,
         research_dir: Path,
         output_dir: Path,
-        max_iterations: int = 20,
+        max_iterations: int = 8,
     ) -> str:
         """Generate a PDF report. Returns the path to the PDF or an error message."""
         tools, registry = _build_tools(research_dir, output_dir)

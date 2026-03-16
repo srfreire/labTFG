@@ -153,17 +153,35 @@ export function SimulationGrid({ replay }: Props) {
         </button>
       </div>
 
+      {/* Agent legend */}
+      {frame.agents.length > 1 && (
+        <div className="mt-2 flex gap-3 justify-center flex-wrap">
+          {frame.agents.map((a, i) => (
+            <span key={a.id} className="text-[8px] flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
+                background: AGENT_COLORS[i % AGENT_COLORS.length],
+              }} />
+              {a.id}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Step actions summary */}
       {frame.actions.length > 0 && (
         <div className="mt-2 flex gap-2 justify-center flex-wrap">
-          {frame.actions.map((a, i) => (
-            <span key={i} className="text-[8px] px-1.5 py-0.5 border" style={{
-              borderColor: 'rgba(255,255,255,0.08)',
-              color: a.reward > 0 ? '#4ade80' : 'rgba(255,255,255,0.3)',
-            }}>
-              {a.agent_id}: {a.action}{a.reward > 0 ? ` +${a.reward.toFixed(1)}` : ''}
-            </span>
-          ))}
+          {frame.actions.map((a, i) => {
+            const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
+            return (
+              <span key={i} className="text-[8px] px-1.5 py-0.5 border" style={{
+                borderColor: 'rgba(255,255,255,0.08)',
+                color: a.reward > 0 ? '#4ade80' : (AGENT_COLORS[agentIdx % AGENT_COLORS.length] + '80'),
+              }}>
+                {a.agent_id}: {a.action}{a.reward > 0 ? ` +${a.reward.toFixed(1)}` : ''}
+              </span>
+            )
+          })}
         </div>
       )}
     </div>
