@@ -221,10 +221,28 @@ class Environment:
             "grid": {"width": self.width, "height": self.height},
         }
 
-    # --- Simulation step ---
+    # --- Perception: what an agent can see ---
+
+    def _get_all_resource_types(self) -> set[str]:
+        """Get all resource types (both currently placed and defined in rules)."""
+        placed = {r.properties.get("type") for r in self._resources if "type" in r.properties}
+        defined = set(self._resource_rules)
+        return placed | defined
+
+    def _resources_by_type(self, rtype: str) -> list[dict]:
+        """Get all resources of a given type as dicts with x, y, and properties."""
+        return [
+            {"x": r.position.x, "y": r.position.y, **r.properties}
+            for r in self._resources
+            if r.properties.get("type") == rtype
+        ]
 
     def _build_perception(self, agent: Agent) -> dict:
-        """Build what an agent can see: its position, resources, and grid info."""
+        """Build the perception dict that gets passed to a DecisionModel.
+
+        Contains: agent position, grid size, current step,
+        all resources grouped by type, and last action result.
+        """
         return {
             "x": agent.position.x,
             "y": agent.position.y,
@@ -232,18 +250,16 @@ class Environment:
             "grid_height": self.height,
             "step": self._step,
             "resources": {
-                rtype: [
-                    {"x": r.position.x, "y": r.position.y, **r.properties}
-                    for r in self._resources
-                    if r.properties.get("type") == rtype
-                ]
-                for rtype in {r.properties.get("type") for r in self._resources if "type" in r.properties} | set(self._resource_rules)
+                rtype: self._resources_by_type(rtype)
+                for rtype in self._get_all_resource_types()
             },
             "last_action_result": {},
         }
 
+    # --- Action execution ---
+
     def _apply_action(self, agent: Agent, action: Action) -> tuple[float, dict]:
-        """Apply an action and return (reward, result_dict)."""
+        """Execute an action and return (reward, result_dict)."""
         rule = self._action_registry.get(action.name)
         if rule is None:
             return 0.0, {"error": "unknown_action"}
@@ -259,29 +275,47 @@ class Environment:
             return 0.0, {"error": f"unhandled_effect: {type(effect).__name__}"}
 
     def _apply_move(self, agent: Agent, effect: MoveEffect) -> tuple[float, dict]:
-        """Move the agent, clamping to grid bounds."""
-        agent.position.x = max(0, min(self.width - 1, agent.position.x + effect.dx))
-        agent.position.y = max(0, min(self.height - 1, agent.position.y + effect.dy))
+        """Move the agent by (dx, dy), clamping to grid bounds."""
+        new_x = agent.position.x + effect.dx
+        new_y = agent.position.y + effect.dy
+        agent.position.x = max(0, min(self.width - 1, new_x))
+        agent.position.y = max(0, min(self.height - 1, new_y))
         return effect.reward, {}
 
+    def _find_resource_at(self, resource_type: str, x: int, y: int) -> int | None:
+        """Find the index of a resource of the given type at position (x, y)."""
+        for i, r in enumerate(self._resources):
+            if (r.properties.get("type") == resource_type
+                    and r.position.x == x
+                    and r.position.y == y):
+                return i
+        return None
+
     def _apply_consume(self, agent: Agent, effect: ConsumeEffect) -> tuple[float, dict]:
-        """Try to consume a resource at the agent's position."""
-        idx = next(
-            (i for i, r in enumerate(self._resources)
-             if r.properties.get("type") == effect.resource_type
-             and r.position.x == agent.position.x
-             and r.position.y == agent.position.y),
-            None,
-        )
+        """Try to consume a resource at the agent's current position."""
+        idx = self._find_resource_at(effect.resource_type, agent.position.x, agent.position.y)
+
         if idx is None:
             return 0.0, {"consumed": False}
 
+        # Remove the resource
         self._resources.pop(idx)
-        # Regenerate if the rule says so
+
+        # Regenerate it elsewhere if the rule says so
         rule = self._resource_rules.get(effect.resource_type)
         if rule and rule.regenerate:
             self._spawn_resource(rule)
+
         return effect.reward, {"consumed": True, "resource_type": effect.resource_type}
+
+    # --- Simulation loop ---
+
+    def _snapshot_model_state(self, model: DecisionModel) -> dict:
+        """Capture the model's internal state, converting numpy arrays to lists."""
+        return {
+            k: v.tolist() if hasattr(v, "tolist") else v
+            for k, v in model.get_state().items()
+        }
 
     def step(self) -> list[Event]:
         """Advance one simulation step.
@@ -290,31 +324,39 @@ class Environment:
           1. Build perception (what the agent sees)
           2. Ask the decision model to choose an action
           3. Apply the action to the environment
-          4. Update the decision model with the result
+          4. Tell the model what happened (so it can learn)
           5. Record the event
         """
         step_events: list[Event] = []
+
         for agent in self._agents:
             if not agent.alive or agent.decision_model is None:
                 continue
 
+            # 1. What does the agent see?
             perception = self._build_perception(agent)
+
+            # 2. What does the agent decide to do?
             action = agent.decision_model.decide(perception)
+
+            # 3. Execute the action
             reward, action_result = self._apply_action(agent, action)
 
+            # 4. Tell the model what happened
             new_perception = self._build_perception(agent)
             new_perception["last_action_result"] = action_result
             agent.decision_model.update(action, reward, new_perception)
 
-            # Snapshot model state (convert numpy arrays to lists)
-            snapshot = {
-                k: v.tolist() if hasattr(v, "tolist") else v
-                for k, v in agent.decision_model.get_state().items()
-            }
-
+            # 5. Record the event
             event = Event(
-                step=self._step, agent_id=agent.id, action=action,
-                outcome={"action_result": action_result, "reward": reward, "model_state": snapshot},
+                step=self._step,
+                agent_id=agent.id,
+                action=action,
+                outcome={
+                    "action_result": action_result,
+                    "reward": reward,
+                    "model_state": self._snapshot_model_state(agent.decision_model),
+                },
             )
             step_events.append(event)
             self._events.append(event)
