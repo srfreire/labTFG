@@ -3,7 +3,12 @@ import type { AgentState, PipelineStep, ChatMessage } from '../types'
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
-  const [agents, setAgents] = useState<AgentState[]>([])
+  const [agents, setAgents] = useState<AgentState[]>([
+    { name: 'Architect', status: 'idle', color: '#4ade80' },
+    { name: 'Tracker', status: 'idle', color: '#fbbf24' },
+    { name: 'Analyst', status: 'idle', color: '#a78bfa' },
+    { name: 'Reporter', status: 'idle', color: '#f472b6' },
+  ])
   const [pipeline, setPipeline] = useState<PipelineStep[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [thinking, setThinking] = useState(false)
