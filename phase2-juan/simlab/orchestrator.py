@@ -1,4 +1,14 @@
-"""Orchestrator agent — conversational coordinator for the simulation laboratory."""
+"""
+Orchestrator agent — conversational coordinator for the simulation laboratory.
+
+The Orchestrator is the main entry point. It:
+  1. Talks to the user via chat
+  2. Coordinates the 4 specialized agents (Architect, Tracker, Analyst, Reporter)
+  3. Manages simulation state (environment spec, events, analysis results)
+  4. Exposes tools that Claude calls to trigger each pipeline step
+
+Pipeline: create_environment → run_simulation → observe_simulation → analyze_results → generate_report
+"""
 from __future__ import annotations
 
 import json
@@ -10,12 +20,15 @@ from simlab.tracker import Tracker
 from simlab.analyst import Analyst
 from simlab.reporter import Reporter
 from simlab.environment import Agent, Position, Action
-from simlab.runtime import run_agent_loop, Registry
+from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
-# --- Tool schemas ---
+
+# ---------------------------------------------------------------------------
+# Tool schemas — what the Orchestrator can do (sent to Claude)
+# ---------------------------------------------------------------------------
 
 CREATE_ENVIRONMENT_TOOL = {
     "name": "create_environment",
@@ -32,15 +45,14 @@ CREATE_ENVIRONMENT_TOOL = {
 RUN_SIMULATION_TOOL = {
     "name": "run_simulation",
     "description": "Run a simulation with the current environment spec. Requires create_environment first. "
-                   "Use model_ids to run MULTIPLE models in the SAME environment for fair comparison.",
+                   "Pass model_ids to run one or more models in the SAME environment for fair comparison.",
     "input_schema": {
         "type": "object",
         "properties": {
             "num_agents": {"type": "integer", "description": "Number of agents PER MODEL to place in the simulation (default 1)"},
             "steps": {"type": "integer", "description": "Number of simulation steps to run"},
             "seed": {"type": "integer", "description": "Random seed for reproducibility (optional)"},
-            "model_id": {"type": "string", "description": "Single model formulation ID (use model_ids for multiple)"},
-            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model formulation IDs to compare in the same environment. Each gets num_agents agents."},
+            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model formulation IDs to run. Each gets num_agents agents. Pass a single-element array for one model."},
         },
         "required": ["steps"],
     },
@@ -97,7 +109,10 @@ ALL_TOOLS = [
     GENERATE_REPORT_TOOL,
 ]
 
-# --- System prompt ---
+
+# ---------------------------------------------------------------------------
+# System prompt
+# ---------------------------------------------------------------------------
 
 ORCHESTRATOR_SYSTEM_PROMPT = """\
 You are the Orchestrator of a virtual simulation laboratory (DecisionLab). You coordinate \
@@ -141,12 +156,12 @@ then run all steps automatically with sensible defaults.
 ## Model selection
 
 Before running a simulation, call list_available_models to check what decision models are available. \
-Present the options to the user and let them choose. Then pass the chosen model_id to run_simulation. \
+Present the options to the user and let them choose. Then pass the chosen model IDs to run_simulation via model_ids. \
 If no models are available, use the built-in dummy model and tell the user.
 
-IMPORTANT: When the user asks to compare models or use "all models", pass ALL formulation IDs in the \
-model_ids array (not model_id). This runs them in the SAME environment for a fair comparison. \
-Example: model_ids=["homeostatic-regulation_drive_reduction_rl", "homeostatic-regulation_pi_negative_feedback"]. \
+IMPORTANT: Always use model_ids (an array) to pass model formulation IDs to run_simulation. \
+For a single model: model_ids=["homeostatic-regulation_drive_reduction_rl"]. \
+For comparison: model_ids=["homeostatic-regulation_drive_reduction_rl", "homeostatic-regulation_pi_negative_feedback"]. \
 Each model gets its own agent(s) in the shared environment.
 
 ## Environment creation — IMPORTANT
@@ -173,7 +188,9 @@ create_environment → run_simulation → [ask user] → observe_simulation → 
 """
 
 
-# --- Dummy model for testing ---
+# ---------------------------------------------------------------------------
+# Dummy model — fallback when no Phase 1 models are available
+# ---------------------------------------------------------------------------
 
 class _DummyModel:
     """Simple foraging agent for testing without Phase 1 models."""
@@ -187,12 +204,14 @@ class _DummyModel:
 
     def decide(self, perception: dict) -> Action:
         self._hunger += 1
+        # If on top of food, eat it
         if self._eat:
             food_key = next((k for k in perception.get("resources", {}) if "food" in k or "comida" in k), None)
             food = perception.get("resources", {}).get(food_key, []) if food_key else []
             for f in food:
                 if f["x"] == perception["x"] and f["y"] == perception["y"]:
                     return Action(name=self._eat)
+        # Otherwise, move randomly
         if self._moves:
             return Action(name=self._rng.choice(self._moves))
         return Action(name=self._rest or self._moves[0] if self._moves else "stay")
@@ -205,10 +224,16 @@ class _DummyModel:
         return {"hunger": self._hunger}
 
 
-# --- Orchestrator class ---
+# ---------------------------------------------------------------------------
+# Orchestrator class
+# ---------------------------------------------------------------------------
 
 class Orchestrator:
-    """Conversational orchestrator that coordinates the 4 simulation agents."""
+    """Conversational orchestrator that coordinates the 4 simulation agents.
+
+    Manages the full pipeline state and exposes a chat() method for interaction.
+    Each tool call triggers the corresponding agent and updates internal state.
+    """
 
     def __init__(
         self,
@@ -226,8 +251,11 @@ class Orchestrator:
         self.output_dir = output_dir
         self.model = model
         self.builder_dir = builder_dir
+
+        # Pipeline state — tracks what has been done so far
         self._state: dict = {}
         self._messages: list[dict] = []
+        self._discovered_models: dict | None = None
 
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
@@ -250,48 +278,54 @@ class Orchestrator:
         return text
 
     def _build_tools(self) -> tuple[list[dict], Registry]:
+        """Build tool implementations as closures over the orchestrator's state."""
         state = self._state
         client = self.client
 
+        # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
             arch = Architect(client=client)
             spec_json = await arch.run(params["description"])
             state["spec"] = json.loads(spec_json)
+            # Reset downstream state
             state["events"] = None
             state["tracker_output"] = None
             state["analyst_output"] = None
             return spec_json
 
+        # --- list_available_models: discovers Phase 1 models ---
         async def list_available_models(params: dict) -> str:
             if not self.builder_dir or not self.builder_dir.exists():
                 return json.dumps({"models": [], "note": "No builder directory configured"})
             from simlab.model_loader import discover_models
-            models = discover_models(self.builder_dir)
+            if self._discovered_models is None:
+                self._discovered_models = discover_models(self.builder_dir)
             return json.dumps({
                 "models": [
                     {"formulation_id": m.formulation_id, "class_name": m.class_name, "description": m.description}
-                    for m in models.values()
+                    for m in self._discovered_models.values()
                 ]
             })
 
+        # --- run_simulation: creates agents, runs the simulation loop ---
         async def run_simulation(params: dict) -> str:
             if not state.get("spec"):
                 return json.dumps({"error": "No environment created yet. Call create_environment first."})
+
             env = spec_to_environment(state["spec"], seed=params.get("seed"))
             num_agents = params.get("num_agents", 1)
             steps = params["steps"]
             rng = random.Random(params.get("seed"))
             action_names = [a["name"] for a in state["spec"]["actions"]]
 
-            # Resolve which models to run
+            # Resolve which models to use
             model_ids = params.get("model_ids") or []
-            if not model_ids and params.get("model_id"):
-                model_ids = [params["model_id"]]
-
             available = {}
             if model_ids and self.builder_dir:
                 from simlab.model_loader import discover_models, load_model as _load
-                available = discover_models(self.builder_dir)
+                if self._discovered_models is None:
+                    self._discovered_models = discover_models(self.builder_dir)
+                available = self._discovered_models
 
             # Create agents — one (or num_agents) per model
             models_used = []
@@ -300,9 +334,7 @@ class Orchestrator:
                     info = available.get(mid)
                     if not info:
                         continue
-                    # Short label: extract distinctive part from formulation ID
-                    # e.g. "homeostatic-regulation_drive_reduction_rl" → "drive_reduction_rl"
-                    # e.g. "homeostatic-regulation_pi_negative_feedback" → "pi_negative_feedback"
+                    # Short label from formulation ID (e.g. "drive_reduction_rl")
                     parts = mid.split("_", 1)
                     label = parts[1] if len(parts) > 1 else mid[:12]
                     for i in range(num_agents):
@@ -322,7 +354,7 @@ class Orchestrator:
                     env.add_agent(Agent(id=f"agent_{i}", position=pos, decision_model=model))
                 models_used.append("dummy")
 
-            # Run step-by-step, capturing replay frames
+            # Run step-by-step, capturing replay frames for the web UI
             all_events = []
             replay_frames = []
             for _ in range(steps):
@@ -344,6 +376,7 @@ class Orchestrator:
                     ],
                 })
 
+            # Save state for downstream agents
             state["events"] = all_events
             state["replay"] = {
                 "grid_width": env.width,
@@ -354,15 +387,15 @@ class Orchestrator:
             state["tracker_output"] = None
             state["analyst_output"] = None
 
-            summary = {
+            return json.dumps({
                 "agents": len(env._agents),
                 "steps": steps,
                 "total_events": len(all_events),
                 "agents_alive": sum(1 for a in env._agents if a.alive),
                 "models": models_used,
-            }
-            return json.dumps(summary)
+            })
 
+        # --- observe_simulation: calls the Tracker ---
         async def observe_simulation(params: dict) -> str:
             if not state.get("events"):
                 return json.dumps({"error": "No simulation data. Call run_simulation first."})
@@ -372,6 +405,7 @@ class Orchestrator:
             state["tracker_output"] = result
             return result
 
+        # --- analyze_results: calls the Analyst ---
         async def analyze_results(params: dict) -> str:
             if not state.get("tracker_output"):
                 return json.dumps({"error": "No observations yet. Call observe_simulation first."})
@@ -381,6 +415,7 @@ class Orchestrator:
             state["analyst_output"] = result
             return result
 
+        # --- generate_report: calls the Reporter ---
         async def generate_report(params: dict) -> str:
             if not state.get("analyst_output"):
                 return json.dumps({"error": "No analysis yet. Call analyze_results first."})

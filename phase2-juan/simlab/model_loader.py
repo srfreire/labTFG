@@ -1,4 +1,10 @@
-"""Dynamic loader for Phase 1 Builder decision models."""
+"""
+Dynamic loader for Phase 1 Builder decision models.
+
+Phase 1 (Pablo) generates *_model.py files that contain decision model classes.
+This module discovers those files, checks they implement the DecisionModel interface,
+and provides a way to instantiate them with isolated RNG seeds.
+"""
 from __future__ import annotations
 
 import importlib.util
@@ -12,16 +18,22 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Model metadata
+# ---------------------------------------------------------------------------
+
 @dataclass
 class ModelInfo:
-    formulation_id: str
-    class_name: str
-    description: str
-    path: Path
-    model_class: type
+    """Metadata about a discovered decision model."""
+    formulation_id: str     # e.g. "homeostatic-regulation_drive_reduction_rl"
+    class_name: str         # e.g. "DriveReductionRLModel"
+    description: str        # from the module docstring
+    path: Path              # path to the *_model.py file
+    model_class: type       # the actual class
 
 
 def _has_decision_model_interface(cls: type) -> bool:
+    """Check if a class implements decide(), update(), and get_state()."""
     return (
         callable(getattr(cls, "decide", None))
         and callable(getattr(cls, "update", None))
@@ -29,12 +41,22 @@ def _has_decision_model_interface(cls: type) -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# Discovery — scan a directory for model files
+# ---------------------------------------------------------------------------
+
 def discover_models(builder_dir: Path) -> dict[str, ModelInfo]:
-    """Scan builder_dir for *_model.py files and return discovered models."""
+    """Scan builder_dir for *_model.py files and return discovered models.
+
+    Each file is loaded as a module, and the first class implementing
+    the DecisionModel interface is registered.
+    """
     models: dict[str, ModelInfo] = {}
+
     for path in sorted(builder_dir.glob("*_model.py")):
         formulation_id = path.stem.removesuffix("_model")
         module_name = f"_builder_{path.stem}"
+
         try:
             spec = importlib.util.spec_from_file_location(module_name, path)
             if spec is None or spec.loader is None:
@@ -43,6 +65,7 @@ def discover_models(builder_dir: Path) -> dict[str, ModelInfo]:
             sys.modules[module_name] = mod
             spec.loader.exec_module(mod)
 
+            # Find the first class that implements the DecisionModel interface
             for name, obj in inspect.getmembers(mod, inspect.isclass):
                 if obj.__module__ == module_name and _has_decision_model_interface(obj):
                     models[formulation_id] = ModelInfo(
@@ -55,20 +78,24 @@ def discover_models(builder_dir: Path) -> dict[str, ModelInfo]:
                     break
         except Exception:
             logger.warning("Failed to load model from %s", path, exc_info=True)
+
     return models
 
 
-def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> object:
-    """Instantiate a discovered model with optional parameter overrides.
+# ---------------------------------------------------------------------------
+# Instantiation — create a model instance with an isolated RNG
+# ---------------------------------------------------------------------------
 
-    If *seed* is provided, the model file is loaded into a **fresh** private
-    module and its ``random`` attribute is replaced with a newly-seeded
-    ``random.Random`` instance.  This ensures two models created with the same
-    seed produce identical decision sequences even when called interleaved.
+def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> object:
+    """Instantiate a discovered model.
+
+    If seed is provided, the model file is loaded into a fresh private module
+    and its `random` attribute is replaced with a newly-seeded Random instance.
+    This ensures two models with the same seed produce identical decisions
+    even when called interleaved.
     """
     if seed is not None:
-        # Load the file into a unique, throwaway module so the instance gets
-        # its own isolated RNG that won't be disturbed by any other caller.
+        # Load into an isolated module so the RNG is not shared
         unique_name = f"_builder_{model_info.path.stem}_{id(object())}"
         spec = importlib.util.spec_from_file_location(unique_name, model_info.path)
         if spec is None or spec.loader is None:
@@ -76,14 +103,19 @@ def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> o
         mod = importlib.util.module_from_spec(spec)
         sys.modules[unique_name] = mod
         spec.loader.exec_module(mod)
+
+        # Replace the module's RNG with a seeded one
         if hasattr(mod, "random"):
             mod.random = random.Random(seed)
-        # Find the class in the freshly-loaded module.
+
+        # Find the class in the fresh module
         model_class: type | None = None
         for name, obj in inspect.getmembers(mod, inspect.isclass):
             if obj.__module__ == unique_name and _has_decision_model_interface(obj):
                 model_class = obj
                 break
+        del sys.modules[unique_name]
+
         if model_class is None:
             raise ValueError(f"No decision model class found in {model_info.path}")
     else:

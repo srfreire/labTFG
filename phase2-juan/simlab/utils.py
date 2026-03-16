@@ -1,4 +1,9 @@
-"""Shared utilities for simlab agents."""
+"""
+Shared utilities for extracting and cleaning LLM outputs.
+
+LLMs often return JSON wrapped in markdown fences or with extra text.
+These helpers extract the actual content reliably.
+"""
 from __future__ import annotations
 
 import re
@@ -6,28 +11,36 @@ from typing import Any
 
 
 def strip_markdown_fences(text: str) -> str:
-    """Extract JSON from LLM output, handling fences and surrounding text."""
+    """Extract JSON from LLM output, handling markdown fences and surrounding text.
+
+    Tries in order:
+      1. Extract content from ```json ... ``` fences
+      2. Find the first raw JSON object ({...}) or array ([...])
+      3. Return the text as-is if nothing matches
+    """
     stripped = text.strip()
 
-    # Try to extract fenced block (may have text before/after the fence)
+    # 1. Try to extract fenced block
     match = re.search(r"```(?:json)?\s*\n(.*?)\n\s*```", stripped, re.DOTALL)
     if match:
         return match.group(1).strip()
 
-    # No fence — try to extract raw JSON object/array
-    for start_char, end_char in [("{", "}"), ("[", "]")]:
-        start = stripped.find(start_char)
-        end = stripped.rfind(end_char)
+    # 2. Try to find raw JSON object or array
+    for open_char, close_char in [("{", "}"), ("[", "]")]:
+        start = stripped.find(open_char)
+        end = stripped.rfind(close_char)
         if start != -1 and end > start:
             return stripped[start : end + 1]
 
+    # 3. Nothing found — return as-is
     return stripped
 
 
 def extract_text(response: Any) -> str:
-    """Extract and clean the text content from an LLM response.
+    """Extract the text content from a Claude API response.
 
-    Raises RuntimeError if the response contains no text blocks.
+    Finds the first text block, strips markdown fences, and returns clean content.
+    Raises RuntimeError if the response contains no text.
     """
     text = next((b.text for b in response.content if b.type == "text"), None)
     if not text or not text.strip():

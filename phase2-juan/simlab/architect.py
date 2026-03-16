@@ -1,11 +1,25 @@
-"""Architect agent — generates validated JSON environment specs from natural language."""
+"""
+Architect agent — generates validated JSON environment specs from natural language.
+
+Flow:
+  1. Receives a natural language description of an environment
+  2. Generates a JSON spec using Claude
+  3. Validates the spec using the validate_spec tool
+  4. Fixes errors if needed and re-validates
+  5. Returns the validated JSON spec
+"""
 from __future__ import annotations
 
 import json
 
-from simlab.runtime import run_agent_loop, Registry
+from simlab.loop import run_agent_loop, Registry
 from simlab.spec import validate_spec_dict
 from simlab.utils import extract_text
+
+
+# ---------------------------------------------------------------------------
+# System prompt — tells Claude how to generate environment specs
+# ---------------------------------------------------------------------------
 
 ARCHITECT_SYSTEM_PROMPT = """\
 You generate JSON environment specs for a 2D grid simulation lab.
@@ -53,6 +67,11 @@ Output:
 {"grid": {"width": 20, "height": 20}, "actions": [{"name": "move_up", "effect": {"type": "MoveEffect", "dx": 0, "dy": -1}}, {"name": "move_down", "effect": {"type": "MoveEffect", "dx": 0, "dy": 1}}, {"name": "move_left", "effect": {"type": "MoveEffect", "dx": -1, "dy": 0}}, {"name": "move_right", "effect": {"type": "MoveEffect", "dx": 1, "dy": 0}}, {"name": "eat", "effect": {"type": "ConsumeEffect", "resource_type": "food", "reward": 1.0}}, {"name": "drink", "effect": {"type": "ConsumeEffect", "resource_type": "water", "reward": 1.0}}, {"name": "rest", "effect": {"type": "NoopEffect"}}], "resources": [{"type": "food", "properties": {"palatability": [0.1, 1.0]}, "count": 5, "regenerate": true}, {"type": "water", "properties": {}, "count": 3, "regenerate": false}]}
 """
 
+
+# ---------------------------------------------------------------------------
+# Validation tool — the Architect calls this to check its own output
+# ---------------------------------------------------------------------------
+
 VALIDATE_SPEC_TOOL = {
     "name": "validate_spec",
     "description": "Validate a JSON environment spec. Call this with your generated spec before returning it.",
@@ -72,7 +91,7 @@ DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
 
 async def _validate_spec_tool(params: dict) -> str:
-    """Tool function for the agent loop registry."""
+    """Tool implementation: validate a spec and return errors if any."""
     errors = validate_spec_dict(params.get("spec", {}))
     if errors:
         return json.dumps({"valid": False, "errors": errors})
@@ -84,8 +103,12 @@ ARCHITECT_REGISTRY: Registry = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Architect class
+# ---------------------------------------------------------------------------
+
 class Architect:
-    """Architect agent — interprets natural language and produces environment specs."""
+    """Generates validated JSON environment specs from natural language descriptions."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
@@ -104,5 +127,4 @@ class Architect:
             registry=self.registry,
             max_iterations=max_iterations,
         )
-
         return extract_text(response)

@@ -1,17 +1,27 @@
-"""Tracker agent — observes simulation events and produces structured observation logs."""
+"""
+Tracker agent — observes simulation events and produces structured observation logs.
+
+Flow:
+  1. Receives simulation events
+  2. Uses tools to explore events, trajectories, and agent states
+  3. Identifies significant episodes (behavior changes, resource events)
+  4. Returns a structured JSON log with summaries, trajectories, and episodes
+"""
 from __future__ import annotations
 
 import json
 
 from simlab.environment import Event
-from simlab.runtime import run_agent_loop
+from simlab.loop import run_agent_loop
 from simlab.tools import build_simulation_tools
 from simlab.utils import extract_text
 
-
-# --- System prompt ---
-
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+
+
+# ---------------------------------------------------------------------------
+# System prompt
+# ---------------------------------------------------------------------------
 
 TRACKER_SYSTEM_PROMPT = """\
 You are the Tracker agent for a simulation laboratory. You observe completed simulations \
@@ -69,10 +79,12 @@ You have 3 tools to explore simulation data:
 """
 
 
-# --- Tracker class ---
+# ---------------------------------------------------------------------------
+# Tracker class
+# ---------------------------------------------------------------------------
 
 class Tracker:
-    """Tracker agent — observes simulation events and produces structured logs."""
+    """Observes simulation events and produces structured observation logs."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
@@ -82,6 +94,7 @@ class Tracker:
         """Observe simulation events and return a structured JSON log."""
         if not events:
             return json.dumps({"summary": "No events to observe.", "trajectories": {}, "episodes": []})
+
         tools, registry = build_simulation_tools(events)
         response = await run_agent_loop(
             client=self.client,

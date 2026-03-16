@@ -1,4 +1,13 @@
-"""FastAPI backend — WebSocket API for the Orchestrator."""
+"""
+FastAPI backend — WebSocket API for the Orchestrator.
+
+The web UI connects via WebSocket to /ws and sends chat messages.
+The server creates an Orchestrator per connection and streams back:
+  - Agent status updates (working/done/idle)
+  - Chat responses with data cards (environment spec, simulation summary)
+  - Tracker and Analyst results
+  - Replay data for the simulation grid animation
+"""
 from __future__ import annotations
 
 import json
@@ -25,11 +34,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ---------------------------------------------------------------------------
+# Path configuration
+# ---------------------------------------------------------------------------
+
 RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 BUILDER_DIR = RESEARCH_DIR / "builder"
 
-# Map tool names to agent names for status updates
+
+# ---------------------------------------------------------------------------
+# Agent status tracking — used by the web UI sidebar
+# ---------------------------------------------------------------------------
+
+# Single source of truth for agent names, colors, and which state key indicates "done"
+AGENTS = [
+    {"name": "Architect", "color": "#4ade80", "state_key": "spec"},
+    {"name": "Tracker",   "color": "#fbbf24", "state_key": "tracker_output"},
+    {"name": "Analyst",   "color": "#a78bfa", "state_key": "analyst_output"},
+    {"name": "Reporter",  "color": "#f472b6", "state_key": "pdf_path"},
+]
+
+# Maps orchestrator tool names to agent names for real-time status updates
 TOOL_AGENT_MAP = {
     "create_environment": "Architect",
     "observe_simulation": "Tracker",
@@ -38,6 +65,22 @@ TOOL_AGENT_MAP = {
 }
 
 
+def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
+    """Build the agent state list from orchestrator state."""
+    return [
+        {
+            "name": a["name"],
+            "status": "done" if orch_state and orch_state.get(a["state_key"]) else "idle",
+            "color": a["color"],
+        }
+        for a in AGENTS
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -45,6 +88,7 @@ async def health():
 
 @app.websocket("/ws")
 async def websocket_chat(ws: WebSocket):
+    """Main WebSocket endpoint — one Orchestrator per connection."""
     await ws.accept()
 
     client = anthropic.AsyncAnthropic()
@@ -55,19 +99,14 @@ async def websocket_chat(ws: WebSocket):
         builder_dir=BUILDER_DIR,
     )
 
-    # Send initial agent states
+    # Send initial agent states to the UI
     await ws.send_json({
         "type": "agents",
-        "agents": [
-            {"name": "Architect", "status": "idle", "color": "#4ade80"},
-            {"name": "Tracker", "status": "idle", "color": "#fbbf24"},
-            {"name": "Analyst", "status": "idle", "color": "#a78bfa"},
-            {"name": "Reporter", "status": "idle", "color": "#f472b6"},
-        ],
+        "agents": _build_agent_states(),
         "pipeline": [],
     })
 
-    # Wrap orchestrator tools to emit real-time agent status via WebSocket
+    # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
     original_build = orch._build_tools
 
     def patched_build():
@@ -76,10 +115,13 @@ async def websocket_chat(ws: WebSocket):
         for tool_name, fn in registry.items():
             agent_name = TOOL_AGENT_MAP.get(tool_name)
             if agent_name:
-                # Use default args to capture current values in the closure
                 async def _wrapper(params, _agent=agent_name, _fn=fn):
                     await ws.send_json({"type": "agent_status", "agent": _agent, "status": "working"})
-                    result = await _fn(params)
+                    try:
+                        result = await _fn(params)
+                    except Exception:
+                        await ws.send_json({"type": "agent_status", "agent": _agent, "status": "idle"})
+                        raise
                     await ws.send_json({"type": "agent_status", "agent": _agent, "status": "done"})
                     return result
                 wrapped[tool_name] = _wrapper
@@ -89,6 +131,7 @@ async def websocket_chat(ws: WebSocket):
 
     orch._build_tools = patched_build
 
+    # --- Chat loop ---
     try:
         while True:
             data = await ws.receive_text()
@@ -98,21 +141,14 @@ async def websocket_chat(ws: WebSocket):
             if not user_text.strip():
                 continue
 
-            # Send "thinking" state
             await ws.send_json({"type": "status", "status": "thinking"})
 
             try:
                 response = await orch.chat(user_text)
-
-                # Build final agent states from orchestrator state
                 state = orch._state
-                agents_state = [
-                    {"name": "Architect", "status": "done" if state.get("spec") else "idle", "color": "#4ade80"},
-                    {"name": "Tracker", "status": "done" if state.get("tracker_output") else "idle", "color": "#fbbf24"},
-                    {"name": "Analyst", "status": "done" if state.get("analyst_output") else "idle", "color": "#a78bfa"},
-                    {"name": "Reporter", "status": "done" if state.get("pdf_path") else "idle", "color": "#f472b6"},
-                ]
 
+                # Send updated agent states
+                agents_state = _build_agent_states(state)
                 pipeline = []
                 for key, step in [("spec", "arch"), ("events", "sim"), ("tracker_output", "track"), ("analyst_output", "anal"), ("pdf_path", "repo")]:
                     if state.get(key):
@@ -120,13 +156,14 @@ async def websocket_chat(ws: WebSocket):
 
                 await ws.send_json({"type": "agents", "agents": agents_state, "pipeline": pipeline})
 
-                # Build response with data cards
+                # Build response with optional data cards
                 response_data: dict = {
                     "type": "message",
                     "from": "orchestrator",
                     "text": response,
                 }
 
+                # Environment spec card (shown after create_environment, before simulation)
                 if state.get("spec") and not state.get("events"):
                     response_data["card"] = {
                         "title": "Environment Spec",
@@ -137,6 +174,7 @@ async def websocket_chat(ws: WebSocket):
                         },
                     }
 
+                # Tracker data card
                 if state.get("tracker_output"):
                     try:
                         tracker = json.loads(state["tracker_output"])
@@ -145,6 +183,7 @@ async def websocket_chat(ws: WebSocket):
                     except (json.JSONDecodeError, TypeError):
                         pass
 
+                # Analyst data card
                 if state.get("analyst_output"):
                     try:
                         analyst = json.loads(state["analyst_output"])
@@ -153,9 +192,11 @@ async def websocket_chat(ws: WebSocket):
                     except (json.JSONDecodeError, TypeError):
                         pass
 
+                # Replay data for the simulation grid animation
                 if state.get("replay"):
                     response_data["replay"] = state["replay"]
 
+                # Simulation summary card
                 if state.get("events") and state.get("replay"):
                     sim_summary = {
                         "title": "Simulación completada",

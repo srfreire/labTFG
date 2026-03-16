@@ -1,5 +1,19 @@
-"""Spec validation and conversion — pure functions, no Agent SDK dependency."""
+"""
+Spec validation and conversion.
+
+An environment spec is a JSON dict that describes a simulation:
+  - grid: dimensions (width × height)
+  - actions: what agents can do (move, eat, rest...)
+  - resources: what exists in the world (food, water...)
+
+This module validates specs and converts them into Environment objects.
+"""
 from __future__ import annotations
+
+
+# ---------------------------------------------------------------------------
+# Validation constants
+# ---------------------------------------------------------------------------
 
 VALID_EFFECT_TYPES = {"MoveEffect", "ConsumeEffect", "NoopEffect"}
 
@@ -10,25 +24,33 @@ REQUIRED_EFFECT_FIELDS: dict[str, list[str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Spec validation
+# ---------------------------------------------------------------------------
+
 def validate_spec_dict(spec: dict) -> list[str]:
-    """Validate an environment spec dict. Returns a list of error strings (empty = valid)."""
+    """Validate an environment spec dict.
+
+    Returns a list of error strings. Empty list = valid spec.
+    Checks: required keys, types, uniqueness, and cross-references.
+    """
     errors: list[str] = []
 
-    # 1. Top-level keys
+    # 1. Top-level required keys
     for key in ("grid", "actions", "resources"):
         if key not in spec:
             errors.append(f"Missing required key: '{key}'")
     if errors:
         return errors
 
-    # 2. Grid
+    # 2. Grid dimensions
     grid = spec["grid"]
     if not isinstance(grid.get("width"), int) or grid["width"] <= 0:
         errors.append("grid.width must be a positive integer")
     if not isinstance(grid.get("height"), int) or grid["height"] <= 0:
         errors.append("grid.height must be a positive integer")
 
-    # 3. Actions
+    # 3. Actions — must be non-empty, unique names, valid effects
     actions = spec["actions"]
     if not isinstance(actions, list) or len(actions) == 0:
         errors.append("actions must be a non-empty list")
@@ -56,7 +78,7 @@ def validate_spec_dict(spec: dict) -> list[str]:
             if field not in effect:
                 errors.append(f"actions[{i}].effect missing required field '{field}' for {etype}")
 
-    # 4. Resources
+    # 4. Resources — must be a list, unique types
     resources = spec["resources"]
     if not isinstance(resources, list):
         errors.append("resources must be a list")
@@ -79,7 +101,7 @@ def validate_spec_dict(spec: dict) -> list[str]:
         if "regenerate" in res and not isinstance(res["regenerate"], bool):
             errors.append(f"resources[{i}].regenerate must be a bool")
 
-    # 5. Coherence: ConsumeEffect resource_types must exist in resources
+    # 5. Cross-reference: ConsumeEffect must reference existing resource types
     for i, action in enumerate(actions):
         effect = action.get("effect", {})
         if effect.get("type") == "ConsumeEffect":
@@ -89,6 +111,10 @@ def validate_spec_dict(spec: dict) -> list[str]:
 
     return errors
 
+
+# ---------------------------------------------------------------------------
+# Spec → Environment conversion
+# ---------------------------------------------------------------------------
 
 from simlab.environment import (
     Environment, ActionRule, ResourceRule,
@@ -103,23 +129,25 @@ _EFFECT_TYPES: dict[str, type] = {
 
 
 def _parse_effect(effect_dict: dict) -> Effect:
-    """Convert a JSON effect dict to an Effect dataclass instance."""
+    """Convert a JSON effect dict to an Effect dataclass."""
     etype = effect_dict.get("type")
     cls = _EFFECT_TYPES.get(etype)
     if cls is None:
         raise ValueError(f"Unknown effect type '{etype}'. Valid: {set(_EFFECT_TYPES)}")
+
+    # Only pass fields that the dataclass actually accepts
     valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
     kwargs = {k: v for k, v in effect_dict.items() if k != "type" and k in valid_fields}
     return cls(**kwargs)
 
 
 def _convert_ranges(properties: dict) -> dict:
-    """Convert 2-element lists to tuples (for ResourceRule range values)."""
+    """Convert [min, max] lists to tuples for ResourceRule range values."""
     result = {}
     for k, v in properties.items():
         if isinstance(v, list):
             if len(v) != 2:
-                raise ValueError(f"Property range '{k}' must be a 2-element [min, max] list, got {len(v)} elements")
+                raise ValueError(f"Property range '{k}' must be [min, max], got {len(v)} elements")
             result[k] = tuple(v)
         else:
             result[k] = v
@@ -127,10 +155,15 @@ def _convert_ranges(properties: dict) -> dict:
 
 
 def spec_to_environment(spec: dict, seed: int | None = None) -> Environment:
-    """Build an Environment from a validated JSON spec."""
+    """Build an Environment from a validated JSON spec.
+
+    Validates first, then converts actions and resources into
+    the dataclass types that Environment expects.
+    """
     errors = validate_spec_dict(spec)
     if errors:
         raise ValueError(f"Invalid spec: {'; '.join(errors)}")
+
     actions = [
         ActionRule(name=a["name"], effect=_parse_effect(a["effect"]))
         for a in spec["actions"]

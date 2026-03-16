@@ -1,4 +1,13 @@
-"""Reporter agent — generates LaTeX reports and compiles to PDF."""
+"""
+Reporter agent — generates LaTeX reports and compiles them to PDF.
+
+Flow:
+  1. Reads Phase 1 research files for scientific context
+  2. Combines Tracker observations + Analyst findings
+  3. Generates LaTeX body content (sections, tables, lists)
+  4. Compiles to PDF using tectonic
+  5. Returns the path to the generated PDF
+"""
 from __future__ import annotations
 
 import json
@@ -6,12 +15,20 @@ import re
 import subprocess
 from pathlib import Path
 
-from simlab.runtime import run_agent_loop, Registry
+from simlab.loop import run_agent_loop, Registry
 from simlab.utils import extract_text
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _fix_markdown_in_latex(content: str) -> str:
-    """Convert Markdown remnants to valid LaTeX."""
+    """Convert Markdown remnants to valid LaTeX.
+
+    LLMs sometimes mix Markdown into LaTeX output.
+    This fixes the most common cases.
+    """
     # **bold** → \textbf{bold}
     content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
     # *italic* → \textit{italic}
@@ -20,12 +37,15 @@ def _fix_markdown_in_latex(content: str) -> str:
     content = re.sub(r'`([^`]+)`', r'\\texttt{\1}', content)
     return content
 
+
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
 
 
-# --- Tool schemas ---
+# ---------------------------------------------------------------------------
+# Tool schemas
+# ---------------------------------------------------------------------------
 
 READ_RESEARCH_TOOL = {
     "name": "read_research",
@@ -69,15 +89,18 @@ COMPILE_REPORT_TOOL = {
 }
 
 
-# --- Tool factories ---
+# ---------------------------------------------------------------------------
+# Tool factory
+# ---------------------------------------------------------------------------
 
 def _build_tools(
     research_dir: Path,
     output_dir: Path,
 ) -> tuple[list[dict], Registry]:
-    """Build tool schemas and registry for the Reporter."""
+    """Build tool schemas and implementations for the Reporter."""
 
     async def read_research(params: dict) -> str:
+        """Read a Phase 1 research file (path-traversal safe)."""
         path = params["path"]
         resolved = (research_dir / path).resolve()
         if not resolved.is_relative_to(research_dir.resolve()):
@@ -87,13 +110,17 @@ def _build_tools(
         return resolved.read_text()
 
     async def compile_report(params: dict) -> str:
+        """Compile LaTeX content into a PDF using tectonic."""
         content = _fix_markdown_in_latex(params["content"])
+
         if not _TEMPLATE_PATH.exists():
             return json.dumps({"success": False, "errors": [f"LaTeX template not found at {_TEMPLATE_PATH}"]})
 
+        # Insert content into the template
         template = _TEMPLATE_PATH.read_text()
         full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
 
+        # Write .tex and compile
         output_dir.mkdir(parents=True, exist_ok=True)
         tex_path = output_dir / "report.tex"
         pdf_path = output_dir / "report.pdf"
@@ -127,7 +154,9 @@ def _build_tools(
     return schemas, registry
 
 
-# --- System prompt ---
+# ---------------------------------------------------------------------------
+# System prompt
+# ---------------------------------------------------------------------------
 
 REPORTER_SYSTEM_PROMPT = """\
 You are the Reporter agent for a simulation laboratory. You generate professional \
@@ -191,8 +220,12 @@ What improvements could be made?
 """
 
 
+# ---------------------------------------------------------------------------
+# Reporter class
+# ---------------------------------------------------------------------------
+
 class Reporter:
-    """Reporter agent — generates LaTeX reports compiled to PDF."""
+    """Generates LaTeX reports compiled to PDF."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client

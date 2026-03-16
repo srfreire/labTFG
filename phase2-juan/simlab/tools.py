@@ -1,13 +1,21 @@
-"""Shared simulation-data tools used by Tracker and Analyst agents."""
+"""
+Shared simulation-data tools for Tracker and Analyst agents.
+
+These tools let agents explore simulation results by querying events,
+trajectories, and internal model states. The tools are created as
+closures over a list of Events, so each agent gets its own read-only view.
+"""
 from __future__ import annotations
 
 import json
 
 from simlab.environment import Event
-from simlab.runtime import Registry
+from simlab.loop import Registry
 
 
-# --- Helpers ---
+# ---------------------------------------------------------------------------
+# Helpers — data conversion and summarization
+# ---------------------------------------------------------------------------
 
 def _make_serializable(obj):
     """Recursively convert non-serializable types (tuple keys, etc.) for JSON."""
@@ -29,6 +37,7 @@ def _event_to_dict(event: Event) -> dict:
 
 
 def _count_actions(events: list[Event]) -> dict[str, int]:
+    """Count how many times each action was used."""
     counts: dict[str, int] = {}
     for e in events:
         counts[e.action.name] = counts.get(e.action.name, 0) + 1
@@ -47,7 +56,9 @@ def _summarize_events(events: list[Event]) -> dict:
     }
 
 
-# --- Tool schemas ---
+# ---------------------------------------------------------------------------
+# Tool schemas — these are sent to Claude so it knows what tools exist
+# ---------------------------------------------------------------------------
 
 GET_SIMULATION_EVENTS_TOOL = {
     "name": "get_simulation_events",
@@ -84,25 +95,38 @@ GET_AGENT_STATE_TOOL = {
 }
 
 
-# --- Tool factory ---
+# ---------------------------------------------------------------------------
+# Tool factory — creates closures bound to a specific simulation's events
+# ---------------------------------------------------------------------------
 
 def build_simulation_tools(events: list[Event]) -> tuple[list[dict], Registry]:
-    """Build tool schemas and registry closed over the simulation events."""
+    """Build tool schemas and implementations for exploring simulation data.
+
+    Returns (schemas, registry) where:
+      - schemas: list of tool definitions to send to Claude
+      - registry: dict mapping tool names to their async implementations
+    """
+    # Index events by agent for fast lookup
     by_agent: dict[str, list[Event]] = {}
     for e in events:
         by_agent.setdefault(e.agent_id, []).append(e)
 
+    # --- Tool implementations (closures over `events` and `by_agent`) ---
+
     async def get_simulation_events(params: dict) -> str:
+        """Return all events, or a summary if there are too many."""
         if len(events) > 500:
             return json.dumps(_summarize_events(events))
         return json.dumps([_event_to_dict(e) for e in events])
 
     async def get_agent_trajectory(params: dict) -> str:
+        """Return all events for a specific agent."""
         agent_id = params["agent_id"]
         agent_events = by_agent.get(agent_id, [])
         return json.dumps([_event_to_dict(e) for e in agent_events])
 
     async def get_agent_state(params: dict) -> str:
+        """Return the internal model state of an agent at a specific step."""
         agent_id = params["agent_id"]
         step = params["step"]
         agent_events = by_agent.get(agent_id, [])

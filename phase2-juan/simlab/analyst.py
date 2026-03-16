@@ -1,12 +1,25 @@
-"""Analyst agent — identifies patterns, compares agents, and computes metrics."""
+"""
+Analyst agent — identifies patterns, compares agents, and computes metrics.
+
+Flow:
+  1. Receives the Tracker's observation log + raw simulation events
+  2. Uses tools to verify claims and gather additional data
+  3. Finds behavioral patterns, compares agents, computes metrics
+  4. Returns a structured JSON report with patterns, comparisons, and metrics
+"""
 from __future__ import annotations
 
 from simlab.environment import Event
-from simlab.runtime import run_agent_loop
+from simlab.loop import run_agent_loop
 from simlab.tools import build_simulation_tools
 from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+
+
+# ---------------------------------------------------------------------------
+# System prompt
+# ---------------------------------------------------------------------------
 
 ANALYST_SYSTEM_PROMPT = """\
 You are the Analyst agent for a simulation laboratory. You receive observation logs \
@@ -69,8 +82,12 @@ deeper: find patterns, compare agents, and quantify behavior.
 """
 
 
+# ---------------------------------------------------------------------------
+# Analyst class
+# ---------------------------------------------------------------------------
+
 class Analyst:
-    """Analyst agent — identifies patterns and computes metrics from simulation data."""
+    """Identifies patterns and computes metrics from simulation data."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
@@ -84,9 +101,10 @@ class Analyst:
         *,
         max_iterations: int = 15,
     ) -> str:
-        """Analyze simulation data and return structured JSON with patterns and metrics."""
+        """Analyze simulation data and return patterns, comparisons, and metrics as JSON."""
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
+
         tools, registry = build_simulation_tools(events)
         user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
         response = await run_agent_loop(
