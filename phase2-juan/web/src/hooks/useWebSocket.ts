@@ -4,6 +4,7 @@ import type { AgentState, PipelineStep, ChatMessage } from '../types'
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
   const [agents, setAgents] = useState<AgentState[]>([
+    { name: 'Orchestrator', status: 'idle', color: '#94a3b8' },
     { name: 'Architect', status: 'idle', color: '#4ade80' },
     { name: 'Tracker', status: 'idle', color: '#fbbf24' },
     { name: 'Analyst', status: 'idle', color: '#a78bfa' },
@@ -16,57 +17,86 @@ export function useWebSocket() {
   const idRef = useRef(0)
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`)
-    wsRef.current = ws
+    let stopped = false
+    let retryTimeout: ReturnType<typeof setTimeout>
 
-    ws.onopen = () => setConnected(true)
-    ws.onclose = () => setConnected(false)
+    function connect() {
+      if (stopped) return
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const ws = new WebSocket(`${protocol}//${window.location.host}/ws`)
+      wsRef.current = ws
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
+      ws.onopen = () => setConnected(true)
+      ws.onclose = () => {
+        setConnected(false)
+        if (!stopped) retryTimeout = setTimeout(connect, 1500)
+      }
 
-      switch (data.type) {
-        case 'agents':
-          setAgents(data.agents)
-          if (data.pipeline) setPipeline(data.pipeline)
-          break
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data)
 
-        case 'agent_status':
-          setAgents(prev => prev.map(a =>
-            a.name === data.agent ? { ...a, status: data.status } : a
-          ))
-          break
+        switch (data.type) {
+          case 'agents':
+            // Merge backend agents with local Orchestrator state
+            setAgents(prev => {
+              const orch = prev.find(a => a.name === 'Orchestrator') || { name: 'Orchestrator', status: 'idle' as const, color: '#94a3b8' }
+              return [orch, ...data.agents]
+            })
+            if (data.pipeline) setPipeline(data.pipeline)
+            break
 
-        case 'status':
-          setThinking(data.status === 'thinking')
-          break
+          case 'agent_status':
+            setAgents(prev => prev.map(a =>
+              a.name === data.agent
+                ? { ...a, status: data.status, activeTool: data.status === 'working' ? a.activeTool : undefined }
+                : a
+            ))
+            break
 
-        case 'message':
-          setThinking(false)
-          setMessages(prev => [...prev, {
-            id: String(++idRef.current),
-            from: data.from || 'orchestrator',
-            text: data.text,
-            card: data.card,
-            tracker: data.tracker,
-            analyst: data.analyst,
-            replay: data.replay,
-          }])
-          break
+          case 'agent_tool':
+            setAgents(prev => prev.map(a =>
+              a.name === data.agent ? { ...a, activeTool: data.tool } : a
+            ))
+            break
 
-        case 'error':
-          setThinking(false)
-          setMessages(prev => [...prev, {
-            id: String(++idRef.current),
-            from: 'orchestrator',
-            text: `Error: ${data.text}`,
-          }])
-          break
+          case 'status': {
+            const isThinking = data.status === 'thinking'
+            setThinking(isThinking)
+            setAgents(prev => prev.map(a =>
+              a.name === 'Orchestrator'
+                ? { ...a, status: isThinking ? 'working' : 'done', activeTool: isThinking ? a.activeTool : undefined }
+                : a
+            ))
+            break
+          }
+
+          case 'message':
+            setThinking(false)
+            setMessages(prev => [...prev, {
+              id: String(++idRef.current),
+              from: data.from || 'orchestrator',
+              text: data.text,
+              card: data.card,
+              tracker: data.tracker,
+              analyst: data.analyst,
+              replay: data.replay,
+            }])
+            break
+
+          case 'error':
+            setThinking(false)
+            setMessages(prev => [...prev, {
+              id: String(++idRef.current),
+              from: 'orchestrator',
+              text: `Error: ${data.text}`,
+            }])
+            break
+        }
       }
     }
 
-    return () => ws.close()
+    connect()
+    return () => { stopped = true; clearTimeout(retryTimeout); wsRef.current?.close() }
   }, [])
 
   const send = useCallback((text: string) => {

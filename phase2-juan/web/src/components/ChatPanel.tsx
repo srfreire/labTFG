@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Facehash } from 'facehash'
 import ReactMarkdown from 'react-markdown'
 import type { ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
@@ -70,10 +71,20 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
   return (
     <div className={`max-w-[85%] animate-msg-in ${isUser ? 'self-start' : 'self-end'}`}>
-      <div className="flex items-center gap-1 mb-1">
-        <div className="w-1 h-1 rounded-full" style={{ background: dotColor }} />
+      <div className="flex items-center gap-1.5 mb-1">
+        {isUser ? (
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: dotColor }} />
+        ) : (
+          <Facehash
+            name={msg.from}
+            size={16}
+            variant="solid"
+            colors={[dotColor]}
+            showInitial={false}
+          />
+        )}
         <span className="text-[8px] uppercase tracking-[1px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          {msg.from === 'user' ? 'Tú' : msg.from}
+          {isUser ? 'Tú' : msg.from}
         </span>
       </div>
       <div
@@ -83,7 +94,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           background: isUser ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.02)',
         }}
       >
-        {isUser ? msg.text : <ReactMarkdown>{msg.text}</ReactMarkdown>}
+        {msg.text && (isUser ? msg.text : <ReactMarkdown>{msg.text}</ReactMarkdown>)}
 
         {/* Data card */}
         {msg.card && (

@@ -2,6 +2,7 @@ export interface AgentState {
   name: string
   status: 'idle' | 'working' | 'done'
   color: string
+  activeTool?: string
 }
 
 export interface PipelineStep {
