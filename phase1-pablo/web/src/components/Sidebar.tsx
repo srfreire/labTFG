@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<StageStatus, string> = {
 
 const MAIN_DOT = 10;
 const REVIEW_DOT = 7;
-const LINE_LEFT = 40; // center X for dots and lines
+const LINE_LEFT = 64; // center X for dots and lines
 
 export default function Sidebar({
   connected,
@@ -32,7 +32,7 @@ export default function Sidebar({
         position: "fixed",
         left: 0,
         top: 0,
-        width: 280,
+        width: 200,
         height: "100vh",
         background: "#090909",
         borderRight: "1px solid rgba(255,255,255,0.1)",
