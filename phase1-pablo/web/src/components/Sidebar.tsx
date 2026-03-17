@@ -141,6 +141,7 @@ export default function Sidebar({
                     width: 0,
                     borderLeft: `1px dashed ${lineColor}`,
                     pointerEvents: "none",
+                    zIndex: 0,
                   }}
                 />
               )}
@@ -156,6 +157,7 @@ export default function Sidebar({
                     width: 0,
                     borderLeft: `1px dashed ${lineColor}`,
                     pointerEvents: "none",
+                    zIndex: 0,
                   }}
                 />
               )}
