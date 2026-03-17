@@ -1,13 +1,9 @@
-import { useState, useRef, type KeyboardEvent } from "react";
 import { Stage, StageStatus, STAGE_CONFIG } from "../types";
 
 interface SidebarProps {
   connected: boolean;
   stages: Record<Stage, StageStatus>;
   currentStage: Stage | null;
-  isRunning: boolean;
-  onRun: (problem: string) => void;
-  onCancel: () => void;
   onStageClick?: (stage: Stage) => void;
 }
 
@@ -22,25 +18,8 @@ export default function Sidebar({
   connected,
   stages,
   currentStage,
-  isRunning,
-  onRun,
-  onCancel,
   onStageClick,
 }: SidebarProps) {
-  const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleRun = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    onRun(trimmed);
-    setInput("");
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleRun();
-  };
-
   return (
     <aside
       style={{
@@ -102,13 +81,15 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Stage list */}
+      {/* Stage list — fills remaining height as a timeline */}
       <div
         style={{
           flex: 1,
-          overflowY: "auto",
-          padding: "12px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          padding: "24px 20px",
+          gap: 4,
         }}
       >
         {STAGE_CONFIG.map(({ stage, label, indented }) => {
@@ -124,9 +105,9 @@ export default function Sidebar({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                padding: "6px 8px",
-                marginLeft: indented ? 16 : 0,
+                gap: 10,
+                padding: "8px 10px",
+                marginLeft: indented ? 20 : 0,
                 cursor: clickable ? "pointer" : "default",
                 color: isActive ? "#fff" : "rgba(255,255,255,0.5)",
                 transition: "background 0.15s",
@@ -137,7 +118,8 @@ export default function Sidebar({
                     "rgba(255,255,255,0.03)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
+                (e.currentTarget as HTMLElement).style.background =
+                  "transparent";
               }}
             >
               <span
@@ -164,82 +146,6 @@ export default function Sidebar({
             </div>
           );
         })}
-      </div>
-
-      {/* Bottom controls */}
-      <div style={{ padding: "12px 20px" }}>
-        {!isRunning ? (
-          <>
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe a decision problem..."
-              style={{
-                width: "100%",
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "#fff",
-                fontSize: 11,
-                fontFamily: "inherit",
-                padding: "8px 10px",
-                outline: "none",
-                borderRadius: 0,
-                boxSizing: "border-box",
-              }}
-            />
-            <button
-              onClick={handleRun}
-              disabled={!input.trim()}
-              style={{
-                width: "100%",
-                marginTop: 8,
-                padding: "8px 10px",
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: !input.trim() ? "rgba(255,255,255,0.3)" : "#fff",
-                fontSize: 11,
-                fontFamily: "inherit",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                cursor: !input.trim() ? "default" : "pointer",
-                borderRadius: 0,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                if (input.trim())
-                  (e.currentTarget as HTMLElement).style.background =
-                    "rgba(255,255,255,0.05)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-              }}
-            >
-              Run
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={onCancel}
-            style={{
-              width: "100%",
-              padding: "8px 10px",
-              background: "transparent",
-              border: "1px solid rgba(239,68,68,0.5)",
-              color: "#ef4444",
-              fontSize: 11,
-              fontFamily: "inherit",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              cursor: "pointer",
-              borderRadius: 0,
-            }}
-          >
-            Cancel
-          </button>
-        )}
       </div>
 
       {/* Pulse animation keyframes */}
