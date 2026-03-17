@@ -16,13 +16,21 @@ export type StageStatus = "pending" | "running" | "done" | "error";
 
 export type NodeKind = "agent" | "sub_agent" | "tool" | "file" | "search";
 
+// Per-kind meta shapes
+export type NodeMeta =
+  | { kind: "agent"; output?: string }
+  | { kind: "sub_agent"; output?: string; paradigm?: string }
+  | { kind: "tool"; args: Record<string, unknown> }
+  | { kind: "file"; path: string; content?: string }
+  | { kind: "search"; query: string; results?: string[] };
+
 export interface GraphNode {
   id: string;
   kind: NodeKind;
   label: string;
   parent_id?: string;
   status: "running" | "done" | "error";
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
 }
 
 export interface GraphEdge {
@@ -36,7 +44,11 @@ export type ServerMessage =
   | { type: "node_add"; node: GraphNode }
   | { type: "edge_add"; edge: GraphEdge }
   | { type: "node_update"; id: string; status: "running" | "done" | "error" }
-  | { type: "review_request"; stage: Stage; data: any }
+  | { type: "review_request"; stage: Stage.REVIEW_RESEARCH; data: ReviewResearchData }
+  | { type: "review_request"; stage: Stage.REVIEW_FORMALIZE; data: ReviewFormalizeData }
+  | { type: "review_request"; stage: Stage.GET_ENV_SPEC; data: Record<string, never> }
+  | { type: "review_request"; stage: Stage.REVIEW_REASON; data: ReviewReasonData }
+  | { type: "review_request"; stage: Stage.REVIEW_BUILD; data: ReviewBuildData }
   | { type: "rerun"; target: string; paradigm: string; reason: string }
   | { type: "graph_clear"; from_stage: Stage }
   | { type: "pipeline_done" }
@@ -46,7 +58,11 @@ export type ServerMessage =
 // Frontend -> Backend messages
 export type ClientMessage =
   | { type: "start"; problem: string }
-  | { type: "review_response"; stage: Stage; data: any }
+  | { type: "review_response"; stage: Stage.REVIEW_RESEARCH; data: { approved: string[] } }
+  | { type: "review_response"; stage: Stage.REVIEW_FORMALIZE; data: { selected: Record<string, number[]> } }
+  | { type: "review_response"; stage: Stage.GET_ENV_SPEC; data: { env_spec: Record<string, unknown> } }
+  | { type: "review_response"; stage: Stage.REVIEW_REASON; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
+  | { type: "review_response"; stage: Stage.REVIEW_BUILD; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
   | { type: "cancel" };
 
 // Review data types
