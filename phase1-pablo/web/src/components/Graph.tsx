@@ -31,9 +31,9 @@ const NODE_SIZES: Record<string, { width: number; height: number }> = {
   agent: { width: 80, height: 80 },
   sub_agent: { width: 56, height: 56 },
   tool: { width: 36, height: 36 },
-  file: { width: 56, height: 64 },
+  file: { width: 46, height: 46 },
   search: { width: 32, height: 32 },
-  output: { width: 48, height: 48 },
+  output: { width: 48, height: 56 },
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -239,20 +239,12 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
       toastTimer.current = setTimeout(() => setToast(null), 2500);
     }
 
-    // ── Viewport ──
-    const rf = rfRef.current;
-    if (rf && newest) {
-      const p = posRef.current.get(newest.id);
-      if (p) {
-        if (!firstFitDone.current) {
-          setTimeout(() => rf.fitView({ duration: 300, padding: 0.5 }), 60);
-          firstFitDone.current = true;
-        } else {
-          const sz = NODE_SIZES[newest.kind] ?? NODE_SIZES.agent;
-          rf.setCenter(p.x + sz.width / 2, p.y + sz.height / 2, {
-            duration: 700,
-          });
-        }
+    // ── Viewport (only initial fit, no chase — parallel nodes would fight) ──
+    if (!firstFitDone.current && newest) {
+      const rf = rfRef.current;
+      if (rf) {
+        setTimeout(() => rf.fitView({ duration: 300, padding: 0.5 }), 60);
+        firstFitDone.current = true;
       }
     }
   }, [nodes, edges, setFlowNodes, setFlowEdges]);
@@ -388,20 +380,20 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
           </div>
         </div>
 
-        {/* Tools & Artifacts */}
+        {/* Tools */}
         <div style={{ marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <span style={{ fontSize: 8, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>Tools & Artifacts</span>
+          <span style={{ fontSize: 8, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>Tools</span>
+          <LegendIcon d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" label="Web Search" />
+          <LegendIcon d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" label="Read" />
+          <LegendIcon d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" label="Write" />
+        </div>
+
+        {/* File Types */}
+        <div style={{ marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <span style={{ fontSize: 8, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>File Types</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
-            <span>Web Search</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
-            <span>Tool</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><text x="12" y="18" textAnchor="middle" fill="rgba(255,255,255,0.7)" stroke="none" fontSize="7" fontFamily="monospace" fontWeight="bold">md</text></svg>
-            <span>md</span>
+            <svg width="14" height="9" viewBox="0 0 208 128" fill="rgba(255,255,255,0.7)"><path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z" /></svg>
+            <span>.md</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <svg width="14" height="14" viewBox="0 0 32 32" fill="rgba(255,255,255,0.7)">
@@ -411,12 +403,32 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
             <span>.py</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><text x="12" y="18" textAnchor="middle" fill="rgba(255,255,255,0.7)" stroke="none" fontSize="8" fontFamily="monospace" fontWeight="bold">{`{}`}</text></svg>
+            <svg width="14" height="14" viewBox="0 0 160 160" fill="rgba(255,255,255,0.7)">
+              <path d="m79.865 119.1c35.398 48.255 70.04-13.469 69.989-50.587-0.0602-43.886-44.541-68.414-70.018-68.414-40.892 0-79.836 33.796-79.836 80.036 0 51.396 44.64 79.865 79.836 79.865-7.9645-1.1468-34.506-6.834-34.863-67.967-0.23987-41.347 13.488-57.866 34.805-50.599 0.47743 0.17707 23.514 9.2645 23.514 38.951 0 29.56-23.427 38.715-23.427 38.715z" />
+              <path d="m79.823 41.401c-23.39-8.0619-52.043 11.216-52.043 49.829 0 63.048 46.721 68.77 52.384 68.77 40.892 0 79.836-33.796 79.836-80.036 0-51.396-44.64-79.865-79.836-79.865 9.7481-1.35 52.541 10.55 52.541 69.037 0 38.141-31.953 58.905-52.735 50.033-0.47743-0.17707-23.514-9.2645-23.514-38.951 0-29.56 23.367-38.818 23.367-38.818z" />
+            </svg>
             <span>.json</span>
           </div>
+        </div>
+
+        {/* Shapes */}
+        <div style={{ marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <span style={{ fontSize: 8, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>Shapes</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="16" height="18" viewBox="0 0 48 55" style={{ flexShrink: 0 }}>
-              <polygon points="24,1 47,14 47,41 24,54 1,41 1,14" fill="#090909" stroke="#22c55e" strokeWidth="2" />
+            <div style={{ width: 12, height: 12, border: '1.5px solid rgba(255,255,255,0.5)' }} />
+            <span>Agent</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.5)' }} />
+            <span>Tool</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,0 14,7 7,14 0,7" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" /></svg>
+            <span>Artifact</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="14" height="16" viewBox="0 0 48 55" style={{ flexShrink: 0 }}>
+              <polygon points="24,1 47,14 47,41 24,54 1,41 1,14" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
             </svg>
             <span>Stage Output</span>
           </div>
