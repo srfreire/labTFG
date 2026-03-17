@@ -2,6 +2,9 @@
 
 @theme {
   --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-scale-in: scale-in 0.2s ease-out;
+  --animate-slide-in-right: slide-in-right 0.3s ease-out;
 }
 
 body {
