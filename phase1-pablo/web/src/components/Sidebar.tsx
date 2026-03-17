@@ -162,7 +162,7 @@ export default function Sidebar({
                 />
               )}
 
-              {/* Dot */}
+              {/* Dot — solid halo masks the line behind */}
               <div
                 style={{
                   position: "absolute",
@@ -172,11 +172,12 @@ export default function Sidebar({
                   borderRadius: "50%",
                   background: STATUS_COLORS[status],
                   zIndex: 1,
+                  boxShadow:
+                    status === "running"
+                      ? `0 0 0 4px #090909, 0 0 10px ${STATUS_COLORS[status]}`
+                      : "0 0 0 4px #090909",
                   ...(status === "running"
-                    ? {
-                        animation: "pulse 1.5s ease-in-out infinite",
-                        boxShadow: `0 0 8px ${STATUS_COLORS[status]}`,
-                      }
+                    ? { animation: "pulse 1.5s ease-in-out infinite" }
                     : {}),
                 }}
               />
