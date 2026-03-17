@@ -8,16 +8,15 @@ interface SidebarProps {
 }
 
 const STATUS_COLORS: Record<StageStatus, string> = {
-  pending: "rgba(255,255,255,0.12)",
+  pending: "rgba(255,255,255,0.15)",
   running: "#fbbf24",
   done: "#4ade80",
   error: "#ef4444",
 };
 
-// All dots centered at this X offset (center of dot)
-const DOT_CENTER_X = 40;
 const MAIN_DOT = 10;
 const REVIEW_DOT = 7;
+const LINE_LEFT = 40; // center X for dots and lines
 
 export default function Sidebar({
   connected,
@@ -103,105 +102,100 @@ export default function Sidebar({
           const isLast = i === items.length - 1;
 
           const dotSize = isReview ? REVIEW_DOT : MAIN_DOT;
-          const dotLeft = DOT_CENTER_X - dotSize / 2;
-
-          const lineColor =
-            isDone ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.15)";
+          const lineColor = isDone
+            ? "rgba(74,222,128,0.25)"
+            : "rgba(255,255,255,0.15)";
 
           return (
             <div
               key={stage}
-              onClick={clickable ? () => onStageClick(stage) : undefined}
               style={{
                 flex: 1,
                 display: "flex",
-                alignItems: "center",
-                position: "relative",
-                cursor: clickable ? "pointer" : "default",
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                if (clickable)
-                  (e.currentTarget as HTMLElement).style.background =
-                    "rgba(255,255,255,0.03)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "transparent";
+                flexDirection: "column",
+                alignItems: "stretch",
               }}
             >
-              {/* Line from top edge to dot center (connects from previous) */}
-              {!isFirst && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: DOT_CENTER_X,
-                    top: 0,
-                    height: "50%",
-                    width: 0,
-                    borderLeft: `1px dashed ${lineColor}`,
-                    pointerEvents: "none",
-                    zIndex: 0,
-                  }}
-                />
-              )}
-
-              {/* Line from dot center to bottom edge (connects to next) */}
-              {!isLast && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: DOT_CENTER_X,
-                    top: "50%",
-                    height: "50%",
-                    width: 0,
-                    borderLeft: `1px dashed ${lineColor}`,
-                    pointerEvents: "none",
-                    zIndex: 0,
-                  }}
-                />
-              )}
-
-              {/* Dot — solid halo masks the line behind */}
+              {/* Line segment ABOVE dot — fills space from previous dot */}
               <div
                 style={{
-                  position: "absolute",
-                  left: dotLeft,
-                  width: dotSize,
-                  height: dotSize,
-                  borderRadius: "50%",
-                  background: STATUS_COLORS[status],
-                  zIndex: 1,
-                  boxShadow:
-                    status === "running"
-                      ? `0 0 0 4px #090909, 0 0 10px ${STATUS_COLORS[status]}`
-                      : "0 0 0 4px #090909",
-                  ...(status === "running"
-                    ? { animation: "pulse 1.5s ease-in-out infinite" }
-                    : {}),
+                  flex: 1,
+                  marginLeft: LINE_LEFT,
+                  borderLeft: isFirst
+                    ? "none"
+                    : `1px dashed ${lineColor}`,
                 }}
               />
 
-              {/* Label */}
-              <span
+              {/* Dot + Label row */}
+              <div
+                onClick={
+                  clickable ? () => onStageClick(stage) : undefined
+                }
                 style={{
-                  marginLeft: DOT_CENTER_X + MAIN_DOT / 2 + 14,
-                  fontSize: isReview ? 9 : 10,
-                  textTransform: "uppercase",
-                  letterSpacing: isReview ? 0.5 : 1,
-                  color: isActive
-                    ? "#fff"
-                    : isDone
-                      ? "rgba(74,222,128,0.7)"
-                      : isReview
-                        ? "rgba(255,255,255,0.25)"
-                        : "rgba(255,255,255,0.4)",
-                  fontWeight: isActive ? 600 : 400,
-                  zIndex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  paddingLeft: LINE_LEFT - dotSize / 2 + 0.5,
+                  paddingRight: 20,
+                  flexShrink: 0,
+                  cursor: clickable ? "pointer" : "default",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (clickable)
+                    (e.currentTarget as HTMLElement).style.background =
+                      "rgba(255,255,255,0.03)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "transparent";
                 }}
               >
-                {label}
-              </span>
+                <div
+                  style={{
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: "50%",
+                    background: STATUS_COLORS[status],
+                    flexShrink: 0,
+                    ...(status === "running"
+                      ? {
+                          animation: "pulse 1.5s ease-in-out infinite",
+                          boxShadow: `0 0 8px ${STATUS_COLORS[status]}`,
+                        }
+                      : {}),
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: isReview ? 9 : 10,
+                    textTransform: "uppercase",
+                    letterSpacing: isReview ? 0.5 : 1,
+                    color: isActive
+                      ? "#fff"
+                      : isDone
+                        ? "rgba(74,222,128,0.7)"
+                        : isReview
+                          ? "rgba(255,255,255,0.25)"
+                          : "rgba(255,255,255,0.4)",
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {label}
+                </span>
+              </div>
+
+              {/* Line segment BELOW dot — fills space to next dot */}
+              <div
+                style={{
+                  flex: 1,
+                  marginLeft: LINE_LEFT,
+                  borderLeft: isLast
+                    ? "none"
+                    : `1px dashed ${lineColor}`,
+                }}
+              />
             </div>
           );
         })}
