@@ -20,6 +20,8 @@ export default function Sidebar({
   currentStage,
   onStageClick,
 }: SidebarProps) {
+  const items = STAGE_CONFIG;
+
   return (
     <aside
       style={{
@@ -39,6 +41,7 @@ export default function Sidebar({
         style={{
           padding: "16px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
+          flexShrink: 0,
         }}
       >
         <div
@@ -60,12 +63,7 @@ export default function Sidebar({
             marginTop: 4,
           }}
         >
-          <span
-            style={{
-              fontSize: 11,
-              color: "rgba(255,255,255,0.5)",
-            }}
-          >
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
             Pipeline
           </span>
           <span
@@ -81,22 +79,29 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Stage list — fills remaining height as a timeline */}
+      {/* Timeline — fills remaining height */}
       <div
         style={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          padding: "24px 20px",
-          gap: 4,
+          justifyContent: "space-evenly",
+          padding: "32px 0",
+          position: "relative",
         }}
       >
-        {STAGE_CONFIG.map(({ stage, label, indented }) => {
+        {items.map(({ stage, label, indented }, i) => {
           const status = stages[stage];
           const isActive = stage === currentStage;
           const isDone = status === "done";
           const clickable = isDone && onStageClick;
+          const isLast = i === items.length - 1;
+
+          // Line color: done segments use green, others use dim
+          const lineColor =
+            status === "done"
+              ? "rgba(74,222,128,0.3)"
+              : "rgba(255,255,255,0.08)";
 
           return (
             <div
@@ -105,12 +110,11 @@ export default function Sidebar({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "8px 10px",
-                marginLeft: indented ? 20 : 0,
+                gap: 12,
+                paddingLeft: indented ? 56 : 36,
+                paddingRight: 20,
+                position: "relative",
                 cursor: clickable ? "pointer" : "default",
-                color: isActive ? "#fff" : "rgba(255,255,255,0.5)",
-                transition: "background 0.15s",
               }}
               onMouseEnter={(e) => {
                 if (clickable)
@@ -122,23 +126,48 @@ export default function Sidebar({
                   "transparent";
               }}
             >
-              <span
+              {/* Vertical dashed connector line BELOW this dot */}
+              {!isLast && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: indented ? 59 : 39,
+                    top: "50%",
+                    bottom: 0,
+                    width: 0,
+                    height: "100%",
+                    borderLeft: `1px dashed ${lineColor}`,
+                    pointerEvents: "none",
+                    zIndex: 0,
+                  }}
+                />
+              )}
+
+              {/* Dot */}
+              <div
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 10,
+                  height: 10,
                   borderRadius: "50%",
                   background: STATUS_COLORS[status],
                   flexShrink: 0,
+                  position: "relative",
+                  zIndex: 1,
                   ...(status === "running"
                     ? { animation: "pulse 1.5s ease-in-out infinite" }
                     : {}),
                 }}
               />
+
+              {/* Label */}
               <span
                 style={{
                   fontSize: 10,
                   textTransform: "uppercase",
                   letterSpacing: 1,
+                  color: isActive ? "#fff" : "rgba(255,255,255,0.5)",
+                  position: "relative",
+                  zIndex: 1,
                 }}
               >
                 {label}
@@ -148,7 +177,6 @@ export default function Sidebar({
         })}
       </div>
 
-      {/* Pulse animation keyframes */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
