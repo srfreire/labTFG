@@ -170,16 +170,17 @@ class Router:
             Stage.REVIEW_BUILD: self._review_build,
         }
         while self.state.stage != Stage.DONE:
-            handler = handlers[self.state.stage]
+            current_stage = self.state.stage  # capture before handler
+            handler = handlers[current_stage]
             await self._emit({
                 "type": "stage_change",
-                "stage": self.state.stage.value,
+                "stage": current_stage.value,
                 "status": "running",
             })
             await handler()
             await self._emit({
                 "type": "stage_change",
-                "stage": self.state.stage.value,
+                "stage": current_stage.value,
                 "status": "done",
             })
             self.state.save()
@@ -190,7 +191,7 @@ class Router:
         from decisionlab.agents.researcher import Researcher
 
         self.console.print("[bold]Running Researcher...[/bold]")
-        await self._emit({"type": "node_add", "node": {"id": "researcher", "label": "Researcher", "status": "running"}})
+        await self._emit({"type": "node_add", "node": {"id": "researcher", "kind": "agent", "label": "Researcher", "status": "running"}})
         try:
             r = Researcher(
                 client=self.client,
@@ -248,7 +249,7 @@ class Router:
         from decisionlab.agents.formalizer import Formalizer
 
         self.console.print("[bold]Running Formalizer...[/bold]")
-        await self._emit({"type": "node_add", "node": {"id": "formalizer", "label": "Formalizer", "status": "running"}})
+        await self._emit({"type": "node_add", "node": {"id": "formalizer", "kind": "agent", "label": "Formalizer", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "researcher", "target": "formalizer"}})
         try:
             f = Formalizer(
@@ -307,7 +308,7 @@ class Router:
         self.console.print(
             f"[bold]Running Reasoner for {len(paradigms)} paradigm(s)...[/bold]"
         )
-        await self._emit({"type": "node_add", "node": {"id": "reasoner", "label": "Reasoner", "status": "running"}})
+        await self._emit({"type": "node_add", "node": {"id": "reasoner", "kind": "agent", "label": "Reasoner", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}})
         try:
             r = Reasoner(
@@ -368,7 +369,7 @@ class Router:
         self.console.print(
             f"[bold]Running Builder for {len(paradigms)} paradigm(s)...[/bold]"
         )
-        await self._emit({"type": "node_add", "node": {"id": "builder", "label": "Builder", "status": "running"}})
+        await self._emit({"type": "node_add", "node": {"id": "builder", "kind": "agent", "label": "Builder", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
         try:
             b = Builder(
@@ -445,7 +446,7 @@ class Router:
 
             # Execute re-run cascade
             await self._emit({"type": "rerun", "target": rerun.target, "paradigm": rerun.paradigm})
-            await self._emit({"type": "graph_clear"})
+            await self._emit({"type": "graph_clear", "from_stage": rerun.target})
             await self._execute_rerun_cascade(rerun)
             # Loop back to REVIEW_BUILD with fresh build results
 
