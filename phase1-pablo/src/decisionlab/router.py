@@ -10,6 +10,7 @@ import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from anthropic import AsyncAnthropic
 from rich.console import Console
@@ -18,6 +19,9 @@ from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
 
 logger = logging.getLogger(__name__)
+
+# Type alias for the emit callback (async)
+EmitFn = Callable[[dict], Awaitable[None]]
 
 # ---------------------------------------------------------------------------
 # Stage enum
@@ -136,12 +140,20 @@ class Router:
         state: PipelineState,
         search: WebSearchPort,
         project_root: Path,
+        emit: EmitFn | None = None,
     ):
         self.client = client
         self.state = state
         self.search = search
         self.project_root = project_root
         self.console = Console()
+        self.emit = emit  # None → CLI mode; set → web mode
+        self._web_mode = emit is not None
+
+    async def _emit(self, msg: dict) -> None:
+        """Send an event to the frontend (no-op in CLI mode)."""
+        if self.emit is not None:
+            await self.emit(msg)
 
     # -- main loop -----------------------------------------------------------
 
@@ -159,7 +171,17 @@ class Router:
         }
         while self.state.stage != Stage.DONE:
             handler = handlers[self.state.stage]
+            await self._emit({
+                "type": "stage_change",
+                "stage": self.state.stage.value,
+                "status": "running",
+            })
             await handler()
+            await self._emit({
+                "type": "stage_change",
+                "stage": self.state.stage.value,
+                "status": "done",
+            })
             self.state.save()
 
     # -- stage handlers ------------------------------------------------------
@@ -168,6 +190,7 @@ class Router:
         from decisionlab.agents.researcher import Researcher
 
         self.console.print("[bold]Running Researcher...[/bold]")
+        await self._emit({"type": "node_add", "node": {"id": "researcher", "label": "Researcher", "status": "running"}})
         try:
             r = Researcher(
                 client=self.client,
@@ -178,17 +201,25 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")
+            await self._emit({"type": "node_update", "id": "researcher", "status": "error"})
             return  # stay at current stage
+        await self._emit({"type": "node_update", "id": "researcher", "status": "done"})
         self.state.stage = Stage.REVIEW_RESEARCH
 
     async def _review_research(self) -> None:
         from decisionlab.agents.deep_researcher import DeepResearcher
-        from decisionlab.feedback import review_research
 
         while True:
-            approved, additional = await review_research(
-                self.state.reports_dir,
-            )
+            if self._web_mode:
+                from decisionlab.web_feedback import review_research
+                approved, additional = await review_research(
+                    self.state.reports_dir, self.emit,
+                )
+            else:
+                from decisionlab.feedback import review_research
+                approved, additional = await review_research(
+                    self.state.reports_dir,
+                )
             if additional:
                 self.console.print(
                     f"[bold]Running DeepResearcher for '{additional}'...[/bold]"
@@ -216,6 +247,8 @@ class Router:
         from decisionlab.agents.formalizer import Formalizer
 
         self.console.print("[bold]Running Formalizer...[/bold]")
+        await self._emit({"type": "node_add", "node": {"id": "formalizer", "label": "Formalizer", "status": "running"}})
+        await self._emit({"type": "edge_add", "edge": {"source": "researcher", "target": "formalizer"}})
         try:
             f = Formalizer(
                 client=self.client,
@@ -225,24 +258,36 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Formalizer failed: {exc}[/bold red]")
             logger.exception("Formalizer failed")
+            await self._emit({"type": "node_update", "id": "formalizer", "status": "error"})
             return
+        await self._emit({"type": "node_update", "id": "formalizer", "status": "done"})
         self.state.stage = Stage.REVIEW_FORMALIZE
 
     async def _review_formalize(self) -> None:
-        from decisionlab.feedback import review_formalize
-
-        selected = await review_formalize(
-            self.state.reports_dir,
-            self.state.approved_paradigms,
-        )
+        if self._web_mode:
+            from decisionlab.web_feedback import review_formalize
+            selected = await review_formalize(
+                self.state.reports_dir,
+                self.state.approved_paradigms,
+                self.emit,
+            )
+        else:
+            from decisionlab.feedback import review_formalize
+            selected = await review_formalize(
+                self.state.reports_dir,
+                self.state.approved_paradigms,
+            )
         self.state.selected_formulations = selected
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
-        from decisionlab.feedback import get_env_spec
-
         try:
-            src_path = await get_env_spec()
+            if self._web_mode:
+                from decisionlab.web_feedback import get_env_spec
+                src_path = await get_env_spec(self.emit)
+            else:
+                from decisionlab.feedback import get_env_spec
+                src_path = await get_env_spec()
             dest = self.state.reports_dir / "env_spec.json"
             shutil.copy2(src_path, dest)
             self.state.env_spec_path = dest
@@ -259,6 +304,8 @@ class Router:
         self.console.print(
             f"[bold]Running Reasoner for {len(paradigms)} paradigm(s)...[/bold]"
         )
+        await self._emit({"type": "node_add", "node": {"id": "reasoner", "label": "Reasoner", "status": "running"}})
+        await self._emit({"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}})
         try:
             r = Reasoner(
                 client=self.client,
@@ -268,17 +315,25 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
+            await self._emit({"type": "node_update", "id": "reasoner", "status": "error"})
             return
+        await self._emit({"type": "node_update", "id": "reasoner", "status": "done"})
         self.state.stage = Stage.REVIEW_REASON
 
     async def _review_reason(self) -> None:
         from decisionlab.agents.reasoner import Reasoner
-        from decisionlab.feedback import review_reason
 
         while True:
-            approved, rejections = await review_reason(
-                self.state.reports_dir,
-            )
+            if self._web_mode:
+                from decisionlab.web_feedback import review_reason
+                approved, rejections = await review_reason(
+                    self.state.reports_dir, self.emit,
+                )
+            else:
+                from decisionlab.feedback import review_reason
+                approved, rejections = await review_reason(
+                    self.state.reports_dir,
+                )
             if not rejections:
                 self.state.approved_specs = approved
                 break
@@ -309,6 +364,8 @@ class Router:
         self.console.print(
             f"[bold]Running Builder for {len(paradigms)} paradigm(s)...[/bold]"
         )
+        await self._emit({"type": "node_add", "node": {"id": "builder", "label": "Builder", "status": "running"}})
+        await self._emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
         try:
             b = Builder(
                 client=self.client,
@@ -320,17 +377,23 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
+            await self._emit({"type": "node_update", "id": "builder", "status": "error"})
             return
+        await self._emit({"type": "node_update", "id": "builder", "status": "done"})
         self.state.stage = Stage.REVIEW_BUILD
 
     async def _review_build(self) -> None:
-        from decisionlab.feedback import review_build
         from decisionlab.routing_llm import classify_feedback
 
         build_results = self.state.build_results
 
         while True:
-            user_feedback = await review_build(build_results)
+            if self._web_mode:
+                from decisionlab.web_feedback import review_build
+                user_feedback = await review_build(build_results, self.emit)
+            else:
+                from decisionlab.feedback import review_build
+                user_feedback = await review_build(build_results)
             if user_feedback is None:
                 self.state.stage = Stage.DONE
                 return
@@ -360,18 +423,24 @@ class Router:
             )
 
             # Confirm with user
-            import questionary
-            confirmed = await asyncio.to_thread(
-                questionary.confirm(
-                    f"Re-run from {rerun.target} for '{rerun.paradigm}'?",
-                    default=True,
-                ).unsafe_ask,
-            )
+            if self._web_mode:
+                # In web mode, the user already confirmed via the review panel
+                confirmed = True
+            else:
+                import questionary
+                confirmed = await asyncio.to_thread(
+                    questionary.confirm(
+                        f"Re-run from {rerun.target} for '{rerun.paradigm}'?",
+                        default=True,
+                    ).unsafe_ask,
+                )
             if not confirmed:
                 self.console.print("[dim]Re-run cancelled. Returning to review.[/dim]")
                 continue
 
             # Execute re-run cascade
+            await self._emit({"type": "rerun", "target": rerun.target, "paradigm": rerun.paradigm})
+            await self._emit({"type": "graph_clear"})
             await self._execute_rerun_cascade(rerun)
             # Loop back to REVIEW_BUILD with fresh build results
 
