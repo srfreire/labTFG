@@ -4,6 +4,8 @@
 
 Replace the Phase 1 CLI entirely with a web UI that lets the user launch, monitor, and interact with the full agent pipeline (Research → Formalize → Reason → Build) through an interactive graph visualization. Follows Juan's Phase 2 visual style (terminal/cyberpunk dark aesthetic).
 
+The CLI (`cli.py`, `feedback.py`, `questionary` dependency) remains in the codebase but is no longer the primary interface. The web UI is the sole user-facing interface going forward. Both CLI and web share the same `Router` — the Router dispatches to different feedback implementations depending on context.
+
 ## Architecture
 
 ```
@@ -42,10 +44,18 @@ phase1-pablo/
 
 **Sidebar** (fixed left, ~280px):
 - Header: "DecisionLab" + "Pipeline" + WS connection dot
-- Stage list (vertical): RESEARCH, REVIEW, FORMALIZE, REVIEW, ENV SPEC, REASON, REVIEW, BUILD, REVIEW
+- Stage list (vertical) — display names map to `Stage` enum values:
+  - RESEARCH (`RESEARCH`)
+  - REVIEW (`REVIEW_RESEARCH`) — indented
+  - FORMALIZE (`FORMALIZE`)
+  - REVIEW (`REVIEW_FORMALIZE`) — indented
+  - ENV SPEC (`GET_ENV_SPEC`)
+  - REASON (`REASON`)
+  - REVIEW (`REVIEW_REASON`) — indented
+  - BUILD (`BUILD`)
+  - REVIEW (`REVIEW_BUILD`) — indented
   - Dot per stage: grey=pending, amber+pulse=active, green=done, red=error
-  - Review stages indented/subtle (sub-steps)
-  - Click completed stage → view its results in MainPanel (read-only)
+  - Click completed stage → view cached results in MainPanel (read-only graph snapshot + rendered output)
 - Bottom: input + "RUN" button (idle) or "CANCEL" button (running)
 
 **MainPanel** (fills remaining space): interactive graph or review panel.
@@ -66,7 +76,7 @@ Real-time directed graph built as the pipeline executes. Uses React Flow + ELK a
 
 **Tool icons**: `web_search` → `Search`, `read_file` → `FileText`, `write_file` → `FilePlus`, `run_tests` → `FlaskConical`, `launch_deep_research` → `Microscope`
 
-**Agent colors**: Researcher=blue, Formalizer=green, Reasoner=violet, Builder=orange
+**Agent colors**: Researcher=blue(`#4a9eff`), Formalizer=purple(`#9b59b6`), Reasoner=orange(`#ff6b4a`), Builder=amber(`#fbbf24`)
 
 ### Edges
 
@@ -77,23 +87,35 @@ Directed arrows: Agent→Tool, Tool→File, Tool→Search, Agent→Sub-agent
 - New nodes: scale-in animation. New edges: progressive draw.
 - Active nodes pulse, completed nodes dim slightly.
 - Auto-layout via ELK layered algorithm. Zoom + pan.
+- **Layout strategy**: batch layout updates — re-layout on stage transitions or after a burst of nodes settles (debounce ~500ms), not on every single `node_add`. This prevents disorienting jumps during rapid tool-call sequences.
 
 ### Interaction
 
-- Click Agent/Sub-agent → tooltip/panel with current output/reasoning
-- Click File → rendered content (markdown/LaTeX/code with highlighting)
-- Click Search → search results
+- Click Agent/Sub-agent → tooltip/panel with current output/reasoning (from `meta.output`)
+- Click File → rendered content (from `meta.content`: markdown/LaTeX/code with highlighting)
+- Click Search → search results (from `meta.query` + `meta.results`)
+- Click Tool → arguments used (from `meta.args`)
+
+### `node_add` meta contents by kind
+
+| Kind | meta fields |
+|------|-------------|
+| agent | `{output?: string}` — accumulated reasoning/output text |
+| sub_agent | `{output?: string, paradigm?: string}` |
+| tool | `{args: Record<string, any>}` — tool call arguments |
+| file | `{path: string, content?: string}` — file path + content (populated on click via lazy fetch) |
+| search | `{query: string, results?: string[]}` — search query + result snippets |
 
 ## Review Stages (MainPanel — Review Active)
 
-Graph pauses (agent node shows "waiting for review"). A **drawer panel** slides over/beside the graph with structured review controls.
+Graph pauses (agent node shows "waiting for review"). A **drawer panel** slides in from the right (~50% width), pushing the graph to the left (graph remains visible and interactive but compressed). Drawer has a semi-transparent `#090909` background with left border.
 
 ### Review Research
 
-- List of paradigm cards: title + summary
+- List of paradigm cards: title + summary (paradigms identified by filesystem slug, e.g. `homeostatic-regulation`)
 - Checkbox per paradigm to approve/reject
 - Click card → expand full markdown content (rendered)
-- "Continuar" button submits selection
+- "Continuar" button submits selection (disabled if nothing selected — at least 1 paradigm required)
 
 ### Review Formalize
 
@@ -120,6 +142,7 @@ Graph pauses (agent node shows "waiting for review"). A **drawer panel** slides 
 - Per model: Python code (syntax highlighted) + test results (pass/fail with output)
 - Errors shown inline
 - "Aprobar" or feedback textarea (routed through routing LLM)
+- When feedback triggers a rerun: backend emits `{type: "rerun", target: "reasoner"|"formalizer"|..., paradigm: "slug", reason: "..."}` so the frontend shows what's being re-run and why. Graph clears stale nodes for affected stages via `{type: "graph_clear", from_stage: "REASON"}`.
 - "Continuar"
 
 ## WebSocket Protocol
@@ -139,11 +162,13 @@ Graph pauses (agent node shows "waiting for review"). A **drawer panel** slides 
 ### Backend → Frontend
 
 ```jsonc
-{type: "stage_change", stage: "RESEARCH", status: "running"}
-{type: "node_add", node: {id: "...", kind: "agent"|"sub_agent"|"tool"|"file"|"search", label: "...", parent_id: "...", meta: {}}}
-{type: "edge_add", edge: {source: "...", target: "..."}}
-{type: "node_update", id: "...", status: "running"|"done"|"error"}
+{type: "stage_change", stage: "RESEARCH", status: "running"|"done"|"error"}
+{type: "node_add", node: {id, kind: "agent"|"sub_agent"|"tool"|"file"|"search", label, parent_id, meta: {args?, content?, query?, results?}}}
+{type: "edge_add", edge: {source, target}}
+{type: "node_update", id, status: "running"|"done"|"error"}
 {type: "review_request", stage: "REVIEW_RESEARCH", data: {paradigms: [...]}}
+{type: "rerun", target: "researcher"|"formalizer"|"reasoner"|"builder", paradigm: "slug", reason: "..."}
+{type: "graph_clear", from_stage: "REASON"|"FORMALIZE"|...}  // clears stale nodes on rerun
 {type: "pipeline_done"}
 {type: "error", message: "..."}
 ```
@@ -154,7 +179,10 @@ Graph pauses (agent node shows "waiting for review"). A **drawer panel** slides 
 - `Router.run()` receives `emit(msg)` callback for WS events
 - Each agent emits `node_add`/`edge_add` on tool calls, file creation, sub-agent spawns
 - Review stages emit `review_request`, pause on `asyncio.Event`, resume on `review_response`
-- `feedback.py` functions replaced by WS-based equivalents
+- `feedback.py` functions replaced by WS-based equivalents (new `web_feedback.py` that implements same interface but communicates via WS events + `asyncio.Event` instead of `questionary`)
+- Cancel handling: `{type: "cancel"}` cancels the running `asyncio.Task`, pipeline state persists to disk at current stage. Frontend resets to idle.
+- Single concurrent WS client supported. If a second tab connects, the first is disconnected.
+- WS reconnection: frontend auto-reconnects with exponential backoff. If pipeline was in a review stage, backend re-emits the `review_request` on reconnect. If pipeline was mid-agent, frontend receives current graph state via a `{type: "state_sync", nodes: [...], edges: [...], stage: "..."}` catchup message.
 
 ## Component Structure
 
