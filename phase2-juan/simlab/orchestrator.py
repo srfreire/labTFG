@@ -19,7 +19,7 @@ from simlab.architect import Architect
 from simlab.tracker import Tracker
 from simlab.analyst import Analyst
 from simlab.reporter import Reporter
-from simlab.environment import Agent, Position, Action
+from simlab.environment import Agent, Position
 from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
 
@@ -157,7 +157,7 @@ then run all steps automatically with sensible defaults.
 
 Before running a simulation, call list_available_models to check what decision models are available. \
 Present the options to the user and let them choose. Then pass the chosen model IDs to run_simulation via model_ids. \
-If no models are available, use the built-in dummy model and tell the user.
+If no models are available, tell the user and do NOT run the simulation.
 
 IMPORTANT: Always use model_ids (an array) to pass model formulation IDs to run_simulation. \
 For a single model: model_ids=["homeostatic-regulation_drive_reduction_rl"]. \
@@ -189,42 +189,6 @@ create_environment → run_simulation → [ask user] → observe_simulation → 
 
 
 # ---------------------------------------------------------------------------
-# Dummy model — fallback when no Phase 1 models are available
-# ---------------------------------------------------------------------------
-
-class _DummyModel:
-    """Simple foraging agent for testing without Phase 1 models."""
-
-    def __init__(self, action_names: list[str], rng: random.Random):
-        self._rng = rng
-        self._hunger = 0
-        self._eat = next((a for a in action_names if "eat" in a or "comer" in a), None)
-        self._rest = next((a for a in action_names if "rest" in a or "descansar" in a or "esperar" in a), None)
-        self._moves = [a for a in action_names if a != self._eat and a != self._rest]
-
-    def decide(self, perception: dict) -> Action:
-        self._hunger += 1
-        # If on top of food, eat it
-        if self._eat:
-            food_key = next((k for k in perception.get("resources", {}) if "food" in k or "comida" in k), None)
-            food = perception.get("resources", {}).get(food_key, []) if food_key else []
-            for f in food:
-                if f["x"] == perception["x"] and f["y"] == perception["y"]:
-                    return Action(name=self._eat)
-        # Otherwise, move randomly
-        if self._moves:
-            return Action(name=self._rng.choice(self._moves))
-        return Action(name=self._rest or self._moves[0] if self._moves else "stay")
-
-    def update(self, action: Action, reward: float, new_perception: dict) -> None:
-        if reward > 0:
-            self._hunger = 0
-
-    def get_state(self) -> dict:
-        return {"hunger": self._hunger}
-
-
-# ---------------------------------------------------------------------------
 # Orchestrator class
 # ---------------------------------------------------------------------------
 
@@ -239,14 +203,12 @@ class Orchestrator:
         self,
         *,
         client,
-        decision_models: list | None = None,
         research_dir: Path,
         output_dir: Path,
         model: str = DEFAULT_MODEL,
         builder_dir: Path | None = None,
     ):
         self.client = client
-        self.decision_models = decision_models or []
         self.research_dir = research_dir
         self.output_dir = output_dir
         self.model = model
@@ -316,7 +278,6 @@ class Orchestrator:
             num_agents = params.get("num_agents", 1)
             steps = params["steps"]
             rng = random.Random(params.get("seed"))
-            action_names = [a["name"] for a in state["spec"]["actions"]]
 
             # Resolve which models to use
             model_ids = params.get("model_ids") or []
@@ -330,10 +291,12 @@ class Orchestrator:
             # Create agents — one (or num_agents) per model
             models_used = []
             if model_ids:
+                if not available:
+                    return json.dumps({"error": "No models available. Check that builder_dir is configured correctly."})
                 for mid in model_ids:
                     info = available.get(mid)
                     if not info:
-                        continue
+                        return json.dumps({"error": f"Model '{mid}' not found. Call list_available_models to see available models."})
                     # Short label from formulation ID (e.g. "drive_reduction_rl")
                     parts = mid.split("_", 1)
                     label = parts[1] if len(parts) > 1 else mid[:12]
@@ -344,15 +307,7 @@ class Orchestrator:
                         env.add_agent(Agent(id=agent_id, position=pos, decision_model=model))
                     models_used.append(mid)
             else:
-                # Fallback: injected models or dummy
-                for i in range(num_agents):
-                    if i < len(self.decision_models):
-                        model = self.decision_models[i]
-                    else:
-                        model = _DummyModel(action_names, random.Random(rng.randint(0, 2**32)))
-                    pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
-                    env.add_agent(Agent(id=f"agent_{i}", position=pos, decision_model=model))
-                models_used.append("dummy")
+                return json.dumps({"error": "No model_ids provided. Call list_available_models first and pass the chosen model IDs."})
 
             # Run step-by-step, capturing replay frames for the web UI
             all_events = []
