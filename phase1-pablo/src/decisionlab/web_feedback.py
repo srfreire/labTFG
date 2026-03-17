@@ -103,7 +103,16 @@ async def review_research(
     for slug in slugs:
         md_path = deep_dir / f"{slug}.md"
         content = md_path.read_text() if md_path.exists() else ""
-        paradigms_data.append({"slug": slug, "content": content})
+        # Extract title from slug
+        title = slug.replace("-", " ").title()
+        # Extract summary (first ~200 chars of content, trimmed to sentence)
+        summary = content[:200].rsplit(".", 1)[0] + "." if content else ""
+        paradigms_data.append({
+            "slug": slug,
+            "title": title,
+            "summary": summary,
+            "content": content,
+        })
 
     response = await wait_for_review("review_research", emit, {
         "paradigms": paradigms_data,
@@ -139,7 +148,7 @@ async def review_formalize(
         text = md_path.read_text()
         headers = _parse_formulation_headers(text)
         formulations = [
-            {"number": num, "name": name, "content": text[start:end]}
+            {"id": num, "name": name, "content": text[start:end]}
             for num, name, start, end in headers
         ]
         paradigms_data.append({
@@ -152,8 +161,8 @@ async def review_formalize(
         "paradigms": paradigms_data,
     })
 
-    # response shape: {"selections": {"slug": [1, 3], ...}}
-    selections: dict[str, list[int]] = response.get("selections", {})
+    # response shape: {"selected": {"slug": [1, 3], ...}}
+    selections: dict[str, list[int]] = response.get("selected", {})
 
     # Rewrite files to keep only selected formulations
     for slug, kept in selections.items():
@@ -185,14 +194,21 @@ async def get_env_spec(
         "message": "Please provide the environment specification (env_spec.json).",
     })
 
-    # The frontend can send either {"content": <json string>} or {"path": "<path>"}
     if "path" in response:
         path = Path(response["path"]).expanduser().resolve()
         # Validate
         json.loads(path.read_text())
         return path
 
-    # Content mode: write to temp file
+    # env_spec key (from frontend — parsed JSON object)
+    if "env_spec" in response:
+        parsed = response["env_spec"]
+        fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="env_spec_")
+        with open(fd, "w") as fh:
+            json.dump(parsed, fh, indent=2)
+        return Path(tmp_path)
+
+    # content key (JSON string)
     content = response.get("content", "{}")
     parsed = json.loads(content)  # validate
     fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="env_spec_")
@@ -224,6 +240,7 @@ async def review_reason(
             except (json.JSONDecodeError, OSError):
                 continue
             specs_data.append({
+                "id": data.get("formulation_id", spec_file.stem),
                 "spec_id": data.get("formulation_id", spec_file.stem),
                 "paradigm": data.get("paradigm", "unknown"),
                 "name": data.get("name", spec_file.stem),
@@ -237,13 +254,21 @@ async def review_reason(
         "specs": specs_data,
     })
 
-    # response shape: {"approved": ["id1"], "rejections": [{"spec_id": ..., "paradigm": ..., "feedback": ...}]}
-    approved: list[str] = response.get("approved", [])
-    raw_rejections = response.get("rejections", [])
-    rejections: list[tuple[str, str, str]] = [
-        (r["spec_id"], r["paradigm"], r["feedback"])
-        for r in raw_rejections
-    ]
+    # response shape: {"decisions": {"spec_id": {"approved": bool, "feedback": "..."}}}
+    decisions = response.get("decisions", {})
+    approved: list[str] = []
+    rejections: list[tuple[str, str, str]] = []
+    for spec_id, decision in decisions.items():
+        # Find paradigm slug for this spec_id from specs_data
+        paradigm = "unknown"
+        for s in specs_data:
+            if s["spec_id"] == spec_id:
+                paradigm = s["paradigm"]
+                break
+        if decision.get("approved", False):
+            approved.append(spec_id)
+        else:
+            rejections.append((spec_id, paradigm, decision.get("feedback", "")))
     return approved, rejections
 
 
@@ -260,16 +285,29 @@ async def review_build(
 
     Returns ``None`` if approved, or a feedback string for re-routing.
     """
-    results_data: list[dict[str, str]] = [
-        {"slug": slug, "content": content}
-        for slug, content in build_results.items()
-    ]
+    models_data = []
+    for slug, content in build_results.items():
+        lower = content.lower()
+        has_issues = any(w in lower for w in ("error", "fail", "traceback", "exception"))
+        models_data.append({
+            "slug": slug,
+            "code": content,
+            "test_results": content,
+            "passed": not has_issues,
+        })
 
     response = await wait_for_review("review_build", emit, {
-        "results": results_data,
+        "models": models_data,
     })
 
-    # response shape: {"approved": true} or {"approved": false, "feedback": "..."}
-    if response.get("approved", False):
+    # response shape: {"decisions": {"slug": {"approved": bool, "feedback": "..."}}}
+    decisions = response.get("decisions", {})
+    all_approved = all(d.get("approved", False) for d in decisions.values())
+    if all_approved:
         return None
-    return response.get("feedback", "").strip() or None
+    feedbacks = [
+        d.get("feedback", "")
+        for d in decisions.values()
+        if not d.get("approved", False) and d.get("feedback")
+    ]
+    return "; ".join(feedbacks) if feedbacks else None
