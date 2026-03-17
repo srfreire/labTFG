@@ -9,8 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/d3-force": "^3.0.10",
     "@xyflow/react": "^12.6.0",
+    "d3-force": "^3.0.0",
     "elkjs": "^0.9.3",
+    "facehash": "^0.1.0",
     "katex": "^0.16.38",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",

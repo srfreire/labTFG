@@ -1,5 +1,6 @@
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
+import { type NodeProps, type Node } from '@xyflow/react';
 import { Search } from 'lucide-react';
+import NodeHandles from './NodeHandles';
 
 interface SearchNodeData {
   label: string;
@@ -12,49 +13,27 @@ interface SearchNodeData {
 type SearchNodeType = Node<SearchNodeData, 'search'>;
 
 export default function SearchNode({ data }: NodeProps<SearchNodeType>) {
-  const { query, results } = data;
+  const { status } = data;
 
-  // Truncate query for display
-  const displayQuery = query.length > 30 ? query.slice(0, 27) + '...' : query;
+  const borderColor =
+    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'rgba(255,255,255,0.15)';
 
   return (
     <div
+      className={status === 'running' ? 'animate-running-ring' : ''}
       style={{
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        border: `1px solid ${borderColor}`,
+        background: '#090909',
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        height: 32,
-        padding: '0 8px',
-        maxWidth: 200,
-        border: '1px solid rgba(255,255,255,0.15)',
-        background: '#090909',
+        justifyContent: 'center',
       }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
-      <Search size={14} style={{ flexShrink: 0 }} />
-      <span
-        style={{
-          fontSize: 9,
-          color: 'rgba(255,255,255,0.7)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {displayQuery}
-      </span>
-      {results && (
-        <span
-          style={{
-            fontSize: 8,
-            color: 'rgba(255,255,255,0.4)',
-            flexShrink: 0,
-            marginLeft: 'auto',
-          }}
-        >
-          {results.length}
-        </span>
-      )}
+      <NodeHandles />
+      <Search size={14} color="rgba(255,255,255,0.7)" />
     </div>
   );
 }

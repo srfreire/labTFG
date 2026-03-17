@@ -1,6 +1,6 @@
-import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
+import { type NodeProps, type Node } from '@xyflow/react';
 import {
-  Search,
+  Globe,
   FileText,
   FilePlus,
   FlaskConical,
@@ -8,9 +8,10 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import NodeHandles from './NodeHandles';
 
 const TOOL_ICON_MAP: Record<string, ComponentType<{ size: number }>> = {
-  web_search: Search,
+  web_search: Globe,
   read_file: FileText,
   write_file: FilePlus,
   run_tests: FlaskConical,
@@ -28,46 +29,33 @@ interface ToolNodeData {
 type ToolNodeType = Node<ToolNodeData, 'tool'>;
 
 export default function ToolNode({ data }: NodeProps<ToolNodeType>) {
-  const { label, status, toolType } = data;
+  const { status, toolType } = data;
   const Icon = TOOL_ICON_MAP[toolType] ?? Wrench;
 
-  const dotColor =
-    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : '#ef4444';
+  const isWrite = toolType === 'write_file';
+  const isRead = toolType === 'read_file';
+
+  const accentColor = isWrite ? 'rgba(251,191,36,0.7)' : isRead ? 'rgba(56,189,248,0.7)' : undefined;
+
+  const borderColor =
+    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'rgba(255,255,255,0.2)';
 
   return (
     <div
+      className={status === 'running' ? 'animate-running-ring' : ''}
       style={{
+        width: 36,
+        height: 36,
+        borderRadius: '50%',
+        border: `1px solid ${borderColor}`,
+        background: '#090909',
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        height: 36,
-        padding: '0 10px',
-        borderRadius: 4,
-        border: '1px solid rgba(255,255,255,0.2)',
-        background: '#090909',
-        position: 'relative',
+        justifyContent: 'center',
       }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: '#555' }} />
-
-      <Icon size={14} />
-      <span style={{ fontSize: 9, color: '#fff' }}>{label}</span>
-
-      {/* status dot */}
-      <span
-        className={status === 'running' ? 'animate-pulse-glow' : ''}
-        style={{
-          position: 'absolute',
-          top: 4,
-          right: 4,
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: dotColor,
-        }}
-      />
-
-      <Handle type="source" position={Position.Right} style={{ background: '#555' }} />
+      <NodeHandles />
+      <Icon size={16} color={accentColor} />
     </div>
   );
 }

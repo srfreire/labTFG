@@ -14,7 +14,7 @@ export enum Stage {
 
 export type StageStatus = "pending" | "running" | "done" | "error";
 
-export type NodeKind = "agent" | "sub_agent" | "tool" | "file" | "search";
+export type NodeKind = "agent" | "sub_agent" | "tool" | "file" | "search" | "output";
 
 // Per-kind meta shapes
 export type NodeMeta =
@@ -22,7 +22,8 @@ export type NodeMeta =
   | { kind: "sub_agent"; output?: string; paradigm?: string }
   | { kind: "tool"; args: Record<string, unknown> }
   | { kind: "file"; path: string; content?: string }
-  | { kind: "search"; query: string; results?: string[] };
+  | { kind: "search"; query: string; results?: string[] }
+  | { kind: "output"; stage: string };
 
 export interface GraphNode {
   id: string;
@@ -33,9 +34,12 @@ export interface GraphNode {
   meta: Record<string, unknown>;
 }
 
+export type EdgeKind = "spawn" | "write" | "read";
+
 export interface GraphEdge {
   source: string;
   target: string;
+  edge_kind?: EdgeKind;
 }
 
 // Backend -> Frontend messages
