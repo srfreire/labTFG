@@ -36,6 +36,7 @@ function NodeDetail({
       }
       break;
     case "file":
+    case "output":
       if (meta.content) {
         content = (
           <CodeBlock
@@ -279,7 +280,7 @@ export default function App() {
       {/* Main panel */}
       <div
         style={{
-          marginLeft: 280,
+          marginLeft: 200,
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -386,8 +387,8 @@ export default function App() {
                 />
               </div>
 
-              {/* Review modal — shown when user clicks an output file */}
-              {reviewActive && selectedNode?.kind === 'file' && (
+              {/* Review modal — shown when user clicks a stage output */}
+              {reviewActive && selectedNode?.kind === 'output' && (
                 <div
                   style={{
                     position: "fixed",

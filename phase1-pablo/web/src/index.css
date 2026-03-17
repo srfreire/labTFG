@@ -44,21 +44,27 @@ body {
   box-shadow: none !important;
 }
 
-/* Node entrance — fade + blur-in when a new graph node mounts */
+/* Node entrance — fade + blur on the ReactFlow wrapper (no transform — would break positioning) */
 .react-flow__node {
-  animation: node-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: node-enter-fade 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
-@keyframes node-enter {
-  from {
-    opacity: 0;
-    filter: blur(8px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
+@keyframes node-enter-fade {
+  from { opacity: 0; filter: blur(6px); }
+  to   { opacity: 1; filter: blur(0); }
 }
+
+/* Scale pop on the inner content (won't conflict with ReactFlow transforms) */
+.react-flow__node > div {
+  animation: node-enter-pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes node-enter-pop {
+  from  { transform: scale(0.5); }
+  60%   { transform: scale(1.06); }
+  to    { transform: scale(1); }
+}
+
 
 @keyframes pulse-glow {
   0%, 100% {
@@ -84,10 +90,10 @@ body {
 /* Output node — bright green glow when stage complete */
 @keyframes output-glow {
   0%, 100% {
-    box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4);
+    filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4));
   }
   50% {
-    box-shadow: 0 0 20px 8px rgba(34, 197, 94, 0.7);
+    filter: drop-shadow(0 0 14px rgba(34, 197, 94, 0.8));
   }
 }
 

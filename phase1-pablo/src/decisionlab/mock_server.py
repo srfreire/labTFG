@@ -234,9 +234,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         await asyncio.sleep(1.0)
         await emit({"type": "node_update", "id": write_id, "status": "done"})
         await emit({"type": "node_add", "node": {
-            "id": file_id, "kind": "file", "label": f"{slug}.md",
+            "id": file_id, "kind": "output", "label": f"{slug}.md",
             "status": "done",
-            "meta": {"path": f"deep/{slug}.md", "content": content_preview, "isOutput": True},
+            "meta": {"path": f"deep/{slug}.md", "content": content_preview},
         }})
         await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
 
@@ -311,9 +311,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         await emit({"type": "node_update", "id": write_id, "status": "done"})
         await emit({"type": "node_update", "id": sub_id, "status": "done"})
         await emit({"type": "node_add", "node": {
-            "id": file_id, "kind": "file", "label": f"{slug}.md",
+            "id": file_id, "kind": "output", "label": f"{slug}.md",
             "status": "done",
-            "meta": {"path": f"formulations/{slug}.md", "content": content_preview, "isOutput": True},
+            "meta": {"path": f"formulations/{slug}.md", "content": content_preview},
         }})
         await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
 
@@ -411,9 +411,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
             await emit({"type": "node_update", "id": write_id, "status": "done"})
             await emit({"type": "node_update", "id": sub_id, "status": "done"})
             await emit({"type": "node_add", "node": {
-                "id": file_id, "kind": "file", "label": f"{spec_id}.json",
+                "id": file_id, "kind": "output", "label": f"{spec_id}.json",
                 "status": "done",
-                "meta": {"path": f"reasoner/{spec_id}.json", "content": content_preview, "isOutput": True},
+                "meta": {"path": f"reasoner/{spec_id}.json", "content": content_preview},
             }})
             await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
             all_reason_file_ids.append(file_id)
@@ -497,9 +497,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         await asyncio.sleep(1.0)
         await emit({"type": "node_update", "id": write_id, "status": "done"})
         await emit({"type": "node_add", "node": {
-            "id": file_id, "kind": "file", "label": model_file.name,
+            "id": file_id, "kind": "output", "label": model_file.name,
             "status": "done",
-            "meta": {"path": f"builder/{model_file.name}", "content": code_preview, "isOutput": True},
+            "meta": {"path": f"builder/{model_file.name}", "content": code_preview},
         }})
         await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
         all_build_file_ids.append(file_id)
@@ -523,9 +523,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
             await asyncio.sleep(1.0)
             await emit({"type": "node_update", "id": write_test_id, "status": "done"})
             await emit({"type": "node_add", "node": {
-                "id": test_id, "kind": "file", "label": test_file.name,
+                "id": test_id, "kind": "output", "label": test_file.name,
                 "status": "done",
-                "meta": {"path": f"builder/{test_file.name}", "content": test_preview, "isOutput": True},
+                "meta": {"path": f"builder/{test_file.name}", "content": test_preview},
             }})
             await emit({"type": "edge_add", "edge": {"source": write_test_id, "target": test_id, "edge_kind": "write"}})
             all_build_file_ids.append(test_id)
