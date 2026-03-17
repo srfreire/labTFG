@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, type KeyboardEvent } from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
 import Sidebar from "./components/Sidebar";
 import Graph from "./components/Graph";
@@ -242,24 +242,38 @@ export default function App() {
   } = useWebSocket();
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [problemInput, setProblemInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
   }, []);
 
+  const handleRun = useCallback(() => {
+    const trimmed = problemInput.trim();
+    if (!trimmed) return;
+    startPipeline(trimmed);
+    setProblemInput("");
+  }, [problemInput, startPipeline]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") handleRun();
+    },
+    [handleRun],
+  );
+
   const hasGraph = nodes.length > 0;
   const reviewActive = reviewRequest !== null;
+  const showIdle = !hasGraph && !isRunning;
 
   return (
     <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
-      {/* Sidebar */}
+      {/* Sidebar — pipeline only */}
       <Sidebar
         connected={connected}
         stages={stages}
         currentStage={currentStage}
-        isRunning={isRunning}
-        onRun={startPipeline}
-        onCancel={cancelPipeline}
       />
 
       {/* Main panel */}
@@ -294,24 +308,71 @@ export default function App() {
 
         {/* Content area */}
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {!hasGraph && !isRunning ? (
-            /* Idle placeholder */
+          {showIdle ? (
+            /* Idle — problem input centered */
             <div
               style={{
                 flex: 1,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 16,
               }}
             >
-              <span
+              <div
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
                   color: "rgba(255,255,255,0.3)",
+                  marginBottom: 8,
                 }}
               >
-                Waiting for pipeline...
-              </span>
+                Describe a decision problem
+              </div>
+              <input
+                ref={inputRef}
+                type="text"
+                value={problemInput}
+                onChange={(e) => setProblemInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g. survival decision-making"
+                autoFocus
+                style={{
+                  width: 420,
+                  maxWidth: "80%",
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontFamily: "inherit",
+                  padding: "12px 16px",
+                  outline: "none",
+                  borderRadius: 0,
+                  textAlign: "center",
+                }}
+              />
+              <button
+                onClick={handleRun}
+                disabled={!problemInput.trim()}
+                style={{
+                  padding: "10px 32px",
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  color: !problemInput.trim()
+                    ? "rgba(255,255,255,0.3)"
+                    : "#fff",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  cursor: !problemInput.trim() ? "default" : "pointer",
+                  borderRadius: 0,
+                }}
+              >
+                Run
+              </button>
             </div>
           ) : (
             <>
@@ -331,6 +392,31 @@ export default function App() {
                   data={reviewRequest.data}
                   onSubmit={sendReviewResponse}
                 />
+              )}
+
+              {/* Cancel button — floating top-right on graph */}
+              {isRunning && (
+                <button
+                  onClick={cancelPipeline}
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    right: reviewActive ? "calc(50% + 12px)" : 12,
+                    padding: "6px 16px",
+                    background: "rgba(0,0,0,0.7)",
+                    border: "1px solid rgba(239,68,68,0.4)",
+                    color: "#ef4444",
+                    fontSize: 10,
+                    fontFamily: "inherit",
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                    cursor: "pointer",
+                    borderRadius: 0,
+                    zIndex: 40,
+                  }}
+                >
+                  Cancel
+                </button>
               )}
             </>
           )}
