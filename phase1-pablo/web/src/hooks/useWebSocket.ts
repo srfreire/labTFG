@@ -6,7 +6,6 @@ import {
   GraphEdge,
   ServerMessage,
   ClientMessage,
-  STAGE_CONFIG,
 } from "../types";
 
 /* ------------------------------------------------------------------ */
