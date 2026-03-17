@@ -176,7 +176,12 @@ manager = MockConnectionManager()
 
 
 async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — problem ignored
-    """Replay sample data as realistic pipeline events."""
+    """Replay sample data as realistic pipeline events.
+
+    Each inter-stage data dependency is represented explicitly:
+      Agent ──spawn──▸ write_file tool ──write──▸ artifact
+      Agent ──spawn──▸ read_file  tool ──read───▸ artifact (existing)
+    """
 
     all_slugs = _paradigm_slugs_from_dir("deep")
     if not all_slugs:
@@ -187,42 +192,53 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
     await emit({"type": "stage_change", "stage": "research", "status": "running"})
     await emit({"type": "node_add", "node": {
         "id": "researcher", "kind": "agent", "label": "Researcher",
-        "status": "running", "meta": {"color": "#4a9eff"},
+        "status": "running", "meta": {},
     }})
 
     for slug in all_slugs:
-        # web_search tool node
+        # web_search tool
         search_id = f"search_{slug}"
+        await asyncio.sleep(1.5)
         await emit({"type": "node_add", "node": {
             "id": search_id, "kind": "tool", "label": slug,
-            "status": "running", "meta": {"args": {"query": slug}},
+            "status": "running", "meta": {"toolType": "web_search", "args": {"query": slug}},
         }})
-        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": search_id}})
-        await asyncio.sleep(0.3)
-        await emit({"type": "node_update", "id": search_id, "status": "done"})
+        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": search_id, "edge_kind": "spawn"}})
 
-        # sub_agent deep-research node
+        # deep researcher sub_agent
         deep_id = f"deep_{slug}"
+        await asyncio.sleep(1.5)
+        await emit({"type": "node_update", "id": search_id, "status": "done"})
         await emit({"type": "node_add", "node": {
-            "id": deep_id, "kind": "sub_agent", "label": slug,
+            "id": deep_id, "kind": "sub_agent", "label": "Deep Researcher",
             "status": "running", "meta": {"paradigm": slug},
         }})
-        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": deep_id}})
-        await asyncio.sleep(0.4)
-        await emit({"type": "node_update", "id": deep_id, "status": "done"})
+        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": deep_id, "edge_kind": "spawn"}})
 
-        # file node
+        # write_file tool (deep researcher writes the research file)
+        write_id = f"write_deep_{slug}"
+        await asyncio.sleep(2.0)
+        await emit({"type": "node_update", "id": deep_id, "status": "done"})
+        await emit({"type": "node_add", "node": {
+            "id": write_id, "kind": "tool", "label": f"{slug}.md",
+            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"deep/{slug}.md"}},
+        }})
+        await emit({"type": "edge_add", "edge": {"source": deep_id, "target": write_id, "edge_kind": "spawn"}})
+
+        # artifact (research file)
         deep_path = SAMPLE_DIR / "deep" / f"{slug}.md"
         content_preview = ""
         if deep_path.exists():
             content_preview = deep_path.read_text()[:500]
         file_id = f"file_deep_{slug}"
+        await asyncio.sleep(1.0)
+        await emit({"type": "node_update", "id": write_id, "status": "done"})
         await emit({"type": "node_add", "node": {
             "id": file_id, "kind": "file", "label": f"{slug}.md",
             "status": "done",
-            "meta": {"path": f"deep/{slug}.md", "content": content_preview},
+            "meta": {"path": f"deep/{slug}.md", "content": content_preview, "isOutput": True},
         }})
-        await emit({"type": "edge_add", "edge": {"source": deep_id, "target": file_id}})
+        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
 
     await emit({"type": "node_update", "id": "researcher", "status": "done"})
     await emit({"type": "stage_change", "stage": "research", "status": "done"})
@@ -252,35 +268,55 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
 
     # ── FORMALIZE ─────────────────────────────────────────────────────────
     await emit({"type": "stage_change", "stage": "formalize", "status": "running"})
-    await emit({"type": "node_add", "node": {
-        "id": "formalizer", "kind": "agent", "label": "Formalizer",
-        "status": "running",
-    }})
-    await emit({"type": "edge_add", "edge": {"source": "researcher", "target": "formalizer"}})
 
     for slug in approved_slugs:
+        # Formalizer agent
         sub_id = f"formalize_{slug}"
+        await asyncio.sleep(1.5)
         await emit({"type": "node_add", "node": {
-            "id": sub_id, "kind": "sub_agent", "label": slug,
+            "id": sub_id, "kind": "agent", "label": "Formalizer",
             "status": "running", "meta": {"paradigm": slug},
         }})
-        await emit({"type": "edge_add", "edge": {"source": "formalizer", "target": sub_id}})
-        await asyncio.sleep(0.3)
-        await emit({"type": "node_update", "id": sub_id, "status": "done"})
+        # Structural edge from previous artifact (for layout)
+        await emit({"type": "edge_add", "edge": {"source": f"file_deep_{slug}", "target": sub_id, "edge_kind": "spawn"}})
+
+        # read_file tool (reads the research file)
+        read_id = f"read_research_{slug}"
+        await asyncio.sleep(1.0)
+        await emit({"type": "node_add", "node": {
+            "id": read_id, "kind": "tool", "label": f"{slug}.md",
+            "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"deep/{slug}.md"}},
+        }})
+        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
+
+        await asyncio.sleep(0.8)
+        await emit({"type": "node_update", "id": read_id, "status": "done"})
+        await emit({"type": "edge_add", "edge": {"source": read_id, "target": f"file_deep_{slug}", "edge_kind": "read"}})
+
+        # write_file tool (writes the formalization)
+        write_id = f"write_form_{slug}"
+        await asyncio.sleep(1.5)
+        await emit({"type": "node_add", "node": {
+            "id": write_id, "kind": "tool", "label": f"{slug}.md",
+            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"formulations/{slug}.md"}},
+        }})
+        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
 
         form_path = SAMPLE_DIR / "formulations" / f"{slug}.md"
         content_preview = ""
         if form_path.exists():
             content_preview = form_path.read_text()[:500]
         file_id = f"file_form_{slug}"
+        await asyncio.sleep(1.0)
+        await emit({"type": "node_update", "id": write_id, "status": "done"})
+        await emit({"type": "node_update", "id": sub_id, "status": "done"})
         await emit({"type": "node_add", "node": {
             "id": file_id, "kind": "file", "label": f"{slug}.md",
             "status": "done",
-            "meta": {"path": f"formulations/{slug}.md", "content": content_preview},
+            "meta": {"path": f"formulations/{slug}.md", "content": content_preview, "isOutput": True},
         }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": file_id}})
+        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
 
-    await emit({"type": "node_update", "id": "formalizer", "status": "done"})
     await emit({"type": "stage_change", "stage": "formalize", "status": "done"})
 
     # ── REVIEW_FORMALIZE ──────────────────────────────────────────────────
@@ -305,7 +341,6 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
     response = await wait_for_review("review_formalize", emit, {
         "paradigms": formalize_data,
     })
-    # Not used to filter further in mock — we just continue with approved_slugs
     await emit({"type": "stage_change", "stage": "review_formalize", "status": "done"})
 
     # ── GET_ENV_SPEC ──────────────────────────────────────────────────────
@@ -325,26 +360,46 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
 
     # ── REASON ────────────────────────────────────────────────────────────
     await emit({"type": "stage_change", "stage": "reason", "status": "running"})
-    await emit({"type": "node_add", "node": {
-        "id": "reasoner", "kind": "agent", "label": "Reasoner",
-        "status": "running",
-    }})
-    await emit({"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}})
 
     all_spec_files: list[Path] = []
+    all_reason_file_ids: list[str] = []
     for slug in approved_slugs:
         spec_files = _reasoner_files_for_paradigm(slug)
         all_spec_files.extend(spec_files)
         for sf in spec_files:
             spec_id = sf.stem
+
+            # Reasoner agent
             sub_id = f"reason_{spec_id}"
+            await asyncio.sleep(1.5)
             await emit({"type": "node_add", "node": {
-                "id": sub_id, "kind": "sub_agent", "label": spec_id,
+                "id": sub_id, "kind": "agent", "label": "Reasoner",
                 "status": "running", "meta": {"paradigm": slug, "spec": spec_id},
             }})
-            await emit({"type": "edge_add", "edge": {"source": "reasoner", "target": sub_id}})
-            await asyncio.sleep(0.2)
-            await emit({"type": "node_update", "id": sub_id, "status": "done"})
+            # Structural edge from formalize artifact (for layout)
+            await emit({"type": "edge_add", "edge": {"source": f"file_form_{slug}", "target": sub_id, "edge_kind": "spawn"}})
+
+            # read_file tool (reads the formalization)
+            read_id = f"read_form_{spec_id}"
+            await asyncio.sleep(1.0)
+            await emit({"type": "node_add", "node": {
+                "id": read_id, "kind": "tool", "label": f"{slug}.md",
+                "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"formulations/{slug}.md"}},
+            }})
+            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
+
+            await asyncio.sleep(0.8)
+            await emit({"type": "node_update", "id": read_id, "status": "done"})
+            await emit({"type": "edge_add", "edge": {"source": read_id, "target": f"file_form_{slug}", "edge_kind": "read"}})
+
+            # write_file tool (writes the spec)
+            write_id = f"write_reason_{spec_id}"
+            await asyncio.sleep(1.5)
+            await emit({"type": "node_add", "node": {
+                "id": write_id, "kind": "tool", "label": f"{spec_id}.json",
+                "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"reasoner/{spec_id}.json"}},
+            }})
+            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
 
             content_preview = ""
             try:
@@ -352,14 +407,17 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
             except OSError:
                 pass
             file_id = f"file_reason_{spec_id}"
+            await asyncio.sleep(1.0)
+            await emit({"type": "node_update", "id": write_id, "status": "done"})
+            await emit({"type": "node_update", "id": sub_id, "status": "done"})
             await emit({"type": "node_add", "node": {
                 "id": file_id, "kind": "file", "label": f"{spec_id}.json",
                 "status": "done",
-                "meta": {"path": f"reasoner/{spec_id}.json", "content": content_preview},
+                "meta": {"path": f"reasoner/{spec_id}.json", "content": content_preview, "isOutput": True},
             }})
-            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": file_id}})
+            await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+            all_reason_file_ids.append(file_id)
 
-    await emit({"type": "node_update", "id": "reasoner", "status": "done"})
     await emit({"type": "stage_change", "stage": "reason", "status": "done"})
 
     # ── REVIEW_REASON ─────────────────────────────────────────────────────
@@ -387,26 +445,48 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
 
     # ── BUILD ─────────────────────────────────────────────────────────────
     await emit({"type": "stage_change", "stage": "build", "status": "running"})
-    await emit({"type": "node_add", "node": {
-        "id": "builder", "kind": "agent", "label": "Builder",
-        "status": "running",
-    }})
-    await emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
 
     builder_pairs: list[tuple[Path, Path | None]] = []
     for slug in approved_slugs:
         builder_pairs.extend(_builder_files_for_paradigm(slug))
 
+    all_build_file_ids: list[str] = []
     for model_file, test_file in builder_pairs:
         model_id = model_file.stem
+
+        # Builder agent
         sub_id = f"build_{model_id}"
+        await asyncio.sleep(1.5)
         await emit({"type": "node_add", "node": {
-            "id": sub_id, "kind": "sub_agent", "label": model_id,
+            "id": sub_id, "kind": "agent", "label": "Builder",
             "status": "running", "meta": {"model": model_id},
         }})
-        await emit({"type": "edge_add", "edge": {"source": "builder", "target": sub_id}})
-        await asyncio.sleep(0.4)
-        await emit({"type": "node_update", "id": sub_id, "status": "done"})
+        # Structural edge from matching reasoner artifact (for layout)
+        matching_reason = [fid for fid in all_reason_file_ids if model_id.split("_model")[0] in fid]
+        source_id = matching_reason[0] if matching_reason else (all_reason_file_ids[0] if all_reason_file_ids else "output_reason")
+        await emit({"type": "edge_add", "edge": {"source": source_id, "target": sub_id, "edge_kind": "spawn"}})
+
+        # read_file tool (reads the reasoner spec)
+        read_id = f"read_reason_{model_id}"
+        await asyncio.sleep(1.0)
+        await emit({"type": "node_add", "node": {
+            "id": read_id, "kind": "tool", "label": f"{model_id.split('_model')[0]}.json",
+            "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"reasoner/{model_id}.json"}},
+        }})
+        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
+
+        await asyncio.sleep(0.8)
+        await emit({"type": "node_update", "id": read_id, "status": "done"})
+        await emit({"type": "edge_add", "edge": {"source": read_id, "target": source_id, "edge_kind": "read"}})
+
+        # write_file tool (writes the model code)
+        write_id = f"write_build_{model_id}"
+        await asyncio.sleep(1.5)
+        await emit({"type": "node_add", "node": {
+            "id": write_id, "kind": "tool", "label": model_file.name,
+            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"builder/{model_file.name}"}},
+        }})
+        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
 
         code_preview = ""
         try:
@@ -414,28 +494,44 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         except OSError:
             pass
         file_id = f"file_build_{model_id}"
+        await asyncio.sleep(1.0)
+        await emit({"type": "node_update", "id": write_id, "status": "done"})
         await emit({"type": "node_add", "node": {
             "id": file_id, "kind": "file", "label": model_file.name,
             "status": "done",
-            "meta": {"path": f"builder/{model_file.name}", "content": code_preview},
+            "meta": {"path": f"builder/{model_file.name}", "content": code_preview, "isOutput": True},
         }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": file_id}})
+        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+        all_build_file_ids.append(file_id)
 
         if test_file:
+            # write_file tool for test file
+            write_test_id = f"write_test_{model_id}"
+            await asyncio.sleep(1.0)
+            await emit({"type": "node_add", "node": {
+                "id": write_test_id, "kind": "tool", "label": test_file.name,
+                "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"builder/{test_file.name}"}},
+            }})
+            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_test_id, "edge_kind": "spawn"}})
+
             test_preview = ""
             try:
                 test_preview = test_file.read_text()[:500]
             except OSError:
                 pass
             test_id = f"file_test_{model_id}"
+            await asyncio.sleep(1.0)
+            await emit({"type": "node_update", "id": write_test_id, "status": "done"})
             await emit({"type": "node_add", "node": {
                 "id": test_id, "kind": "file", "label": test_file.name,
                 "status": "done",
-                "meta": {"path": f"builder/{test_file.name}", "content": test_preview},
+                "meta": {"path": f"builder/{test_file.name}", "content": test_preview, "isOutput": True},
             }})
-            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": test_id}})
+            await emit({"type": "edge_add", "edge": {"source": write_test_id, "target": test_id, "edge_kind": "write"}})
+            all_build_file_ids.append(test_id)
 
-    await emit({"type": "node_update", "id": "builder", "status": "done"})
+        await emit({"type": "node_update", "id": sub_id, "status": "done"})
+
     await emit({"type": "stage_change", "stage": "build", "status": "done"})
 
     # ── REVIEW_BUILD ──────────────────────────────────────────────────────

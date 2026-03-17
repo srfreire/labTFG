@@ -382,16 +382,138 @@ export default function App() {
                   nodes={nodes}
                   edges={edges}
                   onNodeClick={handleNodeClick}
+                  reviewActive={reviewActive}
                 />
               </div>
 
-              {/* Review drawer */}
-              {reviewActive && (
-                <ReviewDrawer
-                  stage={reviewRequest.stage}
-                  data={reviewRequest.data}
-                  onSubmit={sendReviewResponse}
-                />
+              {/* Review modal — shown when user clicks an output file */}
+              {reviewActive && selectedNode?.kind === 'file' && (
+                <div
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 100,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(0,0,0,0.8)",
+                    backdropFilter: "blur(4px)",
+                  }}
+                  onClick={() => setSelectedNode(null)}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      background: "#0a0a0a",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      width: "min(700px, 90vw)",
+                      maxHeight: "80vh",
+                      display: "flex",
+                      flexDirection: "column",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Header */}
+                    <div style={{
+                      padding: "14px 20px",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}>
+                      <div>
+                        <span style={{ fontSize: 9, letterSpacing: "1.5px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>
+                          Output File
+                        </span>
+                        <div style={{ fontSize: 13, color: "#fff", marginTop: 2 }}>
+                          {selectedNode.label}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedNode(null)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "rgba(255,255,255,0.4)",
+                          fontSize: 18,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{
+                      flex: 1,
+                      overflow: "auto",
+                      padding: "16px 20px",
+                    }}>
+                      <pre style={{
+                        fontSize: 11,
+                        lineHeight: 1.6,
+                        color: "rgba(255,255,255,0.8)",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        margin: 0,
+                        fontFamily: "'IBM Plex Mono', monospace",
+                      }}>
+                        {selectedNode.meta?.content as string || "No content available."}
+                      </pre>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{
+                      padding: "12px 20px",
+                      borderTop: "1px solid rgba(255,255,255,0.08)",
+                      display: "flex",
+                      gap: 10,
+                      justifyContent: "flex-end",
+                    }}>
+                      <button
+                        onClick={() => setSelectedNode(null)}
+                        style={{
+                          padding: "8px 20px",
+                          background: "none",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: 10,
+                          fontFamily: "inherit",
+                          textTransform: "uppercase",
+                          letterSpacing: 1,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Close
+                      </button>
+                      <button
+                        onClick={() => {
+                          sendReviewResponse(reviewRequest!.stage, {
+                            approved: Object.fromEntries(
+                              (reviewRequest!.data.paradigms || reviewRequest!.data.specs || reviewRequest!.data.models || [])
+                                .map((p: any) => [p.slug || p.id || p.spec_id, true])
+                            ),
+                          });
+                          setSelectedNode(null);
+                        }}
+                        style={{
+                          padding: "8px 20px",
+                          background: "rgba(34,197,94,0.15)",
+                          border: "1px solid rgba(34,197,94,0.4)",
+                          color: "#22c55e",
+                          fontSize: 10,
+                          fontFamily: "inherit",
+                          textTransform: "uppercase",
+                          letterSpacing: 1,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Approve All
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Cancel button — floating top-right on graph */}
