@@ -1,7 +1,7 @@
 """
 Dynamic loader for Phase 1 Builder decision models.
 
-Phase 1 (Pablo) generates *_model.py files that contain decision model classes.
+Phase 1 generates *_model.py files that contain decision model classes.
 This module discovers those files, checks they implement the DecisionModel interface,
 and provides a way to instantiate them with isolated RNG seeds.
 """
@@ -92,7 +92,7 @@ def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> o
     If seed is provided, the model file is loaded into a fresh private module
     and its `random` attribute is replaced with a newly-seeded Random instance.
     This ensures two models with the same seed produce identical decisions
-    even when called interleaved.
+    even when called interleaved for reproducibility.
     """
     if seed is not None:
         # Load into an isolated module so the RNG is not shared

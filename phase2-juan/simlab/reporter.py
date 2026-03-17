@@ -24,11 +24,7 @@ from simlab.utils import extract_text
 # ---------------------------------------------------------------------------
 
 def _fix_markdown_in_latex(content: str) -> str:
-    """Convert Markdown remnants to valid LaTeX.
-
-    LLMs sometimes mix Markdown into LaTeX output.
-    This fixes the most common cases.
-    """
+    """Convert Markdown remnants to valid LaTeX"""
     # **bold** → \textbf{bold}
     content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
     # *italic* → \textit{italic}
@@ -50,7 +46,7 @@ _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
 READ_RESEARCH_TOOL = {
     "name": "read_research",
     "description": (
-        "Read a research file from Phase 1 (Pablo's pipeline). "
+        "Read a research file from Phase 1. "
         "Available paths: 'report.md' (summary), 'deep/<paradigm>.md' (deep analysis), "
         "'formulations/<paradigm>.md' (math formulations). "
         "Paradigm slugs: homeostatic-regulation, hedonic-reward-based-regulation-of-food-intake, "
@@ -189,8 +185,15 @@ Brief context about the simulation laboratory and its purpose.
 Summarize the relevant paradigms from Phase 1 research. Reference key authors and concepts. \
 Focus on paradigms that are relevant to the simulation being reported.
 
+\\section{Modelo de Decisión}
+Describe the decision model(s) used by the agents. The Tracker and Analyst data include agent IDs \
+that reference the model names (e.g. "agent_drive_reduction_rl_0"). Extract the paradigm from the \
+agent ID or model state, then use read_research with "formulations/<paradigm-slug>.md" to get the \
+mathematical formulation. Explain: which paradigm each model implements, its key parameters, \
+and how it makes decisions (decide/update cycle).
+
 \\section{Configuración del Experimento}
-Describe the environment setup: grid size, resources, actions, agents, and their decision models.
+Describe the environment setup: grid size, resources, actions, agents, and number of simulation steps.
 
 \\section{Resultados de la Simulación}
 Present the Tracker observations: trajectories, episodes, key events. Use tables and itemized \
@@ -225,23 +228,12 @@ What improvements could be made?
 # ---------------------------------------------------------------------------
 
 class Reporter:
-    """Generates LaTeX reports compiled to PDF."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
 
-    async def run(
-        self,
-        prompt: str,
-        tracker_output: str,
-        analyst_output: str,
-        *,
-        research_dir: Path,
-        output_dir: Path,
-        max_iterations: int = 8,
-    ) -> str:
-        """Generate a PDF report. Returns the path to the PDF or an error message."""
+    async def run(self, prompt: str, tracker_output: str, analyst_output: str, *, research_dir: Path, output_dir: Path, max_iterations: int = 8) -> str:
         tools, registry = _build_tools(research_dir, output_dir)
         user_message = (
             f"{prompt}\n\n"

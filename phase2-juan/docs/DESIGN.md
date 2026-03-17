@@ -132,7 +132,88 @@ Multiples modelos pueden ejecutarse en el **mismo environment** para comparacion
 
 ---
 
-## 7. Estado de implementacion
+## 7. Experiment Store: persistencia y trazabilidad
+
+### Motivacion
+
+Actualmente todos los datos de simulacion viven en memoria (`Orchestrator._state`). Cuando la sesion termina, se pierde todo. No hay forma de comparar un experimento de hoy con uno de ayer, ni de reproducir resultados, ni de hacer analisis cross-experiment.
+
+La solucion combina dos conceptos de data engineering:
+
+1. **Pipeline de datos estructurado** — schema relacional para todos los artefactos del pipeline (events, tracker output, analyst output), con persistencia en disco.
+2. **Experiment tracking** — cada ejecucion del pipeline es un *experimento* con ID unico, metadatos de configuracion y estado de progreso. Permite historial, comparacion y reproducibilidad.
+
+### Schema
+
+```
+experiments
+  ├── id            TEXT PRIMARY KEY (UUID)
+  ├── created_at    TIMESTAMP
+  ├── description   TEXT              -- prompt original del usuario
+  ├── spec_json     TEXT              -- JSON spec del environment
+  ├── status        TEXT              -- created | simulated | tracked | analyzed | reported
+  ├── steps         INTEGER
+  └── seed          INTEGER | NULL    -- para reproducibilidad
+
+experiment_agents
+  ├── experiment_id TEXT  FK → experiments
+  ├── agent_id      TEXT              -- e.g. "agent_0"
+  ├── model_name    TEXT              -- e.g. "drive_reduction"
+  ├── model_class   TEXT              -- e.g. "DriveReductionModel"
+  └── initial_x, initial_y  INTEGER
+
+events
+  ├── experiment_id  TEXT  FK → experiments
+  ├── step           INTEGER
+  ├── agent_id       TEXT
+  ├── action_name    TEXT
+  ├── action_params  TEXT  (JSON)
+  ├── reward         REAL
+  ├── action_result  TEXT  (JSON)
+  └── model_state    TEXT  (JSON)
+
+tracker_results
+  ├── experiment_id  TEXT  FK → experiments
+  ├── summary        TEXT
+  ├── trajectories   TEXT  (JSON)
+  └── episodes       TEXT  (JSON)
+
+analyst_results
+  ├── experiment_id  TEXT  FK → experiments
+  ├── patterns       TEXT  (JSON)
+  ├── comparisons    TEXT  (JSON)
+  └── metrics        TEXT  (JSON)
+
+reports
+  ├── experiment_id  TEXT  FK → experiments
+  ├── pdf_path       TEXT
+  └── generated_at   TIMESTAMP
+```
+
+### Integracion con la arquitectura existente
+
+El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igual, y la persistencia se anade como efecto secundario:
+
+1. **Nuevo modulo `store.py`** — inicializa DB, expone funciones `save_experiment()`, `save_events()`, `save_tracker_output()`, `load_experiment()`, `list_experiments()`, etc.
+2. **`orchestrator.py`** — despues de cada paso del pipeline, llama a `store.save_*()`. El dict `_state` sigue intacto (backward compatible).
+3. **`tools.py`** — las funciones de query pueden opcionalmente leer de DB dado un `experiment_id`, habilitando consultas cross-experiment.
+4. **Nuevo tool `list_experiments()`** — el Orchestrator puede ofrecer historial y comparacion al usuario.
+
+### Capacidades nuevas
+
+- **Historial**: "muestrame los ultimos 5 experimentos"
+- **Comparacion cross-experiment**: "compara drive_reduction de hoy vs ayer"
+- **Reproducibilidad**: mismo spec + seed + modelo = mismos resultados
+- **Analisis agregado**: metricas promediadas sobre N ejecuciones del mismo paradigma
+- **Persistencia entre sesiones**: cerrar y abrir el lab no pierde datos
+
+### Tecnologia
+
+**SQLite** (`sqlite3` stdlib, zero dependencias). Fichero en `phase2-juan/data/experiments.db` (gitignored). Alternativa: DuckDB si se quiere enfatizar el angulo analitico (columnar, mejor para agregaciones), pero SQLite es suficiente para el volumen esperado.
+
+---
+
+## 8. Estado de implementacion
 
 ### Completado
 

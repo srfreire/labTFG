@@ -108,8 +108,7 @@ ARCHITECT_REGISTRY: Registry = {
 # ---------------------------------------------------------------------------
 
 class Architect:
-    """Generates validated JSON environment specs from natural language descriptions."""
-
+    
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
@@ -117,7 +116,6 @@ class Architect:
         self.registry = ARCHITECT_REGISTRY
 
     async def run(self, prompt: str, *, max_iterations: int = 10) -> str:
-        """Generate a validated JSON environment spec from a natural language prompt."""
         response = await run_agent_loop(
             client=self.client,
             model=self.model,

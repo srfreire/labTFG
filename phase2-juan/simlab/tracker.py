@@ -84,14 +84,13 @@ You have 3 tools to explore simulation data:
 # ---------------------------------------------------------------------------
 
 class Tracker:
-    """Observes simulation events and produces structured observation logs."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
 
     async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15) -> str:
-        """Observe simulation events and return a structured JSON log."""
+        
         if not events:
             return json.dumps({"summary": "No events to observe.", "trajectories": {}, "episodes": []})
 

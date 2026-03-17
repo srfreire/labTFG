@@ -87,21 +87,12 @@ deeper: find patterns, compare agents, and quantify behavior.
 # ---------------------------------------------------------------------------
 
 class Analyst:
-    """Identifies patterns and computes metrics from simulation data."""
 
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
 
-    async def run(
-        self,
-        prompt: str,
-        tracker_output: str,
-        events: list[Event],
-        *,
-        max_iterations: int = 15,
-    ) -> str:
-        """Analyze simulation data and return patterns, comparisons, and metrics as JSON."""
+    async def run(self, prompt: str, tracker_output: str, events: list[Event], *, max_iterations: int = 15) -> str:
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
 
