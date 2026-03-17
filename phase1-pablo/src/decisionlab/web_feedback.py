@@ -195,9 +195,10 @@ async def get_env_spec(
     # Content mode: write to temp file
     content = response.get("content", "{}")
     parsed = json.loads(content)  # validate
-    tmp = Path(tempfile.mktemp(suffix=".json", prefix="env_spec_"))
-    tmp.write_text(json.dumps(parsed, indent=2))
-    return tmp
+    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="env_spec_")
+    with open(fd, "w") as fh:
+        json.dump(parsed, fh, indent=2)
+    return Path(tmp_path)
 
 
 # ---------------------------------------------------------------------------

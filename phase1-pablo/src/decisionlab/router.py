@@ -212,6 +212,7 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_research
+                assert self.emit is not None
                 approved, additional = await review_research(
                     self.state.reports_dir, self.emit,
                 )
@@ -266,6 +267,7 @@ class Router:
     async def _review_formalize(self) -> None:
         if self._web_mode:
             from decisionlab.web_feedback import review_formalize
+            assert self.emit is not None
             selected = await review_formalize(
                 self.state.reports_dir,
                 self.state.approved_paradigms,
@@ -284,6 +286,7 @@ class Router:
         try:
             if self._web_mode:
                 from decisionlab.web_feedback import get_env_spec
+                assert self.emit is not None
                 src_path = await get_env_spec(self.emit)
             else:
                 from decisionlab.feedback import get_env_spec
@@ -326,6 +329,7 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_reason
+                assert self.emit is not None
                 approved, rejections = await review_reason(
                     self.state.reports_dir, self.emit,
                 )
@@ -390,6 +394,7 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_build
+                assert self.emit is not None
                 user_feedback = await review_build(build_results, self.emit)
             else:
                 from decisionlab.feedback import review_build

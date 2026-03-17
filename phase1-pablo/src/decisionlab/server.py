@@ -11,14 +11,13 @@ Start with::
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from decisionlab.router import PipelineState, Router, Stage
+from decisionlab.router import EmitFn, PipelineState, Router, Stage
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +149,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
 async def run_pipeline(
     problem: str,
-    emit: asyncio.coroutines,  # type: ignore[type-arg]
+    emit: EmitFn,
 ) -> None:
     """Run the full pipeline, emitting events via *emit*."""
     from anthropic import AsyncAnthropic
