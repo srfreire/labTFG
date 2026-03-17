@@ -218,6 +218,8 @@ class Orchestrator:
         self._state: dict = {}
         self._messages: list[dict] = []
         self._discovered_models: dict | None = None
+        # Optional callback: (agent_name, tool_name) -> None
+        self.on_agent_tool_call = None
 
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
@@ -233,11 +235,21 @@ class Orchestrator:
             registry=registry,
             max_iterations=25,
             max_tokens=4096,
+            on_tool_call=self._make_tool_callback("Orchestrator"),
         )
 
         text = next((b.text for b in response.content if b.type == "text"), "")
         self._messages.append({"role": "assistant", "content": response.content})
         return text
+
+    def _make_tool_callback(self, agent_name: str):
+        """Create an on_tool_call callback scoped to an agent name."""
+        cb = self.on_agent_tool_call
+        if not cb:
+            return None
+        async def _cb(tool_name: str):
+            await cb(agent_name, tool_name)
+        return _cb
 
     def _build_tools(self) -> tuple[list[dict], Registry]:
         """Build tool implementations as closures over the orchestrator's state."""
@@ -247,7 +259,7 @@ class Orchestrator:
         # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
             arch = Architect(client=client)
-            spec_json = await arch.run(params["description"])
+            spec_json = await arch.run(params["description"], on_tool_call=self._make_tool_callback("Architect"))
             state["spec"] = json.loads(spec_json)
             # Reset downstream state
             state["events"] = None
@@ -356,7 +368,7 @@ class Orchestrator:
                 return json.dumps({"error": "No simulation data. Call run_simulation first."})
             tracker = Tracker(client=client)
             focus = params.get("focus", "Observa la simulacion y reporta que paso.")
-            result = await tracker.run(focus, state["events"])
+            result = await tracker.run(focus, state["events"], on_tool_call=self._make_tool_callback("Tracker"))
             state["tracker_output"] = result
             return result
 
@@ -366,7 +378,7 @@ class Orchestrator:
                 return json.dumps({"error": "No observations yet. Call observe_simulation first."})
             analyst = Analyst(client=client)
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
-            result = await analyst.run(focus, state["tracker_output"], state["events"])
+            result = await analyst.run(focus, state["tracker_output"], state["events"], on_tool_call=self._make_tool_callback("Analyst"))
             state["analyst_output"] = result
             return result
 
@@ -382,6 +394,7 @@ class Orchestrator:
                 state["analyst_output"],
                 research_dir=self.research_dir,
                 output_dir=self.output_dir,
+                on_tool_call=self._make_tool_callback("Reporter"),
             )
             pdf_path = self.output_dir / "report.pdf"
             if pdf_path.exists():

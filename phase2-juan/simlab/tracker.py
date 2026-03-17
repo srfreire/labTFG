@@ -89,8 +89,8 @@ class Tracker:
         self.client = client
         self.model = model
 
-    async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15) -> str:
-        
+    async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15, on_tool_call=None) -> str:
+
         if not events:
             return json.dumps({"summary": "No events to observe.", "trajectories": {}, "episodes": []})
 
@@ -103,5 +103,6 @@ class Tracker:
             messages=[{"role": "user", "content": prompt}],
             registry=registry,
             max_iterations=max_iterations,
+            on_tool_call=on_tool_call,
         )
         return extract_text(response)

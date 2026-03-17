@@ -233,7 +233,7 @@ class Reporter:
         self.client = client
         self.model = model
 
-    async def run(self, prompt: str, tracker_output: str, analyst_output: str, *, research_dir: Path, output_dir: Path, max_iterations: int = 8) -> str:
+    async def run(self, prompt: str, tracker_output: str, analyst_output: str, *, research_dir: Path, output_dir: Path, max_iterations: int = 8, on_tool_call=None) -> str:
         tools, registry = _build_tools(research_dir, output_dir)
         user_message = (
             f"{prompt}\n\n"
@@ -249,5 +249,6 @@ class Reporter:
             registry=registry,
             max_iterations=max_iterations,
             max_tokens=16384,
+            on_tool_call=on_tool_call,
         )
         return extract_text(response)

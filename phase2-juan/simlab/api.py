@@ -106,16 +106,69 @@ async def websocket_chat(ws: WebSocket):
         "pipeline": [],
     })
 
+    # Wire up internal tool call notifications
+    async def _on_agent_tool(agent_name: str, tool_name: str):
+        await ws.send_json({"type": "agent_tool", "agent": agent_name, "tool": tool_name})
+    orch.on_agent_tool_call = _on_agent_tool
+
     # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
     original_build = orch._build_tools
 
+    # Helper to send intermediate data cards as each agent finishes
+    async def _send_intermediate_card(tool_name: str):
+        """Send data cards to frontend as each pipeline step completes."""
+        state = orch._state
+        if tool_name == "create_environment" and state.get("spec"):
+            await ws.send_json({
+                "type": "message",
+                "from": "orchestrator",
+                "text": "",
+                "card": {
+                    "title": "Environment Spec",
+                    "data": {
+                        "Grid": f"{state['spec']['grid']['width']} × {state['spec']['grid']['height']}",
+                        "Acciones": str(len(state["spec"]["actions"])),
+                        "Recursos": ", ".join(f"{r['type']} ×{r['count']}" for r in state["spec"]["resources"]),
+                    },
+                },
+            })
+        elif tool_name == "run_simulation" and state.get("replay"):
+            await ws.send_json({
+                "type": "message",
+                "from": "orchestrator",
+                "text": "",
+                "card": {
+                    "title": "Simulación completada",
+                    "data": {
+                        "Steps": str(state["replay"]["total_steps"]),
+                        "Agentes": str(len(state["replay"]["frames"][0]["agents"]) if state["replay"]["frames"] else 0),
+                    },
+                },
+                "replay": state["replay"],
+            })
+        elif tool_name == "observe_simulation" and state.get("tracker_output"):
+            try:
+                tracker = json.loads(state["tracker_output"])
+                if "trajectories" in tracker:
+                    await ws.send_json({"type": "message", "from": "tracker", "text": "", "tracker": tracker})
+            except (json.JSONDecodeError, TypeError):
+                pass
+        elif tool_name == "analyze_results" and state.get("analyst_output"):
+            try:
+                analyst = json.loads(state["analyst_output"])
+                if "patterns" in analyst:
+                    await ws.send_json({"type": "message", "from": "analyst", "text": "", "analyst": analyst})
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    # New fn registry with ws support for the frontend
     def patched_build():
         tools, registry = original_build()
         wrapped: dict = {}
         for tool_name, fn in registry.items():
             agent_name = TOOL_AGENT_MAP.get(tool_name)
             if agent_name:
-                async def _wrapper(params, _agent=agent_name, _fn=fn):
+                async def _wrapper(params, _tool=tool_name, _agent=agent_name, _fn=fn):
                     await ws.send_json({"type": "agent_status", "agent": _agent, "status": "working"})
                     try:
                         result = await _fn(params)
@@ -123,10 +176,16 @@ async def websocket_chat(ws: WebSocket):
                         await ws.send_json({"type": "agent_status", "agent": _agent, "status": "idle"})
                         raise
                     await ws.send_json({"type": "agent_status", "agent": _agent, "status": "done"})
+                    await _send_intermediate_card(_tool)
                     return result
                 wrapped[tool_name] = _wrapper
             else:
-                wrapped[tool_name] = fn
+                # run_simulation is not in TOOL_AGENT_MAP but we still want the card
+                async def _sim_wrapper(params, _tool=tool_name, _fn=fn):
+                    result = await _fn(params)
+                    await _send_intermediate_card(_tool)
+                    return result
+                wrapped[tool_name] = _sim_wrapper
         return tools, wrapped
 
     orch._build_tools = patched_build
@@ -156,59 +215,14 @@ async def websocket_chat(ws: WebSocket):
 
                 await ws.send_json({"type": "agents", "agents": agents_state, "pipeline": pipeline})
 
-                # Build response with optional data cards
-                response_data: dict = {
-                    "type": "message",
-                    "from": "orchestrator",
-                    "text": response,
-                }
-
-                # Environment spec card (shown after create_environment, before simulation)
-                if state.get("spec") and not state.get("events"):
-                    response_data["card"] = {
-                        "title": "Environment Spec",
-                        "data": {
-                            "Grid": f"{state['spec']['grid']['width']} × {state['spec']['grid']['height']}",
-                            "Acciones": str(len(state["spec"]["actions"])),
-                            "Recursos": ", ".join(f"{r['type']} ×{r['count']}" for r in state["spec"]["resources"]),
-                        },
-                    }
-
-                # Tracker data card
-                if state.get("tracker_output"):
-                    try:
-                        tracker = json.loads(state["tracker_output"])
-                        if "trajectories" in tracker:
-                            response_data["tracker"] = tracker
-                    except (json.JSONDecodeError, TypeError):
-                        logger.warning("Failed to parse tracker output as JSON")
-
-                # Analyst data card
-                if state.get("analyst_output"):
-                    try:
-                        analyst = json.loads(state["analyst_output"])
-                        if "patterns" in analyst:
-                            response_data["analyst"] = analyst
-                    except (json.JSONDecodeError, TypeError):
-                        logger.warning("Failed to parse analyst output as JSON")
-
-                # Replay data for the simulation grid animation
-                if state.get("replay"):
-                    response_data["replay"] = state["replay"]
-
-                # Simulation summary card
-                if state.get("events") and state.get("replay"):
-                    sim_summary = {
-                        "title": "Simulación completada",
-                        "data": {
-                            "Steps": str(state["replay"]["total_steps"]),
-                            "Agentes": str(len(state["replay"]["frames"][0]["agents"]) if state["replay"]["frames"] else 0),
-                        },
-                    }
-                    if not response_data.get("card"):
-                        response_data["card"] = sim_summary
-
-                await ws.send_json(response_data)
+                # Send the orchestrator's final text response
+                # Data cards were already sent in streaming via _send_intermediate_card
+                if response.strip():
+                    await ws.send_json({
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": response,
+                    })
 
             except Exception as e:
                 logger.error("Orchestrator error: %s", e, exc_info=True)

@@ -115,7 +115,7 @@ class Architect:
         self.tools = [VALIDATE_SPEC_TOOL]
         self.registry = ARCHITECT_REGISTRY
 
-    async def run(self, prompt: str, *, max_iterations: int = 10) -> str:
+    async def run(self, prompt: str, *, max_iterations: int = 10, on_tool_call=None) -> str:
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
@@ -124,5 +124,6 @@ class Architect:
             messages=[{"role": "user", "content": prompt}],
             registry=self.registry,
             max_iterations=max_iterations,
+            on_tool_call=on_tool_call,
         )
         return extract_text(response)

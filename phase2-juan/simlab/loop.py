@@ -64,6 +64,7 @@ async def run_agent_loop(
     registry: Registry,
     max_tokens: int = 4096,
     max_iterations: int = 20,
+    on_tool_call: Callable[[str], Awaitable[None]] | None = None,
 ) -> Any:
     """
     Run a tool-use loop until the agent finishes or hits max_iterations.
@@ -104,6 +105,9 @@ async def run_agent_loop(
             return response
 
         messages.append({"role": "assistant", "content": response.content})
+        if on_tool_call:
+            for call in tool_calls:
+                await on_tool_call(call.name)
         results = await dispatch_tools(tool_calls, registry)
         messages.append({"role": "user", "content": results})
 
