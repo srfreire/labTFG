@@ -63,3 +63,104 @@ body {
     transform: translateX(0);
   }
 }
+
+/* ── Markdown content ────────────────────────────────────── */
+
+.markdown-body {
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+.markdown-body h1 { font-size: 14px; }
+.markdown-body h2 { font-size: 13px; }
+.markdown-body h3 { font-size: 12px; }
+
+.markdown-body p {
+  margin: 6px 0;
+}
+
+.markdown-body a {
+  color: #4a9eff;
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.markdown-body li {
+  margin: 2px 0;
+}
+
+.markdown-body li::marker {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.markdown-body blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.markdown-body th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 12px 0;
+}
+
+.markdown-body img {
+  max-width: 100%;
+}
+
+/* KaTeX dark-mode overrides */
+.markdown-body .katex-display {
+  margin: 8px 0;
+}
+
+.markdown-body .katex {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1em;
+}
