@@ -181,7 +181,7 @@ async def websocket_chat(ws: WebSocket):
                         if "trajectories" in tracker:
                             response_data["tracker"] = tracker
                     except (json.JSONDecodeError, TypeError):
-                        pass
+                        logger.warning("Failed to parse tracker output as JSON")
 
                 # Analyst data card
                 if state.get("analyst_output"):
@@ -190,7 +190,7 @@ async def websocket_chat(ws: WebSocket):
                         if "patterns" in analyst:
                             response_data["analyst"] = analyst
                     except (json.JSONDecodeError, TypeError):
-                        pass
+                        logger.warning("Failed to parse analyst output as JSON")
 
                 # Replay data for the simulation grid animation
                 if state.get("replay"):

@@ -1,7 +1,6 @@
 import { AgentPanel } from './components/AgentPanel'
 import { ChatPanel } from './components/ChatPanel'
 import { useWebSocket } from './hooks/useWebSocket'
-import './index.css'
 
 export default function App() {
   const { connected, agents, pipeline, messages, thinking, send } = useWebSocket()

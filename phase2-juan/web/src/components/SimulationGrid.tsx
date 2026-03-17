@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { ReplayData } from '../types'
 import { AGENT_COLORS } from '../constants'
 
@@ -59,6 +59,27 @@ export function SimulationGrid({ replay }: Props) {
 
   const cellSize = Math.min(28, Math.floor(300 / Math.max(replay.grid_width, replay.grid_height)))
 
+  // Pre-compute lookup maps — O(n) instead of O(width*height*n) find() calls
+  const { resourceMap, agentMap, agentIdxMap, trailSet } = useMemo(() => {
+    const rMap = new Map<string, boolean>()
+    const aMap = new Map<string, typeof frame.agents[0]>()
+    const aiMap = new Map<string, number>()
+    const tSet = new Set<string>()
+
+    for (const r of frame.resources) rMap.set(`${r.x},${r.y}`, true)
+    for (let i = 0; i < frame.agents.length; i++) {
+      const a = frame.agents[i]
+      if (a.alive) { aMap.set(`${a.x},${a.y}`, a); aiMap.set(`${a.x},${a.y}`, i) }
+    }
+    for (const [, positions] of Object.entries(trail)) {
+      for (const p of positions) {
+        const key = `${p.x},${p.y}`
+        if (!aMap.has(key)) tSet.add(key)
+      }
+    }
+    return { resourceMap: rMap, agentMap: aMap, agentIdxMap: aiMap, trailSet: tSet }
+  }, [frame, trail])
+
   return (
     <div className="mt-3 border p-3" style={{ background: '#000', borderColor: 'rgba(255,255,255,0.1)' }}>
       {/* Header */}
@@ -84,18 +105,15 @@ export function SimulationGrid({ replay }: Props) {
       >
         {Array.from({ length: replay.grid_height }, (_, y) =>
           Array.from({ length: replay.grid_width }, (_, x) => {
-            const resource = frame.resources.find(r => r.x === x && r.y === y)
-            const agent = frame.agents.find(a => a.x === x && a.y === y && a.alive)
-            const agentIdx = agent ? frame.agents.findIndex(a => a.id === agent.id) : -1
-            const isTrail = !agent && Object.entries(trail).some(([id, positions]) => {
-              const a = frame.agents.find(a2 => a2.id === id)
-              if (a && a.x === x && a.y === y) return false
-              return positions.some(p => p.x === x && p.y === y)
-            })
+            const key = `${x},${y}`
+            const hasResource = resourceMap.has(key)
+            const agent = agentMap.get(key)
+            const agentIdx = agentIdxMap.get(key) ?? -1
+            const isTrail = !agent && trailSet.has(key)
 
             return (
               <div
-                key={`${x}-${y}`}
+                key={key}
                 style={{
                   width: cellSize,
                   height: cellSize,
@@ -106,7 +124,7 @@ export function SimulationGrid({ replay }: Props) {
                   justifyContent: 'center',
                 }}
               >
-                {resource && !agent && (
+                {hasResource && !agent && (
                   <div style={{
                     width: cellSize * 0.3,
                     height: cellSize * 0.3,

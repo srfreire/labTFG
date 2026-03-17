@@ -2,9 +2,30 @@
 .env
 __pycache__/
 *.pyc
-phase1-pablo/outputs/
-**/docs/specs/
-**/docs/plans/
+*.egg-info/
+.pytest_cache/
 .superpowers/
 .worktrees/
 .playwright-mcp/
+
+# Phase 1
+phase1-pablo/outputs/
+phase1-pablo/reports/
+
+# Phase 2 — Python
+phase2-juan/.venv/
+phase2-juan/output/
+phase2-juan/test_output/
+*.pdf
+
+# Phase 2 — Web
+phase2-juan/web/node_modules/
+phase2-juan/web/dist/
+
+# Docs
+**/docs/specs/
+**/docs/plans/
+
+# Logs
+*.log
+npm-debug.log*
