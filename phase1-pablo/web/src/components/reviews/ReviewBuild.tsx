@@ -13,8 +13,6 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
   const [feedback, setFeedback] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
 
-  const allPassed = data.models.every((m) => m.passed);
-
   const handleApprove = () => {
     const decisions: Record<string, { approved: boolean }> = {};
     for (const m of data.models) {
