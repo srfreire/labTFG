@@ -36,22 +36,16 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        <h2
-          className="text-[11px] uppercase tracking-[2px] mb-4"
-          style={{ color: 'rgba(255,255,255,0.5)' }}
-        >
+        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Formalize
         </h2>
 
         {data.paradigms.map((p) => (
           <div
             key={p.slug}
-            style={{
-              background: '#090909',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
+            className="bg-surface border border-border"
           >
             {/* Paradigm header (accordion) */}
             <div
@@ -63,20 +57,14 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
               <span className="text-[12px] text-white font-medium">
                 {p.title || p.slug}
               </span>
-              <span
-                className="text-[10px]"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
-              >
+              <span className="text-[10px] text-text-faint">
                 {expandedParadigm === p.slug ? '[-]' : '[+]'}
               </span>
             </div>
 
             {/* Formulation cards */}
             {expandedParadigm === p.slug && (
-              <div
-                className="px-3 pb-3 space-y-2"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              <div className="px-3 pb-3 space-y-2 border-t border-border-faint">
                 {p.formulations.map((f) => (
                   <div
                     key={f.id}
@@ -109,10 +97,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <span
-                        className="text-[10px] uppercase tracking-[1px]"
-                        style={{ color: 'rgba(255,255,255,0.3)' }}
-                      >
+                      <span className="text-[10px] uppercase tracking-[1px] text-text-faint">
                         Formulation {f.id}
                       </span>
                       <div className="mt-1">
@@ -128,25 +113,11 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
       </div>
 
       {/* Footer */}
-      <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-          style={{
-            border: '1px solid rgba(255,255,255,0.3)',
-            background: 'transparent',
-            padding: '8px 24px',
-            opacity: hasAnySelection ? 1 : 0.3,
-            cursor: hasAnySelection ? 'pointer' : 'not-allowed',
-          }}
+          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ cursor: hasAnySelection ? 'pointer' : 'not-allowed' }}
           disabled={!hasAnySelection}
-          onMouseEnter={(e) => {
-            if (hasAnySelection)
-              (e.currentTarget as HTMLButtonElement).style.background =
-                'rgba(255,255,255,0.05)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-          }}
           onClick={handleSubmit}
         >
           Continuar

@@ -34,23 +34,16 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <h2
-          className="text-[11px] uppercase tracking-[2px] mb-4"
-          style={{ color: 'rgba(255,255,255,0.5)' }}
-        >
+        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Build
         </h2>
 
         {data.models.map((model) => (
           <div
             key={model.slug}
-            style={{
-              background: '#090909',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-            className="space-y-2"
+            className="bg-surface border border-border space-y-2"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3 pb-0">
@@ -67,10 +60,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
 
             {/* Code */}
             <div className="px-3">
-              <span
-                className="text-[9px] uppercase tracking-[1px]"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
-              >
+              <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
                 Code
               </span>
               <CodeBlock code={model.code} language="python" />
@@ -78,10 +68,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
 
             {/* Test results */}
             <div className="px-3 pb-3">
-              <span
-                className="text-[9px] uppercase tracking-[1px]"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
-              >
+              <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
                 Test results
               </span>
               <div
@@ -102,22 +89,10 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
       </div>
 
       {/* Footer */}
-      <div className="p-4 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div className="p-4 space-y-3 border-t border-border">
         <div className="flex gap-2">
           <button
-            className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-            style={{
-              border: '1px solid rgba(255,255,255,0.3)',
-              background: 'transparent',
-              padding: '8px 24px',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                'rgba(255,255,255,0.05)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            }}
+            className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover"
             onClick={handleApprove}
           >
             Aprobar
@@ -125,19 +100,8 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
 
           {!showFeedback && (
             <button
-              className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-              style={{
-                border: '1px solid rgba(255,100,100,0.4)',
-                background: 'transparent',
-                padding: '8px 24px',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  'rgba(255,100,100,0.05)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              }}
+              className="text-[11px] uppercase tracking-[1px] font-medium text-white px-6 py-2 hover:bg-[rgba(255,100,100,0.05)]"
+              style={{ border: '1px solid rgba(255,100,100,0.4)' }}
               onClick={() => setShowFeedback(true)}
             >
               Rechazar
@@ -148,38 +112,15 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
         {showFeedback && (
           <div className="space-y-2">
             <textarea
-              className="w-full text-[11px] text-white"
-              style={{
-                background: '#090909',
-                border: '1px solid rgba(255,255,255,0.15)',
-                fontFamily: "'IBM Plex Mono', monospace",
-                padding: '12px',
-                resize: 'vertical',
-                minHeight: '80px',
-                outline: 'none',
-              }}
+              className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono"
               placeholder="Feedback..."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
             />
             <button
-              className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-              style={{
-                border: '1px solid rgba(255,255,255,0.3)',
-                background: 'transparent',
-                padding: '8px 24px',
-                opacity: feedback.trim() ? 1 : 0.3,
-                cursor: feedback.trim() ? 'pointer' : 'not-allowed',
-              }}
+              className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ cursor: feedback.trim() ? 'pointer' : 'not-allowed' }}
               disabled={!feedback.trim()}
-              onMouseEnter={(e) => {
-                if (feedback.trim())
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    'rgba(255,255,255,0.05)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-              }}
               onClick={handleReject}
             >
               Enviar feedback
