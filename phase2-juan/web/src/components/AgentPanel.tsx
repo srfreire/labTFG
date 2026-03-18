@@ -34,7 +34,7 @@ export function AgentPanel({ agents, simAgents }: Props) {
             </div>
             <div className="flex flex-col gap-2.5">
               {simAgents.map((sa, i) => (
-                <div key={sa.id} className="flex items-center gap-2.5 animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
+                <div key={sa.id} className="flex items-center gap-2.5 animate-slide-up" style={{ animationDelay: `${200 + i * 200}ms` }}>
                   <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
                     style={{ boxShadow: `0 0 8px ${sa.color}30` }}>
                     <Facehash
