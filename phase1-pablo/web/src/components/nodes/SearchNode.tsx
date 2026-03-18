@@ -20,17 +20,8 @@ export default function SearchNode({ data }: NodeProps<SearchNodeType>) {
 
   return (
     <div
-      className={status === 'running' ? 'animate-running-ring' : ''}
-      style={{
-        width: 32,
-        height: 32,
-        borderRadius: '50%',
-        border: `1px solid ${borderColor}`,
-        background: '#090909',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      className={`w-[32px] h-[32px] rounded-full bg-surface flex items-center justify-center${status === 'running' ? ' animate-running-ring' : ''}`}
+      style={{ border: `1px solid ${borderColor}` }}
     >
       <NodeHandles />
       <Search size={14} color="rgba(255,255,255,0.7)" />

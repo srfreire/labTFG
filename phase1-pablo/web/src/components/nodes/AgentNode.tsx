@@ -20,13 +20,8 @@ export default function AgentNode({ data }: NodeProps<AgentNodeType>) {
 
   return (
     <div
-      className={status === 'running' ? 'animate-running-ring' : ''}
-      style={{
-        position: 'relative',
-        border: `2px solid ${borderColor}`,
-        lineHeight: 0,
-        overflow: 'hidden',
-      }}
+      className={`relative leading-none overflow-hidden${status === 'running' ? ' animate-running-ring' : ''}`}
+      style={{ border: `2px solid ${borderColor}` }}
     >
       <NodeHandles />
       <Facehash
@@ -38,7 +33,7 @@ export default function AgentNode({ data }: NodeProps<AgentNodeType>) {
         interactive={false}
         showInitial={false}
         enableBlink
-        style={{ display: 'block' }}
+        className="block"
       />
     </div>
   );
