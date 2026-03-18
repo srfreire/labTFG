@@ -177,18 +177,26 @@ export function SimulationGrid({ replay }: Props) {
         </button>
       </div>
 
-      {/* Agent legend */}
-      {frame.agents.length > 1 && (
-        <div className="mt-2 flex gap-3 justify-center flex-wrap">
-          {frame.agents.map((a, i) => (
-            <span key={a.id} className="text-[8px] flex items-center gap-1 text-text-muted">
-              <span style={{
-                width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-                background: AGENT_COLORS[i % AGENT_COLORS.length],
-              }} />
-              {a.id}
-            </span>
-          ))}
+      {/* Agent legend — bottom left */}
+      {frame.agents.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          <div className="text-[8px] uppercase tracking-[1px] text-text-dim">Agentes</div>
+          {frame.agents.map((a, i) => {
+            const color = AGENT_COLORS[i % AGENT_COLORS.length]
+            return (
+              <div key={a.id} className="flex items-center gap-2">
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%', display: 'inline-block',
+                  background: color,
+                  boxShadow: `0 0 6px ${color}40`,
+                  flexShrink: 0,
+                }} />
+                <span className="text-[11px] font-medium" style={{ color }}>{a.id}</span>
+                <span className="text-[9px] font-mono text-text-faint">{color}</span>
+                {!a.alive && <span className="text-[8px] text-text-faint">✕ muerto</span>}
+              </div>
+            )
+          })}
         </div>
       )}
 
