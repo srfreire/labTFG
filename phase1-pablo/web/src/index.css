@@ -2,12 +2,38 @@
 
 @theme {
   --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+
+  /* Semantic color tokens */
+  --color-bg: #000;
+  --color-surface: #090909;
+  --color-surface-hover: rgba(255,255,255,0.05);
+  --color-surface-frosted: rgba(9,9,9,0.96);
+  --color-overlay: rgba(0,0,0,0.85);
+  --color-overlay-heavy: rgba(0,0,0,0.92);
+  --color-border: rgba(255,255,255,0.1);
+  --color-border-subtle: rgba(255,255,255,0.08);
+  --color-border-faint: rgba(255,255,255,0.06);
+  --color-text: #fff;
+  --color-text-muted: rgba(255,255,255,0.6);
+  --color-text-dim: rgba(255,255,255,0.4);
+  --color-text-faint: rgba(255,255,255,0.3);
+  --color-text-ghost: rgba(255,255,255,0.15);
+  --color-accent-green: #22c55e;
+  --color-accent-green-light: #4ade80;
+  --color-accent-amber: #fbbf24;
+  --color-accent-amber-dark: #f59e0b;
+  --color-accent-red: #ef4444;
+  --color-accent-blue: #4a9eff;
+  --color-scrollbar: #333;
+
+  /* Animations */
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-running-ring: running-ring 1.5s ease-in-out infinite;
   --animate-output-glow: output-glow 2s ease-in-out infinite;
   --animate-scale-in: scale-in 0.2s ease-out;
   --animate-slide-in-right: slide-in-right 0.3s ease-out;
   --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-pulse-dot: pulse-dot 1.5s ease-in-out infinite;
 }
 
 body {
@@ -17,6 +43,11 @@ body {
   background: #000;
   color: #fff;
   overflow: hidden;
+}
+
+input, button, textarea, select {
+  border-radius: 0;
+  font-family: inherit;
 }
 
 #root {
@@ -127,6 +158,11 @@ body {
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ── Markdown content ────────────────────────────────────── */
