@@ -27,15 +27,6 @@ const nodeTypes: NodeTypes = {
   output: OutputNode,
 };
 
-const NODE_SIZES: Record<string, { width: number; height: number }> = {
-  agent: { width: 80, height: 80 },
-  sub_agent: { width: 56, height: 56 },
-  tool: { width: 36, height: 36 },
-  file: { width: 46, height: 46 },
-  search: { width: 32, height: 32 },
-  output: { width: 48, height: 56 },
-};
-
 const KIND_LABELS: Record<string, string> = {
   agent: 'AGENT',
   sub_agent: 'SUB-AGENT',
