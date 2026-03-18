@@ -31,71 +31,23 @@ export default function Sidebar({
   const items = STAGE_CONFIG;
 
   return (
-    <aside
-      style={{
-        position: "fixed",
-        left: 0,
-        top: 0,
-        width: 200,
-        height: "100vh",
-        background: "#090909",
-        borderRight: "1px solid rgba(255,255,255,0.1)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <aside className="fixed left-0 top-0 w-[200px] h-screen bg-surface border-r border-border flex flex-col">
       {/* Header */}
-      <div
-        style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: 2,
-            color: "#fff",
-          }}
-        >
+      <div className="px-5 py-4 border-b border-border-subtle shrink-0">
+        <div className="text-[14px] font-bold uppercase tracking-[2px] text-text">
           DecisionLab
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 4,
-          }}
-        >
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-            Pipeline
-          </span>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className="text-[11px] text-text-muted">Pipeline</span>
           <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: connected ? "#4ade80" : "#ef4444",
-              display: "inline-block",
-              flexShrink: 0,
-            }}
+            className="w-2 h-2 rounded-full inline-block shrink-0"
+            style={{ background: connected ? "#4ade80" : "#ef4444" }}
           />
         </div>
       </div>
 
       {/* Timeline */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          padding: "0 0",
-        }}
-      >
+      <div className="flex-1 flex flex-col">
         {items.map(({ stage, label, indented }, i) => {
           const status = stages[stage];
           const isActive = stage === currentStage;
@@ -113,59 +65,35 @@ export default function Sidebar({
           return (
             <div
               key={stage}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "stretch",
-              }}
+              className="flex-1 flex flex-col items-stretch"
             >
               {/* Line segment ABOVE dot — fills space from previous dot */}
               <div
+                className="flex-1 ml-[64px]"
                 style={{
-                  flex: 1,
-                  marginLeft: LINE_LEFT,
-                  borderLeft: isFirst
-                    ? "none"
-                    : `1px dashed ${lineColor}`,
+                  borderLeft: isFirst ? "none" : `1px dashed ${lineColor}`,
                 }}
               />
 
               {/* Dot + Label row */}
               <div
-                onClick={
-                  clickable ? () => onStageClick(stage) : undefined
-                }
+                onClick={clickable ? () => onStageClick(stage) : undefined}
+                className={[
+                  "flex items-center gap-3.5 pr-5 shrink-0 transition-colors duration-150",
+                  clickable ? "cursor-pointer hover:bg-surface-hover" : "cursor-default",
+                ].join(" ")}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
                   paddingLeft: LINE_LEFT - dotSize / 2 + 0.5,
-                  paddingRight: 20,
-                  flexShrink: 0,
-                  cursor: clickable ? "pointer" : "default",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  if (clickable)
-                    (e.currentTarget as HTMLElement).style.background =
-                      "rgba(255,255,255,0.03)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background =
-                    "transparent";
                 }}
               >
                 <div
+                  className={`rounded-full shrink-0${status === "running" ? " animate-pulse-dot" : ""}`}
                   style={{
                     width: dotSize,
                     height: dotSize,
-                    borderRadius: "50%",
                     background: STATUS_COLORS[status],
-                    flexShrink: 0,
                     ...(status === "running"
                       ? {
-                          animation: "pulse 1.5s ease-in-out infinite",
                           boxShadow: `0 0 8px ${STATUS_COLORS[status]}`,
                         }
                       : {}),
@@ -192,12 +120,9 @@ export default function Sidebar({
 
               {/* Line segment BELOW dot — fills space to next dot */}
               <div
+                className="flex-1 ml-[64px]"
                 style={{
-                  flex: 1,
-                  marginLeft: LINE_LEFT,
-                  borderLeft: isLast
-                    ? "none"
-                    : `1px dashed ${lineColor}`,
+                  borderLeft: isLast ? "none" : `1px dashed ${lineColor}`,
                 }}
               />
             </div>
@@ -207,40 +132,15 @@ export default function Sidebar({
 
       {/* Cancel button */}
       {isRunning && onCancel && (
-        <div
-          style={{
-            padding: "16px 24px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            flexShrink: 0,
-          }}
-        >
+        <div className="px-6 py-4 border-t border-border-subtle shrink-0">
           <button
             onClick={onCancel}
-            style={{
-              width: "100%",
-              padding: "8px 0",
-              background: "transparent",
-              border: "1px solid rgba(239,68,68,0.3)",
-              color: "#ef4444",
-              fontSize: 10,
-              fontFamily: "inherit",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              cursor: "pointer",
-              borderRadius: 0,
-            }}
+            className="w-full py-2 bg-transparent border border-accent-red/30 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer"
           >
             Cancel
           </button>
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
     </aside>
   );
 }
