@@ -1,17 +1,36 @@
-import { useState, useCallback, useRef, type KeyboardEvent } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+  type KeyboardEvent,
+} from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
 import Sidebar from "./components/Sidebar";
 import Graph from "./components/Graph";
-import {
-  ReviewResearch,
-  ReviewFormalize,
-  EnvSpecUpload,
-  ReviewReason,
-  ReviewBuild,
-} from "./components/reviews";
+import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
 import { Stage, type GraphNode } from "./types";
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function getFileExt(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? name.slice(i + 1).toLowerCase() : "";
+}
+
+const BTN: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: "inherit",
+  textTransform: "uppercase",
+  letterSpacing: 1,
+  cursor: "pointer",
+  borderRadius: 0,
+};
 
 /* ------------------------------------------------------------------ */
 /*  Node detail panel                                                  */
@@ -164,60 +183,260 @@ function NodeDetail({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Review drawer                                                      */
+/*  Output Review Modal                                                */
 /* ------------------------------------------------------------------ */
 
-function ReviewDrawer({
-  stage,
-  data,
-  onSubmit,
+function OutputReviewModal({
+  outputs,
+  index,
+  approvals,
+  onIndexChange,
+  onApprove,
+  onDisapprove,
+  onClose,
 }: {
-  stage: Stage;
-  data: any;
-  onSubmit: (stage: Stage, data: any) => void;
+  outputs: GraphNode[];
+  index: number;
+  approvals: Record<string, boolean>;
+  onIndexChange: (i: number) => void;
+  onApprove: (id: string) => void;
+  onDisapprove: (id: string) => void;
+  onClose: () => void;
 }) {
-  const handleSubmit = useCallback(
-    (responseData: any) => {
-      onSubmit(stage, responseData);
-    },
-    [stage, onSubmit],
-  );
+  if (outputs.length === 0) return null;
 
-  let reviewComponent: React.ReactNode = null;
+  const node = outputs[index];
+  const content = String(node.meta?.content || "No content available.");
+  const path = String(node.meta?.path || node.label || "");
+  const ext = getFileExt(path);
+  const approval: boolean | undefined =
+    node.id in approvals ? approvals[node.id] : undefined;
 
-  switch (stage) {
-    case Stage.REVIEW_RESEARCH:
-      reviewComponent = <ReviewResearch data={data} onSubmit={handleSubmit} />;
-      break;
-    case Stage.REVIEW_FORMALIZE:
-      reviewComponent = <ReviewFormalize data={data} onSubmit={handleSubmit} />;
-      break;
-    case Stage.GET_ENV_SPEC:
-      reviewComponent = <EnvSpecUpload onSubmit={handleSubmit} />;
-      break;
-    case Stage.REVIEW_REASON:
-      reviewComponent = <ReviewReason data={data} onSubmit={handleSubmit} />;
-      break;
-    case Stage.REVIEW_BUILD:
-      reviewComponent = <ReviewBuild data={data} onSubmit={handleSubmit} />;
-      break;
-    default:
-      return null;
-  }
+  const hasPrev = index > 0;
+  const hasNext = index < outputs.length - 1;
 
   return (
     <div
-      className="animate-slide-in-right"
       style={{
-        width: "50%",
-        height: "100%",
-        background: "#090909",
-        borderLeft: "1px solid rgba(255,255,255,0.1)",
-        flexShrink: 0,
-        overflow: "hidden",
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.85)",
+        backdropFilter: "blur(6px)",
       }}
+      onClick={onClose}
     >
-      {reviewComponent}
+      <div
+        className="animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#0a0a0a",
+          border: `1px solid ${
+            approval === true
+              ? "rgba(34,197,94,0.3)"
+              : approval === false
+                ? "rgba(239,68,68,0.3)"
+                : "rgba(255,255,255,0.1)"
+          }`,
+          width: "min(820px, 92vw)",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          transition: "border-color 0.2s",
+        }}
+      >
+        {/* ── Header ── */}
+        <div
+          style={{
+            padding: "14px 20px",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 10 }}
+            >
+              <span
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "1.5px",
+                  color: "rgba(255,255,255,0.3)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Output
+              </span>
+              {approval === true && (
+                <span
+                  style={{
+                    fontSize: 8,
+                    padding: "2px 6px",
+                    background: "rgba(34,197,94,0.12)",
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    color: "#22c55e",
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Approved
+                </span>
+              )}
+              {approval === false && (
+                <span
+                  style={{
+                    fontSize: 8,
+                    padding: "2px 6px",
+                    background: "rgba(239,68,68,0.12)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    color: "#ef4444",
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Rejected
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 13, color: "#fff", marginTop: 4 }}>
+              {node.label}
+            </div>
+          </div>
+
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 16 }}
+          >
+            <span
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}
+            >
+              {index + 1} / {outputs.length}
+            </span>
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 18,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* ── Content ── */}
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            padding: "20px 24px",
+          }}
+        >
+          {ext === "md" ? (
+            <MarkdownRenderer content={content} />
+          ) : (
+            <CodeBlock code={content} language={ext || undefined} />
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div
+          style={{
+            padding: "12px 20px",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Navigation */}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              disabled={!hasPrev}
+              onClick={() => onIndexChange(index - 1)}
+              style={{
+                ...BTN,
+                padding: "8px 14px",
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: hasPrev
+                  ? "rgba(255,255,255,0.6)"
+                  : "rgba(255,255,255,0.15)",
+                cursor: hasPrev ? "pointer" : "default",
+              }}
+            >
+              ← Prev
+            </button>
+            <button
+              disabled={!hasNext}
+              onClick={() => onIndexChange(index + 1)}
+              style={{
+                ...BTN,
+                padding: "8px 14px",
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: hasNext
+                  ? "rgba(255,255,255,0.6)"
+                  : "rgba(255,255,255,0.15)",
+                cursor: hasNext ? "pointer" : "default",
+              }}
+            >
+              Next →
+            </button>
+          </div>
+
+          {/* Approve / Disapprove */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => onDisapprove(node.id)}
+              style={{
+                ...BTN,
+                padding: "8px 20px",
+                background:
+                  approval === false
+                    ? "rgba(239,68,68,0.15)"
+                    : "transparent",
+                border: `1px solid ${
+                  approval === false
+                    ? "rgba(239,68,68,0.5)"
+                    : "rgba(239,68,68,0.2)"
+                }`,
+                color: "#ef4444",
+              }}
+            >
+              Disapprove
+            </button>
+            <button
+              onClick={() => onApprove(node.id)}
+              style={{
+                ...BTN,
+                padding: "8px 20px",
+                background:
+                  approval === true
+                    ? "rgba(34,197,94,0.15)"
+                    : "transparent",
+                border: `1px solid ${
+                  approval === true
+                    ? "rgba(34,197,94,0.5)"
+                    : "rgba(34,197,94,0.2)"
+                }`,
+                color: "#22c55e",
+              }}
+            >
+              Approve
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -238,6 +457,7 @@ export default function App() {
     error,
     startPipeline,
     sendReviewResponse,
+    sendRouterPrompt,
     cancelPipeline,
     clearError,
   } = useWebSocket();
@@ -246,10 +466,56 @@ export default function App() {
   const [problemInput, setProblemInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleNodeClick = useCallback((node: GraphNode) => {
-    setSelectedNode((prev) => (prev?.id === node.id ? null : node));
-  }, []);
+  /* ── Output review state ── */
+  const [showOutputModal, setShowOutputModal] = useState(false);
+  const [outputIndex, setOutputIndex] = useState(0);
+  const [outputApprovals, setOutputApprovals] = useState<
+    Record<string, boolean>
+  >({});
+  const [routerPrompt, setRouterPrompt] = useState("");
 
+  const reviewActive = reviewRequest !== null;
+
+  /* Collect done output nodes */
+  const stageOutputs = useMemo(
+    () => nodes.filter((n) => n.kind === "output" && n.status === "done"),
+    [nodes],
+  );
+
+  /* Reset review state when review clears */
+  useEffect(() => {
+    if (!reviewActive) {
+      setShowOutputModal(false);
+      setOutputIndex(0);
+      setOutputApprovals({});
+      setRouterPrompt("");
+    }
+  }, [reviewActive]);
+
+  /* Clamp index */
+  useEffect(() => {
+    if (outputIndex >= stageOutputs.length && stageOutputs.length > 0) {
+      setOutputIndex(stageOutputs.length - 1);
+    }
+  }, [outputIndex, stageOutputs.length]);
+
+  /* ── Node click ── */
+  const handleNodeClick = useCallback(
+    (node: GraphNode) => {
+      if (reviewActive && node.kind === "output" && node.status === "done") {
+        const idx = stageOutputs.findIndex((n) => n.id === node.id);
+        if (idx >= 0) {
+          setOutputIndex(idx);
+          setShowOutputModal(true);
+        }
+        return;
+      }
+      setSelectedNode((prev) => (prev?.id === node.id ? null : node));
+    },
+    [reviewActive, stageOutputs],
+  );
+
+  /* ── Pipeline start ── */
   const handleRun = useCallback(() => {
     const trimmed = problemInput.trim();
     if (!trimmed) return;
@@ -264,9 +530,64 @@ export default function App() {
     [handleRun],
   );
 
+  /* ── Output approval ── */
+  const handleApproveOutput = useCallback(
+    (nodeId: string) => {
+      setOutputApprovals((prev) => ({ ...prev, [nodeId]: true }));
+      // Auto-advance to next
+      setOutputIndex((i) => (i < stageOutputs.length - 1 ? i + 1 : i));
+    },
+    [stageOutputs.length],
+  );
+
+  const handleDisapproveOutput = useCallback((nodeId: string) => {
+    setOutputApprovals((prev) => ({ ...prev, [nodeId]: false }));
+  }, []);
+
+  /* ── Continue / submit review ── */
+  const handleContinue = useCallback(() => {
+    if (!reviewRequest) return;
+
+    const items =
+      reviewRequest.data.paradigms ||
+      reviewRequest.data.specs ||
+      reviewRequest.data.models ||
+      [];
+
+    const anyRejected = stageOutputs.some(
+      (n) => outputApprovals[n.id] === false,
+    );
+
+    sendReviewResponse(reviewRequest.stage, {
+      approved: Object.fromEntries(
+        items.map((p: any) => [
+          p.slug || p.id || p.spec_id,
+          !anyRejected,
+        ]),
+      ),
+    });
+
+    setShowOutputModal(false);
+    setSelectedNode(null);
+  }, [reviewRequest, stageOutputs, outputApprovals, sendReviewResponse]);
+
+  /* ── Router prompt ── */
+  const handleSendRouterPrompt = useCallback(() => {
+    const trimmed = routerPrompt.trim();
+    if (!trimmed) return;
+    sendRouterPrompt(trimmed);
+    setRouterPrompt("");
+  }, [routerPrompt, sendRouterPrompt]);
+
   const hasGraph = nodes.length > 0;
-  const reviewActive = reviewRequest !== null;
   const showIdle = !hasGraph && !isRunning;
+
+  /* Review progress */
+  const reviewedCount = stageOutputs.filter(
+    (n) => n.id in outputApprovals,
+  ).length;
+
+  const isEnvSpec = reviewRequest?.stage === Stage.GET_ENV_SPEC;
 
   return (
     <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
@@ -387,134 +708,183 @@ export default function App() {
                 />
               </div>
 
-              {/* Review modal — shown when user clicks a stage output */}
-              {reviewActive && selectedNode?.kind === 'output' && (
+              {/* ── Stage completion bar ── */}
+              {reviewActive && (
                 <div
+                  className="animate-slide-up"
                   style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 100,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "rgba(0,0,0,0.8)",
-                    backdropFilter: "blur(4px)",
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 50,
+                    background: "rgba(9,9,9,0.96)",
+                    borderTop: "1px solid rgba(34,197,94,0.15)",
+                    backdropFilter: "blur(10px)",
+                    padding: "16px 24px",
                   }}
-                  onClick={() => setSelectedNode(null)}
                 >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      background: "#0a0a0a",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      width: "min(700px, 90vw)",
-                      maxHeight: "80vh",
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Header */}
-                    <div style={{
-                      padding: "14px 20px",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}>
-                      <div>
-                        <span style={{ fontSize: 9, letterSpacing: "1.5px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>
-                          Output File
-                        </span>
-                        <div style={{ fontSize: 13, color: "#fff", marginTop: 2 }}>
-                          {selectedNode.label}
+                  {isEnvSpec ? (
+                    /* ENV SPEC — upload mode */
+                    <div>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          textTransform: "uppercase",
+                          letterSpacing: "1.5px",
+                          color: "#fbbf24",
+                        }}
+                      >
+                        Environment Specification Required
+                      </span>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "rgba(255,255,255,0.6)",
+                          marginTop: 4,
+                          marginBottom: 12,
+                        }}
+                      >
+                        Upload or paste the environment specification JSON.
+                      </div>
+                      <EnvSpecUpload
+                        onSubmit={(data) =>
+                          sendReviewResponse(Stage.GET_ENV_SPEC, data)
+                        }
+                      />
+                    </div>
+                  ) : (
+                    /* Normal output review mode */
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              textTransform: "uppercase",
+                              letterSpacing: "1.5px",
+                              color: "#22c55e",
+                            }}
+                          >
+                            Stage Complete
+                          </span>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "rgba(255,255,255,0.6)",
+                              marginTop: 4,
+                            }}
+                          >
+                            Review generated outputs before continuing.
+                            {stageOutputs.length > 0 && (
+                              <span
+                                style={{
+                                  marginLeft: 10,
+                                  color: "rgba(255,255,255,0.3)",
+                                }}
+                              >
+                                {reviewedCount}/{stageOutputs.length} reviewed
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          {stageOutputs.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setOutputIndex(0);
+                                setShowOutputModal(true);
+                              }}
+                              style={{
+                                ...BTN,
+                                padding: "8px 20px",
+                                background: "rgba(34,197,94,0.08)",
+                                border: "1px solid rgba(34,197,94,0.25)",
+                                color: "#22c55e",
+                              }}
+                            >
+                              View Outputs ({stageOutputs.length})
+                            </button>
+                          )}
+                          <button
+                            onClick={handleContinue}
+                            style={{
+                              ...BTN,
+                              padding: "8px 24px",
+                              background: "rgba(255,255,255,0.05)",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                              color: "#fff",
+                            }}
+                          >
+                            Continue →
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "rgba(255,255,255,0.4)",
-                          fontSize: 18,
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
 
-                    {/* Content */}
-                    <div style={{
-                      flex: 1,
-                      overflow: "auto",
-                      padding: "16px 20px",
-                    }}>
-                      <pre style={{
-                        fontSize: 11,
-                        lineHeight: 1.6,
-                        color: "rgba(255,255,255,0.8)",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        margin: 0,
-                        fontFamily: "'IBM Plex Mono', monospace",
-                      }}>
-                        {selectedNode.meta?.content as string || "No content available."}
-                      </pre>
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{
-                      padding: "12px 20px",
-                      borderTop: "1px solid rgba(255,255,255,0.08)",
-                      display: "flex",
-                      gap: 10,
-                      justifyContent: "flex-end",
-                    }}>
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        style={{
-                          padding: "8px 20px",
-                          background: "none",
-                          border: "1px solid rgba(255,255,255,0.15)",
-                          color: "rgba(255,255,255,0.6)",
-                          fontSize: 10,
-                          fontFamily: "inherit",
-                          textTransform: "uppercase",
-                          letterSpacing: 1,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Close
-                      </button>
-                      <button
-                        onClick={() => {
-                          sendReviewResponse(reviewRequest!.stage, {
-                            approved: Object.fromEntries(
-                              (reviewRequest!.data.paradigms || reviewRequest!.data.specs || reviewRequest!.data.models || [])
-                                .map((p: any) => [p.slug || p.id || p.spec_id, true])
-                            ),
-                          });
-                          setSelectedNode(null);
-                        }}
-                        style={{
-                          padding: "8px 20px",
-                          background: "rgba(34,197,94,0.15)",
-                          border: "1px solid rgba(34,197,94,0.4)",
-                          color: "#22c55e",
-                          fontSize: 10,
-                          fontFamily: "inherit",
-                          textTransform: "uppercase",
-                          letterSpacing: 1,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Approve All
-                      </button>
-                    </div>
-                  </div>
+                      {/* Router prompt */}
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          type="text"
+                          value={routerPrompt}
+                          onChange={(e) => setRouterPrompt(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSendRouterPrompt();
+                          }}
+                          placeholder="Send instructions to the router..."
+                          style={{
+                            flex: 1,
+                            background: "transparent",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            color: "#fff",
+                            fontSize: 11,
+                            fontFamily: "inherit",
+                            padding: "8px 12px",
+                            outline: "none",
+                            borderRadius: 0,
+                          }}
+                        />
+                        <button
+                          onClick={handleSendRouterPrompt}
+                          disabled={!routerPrompt.trim()}
+                          style={{
+                            ...BTN,
+                            padding: "8px 16px",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "transparent",
+                            color: routerPrompt.trim()
+                              ? "#fff"
+                              : "rgba(255,255,255,0.25)",
+                            cursor: routerPrompt.trim()
+                              ? "pointer"
+                              : "default",
+                          }}
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
+              )}
+
+              {/* ── Output review modal ── */}
+              {showOutputModal && stageOutputs.length > 0 && (
+                <OutputReviewModal
+                  outputs={stageOutputs}
+                  index={outputIndex}
+                  approvals={outputApprovals}
+                  onIndexChange={setOutputIndex}
+                  onApprove={handleApproveOutput}
+                  onDisapprove={handleDisapproveOutput}
+                  onClose={() => setShowOutputModal(false)}
+                />
               )}
 
               {/* Cancel button — floating top-right on graph */}
@@ -524,7 +894,7 @@ export default function App() {
                   style={{
                     position: "absolute",
                     top: 12,
-                    right: reviewActive ? "calc(50% + 12px)" : 12,
+                    right: 12,
                     padding: "6px 16px",
                     background: "rgba(0,0,0,0.7)",
                     border: "1px solid rgba(239,68,68,0.4)",
@@ -545,8 +915,8 @@ export default function App() {
           )}
         </div>
 
-        {/* Node detail panel */}
-        {selectedNode && (
+        {/* Node detail panel — hidden during output review */}
+        {selectedNode && !showOutputModal && (
           <NodeDetail
             node={selectedNode}
             onClose={() => setSelectedNode(null)}

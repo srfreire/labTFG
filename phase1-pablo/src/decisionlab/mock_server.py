@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 import re
 from pathlib import Path
 
@@ -26,6 +27,117 @@ logger = logging.getLogger(__name__)
 SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "examples" / "sample-run"
 
 app = FastAPI(title="DecisionLab Mock")
+
+# ---------------------------------------------------------------------------
+# Realistic search data
+# ---------------------------------------------------------------------------
+
+BROAD_SEARCHES = [
+    {
+        "query": "food intake decision-making paradigms psychology neuroscience",
+        "results": [
+            "Homeostatic and hedonic signals interact in the regulation of food intake — Lutter & Nestler (2009), J. Nutrition",
+            "Decision-making models for food intake: integrating homeostatic, reward, and cognitive factors — Rangel (2013), Curr. Opin. Neurobiology",
+            "The psychology of food choice: from behavioral economics to computational neuroscience — Berkman et al. (2017), Appetite",
+        ],
+    },
+    {
+        "query": "computational models eating behavior reward homeostasis",
+        "results": [
+            "A reinforcement learning theory for homeostatic regulation — Keramati & Gutkin (2011), NeurIPS",
+            "Incentive salience and the transition to compulsive eating — Berridge (2009), Physiology & Behavior",
+            "Allostatic model of food reward and energy regulation — Schulkin (2003), Cambridge University Press",
+        ],
+    },
+    {
+        "query": "food choice theories cognitive control gut-brain axis review",
+        "results": [
+            "Executive control of eating: the role of prefrontal cortex — Hare et al. (2009), Science",
+            "Gut-brain axis: gut feelings, bacterial signaling, and appetite — Mayer et al. (2015), J. Neuroscience",
+            "Associative learning and conditioned food preferences — Petrovich (2013), Annals NY Acad. Sci.",
+        ],
+    },
+]
+
+DEEP_SEARCH_DATA: dict[str, list[dict]] = {
+    "homeostatic-regulation": [
+        {"query": "homeostatic regulation food intake set point theory Claude Bernard Cannon",
+         "results": ["Cannon WB (1932) The Wisdom of the Body — homeostasis defined", "Keramati & Gutkin (2011) Homeostatic RL — NeurIPS"]},
+        {"query": "PI controller biological homeostasis glucose insulin model",
+         "results": ["npj Digital Medicine (2020) Homeostasis as PI control", "Drengstig et al. (2012) Homeostatic controller motifs"]},
+        {"query": "drive reduction theory feeding behavior mathematical formulation",
+         "results": ["Yin H (2025) Linking homeostasis to RL — ScienceDirect", "Gross et al. (2024) Functional approach to homeostasis — Biology Direct"]},
+    ],
+    "hedonic-reward-based-regulation-of-food-intake": [
+        {"query": "hedonic reward food intake dopamine pathway model",
+         "results": ["Berridge KC (2007) The debate over dopamine's role in reward", "Small DM (2009) Individual differences in neurophysiology of reward"]},
+        {"query": "pleasure-based eating palatability mathematical model dual process",
+         "results": ["Finlayson et al. (2007) Dual-process model of food reward", "Cabanac M (1971) Physiological role of pleasure — Science"]},
+    ],
+    "incentive-salience-theory": [
+        {"query": "incentive salience theory Berridge wanting vs liking dopamine",
+         "results": ["Berridge KC (2012) From prediction error to incentive salience", "Robinson & Berridge (1993) Neural basis of drug craving"]},
+        {"query": "incentive salience computational model TD learning",
+         "results": ["Zhang et al. (2009) Neural model of incentive sensitization", "McClure et al. (2003) Temporal prediction errors in RL"]},
+    ],
+    "associative-learning-and-conditioned-appetite": [
+        {"query": "associative learning conditioned appetite Pavlovian food cue",
+         "results": ["Petrovich GD (2013) Forebrain networks and conditioned feeding", "Holland PC (2004) Relations between Pavlovian and instrumental learning"]},
+        {"query": "Rescorla-Wagner model food conditioning mathematical formulation",
+         "results": ["Rescorla RA & Wagner AR (1972) Classical conditioning theory", "Dayan & Berridge (2009) Expected and unexpected good feelings"]},
+    ],
+    "cognitive-executive-control-of-eating-behavior": [
+        {"query": "executive control eating behavior prefrontal cortex inhibition",
+         "results": ["Hare et al. (2009) Self-control in decision-making — Science", "Rangel et al. (2008) Framework for studying value-based choices"]},
+        {"query": "drift diffusion model food choice inhibitory control",
+         "results": ["Krajbich et al. (2010) DDM of simple food choice", "Sullivan et al. (2015) Dietary self-control and the vmPFC"]},
+    ],
+    "gut-brain-axis-signaling-in-food-intake-regulation": [
+        {"query": "gut-brain axis signaling food intake GLP-1 ghrelin hormones",
+         "results": ["Mayer EA (2011) Gut feelings — Nature Rev. Neuroscience", "Holst JJ (2007) GLP-1 physiology — Physiological Reviews"]},
+        {"query": "microbiome gut-brain communication eating behavior computational",
+         "results": ["Cryan & Dinan (2012) Mind-altering microorganisms — Nature Rev. Neuroscience", "Fetissov & Déchelotte (2011) Autoantibodies and appetite"]},
+    ],
+    "allostatic-opponent-process-model-of-food-intake": [
+        {"query": "allostatic opponent process model food intake Schulkin Koob",
+         "results": ["Schulkin J (2003) Allostasis — Cambridge Press", "Koob & Le Moal (2001) Drug addiction, dysregulation of reward"]},
+        {"query": "opponent process theory eating reward adaptation Solomon",
+         "results": ["Solomon RL (1980) The opponent-process theory of motivation", "Sterling P (2012) Allostasis: a model of predictive regulation"]},
+    ],
+}
+
+FORMALIZE_SEARCH_DATA: dict[str, list[dict]] = {
+    "homeostatic-regulation": [
+        {"query": "homeostatic control theory ODE PI controller formulation biology",
+         "results": ["Drengstig et al. (2012) Basic set of homeostatic controller motifs", "npj Digital Medicine (2020) PI model of glucose homeostasis"]},
+        {"query": "reinforcement learning homeostatic drive reduction MDP Keramati",
+         "results": ["Keramati & Gutkin (2011) RL theory for homeostatic regulation — NeurIPS", "Yin (2025) Homeostasis–RL integration"]},
+    ],
+    "hedonic-reward-based-regulation-of-food-intake": [
+        {"query": "hedonic dual process model food reward mathematical formalization",
+         "results": ["Finlayson et al. (2007) Measuring food reward", "Berridge & Robinson (2016) Liking, wanting, and incentive salience"]},
+    ],
+    "incentive-salience-theory": [
+        {"query": "incentive salience wanting computational model TD learning reward",
+         "results": ["Berridge (2012) From prediction error to incentive salience", "Zhang et al. (2009) Neural model incentive sensitization"]},
+    ],
+    "associative-learning-and-conditioned-appetite": [
+        {"query": "Rescorla-Wagner model mathematical formulation conditioning appetitive",
+         "results": ["Rescorla & Wagner (1972) Classical conditioning variations", "Sutton & Barto (2018) RL: An Introduction — eligibility traces"]},
+    ],
+    "cognitive-executive-control-of-eating-behavior": [
+        {"query": "drift diffusion model food choice mathematical formulation inhibitory",
+         "results": ["Krajbich et al. (2010) Visual fixations and food value DDM", "Ratcliff & McKoon (2008) Diffusion decision model"]},
+    ],
+    "gut-brain-axis-signaling-in-food-intake-regulation": [
+        {"query": "gut-brain axis ODE model neuroendocrine signaling food intake",
+         "results": ["Mayer (2011) Gut feelings — interoceptive signals model", "Holst (2007) GLP-1 receptor dynamics"]},
+    ],
+    "allostatic-opponent-process-model-of-food-intake": [
+        {"query": "allostatic load opponent process mathematical model Koob Sterling",
+         "results": ["Koob & Le Moal (2001) Drug addiction reward dysregulation", "Sterling (2012) Allostasis predictive regulation model"]},
+    ],
+}
 
 # ---------------------------------------------------------------------------
 # Review coordination (same pattern as web_feedback.py)
@@ -82,7 +194,6 @@ def _reasoner_files_for_paradigm(slug: str) -> list[Path]:
     reasoner_dir = SAMPLE_DIR / "reasoner"
     if not reasoner_dir.is_dir():
         return []
-    # Normalize: the file names use underscores where the slug uses hyphens
     norm = slug.replace("-", "_").replace(" ", "_").lower()
     return sorted(
         p for p in reasoner_dir.glob("*.json")
@@ -103,11 +214,18 @@ def _builder_files_for_paradigm(slug: str) -> list[tuple[Path, Path | None]]:
     )
     results: list[tuple[Path, Path | None]] = []
     for mf in model_files:
-        # Derive test file name: foo_model.py -> test_foo.py
         test_stem = "test_" + mf.stem.replace("_model", "")
         test_file = builder_dir / f"{test_stem}.py"
         results.append((mf, test_file if test_file.exists() else None))
     return results
+
+
+def _read_file_full(path: Path) -> str:
+    """Read full file content (no truncation)."""
+    try:
+        return path.read_text()
+    except OSError:
+        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +241,7 @@ class MockConnectionManager:
         self.edges: list[dict] = []
         self.current_stage: str | None = None
         self.pending_review: dict | None = None
+        self._emit_lock = asyncio.Lock()
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -134,31 +253,33 @@ class MockConnectionManager:
         self.ws = ws
 
     async def emit(self, msg: dict) -> None:
-        msg_type = msg.get("type")
-        if msg_type == "node_add":
-            self.nodes.append(msg["node"])
-        elif msg_type == "edge_add":
-            self.edges.append(msg["edge"])
-        elif msg_type == "node_update":
-            for n in self.nodes:
-                if n["id"] == msg["id"]:
-                    n["status"] = msg["status"]
-                    break
-        elif msg_type == "stage_change":
-            self.current_stage = msg.get("stage")
-        elif msg_type == "review_request":
-            self.pending_review = msg
-        elif msg_type == "graph_clear":
-            self.nodes.clear()
-            self.edges.clear()
-        elif msg_type == "pipeline_done":
-            self.pending_review = None
+        """Thread-safe emit — serializes concurrent sends from parallel tasks."""
+        async with self._emit_lock:
+            msg_type = msg.get("type")
+            if msg_type == "node_add":
+                self.nodes.append(msg["node"])
+            elif msg_type == "edge_add":
+                self.edges.append(msg["edge"])
+            elif msg_type == "node_update":
+                for n in self.nodes:
+                    if n["id"] == msg["id"]:
+                        n["status"] = msg["status"]
+                        break
+            elif msg_type == "stage_change":
+                self.current_stage = msg.get("stage")
+            elif msg_type == "review_request":
+                self.pending_review = msg
+            elif msg_type == "graph_clear":
+                self.nodes.clear()
+                self.edges.clear()
+            elif msg_type == "pipeline_done":
+                self.pending_review = None
 
-        if self.ws is not None:
-            try:
-                await self.ws.send_json(msg)
-            except Exception:
-                pass
+            if self.ws is not None:
+                try:
+                    await self.ws.send_json(msg)
+                except Exception:
+                    pass
 
     def reset(self) -> None:
         self.nodes.clear()
@@ -171,16 +292,180 @@ manager = MockConnectionManager()
 
 
 # ---------------------------------------------------------------------------
+# Parallel sub-task helpers
+# ---------------------------------------------------------------------------
+
+
+async def _research_deep(emit, slug: str, jitter: float) -> None:
+    """Simulate one Deep Researcher sub-agent (runs concurrently with others)."""
+    await asyncio.sleep(jitter)
+
+    deep_id = f"deep_{slug}"
+    await emit({"type": "node_add", "node": {
+        "id": deep_id, "kind": "sub_agent", "label": "Deep Researcher",
+        "status": "running", "meta": {"paradigm": slug},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": "researcher", "target": deep_id, "edge_kind": "spawn",
+    }})
+
+    # 2-3 web searches per paradigm (in parallel within this sub-agent)
+    searches = DEEP_SEARCH_DATA.get(slug, [
+        {"query": f"{slug.replace('-', ' ')} decision-making theory",
+         "results": ["General reference found"]},
+    ])
+
+    search_ids = []
+    for i, search in enumerate(searches):
+        search_id = f"search_deep_{slug}_{i}"
+        search_ids.append(search_id)
+        await asyncio.sleep(random.uniform(0.3, 0.6))
+        await emit({"type": "node_add", "node": {
+            "id": search_id, "kind": "search",
+            "label": search["query"][:42] + "...",
+            "status": "running",
+            "meta": {"query": search["query"], "results": search["results"]},
+        }})
+        await emit({"type": "edge_add", "edge": {
+            "source": deep_id, "target": search_id, "edge_kind": "spawn",
+        }})
+
+    # Complete searches after a realistic delay
+    await asyncio.sleep(random.uniform(1.0, 2.0))
+    for sid in search_ids:
+        await emit({"type": "node_update", "id": sid, "status": "done"})
+
+    # write_file tool → output
+    write_id = f"write_deep_{slug}"
+    await asyncio.sleep(random.uniform(0.5, 1.0))
+    await emit({"type": "node_add", "node": {
+        "id": write_id, "kind": "tool", "label": f"{slug}.md",
+        "status": "running",
+        "meta": {"toolType": "write_file", "args": {"path": f"deep/{slug}.md"}},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": deep_id, "target": write_id, "edge_kind": "spawn",
+    }})
+
+    deep_path = SAMPLE_DIR / "deep" / f"{slug}.md"
+    content = _read_file_full(deep_path)
+    file_id = f"file_deep_{slug}"
+
+    await asyncio.sleep(random.uniform(0.5, 0.8))
+    await emit({"type": "node_update", "id": write_id, "status": "done"})
+    await emit({"type": "node_update", "id": deep_id, "status": "done"})
+    await emit({"type": "node_add", "node": {
+        "id": file_id, "kind": "output", "label": f"{slug}.md",
+        "status": "done",
+        "meta": {"path": f"deep/{slug}.md", "content": content, "stage": "research"},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": write_id, "target": file_id, "edge_kind": "write",
+    }})
+
+
+async def _formalize_paradigm(emit, slug: str, jitter: float) -> None:
+    """Simulate one Formalizer agent (full agent, not sub-agent).
+
+    Spawned from the research output artifact it reads, so the graph grows
+    outward uniformly from each paradigm's branch.
+    """
+    await asyncio.sleep(jitter)
+
+    agent_id = f"formalize_{slug}"
+    await emit({"type": "node_add", "node": {
+        "id": agent_id, "kind": "agent", "label": "Formalizer",
+        "status": "running", "meta": {"paradigm": slug},
+    }})
+    # Spawn FROM the research artifact → graph grows outward from that branch
+    await emit({"type": "edge_add", "edge": {
+        "source": f"file_deep_{slug}", "target": agent_id, "edge_kind": "spawn",
+    }})
+
+    # read_file tool (reads the research file)
+    read_id = f"read_research_{slug}"
+    await asyncio.sleep(random.uniform(0.3, 0.6))
+    await emit({"type": "node_add", "node": {
+        "id": read_id, "kind": "tool", "label": f"{slug}.md",
+        "status": "running",
+        "meta": {"toolType": "read_file", "args": {"path": f"deep/{slug}.md"}},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": agent_id, "target": read_id, "edge_kind": "spawn",
+    }})
+    await asyncio.sleep(random.uniform(0.3, 0.5))
+    await emit({"type": "node_update", "id": read_id, "status": "done"})
+    await emit({"type": "edge_add", "edge": {
+        "source": read_id, "target": f"file_deep_{slug}", "edge_kind": "read",
+    }})
+
+    # web searches for mathematical formulations (launched in parallel)
+    searches = FORMALIZE_SEARCH_DATA.get(slug, [
+        {"query": f"{slug.replace('-', ' ')} mathematical formulation",
+         "results": ["Reference found"]},
+    ])
+
+    search_ids = []
+    for i, search in enumerate(searches):
+        search_id = f"search_form_{slug}_{i}"
+        search_ids.append(search_id)
+        await asyncio.sleep(random.uniform(0.2, 0.5))
+        await emit({"type": "node_add", "node": {
+            "id": search_id, "kind": "search",
+            "label": search["query"][:42] + "...",
+            "status": "running",
+            "meta": {"query": search["query"], "results": search["results"]},
+        }})
+        await emit({"type": "edge_add", "edge": {
+            "source": agent_id, "target": search_id, "edge_kind": "spawn",
+        }})
+
+    await asyncio.sleep(random.uniform(0.8, 1.5))
+    for sid in search_ids:
+        await emit({"type": "node_update", "id": sid, "status": "done"})
+
+    # write formulation output
+    write_id = f"write_form_{slug}"
+    await asyncio.sleep(random.uniform(0.5, 1.0))
+    await emit({"type": "node_add", "node": {
+        "id": write_id, "kind": "tool", "label": f"{slug}.md",
+        "status": "running",
+        "meta": {"toolType": "write_file", "args": {"path": f"formulations/{slug}.md"}},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": agent_id, "target": write_id, "edge_kind": "spawn",
+    }})
+
+    form_path = SAMPLE_DIR / "formulations" / f"{slug}.md"
+    content = _read_file_full(form_path)
+    file_id = f"file_form_{slug}"
+
+    await asyncio.sleep(random.uniform(0.5, 0.8))
+    await emit({"type": "node_update", "id": write_id, "status": "done"})
+    await emit({"type": "node_update", "id": agent_id, "status": "done"})
+    await emit({"type": "node_add", "node": {
+        "id": file_id, "kind": "output", "label": f"{slug}.md",
+        "status": "done",
+        "meta": {"path": f"formulations/{slug}.md", "content": content, "stage": "formalize"},
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": write_id, "target": file_id, "edge_kind": "write",
+    }})
+
+
+# ---------------------------------------------------------------------------
 # Mock pipeline
 # ---------------------------------------------------------------------------
 
 
-async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — problem ignored
-    """Replay sample data as realistic pipeline events.
+async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
+    """Replay sample data as realistic pipeline events with parallel tool calls.
 
-    Each inter-stage data dependency is represented explicitly:
-      Agent ──spawn──▸ write_file tool ──write──▸ artifact
-      Agent ──spawn──▸ read_file  tool ──read───▸ artifact (existing)
+    Key differences from the real pipeline that this mock reproduces:
+      - Research: 3 broad web searches in parallel, then 7 Deep Researchers in parallel
+      - Formalize: 7 Formalizer sub-agents in parallel
+      - Reason: sequential (one spec at a time), reads formulation + env_spec
+      - Build: sequential with test-fix loop (write model, write test, run tests)
     """
 
     all_slugs = _paradigm_slugs_from_dir("deep")
@@ -188,68 +473,56 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         await emit({"type": "error", "message": "No sample data found in examples/sample-run/deep/"})
         return
 
-    # ── RESEARCH ──────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  RESEARCH
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "research", "status": "running"})
     await emit({"type": "node_add", "node": {
         "id": "researcher", "kind": "agent", "label": "Researcher",
         "status": "running", "meta": {},
     }})
 
-    for slug in all_slugs:
-        # web_search tool
-        search_id = f"search_{slug}"
-        await asyncio.sleep(1.5)
+    # Phase 1: 3 broad web searches (launched in quick succession)
+    broad_ids = []
+    for i, search_data in enumerate(BROAD_SEARCHES):
+        search_id = f"search_broad_{i}"
+        broad_ids.append(search_id)
+        await asyncio.sleep(0.3)
         await emit({"type": "node_add", "node": {
-            "id": search_id, "kind": "tool", "label": slug,
-            "status": "running", "meta": {"toolType": "web_search", "args": {"query": slug}},
+            "id": search_id, "kind": "search",
+            "label": search_data["query"][:45] + "...",
+            "status": "running",
+            "meta": {"query": search_data["query"], "results": search_data["results"]},
         }})
-        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": search_id, "edge_kind": "spawn"}})
+        await emit({"type": "edge_add", "edge": {
+            "source": "researcher", "target": search_id, "edge_kind": "spawn",
+        }})
 
-        # deep researcher sub_agent
-        deep_id = f"deep_{slug}"
-        await asyncio.sleep(1.5)
-        await emit({"type": "node_update", "id": search_id, "status": "done"})
-        await emit({"type": "node_add", "node": {
-            "id": deep_id, "kind": "sub_agent", "label": "Deep Researcher",
-            "status": "running", "meta": {"paradigm": slug},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": "researcher", "target": deep_id, "edge_kind": "spawn"}})
+    # Searches complete
+    await asyncio.sleep(1.5)
+    for sid in broad_ids:
+        await emit({"type": "node_update", "id": sid, "status": "done"})
 
-        # write_file tool (deep researcher writes the research file)
-        write_id = f"write_deep_{slug}"
-        await asyncio.sleep(2.0)
-        await emit({"type": "node_update", "id": deep_id, "status": "done"})
-        await emit({"type": "node_add", "node": {
-            "id": write_id, "kind": "tool", "label": f"{slug}.md",
-            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"deep/{slug}.md"}},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": deep_id, "target": write_id, "edge_kind": "spawn"}})
-
-        # artifact (research file)
-        deep_path = SAMPLE_DIR / "deep" / f"{slug}.md"
-        content_preview = ""
-        if deep_path.exists():
-            content_preview = deep_path.read_text()[:500]
-        file_id = f"file_deep_{slug}"
-        await asyncio.sleep(1.0)
-        await emit({"type": "node_update", "id": write_id, "status": "done"})
-        await emit({"type": "node_add", "node": {
-            "id": file_id, "kind": "output", "label": f"{slug}.md",
-            "status": "done",
-            "meta": {"path": f"deep/{slug}.md", "content": content_preview},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+    # Phase 2: Launch ALL Deep Researchers in parallel
+    await asyncio.sleep(0.5)
+    tasks = [
+        _research_deep(emit, slug, jitter=random.uniform(0.0, 1.5))
+        for slug in all_slugs
+    ]
+    await asyncio.gather(*tasks)
 
     await emit({"type": "node_update", "id": "researcher", "status": "done"})
     await emit({"type": "stage_change", "stage": "research", "status": "done"})
 
-    # ── REVIEW_RESEARCH ───────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  REVIEW_RESEARCH
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "review_research", "status": "running"})
 
     paradigms_data: list[dict] = []
     for slug in all_slugs:
         md_path = SAMPLE_DIR / "deep" / f"{slug}.md"
-        content = md_path.read_text() if md_path.exists() else ""
+        content = _read_file_full(md_path)
         title = slug.replace("-", " ").title()
         summary = (content[:200].rsplit(".", 1)[0] + ".") if content else ""
         paradigms_data.append({
@@ -262,64 +535,26 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
     })
     approved_slugs: list[str] = response.get("approved", all_slugs)
     if not approved_slugs:
-        approved_slugs = all_slugs  # fallback so pipeline continues
-
+        approved_slugs = all_slugs
     await emit({"type": "stage_change", "stage": "review_research", "status": "done"})
 
-    # ── FORMALIZE ─────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  FORMALIZE — one full Formalizer agent per paradigm, in parallel
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "formalize", "status": "running"})
 
-    for slug in approved_slugs:
-        # Formalizer agent
-        sub_id = f"formalize_{slug}"
-        await asyncio.sleep(1.5)
-        await emit({"type": "node_add", "node": {
-            "id": sub_id, "kind": "agent", "label": "Formalizer",
-            "status": "running", "meta": {"paradigm": slug},
-        }})
-        # Structural edge from previous artifact (for layout)
-        await emit({"type": "edge_add", "edge": {"source": f"file_deep_{slug}", "target": sub_id, "edge_kind": "spawn"}})
-
-        # read_file tool (reads the research file)
-        read_id = f"read_research_{slug}"
-        await asyncio.sleep(1.0)
-        await emit({"type": "node_add", "node": {
-            "id": read_id, "kind": "tool", "label": f"{slug}.md",
-            "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"deep/{slug}.md"}},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
-
-        await asyncio.sleep(0.8)
-        await emit({"type": "node_update", "id": read_id, "status": "done"})
-        await emit({"type": "edge_add", "edge": {"source": read_id, "target": f"file_deep_{slug}", "edge_kind": "read"}})
-
-        # write_file tool (writes the formalization)
-        write_id = f"write_form_{slug}"
-        await asyncio.sleep(1.5)
-        await emit({"type": "node_add", "node": {
-            "id": write_id, "kind": "tool", "label": f"{slug}.md",
-            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"formulations/{slug}.md"}},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
-
-        form_path = SAMPLE_DIR / "formulations" / f"{slug}.md"
-        content_preview = ""
-        if form_path.exists():
-            content_preview = form_path.read_text()[:500]
-        file_id = f"file_form_{slug}"
-        await asyncio.sleep(1.0)
-        await emit({"type": "node_update", "id": write_id, "status": "done"})
-        await emit({"type": "node_update", "id": sub_id, "status": "done"})
-        await emit({"type": "node_add", "node": {
-            "id": file_id, "kind": "output", "label": f"{slug}.md",
-            "status": "done",
-            "meta": {"path": f"formulations/{slug}.md", "content": content_preview},
-        }})
-        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+    # Each Formalizer is a full agent spawned from its research artifact
+    tasks = [
+        _formalize_paradigm(emit, slug, jitter=random.uniform(0.0, 1.5))
+        for slug in approved_slugs
+    ]
+    await asyncio.gather(*tasks)
 
     await emit({"type": "stage_change", "stage": "formalize", "status": "done"})
 
-    # ── REVIEW_FORMALIZE ──────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  REVIEW_FORMALIZE
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "review_formalize", "status": "running"})
 
     formalize_data: list[dict] = []
@@ -343,84 +578,110 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
     })
     await emit({"type": "stage_change", "stage": "review_formalize", "status": "done"})
 
-    # ── GET_ENV_SPEC ──────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  GET_ENV_SPEC
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "get_env_spec", "status": "running"})
 
     env_spec_path = SAMPLE_DIR / "env_spec.json"
-    env_spec_content = ""
-    if env_spec_path.exists():
-        env_spec_content = env_spec_path.read_text()
+    env_spec_content = _read_file_full(env_spec_path)
 
     response = await wait_for_review("get_env_spec", emit, {
         "message": "Please provide the environment specification (env_spec.json).",
         "default_content": env_spec_content,
     })
-
     await emit({"type": "stage_change", "stage": "get_env_spec", "status": "done"})
 
-    # ── REASON ────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  REASON — sequential, one spec at a time
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "reason", "status": "running"})
+
+    # Reasoner agent — single agent, connects from the first formalize output
+    await emit({"type": "node_add", "node": {
+        "id": "reasoner", "kind": "agent", "label": "Reasoner",
+        "status": "running", "meta": {},
+    }})
+    # Layout: spawn from first available formalize output for positioning
+    first_form_id = f"file_form_{approved_slugs[0]}" if approved_slugs else "researcher"
+    await emit({"type": "edge_add", "edge": {
+        "source": first_form_id, "target": "reasoner", "edge_kind": "spawn",
+    }})
 
     all_spec_files: list[Path] = []
     all_reason_file_ids: list[str] = []
+
     for slug in approved_slugs:
         spec_files = _reasoner_files_for_paradigm(slug)
         all_spec_files.extend(spec_files)
+
         for sf in spec_files:
             spec_id = sf.stem
 
-            # Reasoner agent
-            sub_id = f"reason_{spec_id}"
-            await asyncio.sleep(1.5)
+            # read_file: formulation
+            read_form_id = f"read_form_{spec_id}"
+            await asyncio.sleep(random.uniform(0.3, 0.6))
             await emit({"type": "node_add", "node": {
-                "id": sub_id, "kind": "agent", "label": "Reasoner",
-                "status": "running", "meta": {"paradigm": slug, "spec": spec_id},
+                "id": read_form_id, "kind": "tool", "label": f"{slug}.md",
+                "status": "running",
+                "meta": {"toolType": "read_file", "args": {"path": f"formulations/{slug}.md"}},
             }})
-            # Structural edge from formalize artifact (for layout)
-            await emit({"type": "edge_add", "edge": {"source": f"file_form_{slug}", "target": sub_id, "edge_kind": "spawn"}})
+            await emit({"type": "edge_add", "edge": {
+                "source": "reasoner", "target": read_form_id, "edge_kind": "spawn",
+            }})
+            await asyncio.sleep(random.uniform(0.2, 0.4))
+            await emit({"type": "node_update", "id": read_form_id, "status": "done"})
+            await emit({"type": "edge_add", "edge": {
+                "source": read_form_id, "target": f"file_form_{slug}", "edge_kind": "read",
+            }})
 
-            # read_file tool (reads the formalization)
-            read_id = f"read_form_{spec_id}"
-            await asyncio.sleep(1.0)
+            # read_file: env_spec
+            read_env_id = f"read_env_{spec_id}"
+            await asyncio.sleep(random.uniform(0.15, 0.3))
             await emit({"type": "node_add", "node": {
-                "id": read_id, "kind": "tool", "label": f"{slug}.md",
-                "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"formulations/{slug}.md"}},
+                "id": read_env_id, "kind": "tool", "label": "env_spec.json",
+                "status": "running",
+                "meta": {"toolType": "read_file", "args": {"path": "env_spec.json"}},
             }})
-            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
+            await emit({"type": "edge_add", "edge": {
+                "source": "reasoner", "target": read_env_id, "edge_kind": "spawn",
+            }})
+            await asyncio.sleep(random.uniform(0.15, 0.3))
+            await emit({"type": "node_update", "id": read_env_id, "status": "done"})
 
-            await asyncio.sleep(0.8)
-            await emit({"type": "node_update", "id": read_id, "status": "done"})
-            await emit({"type": "edge_add", "edge": {"source": read_id, "target": f"file_form_{slug}", "edge_kind": "read"}})
-
-            # write_file tool (writes the spec)
+            # write_file: spec JSON
             write_id = f"write_reason_{spec_id}"
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(random.uniform(0.4, 0.8))
             await emit({"type": "node_add", "node": {
                 "id": write_id, "kind": "tool", "label": f"{spec_id}.json",
-                "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"reasoner/{spec_id}.json"}},
+                "status": "running",
+                "meta": {"toolType": "write_file", "args": {"path": f"reasoner/{spec_id}.json"}},
             }})
-            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
+            await emit({"type": "edge_add", "edge": {
+                "source": "reasoner", "target": write_id, "edge_kind": "spawn",
+            }})
 
-            content_preview = ""
-            try:
-                content_preview = sf.read_text()[:500]
-            except OSError:
-                pass
+            content = _read_file_full(sf)
             file_id = f"file_reason_{spec_id}"
-            await asyncio.sleep(1.0)
+
+            await asyncio.sleep(random.uniform(0.3, 0.6))
             await emit({"type": "node_update", "id": write_id, "status": "done"})
-            await emit({"type": "node_update", "id": sub_id, "status": "done"})
             await emit({"type": "node_add", "node": {
                 "id": file_id, "kind": "output", "label": f"{spec_id}.json",
                 "status": "done",
-                "meta": {"path": f"reasoner/{spec_id}.json", "content": content_preview},
+                "meta": {"path": f"reasoner/{spec_id}.json", "content": content, "stage": "reason"},
             }})
-            await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+            await emit({"type": "edge_add", "edge": {
+                "source": write_id, "target": file_id, "edge_kind": "write",
+            }})
             all_reason_file_ids.append(file_id)
 
+    await emit({"type": "node_update", "id": "reasoner", "status": "done"})
     await emit({"type": "stage_change", "stage": "reason", "status": "done"})
 
-    # ── REVIEW_REASON ─────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  REVIEW_REASON
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "review_reason", "status": "running"})
 
     specs_data: list[dict] = []
@@ -443,7 +704,9 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
     response = await wait_for_review("review_reason", emit, {"specs": specs_data})
     await emit({"type": "stage_change", "stage": "review_reason", "status": "done"})
 
-    # ── BUILD ─────────────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  BUILD — sequential with test-fix loop
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "build", "status": "running"})
 
     builder_pairs: list[tuple[Path, Path | None]] = []
@@ -451,105 +714,137 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         builder_pairs.extend(_builder_files_for_paradigm(slug))
 
     all_build_file_ids: list[str] = []
+
     for model_file, test_file in builder_pairs:
         model_id = model_file.stem
+        builder_id = f"builder_{model_id}"
 
-        # Builder agent
-        sub_id = f"build_{model_id}"
-        await asyncio.sleep(1.5)
+        # Find the matching reasoner artifact to spawn FROM
+        matching_reason = [
+            fid for fid in all_reason_file_ids
+            if model_id.split("_model")[0] in fid
+        ]
+        source_id = (
+            matching_reason[0] if matching_reason
+            else (all_reason_file_ids[0] if all_reason_file_ids else "reasoner")
+        )
+
+        # Builder agent — full agent spawned from its reasoner artifact
+        await asyncio.sleep(random.uniform(0.4, 0.7))
         await emit({"type": "node_add", "node": {
-            "id": sub_id, "kind": "agent", "label": "Builder",
+            "id": builder_id, "kind": "agent", "label": "Builder",
             "status": "running", "meta": {"model": model_id},
         }})
-        # Structural edge from matching reasoner artifact (for layout)
-        matching_reason = [fid for fid in all_reason_file_ids if model_id.split("_model")[0] in fid]
-        source_id = matching_reason[0] if matching_reason else (all_reason_file_ids[0] if all_reason_file_ids else "output_reason")
-        await emit({"type": "edge_add", "edge": {"source": source_id, "target": sub_id, "edge_kind": "spawn"}})
-
-        # read_file tool (reads the reasoner spec)
-        read_id = f"read_reason_{model_id}"
-        await asyncio.sleep(1.0)
-        await emit({"type": "node_add", "node": {
-            "id": read_id, "kind": "tool", "label": f"{model_id.split('_model')[0]}.json",
-            "status": "running", "meta": {"toolType": "read_file", "args": {"path": f"reasoner/{model_id}.json"}},
+        await emit({"type": "edge_add", "edge": {
+            "source": source_id, "target": builder_id, "edge_kind": "spawn",
         }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": read_id, "edge_kind": "spawn"}})
 
-        await asyncio.sleep(0.8)
+        # read_file: reasoner spec
+        read_id = f"read_spec_{model_id}"
+        await asyncio.sleep(random.uniform(0.3, 0.5))
+        await emit({"type": "node_add", "node": {
+            "id": read_id, "kind": "tool",
+            "label": f"{model_id.split('_model')[0]}.json",
+            "status": "running",
+            "meta": {"toolType": "read_file", "args": {"path": f"reasoner/{model_id}.json"}},
+        }})
+        await emit({"type": "edge_add", "edge": {
+            "source": builder_id, "target": read_id, "edge_kind": "spawn",
+        }})
+        await asyncio.sleep(random.uniform(0.2, 0.4))
         await emit({"type": "node_update", "id": read_id, "status": "done"})
-        await emit({"type": "edge_add", "edge": {"source": read_id, "target": source_id, "edge_kind": "read"}})
-
-        # write_file tool (writes the model code)
-        write_id = f"write_build_{model_id}"
-        await asyncio.sleep(1.5)
-        await emit({"type": "node_add", "node": {
-            "id": write_id, "kind": "tool", "label": model_file.name,
-            "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"builder/{model_file.name}"}},
+        await emit({"type": "edge_add", "edge": {
+            "source": read_id, "target": source_id, "edge_kind": "read",
         }})
-        await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_id, "edge_kind": "spawn"}})
 
-        code_preview = ""
-        try:
-            code_preview = model_file.read_text()[:800]
-        except OSError:
-            pass
-        file_id = f"file_build_{model_id}"
-        await asyncio.sleep(1.0)
-        await emit({"type": "node_update", "id": write_id, "status": "done"})
+        # write_file: model code
+        write_model_id = f"write_model_{model_id}"
+        await asyncio.sleep(random.uniform(0.8, 1.5))
+        await emit({"type": "node_add", "node": {
+            "id": write_model_id, "kind": "tool", "label": model_file.name,
+            "status": "running",
+            "meta": {"toolType": "write_file", "args": {"path": f"builder/{model_file.name}"}},
+        }})
+        await emit({"type": "edge_add", "edge": {
+            "source": builder_id, "target": write_model_id, "edge_kind": "spawn",
+        }})
+
+        code = _read_file_full(model_file)
+        file_id = f"file_model_{model_id}"
+
+        await asyncio.sleep(random.uniform(0.5, 0.8))
+        await emit({"type": "node_update", "id": write_model_id, "status": "done"})
         await emit({"type": "node_add", "node": {
             "id": file_id, "kind": "output", "label": model_file.name,
             "status": "done",
-            "meta": {"path": f"builder/{model_file.name}", "content": code_preview},
+            "meta": {"path": f"builder/{model_file.name}", "content": code, "stage": "build"},
         }})
-        await emit({"type": "edge_add", "edge": {"source": write_id, "target": file_id, "edge_kind": "write"}})
+        await emit({"type": "edge_add", "edge": {
+            "source": write_model_id, "target": file_id, "edge_kind": "write",
+        }})
         all_build_file_ids.append(file_id)
 
+        # Test-fix loop
         if test_file:
-            # write_file tool for test file
+            # write_file: test file
             write_test_id = f"write_test_{model_id}"
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(random.uniform(0.4, 0.7))
             await emit({"type": "node_add", "node": {
                 "id": write_test_id, "kind": "tool", "label": test_file.name,
-                "status": "running", "meta": {"toolType": "write_file", "args": {"path": f"builder/{test_file.name}"}},
+                "status": "running",
+                "meta": {"toolType": "write_file", "args": {"path": f"builder/{test_file.name}"}},
             }})
-            await emit({"type": "edge_add", "edge": {"source": sub_id, "target": write_test_id, "edge_kind": "spawn"}})
+            await emit({"type": "edge_add", "edge": {
+                "source": builder_id, "target": write_test_id, "edge_kind": "spawn",
+            }})
 
-            test_preview = ""
-            try:
-                test_preview = test_file.read_text()[:500]
-            except OSError:
-                pass
-            test_id = f"file_test_{model_id}"
-            await asyncio.sleep(1.0)
+            test_code = _read_file_full(test_file)
+            test_artifact_id = f"file_test_{model_id}"
+
+            await asyncio.sleep(random.uniform(0.4, 0.6))
             await emit({"type": "node_update", "id": write_test_id, "status": "done"})
             await emit({"type": "node_add", "node": {
-                "id": test_id, "kind": "output", "label": test_file.name,
+                "id": test_artifact_id, "kind": "file", "label": test_file.name,
                 "status": "done",
-                "meta": {"path": f"builder/{test_file.name}", "content": test_preview},
+                "meta": {"path": f"builder/{test_file.name}", "content": test_code},
             }})
-            await emit({"type": "edge_add", "edge": {"source": write_test_id, "target": test_id, "edge_kind": "write"}})
-            all_build_file_ids.append(test_id)
+            await emit({"type": "edge_add", "edge": {
+                "source": write_test_id, "target": test_artifact_id, "edge_kind": "write",
+            }})
 
-        await emit({"type": "node_update", "id": sub_id, "status": "done"})
+            # run_tests tool
+            run_test_id = f"run_tests_{model_id}"
+            await asyncio.sleep(random.uniform(0.3, 0.5))
+            await emit({"type": "node_add", "node": {
+                "id": run_test_id, "kind": "tool",
+                "label": f"pytest {test_file.name}",
+                "status": "running",
+                "meta": {"toolType": "run_tests", "args": {"path": f"builder/{test_file.name}"}},
+            }})
+            await emit({"type": "edge_add", "edge": {
+                "source": builder_id, "target": run_test_id, "edge_kind": "spawn",
+            }})
+            await emit({"type": "edge_add", "edge": {
+                "source": run_test_id, "target": test_artifact_id, "edge_kind": "read",
+            }})
+
+            # Tests pass
+            await asyncio.sleep(random.uniform(1.0, 2.0))
+            await emit({"type": "node_update", "id": run_test_id, "status": "done"})
+
+        await emit({"type": "node_update", "id": builder_id, "status": "done"})
 
     await emit({"type": "stage_change", "stage": "build", "status": "done"})
 
-    # ── REVIEW_BUILD ──────────────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    #  REVIEW_BUILD
+    # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "review_build", "status": "running"})
 
     models_data: list[dict] = []
     for model_file, test_file in builder_pairs:
-        code = ""
-        try:
-            code = model_file.read_text()
-        except OSError:
-            pass
-        test_results = ""
-        if test_file:
-            try:
-                test_results = test_file.read_text()
-            except OSError:
-                pass
+        code = _read_file_full(model_file)
+        test_results = _read_file_full(test_file) if test_file else ""
         lower = (code + test_results).lower()
         has_issues = any(w in lower for w in ("error", "fail", "traceback", "exception"))
         models_data.append({
@@ -560,17 +855,8 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001 — pro
         })
 
     response = await wait_for_review("review_build", emit, {"models": models_data})
-
-    decisions = response.get("decisions", {})
-    all_approved = all(d.get("approved", False) for d in decisions.values()) if decisions else True
-
     await emit({"type": "stage_change", "stage": "review_build", "status": "done"})
-
-    if all_approved:
-        await emit({"type": "pipeline_done"})
-    else:
-        # In the mock we just finish — no real rerun cascade
-        await emit({"type": "pipeline_done"})
+    await emit({"type": "pipeline_done"})
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +896,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             elif msg_type == "review_response":
                 handle_review_response(data["stage"], data["data"])
+
+            elif msg_type == "router_prompt":
+                logger.info("Router prompt received: %s", data.get("message", ""))
 
             elif msg_type == "cancel":
                 if manager.pipeline_task and not manager.pipeline_task.done():
