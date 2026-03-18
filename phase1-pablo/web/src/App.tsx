@@ -492,13 +492,10 @@ export default function App() {
                   transitionTimingFunction: "cubic-bezier(0.23, 1, 0.32, 1)",
                 }}
               >
-                {/* Gradient fade from graph into solid bg */}
-                <div className="h-28 bg-gradient-to-t from-bg to-transparent" />
-
-                {/* Content on solid bg */}
-                <div className="bg-bg pointer-events-auto">
+                {/* Content */}
+                <div className="bg-bg border-t border-border pointer-events-auto">
                   {/* Title */}
-                  <div className="text-center pb-4">
+                  <div className="text-center p-4">
                     <h1
                       className="text-[22px] font-bold uppercase tracking-[6px] text-text transition-all duration-500 delay-200"
                       style={{
