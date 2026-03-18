@@ -440,6 +440,8 @@ export default function App() {
 
   const hasGraph = nodes.length > 0;
   const showIdle = !hasGraph && !isRunning;
+  const [demoComplete, setDemoComplete] = useState(false);
+  const handleDemoComplete = useCallback(() => setDemoComplete(true), []);
 
   /* Review progress */
   const reviewedCount = stageOutputs.filter(
@@ -456,6 +458,8 @@ export default function App() {
           connected={connected}
           stages={stages}
           currentStage={currentStage}
+          isRunning={isRunning}
+          onCancel={cancelPipeline}
         />
       )}
 
@@ -474,32 +478,87 @@ export default function App() {
         {/* Content area */}
         <div className="flex-1 flex overflow-hidden">
           {showIdle ? (
-            <div className="flex-1 flex flex-col">
-              {/* Upper — live demo */}
-              <div className="flex-1 overflow-hidden">
-                <DemoGraph />
+            <div className="flex-1 relative overflow-hidden">
+              {/* Demo graph — always fills 100% */}
+              <div className="absolute inset-0">
+                <DemoGraph onComplete={handleDemoComplete} />
               </div>
 
-              {/* Bottom — textarea + run */}
-              <div className="shrink-0 px-6 py-5">
-                <div className="max-w-3xl mx-auto flex gap-3 items-stretch">
-                  <textarea
-                    ref={inputRef}
-                    value={problemInput}
-                    onChange={(e) => setProblemInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="e.g. survival decision-making"
-                    autoFocus
-                    rows={3}
-                    className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none resize-none"
-                  />
-                  <button
-                    onClick={handleRun}
-                    disabled={!problemInput.trim()}
-                    className="shrink-0 w-16 flex items-center justify-center border transition-colors bg-transparent border-accent-green/30 text-accent-green cursor-pointer hover:border-accent-green/60 hover:bg-accent-green/5 disabled:border-text-ghost disabled:text-text-ghost disabled:cursor-default disabled:hover:bg-transparent"
+              {/* Landing overlay — fades in over graph after demo */}
+              <div
+                className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none transition-opacity duration-700"
+                style={{
+                  opacity: demoComplete ? 1 : 0,
+                  transitionTimingFunction: "cubic-bezier(0.23, 1, 0.32, 1)",
+                }}
+              >
+                {/* Gradient fade from graph into solid bg */}
+                <div className="h-28 bg-gradient-to-t from-bg to-transparent" />
+
+                {/* Content on solid bg */}
+                <div className="bg-bg pointer-events-auto">
+                  {/* Title */}
+                  <div className="text-center pb-4">
+                    <h1
+                      className="text-[22px] font-bold uppercase tracking-[6px] text-text transition-all duration-500 delay-200"
+                      style={{
+                        opacity: demoComplete ? 1 : 0,
+                        transform: demoComplete
+                          ? "translateY(0)"
+                          : "translateY(12px)",
+                        transitionTimingFunction:
+                          "cubic-bezier(0.23, 1, 0.32, 1)",
+                      }}
+                    >
+                      DecisionLab
+                    </h1>
+                    <p
+                      className="text-[11px] uppercase tracking-[2px] text-text-faint mt-2 transition-all duration-500 delay-300"
+                      style={{
+                        opacity: demoComplete ? 1 : 0,
+                        transform: demoComplete
+                          ? "translateY(0)"
+                          : "translateY(8px)",
+                        transitionTimingFunction:
+                          "cubic-bezier(0.23, 1, 0.32, 1)",
+                      }}
+                    >
+                      Describe a decision problem
+                    </p>
+                  </div>
+
+                  {/* Input */}
+                  <div
+                    className="px-6 pb-5 transition-all duration-500 delay-[400ms]"
+                    style={{
+                      opacity: demoComplete ? 1 : 0,
+                      transform: demoComplete
+                        ? "translateY(0)"
+                        : "translateY(10px)",
+                      transitionTimingFunction:
+                        "cubic-bezier(0.23, 1, 0.32, 1)",
+                    }}
                   >
-                    <Play size={20} fill="currentColor" />
-                  </button>
+                    <div className="max-w-3xl mx-auto flex gap-3 items-stretch">
+                      <textarea
+                        ref={inputRef}
+                        value={problemInput}
+                        onChange={(e) => setProblemInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="e.g. survival decision-making"
+                        autoFocus
+                        rows={3}
+                        className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none resize-none"
+                      />
+                      <button
+                        onClick={handleRun}
+                        disabled={!problemInput.trim()}
+                        className="shrink-0 w-16 flex items-center justify-center border transition-colors bg-transparent border-accent-green/30 text-accent-green cursor-pointer hover:border-accent-green/60 hover:bg-accent-green/5 disabled:border-text-ghost disabled:text-text-ghost disabled:cursor-default disabled:hover:bg-transparent"
+                      >
+                        <Play size={20} fill="currentColor" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -611,15 +670,6 @@ export default function App() {
                 />
               )}
 
-              {/* Cancel button — floating top-right on graph */}
-              {isRunning && (
-                <button
-                  onClick={cancelPipeline}
-                  className="absolute top-3 right-3 px-4 py-1.5 bg-[rgba(0,0,0,0.7)] border border-accent-red/40 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer z-40"
-                >
-                  Cancel
-                </button>
-              )}
             </>
           )}
         </div>

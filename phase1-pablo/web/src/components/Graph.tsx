@@ -251,8 +251,10 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
             maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
           }
           const halfSize = Math.min(vw, vh) / 2;
-          const zoom = Math.min(1, halfSize / (maxDist + 100));
-          rf.setCenter(40, 40, { zoom: Math.max(0.1, zoom), duration: 300 });
+          const zoom = Math.min(1, halfSize / (maxDist + 40));
+          // Demo: long duration so each retarget blends smoothly into the next
+          // Normal: snappy 300ms per step
+          rf.setCenter(40, 40, { zoom: Math.max(0.15, zoom), duration: demo ? 2500 : 300 });
         }, 60);
       }
     }
@@ -311,8 +313,8 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
                   maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
                 }
                 const halfSize = Math.min(vw, vh) / 2;
-                const zoom = Math.min(1, halfSize / (maxDist + 100));
-                rf.setCenter(40, 40, { zoom: Math.max(0.1, zoom), duration: 300 });
+                const zoom = Math.min(1, halfSize / (maxDist + 40));
+                rf.setCenter(40, 40, { zoom: Math.max(0.15, zoom), duration: 300 });
               }
             }
             return !v;
