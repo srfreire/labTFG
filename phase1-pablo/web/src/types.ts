@@ -34,7 +34,7 @@ export interface GraphNode {
   meta: Record<string, unknown>;
 }
 
-export type EdgeKind = "spawn" | "write" | "read";
+export type EdgeKind = "spawn" | "write" | "read" | "layout";
 
 export interface GraphEdge {
   source: string;

@@ -377,9 +377,9 @@ async def _formalize_paradigm(emit, slug: str, jitter: float) -> None:
         "id": agent_id, "kind": "agent", "label": "Formalizer",
         "status": "running", "meta": {"paradigm": slug},
     }})
-    # Spawn FROM the research artifact → graph grows outward from that branch
+    # Invisible layout edge — positions agent near the artifact, not rendered
     await emit({"type": "edge_add", "edge": {
-        "source": f"file_deep_{slug}", "target": agent_id, "edge_kind": "spawn",
+        "source": f"file_deep_{slug}", "target": agent_id, "edge_kind": "layout",
     }})
 
     # read_file tool (reads the research file)
@@ -597,16 +597,16 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
     # ══════════════════════════════════════════════════════════════════════
     await emit({"type": "stage_change", "stage": "reason", "status": "running"})
 
-    # Reasoner agent — single agent, connects from the first formalize output
+    # Reasoner agent — positioned near the first formalize output via layout edge
     await emit({"type": "node_add", "node": {
         "id": "reasoner", "kind": "agent", "label": "Reasoner",
         "status": "running", "meta": {},
     }})
-    # Layout: spawn from first available formalize output for positioning
-    first_form_id = f"file_form_{approved_slugs[0]}" if approved_slugs else "researcher"
-    await emit({"type": "edge_add", "edge": {
-        "source": first_form_id, "target": "reasoner", "edge_kind": "spawn",
-    }})
+    first_form_id = f"file_form_{approved_slugs[0]}" if approved_slugs else None
+    if first_form_id:
+        await emit({"type": "edge_add", "edge": {
+            "source": first_form_id, "target": "reasoner", "edge_kind": "layout",
+        }})
 
     all_spec_files: list[Path] = []
     all_reason_file_ids: list[str] = []
@@ -729,14 +729,14 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
             else (all_reason_file_ids[0] if all_reason_file_ids else "reasoner")
         )
 
-        # Builder agent — full agent spawned from its reasoner artifact
+        # Builder agent — positioned near its reasoner artifact via layout edge
         await asyncio.sleep(random.uniform(0.4, 0.7))
         await emit({"type": "node_add", "node": {
             "id": builder_id, "kind": "agent", "label": "Builder",
             "status": "running", "meta": {"model": model_id},
         }})
         await emit({"type": "edge_add", "edge": {
-            "source": source_id, "target": builder_id, "edge_kind": "spawn",
+            "source": source_id, "target": builder_id, "edge_kind": "layout",
         }})
 
         # read_file: reasoner spec

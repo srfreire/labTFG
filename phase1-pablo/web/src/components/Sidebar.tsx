@@ -4,6 +4,8 @@ interface SidebarProps {
   connected: boolean;
   stages: Record<Stage, StageStatus>;
   currentStage: Stage | null;
+  isRunning?: boolean;
+  onCancel?: () => void;
   onStageClick?: (stage: Stage) => void;
 }
 
@@ -22,6 +24,8 @@ export default function Sidebar({
   connected,
   stages,
   currentStage,
+  isRunning,
+  onCancel,
   onStageClick,
 }: SidebarProps) {
   const items = STAGE_CONFIG;
@@ -89,7 +93,7 @@ export default function Sidebar({
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          padding: "24px 0",
+          padding: "0 0",
         }}
       >
         {items.map(({ stage, label, indented }, i) => {
@@ -200,6 +204,36 @@ export default function Sidebar({
           );
         })}
       </div>
+
+      {/* Cancel button */}
+      {isRunning && onCancel && (
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            flexShrink: 0,
+          }}
+        >
+          <button
+            onClick={onCancel}
+            style={{
+              width: "100%",
+              padding: "8px 0",
+              background: "transparent",
+              border: "1px solid rgba(239,68,68,0.3)",
+              color: "#ef4444",
+              fontSize: 10,
+              fontFamily: "inherit",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              cursor: "pointer",
+              borderRadius: 0,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse {
