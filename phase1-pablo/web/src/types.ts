@@ -67,7 +67,8 @@ export type ClientMessage =
   | { type: "review_response"; stage: Stage.GET_ENV_SPEC; data: { env_spec: Record<string, unknown> } }
   | { type: "review_response"; stage: Stage.REVIEW_REASON; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
   | { type: "review_response"; stage: Stage.REVIEW_BUILD; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
-  | { type: "cancel" };
+  | { type: "cancel" }
+  | { type: "router_prompt"; message: string };
 
 // Review data types
 export interface ReviewResearchData {

@@ -159,6 +159,7 @@ interface WebSocketActions {
   send: (msg: ClientMessage) => void;
   startPipeline: (problem: string) => void;
   sendReviewResponse: (stage: Stage, data: any) => void;
+  sendRouterPrompt: (message: string) => void;
   cancelPipeline: () => void;
   clearError: () => void;
 }
@@ -279,6 +280,13 @@ export function useWebSocket(): WebSocketState & WebSocketActions {
     [send],
   );
 
+  const sendRouterPrompt = useCallback(
+    (message: string) => {
+      send({ type: "router_prompt", message });
+    },
+    [send],
+  );
+
   const cancelPipeline = useCallback(() => {
     send({ type: "cancel" });
     dispatch({ type: "CANCEL_PIPELINE" });
@@ -293,6 +301,7 @@ export function useWebSocket(): WebSocketState & WebSocketActions {
     send,
     startPipeline,
     sendReviewResponse,
+    sendRouterPrompt,
     cancelPipeline,
     clearError,
   };

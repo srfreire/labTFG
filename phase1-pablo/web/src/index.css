@@ -7,6 +7,7 @@
   --animate-output-glow: output-glow 2s ease-in-out infinite;
   --animate-scale-in: scale-in 0.2s ease-out;
   --animate-slide-in-right: slide-in-right 0.3s ease-out;
+  --animate-slide-up: slide-up 0.3s ease-out;
 }
 
 body {
@@ -50,8 +51,8 @@ body {
 }
 
 @keyframes node-enter-fade {
-  from { opacity: 0; filter: blur(6px); }
-  to   { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Scale pop on the inner content (won't conflict with ReactFlow transforms) */
@@ -87,13 +88,13 @@ body {
   }
 }
 
-/* Output node — bright green glow when stage complete */
+/* Output node — green drop-shadow pulse on SVG (follows hexagon shape) */
 @keyframes output-glow {
   0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4));
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
   }
   50% {
-    filter: drop-shadow(0 0 14px rgba(34, 197, 94, 0.8));
+    filter: drop-shadow(0 0 16px rgba(34, 197, 94, 0.9));
   }
 }
 
@@ -114,6 +115,17 @@ body {
   }
   100% {
     transform: translateX(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 

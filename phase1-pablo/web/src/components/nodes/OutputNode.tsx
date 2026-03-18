@@ -23,12 +23,22 @@ export default function OutputNode({ data }: NodeProps<OutputNodeType>) {
   const H = Math.round(S * 2 / Math.sqrt(3));
 
   return (
-    <div
-      className={status === 'done' ? 'animate-output-glow' : ''}
-      style={{ position: 'relative', width: S, height: H }}
-    >
+    <div style={{ position: 'relative', width: S, height: H }}>
       <NodeHandles />
-      <svg width={S} height={H} viewBox={`0 0 ${S} ${H}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+      <svg
+        width={S}
+        height={H}
+        viewBox={`0 0 ${S} ${H}`}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          overflow: 'visible',
+          ...(status === 'done' ? {
+            animation: 'output-glow 2s ease-in-out infinite',
+          } : {}),
+        }}
+      >
         <polygon
           points={`${S/2},1 ${S-1},${H*0.25} ${S-1},${H*0.75} ${S/2},${H-1} 1,${H*0.75} 1,${H*0.25}`}
           fill="#090909"
