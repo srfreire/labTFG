@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { AgentState, PipelineStep, ChatMessage } from '../types'
+import type { AgentState, PipelineStep, ChatMessage, SimAgent } from '../types'
+import { AGENT_COLORS } from '../constants'
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
@@ -13,6 +14,7 @@ export function useWebSocket() {
   const [pipeline, setPipeline] = useState<PipelineStep[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [thinking, setThinking] = useState(false)
+  const [simAgents, setSimAgents] = useState<SimAgent[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const idRef = useRef(0)
 
@@ -76,9 +78,9 @@ export function useWebSocket() {
             break
           }
 
-          case 'message':
+          case 'message': {
             setThinking(false)
-            setMessages(prev => [...prev, {
+            const msg = {
               id: String(++idRef.current),
               from: data.from || 'orchestrator',
               text: data.text,
@@ -86,8 +88,18 @@ export function useWebSocket() {
               tracker: data.tracker,
               analyst: data.analyst,
               replay: data.replay,
-            }])
+            }
+            setMessages(prev => [...prev, msg])
+            // Extract simulation agents from replay
+            if (data.replay?.frames?.[0]?.agents) {
+              const ids = data.replay.frames[0].agents.map((a: { id: string }) => a.id)
+              setSimAgents(ids.map((id: string, i: number) => ({
+                id,
+                color: AGENT_COLORS[i % AGENT_COLORS.length],
+              })))
+            }
             break
+          }
 
           case 'error':
             setThinking(false)
@@ -116,5 +128,5 @@ export function useWebSocket() {
     setThinking(true)
   }, [])
 
-  return { connected, agents, pipeline, messages, thinking, send }
+  return { connected, agents, pipeline, messages, thinking, simAgents, send }
 }

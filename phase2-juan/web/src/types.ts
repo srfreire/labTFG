@@ -65,6 +65,11 @@ export interface ReplayFrame {
   actions: { agent_id: string; action: string; reward: number }[]
 }
 
+export interface SimAgent {
+  id: string
+  color: string
+}
+
 export interface ReplayData {
   grid_width: number
   grid_height: number

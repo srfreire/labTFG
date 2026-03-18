@@ -1,19 +1,20 @@
 import { Facehash } from 'facehash'
-import type { AgentState } from '../types'
+import type { AgentState, SimAgent } from '../types'
 import { TOOL_LABELS } from '../constants'
 
 interface Props {
   agents: AgentState[]
+  simAgents: SimAgent[]
 }
 
 function getToolLabel(tool: string): string {
   return TOOL_LABELS[tool] || tool
 }
 
-export function AgentPanel({ agents }: Props) {
+export function AgentPanel({ agents, simAgents }: Props) {
   return (
-    <div className="flex flex-col h-full border-r border-border-subtle bg-surface/80 backdrop-blur-xl">
-      <div className="px-5 py-4">
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="px-5 py-3">
         <div className="text-[9px] uppercase tracking-[3px] font-semibold text-text-faint">
           Pipeline
         </div>
@@ -24,6 +25,39 @@ export function AgentPanel({ agents }: Props) {
             <PipelineNode key={agent.name} agent={agent} isLast={i === agents.length - 1} />
           ))}
         </div>
+
+        {/* Simulation agents */}
+        {simAgents.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border-subtle">
+            <div className="text-[9px] uppercase tracking-[3px] font-semibold text-text-faint mb-3">
+              Simulación
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {simAgents.map(sa => (
+                <div key={sa.id} className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
+                    style={{ boxShadow: `0 0 8px ${sa.color}30` }}>
+                    <Facehash
+                      name={sa.id}
+                      size={20}
+                      variant="solid"
+                      colors={[sa.color]}
+                      showInitial={false}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold truncate" style={{ color: sa.color }}>
+                      {sa.id}
+                    </div>
+                    <div className="text-[8px] font-mono text-text-ghost">
+                      {sa.color}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -34,37 +68,37 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
   const isDone = agent.status === 'done'
   const isIdle = agent.status === 'idle'
 
-  const lineColor = isDone ? agent.color + '60' : 'rgba(255,255,255,0.15)'
+  const lineColor = isDone ? agent.color + '60' : 'var(--color-text-ghost)'
 
   return (
-    <div className="relative flex gap-4" style={{ paddingBottom: isLast ? 0 : 48 }}>
+    <div className="relative flex gap-4 transition-all duration-300" style={{ paddingBottom: isLast ? 0 : 40 }}>
       {/* Vertical line */}
       {!isLast && (
         <div
-          className="absolute left-[17px] top-[32px] transition-colors duration-500"
+          className="absolute left-[14px] top-[28px] transition-colors duration-500"
           style={{
             width: 2,
-            height: 'calc(100% - 32px)',
+            height: 'calc(100% - 28px)',
             background: lineColor,
           }}
         />
       )}
 
       {/* Node dot + avatar */}
-      <div className="relative flex-shrink-0 w-[34px] flex items-start justify-center pt-1">
+      <div className="relative flex-shrink-0 w-[28px] flex items-start justify-center pt-0.5">
         <div className="relative">
           <div
             className="rounded-full overflow-hidden transition-all duration-300"
             style={{
-              width: isActive ? 34 : 28,
-              height: isActive ? 34 : 28,
+              width: isActive ? 28 : 24,
+              height: isActive ? 28 : 24,
               opacity: isIdle ? 0.4 : 1,
               boxShadow: isActive ? `0 0 12px ${agent.color}30` : 'none',
             }}
           >
             <Facehash
               name={agent.name}
-              size={isActive ? 34 : 28}
+              size={isActive ? 28 : 24}
               variant={agent.name === 'Orchestrator' ? 'gradient' : 'solid'}
               colors={agent.name === 'Orchestrator' ? ['#94a3b8', '#64748b'] : [agent.color]}
               showInitial={false}
@@ -84,7 +118,7 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
           {isDone && (
             <div
               className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full flex items-center justify-center"
-              style={{ background: 'var(--color-bg)', border: `1.5px solid ${agent.color}` }}
+              style={{ background: 'var(--color-surface)', border: `1.5px solid ${agent.color}` }}
             >
               <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
                 <path d="M1 3L2.5 4.5L5 1.5" stroke={agent.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
@@ -95,42 +129,47 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 pt-0.5">
-        <div className="flex items-center gap-2">
-          <span
-            className="text-[11px] font-semibold uppercase tracking-[1.5px] transition-colors duration-300"
-            style={{
-              color: isActive ? agent.color : isDone ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
-            }}
-          >
-            {agent.name}
-          </span>
+      <div className="flex-1 min-w-0 pt-0.5 overflow-hidden">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-[1.5px] transition-colors duration-300 block truncate"
+          style={{
+            color: isActive ? agent.color : isDone ? 'var(--color-text-muted)' : 'var(--color-text-faint)',
+          }}
+        >
+          {agent.name}
+        </span>
+        <div
+          className="overflow-hidden transition-all duration-300 ease-out"
+          style={{ maxHeight: isActive ? 50 : isDone ? 20 : 0, opacity: isActive || isDone ? 1 : 0 }}
+        >
           {isActive && (
-            <span
-              className="text-[8px] uppercase tracking-[1px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
-              style={{
-                color: agent.color,
-                background: agent.color + '15',
-                border: `1px solid ${agent.color}30`,
-              }}
+            <div className="flex items-center gap-1.5 mt-1">
+              <span
+                className="text-[7px] uppercase tracking-[1px] px-1.5 py-0.5 rounded-[var(--radius-sm)] flex-shrink-0"
+                style={{
+                  color: agent.color,
+                  background: agent.color + '15',
+                  border: `1px solid ${agent.color}30`,
+                }}
+              >
+                working
+              </span>
+            </div>
+          )}
+          {isActive && agent.activeTool && (
+            <div
+              className="text-[9px] mt-1 truncate font-mono"
+              style={{ color: agent.color + 'aa' }}
             >
-              working
-            </span>
+              {getToolLabel(agent.activeTool)}
+            </div>
+          )}
+          {isDone && (
+            <div className="text-[9px] mt-0.5 text-text-ghost">
+              Completado
+            </div>
           )}
         </div>
-        {isActive && agent.activeTool && (
-          <div
-            className="text-[10px] mt-1 truncate font-mono"
-            style={{ color: agent.color + 'aa' }}
-          >
-            {getToolLabel(agent.activeTool)}
-          </div>
-        )}
-        {isDone && (
-          <div className="text-[9px] mt-0.5 text-text-ghost">
-            Completado
-          </div>
-        )}
       </div>
     </div>
   )

@@ -3,7 +3,8 @@
  * Activate by adding ?mock to the URL: http://localhost:5173/?mock
  */
 import { useState, useCallback, useRef } from 'react'
-import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData } from '../types'
+import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData, SimAgent } from '../types'
+import { AGENT_COLORS } from '../constants'
 
 const INITIAL_AGENTS: AgentState[] = [
   { name: 'Orchestrator', status: 'idle', color: '#94a3b8' },
@@ -143,6 +144,7 @@ export function useMockWebSocket() {
   const [pipeline, setPipeline] = useState<PipelineStep[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [thinking, setThinking] = useState(false)
+  const [simAgents, setSimAgents] = useState<SimAgent[]>([])
   const idRef = useRef(0)
   const runningRef = useRef(false)
 
@@ -190,6 +192,9 @@ export function useMockWebSocket() {
     setAgent('Orchestrator', 'working', 'run_simulation')
     await delay(2000)
     const replay = mockReplay()
+    // Extract simulation agents with colors
+    const ids = replay.frames[0].agents.map(a => a.id)
+    setSimAgents(ids.map((id, i) => ({ id, color: AGENT_COLORS[i % AGENT_COLORS.length] })))
     addMsg({
       from: 'orchestrator',
       text: 'Simulación completada: **2 agentes** durante **30 pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.',
@@ -257,5 +262,5 @@ export function useMockWebSocket() {
     runningRef.current = false
   }, [addMsg, setAgent])
 
-  return { connected: true, agents, pipeline, messages, thinking, send }
+  return { connected: true, agents, pipeline, messages, thinking, simAgents, send }
 }

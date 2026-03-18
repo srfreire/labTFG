@@ -1,4 +1,4 @@
-import type { AgentState, ChatMessage } from './types'
+import type { AgentState, ChatMessage, SimAgent } from './types'
 import { AgentPanel } from './components/AgentPanel'
 import { ChatPanel } from './components/ChatPanel'
 import { useWebSocket } from './hooks/useWebSocket'
@@ -8,13 +8,13 @@ const isMock = new URLSearchParams(window.location.search).has('mock')
 
 // Wrap in separate components to avoid conditional hook calls
 function MockApp() {
-  const { connected, agents, messages, thinking, send } = useMockWebSocket()
-  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} send={send} />
+  const { connected, agents, messages, thinking, simAgents, send } = useMockWebSocket()
+  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} simAgents={simAgents} send={send} />
 }
 
 function RealApp() {
-  const { connected, agents, messages, thinking, send } = useWebSocket()
-  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} send={send} />
+  const { connected, agents, messages, thinking, simAgents, send } = useWebSocket()
+  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} simAgents={simAgents} send={send} />
 }
 
 export default function App() {
@@ -26,43 +26,44 @@ interface ShellProps {
   agents: AgentState[]
   messages: ChatMessage[]
   thinking: boolean
+  simAgents: SimAgent[]
   send: (text: string) => void
 }
 
-function AppShell({ connected, agents, messages, thinking, send }: ShellProps) {
+function AppShell({ connected, agents, messages, thinking, simAgents, send }: ShellProps) {
   return (
-    <div className="flex flex-col h-screen bg-bg">
-      {/* Header */}
-      <div className="flex justify-between items-center px-6 py-3 border-b border-border bg-surface/80 backdrop-blur-xl">
-        <div>
-          <h1 className="text-[14px] font-bold uppercase tracking-[2px]">DecisionLab</h1>
-          <p className="text-[11px] mt-0.5 text-text-dim">
-            Laboratorio Virtual de Simulación
-          </p>
+    <div className="h-screen bg-bg p-4 flex gap-4 overflow-hidden">
+      {/* Sidebar — floating panel */}
+      <div className="hidden md:flex w-[200px] flex-shrink-0 min-h-0 flex-col floating-panel">
+        {/* Sidebar header */}
+        <div className="flex justify-between items-center px-5 py-4 border-b border-border-subtle">
+          <div>
+            <h1 className="text-[13px] font-bold uppercase tracking-[2px]">DecisionLab</h1>
+            <p className="text-[10px] mt-0.5 text-text-dim">Laboratorio Virtual</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3 text-[9px] text-text-faint">
+        <AgentPanel agents={agents} simAgents={simAgents} />
+        {/* Connection status at bottom */}
+        <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 text-[9px] text-text-faint">
           {isMock && (
-            <span className="px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)]" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
+            <span className="px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
               mock
             </span>
           )}
           <span>
-            <span style={{ color: connected ? '#4ade80' : '#ef4444' }}>●</span>
+            <span style={{ color: connected ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }}>●</span>
             {' '}{connected ? 'conectado' : 'desconectado'}
           </span>
         </div>
       </div>
 
-      {/* Main */}
-      <div className="flex flex-1 overflow-hidden">
-        <div className="hidden md:block w-[240px] flex-shrink-0">
-          <AgentPanel agents={agents} />
-        </div>
+      {/* Main chat — floating panel */}
+      <div className="flex-1 min-h-0 flex flex-col floating-panel">
         <ChatPanel messages={messages} thinking={thinking} onSend={send} agents={agents} />
       </div>
 
-      {/* Mobile agent bar */}
-      <div className="md:hidden flex items-center gap-2 px-4 py-2 border-t border-border-subtle overflow-x-auto">
+      {/* Mobile agent bar — bottom floating */}
+      <div className="md:hidden fixed bottom-4 left-4 right-4 flex items-center gap-2 px-4 py-2.5 floating-panel overflow-x-auto z-30">
         {agents.map(a => (
           <div key={a.name} className="flex items-center gap-1 flex-shrink-0">
             <div className="w-1.5 h-1.5 rounded-full" style={{
