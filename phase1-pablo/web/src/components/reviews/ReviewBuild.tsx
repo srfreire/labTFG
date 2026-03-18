@@ -116,8 +116,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
               onChange={(e) => setFeedback(e.target.value)}
             />
             <button
-              className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{ cursor: feedback.trim() ? 'pointer' : 'not-allowed' }}
+              className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
               disabled={!feedback.trim()}
               onClick={handleReject}
             >

@@ -170,8 +170,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
                     }
                   />
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{ cursor: feedbackDrafts[spec.id]?.trim() ? 'pointer' : 'not-allowed' }}
+                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
                     disabled={!feedbackDrafts[spec.id]?.trim()}
                     onClick={() => reject(spec.id)}
                   >
@@ -187,8 +186,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ cursor: allDecided ? 'pointer' : 'not-allowed' }}
+          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!allDecided}
           onClick={handleSubmit}
         >
