@@ -42,12 +42,9 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <h2
-          className="text-[11px] uppercase tracking-[2px] mb-4"
-          style={{ color: 'rgba(255,255,255,0.5)' }}
-        >
+        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Reason
         </h2>
 
@@ -58,49 +55,39 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
           return (
             <div
               key={spec.id}
+              className="bg-surface p-3 space-y-2"
               style={{
-                background: '#090909',
                 border: `1px solid ${decided ? (wasApproved ? 'rgba(100,255,100,0.3)' : 'rgba(255,100,100,0.3)') : 'rgba(255,255,255,0.1)'}`,
               }}
-              className="p-3 space-y-2"
             >
               {/* Header */}
               <div className="flex items-center gap-2">
                 <span className="text-[12px] text-white font-medium">{spec.name}</span>
                 <span
-                  className="text-[9px] uppercase tracking-[1px] px-2 py-0.5"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: 'rgba(255,255,255,0.5)',
-                  }}
+                  className="text-[9px] uppercase tracking-[1px] px-2 py-0.5 border text-text-muted"
+                  style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                 >
                   {spec.paradigm}
                 </span>
               </div>
 
               {/* Description */}
-              <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <div className="text-[11px] text-text-muted">
                 <MarkdownRenderer content={spec.description} />
               </div>
 
               {/* Variables */}
               {spec.variables?.length > 0 && (
                 <div className="space-y-1">
-                  <span
-                    className="text-[9px] uppercase tracking-[1px]"
-                    style={{ color: 'rgba(255,255,255,0.3)' }}
-                  >
+                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
                     Variables
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {spec.variables.map((v: any, i: number) => (
                       <span
                         key={i}
-                        className="text-[10px] px-2 py-0.5"
-                        style={{
-                          border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'rgba(255,255,255,0.5)',
-                        }}
+                        className="text-[10px] px-2 py-0.5 border text-text-muted"
+                        style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                       >
                         {typeof v === 'string' ? v : v.name || JSON.stringify(v)}
                       </span>
@@ -112,21 +99,15 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {/* Parameters */}
               {spec.parameters?.length > 0 && (
                 <div className="space-y-1">
-                  <span
-                    className="text-[9px] uppercase tracking-[1px]"
-                    style={{ color: 'rgba(255,255,255,0.3)' }}
-                  >
+                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
                     Parameters
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {spec.parameters.map((p: any, i: number) => (
                       <span
                         key={i}
-                        className="text-[10px] px-2 py-0.5"
-                        style={{
-                          border: '1px solid rgba(255,255,255,0.15)',
-                          color: 'rgba(255,255,255,0.5)',
-                        }}
+                        className="text-[10px] px-2 py-0.5 border text-text-muted"
+                        style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                       >
                         {typeof p === 'string' ? p : p.name || JSON.stringify(p)}
                       </span>
@@ -138,13 +119,10 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {/* Decision logic */}
               {spec.decision_logic && (
                 <div className="space-y-1">
-                  <span
-                    className="text-[9px] uppercase tracking-[1px]"
-                    style={{ color: 'rgba(255,255,255,0.3)' }}
-                  >
+                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
                     Decision logic
                   </span>
-                  <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  <div className="text-[10px] text-text-muted">
                     {typeof spec.decision_logic === 'string'
                       ? spec.decision_logic
                       : JSON.stringify(spec.decision_logic, null, 2)}
@@ -163,37 +141,14 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               ) : (
                 <div className="flex items-start gap-2 pt-1">
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-                    style={{
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      background: 'transparent',
-                      padding: '6px 16px',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background =
-                        'rgba(255,255,255,0.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                    }}
+                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 hover:bg-surface-hover"
                     onClick={() => approve(spec.id)}
                   >
                     Aprobar
                   </button>
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-                    style={{
-                      border: '1px solid rgba(255,100,100,0.4)',
-                      background: 'transparent',
-                      padding: '6px 16px',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background =
-                        'rgba(255,100,100,0.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                    }}
+                    className="text-[11px] uppercase tracking-[1px] font-medium text-white px-4 py-1.5 hover:bg-[rgba(255,100,100,0.05)]"
+                    style={{ border: '1px solid rgba(255,100,100,0.4)' }}
                     onClick={() =>
                       setFeedbackDrafts((prev) => ({ ...prev, [spec.id]: prev[spec.id] ?? '' }))
                     }
@@ -207,16 +162,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {!decided && isRejecting(spec.id) && (
                 <div className="space-y-2 pt-1">
                   <textarea
-                    className="w-full text-[11px] text-white"
-                    style={{
-                      background: '#090909',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      fontFamily: "'IBM Plex Mono', monospace",
-                      padding: '12px',
-                      resize: 'vertical',
-                      minHeight: '80px',
-                      outline: 'none',
-                    }}
+                    className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono"
                     placeholder="Feedback..."
                     value={feedbackDrafts[spec.id] || ''}
                     onChange={(e) =>
@@ -224,14 +170,8 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
                     }
                   />
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-                    style={{
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      background: 'transparent',
-                      padding: '6px 16px',
-                      opacity: feedbackDrafts[spec.id]?.trim() ? 1 : 0.3,
-                      cursor: feedbackDrafts[spec.id]?.trim() ? 'pointer' : 'not-allowed',
-                    }}
+                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ cursor: feedbackDrafts[spec.id]?.trim() ? 'pointer' : 'not-allowed' }}
                     disabled={!feedbackDrafts[spec.id]?.trim()}
                     onClick={() => reject(spec.id)}
                   >
@@ -245,25 +185,11 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
       </div>
 
       {/* Footer */}
-      <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-          style={{
-            border: '1px solid rgba(255,255,255,0.3)',
-            background: 'transparent',
-            padding: '8px 24px',
-            opacity: allDecided ? 1 : 0.3,
-            cursor: allDecided ? 'pointer' : 'not-allowed',
-          }}
+          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ cursor: allDecided ? 'pointer' : 'not-allowed' }}
           disabled={!allDecided}
-          onMouseEnter={(e) => {
-            if (allDecided)
-              (e.currentTarget as HTMLButtonElement).style.background =
-                'rgba(255,255,255,0.05)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-          }}
           onClick={handleSubmit}
         >
           Continuar

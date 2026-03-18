@@ -22,13 +22,7 @@ const components: Components = {
 
     return (
       <code
-        className={className}
-        style={{
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          padding: '1px 4px',
-          fontSize: '11px',
-        }}
+        className={`${className ?? ''} bg-surface-hover border border-border px-1 py-px text-[11px]`}
         {...rest}
       >
         {children}

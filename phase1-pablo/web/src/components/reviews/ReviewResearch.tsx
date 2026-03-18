@@ -31,20 +31,17 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        <h2
-          className="text-[11px] uppercase tracking-[2px] mb-4"
-          style={{ color: 'rgba(255,255,255,0.5)' }}
-        >
+        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Research
         </h2>
 
         {data.paradigms.map((p) => (
           <div
             key={p.slug}
+            className="bg-surface"
             style={{
-              background: '#090909',
               border: `1px solid ${selected.has(p.slug) ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
             }}
           >
@@ -77,30 +74,21 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
                   {p.title || formatSlug(p.slug)}
                 </div>
                 {p.summary && (
-                  <div
-                    className="text-[10px] mt-1 leading-relaxed"
-                    style={{ color: 'rgba(255,255,255,0.4)' }}
-                  >
+                  <div className="text-[10px] mt-1 leading-relaxed text-text-dim">
                     {p.summary.slice(0, 200)}
                     {p.summary.length > 200 && '...'}
                   </div>
                 )}
               </div>
 
-              <span
-                className="text-[10px] flex-shrink-0"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
-              >
+              <span className="text-[10px] flex-shrink-0 text-text-faint">
                 {expanded === p.slug ? '[-]' : '[+]'}
               </span>
             </div>
 
             {/* Expanded content */}
             {expanded === p.slug && p.content && (
-              <div
-                className="px-3 pb-3"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              <div className="px-3 pb-3 border-t border-border-faint">
                 <div className="pt-3">
                   <MarkdownRenderer content={p.content} className="text-[11px]" />
                 </div>
@@ -111,25 +99,11 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
       </div>
 
       {/* Footer */}
-      <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+      <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white"
-          style={{
-            border: '1px solid rgba(255,255,255,0.3)',
-            background: 'transparent',
-            padding: '8px 24px',
-            opacity: selected.size === 0 ? 0.3 : 1,
-            cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
-          }}
+          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ cursor: selected.size === 0 ? 'not-allowed' : 'pointer' }}
           disabled={selected.size === 0}
-          onMouseEnter={(e) => {
-            if (selected.size > 0)
-              (e.currentTarget as HTMLButtonElement).style.background =
-                'rgba(255,255,255,0.05)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-          }}
           onClick={() => onSubmit({ approved: Array.from(selected) })}
         >
           Continuar

@@ -10,10 +10,7 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
   return (
     <div className="relative my-2">
       {language && (
-        <span
-          className="absolute top-1.5 right-2 text-[9px] uppercase tracking-[1px]"
-          style={{ color: 'rgba(255,255,255,0.3)' }}
-        >
+        <span className="absolute top-1.5 right-2 text-[9px] uppercase tracking-[1px] text-text-faint">
           {language}
         </span>
       )}
