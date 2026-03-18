@@ -7,8 +7,10 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { Play } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Graph from "./components/Graph";
+import DemoGraph from "./components/DemoGraph";
 import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
@@ -313,7 +315,7 @@ export default function App() {
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   /* ── Output review state ── */
   const [showOutputModal, setShowOutputModal] = useState(false);
@@ -373,8 +375,11 @@ export default function App() {
   }, [problemInput, startPipeline]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") handleRun();
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleRun();
+      }
     },
     [handleRun],
   );
@@ -440,15 +445,17 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen">
-      {/* Sidebar — pipeline only */}
-      <Sidebar
-        connected={connected}
-        stages={stages}
-        currentStage={currentStage}
-      />
+      {/* Sidebar — hidden on idle */}
+      {!showIdle && (
+        <Sidebar
+          connected={connected}
+          stages={stages}
+          currentStage={currentStage}
+        />
+      )}
 
       {/* Main panel */}
-      <div className="ml-[200px] flex-1 flex flex-col relative h-screen overflow-hidden">
+      <div className={`${showIdle ? "" : "ml-[200px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
         {/* Error bar */}
         {error && (
           <div
@@ -462,28 +469,34 @@ export default function App() {
         {/* Content area */}
         <div className="flex-1 flex overflow-hidden">
           {showIdle ? (
-            /* Idle — problem input centered */
-            <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <div className="text-[11px] uppercase tracking-[2px] text-text-faint mb-2">
-                Describe a decision problem
+            <div className="flex-1 flex flex-col">
+              {/* Upper — live demo */}
+              <div className="flex-1 overflow-hidden">
+                <DemoGraph />
               </div>
-              <input
-                ref={inputRef}
-                type="text"
-                value={problemInput}
-                onChange={(e) => setProblemInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="e.g. survival decision-making"
-                autoFocus
-                className="w-[420px] max-w-[80%] bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none text-center"
-              />
-              <button
-                onClick={handleRun}
-                disabled={!problemInput.trim()}
-                className="py-2.5 px-8 bg-transparent border border-text-faint text-[11px] uppercase tracking-[1px] cursor-pointer disabled:cursor-default disabled:text-text-faint"
-              >
-                Run
-              </button>
+
+              {/* Bottom — textarea + run */}
+              <div className="shrink-0 px-6 py-5">
+                <div className="max-w-3xl mx-auto flex gap-3 items-stretch">
+                  <textarea
+                    ref={inputRef}
+                    value={problemInput}
+                    onChange={(e) => setProblemInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="e.g. survival decision-making"
+                    autoFocus
+                    rows={3}
+                    className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none resize-none"
+                  />
+                  <button
+                    onClick={handleRun}
+                    disabled={!problemInput.trim()}
+                    className="shrink-0 w-16 flex items-center justify-center border transition-colors bg-transparent border-accent-green/30 text-accent-green cursor-pointer hover:border-accent-green/60 hover:bg-accent-green/5 disabled:border-text-ghost disabled:text-text-ghost disabled:cursor-default disabled:hover:bg-transparent"
+                  >
+                    <Play size={20} fill="currentColor" />
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <>

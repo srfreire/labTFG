@@ -121,13 +121,15 @@ interface GraphProps {
   onNodeClick?: (node: GraphNode) => void;
   reviewActive?: boolean;
   currentStage?: string | null;
+  demo?: boolean;
 }
 
-export default function Graph({ nodes, edges, onNodeClick, reviewActive, currentStage }: GraphProps) {
+export default function Graph({ nodes, edges, onNodeClick, reviewActive, currentStage, demo }: GraphProps) {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
   const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const graphNodesRef = useRef<GraphNode[]>(nodes);
   const rfRef = useRef<ReactFlowInstance | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const posRef = useRef(new Map<string, { x: number; y: number }>());
   const childCountRef = useRef(new Map<string, number>());
@@ -239,7 +241,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       const rf = rfRef.current;
       if (rf) {
         setTimeout(() => {
-          const el = document.querySelector('.main-rf')?.parentElement;
+          const el = containerRef.current;
           const vw = el?.clientWidth || 800;
           const vh = el?.clientHeight || 600;
           let maxDist = 100;
@@ -267,7 +269,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
   );
 
   return (
-    <div className="w-full h-full bg-bg relative">
+    <div ref={containerRef} className="w-full h-full bg-bg relative">
       <ReactFlow
         className="main-rf"
         nodes={flowNodes}
@@ -276,13 +278,19 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
-        onMoveStart={(event) => {
+        panOnDrag={!demo}
+        zoomOnScroll={!demo}
+        zoomOnPinch={!demo}
+        zoomOnDoubleClick={!demo}
+        nodesDraggable={!demo}
+        elementsSelectable={!demo}
+        onMoveStart={demo ? undefined : (event) => {
           if (event) setAutoFit(false);
         }}
         onInit={(inst) => {
           rfRef.current = inst;
           // Center root (0,0) on screen immediately
-          const el = document.querySelector('.main-rf')?.parentElement;
+          const el = containerRef.current;
           const vw = el?.clientWidth || 800;
           const vh = el?.clientHeight || 600;
           inst.setViewport({ x: vw / 2, y: vh / 2, zoom: 1 });
@@ -294,13 +302,13 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       />
 
       {/* Auto-fit toggle */}
-      <button
+      {!demo && <button
         onClick={() => {
           setAutoFit((v) => {
             if (!v) {
               const rf = rfRef.current;
               if (rf) {
-                const el = document.querySelector('.main-rf')?.parentElement;
+                const el = containerRef.current;
                 const vw = el?.clientWidth || 800;
                 const vh = el?.clientHeight || 600;
                 let maxDist = 100;
@@ -338,17 +346,17 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
           <circle cx="12" cy="12" r="3" />
           <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
         </svg>
-      </button>
+      </button>}
 
       {/* Review instruction */}
-      {reviewActive && (
+      {!demo && reviewActive && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 text-[11px] font-mono text-accent-amber-dark pointer-events-none">
           Click on the glowing output files to review and approve
         </div>
       )}
 
       {/* Toast notification */}
-      {toast && (
+      {!demo && toast && (
         <div
           key={`${toast.kind}-${toast.label}`}
           className="animate-slide-in-right absolute bottom-5 left-5 z-10 bg-overlay-heavy border border-border py-2 px-4 text-[11px] font-mono flex items-center gap-2.5 pointer-events-none"
@@ -361,7 +369,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       )}
 
       {/* Legend */}
-      <div className="absolute top-3 right-3 z-10 bg-overlay border border-border-subtle p-2.5 px-3.5 flex flex-col gap-[7px] text-[10px] font-mono text-text-muted pointer-events-none">
+      {!demo && <div className="absolute top-3 right-3 z-10 bg-overlay border border-border-subtle p-2.5 px-3.5 flex flex-col gap-[7px] text-[10px] font-mono text-text-muted pointer-events-none">
         {/* Agents */}
         <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Agents</span>
         <div className="flex items-center gap-2">
@@ -473,7 +481,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
             <span>Error</span>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

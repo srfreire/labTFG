@@ -27,7 +27,8 @@ export default function FileNode({ data }: NodeProps<FileNodeType>) {
         width={S}
         height={S}
         viewBox={`0 0 ${S} ${S}`}
-        className={`absolute top-0 left-0${status === 'running' ? ' animate-running-ring' : ''}`}
+        className="absolute top-0 left-0 overflow-visible"
+        style={status === 'running' ? { animation: 'running-drop 1.5s ease-in-out infinite' } : undefined}
       >
         <polygon
           points={`${S/2},1 ${S-1},${S/2} ${S/2},${S-1} 1,${S/2}`}

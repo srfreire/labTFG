@@ -46,7 +46,13 @@ export default function OutputNode({ data }: NodeProps<OutputNodeType>) {
         height={H}
         viewBox={`0 0 ${S} ${H}`}
         className="absolute top-0 left-0 overflow-visible"
-        style={glow ? { animation: 'output-glow 2s ease-in-out infinite' } : undefined}
+        style={
+          glow
+            ? { animation: 'output-glow 2s ease-in-out infinite' }
+            : status === 'running'
+              ? { animation: 'running-drop 1.5s ease-in-out infinite' }
+              : undefined
+        }
       >
         <polygon
           points={`${S/2},1 ${S-1},${H*0.25} ${S-1},${H*0.75} ${S/2},${H-1} 1,${H*0.75} 1,${H*0.25}`}

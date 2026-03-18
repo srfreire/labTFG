@@ -119,6 +119,16 @@ input, button, textarea, select {
   }
 }
 
+/* Running indicator — drop-shadow variant for SVG shapes (diamond, hexagon) */
+@keyframes running-drop {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 rgba(251, 191, 36, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.6));
+  }
+}
+
 /* Output node — green drop-shadow pulse on SVG (follows hexagon shape) */
 @keyframes output-glow {
   0%, 100% {
@@ -163,6 +173,11 @@ input, button, textarea, select {
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@keyframes edge-flow {
+  from { stroke-dashoffset: 12; }
+  to   { stroke-dashoffset: 0; }
 }
 
 /* ── Markdown content ────────────────────────────────────── */
