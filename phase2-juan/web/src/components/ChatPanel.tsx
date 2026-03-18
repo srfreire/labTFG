@@ -21,8 +21,6 @@ function StrongWithColor(props: { children?: ReactNode }) {
 
 const mdComponents = { strong: StrongWithColor }
 
-const chatFont = "'Inter', 'SF Pro Display', -apple-system, sans-serif"
-
 interface Props {
   messages: ChatMessage[]
   thinking: boolean
@@ -66,7 +64,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
             </div>
             <div>
               <div className="text-[11px] font-medium mb-1" style={{ color: '#94a3b8' }}>Orchestrator</div>
-              <div className="px-4 py-3 rounded-2xl rounded-tl-sm text-[15px] typing-dots" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)' }}>
+              <div className="px-4 py-3 rounded-2xl rounded-tl-sm text-[15px] typing-dots bg-surface-hover text-text-dim">
                 Pensando<span>.</span><span>.</span><span>.</span>
               </div>
             </div>
@@ -74,7 +72,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
         )}
       </div>
 
-      <div className="px-6 py-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+      <div className="px-6 py-4 border-t border-border-subtle">
         <form onSubmit={handleSubmit} className="flex items-center gap-3">
           <input
             type="text"
@@ -82,15 +80,14 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
             onChange={e => setInput(e.target.value)}
             placeholder={placeholder}
             disabled={busy}
-            className="flex-1 bg-transparent border rounded-xl px-4 py-3 text-[15px] text-white outline-none disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ borderColor: busy ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)', fontFamily: chatFont }}
+            className="flex-1 bg-transparent border border-border rounded-xl px-4 py-3 text-[15px] text-text outline-none transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ borderColor: busy ? 'var(--color-border-faint)' : undefined }}
             autoFocus
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all disabled:opacity-20"
-            style={{ background: 'rgba(255,255,255,0.1)' }}
+            className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-surface-hover hover:bg-border disabled:opacity-20 cursor-pointer disabled:cursor-default"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
@@ -108,7 +105,6 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
   const bubbleStyle = {
     '--msg-accent': dotColor,
-    fontFamily: chatFont,
     borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
     border: isUser ? 'none' : `1px solid ${dotColor}20`,
     background: isUser ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
@@ -158,14 +154,14 @@ function renderText(text: string, isUser: boolean) {
 
 function DataCard({ card, color }: { card: { title: string; data: Record<string, unknown> }; color: string }) {
   return (
-    <div className="mt-3 border p-3 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)', borderColor: color + '20' }}>
+    <div className="mt-3 border border-border p-3 rounded-lg shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: color + '20' }}>
       <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color }}>
         {card.title}
       </div>
       <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
         {Object.entries(card.data).map(([k, v]) => (
-          <div key={k} className="px-2.5 py-2 border rounded-md min-w-0" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-            <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{k}</div>
+          <div key={k} className="px-2.5 py-2 border border-border-subtle rounded-[var(--radius-md)] min-w-0">
+            <div className="text-[10px] text-text-dim">{k}</div>
             <div className="text-[15px] font-semibold mt-0.5 truncate">{String(v)}</div>
           </div>
         ))}
@@ -177,24 +173,24 @@ function DataCard({ card, color }: { card: { title: string; data: Record<string,
 function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
   if (!tracker) return null
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in" style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(251,191,36,0.2)' }}>
-      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color: '#fbbf24' }}>
+    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'rgba(251,191,36,0.2)' }}>
+      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold text-accent-amber">
         Trayectorias
       </div>
       {Object.entries(tracker.trajectories).map(([agent, data]) => {
         const agentColor = getAgentColor(agent) || '#fbbf24'
         return (
-          <div key={agent} className="mb-2.5 p-2.5 border rounded-md" style={{ borderColor: agentColor + '20' }}>
+          <div key={agent} className="mb-2.5 p-2.5 border rounded-[var(--radius-md)]" style={{ borderColor: agentColor + '20' }}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-[12px] font-semibold" style={{ color: agentColor }}>{agent}</span>
-              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>{data.steps_survived} pasos</span>
+              <span className="text-[11px] text-text-faint">{data.steps_survived} pasos</span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <span className="text-[11px] px-2.5 py-1 border rounded-md" style={{ borderColor: agentColor + '25', color: agentColor, background: agentColor + '08' }}>
+              <span className="text-[11px] px-2.5 py-1 border rounded-[var(--radius-md)]" style={{ borderColor: agentColor + '25', color: agentColor, background: agentColor + '08' }}>
                 {data.resources_consumed} consumidos
               </span>
               {Object.entries(data.actions).map(([action, count]) => (
-                <span key={action} className="text-[11px] px-2.5 py-1 border rounded-md" style={{ borderColor: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
+                <span key={action} className="text-[11px] px-2.5 py-1 border border-border rounded-[var(--radius-md)] text-text-muted">
                   {action}: {String(count)}
                 </span>
               ))}
@@ -208,28 +204,28 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
 
 function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']> }) {
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in" style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(167,139,250,0.2)', animationDelay: '100ms' }}>
+    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'rgba(167,139,250,0.2)', animationDelay: '100ms' }}>
       <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color: '#a78bfa' }}>
         Análisis
       </div>
       {analyst.patterns.length > 0 && (
         <div className="mb-3">
-          <div className="text-[10px] mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Patrones</div>
+          <div className="text-[10px] mb-1.5 text-text-faint">Patrones</div>
           {analyst.patterns.map(p => (
-            <div key={p.id} className="flex items-start gap-2 py-1.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-              <span className="text-[10px] px-1.5 py-0.5 flex-shrink-0 rounded" style={{
+            <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border-faint">
+              <span className="text-[10px] px-1.5 py-0.5 flex-shrink-0 rounded-[var(--radius-sm)]" style={{
                 background: p.type === 'anomaly' ? 'rgba(239,68,68,0.15)' : 'rgba(168,139,250,0.15)',
                 color: p.type === 'anomaly' ? '#ef4444' : '#a78bfa',
                 border: `1px solid ${p.type === 'anomaly' ? 'rgba(239,68,68,0.2)' : 'rgba(168,139,250,0.2)'}`,
               }}>{p.type}</span>
-              <span className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>{p.description}</span>
+              <span className="text-[11px] leading-relaxed text-text-muted">{p.description}</span>
             </div>
           ))}
         </div>
       )}
       {analyst.comparisons.length > 0 && (
         <div className="mb-3">
-          <div className="text-[10px] mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Comparaciones</div>
+          <div className="text-[10px] mb-1.5 text-text-faint">Comparaciones</div>
           {analyst.comparisons.map(c => (
             <ComparisonRow key={`${c.metric}-${c.agents.join('-')}`} comparison={c} />
           ))}
@@ -247,7 +243,7 @@ function ComparisonRow({ comparison: c }: { comparison: { metric: string; values
     : null
 
   return (
-    <div className="py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+    <div className="py-2 border-b border-border-faint">
       <div className="text-[11px] font-semibold mb-1.5" style={{ color: '#a78bfa' }}>
         {(c.metric || '').replace(/_/g, ' ')}
       </div>
@@ -255,11 +251,11 @@ function ComparisonRow({ comparison: c }: { comparison: { metric: string; values
         {entries.map(([agent, val]) => {
           const isBest = agent === bestAgent
           return (
-            <div key={agent} className="px-2.5 py-2 border rounded-md flex-1 min-w-0" style={{
-              borderColor: isBest ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.15)',
-              background: isBest ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+            <div key={agent} className="px-2.5 py-2 border rounded-[var(--radius-md)] flex-1 min-w-0" style={{
+              borderColor: isBest ? 'rgba(74,222,128,0.3)' : 'var(--color-border)',
+              background: isBest ? 'rgba(74,222,128,0.08)' : 'var(--color-surface-hover)',
             }}>
-              <div className="text-[9px]" style={{ color: isBest ? '#4ade80' : 'rgba(255,255,255,0.35)' }}>{agent}</div>
+              <div className="text-[9px]" style={{ color: isBest ? '#4ade80' : 'var(--color-text-faint)' }}>{agent}</div>
               <div className="text-[15px] font-bold mt-0.5" style={{ color: isBest ? '#4ade80' : 'rgba(255,255,255,0.7)' }}>
                 {typeof val === 'number' ? (val % 1 === 0 ? val : val.toFixed(2)) : val}
               </div>
@@ -267,7 +263,7 @@ function ComparisonRow({ comparison: c }: { comparison: { metric: string; values
           )
         })}
       </div>
-      <div className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>{c.insight}</div>
+      <div className="text-[10px] leading-relaxed text-text-dim">{c.insight}</div>
     </div>
   )
 }

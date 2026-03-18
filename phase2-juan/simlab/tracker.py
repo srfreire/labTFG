@@ -72,6 +72,7 @@ You have 3 tools to explore simulation data:
 
 ## Rules
 
+- ALWAYS respond in Spanish (descriptions, summaries, episode descriptions)
 - Base episodes on DATA, not assumptions — cite specific steps and values
 - When describing state changes, include the actual variable values from get_agent_state
 - If the simulation is short (<50 steps), report all notable events

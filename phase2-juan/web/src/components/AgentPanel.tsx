@@ -12,9 +12,9 @@ function getToolLabel(tool: string): string {
 
 export function AgentPanel({ agents }: Props) {
   return (
-    <div className="flex flex-col h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+    <div className="flex flex-col h-full border-r border-border-subtle bg-surface/80 backdrop-blur-xl">
       <div className="px-5 py-4">
-        <div className="text-[9px] uppercase tracking-[3px] font-semibold" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <div className="text-[9px] uppercase tracking-[3px] font-semibold text-text-faint">
           Pipeline
         </div>
       </div>
@@ -84,7 +84,7 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
           {isDone && (
             <div
               className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full flex items-center justify-center"
-              style={{ background: '#000', border: `1.5px solid ${agent.color}` }}
+              style={{ background: 'var(--color-bg)', border: `1.5px solid ${agent.color}` }}
             >
               <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
                 <path d="M1 3L2.5 4.5L5 1.5" stroke={agent.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
@@ -107,7 +107,7 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
           </span>
           {isActive && (
             <span
-              className="text-[8px] uppercase tracking-[1px] px-1.5 py-0.5"
+              className="text-[8px] uppercase tracking-[1px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
               style={{
                 color: agent.color,
                 background: agent.color + '15',
@@ -127,7 +127,7 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
           </div>
         )}
         {isDone && (
-          <div className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          <div className="text-[9px] mt-0.5 text-text-ghost">
             Completado
           </div>
         )}

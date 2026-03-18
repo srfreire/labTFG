@@ -105,6 +105,7 @@ deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
 
 ## Rules
 
+- ALWAYS respond in Spanish (descriptions, insights, pattern descriptions)
 - Every pattern MUST cite specific evidence (steps, values, counts)
 - Comparisons must include concrete numerical values
 - Metrics should be normalized where possible (per-step rates, percentages)

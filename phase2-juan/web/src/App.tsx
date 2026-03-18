@@ -31,18 +31,18 @@ interface ShellProps {
 
 function AppShell({ connected, agents, messages, thinking, send }: ShellProps) {
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-bg">
       {/* Header */}
-      <div className="flex justify-between items-center px-6 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
+      <div className="flex justify-between items-center px-6 py-3 border-b border-border bg-surface/80 backdrop-blur-xl">
         <div>
           <h1 className="text-[14px] font-bold uppercase tracking-[2px]">DecisionLab</h1>
-          <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          <p className="text-[11px] mt-0.5 text-text-dim">
             Laboratorio Virtual de Simulación
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <div className="flex items-center gap-3 text-[9px] text-text-faint">
           {isMock && (
-            <span className="px-1.5 py-0.5 uppercase tracking-[1px]" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
+            <span className="px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)]" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
               mock
             </span>
           )}
@@ -62,14 +62,14 @@ function AppShell({ connected, agents, messages, thinking, send }: ShellProps) {
       </div>
 
       {/* Mobile agent bar */}
-      <div className="md:hidden flex items-center gap-2 px-4 py-2 border-t overflow-x-auto" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+      <div className="md:hidden flex items-center gap-2 px-4 py-2 border-t border-border-subtle overflow-x-auto">
         {agents.map(a => (
           <div key={a.name} className="flex items-center gap-1 flex-shrink-0">
             <div className="w-1.5 h-1.5 rounded-full" style={{
               background: a.color,
               opacity: a.status === 'idle' ? 0.3 : 1,
             }} />
-            <span className="text-[8px] uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>{a.name}</span>
+            <span className="text-[8px] uppercase text-text-dim">{a.name}</span>
           </div>
         ))}
       </div>

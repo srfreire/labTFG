@@ -90,13 +90,13 @@ export function SimulationGrid({ replay }: Props) {
   }, [frame, trail])
 
   return (
-    <div className="mt-3 border p-3" style={{ background: '#000', borderColor: 'rgba(255,255,255,0.1)' }}>
+    <div className="mt-3 border border-border p-3 rounded-lg" style={{ background: 'var(--color-bg)' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[8px] uppercase tracking-[1px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+        <span className="text-[8px] uppercase tracking-[1px] text-text-dim">
           Simulación
         </span>
-        <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <span className="text-[9px] text-text-faint">
           Step {currentStep + 1} / {replay.total_steps}
         </span>
       </div>
@@ -124,14 +124,11 @@ export function SimulationGrid({ replay }: Props) {
             return (
               <div
                 key={key}
+                className="relative flex items-center justify-center"
                 style={{
                   width: cellSize,
                   height: cellSize,
                   background: 'rgba(255,255,255,0.02)',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                 }}
               >
                 {hasResource && !agent && (
@@ -139,7 +136,7 @@ export function SimulationGrid({ replay }: Props) {
                     width: cellSize * 0.3,
                     height: cellSize * 0.3,
                     borderRadius: '50%',
-                    background: '#22c55e',
+                    background: 'var(--color-accent-green)',
                     opacity: 0.6,
                   }} />
                 )}
@@ -158,7 +155,7 @@ export function SimulationGrid({ replay }: Props) {
                     width: cellSize * 0.2,
                     height: cellSize * 0.2,
                     borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.08)',
+                    background: 'var(--color-border-subtle)',
                   }} />
                 )}
               </div>
@@ -169,13 +166,13 @@ export function SimulationGrid({ replay }: Props) {
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-3 mt-2">
-        <button onClick={reset} className="text-[9px] px-2 py-1 border" style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)' }}>⟳</button>
-        <button onClick={stepBack} className="text-[9px] px-2 py-1 border" style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)' }}>◁</button>
-        <button onClick={togglePlay} className="text-[9px] px-2.5 py-1 border" style={{ borderColor: 'rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.6)' }}>
+        <button onClick={reset} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">⟳</button>
+        <button onClick={stepBack} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">◁</button>
+        <button onClick={togglePlay} className="text-[9px] px-2.5 py-1 border border-border rounded-[var(--radius-sm)] text-text-muted hover:bg-surface-hover transition-colors duration-150 cursor-pointer">
           {playing ? '⏸' : '▶'}
         </button>
-        <button onClick={stepForward} className="text-[9px] px-2 py-1 border" style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)' }}>▷</button>
-        <button onClick={cycleSpeed} className="text-[9px] px-2 py-1 border" style={{ borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)' }}>
+        <button onClick={stepForward} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">▷</button>
+        <button onClick={cycleSpeed} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">
           {speed}×
         </button>
       </div>
@@ -184,7 +181,7 @@ export function SimulationGrid({ replay }: Props) {
       {frame.agents.length > 1 && (
         <div className="mt-2 flex gap-3 justify-center flex-wrap">
           {frame.agents.map((a, i) => (
-            <span key={a.id} className="text-[8px] flex items-center gap-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <span key={a.id} className="text-[8px] flex items-center gap-1 text-text-muted">
               <span style={{
                 width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
                 background: AGENT_COLORS[i % AGENT_COLORS.length],
@@ -201,8 +198,7 @@ export function SimulationGrid({ replay }: Props) {
           {frame.actions.map((a, i) => {
             const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
             return (
-              <span key={i} className="text-[8px] px-1.5 py-0.5 border" style={{
-                borderColor: 'rgba(255,255,255,0.08)',
+              <span key={i} className="text-[8px] px-1.5 py-0.5 border border-border-subtle rounded-[var(--radius-sm)]" style={{
                 color: a.reward > 0 ? '#4ade80' : (AGENT_COLORS[agentIdx % AGENT_COLORS.length] + '80'),
               }}>
                 {a.agent_id}: {a.action}{a.reward > 0 ? ` +${a.reward.toFixed(1)}` : ''}

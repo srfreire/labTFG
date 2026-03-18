@@ -129,7 +129,7 @@ async def websocket_chat(ws: WebSocket):
                     "title": "Environment Spec",
                     "data": {
                         "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
-                        "Acciones posibles": ", ".join(spec["actions"]),
+                        "Acciones posibles": ", ".join(a["name"] if isinstance(a, dict) else str(a) for a in spec["actions"]),
                         "Recursos": resources,
                     },
                 },
