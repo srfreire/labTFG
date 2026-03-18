@@ -1,7 +1,15 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+
+  /* Radius tokens */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
 
   /* Semantic color tokens */
   --color-bg: #000;
@@ -39,14 +47,13 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+  font-family: var(--font-sans);
   background: #000;
   color: #fff;
   overflow: hidden;
 }
 
 input, button, textarea, select {
-  border-radius: 0;
   font-family: inherit;
 }
 
@@ -64,7 +71,7 @@ input, button, textarea, select {
 
 ::-webkit-scrollbar-thumb {
   background: #333;
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 
 /* Kill React Flow default node styling */
@@ -195,8 +202,6 @@ input, button, textarea, select {
 .markdown-body h5,
 .markdown-body h6 {
   color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   margin: 16px 0 8px;
   font-weight: 600;
 }

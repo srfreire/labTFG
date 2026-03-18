@@ -20,7 +20,7 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
         customStyle={{
           background: '#090909',
           border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 0,
+          borderRadius: 8,
           padding: '14px 16px',
           margin: 0,
           fontSize: '11px',

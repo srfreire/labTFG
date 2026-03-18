@@ -55,7 +55,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
           return (
             <div
               key={spec.id}
-              className="bg-surface p-3 space-y-2"
+              className="bg-surface p-3 space-y-2 rounded-lg"
               style={{
                 border: `1px solid ${decided ? (wasApproved ? 'rgba(100,255,100,0.3)' : 'rgba(255,100,100,0.3)') : 'rgba(255,255,255,0.1)'}`,
               }}
@@ -141,13 +141,13 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               ) : (
                 <div className="flex items-start gap-2 pt-1">
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 hover:bg-surface-hover"
+                    className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 rounded-lg"
                     onClick={() => approve(spec.id)}
                   >
                     Aprobar
                   </button>
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white px-4 py-1.5 hover:bg-[rgba(255,100,100,0.05)]"
+                    className="text-[11px] uppercase tracking-[1px] font-medium text-white px-4 py-1.5 rounded-lg hover:bg-[rgba(255,100,100,0.05)]"
                     style={{ border: '1px solid rgba(255,100,100,0.4)' }}
                     onClick={() =>
                       setFeedbackDrafts((prev) => ({ ...prev, [spec.id]: prev[spec.id] ?? '' }))
@@ -162,7 +162,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {!decided && isRejecting(spec.id) && (
                 <div className="space-y-2 pt-1">
                   <textarea
-                    className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono"
+                    className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono rounded-lg"
                     placeholder="Feedback..."
                     value={feedbackDrafts[spec.id] || ''}
                     onChange={(e) =>
@@ -170,7 +170,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
                     }
                   />
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-4 py-1.5 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
                     disabled={!feedbackDrafts[spec.id]?.trim()}
                     onClick={() => reject(spec.id)}
                   >
@@ -186,7 +186,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!allDecided}
           onClick={handleSubmit}
         >

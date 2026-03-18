@@ -45,7 +45,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
         {data.paradigms.map((p) => (
           <div
             key={p.slug}
-            className="bg-surface border border-border"
+            className="bg-surface border border-border rounded-lg"
           >
             {/* Paradigm header (accordion) */}
             <div
@@ -83,7 +83,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
                   >
                     {/* Checkbox */}
                     <div
-                      className="w-4 h-4 flex-shrink-0 flex items-center justify-center mt-0.5"
+                      className="w-4 h-4 flex-shrink-0 flex items-center justify-center mt-0.5 rounded-sm"
                       style={{
                         border: '1px solid rgba(255,255,255,0.3)',
                         background: isChecked(p.slug, f.id) ? '#fff' : 'transparent',
@@ -115,7 +115,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!hasAnySelection}
           onClick={handleSubmit}
         >

@@ -75,7 +75,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
           {(['upload', 'paste'] as Mode[]).map((m) => (
             <button
               key={m}
-              className="text-[10px] uppercase tracking-[1px] text-white border border-text-faint px-4 py-1.5"
+              className="text-[10px] uppercase tracking-[1px] text-white border border-text-faint px-4 py-1.5 rounded-lg"
               style={{
                 background: mode === m ? 'rgba(255,255,255,0.08)' : 'transparent',
               }}
@@ -89,7 +89,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
         {/* Upload mode */}
         {mode === 'upload' && (
           <div
-            className="flex items-center justify-center p-8 cursor-pointer min-h-[160px]"
+            className="flex items-center justify-center p-8 cursor-pointer min-h-[160px] rounded-xl"
             style={{
               border: `2px dashed ${dragging ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)'}`,
               background: dragging ? 'rgba(255,255,255,0.03)' : 'transparent',
@@ -122,7 +122,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
         {/* Paste mode */}
         {mode === 'paste' && (
           <textarea
-            className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[160px] outline-none font-mono"
+            className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[160px] outline-none font-mono rounded-lg"
             placeholder="Paste JSON here..."
             value={rawJson}
             onChange={(e) => tryParse(e.target.value)}
@@ -150,7 +150,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!isValid}
           onClick={() => onSubmit({ env_spec: parsed! })}
         >

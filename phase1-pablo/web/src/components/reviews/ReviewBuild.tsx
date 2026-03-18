@@ -41,7 +41,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
         {data.models.map((model) => (
           <div
             key={model.slug}
-            className="bg-surface border border-border space-y-2"
+            className="bg-surface border border-border space-y-2 rounded-lg"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3 pb-0">
@@ -90,7 +90,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
       <div className="p-4 space-y-3 border-t border-border">
         <div className="flex gap-2">
           <button
-            className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 hover:bg-surface-hover"
+            className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 rounded-lg"
             onClick={handleApprove}
           >
             Aprobar
@@ -98,7 +98,7 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
 
           {!showFeedback && (
             <button
-              className="text-[11px] uppercase tracking-[1px] font-medium text-white px-6 py-2 hover:bg-[rgba(255,100,100,0.05)]"
+              className="text-[11px] uppercase tracking-[1px] font-medium text-white px-6 py-2 rounded-lg hover:bg-[rgba(255,100,100,0.05)]"
               style={{ border: '1px solid rgba(255,100,100,0.4)' }}
               onClick={() => setShowFeedback(true)}
             >
@@ -110,13 +110,13 @@ export default function ReviewBuild({ data, onSubmit }: ReviewBuildProps) {
         {showFeedback && (
           <div className="space-y-2">
             <textarea
-              className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono"
+              className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono rounded-lg"
               placeholder="Feedback..."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
             />
             <button
-              className="text-[11px] uppercase tracking-[1px] font-medium text-white border border-text-faint px-6 py-2 cursor-pointer hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
               disabled={!feedback.trim()}
               onClick={handleReject}
             >

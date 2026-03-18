@@ -31,10 +31,10 @@ export default function Sidebar({
   const items = STAGE_CONFIG;
 
   return (
-    <aside className="fixed left-0 top-0 w-[200px] h-screen bg-surface border-r border-border flex flex-col">
+    <aside className="fixed left-3 top-3 bottom-3 w-[200px] rounded-2xl bg-surface border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-border-subtle shrink-0">
-        <div className="text-[14px] font-bold uppercase tracking-[2px] text-text">
+        <div className="text-[15px] font-semibold tracking-tight text-text">
           DecisionLab
         </div>
         <div className="flex items-center gap-1.5 mt-1">
@@ -135,7 +135,7 @@ export default function Sidebar({
         <div className="px-6 py-4 border-t border-border-subtle shrink-0">
           <button
             onClick={onCancel}
-            className="w-full py-2 bg-transparent border border-accent-red/30 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer"
+            className="w-full py-2 bg-transparent border border-accent-red/30 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer rounded-lg hover:bg-accent-red/10"
           >
             Cancel
           </button>

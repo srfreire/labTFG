@@ -110,7 +110,7 @@ function NodeDetail({
   }
 
   return (
-    <div className="animate-scale-in fixed bottom-5 right-5 w-[380px] max-h-[320px] bg-surface border border-border z-50 flex flex-col">
+    <div className="animate-scale-in fixed bottom-5 right-5 w-[380px] max-h-[320px] bg-surface border border-border z-50 flex flex-col rounded-2xl shadow-2xl shadow-black/30 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <div className="flex items-center gap-2">
@@ -122,10 +122,10 @@ function NodeDetail({
           </span>
         </div>
         <button
-          className="text-[10px] cursor-pointer text-text-faint bg-transparent border-none"
+          className="w-6 h-6 flex items-center justify-center rounded-full cursor-pointer text-text-faint bg-transparent border-none hover:bg-surface-hover text-[12px]"
           onClick={onClose}
         >
-          [x]
+          ✕
         </button>
       </div>
 
@@ -174,7 +174,7 @@ function OutputReviewModal({
       onClick={onClose}
     >
       <div
-        className="animate-scale-in flex flex-col overflow-hidden transition-[border-color] duration-200 w-[min(820px,92vw)] max-h-[88vh] bg-[#0a0a0a]"
+        className="animate-scale-in flex flex-col overflow-hidden transition-[border-color] duration-200 w-[min(820px,92vw)] max-h-[88vh] bg-[#0a0a0a] rounded-2xl shadow-2xl shadow-black/40"
         onClick={(e) => e.stopPropagation()}
         style={{
           border: `1px solid ${
@@ -194,12 +194,12 @@ function OutputReviewModal({
                 Output
               </span>
               {approval === true && (
-                <span className="text-[8px] px-1.5 py-0.5 bg-[rgba(34,197,94,0.12)] border border-accent-green/30 text-accent-green uppercase tracking-[1px]">
+                <span className="text-[8px] px-2 py-0.5 bg-[rgba(34,197,94,0.12)] border border-accent-green/30 text-accent-green uppercase tracking-[1px] rounded-full">
                   Approved
                 </span>
               )}
               {approval === false && (
-                <span className="text-[8px] px-1.5 py-0.5 bg-[rgba(239,68,68,0.12)] border border-accent-red/30 text-accent-red uppercase tracking-[1px]">
+                <span className="text-[8px] px-2 py-0.5 bg-[rgba(239,68,68,0.12)] border border-accent-red/30 text-accent-red uppercase tracking-[1px] rounded-full">
                   Rejected
                 </span>
               )}
@@ -213,7 +213,7 @@ function OutputReviewModal({
             </span>
             <button
               onClick={onClose}
-              className="bg-transparent border-none text-text-dim text-[18px] cursor-pointer font-mono"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none text-text-dim text-[16px] cursor-pointer hover:bg-surface-hover"
             >
               ✕
             </button>
@@ -236,14 +236,14 @@ function OutputReviewModal({
             <button
               disabled={!hasPrev}
               onClick={() => onIndexChange(index - 1)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               ← Prev
             </button>
             <button
               disabled={!hasNext}
               onClick={() => onIndexChange(index + 1)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               Next →
             </button>
@@ -253,7 +253,7 @@ function OutputReviewModal({
           <div className="flex gap-2">
             <button
               onClick={() => onDisapprove(node.id)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-red"
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-red rounded-lg"
               style={{
                 background:
                   approval === false
@@ -270,18 +270,7 @@ function OutputReviewModal({
             </button>
             <button
               onClick={() => onApprove(node.id)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-green"
-              style={{
-                background:
-                  approval === true
-                    ? "rgba(34,197,94,0.15)"
-                    : "transparent",
-                border: `1px solid ${
-                  approval === true
-                    ? "rgba(34,197,94,0.5)"
-                    : "rgba(34,197,94,0.2)"
-                }`,
-              }}
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-accent-green text-black rounded-lg font-medium"
             >
               Approve
             </button>
@@ -464,12 +453,12 @@ export default function App() {
       )}
 
       {/* Main panel */}
-      <div className={`${showIdle ? "" : "ml-[200px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
+      <div className={`${showIdle ? "" : "ml-[224px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
         {/* Error bar */}
         {error && (
           <div
             onClick={clearError}
-            className="bg-accent-red/10 border border-accent-red/30 text-accent-red text-[11px] px-4 py-2 cursor-pointer shrink-0"
+            className="bg-accent-red/10 border border-accent-red/30 text-accent-red text-[11px] mx-4 mt-3 px-4 py-2 cursor-pointer shrink-0 rounded-lg"
           >
             {error}
           </div>
@@ -497,7 +486,7 @@ export default function App() {
                   {/* Title */}
                   <div className="text-center p-4">
                     <h1
-                      className="text-[22px] font-bold uppercase tracking-[6px] text-text transition-all duration-500 delay-200"
+                      className="text-[28px] font-bold tracking-tight text-text transition-all duration-500 delay-200"
                       style={{
                         opacity: demoComplete ? 1 : 0,
                         transform: demoComplete
@@ -510,7 +499,7 @@ export default function App() {
                       DecisionLab
                     </h1>
                     <p
-                      className="text-[11px] uppercase tracking-[2px] text-text-faint mt-2 transition-all duration-500 delay-300"
+                      className="text-[14px] text-text-muted mt-2 transition-all duration-500 delay-300"
                       style={{
                         opacity: demoComplete ? 1 : 0,
                         transform: demoComplete
@@ -545,12 +534,12 @@ export default function App() {
                         placeholder="e.g. survival decision-making"
                         autoFocus
                         rows={3}
-                        className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none resize-none"
+                        className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] py-3.5 px-5 outline-none resize-none rounded-xl"
                       />
                       <button
                         onClick={handleRun}
                         disabled={!problemInput.trim()}
-                        className="shrink-0 w-16 flex items-center justify-center border transition-colors bg-transparent border-accent-green/30 text-accent-green cursor-pointer hover:border-accent-green/60 hover:bg-accent-green/5 disabled:border-text-ghost disabled:text-text-ghost disabled:cursor-default disabled:hover:bg-transparent"
+                        className="shrink-0 w-16 flex items-center justify-center transition-colors bg-accent-green text-black cursor-pointer hover:bg-accent-green-light rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
                       >
                         <Play size={20} fill="currentColor" />
                       </button>
@@ -575,7 +564,7 @@ export default function App() {
 
               {/* ── Stage completion bar ── */}
               {reviewActive && (
-                <div className="animate-slide-up absolute bottom-0 left-0 right-0 z-50 bg-surface-frosted border-t border-accent-green/15 backdrop-blur-[10px] px-6 py-4">
+                <div className="animate-slide-up absolute bottom-4 left-4 right-4 z-50 bg-surface-frosted border border-accent-green/15 backdrop-blur-[10px] px-6 py-4 rounded-2xl shadow-xl shadow-black/30">
                   {isEnvSpec ? (
                     /* ENV SPEC — upload mode */
                     <div>
@@ -615,14 +604,14 @@ export default function App() {
                                 setOutputIndex(0);
                                 setShowOutputModal(true);
                               }}
-                              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-[rgba(34,197,94,0.08)] border border-accent-green/25 text-accent-green"
+                              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-[rgba(34,197,94,0.08)] border border-accent-green/25 text-accent-green rounded-lg"
                             >
                               View Outputs ({stageOutputs.length})
                             </button>
                           )}
                           <button
                             onClick={handleContinue}
-                            className="text-[10px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-surface-hover border border-[rgba(255,255,255,0.2)] text-text"
+                            className="text-[10px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-white text-black rounded-lg font-medium"
                           >
                             Continue →
                           </button>
@@ -639,12 +628,12 @@ export default function App() {
                             if (e.key === "Enter") handleSendRouterPrompt();
                           }}
                           placeholder="Send instructions to the router..."
-                          className="flex-1 bg-transparent border border-border-subtle text-text text-[11px] font-mono py-2 px-3 outline-none"
+                          className="flex-1 bg-transparent border border-border-subtle text-text text-[11px] font-mono py-2 px-3 outline-none rounded-lg"
                         />
                         <button
                           onClick={handleSendRouterPrompt}
                           disabled={!routerPrompt.trim()}
-                          className="text-[10px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer disabled:cursor-default disabled:text-text-ghost text-text"
+                          className="text-[10px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer rounded-lg disabled:cursor-default disabled:text-text-ghost text-text"
                         >
                           Send
                         </button>
