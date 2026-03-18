@@ -238,8 +238,8 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       toastTimer.current = setTimeout(() => setToast(null), 2500);
     }
 
-    // ── Viewport: zoom out keeping root (0,0) centered ──
-    if (autoFit && newest) {
+    // ── Viewport: zoom out keeping root (0,0) centered (skip in demo) ──
+    if (autoFit && newest && !demo) {
       const rf = rfRef.current;
       if (rf) {
         setTimeout(() => {
