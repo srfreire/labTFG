@@ -482,7 +482,7 @@ export default function App() {
                 }}
               >
                 {/* Content */}
-                <div className="bg-bg border-t border-border pointer-events-auto">
+                <div className="border-t border-border pointer-events-auto" style={{ background: 'var(--color-bg)' }}>
                   {/* Title */}
                   <div className="text-center p-4">
                     <h1

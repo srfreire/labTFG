@@ -1,5 +1,4 @@
 import { Stage, StageStatus, STAGE_CONFIG } from "../types";
-
 interface SidebarProps {
   connected: boolean;
   stages: Record<Stage, StageStatus>;
@@ -132,7 +131,7 @@ export default function Sidebar({
 
       {/* Cancel button */}
       {isRunning && onCancel && (
-        <div className="px-6 py-4 border-t border-border-subtle shrink-0">
+        <div className="px-6 py-3 border-t border-border-subtle shrink-0">
           <button
             onClick={onCancel}
             className="w-full py-2 bg-transparent border border-accent-red/30 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer rounded-lg hover:bg-accent-red/10"
@@ -141,6 +140,7 @@ export default function Sidebar({
           </button>
         </div>
       )}
+
     </aside>
   );
 }

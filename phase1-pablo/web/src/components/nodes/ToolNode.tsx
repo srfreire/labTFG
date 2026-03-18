@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import NodeHandles from './NodeHandles';
+import NodeTooltip from './NodeTooltip';
 
 const TOOL_ICON_MAP: Record<string, ComponentType<{ size: number }>> = {
   web_search: Globe,
@@ -29,19 +30,25 @@ interface ToolNodeData {
 type ToolNodeType = Node<ToolNodeData, 'tool'>;
 
 export default function ToolNode({ data }: NodeProps<ToolNodeType>) {
-  const { status, toolType } = data;
+  const { label, status, toolType } = data;
   const Icon = TOOL_ICON_MAP[toolType] ?? Wrench;
 
   const borderColor =
-    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'rgba(255,255,255,0.2)';
+    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'var(--node-border)';
 
   return (
-    <div
-      className={`w-[36px] h-[36px] rounded-full bg-surface flex items-center justify-center${status === 'running' ? ' animate-running-ring' : ''}`}
-      style={{ border: `1px solid ${borderColor}` }}
-    >
-      <NodeHandles />
-      <Icon size={16} />
-    </div>
+    <NodeTooltip label={label || toolType}>
+      <div
+        className={`w-[36px] h-[36px] rounded-full flex items-center justify-center${status === 'running' ? ' animate-running-ring' : ''}`}
+        style={{
+          border: `1px solid ${borderColor}`,
+          background: 'var(--node-fill)',
+          boxShadow: 'var(--node-shadow)',
+        }}
+      >
+        <NodeHandles />
+        <Icon size={16} />
+      </div>
+    </NodeTooltip>
   );
 }

@@ -18,8 +18,8 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
         language={language}
         style={vs2015}
         customStyle={{
-          background: '#090909',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
           borderRadius: 8,
           padding: '14px 16px',
           margin: 0,

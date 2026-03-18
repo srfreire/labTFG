@@ -1,5 +1,6 @@
 import { type NodeProps, type Node } from '@xyflow/react';
 import NodeHandles from './NodeHandles';
+import NodeTooltip from './NodeTooltip';
 import FileTypeLogo from './FileTypeLogo';
 
 interface FileNodeData {
@@ -16,30 +17,35 @@ export default function FileNode({ data }: NodeProps<FileNodeType>) {
   const { label, status } = data;
 
   const borderColor =
-    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'rgba(255,255,255,0.15)';
+    status === 'running' ? '#f59e0b' : status === 'done' ? '#22c55e' : status === 'error' ? '#ef4444' : 'var(--node-border)';
 
   const S = 46;
 
   return (
-    <div className="relative w-[46px] h-[46px]">
-      <NodeHandles />
-      <svg
-        width={S}
-        height={S}
-        viewBox={`0 0 ${S} ${S}`}
-        className="absolute top-0 left-0 overflow-visible"
-        style={status === 'running' ? { animation: 'running-drop 1.5s ease-in-out infinite' } : undefined}
-      >
-        <polygon
-          points={`${S/2},1 ${S-1},${S/2} ${S/2},${S-1} 1,${S/2}`}
-          fill="#090909"
-          stroke={borderColor}
-          strokeWidth="1"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <FileTypeLogo label={label as string} size={20} />
+    <NodeTooltip label={label}>
+      <div className="relative w-[46px] h-[46px]">
+        <NodeHandles />
+        <svg
+          width={S}
+          height={S}
+          viewBox={`0 0 ${S} ${S}`}
+          className="absolute top-0 left-0 overflow-visible"
+          style={{
+            filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.2))`,
+            ...(status === 'running' ? { animation: 'running-drop 1.5s ease-in-out infinite' } : {}),
+          }}
+        >
+          <polygon
+            points={`${S/2},1 ${S-1},${S/2} ${S/2},${S-1} 1,${S/2}`}
+            fill="var(--node-fill)"
+            stroke={borderColor}
+            strokeWidth="1"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <FileTypeLogo label={label as string} size={20} />
+        </div>
       </div>
-    </div>
+    </NodeTooltip>
   );
 }

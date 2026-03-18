@@ -107,7 +107,7 @@ function LegendFace({ name, size = 20 }: { name: string; size?: number }) {
 function LegendIcon({ d, label }: { d: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--node-icon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d={d} />
       </svg>
       <span>{label}</span>
@@ -270,7 +270,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
   );
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-bg relative">
+    <div ref={containerRef} className="w-full h-full relative" style={{ background: 'var(--graph-bg)' }}>
       <ReactFlow
         className="main-rf"
         nodes={flowNodes}
@@ -295,7 +295,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
-        style={{ background: '#000' }}
+        style={{ background: 'var(--graph-bg)' }}
       />
 
       {/* Auto-fit toggle */}
@@ -404,18 +404,18 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
           <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">File Types</span>
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 208 208" fill="rgba(255,255,255,0.7)"><path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" /></svg>
+            <svg width="14" height="14" viewBox="0 0 208 208" fill="var(--node-icon)"><path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" /></svg>
             <span>.md</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 32 32" fill="rgba(255,255,255,0.7)">
+            <svg width="14" height="14" viewBox="0 0 32 32" fill="var(--node-icon)">
               <path fillRule="evenodd" clipRule="evenodd" d="M13.016 2C10.82 2 9.038 3.725 9.038 5.852V8.519h6.885v.74H5.978C3.781 9.259 2 10.984 2 13.111v5.778c0 2.127 1.781 3.852 3.978 3.852h2.295v-3.26c0-2.127 1.781-3.852 3.978-3.852h7.344c1.86 0 3.366-1.459 3.366-3.26V5.853C22.962 3.725 21.18 2 18.984 2h-5.968zm-.918 4.741c.76 0 1.377-.597 1.377-1.333 0-.737-.616-1.334-1.377-1.334-.76 0-1.377.597-1.377 1.334 0 .736.616 1.333 1.377 1.333z" />
               <path fillRule="evenodd" clipRule="evenodd" d="M18.983 30c2.197 0 3.978-1.725 3.978-3.852v-2.667h-6.885v-.74h9.946C28.219 22.74 30 21.016 30 18.889v-5.778C30 10.984 28.219 9.26 26.022 9.26h-2.295v3.26c0-2.127-1.781-3.851-3.978-3.851h-7.345c-1.859 0-3.366 1.46-3.366 3.26v6.518c0 2.128 1.781 3.852 3.978 3.852h5.968zm.918-4.741c-.76 0-1.377.597-1.377 1.333 0 .737.617 1.334 1.377 1.334.76 0 1.377-.597 1.377-1.334 0-.736-.616-1.333-1.377-1.333z" />
             </svg>
             <span>.py</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 160 160" fill="rgba(255,255,255,0.7)">
+            <svg width="14" height="14" viewBox="0 0 160 160" fill="var(--node-icon)">
               <path d="m79.865 119.1c35.398 48.255 70.04-13.469 69.989-50.587-0.0602-43.886-44.541-68.414-70.018-68.414-40.892 0-79.836 33.796-79.836 80.036 0 51.396 44.64 79.865 79.836 79.865-7.9645-1.1468-34.506-6.834-34.863-67.967-0.23987-41.347 13.488-57.866 34.805-50.599 0.47743 0.17707 23.514 9.2645 23.514 38.951 0 29.56-23.427 38.715-23.427 38.715z" />
               <path d="m79.823 41.401c-23.39-8.0619-52.043 11.216-52.043 49.829 0 63.048 46.721 68.77 52.384 68.77 40.892 0 79.836-33.796 79.836-80.036 0-51.396-44.64-79.865-79.836-79.865 9.7481-1.35 52.541 10.55 52.541 69.037 0 38.141-31.953 58.905-52.735 50.033-0.47743-0.17707-23.514-9.2645-23.514-38.951 0-29.56 23.367-38.818 23.367-38.818z" />
             </svg>
@@ -427,20 +427,20 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
           <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Shapes</span>
           <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, border: '1.5px solid rgba(255,255,255,0.5)' }} />
+            <div style={{ width: 12, height: 12, border: '1.5px solid var(--node-border)', borderRadius: 3 }} />
             <span>Agent</span>
           </div>
           <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.5)' }} />
+            <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid var(--node-border)' }} />
             <span>Tool</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,0 14,7 7,14 0,7" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" /></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,0 14,7 7,14 0,7" fill="none" stroke="var(--node-border)" strokeWidth="1.5" /></svg>
             <span>Artifact</span>
           </div>
           <div className="flex items-center gap-2">
             <svg width="14" height="16" viewBox="0 0 48 55" className="shrink-0">
-              <polygon points="24,1 47,14 47,41 24,54 1,41 1,14" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+              <polygon points="24,1 47,14 47,41 24,54 1,41 1,14" fill="none" stroke="var(--node-border)" strokeWidth="2.5" />
             </svg>
             <span>Stage Output</span>
           </div>
