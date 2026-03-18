@@ -23,15 +23,6 @@ function getFileExt(name: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : "";
 }
 
-const BTN: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: "inherit",
-  textTransform: "uppercase",
-  letterSpacing: 1,
-  cursor: "pointer",
-  borderRadius: 0,
-};
-
 /* ------------------------------------------------------------------ */
 /*  Node detail panel                                                  */
 /* ------------------------------------------------------------------ */
@@ -73,14 +64,8 @@ function NodeDetail({
       content = (
         <>
           {meta.query && (
-            <div
-              className="text-[11px] mb-2"
-              style={{ color: "rgba(255,255,255,0.6)" }}
-            >
-              <span
-                className="text-[9px] uppercase tracking-[1px] block mb-1"
-                style={{ color: "rgba(255,255,255,0.3)" }}
-              >
+            <div className="text-[11px] mb-2 text-text-muted">
+              <span className="text-[9px] uppercase tracking-[1px] block mb-1 text-text-faint">
                 Query
               </span>
               {String(meta.query)}
@@ -88,20 +73,13 @@ function NodeDetail({
           )}
           {Array.isArray(meta.results) && meta.results.length > 0 && (
             <div>
-              <span
-                className="text-[9px] uppercase tracking-[1px] block mb-1"
-                style={{ color: "rgba(255,255,255,0.3)" }}
-              >
+              <span className="text-[9px] uppercase tracking-[1px] block mb-1 text-text-faint">
                 Results
               </span>
               {meta.results.map((r, i) => (
                 <div
                   key={i}
-                  className="text-[11px] py-1"
-                  style={{
-                    color: "rgba(255,255,255,0.6)",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  }}
+                  className="text-[11px] py-1 text-text-muted border-b border-border-faint"
                 >
                   {String(r)}
                 </div>
@@ -125,38 +103,16 @@ function NodeDetail({
 
   if (!content) {
     content = (
-      <div className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
-        No details available.
-      </div>
+      <div className="text-[11px] text-text-dim">No details available.</div>
     );
   }
 
   return (
-    <div
-      className="animate-scale-in"
-      style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        width: 380,
-        maxHeight: 320,
-        background: "#090909",
-        border: "1px solid rgba(255,255,255,0.1)",
-        zIndex: 50,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="animate-scale-in fixed bottom-5 right-5 w-[380px] max-h-[320px] bg-surface border border-border z-50 flex flex-col">
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-3 py-2"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-      >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <div className="flex items-center gap-2">
-          <span
-            className="text-[9px] uppercase tracking-[1px]"
-            style={{ color: "rgba(255,255,255,0.3)" }}
-          >
+          <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
             {node.kind}
           </span>
           <span className="text-[12px] text-white font-medium">
@@ -164,12 +120,7 @@ function NodeDetail({
           </span>
         </div>
         <button
-          className="text-[10px] cursor-pointer"
-          style={{
-            color: "rgba(255,255,255,0.3)",
-            background: "none",
-            border: "none",
-          }}
+          className="text-[10px] cursor-pointer text-text-faint bg-transparent border-none"
           onClick={onClose}
         >
           [x]
@@ -217,23 +168,13 @@ function OutputReviewModal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(6px)",
-      }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-overlay backdrop-blur-[6px]"
       onClick={onClose}
     >
       <div
-        className="animate-scale-in"
+        className="animate-scale-in flex flex-col overflow-hidden transition-[border-color] duration-200 w-[min(820px,92vw)] max-h-[88vh] bg-[#0a0a0a]"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#0a0a0a",
           border: `1px solid ${
             approval === true
               ? "rgba(34,197,94,0.3)"
@@ -241,92 +182,36 @@ function OutputReviewModal({
                 ? "rgba(239,68,68,0.3)"
                 : "rgba(255,255,255,0.1)"
           }`,
-          width: "min(820px, 92vw)",
-          maxHeight: "88vh",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          transition: "border-color 0.2s",
         }}
       >
         {/* ── Header ── */}
-        <div
-          style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
           <div>
-            <div
-              style={{ display: "flex", alignItems: "center", gap: 10 }}
-            >
-              <span
-                style={{
-                  fontSize: 9,
-                  letterSpacing: "1.5px",
-                  color: "rgba(255,255,255,0.3)",
-                  textTransform: "uppercase",
-                }}
-              >
+            <div className="flex items-center gap-[10px]">
+              <span className="text-[9px] tracking-[1.5px] text-text-faint uppercase">
                 Output
               </span>
               {approval === true && (
-                <span
-                  style={{
-                    fontSize: 8,
-                    padding: "2px 6px",
-                    background: "rgba(34,197,94,0.12)",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                    color: "#22c55e",
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                  }}
-                >
+                <span className="text-[8px] px-1.5 py-0.5 bg-[rgba(34,197,94,0.12)] border border-accent-green/30 text-accent-green uppercase tracking-[1px]">
                   Approved
                 </span>
               )}
               {approval === false && (
-                <span
-                  style={{
-                    fontSize: 8,
-                    padding: "2px 6px",
-                    background: "rgba(239,68,68,0.12)",
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    color: "#ef4444",
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                  }}
-                >
+                <span className="text-[8px] px-1.5 py-0.5 bg-[rgba(239,68,68,0.12)] border border-accent-red/30 text-accent-red uppercase tracking-[1px]">
                   Rejected
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 13, color: "#fff", marginTop: 4 }}>
-              {node.label}
-            </div>
+            <div className="text-[13px] text-text mt-1">{node.label}</div>
           </div>
 
-          <div
-            style={{ display: "flex", alignItems: "center", gap: 16 }}
-          >
-            <span
-              style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}
-            >
+          <div className="flex items-center gap-4">
+            <span className="text-[11px] text-text-faint">
               {index + 1} / {outputs.length}
             </span>
             <button
               onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgba(255,255,255,0.4)",
-                fontSize: 18,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
+              className="bg-transparent border-none text-text-dim text-[18px] cursor-pointer font-mono"
             >
               ✕
             </button>
@@ -334,13 +219,7 @@ function OutputReviewModal({
         </div>
 
         {/* ── Content ── */}
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            padding: "20px 24px",
-          }}
-        >
+        <div className="flex-1 overflow-auto px-6 py-5">
           {ext === "md" ? (
             <MarkdownRenderer content={content} />
           ) : (
@@ -349,58 +228,31 @@ function OutputReviewModal({
         </div>
 
         {/* ── Footer ── */}
-        <div
-          style={{
-            padding: "12px 20px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <div className="px-5 py-3 border-t border-border-subtle flex items-center justify-between">
           {/* Navigation */}
-          <div style={{ display: "flex", gap: 6 }}>
+          <div className="flex gap-1.5">
             <button
               disabled={!hasPrev}
               onClick={() => onIndexChange(index - 1)}
-              style={{
-                ...BTN,
-                padding: "8px 14px",
-                background: "none",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: hasPrev
-                  ? "rgba(255,255,255,0.6)"
-                  : "rgba(255,255,255,0.15)",
-                cursor: hasPrev ? "pointer" : "default",
-              }}
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               ← Prev
             </button>
             <button
               disabled={!hasNext}
               onClick={() => onIndexChange(index + 1)}
-              style={{
-                ...BTN,
-                padding: "8px 14px",
-                background: "none",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: hasNext
-                  ? "rgba(255,255,255,0.6)"
-                  : "rgba(255,255,255,0.15)",
-                cursor: hasNext ? "pointer" : "default",
-              }}
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               Next →
             </button>
           </div>
 
           {/* Approve / Disapprove */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <button
               onClick={() => onDisapprove(node.id)}
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-red"
               style={{
-                ...BTN,
-                padding: "8px 20px",
                 background:
                   approval === false
                     ? "rgba(239,68,68,0.15)"
@@ -410,16 +262,14 @@ function OutputReviewModal({
                     ? "rgba(239,68,68,0.5)"
                     : "rgba(239,68,68,0.2)"
                 }`,
-                color: "#ef4444",
               }}
             >
               Disapprove
             </button>
             <button
               onClick={() => onApprove(node.id)}
+              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-green"
               style={{
-                ...BTN,
-                padding: "8px 20px",
                 background:
                   approval === true
                     ? "rgba(34,197,94,0.15)"
@@ -429,7 +279,6 @@ function OutputReviewModal({
                     ? "rgba(34,197,94,0.5)"
                     : "rgba(34,197,94,0.2)"
                 }`,
-                color: "#22c55e",
               }}
             >
               Approve
@@ -590,7 +439,7 @@ export default function App() {
   const isEnvSpec = reviewRequest?.stage === Stage.GET_ENV_SPEC;
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
+    <div className="flex h-screen w-screen">
       {/* Sidebar — pipeline only */}
       <Sidebar
         connected={connected}
@@ -599,58 +448,23 @@ export default function App() {
       />
 
       {/* Main panel */}
-      <div
-        style={{
-          marginLeft: 200,
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          height: "100vh",
-          overflow: "hidden",
-        }}
-      >
+      <div className="ml-[200px] flex-1 flex flex-col relative h-screen overflow-hidden">
         {/* Error bar */}
         {error && (
           <div
             onClick={clearError}
-            style={{
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.3)",
-              color: "#ef4444",
-              fontSize: 11,
-              padding: "8px 16px",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className="bg-accent-red/10 border border-accent-red/30 text-accent-red text-[11px] px-4 py-2 cursor-pointer shrink-0"
           >
             {error}
           </div>
         )}
 
         {/* Content area */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div className="flex-1 flex overflow-hidden">
           {showIdle ? (
             /* Idle — problem input centered */
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 16,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  textTransform: "uppercase",
-                  letterSpacing: 2,
-                  color: "rgba(255,255,255,0.3)",
-                  marginBottom: 8,
-                }}
-              >
+            <div className="flex-1 flex flex-col items-center justify-center gap-4">
+              <div className="text-[11px] uppercase tracking-[2px] text-text-faint mb-2">
                 Describe a decision problem
               </div>
               <input
@@ -661,37 +475,12 @@ export default function App() {
                 onKeyDown={handleKeyDown}
                 placeholder="e.g. survival decision-making"
                 autoFocus
-                style={{
-                  width: 420,
-                  maxWidth: "80%",
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontFamily: "inherit",
-                  padding: "12px 16px",
-                  outline: "none",
-                  borderRadius: 0,
-                  textAlign: "center",
-                }}
+                className="w-[420px] max-w-[80%] bg-transparent border border-text-ghost text-text text-[13px] font-mono py-3 px-4 outline-none text-center"
               />
               <button
                 onClick={handleRun}
                 disabled={!problemInput.trim()}
-                style={{
-                  padding: "10px 32px",
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.3)",
-                  color: !problemInput.trim()
-                    ? "rgba(255,255,255,0.3)"
-                    : "#fff",
-                  fontSize: 11,
-                  fontFamily: "inherit",
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                  cursor: !problemInput.trim() ? "default" : "pointer",
-                  borderRadius: 0,
-                }}
+                className="py-2.5 px-8 bg-transparent border border-text-faint text-[11px] uppercase tracking-[1px] cursor-pointer disabled:cursor-default disabled:text-text-faint"
               >
                 Run
               </button>
@@ -699,7 +488,7 @@ export default function App() {
           ) : (
             <>
               {/* Graph */}
-              <div style={{ flex: 1, minWidth: 0, height: "100%" }}>
+              <div className="flex-1 min-w-0 h-full">
                 <Graph
                   nodes={nodes}
                   edges={edges}
@@ -710,41 +499,14 @@ export default function App() {
 
               {/* ── Stage completion bar ── */}
               {reviewActive && (
-                <div
-                  className="animate-slide-up"
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 50,
-                    background: "rgba(9,9,9,0.96)",
-                    borderTop: "1px solid rgba(34,197,94,0.15)",
-                    backdropFilter: "blur(10px)",
-                    padding: "16px 24px",
-                  }}
-                >
+                <div className="animate-slide-up absolute bottom-0 left-0 right-0 z-50 bg-surface-frosted border-t border-accent-green/15 backdrop-blur-[10px] px-6 py-4">
                   {isEnvSpec ? (
                     /* ENV SPEC — upload mode */
                     <div>
-                      <span
-                        style={{
-                          fontSize: 9,
-                          textTransform: "uppercase",
-                          letterSpacing: "1.5px",
-                          color: "#fbbf24",
-                        }}
-                      >
+                      <span className="text-[9px] uppercase tracking-[1.5px] text-accent-amber">
                         Environment Specification Required
                       </span>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "rgba(255,255,255,0.6)",
-                          marginTop: 4,
-                          marginBottom: 12,
-                        }}
-                      >
+                      <div className="text-[11px] text-text-muted mt-1 mb-3">
                         Upload or paste the environment specification JSON.
                       </div>
                       <EnvSpecUpload
@@ -756,72 +518,35 @@ export default function App() {
                   ) : (
                     /* Normal output review mode */
                     <>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginBottom: 12,
-                        }}
-                      >
+                      <div className="flex items-center justify-between mb-3">
                         <div>
-                          <span
-                            style={{
-                              fontSize: 9,
-                              textTransform: "uppercase",
-                              letterSpacing: "1.5px",
-                              color: "#22c55e",
-                            }}
-                          >
+                          <span className="text-[9px] uppercase tracking-[1.5px] text-accent-green">
                             Stage Complete
                           </span>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "rgba(255,255,255,0.6)",
-                              marginTop: 4,
-                            }}
-                          >
+                          <div className="text-[11px] text-text-muted mt-1">
                             Review generated outputs before continuing.
                             {stageOutputs.length > 0 && (
-                              <span
-                                style={{
-                                  marginLeft: 10,
-                                  color: "rgba(255,255,255,0.3)",
-                                }}
-                              >
+                              <span className="ml-[10px] text-text-faint">
                                 {reviewedCount}/{stageOutputs.length} reviewed
                               </span>
                             )}
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 10 }}>
+                        <div className="flex gap-2.5">
                           {stageOutputs.length > 0 && (
                             <button
                               onClick={() => {
                                 setOutputIndex(0);
                                 setShowOutputModal(true);
                               }}
-                              style={{
-                                ...BTN,
-                                padding: "8px 20px",
-                                background: "rgba(34,197,94,0.08)",
-                                border: "1px solid rgba(34,197,94,0.25)",
-                                color: "#22c55e",
-                              }}
+                              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-[rgba(34,197,94,0.08)] border border-accent-green/25 text-accent-green"
                             >
                               View Outputs ({stageOutputs.length})
                             </button>
                           )}
                           <button
                             onClick={handleContinue}
-                            style={{
-                              ...BTN,
-                              padding: "8px 24px",
-                              background: "rgba(255,255,255,0.05)",
-                              border: "1px solid rgba(255,255,255,0.2)",
-                              color: "#fff",
-                            }}
+                            className="text-[10px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-surface-hover border border-[rgba(255,255,255,0.2)] text-text"
                           >
                             Continue →
                           </button>
@@ -829,7 +554,7 @@ export default function App() {
                       </div>
 
                       {/* Router prompt */}
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           value={routerPrompt}
@@ -838,33 +563,12 @@ export default function App() {
                             if (e.key === "Enter") handleSendRouterPrompt();
                           }}
                           placeholder="Send instructions to the router..."
-                          style={{
-                            flex: 1,
-                            background: "transparent",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "#fff",
-                            fontSize: 11,
-                            fontFamily: "inherit",
-                            padding: "8px 12px",
-                            outline: "none",
-                            borderRadius: 0,
-                          }}
+                          className="flex-1 bg-transparent border border-border-subtle text-text text-[11px] font-mono py-2 px-3 outline-none"
                         />
                         <button
                           onClick={handleSendRouterPrompt}
                           disabled={!routerPrompt.trim()}
-                          style={{
-                            ...BTN,
-                            padding: "8px 16px",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            background: "transparent",
-                            color: routerPrompt.trim()
-                              ? "#fff"
-                              : "rgba(255,255,255,0.25)",
-                            cursor: routerPrompt.trim()
-                              ? "pointer"
-                              : "default",
-                          }}
+                          className="text-[10px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer disabled:cursor-default disabled:text-text-ghost text-text"
                         >
                           Send
                         </button>
@@ -891,22 +595,7 @@ export default function App() {
               {isRunning && (
                 <button
                   onClick={cancelPipeline}
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    right: 12,
-                    padding: "6px 16px",
-                    background: "rgba(0,0,0,0.7)",
-                    border: "1px solid rgba(239,68,68,0.4)",
-                    color: "#ef4444",
-                    fontSize: 10,
-                    fontFamily: "inherit",
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                    cursor: "pointer",
-                    borderRadius: 0,
-                    zIndex: 40,
-                  }}
+                  className="absolute top-3 right-3 px-4 py-1.5 bg-[rgba(0,0,0,0.7)] border border-accent-red/40 text-accent-red text-[10px] uppercase tracking-[1px] cursor-pointer z-40"
                 >
                   Cancel
                 </button>
