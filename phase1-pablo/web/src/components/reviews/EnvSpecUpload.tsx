@@ -66,7 +66,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
+        <h2 className="text-[13px] uppercase tracking-[2px] mb-4 text-text-muted">
           Environment Spec
         </h2>
 
@@ -75,7 +75,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
           {(['upload', 'paste'] as Mode[]).map((m) => (
             <button
               key={m}
-              className="text-[10px] uppercase tracking-[1px] text-white border border-text-faint px-4 py-1.5 rounded-lg"
+              className="text-[12px] uppercase tracking-[1px] text-white border border-text-faint px-4 py-1.5 rounded-lg"
               style={{
                 background: mode === m ? 'rgba(255,255,255,0.08)' : 'transparent',
               }}
@@ -103,7 +103,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
           >
-            <span className="text-[11px] text-text-dim">
+            <span className="text-[13px] text-text-dim">
               Drop env_spec.json here
             </span>
             <input
@@ -122,7 +122,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
         {/* Paste mode */}
         {mode === 'paste' && (
           <textarea
-            className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[160px] outline-none font-mono rounded-lg"
+            className="w-full text-[13px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[160px] outline-none font-mono rounded-lg"
             placeholder="Paste JSON here..."
             value={rawJson}
             onChange={(e) => tryParse(e.target.value)}
@@ -131,7 +131,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
 
         {/* Error */}
         {error && (
-          <div className="text-[10px] text-accent-red">
+          <div className="text-[12px] text-accent-red">
             {error}
           </div>
         )}
@@ -139,7 +139,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
         {/* JSON preview */}
         {isValid && (
           <div>
-            <span className="text-[10px] uppercase tracking-[1px] text-text-faint">
+            <span className="text-[12px] uppercase tracking-[1px] text-text-faint">
               Preview
             </span>
             <CodeBlock code={JSON.stringify(parsed, null, 2)} language="json" />
@@ -150,7 +150,7 @@ export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadPr
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!isValid}
           onClick={() => onSubmit({ env_spec: parsed! })}
         >

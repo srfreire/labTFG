@@ -44,7 +44,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
+        <h2 className="text-[13px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Reason
         </h2>
 
@@ -62,9 +62,9 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
             >
               {/* Header */}
               <div className="flex items-center gap-2">
-                <span className="text-[12px] text-white font-medium">{spec.name}</span>
+                <span className="text-[14px] text-white font-medium">{spec.name}</span>
                 <span
-                  className="text-[9px] uppercase tracking-[1px] px-2 py-0.5 border text-text-muted"
+                  className="text-[11px] uppercase tracking-[1px] px-2 py-0.5 border text-text-muted"
                   style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                 >
                   {spec.paradigm}
@@ -72,21 +72,21 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               </div>
 
               {/* Description */}
-              <div className="text-[11px] text-text-muted">
+              <div className="text-[13px] text-text-muted">
                 <MarkdownRenderer content={spec.description} />
               </div>
 
               {/* Variables */}
               {spec.variables?.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
+                  <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
                     Variables
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {spec.variables.map((v: any, i: number) => (
                       <span
                         key={i}
-                        className="text-[10px] px-2 py-0.5 border text-text-muted"
+                        className="text-[12px] px-2 py-0.5 border text-text-muted"
                         style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                       >
                         {typeof v === 'string' ? v : v.name || JSON.stringify(v)}
@@ -99,14 +99,14 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {/* Parameters */}
               {spec.parameters?.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
+                  <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
                     Parameters
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {spec.parameters.map((p: any, i: number) => (
                       <span
                         key={i}
-                        className="text-[10px] px-2 py-0.5 border text-text-muted"
+                        className="text-[12px] px-2 py-0.5 border text-text-muted"
                         style={{ borderColor: 'rgba(255,255,255,0.15)' }}
                       >
                         {typeof p === 'string' ? p : p.name || JSON.stringify(p)}
@@ -119,10 +119,10 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {/* Decision logic */}
               {spec.decision_logic && (
                 <div className="space-y-1">
-                  <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
+                  <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
                     Decision logic
                   </span>
-                  <div className="text-[10px] text-text-muted">
+                  <div className="text-[12px] text-text-muted">
                     {typeof spec.decision_logic === 'string'
                       ? spec.decision_logic
                       : JSON.stringify(spec.decision_logic, null, 2)}
@@ -133,7 +133,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {/* Action buttons */}
               {decided ? (
                 <div
-                  className="text-[10px] uppercase tracking-[1px] pt-1"
+                  className="text-[12px] uppercase tracking-[1px] pt-1"
                   style={{ color: wasApproved ? 'rgba(100,255,100,0.7)' : 'rgba(255,100,100,0.7)' }}
                 >
                   {wasApproved ? 'Aprobado' : 'Rechazado'}
@@ -141,14 +141,14 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               ) : (
                 <div className="flex items-start gap-2 pt-1">
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 rounded-lg"
+                    className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 rounded-lg"
                     onClick={() => approve(spec.id)}
                   >
                     Aprobar
                   </button>
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium text-white px-4 py-1.5 rounded-lg hover:bg-[rgba(255,100,100,0.05)]"
-                    style={{ border: '1px solid rgba(255,100,100,0.4)' }}
+                    className="text-[13px] uppercase tracking-[1px] font-medium text-accent-red px-4 py-1.5 rounded-lg bg-accent-red/6 hover:bg-accent-red/12"
+                    style={{ border: '1px solid rgba(239,68,68,0.25)' }}
                     onClick={() =>
                       setFeedbackDrafts((prev) => ({ ...prev, [spec.id]: prev[spec.id] ?? '' }))
                     }
@@ -162,7 +162,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {!decided && isRejecting(spec.id) && (
                 <div className="space-y-2 pt-1">
                   <textarea
-                    className="w-full text-[11px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono rounded-lg"
+                    className="w-full text-[13px] text-white bg-surface border border-text-ghost p-3 resize-y min-h-[80px] outline-none font-mono rounded-lg"
                     placeholder="Feedback..."
                     value={feedbackDrafts[spec.id] || ''}
                     onChange={(e) =>
@@ -170,7 +170,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
                     }
                   />
                   <button
-                    className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-4 py-1.5 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
                     disabled={!feedbackDrafts[spec.id]?.trim()}
                     onClick={() => reject(spec.id)}
                   >
@@ -186,7 +186,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!allDecided}
           onClick={handleSubmit}
         >

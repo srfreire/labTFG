@@ -38,7 +38,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
+        <h2 className="text-[13px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Formalize
         </h2>
 
@@ -54,10 +54,10 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
                 setExpandedParadigm((prev) => (prev === p.slug ? null : p.slug))
               }
             >
-              <span className="text-[12px] text-white font-medium">
+              <span className="text-[14px] text-white font-medium">
                 {p.title || p.slug}
               </span>
-              <span className="text-[10px] text-text-faint">
+              <span className="text-[12px] text-text-faint">
                 {expandedParadigm === p.slug ? '[-]' : '[+]'}
               </span>
             </div>
@@ -90,18 +90,18 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
                       }}
                     >
                       {isChecked(p.slug, f.id) && (
-                        <span className="text-[10px] text-black font-bold leading-none">
+                        <span className="text-[12px] text-black font-bold leading-none">
                           &#10003;
                         </span>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <span className="text-[10px] uppercase tracking-[1px] text-text-faint">
+                      <span className="text-[12px] uppercase tracking-[1px] text-text-faint">
                         Formulation {f.id}
                       </span>
                       <div className="mt-1">
-                        <MarkdownRenderer content={f.content} className="text-[11px]" />
+                        <MarkdownRenderer content={f.content} className="text-[13px]" />
                       </div>
                     </div>
                   </div>
@@ -115,7 +115,7 @@ export default function ReviewFormalize({ data, onSubmit }: ReviewFormalizeProps
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={!hasAnySelection}
           onClick={handleSubmit}
         >

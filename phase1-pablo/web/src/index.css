@@ -196,10 +196,26 @@ input, button, textarea, select {
   to   { stroke-dashoffset: 0; }
 }
 
+/* ── Collapsible section (grid-template-rows trick) ─────── */
+
+.collapse-grid {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.collapse-grid[data-collapsed="true"] {
+  grid-template-rows: 0fr;
+}
+
+.collapse-grid > div {
+  overflow: hidden;
+}
+
 /* ── Markdown content ────────────────────────────────────── */
 
 .markdown-body {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--color-text);
 }
@@ -215,9 +231,9 @@ input, button, textarea, select {
   font-weight: 600;
 }
 
-.markdown-body h1 { font-size: 14px; }
-.markdown-body h2 { font-size: 13px; }
-.markdown-body h3 { font-size: 12px; }
+.markdown-body h1 { font-size: 16px; }
+.markdown-body h2 { font-size: 15px; }
+.markdown-body h3 { font-size: 14px; }
 
 .markdown-body p {
   margin: 6px 0;
@@ -257,7 +273,7 @@ input, button, textarea, select {
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .markdown-body th,
@@ -271,7 +287,7 @@ input, button, textarea, select {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 

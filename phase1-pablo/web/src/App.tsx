@@ -66,8 +66,8 @@ function NodeDetail({
       content = (
         <>
           {meta.query && (
-            <div className="text-[11px] mb-2 text-text-muted">
-              <span className="text-[9px] uppercase tracking-[1px] block mb-1 text-text-faint">
+            <div className="text-[13px] mb-2 text-text-muted">
+              <span className="text-[11px] uppercase tracking-[1px] block mb-1 text-text-faint">
                 Query
               </span>
               {String(meta.query)}
@@ -75,13 +75,13 @@ function NodeDetail({
           )}
           {Array.isArray(meta.results) && meta.results.length > 0 && (
             <div>
-              <span className="text-[9px] uppercase tracking-[1px] block mb-1 text-text-faint">
+              <span className="text-[11px] uppercase tracking-[1px] block mb-1 text-text-faint">
                 Results
               </span>
               {meta.results.map((r, i) => (
                 <div
                   key={i}
-                  className="text-[11px] py-1 text-text-muted border-b border-border-faint"
+                  className="text-[13px] py-1 text-text-muted border-b border-border-faint"
                 >
                   {String(r)}
                 </div>
@@ -105,7 +105,7 @@ function NodeDetail({
 
   if (!content) {
     content = (
-      <div className="text-[11px] text-text-dim">No details available.</div>
+      <div className="text-[13px] text-text-dim">No details available.</div>
     );
   }
 
@@ -114,15 +114,15 @@ function NodeDetail({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] uppercase tracking-[1px] text-text-faint">
+          <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
             {node.kind}
           </span>
-          <span className="text-[12px] text-white font-medium">
+          <span className="text-[14px] text-white font-medium">
             {node.label}
           </span>
         </div>
         <button
-          className="w-6 h-6 flex items-center justify-center rounded-full cursor-pointer text-text-faint bg-transparent border-none hover:bg-surface-hover text-[12px]"
+          className="w-6 h-6 flex items-center justify-center rounded-full cursor-pointer text-text-faint bg-transparent border-none hover:bg-surface-hover text-[14px]"
           onClick={onClose}
         >
           ✕
@@ -179,9 +179,9 @@ function OutputReviewModal({
         style={{
           border: `1px solid ${
             approval === true
-              ? "rgba(34,197,94,0.3)"
+              ? "rgba(255,255,255,0.2)"
               : approval === false
-                ? "rgba(239,68,68,0.3)"
+                ? "rgba(255,255,255,0.2)"
                 : "rgba(255,255,255,0.1)"
           }`,
         }}
@@ -190,30 +190,30 @@ function OutputReviewModal({
         <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
           <div>
             <div className="flex items-center gap-[10px]">
-              <span className="text-[9px] tracking-[1.5px] text-text-faint uppercase">
+              <span className="text-[11px] tracking-[1.5px] text-text-faint uppercase">
                 Output
               </span>
               {approval === true && (
-                <span className="text-[8px] px-2 py-0.5 bg-[rgba(34,197,94,0.12)] border border-accent-green/30 text-accent-green uppercase tracking-[1px] rounded-full">
+                <span className="text-[10px] px-2 py-0.5 bg-[rgba(255,255,255,0.08)] border border-border text-text-muted uppercase tracking-[1px] rounded-full">
                   Approved
                 </span>
               )}
               {approval === false && (
-                <span className="text-[8px] px-2 py-0.5 bg-[rgba(239,68,68,0.12)] border border-accent-red/30 text-accent-red uppercase tracking-[1px] rounded-full">
+                <span className="text-[10px] px-2 py-0.5 bg-[rgba(255,255,255,0.05)] border border-border text-text-dim uppercase tracking-[1px] rounded-full">
                   Rejected
                 </span>
               )}
             </div>
-            <div className="text-[13px] text-text mt-1">{node.label}</div>
+            <div className="text-[15px] text-text mt-1">{node.label}</div>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[11px] text-text-faint">
+            <span className="text-[13px] text-text-faint">
               {index + 1} / {outputs.length}
             </span>
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none text-text-dim text-[16px] cursor-pointer hover:bg-surface-hover"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none text-text-dim text-[18px] cursor-pointer hover:bg-surface-hover"
             >
               ✕
             </button>
@@ -236,14 +236,14 @@ function OutputReviewModal({
             <button
               disabled={!hasPrev}
               onClick={() => onIndexChange(index - 1)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               ← Prev
             </button>
             <button
               disabled={!hasNext}
               onClick={() => onIndexChange(index + 1)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
             >
               Next →
             </button>
@@ -253,15 +253,15 @@ function OutputReviewModal({
           <div className="flex gap-2">
             <button
               onClick={() => onDisapprove(node.id)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-red rounded-lg"
+              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-5 py-2 text-accent-red rounded-lg"
               style={{
                 background:
                   approval === false
-                    ? "rgba(239,68,68,0.15)"
-                    : "transparent",
+                    ? "rgba(239,68,68,0.12)"
+                    : "rgba(239,68,68,0.06)",
                 border: `1px solid ${
                   approval === false
-                    ? "rgba(239,68,68,0.5)"
+                    ? "rgba(239,68,68,0.4)"
                     : "rgba(239,68,68,0.2)"
                 }`,
               }}
@@ -270,7 +270,7 @@ function OutputReviewModal({
             </button>
             <button
               onClick={() => onApprove(node.id)}
-              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-accent-green text-black rounded-lg font-medium"
+              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-white text-black rounded-lg font-medium"
             >
               Approve
             </button>
@@ -453,12 +453,12 @@ export default function App() {
       )}
 
       {/* Main panel */}
-      <div className={`${showIdle ? "" : "ml-[184px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
+      <div className="flex-1 flex flex-col relative h-screen overflow-hidden">
         {/* Error bar */}
         {error && (
           <div
             onClick={clearError}
-            className="bg-accent-red/10 border border-accent-red/30 text-accent-red text-[11px] mx-4 mt-3 px-4 py-2 cursor-pointer shrink-0 rounded-lg"
+            className="bg-[rgba(255,255,255,0.04)] border border-border text-text-muted text-[13px] mx-4 mt-3 px-4 py-2 cursor-pointer shrink-0 rounded-lg"
           >
             {error}
           </div>
@@ -486,7 +486,7 @@ export default function App() {
                   {/* Title */}
                   <div className="text-center p-4">
                     <h1
-                      className="text-[28px] font-bold tracking-tight text-text transition-all duration-500 delay-200"
+                      className="text-[30px] font-bold tracking-tight text-text transition-all duration-500 delay-200"
                       style={{
                         opacity: demoComplete ? 1 : 0,
                         transform: demoComplete
@@ -499,7 +499,7 @@ export default function App() {
                       DecisionLab
                     </h1>
                     <p
-                      className="text-[14px] text-text-muted mt-2 transition-all duration-500 delay-300"
+                      className="text-[16px] text-text-muted mt-2 transition-all duration-500 delay-300"
                       style={{
                         opacity: demoComplete ? 1 : 0,
                         transform: demoComplete
@@ -534,12 +534,12 @@ export default function App() {
                         placeholder="e.g. survival decision-making"
                         autoFocus
                         rows={3}
-                        className="flex-1 bg-transparent border border-text-ghost text-text text-[13px] py-3.5 px-5 outline-none resize-none rounded-xl"
+                        className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3.5 px-5 outline-none resize-none rounded-xl"
                       />
                       <button
                         onClick={handleRun}
                         disabled={!problemInput.trim()}
-                        className="shrink-0 w-16 flex items-center justify-center transition-colors bg-accent-green text-black cursor-pointer hover:bg-accent-green-light rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
+                        className="shrink-0 w-16 flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
                       >
                         <Play size={20} fill="currentColor" />
                       </button>
@@ -564,14 +564,14 @@ export default function App() {
 
               {/* ── Stage completion bar ── */}
               {reviewActive && (
-                <div className="animate-slide-up absolute bottom-4 left-4 right-4 z-50 bg-surface-frosted border border-accent-green/15 backdrop-blur-[10px] px-6 py-4 rounded-2xl shadow-xl shadow-black/30">
+                <div className="animate-slide-up absolute bottom-4 left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-6 py-4 rounded-2xl shadow-xl shadow-black/30">
                   {isEnvSpec ? (
                     /* ENV SPEC — upload mode */
                     <div>
-                      <span className="text-[9px] uppercase tracking-[1.5px] text-accent-amber">
+                      <span className="text-[11px] uppercase tracking-[1.5px] text-text-muted">
                         Environment Specification Required
                       </span>
-                      <div className="text-[11px] text-text-muted mt-1 mb-3">
+                      <div className="text-[13px] text-text-muted mt-1 mb-3">
                         Upload or paste the environment specification JSON.
                       </div>
                       <EnvSpecUpload
@@ -585,10 +585,10 @@ export default function App() {
                     <>
                       <div className="flex items-center justify-between mb-3">
                         <div>
-                          <span className="text-[9px] uppercase tracking-[1.5px] text-accent-green">
+                          <span className="text-[11px] uppercase tracking-[1.5px] text-text-muted">
                             Stage Complete
                           </span>
-                          <div className="text-[11px] text-text-muted mt-1">
+                          <div className="text-[13px] text-text-muted mt-1">
                             Review generated outputs before continuing.
                             {stageOutputs.length > 0 && (
                               <span className="ml-[10px] text-text-faint">
@@ -604,14 +604,14 @@ export default function App() {
                                 setOutputIndex(0);
                                 setShowOutputModal(true);
                               }}
-                              className="text-[10px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-[rgba(34,197,94,0.08)] border border-accent-green/25 text-accent-green rounded-lg"
+                              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-transparent border border-border text-text-muted rounded-lg hover:bg-surface-hover"
                             >
                               View Outputs ({stageOutputs.length})
                             </button>
                           )}
                           <button
                             onClick={handleContinue}
-                            className="text-[10px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-white text-black rounded-lg font-medium"
+                            className="text-[12px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-white text-black rounded-lg font-medium"
                           >
                             Continue →
                           </button>
@@ -628,12 +628,12 @@ export default function App() {
                             if (e.key === "Enter") handleSendRouterPrompt();
                           }}
                           placeholder="Send instructions to the router..."
-                          className="flex-1 bg-transparent border border-border-subtle text-text text-[11px] font-mono py-2 px-3 outline-none rounded-lg"
+                          className="flex-1 bg-transparent border border-border-subtle text-text text-[13px] font-mono py-2 px-3 outline-none rounded-lg"
                         />
                         <button
                           onClick={handleSendRouterPrompt}
                           disabled={!routerPrompt.trim()}
-                          className="text-[10px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer rounded-lg disabled:cursor-default disabled:text-text-ghost text-text"
+                          className="text-[12px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer rounded-lg disabled:cursor-default disabled:text-text-ghost text-text"
                         >
                           Send
                         </button>

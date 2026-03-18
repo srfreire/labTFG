@@ -33,7 +33,7 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        <h2 className="text-[11px] uppercase tracking-[2px] mb-4 text-text-muted">
+        <h2 className="text-[13px] uppercase tracking-[2px] mb-4 text-text-muted">
           Review Research
         </h2>
 
@@ -63,25 +63,25 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
                 }}
               >
                 {selected.has(p.slug) && (
-                  <span className="text-[10px] text-black font-bold leading-none">
+                  <span className="text-[12px] text-black font-bold leading-none">
                     &#10003;
                   </span>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] text-white font-medium">
+                <div className="text-[14px] text-white font-medium">
                   {p.title || formatSlug(p.slug)}
                 </div>
                 {p.summary && (
-                  <div className="text-[10px] mt-1 leading-relaxed text-text-dim">
+                  <div className="text-[12px] mt-1 leading-relaxed text-text-dim">
                     {p.summary.slice(0, 200)}
                     {p.summary.length > 200 && '...'}
                   </div>
                 )}
               </div>
 
-              <span className="text-[10px] flex-shrink-0 text-text-faint">
+              <span className="text-[12px] flex-shrink-0 text-text-faint">
                 {expanded === p.slug ? '[-]' : '[+]'}
               </span>
             </div>
@@ -90,7 +90,7 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
             {expanded === p.slug && p.content && (
               <div className="px-3 pb-3 border-t border-border-faint">
                 <div className="pt-3">
-                  <MarkdownRenderer content={p.content} className="text-[11px]" />
+                  <MarkdownRenderer content={p.content} className="text-[13px]" />
                 </div>
               </div>
             )}
@@ -101,7 +101,7 @@ export default function ReviewResearch({ data, onSubmit }: ReviewResearchProps) 
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <button
-          className="text-[11px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-[13px] uppercase tracking-[1px] font-medium bg-white text-black px-6 py-2 cursor-pointer rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={selected.size === 0}
           onClick={() => onSubmit({ approved: Array.from(selected) })}
         >

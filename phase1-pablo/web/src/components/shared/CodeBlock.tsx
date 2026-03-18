@@ -10,7 +10,7 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
   return (
     <div className="relative my-2">
       {language && (
-        <span className="absolute top-1.5 right-2 text-[9px] uppercase tracking-[1px] text-text-faint">
+        <span className="absolute top-1.5 right-2 text-[11px] uppercase tracking-[1px] text-text-faint">
           {language}
         </span>
       )}
@@ -23,7 +23,7 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
           borderRadius: 8,
           padding: '14px 16px',
           margin: 0,
-          fontSize: '11px',
+          fontSize: '13px',
           fontFamily: 'inherit',
         }}
       >

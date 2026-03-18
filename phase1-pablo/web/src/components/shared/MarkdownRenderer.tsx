@@ -22,7 +22,7 @@ const components: Components = {
 
     return (
       <code
-        className={`${className ?? ''} bg-surface-hover border border-border px-1 py-px text-[11px] rounded`}
+        className={`${className ?? ''} bg-surface-hover border border-border px-1 py-px text-[13px] rounded`}
         {...rest}
       >
         {children}

@@ -104,6 +104,39 @@ function LegendFace({ name, size = 20 }: { name: string; size?: number }) {
   );
 }
 
+function LegendSection({ title, defaultOpen = true, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border-subtle last:border-b-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between py-2 cursor-pointer bg-transparent border-none text-left"
+        style={{ transition: 'opacity 160ms ease-out' }}
+      >
+        <span className="text-[10px] tracking-[1.5px] uppercase text-text-faint">{title}</span>
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+          className="text-text-faint"
+          style={{
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            transition: 'transform 200ms cubic-bezier(0.23, 1, 0.32, 1)',
+          }}
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" />
+        </svg>
+      </button>
+      <div className="collapse-grid" data-collapsed={!open}>
+        <div>
+          <div className="flex flex-col gap-[7px] pb-2">
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LegendIcon({ d, label }: { d: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -135,8 +168,8 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
   const posRef = useRef(new Map<string, { x: number; y: number }>());
   const childCountRef = useRef(new Map<string, number>());
 
-  // Auto-fit: fitView on every new node until user manually pans/zooms
   const [autoFit, setAutoFit] = useState(true);
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{ kind: string; label: string } | null>(
@@ -344,7 +377,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
 
       {/* Review instruction */}
       {!demo && reviewActive && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 rounded-lg text-[11px] font-mono text-accent-amber-dark pointer-events-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 rounded-lg text-[13px] font-mono text-accent-amber-dark pointer-events-none">
           Click on the glowing output files to review and approve
         </div>
       )}
@@ -353,129 +386,134 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       {!demo && toast && (
         <div
           key={`${toast.kind}-${toast.label}`}
-          className="animate-slide-in-right absolute bottom-5 left-5 z-10 bg-overlay-heavy border border-border rounded-lg py-2 px-4 text-[11px] font-mono flex items-center gap-2.5 pointer-events-none"
+          className="animate-slide-in-right absolute bottom-5 left-5 z-10 bg-overlay-heavy border border-border rounded-lg py-2 px-4 text-[13px] font-mono flex items-center gap-2.5 pointer-events-none"
         >
-          <span className="text-[9px] tracking-[1.5px] text-text-dim uppercase">
+          <span className="text-[11px] tracking-[1.5px] text-text-dim uppercase">
             {KIND_LABELS[toast.kind] ?? toast.kind}
           </span>
           <span className="text-text">{toast.label}</span>
         </div>
       )}
 
-      {/* Legend */}
-      {!demo && <div className="absolute top-4 right-4 z-10 bg-overlay border border-border-subtle rounded-2xl shadow-xl shadow-black/20 p-3 px-4 flex flex-col gap-[7px] text-[10px] text-text-muted pointer-events-none">
-        {/* Agents */}
-        <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Agents</span>
-        <div className="flex items-center gap-2">
-          <LegendFace name="Researcher" size={20} />
-          <span>Researcher</span>
+      {/* Legend aside */}
+      {!demo && <>
+      <aside
+        className="fixed right-4 top-4 bottom-4 w-[160px] z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+        style={{
+          transform: legendCollapsed ? 'translateX(calc(100% + 20px))' : 'translateX(0)',
+          transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
+        }}
+      >
+        <div className="px-4 py-3 border-b border-border-subtle shrink-0">
+          <span className="text-[13px] font-semibold tracking-tight text-text">Legend</span>
         </div>
-        <div className="flex items-center gap-2">
-          <LegendFace name="Formalizer" size={20} />
-          <span>Formalizer</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <LegendFace name="Reasoner" size={20} />
-          <span>Reasoner</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <LegendFace name="Builder" size={20} />
-          <span>Builder</span>
-        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-1 text-[12px] text-text-muted">
+          <LegendSection title="Agents">
+            <div className="flex items-center gap-2"><LegendFace name="Researcher" size={20} /><span>Researcher</span></div>
+            <div className="flex items-center gap-2"><LegendFace name="Formalizer" size={20} /><span>Formalizer</span></div>
+            <div className="flex items-center gap-2"><LegendFace name="Reasoner" size={20} /><span>Reasoner</span></div>
+            <div className="flex items-center gap-2"><LegendFace name="Builder" size={20} /><span>Builder</span></div>
+          </LegendSection>
 
-        {/* Sub-agents */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Sub-agents</span>
-          <div className="flex items-center gap-2">
-            <LegendFace name="Deep Researcher" size={16} />
-            <span>Deep Researcher</span>
-          </div>
-        </div>
+          <LegendSection title="Sub-agents">
+            <div className="flex items-center gap-2"><LegendFace name="Deep Researcher" size={16} /><span>Deep Researcher</span></div>
+          </LegendSection>
 
-        {/* Tools */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Tools</span>
-          <LegendIcon d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" label="Web Search" />
-          <LegendIcon d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" label="Read" />
-          <LegendIcon d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" label="Write" />
-        </div>
+          <LegendSection title="Tools">
+            <LegendIcon d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" label="Web Search" />
+            <LegendIcon d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" label="Read" />
+            <LegendIcon d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" label="Write" />
+          </LegendSection>
 
-        {/* File Types */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">File Types</span>
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 208 208" fill="var(--node-icon)"><path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" /></svg>
-            <span>.md</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 32 32" fill="var(--node-icon)">
-              <path fillRule="evenodd" clipRule="evenodd" d="M13.016 2C10.82 2 9.038 3.725 9.038 5.852V8.519h6.885v.74H5.978C3.781 9.259 2 10.984 2 13.111v5.778c0 2.127 1.781 3.852 3.978 3.852h2.295v-3.26c0-2.127 1.781-3.852 3.978-3.852h7.344c1.86 0 3.366-1.459 3.366-3.26V5.853C22.962 3.725 21.18 2 18.984 2h-5.968zm-.918 4.741c.76 0 1.377-.597 1.377-1.333 0-.737-.616-1.334-1.377-1.334-.76 0-1.377.597-1.377 1.334 0 .736.616 1.333 1.377 1.333z" />
-              <path fillRule="evenodd" clipRule="evenodd" d="M18.983 30c2.197 0 3.978-1.725 3.978-3.852v-2.667h-6.885v-.74h9.946C28.219 22.74 30 21.016 30 18.889v-5.778C30 10.984 28.219 9.26 26.022 9.26h-2.295v3.26c0-2.127-1.781-3.851-3.978-3.851h-7.345c-1.859 0-3.366 1.46-3.366 3.26v6.518c0 2.128 1.781 3.852 3.978 3.852h5.968zm.918-4.741c-.76 0-1.377.597-1.377 1.333 0 .737.617 1.334 1.377 1.334.76 0 1.377-.597 1.377-1.334 0-.736-.616-1.333-1.377-1.333z" />
-            </svg>
-            <span>.py</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 160 160" fill="var(--node-icon)">
-              <path d="m79.865 119.1c35.398 48.255 70.04-13.469 69.989-50.587-0.0602-43.886-44.541-68.414-70.018-68.414-40.892 0-79.836 33.796-79.836 80.036 0 51.396 44.64 79.865 79.836 79.865-7.9645-1.1468-34.506-6.834-34.863-67.967-0.23987-41.347 13.488-57.866 34.805-50.599 0.47743 0.17707 23.514 9.2645 23.514 38.951 0 29.56-23.427 38.715-23.427 38.715z" />
-              <path d="m79.823 41.401c-23.39-8.0619-52.043 11.216-52.043 49.829 0 63.048 46.721 68.77 52.384 68.77 40.892 0 79.836-33.796 79.836-80.036 0-51.396-44.64-79.865-79.836-79.865 9.7481-1.35 52.541 10.55 52.541 69.037 0 38.141-31.953 58.905-52.735 50.033-0.47743-0.17707-23.514-9.2645-23.514-38.951 0-29.56 23.367-38.818 23.367-38.818z" />
-            </svg>
-            <span>.json</span>
-          </div>
-        </div>
+          <LegendSection title="File Types" defaultOpen={false}>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 208 208" fill="var(--node-icon)"><path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" /></svg>
+              <span>.md</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 32 32" fill="var(--node-icon)">
+                <path fillRule="evenodd" clipRule="evenodd" d="M13.016 2C10.82 2 9.038 3.725 9.038 5.852V8.519h6.885v.74H5.978C3.781 9.259 2 10.984 2 13.111v5.778c0 2.127 1.781 3.852 3.978 3.852h2.295v-3.26c0-2.127 1.781-3.852 3.978-3.852h7.344c1.86 0 3.366-1.459 3.366-3.26V5.853C22.962 3.725 21.18 2 18.984 2h-5.968zm-.918 4.741c.76 0 1.377-.597 1.377-1.333 0-.737-.616-1.334-1.377-1.334-.76 0-1.377.597-1.377 1.334 0 .736.616 1.333 1.377 1.333z" />
+                <path fillRule="evenodd" clipRule="evenodd" d="M18.983 30c2.197 0 3.978-1.725 3.978-3.852v-2.667h-6.885v-.74h9.946C28.219 22.74 30 21.016 30 18.889v-5.778C30 10.984 28.219 9.26 26.022 9.26h-2.295v3.26c0-2.127-1.781-3.851-3.978-3.851h-7.345c-1.859 0-3.366 1.46-3.366 3.26v6.518c0 2.128 1.781 3.852 3.978 3.852h5.968zm.918-4.741c-.76 0-1.377.597-1.377 1.333 0 .737.617 1.334 1.377 1.334.76 0 1.377-.597 1.377-1.334 0-.736-.616-1.333-1.377-1.333z" />
+              </svg>
+              <span>.py</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 160 160" fill="var(--node-icon)">
+                <path d="m79.865 119.1c35.398 48.255 70.04-13.469 69.989-50.587-0.0602-43.886-44.541-68.414-70.018-68.414-40.892 0-79.836 33.796-79.836 80.036 0 51.396 44.64 79.865 79.836 79.865-7.9645-1.1468-34.506-6.834-34.863-67.967-0.23987-41.347 13.488-57.866 34.805-50.599 0.47743 0.17707 23.514 9.2645 23.514 38.951 0 29.56-23.427 38.715-23.427 38.715z" />
+                <path d="m79.823 41.401c-23.39-8.0619-52.043 11.216-52.043 49.829 0 63.048 46.721 68.77 52.384 68.77 40.892 0 79.836-33.796 79.836-80.036 0-51.396-44.64-79.865-79.836-79.865 9.7481-1.35 52.541 10.55 52.541 69.037 0 38.141-31.953 58.905-52.735 50.033-0.47743-0.17707-23.514-9.2645-23.514-38.951 0-29.56 23.367-38.818 23.367-38.818z" />
+              </svg>
+              <span>.json</span>
+            </div>
+          </LegendSection>
 
-        {/* Shapes */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Shapes</span>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, border: '1.5px solid var(--node-border)', borderRadius: 3 }} />
-            <span>Agent</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid var(--node-border)' }} />
-            <span>Tool</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M 5.8,1.3 Q 7,0 8.2,1.3 L 12.7,5.8 Q 14,7 12.7,8.2 L 8.2,12.7 Q 7,14 5.8,12.7 L 1.3,8.2 Q 0,7 1.3,5.8 Z" fill="none" stroke="var(--node-border)" strokeWidth="1.5" /></svg>
-            <span>Artifact</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <svg width="14" height="16" viewBox="0 0 48 55" className="shrink-0">
-              <path d="M 19.6,3.4 Q 24,1 28.4,3.4 L 42.6,11.3 Q 47,13.75 47,18.75 L 47,36.25 Q 47,41.25 42.6,43.7 L 28.4,51.6 Q 24,54 19.6,51.6 L 5.4,43.7 Q 1,41.25 1,36.25 L 1,18.75 Q 1,13.75 5.4,11.3 Z" fill="none" stroke="var(--node-border)" strokeWidth="2.5" />
-            </svg>
-            <span>Stage Output</span>
-          </div>
-        </div>
+          <LegendSection title="Shapes" defaultOpen={false}>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 12, height: 12, border: '1.5px solid var(--node-border)', borderRadius: 3 }} />
+              <span>Agent</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 12, height: 12, borderRadius: '50%', border: '1.5px solid var(--node-border)' }} />
+              <span>Tool</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 14 14"><path d="M 5.8,1.3 Q 7,0 8.2,1.3 L 12.7,5.8 Q 14,7 12.7,8.2 L 8.2,12.7 Q 7,14 5.8,12.7 L 1.3,8.2 Q 0,7 1.3,5.8 Z" fill="none" stroke="var(--node-border)" strokeWidth="1.5" /></svg>
+              <span>Artifact</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="16" viewBox="0 0 48 55" className="shrink-0">
+                <path d="M 19.6,3.4 Q 24,1 28.4,3.4 L 42.6,11.3 Q 47,13.75 47,18.75 L 47,36.25 Q 47,41.25 42.6,43.7 L 28.4,51.6 Q 24,54 19.6,51.6 L 5.4,43.7 Q 1,41.25 1,36.25 L 1,18.75 Q 1,13.75 5.4,11.3 Z" fill="none" stroke="var(--node-border)" strokeWidth="2.5" />
+              </svg>
+              <span>Stage Output</span>
+            </div>
+          </LegendSection>
 
-        {/* Edges */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Data Flow</span>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 20, height: 0, borderTop: '2px solid rgba(251,191,36,0.5)' }} />
-            <span>Write</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 20, height: 0, borderTop: '2px solid rgba(56,189,248,0.5)' }} />
-            <span>Read</span>
-          </div>
-        </div>
+          <LegendSection title="Data Flow" defaultOpen={false}>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 20, height: 0, borderTop: '2px solid rgba(251,191,36,0.5)' }} />
+              <span>Write</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 20, height: 0, borderTop: '2px solid rgba(56,189,248,0.5)' }} />
+              <span>Read</span>
+            </div>
+          </LegendSection>
 
-        {/* Status */}
-        <div className="mt-0.5 border-t border-border-subtle pt-1.5 flex flex-col gap-[7px]">
-          <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Status</span>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #f59e0b', boxShadow: '0 0 6px rgba(251,191,36,0.5)' }} />
-            <span>Running</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #22c55e' }} />
-            <span>Done</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #ef4444' }} />
-            <span>Error</span>
-          </div>
+          <LegendSection title="Status">
+            <div className="flex items-center gap-2">
+              <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #f59e0b', boxShadow: '0 0 6px rgba(251,191,36,0.5)' }} />
+              <span>Running</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #22c55e' }} />
+              <span>Done</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #ef4444' }} />
+              <span>Error</span>
+            </div>
+          </LegendSection>
         </div>
-      </div>}
+      </aside>
+
+      {/* Legend toggle tab */}
+      <button
+        onClick={() => setLegendCollapsed((v) => !v)}
+        className="fixed z-30 top-1/2 -translate-y-1/2 w-5 h-10 rounded-l-md bg-surface/80 backdrop-blur-xl border border-r-0 border-border flex items-center justify-center cursor-pointer text-text-dim hover:text-text"
+        style={{
+          right: legendCollapsed ? 0 : 180,
+          transition: 'right 250ms cubic-bezier(0.23, 1, 0.32, 1)',
+        }}
+      >
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+          style={{
+            transform: legendCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 200ms cubic-bezier(0.23, 1, 0.32, 1)',
+          }}
+        >
+          <path d="M2 1L6 4L2 7" />
+        </svg>
+      </button>
+      </>}
     </div>
   );
 }
