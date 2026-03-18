@@ -324,6 +324,9 @@ export default function App() {
     Record<string, boolean>
   >({});
   const [routerPrompt, setRouterPrompt] = useState("");
+  const [dismissedOutputs, setDismissedOutputs] = useState<Set<string>>(
+    new Set(),
+  );
 
   const reviewActive = reviewRequest !== null;
 
@@ -333,8 +336,9 @@ export default function App() {
     [nodes],
   );
 
-  /* Reset review state when review clears */
+  /* Reset review state when review changes */
   useEffect(() => {
+    setDismissedOutputs(new Set());
     if (!reviewActive) {
       setShowOutputModal(false);
       setOutputIndex(0);
@@ -354,6 +358,7 @@ export default function App() {
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
       if (reviewActive && node.kind === "output" && node.status === "done") {
+        setDismissedOutputs((prev) => new Set([...prev, node.id]));
         const idx = stageOutputs.findIndex((n) => n.id === node.id);
         if (idx >= 0) {
           setOutputIndex(idx);
@@ -507,6 +512,8 @@ export default function App() {
                   edges={edges}
                   onNodeClick={handleNodeClick}
                   reviewActive={reviewActive}
+                  currentStage={currentStage}
+                  dismissedOutputIds={dismissedOutputs}
                 />
               </div>
 
