@@ -170,6 +170,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
 
   const [autoFit, setAutoFit] = useState(true);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{ kind: string; label: string } | null>(
@@ -331,56 +332,96 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         style={{ background: 'var(--graph-bg)' }}
       />
 
-      {/* Auto-fit toggle */}
-      {!demo && <button
-        onClick={() => {
-          setAutoFit((v) => {
-            if (!v) {
-              const rf = rfRef.current;
-              if (rf) {
-                const el = containerRef.current;
-                const vw = el?.clientWidth || 800;
-                const vh = el?.clientHeight || 600;
-                let maxDist = 100;
-                for (const [, pos] of posRef.current) {
-                  maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
-                }
-                const halfSize = Math.min(vw, vh) / 2;
-                const zoom = Math.min(1, halfSize / (maxDist + 40));
-                rf.setCenter(40, 40, { zoom: Math.max(0.15, zoom), duration: 300 });
-              }
-            }
-            return !v;
-          });
-        }}
-        title={autoFit ? 'Auto-fit ON — click to disable' : 'Auto-fit OFF — click to re-enable'}
-        className="absolute bottom-5 right-5 z-10 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
+      {/* ── Top controls bar ── */}
+      {!demo && <>
+      <div
+        className="fixed top-4 z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex items-center gap-1 px-2 py-1.5"
         style={{
-          background: autoFit ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-          border: `1px solid ${autoFit ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.15)'}`,
+          left: '50%',
+          transform: `translateX(-50%) ${controlsCollapsed ? 'translateY(calc(-100% - 20px))' : 'translateY(0)'}`,
+          transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
         }}
       >
-        {/* Crosshair / focus icon */}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={autoFit ? '#4ade80' : 'rgba(255,255,255,0.4)'}
-          strokeWidth="2"
-          strokeLinecap="round"
+        {/* Zoom in */}
+        <button
+          onClick={() => rfRef.current?.zoomIn({ duration: 200 })}
+          title="Zoom in"
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-surface-hover"
         >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-        </svg>
-      </button>}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
 
-      {/* Review instruction */}
-      {!demo && reviewActive && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 rounded-lg text-[13px] font-mono text-accent-amber-dark pointer-events-none">
-          Click on the glowing output files to review and approve
-        </div>
-      )}
+        {/* Auto-fit */}
+        <button
+          onClick={() => {
+            setAutoFit((v) => {
+              if (!v) {
+                const rf = rfRef.current;
+                if (rf) {
+                  const el = containerRef.current;
+                  const vw = el?.clientWidth || 800;
+                  const vh = el?.clientHeight || 600;
+                  let maxDist = 100;
+                  for (const [, pos] of posRef.current) {
+                    maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
+                  }
+                  const halfSize = Math.min(vw, vh) / 2;
+                  const zoom = Math.min(1, halfSize / (maxDist + 40));
+                  rf.setCenter(40, 40, { zoom: Math.max(0.15, zoom), duration: 300 });
+                }
+              }
+              return !v;
+            });
+          }}
+          title={autoFit ? 'Auto-fit ON' : 'Auto-fit OFF'}
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-surface-hover"
+          style={{
+            background: autoFit ? 'rgba(74,222,128,0.12)' : 'transparent',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke={autoFit ? '#4ade80' : 'rgba(255,255,255,0.4)'}
+            strokeWidth="2" strokeLinecap="round"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          </svg>
+        </button>
+
+        {/* Zoom out */}
+        <button
+          onClick={() => rfRef.current?.zoomOut({ duration: 200 })}
+          title="Zoom out"
+          className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors duration-150 hover:bg-surface-hover"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+
+      </div>
+
+      {/* Controls toggle tab */}
+      <button
+        onClick={() => setControlsCollapsed((v) => !v)}
+        className="fixed z-30 left-1/2 -translate-x-1/2 h-5 w-10 rounded-b-md bg-surface/80 backdrop-blur-xl border border-t-0 border-border flex items-center justify-center cursor-pointer text-text-dim hover:text-text"
+        style={{
+          top: controlsCollapsed ? 0 : 62,
+          transition: 'top 250ms cubic-bezier(0.23, 1, 0.32, 1)',
+        }}
+      >
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+          style={{
+            transform: controlsCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+            transition: 'transform 200ms cubic-bezier(0.23, 1, 0.32, 1)',
+          }}
+        >
+          <path d="M1 2.5L4 5.5L7 2.5" />
+        </svg>
+      </button>
+      </>}
 
       {/* Toast notification */}
       {!demo && toast && (
@@ -500,7 +541,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         onClick={() => setLegendCollapsed((v) => !v)}
         className="fixed z-30 top-1/2 -translate-y-1/2 w-5 h-10 rounded-l-md bg-surface/80 backdrop-blur-xl border border-r-0 border-border flex items-center justify-center cursor-pointer text-text-dim hover:text-text"
         style={{
-          right: legendCollapsed ? 0 : 180,
+          right: legendCollapsed ? 0 : 176,
           transition: 'right 250ms cubic-bezier(0.23, 1, 0.32, 1)',
         }}
       >

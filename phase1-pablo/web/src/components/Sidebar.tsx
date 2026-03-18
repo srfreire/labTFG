@@ -157,7 +157,7 @@ export default function Sidebar({
       onClick={() => setCollapsed((v) => !v)}
       className="fixed z-30 top-1/2 -translate-y-1/2 w-5 h-10 rounded-r-md bg-surface/80 backdrop-blur-xl border border-l-0 border-border flex items-center justify-center cursor-pointer text-text-dim hover:text-text transition-[left] duration-250"
       style={{
-        left: collapsed ? 0 : 180,
+        left: collapsed ? 0 : 176,
         transition: 'left 250ms cubic-bezier(0.23, 1, 0.32, 1)',
       }}
     >

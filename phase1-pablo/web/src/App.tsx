@@ -318,6 +318,7 @@ export default function App() {
   );
 
   const reviewActive = reviewRequest !== null;
+  const [reviewHintDismissed, setReviewHintDismissed] = useState(false);
 
   /* Collect done output nodes */
   const stageOutputs = useMemo(
@@ -328,6 +329,7 @@ export default function App() {
   /* Reset review state when review changes */
   useEffect(() => {
     setDismissedOutputs(new Set());
+    setReviewHintDismissed(false);
     if (!reviewActive) {
       setShowOutputModal(false);
       setOutputIndex(0);
@@ -561,6 +563,21 @@ export default function App() {
                   dismissedOutputIds={dismissedOutputs}
                 />
               </div>
+
+              {/* ── Review hint toast ── */}
+              {reviewActive && !isEnvSpec && !reviewHintDismissed && (
+                <div className="animate-slide-up absolute bottom-[110px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
+                  <span className="text-[12px] text-text-dim">
+                    Click on the glowing output nodes in the graph to review them.
+                  </span>
+                  <button
+                    onClick={() => setReviewHintDismissed(true)}
+                    className="ml-3 shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-transparent border-none text-text-faint hover:text-text cursor-pointer text-[12px]"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* ── Stage completion bar ── */}
               {reviewActive && (
