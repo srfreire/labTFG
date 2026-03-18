@@ -82,11 +82,17 @@ ANALYZE_RESULTS_TOOL = {
 
 GENERATE_REPORT_TOOL = {
     "name": "generate_report",
-    "description": "Generate a PDF report with all results. Requires analyze_results first.",
+    "description": "Generate a PDF report with all results. Requires analyze_results first. "
+                   "Use quality='detailed' for a deeper, more analytical report (slower, uses a more powerful model).",
     "input_schema": {
         "type": "object",
         "properties": {
             "focus": {"type": "string", "description": "What to emphasize in the report (optional)"},
+            "quality": {
+                "type": "string",
+                "enum": ["standard", "detailed"],
+                "description": "Report quality: 'standard' (fast, Haiku) or 'detailed' (deeper analysis, Sonnet)",
+            },
         },
     },
 }
@@ -152,6 +158,15 @@ The user guides the exploration. You propose, they decide.
 
 EXCEPTION: If the user explicitly asks for the full pipeline ("hazlo todo", "quiero un informe completo"), \
 then run all steps automatically with sensible defaults.
+
+## Report quality
+
+Before generating a report, ask the user if they want:
+- **Informe estándar** — rápido, cubre lo esencial (uses standard quality)
+- **Informe detallado** — análisis más profundo, conecta con la literatura, propone hipótesis (uses detailed quality, slower)
+
+Then call generate_report with the appropriate quality parameter.
+If the user asked for the full pipeline automatically, default to standard.
 
 ## Model selection
 
@@ -386,7 +401,12 @@ class Orchestrator:
         async def generate_report(params: dict) -> str:
             if not state.get("analyst_output"):
                 return json.dumps({"error": "No analysis yet. Call analyze_results first."})
-            reporter = Reporter(client=client)
+            quality = params.get("quality", "standard")
+            reporter_model = (
+                "anthropic/claude-sonnet-4-5" if quality == "detailed"
+                else "anthropic/claude-haiku-4-5"
+            )
+            reporter = Reporter(client=client, model=reporter_model)
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
             result = await reporter.run(
                 focus,

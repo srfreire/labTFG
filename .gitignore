@@ -29,3 +29,6 @@ phase2-juan/web/dist/
 # Logs
 *.log
 npm-debug.log*
+phase2-juan/web/test-results/
+tutor-*.png
+0[0-9]-*.png

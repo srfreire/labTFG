@@ -15,6 +15,13 @@ export function SimulationGrid({ replay }: Props) {
   const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
 
+  // Reset state when replay changes
+  useEffect(() => {
+    setCurrentStep(0)
+    setPlaying(false)
+    setTrail({})
+  }, [replay])
+
   const frame = replay.frames[currentStep]
   const speed = SPEEDS[speedIdx]
 
@@ -29,7 +36,7 @@ export function SimulationGrid({ replay }: Props) {
       }
       return next
     })
-  }, [currentStep, frame])
+  }, [currentStep, replay.frames])
 
   // Playback interval
   useEffect(() => {
@@ -58,6 +65,8 @@ export function SimulationGrid({ replay }: Props) {
   if (!frame) return null
 
   const cellSize = Math.min(28, Math.floor(300 / Math.max(replay.grid_width, replay.grid_height)))
+  const gridWidth = replay.grid_width * cellSize + (replay.grid_width - 1)
+  const gridHeight = replay.grid_height * cellSize + (replay.grid_height - 1)
 
   // Pre-compute lookup maps — O(n) instead of O(width*height*n) find() calls
   const { resourceMap, agentMap, agentIdxMap, trailSet } = useMemo(() => {
@@ -100,11 +109,12 @@ export function SimulationGrid({ replay }: Props) {
           gridTemplateColumns: `repeat(${replay.grid_width}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${replay.grid_height}, ${cellSize}px)`,
           gap: '1px',
-          width: 'fit-content',
+          width: gridWidth,
+          height: gridHeight,
         }}
       >
         {Array.from({ length: replay.grid_height }, (_, y) =>
-          Array.from({ length: replay.grid_width }, (_, x) => {
+          Array.from({ length: replay.grid_width }, (__, x) => {
             const key = `${x},${y}`
             const hasResource = resourceMap.has(key)
             const agent = agentMap.get(key)
@@ -187,7 +197,7 @@ export function SimulationGrid({ replay }: Props) {
 
       {/* Step actions summary */}
       {frame.actions.length > 0 && (
-        <div className="mt-2 flex gap-2 justify-center flex-wrap">
+        <div className="mt-2 flex gap-2 justify-center flex-wrap" style={{ minHeight: 24 }}>
           {frame.actions.map((a, i) => {
             const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
             return (

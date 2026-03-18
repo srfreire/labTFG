@@ -1,191 +1,137 @@
 import { Facehash } from 'facehash'
-import type { AgentState, PipelineStep } from '../types'
+import type { AgentState } from '../types'
 import { TOOL_LABELS } from '../constants'
 
 interface Props {
   agents: AgentState[]
-  pipeline: PipelineStep[]
 }
-
-// Workers are all agents except Orchestrator
-const WORKER_NAMES = ['Architect', 'Tracker', 'Analyst', 'Reporter']
 
 function getToolLabel(tool: string): string {
   return TOOL_LABELS[tool] || tool
 }
 
 export function AgentPanel({ agents }: Props) {
-  const workers = agents.filter(a => WORKER_NAMES.includes(a.name))
-
   return (
-    <div className="flex flex-col h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
-      {/* Agent list */}
-      <div className="flex-1 p-4 border-b overflow-y-auto" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-        <div className="text-[9px] uppercase tracking-[2px] mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Agentes
-        </div>
-        <div className="space-y-1">
-          {agents.map(agent => (
-            <AgentRow key={agent.name} agent={agent} />
-          ))}
+    <div className="flex flex-col h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+      <div className="px-5 py-4">
+        <div className="text-[9px] uppercase tracking-[3px] font-semibold" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          Pipeline
         </div>
       </div>
-
-      {/* Lab floor — horizontal pipeline */}
-      <div className="h-[100px] relative flex-shrink-0" style={{ background: '#050505' }}>
-        {/* Pipeline track — dotted line */}
-        <div
-          className="absolute"
-          style={{
-            top: '50%', left: '12%', right: '8%',
-            height: 0,
-            borderTop: '1px dashed rgba(255,255,255,0.08)',
-          }}
-        />
-
-        {/* Progress segments — fill between completed stations */}
-        {workers.map((agent, i) => {
-          if (i === 0) return null
-          const prev = workers[i - 1]
-          const active = (prev.status === 'done' || prev.status === 'working')
-          if (!active) return null
-          const fromLeft = 12 + (i - 1) * (80 / (workers.length - 1))
-          const toLeft = 12 + i * (80 / (workers.length - 1))
-          return (
-            <div
-              key={`seg-${i}`}
-              className="absolute transition-all duration-700"
-              style={{
-                top: '50%', left: `${fromLeft}%`, width: `${toLeft - fromLeft}%`,
-                height: 1,
-                background: `linear-gradient(90deg, ${prev.color}40, ${agent.color}20)`,
-              }}
-            />
-          )
-        })}
-
-        {/* Station dots */}
-        {workers.map((agent, i) => {
-          const left = 12 + i * (80 / (workers.length - 1))
-          const active = agent.status === 'working' || agent.status === 'done'
-          return (
-            <div
-              key={`station-${agent.name}`}
-              className="absolute transition-all duration-500"
-              style={{
-                top: '50%', left: `${left}%`,
-                transform: 'translate(-50%, -50%)',
-                width: active ? 10 : 5,
-                height: active ? 10 : 5,
-                borderRadius: '50%',
-                background: active ? agent.color + '30' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${active ? agent.color + '50' : 'rgba(255,255,255,0.10)'}`,
-                boxShadow: agent.status === 'working' ? `0 0 14px ${agent.color}30` : 'none',
-              }}
-            />
-          )
-        })}
-
-        {/* Worker avatars — idle: spread evenly on the left, active: at their station */}
-        {workers.map((agent, i) => {
-          const stationLeft = 12 + i * (80 / (workers.length - 1))
-          const atStation = agent.status === 'working' || agent.status === 'done'
-          const idleLeft = 5 + i * 6
-          const left = atStation ? stationLeft : idleLeft
-
-          return (
-            <div
-              key={`worker-${agent.name}`}
-              className="absolute z-10"
-              style={{
-                top: '50%', left: `${left}%`,
-                transform: 'translate(-50%, -50%)',
-                transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            >
-              <div
-                className="rounded-full overflow-hidden transition-all duration-300"
-                style={{
-                  width: 24, height: 24,
-                  opacity: agent.status === 'working' ? 1 : agent.status === 'done' ? 0.6 : 0.35,
-                  filter: agent.status === 'working' ? `drop-shadow(0 0 8px ${agent.color}60)` : 'none',
-                  animation: agent.status === 'working' ? 'bob 1.5s ease-in-out infinite' : undefined,
-                }}
-              >
-                <Facehash
-                  name={agent.name}
-                  size={24}
-                  variant="solid"
-                  colors={[agent.color]}
-                  showInitial={false}
-                  enableBlink={agent.status === 'working'}
-                />
-              </div>
-            </div>
-          )
-        })}
+      <div className="flex-1 px-5 pb-5 overflow-y-auto">
+        <div className="relative">
+          {agents.map((agent, i) => (
+            <PipelineNode key={agent.name} agent={agent} isLast={i === agents.length - 1} />
+          ))}
+        </div>
       </div>
     </div>
   )
 }
 
-function AgentRow({ agent }: { agent: AgentState }) {
+function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean }) {
   const isActive = agent.status === 'working'
   const isDone = agent.status === 'done'
+  const isIdle = agent.status === 'idle'
+
+  const lineColor = isDone ? agent.color + '60' : 'rgba(255,255,255,0.15)'
 
   return (
-    <div
-      className="flex items-center gap-2.5 px-3 py-2 transition-all duration-300"
-      style={{
-        border: `1px solid ${isActive ? agent.color + '40' : 'rgba(255,255,255,0.06)'}`,
-        background: isActive ? agent.color + '08' : 'transparent',
-        opacity: agent.status === 'idle' ? 0.5 : 1,
-      }}
-    >
-      <div className="relative flex-shrink-0">
-        <div className="rounded-full overflow-hidden" style={{ width: 24, height: 24 }}>
-          <Facehash
-            name={agent.name}
-            size={24}
-            variant={agent.name === 'Orchestrator' ? 'gradient' : 'solid'}
-            colors={agent.name === 'Orchestrator' ? ['#94a3b8', '#64748b'] : [agent.color]}
-            showInitial={false}
-            enableBlink={isActive}
-          />
-        </div>
-        {isActive && (
+    <div className="relative flex gap-4" style={{ paddingBottom: isLast ? 0 : 48 }}>
+      {/* Vertical line */}
+      {!isLast && (
+        <div
+          className="absolute left-[17px] top-[32px] transition-colors duration-500"
+          style={{
+            width: 2,
+            height: 'calc(100% - 32px)',
+            background: lineColor,
+          }}
+        />
+      )}
+
+      {/* Node dot + avatar */}
+      <div className="relative flex-shrink-0 w-[34px] flex items-start justify-center pt-1">
+        <div className="relative">
           <div
-            className="absolute -inset-1 rounded-full"
+            className="rounded-full overflow-hidden transition-all duration-300"
             style={{
-              border: `1px solid ${agent.color}`,
-              animation: 'ping 2s ease-in-out infinite',
-              opacity: 0.3,
+              width: isActive ? 34 : 28,
+              height: isActive ? 34 : 28,
+              opacity: isIdle ? 0.4 : 1,
+              boxShadow: isActive ? `0 0 12px ${agent.color}30` : 'none',
             }}
-          />
-        )}
+          >
+            <Facehash
+              name={agent.name}
+              size={isActive ? 34 : 28}
+              variant={agent.name === 'Orchestrator' ? 'gradient' : 'solid'}
+              colors={agent.name === 'Orchestrator' ? ['#94a3b8', '#64748b'] : [agent.color]}
+              showInitial={false}
+              enableBlink={isActive}
+            />
+          </div>
+          {isActive && (
+            <div
+              className="absolute -inset-1.5 rounded-full"
+              style={{
+                border: `1.5px solid ${agent.color}`,
+                animation: 'ping 2s ease-in-out infinite',
+                opacity: 0.3,
+              }}
+            />
+          )}
+          {isDone && (
+            <div
+              className="absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+              style={{ background: '#000', border: `1.5px solid ${agent.color}` }}
+            >
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="none">
+                <path d="M1 3L2.5 4.5L5 1.5" stroke={agent.color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[10px] font-semibold uppercase tracking-[1px]">{agent.name}</div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 pt-0.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[11px] font-semibold uppercase tracking-[1.5px] transition-colors duration-300"
+            style={{
+              color: isActive ? agent.color : isDone ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
+            }}
+          >
+            {agent.name}
+          </span>
+          {isActive && (
+            <span
+              className="text-[8px] uppercase tracking-[1px] px-1.5 py-0.5"
+              style={{
+                color: agent.color,
+                background: agent.color + '15',
+                border: `1px solid ${agent.color}30`,
+              }}
+            >
+              working
+            </span>
+          )}
+        </div>
         {isActive && agent.activeTool && (
           <div
-            className="text-[8px] mt-0.5 truncate"
+            className="text-[10px] mt-1 truncate font-mono"
             style={{ color: agent.color + 'aa' }}
           >
             {getToolLabel(agent.activeTool)}
           </div>
         )}
-      </div>
-      <div
-        className="text-[7px] uppercase tracking-[1px] px-1.5 py-0.5 transition-all duration-300 flex-shrink-0"
-        style={{
-          color: isActive ? agent.color : isDone ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)',
-          background: isDone ? 'rgba(255,255,255,0.04)' : 'transparent',
-          border: `1px solid ${isActive ? agent.color + '30' : 'rgba(255,255,255,0.08)'}`,
-        }}
-      >
-        {isActive ? 'working' : isDone ? 'done' : 'idle'}
+        {isDone && (
+          <div className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            Completado
+          </div>
+        )}
       </div>
     </div>
   )
 }
-

@@ -119,47 +119,72 @@ async def websocket_chat(ws: WebSocket):
         """Send data cards to frontend as each pipeline step completes."""
         state = orch._state
         if tool_name == "create_environment" and state.get("spec"):
+            spec = state["spec"]
+            resources = ", ".join(f"{r['type']} ×{r['count']}" for r in spec["resources"])
             await ws.send_json({
                 "type": "message",
                 "from": "orchestrator",
-                "text": "",
+                "text": f"El **Architect** ha diseñado el entorno de simulación: un grid {spec['grid']['width']}×{spec['grid']['height']} con {resources}. Ahora voy a buscar los modelos disponibles y lanzar la simulación.",
                 "card": {
                     "title": "Environment Spec",
                     "data": {
-                        "Grid": f"{state['spec']['grid']['width']} × {state['spec']['grid']['height']}",
-                        "Acciones": str(len(state["spec"]["actions"])),
-                        "Recursos": ", ".join(f"{r['type']} ×{r['count']}" for r in state["spec"]["resources"]),
+                        "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
+                        "Acciones posibles": ", ".join(spec["actions"]),
+                        "Recursos": resources,
                     },
                 },
             })
         elif tool_name == "run_simulation" and state.get("replay"):
+            replay = state["replay"]
+            n_agents = len(replay["frames"][0]["agents"]) if replay["frames"] else 0
             await ws.send_json({
                 "type": "message",
                 "from": "orchestrator",
-                "text": "",
-                "card": {
-                    "title": "Simulación completada",
-                    "data": {
-                        "Steps": str(state["replay"]["total_steps"]),
-                        "Agentes": str(len(state["replay"]["frames"][0]["agents"]) if state["replay"]["frames"] else 0),
-                    },
-                },
-                "replay": state["replay"],
+                "text": f"Simulación completada: **{n_agents} agentes** durante **{replay['total_steps']} pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.",
+                "replay": replay,
             })
         elif tool_name == "observe_simulation" and state.get("tracker_output"):
             try:
                 tracker = json.loads(state["tracker_output"])
                 if "trajectories" in tracker:
-                    await ws.send_json({"type": "message", "from": "tracker", "text": "", "tracker": tracker})
+                    n_traj = len(tracker["trajectories"])
+                    episodes = tracker.get("episodes", [])
+                    ep_summary = ""
+                    if episodes:
+                        ep_lines = []
+                        for ep in episodes[:5]:
+                            agent_name = ep.get("agent", "")
+                            desc = ep.get("description", ep.get("type", ""))
+                            ep_lines.append(f"- **{agent_name}**: {desc}" if agent_name else f"- {desc}")
+                        ep_summary = "\n\nEpisodios detectados:\n" + "\n".join(ep_lines)
+                    await ws.send_json({
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": f"El **Tracker** ha registrado las trayectorias de **{n_traj} agentes**.{ep_summary}\n\nAhora el Analyst va a buscar patrones.",
+                        "tracker": tracker,
+                    })
             except (json.JSONDecodeError, TypeError):
                 pass
         elif tool_name == "analyze_results" and state.get("analyst_output"):
             try:
                 analyst = json.loads(state["analyst_output"])
                 if "patterns" in analyst:
-                    await ws.send_json({"type": "message", "from": "analyst", "text": "", "analyst": analyst})
+                    n_pat = len(analyst["patterns"])
+                    n_comp = len(analyst.get("comparisons", []))
+                    await ws.send_json({
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": f"El **Analyst** ha encontrado **{n_pat} patrones** y realizado **{n_comp} comparaciones** entre los agentes. Ahora el Reporter va a generar el informe PDF.",
+                        "analyst": analyst,
+                    })
             except (json.JSONDecodeError, TypeError):
                 pass
+        elif tool_name == "generate_report" and state.get("pdf_path"):
+            await ws.send_json({
+                "type": "message",
+                "from": "orchestrator",
+                "text": f"El **Reporter** ha generado el informe PDF en `{state['pdf_path']}`.",
+            })
 
     # New fn registry with ws support for the frontend
     def patched_build():

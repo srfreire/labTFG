@@ -33,7 +33,13 @@ export function useWebSocket() {
       }
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data)
+        let data: Record<string, unknown>
+        try {
+          data = JSON.parse(event.data)
+        } catch {
+          console.error('[ws] invalid JSON frame:', event.data)
+          return
+        }
 
         switch (data.type) {
           case 'agents':

@@ -1,11 +1,20 @@
+// Agent colors — matches CSS :root variables in index.css
 export const AGENT_COLORS = ['#4ade80', '#fbbf24', '#a78bfa', '#f472b6', '#38bdf8', '#fb923c'] as const
 
 export const FROM_COLORS: Record<string, string> = {
   user: 'rgba(255,255,255,0.5)',
   orchestrator: '#94a3b8',
+  Orchestrator: '#94a3b8',
   tracker: '#fbbf24',
+  Tracker: '#fbbf24',
   analyst: '#a78bfa',
+  Analyst: '#a78bfa',
   reporter: '#f472b6',
+  Reporter: '#f472b6',
+  architect: '#4ade80',
+  Architect: '#4ade80',
+  QLearning: '#4ade80',
+  RandomWalker: '#fbbf24',
 }
 
 // Friendly labels for internal agent tool calls

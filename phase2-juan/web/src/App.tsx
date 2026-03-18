@@ -1,10 +1,35 @@
+import type { AgentState, ChatMessage } from './types'
 import { AgentPanel } from './components/AgentPanel'
 import { ChatPanel } from './components/ChatPanel'
 import { useWebSocket } from './hooks/useWebSocket'
+import { useMockWebSocket } from './hooks/useMockWebSocket'
+
+const isMock = new URLSearchParams(window.location.search).has('mock')
+
+// Wrap in separate components to avoid conditional hook calls
+function MockApp() {
+  const { connected, agents, messages, thinking, send } = useMockWebSocket()
+  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} send={send} />
+}
+
+function RealApp() {
+  const { connected, agents, messages, thinking, send } = useWebSocket()
+  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} send={send} />
+}
 
 export default function App() {
-  const { connected, agents, pipeline, messages, thinking, send } = useWebSocket()
+  return isMock ? <MockApp /> : <RealApp />
+}
 
+interface ShellProps {
+  connected: boolean
+  agents: AgentState[]
+  messages: ChatMessage[]
+  thinking: boolean
+  send: (text: string) => void
+}
+
+function AppShell({ connected, agents, messages, thinking, send }: ShellProps) {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -15,18 +40,25 @@ export default function App() {
             Laboratorio Virtual de Simulación
           </p>
         </div>
-        <div className="text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
-          <span style={{ color: connected ? '#4ade80' : '#ef4444' }}>●</span>
-          {' '}{connected ? 'conectado' : 'desconectado'}
+        <div className="flex items-center gap-3 text-[9px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          {isMock && (
+            <span className="px-1.5 py-0.5 uppercase tracking-[1px]" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.25)' }}>
+              mock
+            </span>
+          )}
+          <span>
+            <span style={{ color: connected ? '#4ade80' : '#ef4444' }}>●</span>
+            {' '}{connected ? 'conectado' : 'desconectado'}
+          </span>
         </div>
       </div>
 
       {/* Main */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="hidden md:block w-[340px] flex-shrink-0">
-          <AgentPanel agents={agents} pipeline={pipeline} />
+        <div className="hidden md:block w-[240px] flex-shrink-0">
+          <AgentPanel agents={agents} />
         </div>
-        <ChatPanel messages={messages} thinking={thinking} onSend={send} />
+        <ChatPanel messages={messages} thinking={thinking} onSend={send} agents={agents} />
       </div>
 
       {/* Mobile agent bar */}
