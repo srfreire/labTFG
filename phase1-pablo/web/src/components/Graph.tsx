@@ -217,13 +217,13 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
             sourceHandle: 'center-out',
             targetHandle: 'center-in',
             type: 'straight' as const,
-            animated: kind !== 'write',
+            animated: true,
             style:
               kind === 'write'
                 ? { stroke: 'rgba(251,191,36,0.35)', strokeWidth: 1.5 }
                 : kind === 'read'
                 ? { stroke: 'rgba(56,189,248,0.35)', strokeWidth: 1.5 }
-                : { stroke: 'rgba(255,255,255,0.15)' },
+                : { stroke: 'rgba(255,255,255,0.35)' },
           };
         }),
     );
