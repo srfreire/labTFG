@@ -21,14 +21,13 @@ export default function FileNode({ data }: NodeProps<FileNodeType>) {
   const S = 46;
 
   return (
-    <div style={{ position: 'relative', width: S, height: S }}>
+    <div className="relative w-[46px] h-[46px]">
       <NodeHandles />
       <svg
         width={S}
         height={S}
         viewBox={`0 0 ${S} ${S}`}
-        style={{ position: 'absolute', top: 0, left: 0 }}
-        className={status === 'running' ? 'animate-running-ring' : ''}
+        className={`absolute top-0 left-0${status === 'running' ? ' animate-running-ring' : ''}`}
       >
         <polygon
           points={`${S/2},1 ${S-1},${S/2} ${S/2},${S-1} 1,${S/2}`}
@@ -37,16 +36,7 @@ export default function FileNode({ data }: NodeProps<FileNodeType>) {
           strokeWidth="1"
         />
       </svg>
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: S,
-        height: S,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div className="absolute inset-0 flex items-center justify-center">
         <FileTypeLogo label={label as string} size={20} />
       </div>
     </div>

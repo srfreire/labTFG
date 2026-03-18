@@ -37,17 +37,8 @@ export default function ToolNode({ data }: NodeProps<ToolNodeType>) {
 
   return (
     <div
-      className={status === 'running' ? 'animate-running-ring' : ''}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        border: `1px solid ${borderColor}`,
-        background: '#090909',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      className={`w-[36px] h-[36px] rounded-full bg-surface flex items-center justify-center${status === 'running' ? ' animate-running-ring' : ''}`}
+      style={{ border: `1px solid ${borderColor}` }}
     >
       <NodeHandles />
       <Icon size={16} />
