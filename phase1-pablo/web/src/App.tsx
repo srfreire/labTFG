@@ -453,7 +453,7 @@ export default function App() {
       )}
 
       {/* Main panel */}
-      <div className={`${showIdle ? "" : "ml-[224px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
+      <div className={`${showIdle ? "" : "ml-[184px]"} flex-1 flex flex-col relative h-screen overflow-hidden`}>
         {/* Error bar */}
         {error && (
           <div

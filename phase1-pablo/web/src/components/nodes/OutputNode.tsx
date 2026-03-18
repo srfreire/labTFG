@@ -51,8 +51,8 @@ export default function OutputNode({ data }: NodeProps<OutputNodeType>) {
                 : {}),
           }}
         >
-          <polygon
-            points={`${S/2},1 ${S-1},${H*0.25} ${S-1},${H*0.75} ${S/2},${H-1} 1,${H*0.75} 1,${H*0.25}`}
+          <path
+            d="M 19.6,3.4 Q 24,1 28.4,3.4 L 42.6,11.3 Q 47,13.75 47,18.75 L 47,36.25 Q 47,41.25 42.6,43.7 L 28.4,51.6 Q 24,54 19.6,51.6 L 5.4,43.7 Q 1,41.25 1,36.25 L 1,18.75 Q 1,13.75 5.4,11.3 Z"
             fill="var(--node-fill)"
             stroke={borderColor}
             strokeWidth="1.5"

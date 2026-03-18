@@ -35,8 +35,8 @@ export default function FileNode({ data }: NodeProps<FileNodeType>) {
             ...(status === 'running' ? { animation: 'running-drop 1.5s ease-in-out infinite' } : {}),
           }}
         >
-          <polygon
-            points={`${S/2},1 ${S-1},${S/2} ${S/2},${S-1} 1,${S/2}`}
+          <path
+            d="M 19.5,4.5 Q 23,1 26.5,4.5 L 41.5,19.5 Q 45,23 41.5,26.5 L 26.5,41.5 Q 23,45 19.5,41.5 L 4.5,26.5 Q 1,23 4.5,19.5 Z"
             fill="var(--node-fill)"
             stroke={borderColor}
             strokeWidth="1"

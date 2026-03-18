@@ -17,7 +17,7 @@ const STATUS_COLORS: Record<StageStatus, string> = {
 
 const MAIN_DOT = 10;
 const REVIEW_DOT = 7;
-const LINE_LEFT = 64; // center X for dots and lines
+const LINE_LEFT = 40; // center X for dots and lines
 
 export default function Sidebar({
   connected,
@@ -30,7 +30,7 @@ export default function Sidebar({
   const items = STAGE_CONFIG;
 
   return (
-    <aside className="fixed left-3 top-3 bottom-3 w-[200px] rounded-2xl bg-surface border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden">
+    <aside className="fixed left-4 top-4 bottom-4 w-[160px] rounded-2xl bg-surface border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-border-subtle shrink-0">
         <div className="text-[15px] font-semibold tracking-tight text-text">
@@ -68,7 +68,7 @@ export default function Sidebar({
             >
               {/* Line segment ABOVE dot — fills space from previous dot */}
               <div
-                className="flex-1 ml-[64px]"
+                className="flex-1 ml-[40px]"
                 style={{
                   borderLeft: isFirst ? "none" : `1px dashed ${lineColor}`,
                 }}
@@ -119,7 +119,7 @@ export default function Sidebar({
 
               {/* Line segment BELOW dot — fills space to next dot */}
               <div
-                className="flex-1 ml-[64px]"
+                className="flex-1 ml-[40px]"
                 style={{
                   borderLeft: isLast ? "none" : `1px dashed ${lineColor}`,
                 }}

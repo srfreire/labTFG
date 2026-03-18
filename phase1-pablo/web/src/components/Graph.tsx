@@ -321,7 +321,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
           });
         }}
         title={autoFit ? 'Auto-fit ON — click to disable' : 'Auto-fit OFF — click to re-enable'}
-        className="absolute bottom-5 right-5 z-10 w-8 h-8 flex items-center justify-center cursor-pointer transition-all duration-150"
+        className="absolute bottom-5 right-5 z-10 w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
         style={{
           background: autoFit ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
           border: `1px solid ${autoFit ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.15)'}`,
@@ -344,7 +344,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
 
       {/* Review instruction */}
       {!demo && reviewActive && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 text-[11px] font-mono text-accent-amber-dark pointer-events-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-[rgba(251,191,36,0.15)] border border-accent-amber/30 px-5 py-2 rounded-lg text-[11px] font-mono text-accent-amber-dark pointer-events-none">
           Click on the glowing output files to review and approve
         </div>
       )}
@@ -353,7 +353,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       {!demo && toast && (
         <div
           key={`${toast.kind}-${toast.label}`}
-          className="animate-slide-in-right absolute bottom-5 left-5 z-10 bg-overlay-heavy border border-border py-2 px-4 text-[11px] font-mono flex items-center gap-2.5 pointer-events-none"
+          className="animate-slide-in-right absolute bottom-5 left-5 z-10 bg-overlay-heavy border border-border rounded-lg py-2 px-4 text-[11px] font-mono flex items-center gap-2.5 pointer-events-none"
         >
           <span className="text-[9px] tracking-[1.5px] text-text-dim uppercase">
             {KIND_LABELS[toast.kind] ?? toast.kind}
@@ -363,7 +363,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
       )}
 
       {/* Legend */}
-      {!demo && <div className="absolute top-3 right-3 z-10 bg-overlay border border-border-subtle p-2.5 px-3.5 flex flex-col gap-[7px] text-[10px] font-mono text-text-muted pointer-events-none">
+      {!demo && <div className="absolute top-4 right-4 z-10 bg-overlay border border-border-subtle rounded-2xl shadow-xl shadow-black/20 p-3 px-4 flex flex-col gap-[7px] text-[10px] text-text-muted pointer-events-none">
         {/* Agents */}
         <span className="text-[8px] tracking-[1.5px] uppercase text-text-faint">Agents</span>
         <div className="flex items-center gap-2">
@@ -435,12 +435,12 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
             <span>Tool</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,0 14,7 7,14 0,7" fill="none" stroke="var(--node-border)" strokeWidth="1.5" /></svg>
+            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M 5.8,1.3 Q 7,0 8.2,1.3 L 12.7,5.8 Q 14,7 12.7,8.2 L 8.2,12.7 Q 7,14 5.8,12.7 L 1.3,8.2 Q 0,7 1.3,5.8 Z" fill="none" stroke="var(--node-border)" strokeWidth="1.5" /></svg>
             <span>Artifact</span>
           </div>
           <div className="flex items-center gap-2">
             <svg width="14" height="16" viewBox="0 0 48 55" className="shrink-0">
-              <polygon points="24,1 47,14 47,41 24,54 1,41 1,14" fill="none" stroke="var(--node-border)" strokeWidth="2.5" />
+              <path d="M 19.6,3.4 Q 24,1 28.4,3.4 L 42.6,11.3 Q 47,13.75 47,18.75 L 47,36.25 Q 47,41.25 42.6,43.7 L 28.4,51.6 Q 24,54 19.6,51.6 L 5.4,43.7 Q 1,41.25 1,36.25 L 1,18.75 Q 1,13.75 5.4,11.3 Z" fill="none" stroke="var(--node-border)" strokeWidth="2.5" />
             </svg>
             <span>Stage Output</span>
           </div>
