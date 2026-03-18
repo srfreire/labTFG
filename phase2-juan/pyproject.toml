@@ -8,6 +8,7 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "websockets",
+    "shared",
 ]
 
 [tool.pytest.ini_options]
@@ -19,6 +20,9 @@ pythonpath = [
 markers = [
     "integration: tests that require external services (API keys)",
 ]
+
+[tool.uv.sources]
+shared = { path = "../shared" }
 
 [dependency-groups]
 dev = [

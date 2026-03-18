@@ -26,6 +26,9 @@ phase2-juan/web/dist/
 **/docs/specs/
 **/docs/plans/
 
+# Shared DB
+data/
+
 # Logs
 *.log
 npm-debug.log*

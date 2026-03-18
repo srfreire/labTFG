@@ -22,6 +22,10 @@ from simlab.reporter import Reporter
 from simlab.environment import Agent, Position
 from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
+from shared.store import (
+    init_db, create_experiment, update_experiment, list_experiments,
+    SIMULATED, TRACKED, ANALYZED, REPORTED,
+)
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
@@ -106,6 +110,18 @@ LIST_AVAILABLE_MODELS_TOOL = {
     },
 }
 
+LIST_EXPERIMENTS_TOOL = {
+    "name": "list_experiments",
+    "description": "List past experiments with their status, description, and models used. "
+                   "Use when the user asks about history or wants to repeat/compare experiments.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "Maximum number of experiments to return (default 10)"},
+        },
+    },
+}
+
 ALL_TOOLS = [
     CREATE_ENVIRONMENT_TOOL,
     RUN_SIMULATION_TOOL,
@@ -113,6 +129,7 @@ ALL_TOOLS = [
     OBSERVE_SIMULATION_TOOL,
     ANALYZE_RESULTS_TOOL,
     GENERATE_REPORT_TOOL,
+    LIST_EXPERIMENTS_TOOL,
 ]
 
 
@@ -132,6 +149,7 @@ simulations of decision-making paradigms.
 3. **observe_simulation** — the Tracker observes what happened (trajectories, episodes)
 4. **analyze_results** — the Analyst finds patterns and compares agents
 5. **generate_report** — the Reporter creates a PDF with everything
+6. **list_experiments** — shows past experiments with status and models used. Offer this when the user asks about history or wants to repeat/compare experiments.
 
 ## How to respond
 
@@ -236,6 +254,9 @@ class Orchestrator:
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
 
+        # Initialize experiment store
+        init_db()
+
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
         self._messages.append({"role": "user", "content": user_message})
@@ -280,6 +301,10 @@ class Orchestrator:
             state["events"] = None
             state["tracker_output"] = None
             state["analyst_output"] = None
+            # Persist experiment
+            exp_id = create_experiment(description=params["description"])
+            state["experiment_id"] = exp_id
+            update_experiment(exp_id, spec_json=spec_json)
             return spec_json
 
         # --- list_available_models: discovers Phase 1 models ---
@@ -369,6 +394,27 @@ class Orchestrator:
             state["tracker_output"] = None
             state["analyst_output"] = None
 
+            # Persist simulation results
+            if state.get("experiment_id"):
+                events_stripped = json.dumps([
+                    {
+                        "step": e.step,
+                        "agent_id": e.agent_id,
+                        "action": {"name": e.action.name, "params": e.action.params},
+                        "outcome": {k: v for k, v in e.outcome.items() if k != "model_state"},
+                    }
+                    for e in all_events
+                ])
+                update_experiment(
+                    state["experiment_id"],
+                    events_json=events_stripped,
+                    replay_json=json.dumps(state["replay"]),
+                    models_used=json.dumps(models_used),
+                    steps=steps,
+                    seed=params.get("seed"),
+                    status=SIMULATED,
+                )
+
             return json.dumps({
                 "agents": len(env._agents),
                 "steps": steps,
@@ -385,6 +431,8 @@ class Orchestrator:
             focus = params.get("focus", "Observa la simulacion y reporta que paso.")
             result = await tracker.run(focus, state["events"], on_tool_call=self._make_tool_callback("Tracker"))
             state["tracker_output"] = result
+            if state.get("experiment_id"):
+                update_experiment(state["experiment_id"], tracker_json=result, status=TRACKED)
             return result
 
         # --- analyze_results: calls the Analyst ---
@@ -395,6 +443,8 @@ class Orchestrator:
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
             result = await analyst.run(focus, state["tracker_output"], state["events"], on_tool_call=self._make_tool_callback("Analyst"))
             state["analyst_output"] = result
+            if state.get("experiment_id"):
+                update_experiment(state["experiment_id"], analyst_json=result, status=ANALYZED)
             return result
 
         # --- generate_report: calls the Reporter ---
@@ -419,7 +469,20 @@ class Orchestrator:
             pdf_path = self.output_dir / "report.pdf"
             if pdf_path.exists():
                 state["pdf_path"] = str(pdf_path)
+                if state.get("experiment_id"):
+                    update_experiment(state["experiment_id"], pdf_path=str(pdf_path), status=REPORTED)
             return result
+
+        # --- list_experiments: shows past experiments ---
+        async def list_experiments_fn(params: dict) -> str:
+            limit = params.get("limit", 10)
+            exps = list_experiments(limit=limit)
+            # Strip large JSON blobs for readability
+            for exp in exps:
+                for key in ("events_json", "replay_json", "tracker_json", "analyst_json"):
+                    if exp.get(key):
+                        exp[key] = f"[{len(exp[key])} chars]"
+            return json.dumps(exps, default=str)
 
         registry: Registry = {
             "create_environment": create_environment,
@@ -428,5 +491,6 @@ class Orchestrator:
             "observe_simulation": observe_simulation,
             "analyze_results": analyze_results,
             "generate_report": generate_report,
+            "list_experiments": list_experiments_fn,
         }
         return ALL_TOOLS, registry

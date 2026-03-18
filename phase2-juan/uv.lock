@@ -514,6 +514,11 @@ wheels = [
 ]
 
 [[package]]
+name = "shared"
+version = "0.1.0"
+source = { directory = "../shared" }
+
+[[package]]
 name = "simlab"
 version = "0.1.0"
 source = { virtual = "." }
@@ -521,6 +526,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
     { name = "python-dotenv" },
+    { name = "shared" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
 ]
@@ -536,6 +542,7 @@ requires-dist = [
     { name = "anthropic", specifier = ">=0.52.0" },
     { name = "fastapi" },
     { name = "python-dotenv" },
+    { name = "shared", directory = "../shared" },
     { name = "uvicorn", extras = ["standard"] },
     { name = "websockets" },
 ]
