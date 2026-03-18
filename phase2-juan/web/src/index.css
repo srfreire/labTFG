@@ -66,7 +66,7 @@ body {
   overflow: hidden;
 }
 
-#root { height: 100vh; }
+#root { height: 100vh; overflow: hidden; }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
@@ -89,6 +89,16 @@ body {
 
 .animate-msg-in {
   animation: msg-in 0.25s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Slide up entrance for sim agents */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 @keyframes scale-in {
@@ -122,6 +132,17 @@ body {
   100% { transform: scale(1); opacity: 0; }
 }
 
+/* ── Floating panel utility ── */
+.floating-panel {
+  border-radius: var(--radius-2xl);
+  background: rgba(9,9,9,0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
 /* ── Collapse utility (shared with Phase 1) ── */
 .collapse-grid {
   display: grid;
@@ -142,7 +163,8 @@ body {
   letter-spacing: 0.3px;
   margin-top: 14px;
   margin-bottom: 6px;
-  color: rgba(255,255,255,0.85);
+  color: var(--color-text);
+  opacity: 0.85;
 }
 .msg-content h1:first-child, .msg-content h2:first-child, .msg-content h3:first-child {
   margin-top: 0;

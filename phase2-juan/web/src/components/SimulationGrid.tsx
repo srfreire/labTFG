@@ -62,6 +62,8 @@ export function SimulationGrid({ replay }: Props) {
   const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setTrail({}) }, [])
   const cycleSpeed = useCallback(() => setSpeedIdx(i => (i + 1) % SPEEDS.length), [])
 
+  const controlBtn = 'text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer'
+
   if (!frame) return null
 
   const cellSize = Math.min(28, Math.floor(300 / Math.max(replay.grid_width, replay.grid_height)))
@@ -166,13 +168,13 @@ export function SimulationGrid({ replay }: Props) {
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-3 mt-2">
-        <button onClick={reset} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">⟳</button>
-        <button onClick={stepBack} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">◁</button>
-        <button onClick={togglePlay} className="text-[9px] px-2.5 py-1 border border-border rounded-[var(--radius-sm)] text-text-muted hover:bg-surface-hover transition-colors duration-150 cursor-pointer">
+        <button onClick={reset} className={controlBtn}>⟳</button>
+        <button onClick={stepBack} className={controlBtn}>◁</button>
+        <button onClick={togglePlay} className={`${controlBtn} px-2.5 text-text-muted`}>
           {playing ? '⏸' : '▶'}
         </button>
-        <button onClick={stepForward} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">▷</button>
-        <button onClick={cycleSpeed} className="text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer">
+        <button onClick={stepForward} className={controlBtn}>▷</button>
+        <button onClick={cycleSpeed} className={controlBtn}>
           {speed}×
         </button>
       </div>
@@ -207,7 +209,7 @@ export function SimulationGrid({ replay }: Props) {
             const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
             return (
               <span key={i} className="text-[8px] px-1.5 py-0.5 border border-border-subtle rounded-[var(--radius-sm)]" style={{
-                color: a.reward > 0 ? '#4ade80' : (AGENT_COLORS[agentIdx % AGENT_COLORS.length] + '80'),
+                color: a.reward > 0 ? 'var(--color-accent-green-light)' : (AGENT_COLORS[agentIdx % AGENT_COLORS.length] + '80'),
               }}>
                 {a.agent_id}: {a.action}{a.reward > 0 ? ` +${a.reward.toFixed(1)}` : ''}
               </span>

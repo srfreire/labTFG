@@ -50,8 +50,8 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
     : 'Escribe tu mensaje...'
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div ref={scrollRef} className="flex-1 px-6 py-6 overflow-y-auto flex flex-col gap-5">
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div ref={scrollRef} className="flex-1 min-h-0 px-6 py-6 overflow-y-auto flex flex-col gap-5">
         {messages.map(msg => (
           <MessageBubble key={msg.id} msg={msg} />
         ))}
@@ -59,11 +59,11 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
           <div className="flex gap-3 max-w-[80%]">
             <div className="flex-shrink-0 pt-1">
               <div className="w-7 h-7 rounded-full overflow-hidden">
-                <Facehash name="Orchestrator" size={28} variant="solid" colors={['#94a3b8']} showInitial={false} />
+                <Facehash name="Orchestrator" size={28} variant="solid" colors={[FROM_COLORS['Orchestrator']]} showInitial={false} />
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-medium mb-1" style={{ color: '#94a3b8' }}>Orchestrator</div>
+              <div className="text-[11px] font-medium mb-1" style={{ color: FROM_COLORS['Orchestrator'] }}>Orchestrator</div>
               <div className="px-4 py-3 rounded-2xl rounded-tl-sm text-[15px] typing-dots bg-surface-hover text-text-dim">
                 Pensando<span>.</span><span>.</span><span>.</span>
               </div>
@@ -107,7 +107,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     '--msg-accent': dotColor,
     borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
     border: isUser ? 'none' : `1px solid ${dotColor}20`,
-    background: isUser ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+    background: isUser ? 'var(--color-border)' : 'var(--color-surface-hover)',
     color: isUser ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)',
   } as React.CSSProperties
 
@@ -173,7 +173,7 @@ function DataCard({ card, color }: { card: { title: string; data: Record<string,
 function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
   if (!tracker) return null
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'rgba(251,191,36,0.2)' }}>
+    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'color-mix(in srgb, var(--color-accent-amber) 20%, transparent)' }}>
       <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold text-accent-amber">
         Trayectorias
       </div>
@@ -204,8 +204,8 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
 
 function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']> }) {
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'rgba(167,139,250,0.2)', animationDelay: '100ms' }}>
-      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color: '#a78bfa' }}>
+    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'color-mix(in srgb, var(--color-analyst) 20%, transparent)', animationDelay: '100ms' }}>
+      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color: 'var(--color-analyst)' }}>
         Análisis
       </div>
       {analyst.patterns.length > 0 && (
@@ -214,10 +214,11 @@ function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']>
           {analyst.patterns.map(p => (
             <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border-faint">
               <span className="text-[10px] px-1.5 py-0.5 flex-shrink-0 rounded-[var(--radius-sm)]" style={{
-                background: p.type === 'anomaly' ? 'rgba(239,68,68,0.15)' : 'rgba(168,139,250,0.15)',
-                color: p.type === 'anomaly' ? '#ef4444' : '#a78bfa',
-                border: `1px solid ${p.type === 'anomaly' ? 'rgba(239,68,68,0.2)' : 'rgba(168,139,250,0.2)'}`,
-              }}>{p.type}</span>
+                '--badge-color': p.type === 'anomaly' ? 'var(--color-accent-red)' : 'var(--color-analyst)',
+                background: 'color-mix(in srgb, var(--badge-color) 15%, transparent)',
+                color: 'var(--badge-color)',
+                border: '1px solid color-mix(in srgb, var(--badge-color) 20%, transparent)',
+              } as React.CSSProperties}>{p.type}</span>
               <span className="text-[11px] leading-relaxed text-text-muted">{p.description}</span>
             </div>
           ))}
@@ -244,7 +245,7 @@ function ComparisonRow({ comparison: c }: { comparison: { metric: string; values
 
   return (
     <div className="py-2 border-b border-border-faint">
-      <div className="text-[11px] font-semibold mb-1.5" style={{ color: '#a78bfa' }}>
+      <div className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--color-analyst)' }}>
         {(c.metric || '').replace(/_/g, ' ')}
       </div>
       <div className="flex gap-2 mb-1.5">
@@ -252,11 +253,11 @@ function ComparisonRow({ comparison: c }: { comparison: { metric: string; values
           const isBest = agent === bestAgent
           return (
             <div key={agent} className="px-2.5 py-2 border rounded-[var(--radius-md)] flex-1 min-w-0" style={{
-              borderColor: isBest ? 'rgba(74,222,128,0.3)' : 'var(--color-border)',
-              background: isBest ? 'rgba(74,222,128,0.08)' : 'var(--color-surface-hover)',
+              borderColor: isBest ? 'color-mix(in srgb, var(--color-accent-green-light) 30%, transparent)' : 'var(--color-border)',
+              background: isBest ? 'color-mix(in srgb, var(--color-accent-green-light) 8%, transparent)' : 'var(--color-surface-hover)',
             }}>
-              <div className="text-[9px]" style={{ color: isBest ? '#4ade80' : 'var(--color-text-faint)' }}>{agent}</div>
-              <div className="text-[15px] font-bold mt-0.5" style={{ color: isBest ? '#4ade80' : 'rgba(255,255,255,0.7)' }}>
+              <div className="text-[9px]" style={{ color: isBest ? 'var(--color-accent-green-light)' : 'var(--color-text-faint)' }}>{agent}</div>
+              <div className="text-[15px] font-bold mt-0.5" style={{ color: isBest ? 'var(--color-accent-green-light)' : 'var(--color-text-muted)' }}>
                 {typeof val === 'number' ? (val % 1 === 0 ? val : val.toFixed(2)) : val}
               </div>
             </div>
