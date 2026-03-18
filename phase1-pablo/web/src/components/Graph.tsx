@@ -121,10 +121,11 @@ interface GraphProps {
   onNodeClick?: (node: GraphNode) => void;
   reviewActive?: boolean;
   currentStage?: string | null;
+  dismissedOutputIds?: Set<string>;
   demo?: boolean;
 }
 
-export default function Graph({ nodes, edges, onNodeClick, reviewActive, currentStage, demo }: GraphProps) {
+export default function Graph({ nodes, edges, onNodeClick, reviewActive, currentStage, dismissedOutputIds, demo }: GraphProps) {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
   const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const graphNodesRef = useRef<GraphNode[]>(nodes);
@@ -195,6 +196,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
             color: AGENT_COLORS[n.label.toLowerCase()] || '#fff',
             ...n.meta,
             currentStage: currentStage ?? undefined,
+            dismissed: dismissedOutputIds?.has(n.id) ?? false,
           },
           position: posRef.current.get(n.id)!,
         })),
@@ -250,14 +252,11 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
           }
           const halfSize = Math.min(vw, vh) / 2;
           const zoom = Math.min(1, halfSize / (maxDist + 100));
-          rf.setViewport(
-            { x: vw / 2, y: vh / 2, zoom: Math.max(0.1, zoom) },
-            { duration: 300 },
-          );
+          rf.setCenter(40, 40, { zoom: Math.max(0.1, zoom), duration: 300 });
         }, 60);
       }
     }
-  }, [nodes, edges, currentStage, autoFit, setFlowNodes, setFlowEdges]);
+  }, [nodes, edges, currentStage, dismissedOutputIds, autoFit, setFlowNodes, setFlowEdges]);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -289,11 +288,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
         }}
         onInit={(inst) => {
           rfRef.current = inst;
-          // Center root (0,0) on screen immediately
-          const el = containerRef.current;
-          const vw = el?.clientWidth || 800;
-          const vh = el?.clientHeight || 600;
-          inst.setViewport({ x: vw / 2, y: vh / 2, zoom: 1 });
+          inst.setCenter(40, 40, { zoom: 1 });
         }}
         minZoom={0.1}
         maxZoom={2}
@@ -317,10 +312,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive, current
                 }
                 const halfSize = Math.min(vw, vh) / 2;
                 const zoom = Math.min(1, halfSize / (maxDist + 100));
-                rf.setViewport(
-                  { x: vw / 2, y: vh / 2, zoom: Math.max(0.1, zoom) },
-                  { duration: 300 },
-                );
+                rf.setCenter(40, 40, { zoom: Math.max(0.1, zoom), duration: 300 });
               }
             }
             return !v;
