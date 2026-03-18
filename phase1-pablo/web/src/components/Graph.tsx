@@ -129,9 +129,10 @@ interface GraphProps {
   edges: GraphEdge[];
   onNodeClick?: (node: GraphNode) => void;
   reviewActive?: boolean;
+  currentStage?: string | null;
 }
 
-export default function Graph({ nodes, edges, onNodeClick, reviewActive }: GraphProps) {
+export default function Graph({ nodes, edges, onNodeClick, reviewActive, currentStage }: GraphProps) {
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node>([]);
   const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const graphNodesRef = useRef<GraphNode[]>(nodes);
@@ -139,7 +140,9 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
 
   const posRef = useRef(new Map<string, { x: number; y: number }>());
   const childCountRef = useRef(new Map<string, number>());
-  const firstFitDone = useRef(false);
+
+  // Auto-fit: fitView on every new node until user manually pans/zooms
+  const [autoFit, setAutoFit] = useState(true);
 
   // Toast state
   const [toast, setToast] = useState<{ kind: string; label: string } | null>(
@@ -156,7 +159,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
     if (nodes.length === 0) {
       posRef.current.clear();
       childCountRef.current.clear();
-      firstFitDone.current = false;
+      setAutoFit(true);
       setFlowNodes([]);
       setFlowEdges([]);
       return;
@@ -198,16 +201,17 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
             status: n.status,
             color: AGENT_COLORS[n.label.toLowerCase()] || '#fff',
             ...n.meta,
+            currentStage: currentStage ?? undefined,
           },
           position: posRef.current.get(n.id)!,
         })),
     );
 
-    // ── Flow edges (center-to-center, straight lines) ──
+    // ── Flow edges (center-to-center, straight lines — layout edges are invisible) ──
     setFlowEdges(
       edges
         .filter(
-          (e) => posRef.current.has(e.source) && posRef.current.has(e.target),
+          (e) => e.edge_kind !== 'layout' && posRef.current.has(e.source) && posRef.current.has(e.target),
         )
         .map((e) => {
           const kind = e.edge_kind ?? 'spawn';
@@ -239,15 +243,28 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
       toastTimer.current = setTimeout(() => setToast(null), 2500);
     }
 
-    // ── Viewport (only initial fit, no chase — parallel nodes would fight) ──
-    if (!firstFitDone.current && newest) {
+    // ── Viewport: zoom out keeping root (0,0) centered ──
+    if (autoFit && newest) {
       const rf = rfRef.current;
       if (rf) {
-        setTimeout(() => rf.fitView({ duration: 300, padding: 0.5 }), 60);
-        firstFitDone.current = true;
+        setTimeout(() => {
+          const el = document.querySelector('.main-rf')?.parentElement;
+          const vw = el?.clientWidth || 800;
+          const vh = el?.clientHeight || 600;
+          let maxDist = 100;
+          for (const [, pos] of posRef.current) {
+            maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
+          }
+          const halfSize = Math.min(vw, vh) / 2;
+          const zoom = Math.min(1, halfSize / (maxDist + 100));
+          rf.setViewport(
+            { x: vw / 2, y: vh / 2, zoom: Math.max(0.1, zoom) },
+            { duration: 300 },
+          );
+        }, 60);
       }
     }
-  }, [nodes, edges, setFlowNodes, setFlowEdges]);
+  }, [nodes, edges, currentStage, autoFit, setFlowNodes, setFlowEdges]);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -261,20 +278,87 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
   return (
     <div style={{ width: '100%', height: '100%', background: '#000', position: 'relative' }}>
       <ReactFlow
+        className="main-rf"
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onMoveStart={(event) => {
+          if (event) setAutoFit(false);
+        }}
         onInit={(inst) => {
           rfRef.current = inst;
+          // Center root (0,0) on screen immediately
+          const el = document.querySelector('.main-rf')?.parentElement;
+          const vw = el?.clientWidth || 800;
+          const vh = el?.clientHeight || 600;
+          inst.setViewport({ x: vw / 2, y: vh / 2, zoom: 1 });
         }}
         minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
         style={{ background: '#000' }}
       />
+
+      {/* Auto-fit toggle */}
+      <button
+        onClick={() => {
+          setAutoFit((v) => {
+            if (!v) {
+              const rf = rfRef.current;
+              if (rf) {
+                const el = document.querySelector('.main-rf')?.parentElement;
+                const vw = el?.clientWidth || 800;
+                const vh = el?.clientHeight || 600;
+                let maxDist = 100;
+                for (const [, pos] of posRef.current) {
+                  maxDist = Math.max(maxDist, Math.hypot(pos.x, pos.y));
+                }
+                const halfSize = Math.min(vw, vh) / 2;
+                const zoom = Math.min(1, halfSize / (maxDist + 100));
+                rf.setViewport(
+                  { x: vw / 2, y: vh / 2, zoom: Math.max(0.1, zoom) },
+                  { duration: 300 },
+                );
+              }
+            }
+            return !v;
+          });
+        }}
+        title={autoFit ? 'Auto-fit ON — click to disable' : 'Auto-fit OFF — click to re-enable'}
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          right: 20,
+          zIndex: 10,
+          width: 32,
+          height: 32,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: autoFit ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${autoFit ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.15)'}`,
+          cursor: 'pointer',
+          borderRadius: 0,
+          transition: 'all 0.15s',
+        }}
+      >
+        {/* Crosshair / focus icon */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={autoFit ? '#4ade80' : 'rgba(255,255,255,0.4)'}
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        </svg>
+      </button>
 
       {/* Review instruction */}
       {reviewActive && (
@@ -392,7 +476,7 @@ export default function Graph({ nodes, edges, onNodeClick, reviewActive }: Graph
         <div style={{ marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 7 }}>
           <span style={{ fontSize: 8, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>File Types</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="9" viewBox="0 0 208 128" fill="rgba(255,255,255,0.7)"><path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z" /></svg>
+            <svg width="14" height="14" viewBox="0 0 208 208" fill="rgba(255,255,255,0.7)"><path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" /></svg>
             <span>.md</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

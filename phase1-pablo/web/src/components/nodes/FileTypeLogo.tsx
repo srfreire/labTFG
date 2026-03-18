@@ -4,10 +4,10 @@ export default function FileTypeLogo({ label, size, color = 'rgba(255,255,255,0.
   const name = (label || '').toLowerCase();
 
   if (name.endsWith('.md')) {
-    // Markdown mark
+    // Markdown mark — sized to fill the same square as other logos
     return (
-      <svg width={size} height={size * 0.615} viewBox="0 0 208 128" fill="none">
-        <path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z" fill={color} />
+      <svg width={size} height={size} viewBox="0 0 208 208" fill="none">
+        <path d="M10 158V50h28l28 35 28-35h28v108h-28V89L66 124 38 89v69zm175 0l-42-46h28V50h28v62h28z" fill={color} />
       </svg>
     );
   }

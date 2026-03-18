@@ -3,14 +3,21 @@ import CodeBlock from '../shared/CodeBlock';
 
 interface EnvSpecUploadProps {
   onSubmit: (response: { env_spec: Record<string, unknown> }) => void;
+  defaultJson?: string;
 }
 
 type Mode = 'upload' | 'paste';
 
-export default function EnvSpecUpload({ onSubmit }: EnvSpecUploadProps) {
-  const [mode, setMode] = useState<Mode>('upload');
-  const [rawJson, setRawJson] = useState('');
-  const [parsed, setParsed] = useState<Record<string, unknown> | null>(null);
+export default function EnvSpecUpload({ onSubmit, defaultJson }: EnvSpecUploadProps) {
+  const [mode, setMode] = useState<Mode>(defaultJson ? 'paste' : 'upload');
+  const [rawJson, setRawJson] = useState(defaultJson ?? '');
+  const [parsed, setParsed] = useState<Record<string, unknown> | null>(() => {
+    if (!defaultJson) return null;
+    try {
+      const obj = JSON.parse(defaultJson);
+      return typeof obj === 'object' && obj !== null && !Array.isArray(obj) ? obj : null;
+    } catch { return null; }
+  });
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +94,7 @@ export default function EnvSpecUpload({ onSubmit }: EnvSpecUploadProps) {
         {/* Upload mode */}
         {mode === 'upload' && (
           <div
-            className="flex items-center justify-center p-8 cursor-pointer"
+            className="flex items-center justify-center p-8 cursor-pointer min-h-[160px] border-box"
             style={{
               border: `2px dashed ${dragging ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)'}`,
               background: dragging ? 'rgba(255,255,255,0.03)' : 'transparent',
