@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Facehash } from 'facehash'
 import ReactMarkdown from 'react-markdown'
+import { Send, FlaskConical } from 'lucide-react'
 import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { FROM_COLORS } from '../constants'
@@ -21,6 +22,12 @@ function StrongWithColor(props: { children?: ReactNode }) {
 
 const mdComponents = { strong: StrongWithColor }
 
+const EXAMPLE_PROMPTS = [
+  'Simula el dilema del prisionero con 3 agentes',
+  'Compara Q-Learning vs Random en entorno de supervivencia',
+  'Crea un entorno de recolección de recursos 10x10',
+]
+
 interface Props {
   messages: ChatMessage[]
   thinking: boolean
@@ -33,6 +40,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const workingAgents = agents.filter(a => a.status === 'working')
   const busy = thinking || workingAgents.length > 0
+  const isEmpty = messages.length === 0 && !thinking
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -47,16 +55,71 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
 
   const placeholder = busy
     ? `Esperando por ${workingAgents.map(a => a.name).join(', ')}...`
-    : 'Escribe tu mensaje...'
+    : 'Describe un paradigma de decisión...'
 
+  // Empty state — centered with prompts
+  if (isEmpty) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-8">
+        <div className="mb-8 flex flex-col items-center">
+          <FlaskConical size={32} strokeWidth={1.5} className="text-text-ghost mb-4" />
+          <h2 className="text-[20px] font-semibold tracking-tight text-text mb-2">DecisionLab</h2>
+          <p className="text-[14px] text-text-dim text-center max-w-md">
+            Describe un problema de toma de decisiones y el laboratorio simulará, observará y analizará el comportamiento de los agentes.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="w-full max-w-xl flex items-stretch gap-3 mb-6">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={placeholder}
+            className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3.5 px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="flex-shrink-0 w-14 flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
+          >
+            <Send size={18} />
+          </button>
+        </form>
+
+        <div className="flex flex-wrap justify-center gap-2">
+          {EXAMPLE_PROMPTS.map(prompt => (
+            <button
+              key={prompt}
+              onClick={() => { onSend(prompt) }}
+              className="text-[12px] px-3.5 py-2 border border-border-subtle rounded-lg text-text-dim hover:text-text-muted hover:border-border hover:bg-surface-hover transition-colors duration-150 cursor-pointer"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Active chat state
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div ref={scrollRef} className="flex-1 min-h-0 px-6 py-6 overflow-y-auto flex flex-col gap-5">
-        {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
-        ))}
+      <div ref={scrollRef} className="flex-1 min-h-0 px-8 py-8 overflow-y-auto flex flex-col">
+        {messages.map((msg, i) => {
+          const prev = messages[i - 1]
+          const sameAuthor = prev && prev.from === msg.from && msg.from !== 'user'
+          const hasRichContent = msg.card || msg.tracker || msg.analyst || msg.replay
+          // Tighter spacing for same-author text, more before rich content
+          const spacing = i === 0 ? '' : hasRichContent ? 'mt-6' : sameAuthor ? 'mt-2' : 'mt-5'
+          return (
+            <div key={msg.id} className={spacing}>
+              <MessageBubble msg={msg} hideAvatar={sameAuthor} />
+            </div>
+          )
+        })}
         {thinking && (
-          <div className="flex gap-3 max-w-[80%]">
+          <div className="flex gap-3 max-w-[80%] mt-5">
             <div className="flex-shrink-0 pt-1">
               <div className="w-7 h-7 rounded-full overflow-hidden">
                 <Facehash name="Orchestrator" size={28} variant="solid" colors={[FROM_COLORS['Orchestrator']]} showInitial={false} />
@@ -72,26 +135,23 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
         )}
       </div>
 
-      <div className="px-6 py-4 border-t border-border-subtle">
-        <form onSubmit={handleSubmit} className="flex items-center gap-3">
+      <div className="px-8 py-4 border-t border-border-subtle">
+        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-stretch gap-3">
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder={placeholder}
             disabled={busy}
-            className="flex-1 bg-transparent border border-border rounded-xl px-4 py-3 text-[15px] text-text outline-none transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ borderColor: busy ? 'var(--color-border-faint)' : undefined }}
+            className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3 px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed"
             autoFocus
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all bg-surface-hover hover:bg-border disabled:opacity-20 cursor-pointer disabled:cursor-default"
+            className="flex-shrink-0 w-12 flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
-            </svg>
+            <Send size={16} />
           </button>
         </form>
       </div>
@@ -99,7 +159,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
   )
 }
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boolean }) {
   const isUser = msg.from === 'user'
   const dotColor = FROM_COLORS[msg.from] || '#fff'
 
@@ -117,20 +177,16 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       style={{ maxWidth: '80%', marginLeft: isUser ? 'auto' : undefined }}
     >
       {!isUser && (
-        <div className="flex-shrink-0 pt-1">
-          <div className="w-7 h-7 rounded-full overflow-hidden">
-            <Facehash
-              name={msg.from}
-              size={28}
-              variant="solid"
-              colors={[dotColor]}
-              showInitial={false}
-            />
-          </div>
+        <div className="flex-shrink-0 pt-1 w-7">
+          {!hideAvatar && (
+            <div className="w-7 h-7 rounded-full overflow-hidden">
+              <Facehash name={msg.from} size={28} variant="solid" colors={[dotColor]} showInitial={false} />
+            </div>
+          )}
         </div>
       )}
       <div className={isUser ? '' : 'flex-1 min-w-0'}>
-        {!isUser && (
+        {!isUser && !hideAvatar && (
           <div className="text-[11px] font-medium mb-1 capitalize" style={{ color: dotColor }}>
             {msg.from}
           </div>

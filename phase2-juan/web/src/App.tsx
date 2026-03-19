@@ -32,35 +32,34 @@ interface ShellProps {
 
 function AppShell({ connected, agents, messages, thinking, simAgents, send }: ShellProps) {
   return (
-    <div className="h-screen bg-bg p-4 flex gap-4 overflow-hidden">
-      {/* Sidebar — floating panel */}
-      <div className="hidden md:flex w-[200px] flex-shrink-0 min-h-0 flex-col floating-panel">
-        {/* Sidebar header */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-border-subtle">
-          <div>
-            <h1 className="text-[13px] font-bold uppercase tracking-[2px]">DecisionLab</h1>
-            <p className="text-[10px] mt-0.5 text-text-dim">Laboratorio Virtual</p>
+    <div className="h-screen p-10 flex gap-8 overflow-hidden">
+      {/* Sidebar — floating panel, frosted glass */}
+      <aside className="hidden md:flex w-[200px] flex-shrink-0 min-h-0 flex-col floating-panel">
+        {/* Header — Phase 1 style */}
+        <div className="px-5 py-4 border-b border-border-subtle shrink-0">
+          <div className="text-[17px] font-semibold tracking-tight text-text">
+            DecisionLab
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[13px] text-text-muted">Laboratorio</span>
+            <span
+              className="w-2 h-2 rounded-full inline-block shrink-0"
+              style={{ background: connected ? '#4ade80' : '#ef4444' }}
+            />
+            {isMock && (
+              <span className="text-[9px] px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
+                mock
+              </span>
+            )}
           </div>
         </div>
         <AgentPanel agents={agents} simAgents={simAgents} />
-        {/* Connection status at bottom */}
-        <div className="px-5 py-3 border-t border-border-subtle flex items-center gap-2 text-[9px] text-text-faint">
-          {isMock && (
-            <span className="px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
-              mock
-            </span>
-          )}
-          <span>
-            <span style={{ color: connected ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }}>●</span>
-            {' '}{connected ? 'conectado' : 'desconectado'}
-          </span>
-        </div>
-      </div>
+      </aside>
 
       {/* Main chat — floating panel */}
-      <div className="flex-1 min-h-0 flex flex-col floating-panel">
+      <main className="flex-1 min-h-0 flex flex-col floating-panel">
         <ChatPanel messages={messages} thinking={thinking} onSend={send} agents={agents} />
-      </div>
+      </main>
 
       {/* Mobile agent bar — bottom floating */}
       <div className="md:hidden fixed bottom-4 left-4 right-4 flex items-center gap-2 px-4 py-2.5 floating-panel overflow-x-auto z-30">

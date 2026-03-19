@@ -18,21 +18,22 @@ export const FROM_COLORS: Record<string, string> = {
 }
 
 // Friendly labels for internal agent tool calls
+// Keep short — must fit in 200px sidebar
 export const TOOL_LABELS: Record<string, string> = {
   // Orchestrator tools
   create_environment: 'Creando entorno',
-  run_simulation: 'Ejecutando simulación',
+  run_simulation: 'Simulando',
   list_available_models: 'Buscando modelos',
-  observe_simulation: 'Llamando al Tracker',
-  analyze_results: 'Llamando al Analyst',
+  observe_simulation: 'Observando',
+  analyze_results: 'Analizando',
   generate_report: 'Generando informe',
   // Architect
-  validate_spec: 'Validando especificación',
+  validate_spec: 'Validando spec',
   // Tracker & Analyst
   get_simulation_events: 'Leyendo eventos',
-  get_agent_trajectory: 'Analizando trayectoria',
-  get_agent_state: 'Inspeccionando estado',
+  get_agent_trajectory: 'Trayectoria',
+  get_agent_state: 'Estado agente',
   // Reporter
-  read_research: 'Leyendo investigación',
+  read_research: 'Investigación',
   compile_report: 'Compilando PDF',
 }

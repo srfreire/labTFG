@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { RotateCcw, ChevronLeft, ChevronRight, Play, Pause, Gauge } from 'lucide-react'
 import type { ReplayData } from '../types'
 import { AGENT_COLORS } from '../constants'
 
@@ -62,7 +63,7 @@ export function SimulationGrid({ replay }: Props) {
   const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setTrail({}) }, [])
   const cycleSpeed = useCallback(() => setSpeedIdx(i => (i + 1) % SPEEDS.length), [])
 
-  const controlBtn = 'text-[9px] px-2 py-1 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover transition-colors duration-150 cursor-pointer'
+  const controlBtn = 'flex items-center text-[9px] px-2 py-1.5 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover hover:text-text-muted transition-colors duration-150 cursor-pointer'
 
   if (!frame) return null
 
@@ -167,15 +168,15 @@ export function SimulationGrid({ replay }: Props) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-3 mt-2">
-        <button onClick={reset} className={controlBtn}>⟳</button>
-        <button onClick={stepBack} className={controlBtn}>◁</button>
+      <div className="flex items-center justify-center gap-2 mt-2">
+        <button onClick={reset} className={controlBtn}><RotateCcw size={12} /></button>
+        <button onClick={stepBack} className={controlBtn}><ChevronLeft size={14} /></button>
         <button onClick={togglePlay} className={`${controlBtn} px-2.5 text-text-muted`}>
-          {playing ? '⏸' : '▶'}
+          {playing ? <Pause size={12} /> : <Play size={12} />}
         </button>
-        <button onClick={stepForward} className={controlBtn}>▷</button>
-        <button onClick={cycleSpeed} className={controlBtn}>
-          {speed}×
+        <button onClick={stepForward} className={controlBtn}><ChevronRight size={14} /></button>
+        <button onClick={cycleSpeed} className={`${controlBtn} gap-1`}>
+          <Gauge size={11} />{speed}×
         </button>
       </div>
 
