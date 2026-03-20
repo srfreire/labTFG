@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from simlab.environment import Event
 from simlab.loop import run_agent_loop
-from simlab.tools import build_simulation_tools
+from simlab.tools import build_simulation_tools, build_cross_experiment_tools
 from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
@@ -26,10 +26,12 @@ You are the Analyst agent for a simulation laboratory studying decision-making p
 You receive observation logs from the Tracker and raw simulation data, then produce \
 deep behavioral analysis — not just descriptions, but interpretations and hypotheses.
 
-You have 3 tools to explore raw simulation data:
-- get_simulation_events: overview of all events
-- get_agent_trajectory: detailed events for one agent
+You have 5 tools to explore simulation data:
+- get_simulation_events: overview of all events from the CURRENT simulation
+- get_agent_trajectory: detailed events for one agent in the CURRENT simulation
 - get_agent_state: internal model state at a specific step (Q-values, drive, energy, error signals)
+- list_past_experiments: list past experiments from the database (for cross-experiment comparison)
+- get_experiment_analysis: get tracker/analyst results from a PAST experiment by ID
 
 The Tracker's observation log is provided in the user message. Your job is to go MUCH \
 deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
@@ -103,6 +105,27 @@ deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
   ]
 }
 
+## Cross-experiment comparison
+
+When the user asks to compare with past experiments, or when you think historical context \
+would enrich the analysis:
+
+1. Call list_past_experiments to see what's available
+2. Call get_experiment_analysis with a relevant experiment_id to get its tracker/analyst output
+3. Compare metrics, patterns, and behaviors across experiments
+4. Include a "cross_experiment" section in your output:
+
+"cross_experiment": [
+  {
+    "past_experiment_id": "<UUID>",
+    "past_description": "<what was that experiment about>",
+    "comparison": "<how the current experiment differs — in Spanish>",
+    "insight": "<what we learn from the comparison — in Spanish>"
+  }
+]
+
+Only include this section if you actually queried past experiments. Do NOT fabricate comparisons.
+
 ## Rules
 
 - ALWAYS respond in Spanish (descriptions, insights, pattern descriptions)
@@ -148,6 +171,10 @@ class Analyst:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
 
         tools, registry = build_simulation_tools(events)
+        db_tools, db_registry = build_cross_experiment_tools()
+        tools += db_tools
+        registry.update(db_registry)
+
         user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
         response = await run_agent_loop(
             client=self.client,

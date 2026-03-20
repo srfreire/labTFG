@@ -15,6 +15,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from shared.store import init_db, register_model as _register_model
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,13 +70,27 @@ def discover_models(builder_dir: Path) -> dict[str, ModelInfo]:
             # Find the first class that implements the DecisionModel interface
             for name, obj in inspect.getmembers(mod, inspect.isclass):
                 if obj.__module__ == module_name and _has_decision_model_interface(obj):
+                    desc = (mod.__doc__ or "").strip()
                     models[formulation_id] = ModelInfo(
                         formulation_id=formulation_id,
                         class_name=name,
-                        description=(mod.__doc__ or "").strip(),
+                        description=desc,
                         path=path,
                         model_class=obj,
                     )
+                    # Persist to DB
+                    try:
+                        init_db()
+                        paradigm = formulation_id.split("_", 1)[0] if "_" in formulation_id else None
+                        _register_model(
+                            formulation_id=formulation_id,
+                            class_name=name,
+                            paradigm=paradigm,
+                            description=desc or None,
+                            file_path=str(path),
+                        )
+                    except Exception:
+                        logger.debug("Could not register model %s in DB", formulation_id, exc_info=True)
                     break
         except Exception:
             logger.warning("Failed to load model from %s", path, exc_info=True)

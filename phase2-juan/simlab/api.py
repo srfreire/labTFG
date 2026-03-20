@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 import anthropic
@@ -36,12 +37,18 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Path configuration
+# Path configuration — env vars with sensible defaults
 # ---------------------------------------------------------------------------
 
-RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
-OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
-BUILDER_DIR = RESEARCH_DIR / "builder"
+_DEFAULT_RESEARCH = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
+_DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "output"
+
+def _env_path(var: str, default: Path) -> Path:
+    return Path(os.environ[var]) if os.environ.get(var) else default
+
+RESEARCH_DIR = _env_path("RESEARCH_DIR", _DEFAULT_RESEARCH)
+OUTPUT_DIR = _env_path("OUTPUT_DIR", _DEFAULT_OUTPUT)
+BUILDER_DIR = _env_path("BUILDER_DIR", RESEARCH_DIR / "builder")
 
 
 # ---------------------------------------------------------------------------
@@ -55,6 +62,9 @@ AGENTS = [
     {"name": "Analyst",   "color": "#a78bfa", "state_key": "analyst_output"},
     {"name": "Reporter",  "color": "#f472b6", "state_key": "pdf_path"},
 ]
+
+# Colors for simulation agents (assigned round-robin by index)
+SIM_AGENT_COLORS = ["#4ade80", "#fbbf24", "#a78bfa", "#f472b6", "#38bdf8", "#fb923c"]
 
 # Maps orchestrator tool names to agent names for real-time status updates
 TOOL_AGENT_MAP = {
@@ -99,11 +109,12 @@ async def websocket_chat(ws: WebSocket):
         builder_dir=BUILDER_DIR,
     )
 
-    # Send initial agent states to the UI
+    # Send initial agent states + color palette to the UI
     await ws.send_json({
         "type": "agents",
         "agents": _build_agent_states(),
         "pipeline": [],
+        "simColors": SIM_AGENT_COLORS,
     })
 
     # Wire up internal tool call notifications
@@ -186,10 +197,9 @@ async def websocket_chat(ws: WebSocket):
                 "text": f"El **Reporter** ha generado el informe PDF en `{state['pdf_path']}`.",
             })
 
-    # New fn registry with ws support for the frontend
     def patched_build():
         tools, registry = original_build()
-        wrapped: dict = {}
+        wrapped = {}
         for tool_name, fn in registry.items():
             agent_name = TOOL_AGENT_MAP.get(tool_name)
             if agent_name:

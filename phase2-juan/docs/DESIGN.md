@@ -136,80 +136,68 @@ Multiples modelos pueden ejecutarse en el **mismo environment** para comparacion
 
 ### Motivacion
 
-Actualmente todos los datos de simulacion viven en memoria (`Orchestrator._state`). Cuando la sesion termina, se pierde todo. No hay forma de comparar un experimento de hoy con uno de ayer, ni de reproducir resultados, ni de hacer analisis cross-experiment.
+Los datos de simulacion no pueden vivir solo en memoria (`Orchestrator._state`). Necesitamos persistencia entre sesiones, historial, comparacion cross-experiment y reproducibilidad.
 
 La solucion combina dos conceptos de data engineering:
 
-1. **Pipeline de datos estructurado** — schema relacional para todos los artefactos del pipeline (events, tracker output, analyst output), con persistencia en disco.
-2. **Experiment tracking** — cada ejecucion del pipeline es un *experimento* con ID unico, metadatos de configuracion y estado de progreso. Permite historial, comparacion y reproducibilidad.
+1. **Pipeline de datos estructurado** — todos los artefactos del pipeline (spec, events, tracker output, analyst output, PDF) persisten en disco.
+2. **Experiment tracking** — cada ejecucion del pipeline es un *experimento* con ID unico, metadatos de configuracion y estado de progreso.
 
-### Schema
+### Schema (implementado)
+
+La DB es SQLite en `data/labtfg.db` (gitignored). Paquete compartido `shared/` con `store.py`.
 
 ```
+models
+  ├── formulation_id  TEXT PRIMARY KEY   -- e.g. "homeostatic-regulation_drive_reduction_rl"
+  ├── class_name      TEXT NOT NULL      -- e.g. "HomeostaticDriveReductionRL"
+  ├── paradigm        TEXT               -- e.g. "homeostatic-regulation"
+  ├── description     TEXT               -- docstring del modulo
+  ├── file_path       TEXT NOT NULL      -- ruta al *_model.py
+  ├── registered_at   TIMESTAMP
+  └── metadata_json   TEXT               -- JSON libre para metadatos extra
+
 experiments
-  ├── id            TEXT PRIMARY KEY (UUID)
-  ├── created_at    TIMESTAMP
-  ├── description   TEXT              -- prompt original del usuario
-  ├── spec_json     TEXT              -- JSON spec del environment
-  ├── status        TEXT              -- created | simulated | tracked | analyzed | reported
-  ├── steps         INTEGER
-  └── seed          INTEGER | NULL    -- para reproducibilidad
-
-experiment_agents
-  ├── experiment_id TEXT  FK → experiments
-  ├── agent_id      TEXT              -- e.g. "agent_0"
-  ├── model_name    TEXT              -- e.g. "drive_reduction"
-  ├── model_class   TEXT              -- e.g. "DriveReductionModel"
-  └── initial_x, initial_y  INTEGER
-
-events
-  ├── experiment_id  TEXT  FK → experiments
-  ├── step           INTEGER
-  ├── agent_id       TEXT
-  ├── action_name    TEXT
-  ├── action_params  TEXT  (JSON)
-  ├── reward         REAL
-  ├── action_result  TEXT  (JSON)
-  └── model_state    TEXT  (JSON)
-
-tracker_results
-  ├── experiment_id  TEXT  FK → experiments
-  ├── summary        TEXT
-  ├── trajectories   TEXT  (JSON)
-  └── episodes       TEXT  (JSON)
-
-analyst_results
-  ├── experiment_id  TEXT  FK → experiments
-  ├── patterns       TEXT  (JSON)
-  ├── comparisons    TEXT  (JSON)
-  └── metrics        TEXT  (JSON)
-
-reports
-  ├── experiment_id  TEXT  FK → experiments
-  ├── pdf_path       TEXT
-  └── generated_at   TIMESTAMP
+  ├── id              TEXT PRIMARY KEY (UUID)
+  ├── created_at      TIMESTAMP
+  ├── updated_at      TIMESTAMP
+  ├── description     TEXT               -- prompt original del usuario
+  ├── status          TEXT               -- created | simulated | tracked | analyzed | reported
+  ├── spec_json       TEXT               -- JSON spec del environment
+  ├── models_used     TEXT               -- JSON array de formulation_ids
+  ├── steps           INTEGER
+  ├── seed            INTEGER | NULL
+  ├── events_json     TEXT               -- eventos serializados (sin model_state)
+  ├── replay_json     TEXT               -- frames para el replay del frontend
+  ├── tracker_json    TEXT               -- salida completa del Tracker
+  ├── analyst_json    TEXT               -- salida completa del Analyst
+  └── pdf_path        TEXT               -- ruta al PDF generado
 ```
 
-### Integracion con la arquitectura existente
+Diseno simplificado: JSON blobs dentro de `experiments` en vez de tablas normalizadas. Suficiente para el volumen esperado y evita joins innecesarios. Si en el futuro se necesitan queries SQL granulares (e.g. "media de reward del modelo X en los ultimos 10 experimentos"), se puede normalizar a tablas separadas (`experiment_agents`, `events`, `tracker_results`, etc.).
+
+### Integracion con la arquitectura
 
 El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igual, y la persistencia se anade como efecto secundario:
 
-1. **Nuevo modulo `store.py`** — inicializa DB, expone funciones `save_experiment()`, `save_events()`, `save_tracker_output()`, `load_experiment()`, `list_experiments()`, etc.
-2. **`orchestrator.py`** — despues de cada paso del pipeline, llama a `store.save_*()`. El dict `_state` sigue intacto (backward compatible).
-3. **`tools.py`** — las funciones de query pueden opcionalmente leer de DB dado un `experiment_id`, habilitando consultas cross-experiment.
-4. **Nuevo tool `list_experiments()`** — el Orchestrator puede ofrecer historial y comparacion al usuario.
+1. **`shared/store.py`** — inicializa DB, expone `create_experiment()`, `update_experiment()`, `get_experiment()`, `list_experiments()`, `register_model()`, `list_models()`, `get_model()`.
+2. **`orchestrator.py`** — despues de cada paso del pipeline, llama a `update_experiment()` con el status y los datos correspondientes.
+3. **`model_loader.py`** — al descubrir modelos de la Fase 1, los registra automaticamente en la tabla `models` (idempotente via INSERT OR REPLACE).
+4. **`tools.py`** — ademas de los 3 tools de simulacion (current experiment), expone 2 tools de DB: `list_past_experiments` y `get_experiment_analysis` para consultas cross-experiment.
+5. **Orchestrator tool `list_experiments`** — permite al usuario ver historial desde el chat.
+6. **Analyst** — tiene acceso a los 5 tools (3 de simulacion + 2 de DB) para comparar el experimento actual con experimentos pasados.
 
-### Capacidades nuevas
+### Capacidades
 
 - **Historial**: "muestrame los ultimos 5 experimentos"
-- **Comparacion cross-experiment**: "compara drive_reduction de hoy vs ayer"
+- **Comparacion cross-experiment**: el Analyst puede consultar resultados de experimentos pasados y comparar metricas, patrones y comportamientos
 - **Reproducibilidad**: mismo spec + seed + modelo = mismos resultados
-- **Analisis agregado**: metricas promediadas sobre N ejecuciones del mismo paradigma
 - **Persistencia entre sesiones**: cerrar y abrir el lab no pierde datos
+- **Registro de modelos**: los modelos descubiertos de la Fase 1 se registran en la DB con paradigma, clase y ruta
 
 ### Tecnologia
 
-**SQLite** (`sqlite3` stdlib, zero dependencias). Fichero en `phase2-juan/data/experiments.db` (gitignored). Alternativa: DuckDB si se quiere enfatizar el angulo analitico (columnar, mejor para agregaciones), pero SQLite es suficiente para el volumen esperado.
+**SQLite** (`sqlite3` stdlib, zero dependencias). Fichero en `data/labtfg.db` (root del repo, gitignored). WAL mode habilitado para lecturas concurrentes.
 
 ---
 
@@ -219,10 +207,13 @@ El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igua
 
 - Environment base generico (effect types, ActionRule, ResourceRule)
 - Spec validation + conversion (`spec.py`)
-- Runtime agentico compartido (`runtime/loop.py`, `runtime/dispatcher.py`)
+- Runtime agentico compartido (`loop.py`)
 - Los 5 agentes (Architect, Tracker, Analyst, Reporter, Orchestrator)
 - CLI interactivo (`uv run simlab`)
 - Web UI: dashboard dark, chat WebSocket, replay animado, data cards, panel de agentes
 - Dynamic model loader para modelos de la Fase 1
 - Comparacion multi-modelo en mismo environment
 - Pipeline completo e2e testeado con Playwright
+- Experiment Store: persistencia SQLite con historial, reproducibilidad y comparacion cross-experiment
+- Registro automatico de modelos en DB al descubrirlos
+- Analyst con tools de DB para comparacion cross-experiment

@@ -13,14 +13,14 @@ function getToolLabel(tool: string): string {
 
 export function AgentPanel({ agents, simAgents }: Props) {
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0">
       <div className="px-5 py-3">
         <div className="text-[9px] uppercase tracking-[2px] font-semibold text-text-faint">
           Pipeline
         </div>
       </div>
       <div className="flex-1 px-5 pb-5 overflow-y-auto">
-        <div className="relative">
+        <div className="relative pt-2.5">
           {agents.map((agent, i) => (
             <PipelineNode key={agent.name} agent={agent} isLast={i === agents.length - 1} />
           ))}
@@ -61,6 +61,22 @@ export function AgentPanel({ agents, simAgents }: Props) {
       </div>
     </div>
   )
+}
+
+function nameColor(agent: AgentState): string {
+  switch (agent.status) {
+    case 'working': return agent.color
+    case 'done': return 'var(--color-text-muted)'
+    default: return 'var(--color-text-faint)'
+  }
+}
+
+function contentMaxHeight(status: AgentState['status']): number {
+  switch (status) {
+    case 'working': return 50
+    case 'done': return 20
+    default: return 0
+  }
 }
 
 function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean }) {
@@ -132,15 +148,13 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
       <div className="flex-1 min-w-0 pt-0.5 overflow-hidden">
         <span
           className="text-[10px] font-semibold uppercase tracking-[1.5px] transition-colors duration-300 block truncate"
-          style={{
-            color: isActive ? agent.color : isDone ? 'var(--color-text-muted)' : 'var(--color-text-faint)',
-          }}
+          style={{ color: nameColor(agent) }}
         >
           {agent.name}
         </span>
         <div
           className="overflow-hidden transition-all duration-300 ease-out"
-          style={{ maxHeight: isActive ? 50 : isDone ? 20 : 0, opacity: isActive || isDone ? 1 : 0 }}
+          style={{ maxHeight: contentMaxHeight(agent.status), opacity: isIdle ? 0 : 1 }}
         >
           {isActive && (
             <div className="flex items-center gap-1.5 mt-1">

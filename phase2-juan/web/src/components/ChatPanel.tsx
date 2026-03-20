@@ -109,9 +109,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const sameAuthor = prev && prev.from === msg.from && msg.from !== 'user'
-          const hasRichContent = msg.card || msg.tracker || msg.analyst || msg.replay
-          // Tighter spacing for same-author text, more before rich content
-          const spacing = i === 0 ? '' : hasRichContent ? 'mt-6' : sameAuthor ? 'mt-2' : 'mt-5'
+          const spacing = i === 0 ? '' : sameAuthor ? 'mt-5' : 'mt-6'
           return (
             <div key={msg.id} className={spacing}>
               <MessageBubble msg={msg} hideAvatar={sameAuthor} />

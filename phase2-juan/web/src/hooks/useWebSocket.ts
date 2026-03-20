@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AgentState, PipelineStep, ChatMessage, SimAgent } from '../types'
-import { AGENT_COLORS } from '../constants'
+
+// Fallback colors — overridden by backend on first WS message
+const DEFAULT_SIM_COLORS = ['#4ade80', '#fbbf24', '#a78bfa', '#f472b6', '#38bdf8', '#fb923c']
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
@@ -17,6 +19,7 @@ export function useWebSocket() {
   const [simAgents, setSimAgents] = useState<SimAgent[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const idRef = useRef(0)
+  const simColorsRef = useRef<string[]>(DEFAULT_SIM_COLORS)
 
   useEffect(() => {
     let stopped = false
@@ -51,6 +54,8 @@ export function useWebSocket() {
               return [orch, ...data.agents]
             })
             if (data.pipeline) setPipeline(data.pipeline)
+            // Backend sends the color palette once on connect
+            if (Array.isArray(data.simColors)) simColorsRef.current = data.simColors
             break
 
           case 'agent_status':
@@ -92,10 +97,11 @@ export function useWebSocket() {
             setMessages(prev => [...prev, msg])
             // Extract simulation agents from replay
             if (data.replay?.frames?.[0]?.agents) {
+              const colors = simColorsRef.current
               const ids = data.replay.frames[0].agents.map((a: { id: string }) => a.id)
               setSimAgents(ids.map((id: string, i: number) => ({
                 id,
-                color: AGENT_COLORS[i % AGENT_COLORS.length],
+                color: colors[i % colors.length],
               })))
             }
             break

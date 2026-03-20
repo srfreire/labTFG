@@ -4,13 +4,18 @@ Shared simulation-data tools for Tracker and Analyst agents.
 These tools let agents explore simulation results by querying events,
 trajectories, and internal model states. The tools are created as
 closures over a list of Events, so each agent gets its own read-only view.
+
+The Analyst also gets cross-experiment tools that query the DB for
+historical comparison and aggregated analysis.
 """
 from __future__ import annotations
 
 import json
+from collections import Counter
 
 from simlab.environment import Event
 from simlab.loop import Registry
+from shared.store import list_experiments, get_experiment
 
 
 # ---------------------------------------------------------------------------
@@ -38,10 +43,7 @@ def _event_to_dict(event: Event) -> dict:
 
 def _count_actions(events: list[Event]) -> dict[str, int]:
     """Count how many times each action was used."""
-    counts: dict[str, int] = {}
-    for e in events:
-        counts[e.action.name] = counts.get(e.action.name, 0) + 1
-    return counts
+    return dict(Counter(e.action.name for e in events))
 
 
 def _summarize_events(events: list[Event]) -> dict:
@@ -139,5 +141,71 @@ def build_simulation_tools(events: list[Event]) -> tuple[list[dict], Registry]:
         "get_simulation_events": get_simulation_events,
         "get_agent_trajectory": get_agent_trajectory,
         "get_agent_state": get_agent_state,
+    }
+    return schemas, registry
+
+
+# ---------------------------------------------------------------------------
+# Cross-experiment tools (DB) — for the Analyst
+# ---------------------------------------------------------------------------
+
+LIST_PAST_EXPERIMENTS_TOOL = {
+    "name": "list_past_experiments",
+    "description": "List past experiments from the database. Returns id, status, description, models used, steps, and timestamps. "
+                   "Use to find experiments for cross-experiment comparison.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "Max experiments to return (default 10)"},
+        },
+    },
+}
+
+GET_EXPERIMENT_ANALYSIS_TOOL = {
+    "name": "get_experiment_analysis",
+    "description": "Get the Tracker and Analyst results from a past experiment by ID. "
+                   "Returns tracker_json and analyst_json so you can compare with the current experiment.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "experiment_id": {"type": "string", "description": "UUID of the past experiment"},
+        },
+        "required": ["experiment_id"],
+    },
+}
+
+
+def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
+    """Build tools for querying past experiments from the DB."""
+
+    _list_keys = ("id", "status", "description", "models_used", "steps", "created_at")
+
+    async def list_past_experiments_fn(params: dict) -> str:
+        limit = params.get("limit", 10)
+        exps = list_experiments(limit=limit)
+        return json.dumps(
+            [{k: exp.get(k) for k in _list_keys} for exp in exps],
+            default=str,
+        )
+
+    async def get_experiment_analysis_fn(params: dict) -> str:
+        exp_id = params["experiment_id"]
+        exp = get_experiment(exp_id)
+        if not exp:
+            return json.dumps({"error": f"Experiment {exp_id} not found"})
+        return json.dumps({
+            "id": exp["id"],
+            "status": exp["status"],
+            "description": exp.get("description"),
+            "models_used": exp.get("models_used"),
+            "steps": exp.get("steps"),
+            "tracker_json": exp.get("tracker_json"),
+            "analyst_json": exp.get("analyst_json"),
+        }, default=str)
+
+    schemas = [LIST_PAST_EXPERIMENTS_TOOL, GET_EXPERIMENT_ANALYSIS_TOOL]
+    registry: Registry = {
+        "list_past_experiments": list_past_experiments_fn,
+        "get_experiment_analysis": get_experiment_analysis_fn,
     }
     return schemas, registry
