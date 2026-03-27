@@ -69,40 +69,6 @@ It belongs to the broader family of **mesocorticolimbic dopamine theories** of m
 
 ---
 
-## Mathematical Formulation
-
-While the original theory is primarily conceptual/neurobiological, computational implementations have been developed:
-
-### Montague, Daw & colleagues (2003) — Computational Substrate for Incentive Salience
-*(Cell / Trends in Neurosciences, 2003; Princeton/Daw et al.)*
-
-Incentive salience is modeled as a **motivational bias** on action selection, separate from a **temporal-difference (TD) learning** prediction error signal:
-
-**TD Prediction Error (δ):**
-$$\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$$
-
-where $r_t$ is received reward, $\gamma$ is the discount factor, and $V(s)$ is the value function. This δ signal drives *learning* (value updating).
-
-**Incentive Salience (IS) — Action Bias:**
-$$IS(s_t) = w \cdot \phi(s_t) \cdot d_t$$
-
-where:
-- $\phi(s_t)$ = stimulus representation/feature vector
-- $d_t$ = current dopaminergic state (which can be sensitized)
-- $w$ = learned associative weights linking stimuli to reward predictions
-
-The key theoretical point modeled is that **dopamine plays a *dual* role**: it contributes both to the TD prediction error (learning signal) and to an incentive salience bias (action-selection signal). These are mathematically separable components.
-
-### Redish (2004) — Neural Computational Model *(PLoS Computational Biology)*
-
-Extends the above by modeling the NAc-VP circuit explicitly, where the IS output gates motor plans:
-
-$$\text{Approach}(a) \propto \sum_i IS(s_i) \cdot P(s_i | a)$$
-
-The model predicts that **sensitized dopamine** ($d_t \uparrow$) scales IS supra-linearly without changing the underlying value function $V(s)$, producing wanting without commensurate liking — the hallmark prediction of the theory.
-
----
-
 ## References
 
 - **Robinson, T.E. & Berridge, K.C. (1993)** — *The neural basis of drug craving: An incentive-sensitization theory of addiction.* Brain Research Reviews, 18(3), 247–291.

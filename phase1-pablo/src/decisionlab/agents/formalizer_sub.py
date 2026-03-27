@@ -60,9 +60,17 @@ do NOT count.
 |--------|------|---------|--------|
 
 ### Equations
-$$
-{LaTeX equations — number each equation for reference}
-$$
+Write each equation as a labeled pair: plain-text code line + LaTeX block.
+
+Example:
+
+**Eq. 1 — Drive update:**
+`dh/dt = c_F · intake − α_F · F`
+$$\\frac{dh}{dt} = c_F \\cdot \\text{intake} - \\alpha_F \\cdot F \\tag{1}$$
+
+**Eq. 2 — Action probability:**
+`P(a) = exp(β · Q(a)) / Σ_j exp(β · Q(j))`
+$$P(a) = \\frac{\\exp(\\beta \\, Q(a))}{\\sum_j \\exp(\\beta \\, Q(j))} \\tag{2}$$
 
 ### Decision logic
 {Step-by-step rules: given internal state + perception, which action does the agent pick? \

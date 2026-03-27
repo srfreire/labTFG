@@ -21,8 +21,8 @@ measurable variables, and causal relationships that can be translated into mathe
 
 ## Process
 
-1. Run 2-3 targeted web searches: paradigm + key authors, paradigm + mathematical model, \
-paradigm + computational model or review paper.
+1. Run 2-3 targeted web searches: paradigm + key authors, paradigm + theoretical foundations, \
+paradigm + review paper.
 2. Synthesize findings into the report format below.
 3. STOP searching. Write the report.
 
@@ -54,10 +54,6 @@ P1. {Falsifiable statement} ({Author, Year})
 
 Type: continuous, discrete, binary. Range: plausible values (e.g., [0, 1], positive reals). \
 This information is critical for downstream mathematical formalization.
-
-## Existing mathematical formulations
-{Search for and report any mathematical models of this paradigm found in the literature. \
-Include equations, variable definitions, and citations. If none found, state explicitly.}
 
 ## References
 - {Author (Year)} - {Title}

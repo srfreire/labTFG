@@ -85,44 +85,6 @@ The theoretical basis integrates **neuroendocrinology**, **autonomic neuroscienc
 
 ---
 
-## Mathematical Formulation
-
-While no single universal equation governs the full GBA, several sub-models exist in the literature:
-
-### 1. Satiety Peptide Kinetics (Nutrient-Triggered Release)
-Gut hormone release (e.g., GLP-1 concentration *H*) following nutrient intake can be modeled as a first-order stimulated secretion with decay:
-
-$$\frac{dH}{dt} = k_{sec} \cdot N(t) - k_{clear} \cdot H$$
-
-Where:
-- $H$ = plasma concentration of satiety hormone
-- $N(t)$ = luminal nutrient signal (function of meal composition and timing)
-- $k_{sec}$ = nutrient-stimulated secretion rate constant
-- $k_{clear}$ = hormone clearance rate constant
-*(Conceptual form consistent with pharmacokinetic models described in Yoo & Park, Nature, 2021)*
-
-### 2. Hypothalamic Energy Balance Integration
-The net drive to eat (*F*) is modeled as a balance between orexigenic and anorexigenic signals:
-
-$$F = \alpha \cdot [\text{Ghrelin}] - \beta_1 \cdot [\text{GLP-1}] - \beta_2 \cdot [\text{PYY}] - \beta_3 \cdot [\text{Leptin}] + \varepsilon$$
-
-Where:
-- $\alpha, \beta_i$ = tissue-specific sensitivity coefficients
-- $\varepsilon$ = hedonic/cognitive override term (reward, stress, habit)
-*(Formulation consistent with systems models reviewed in PMC11483575, 2024 and Nature, 2021)*
-
-### 3. Microbiota–SCFA–GLP-1 Cascade
-A simplified cascade model:
-
-$$\text{Diet} \xrightarrow{k_1} \text{Microbiota}_{\text{SCFA}} \xrightarrow{k_2} \text{EEC Activation} \xrightarrow{k_3} [\text{GLP-1}]_{\text{plasma}} \xrightarrow{k_4} \text{Satiety Signal}$$
-
-Each arrow represents a rate constant modifiable by diet composition, microbiome diversity, and gut permeability.
-*(Based on mechanistic pathway described in Nature Signal Transduction, 2022; MDPI Nutrients, 2023)*
-
-> **Note:** Fully parameterized, validated computational models of the complete GBA remain an active research gap. Most current formulations are subsystem-specific.
-
----
-
 ## References
 
 - **Berthoud, H.R. (2011)** — *The role of the gut/brain axis in modulating food intake* — Neuropharmacology (ScienceDirect, S0028390811004631)
