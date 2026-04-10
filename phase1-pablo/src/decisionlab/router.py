@@ -62,6 +62,53 @@ class PipelineState:
     build_results: dict[str, str] = field(default_factory=dict)
     pending_reruns: list[RerunRequest] = field(default_factory=list)
 
+    # ID registry (T-P-F hierarchy)
+    topic_id: str = "T01"
+    id_registry: dict[str, str] = field(default_factory=dict)
+    _paradigm_counter: int = 0
+    _formulation_counters: dict[str, int] = field(default_factory=dict)
+
+    # -- ID assignment -------------------------------------------------------
+
+    def assign_paradigm_id(self, slug: str) -> str:
+        """Assign ``T01-P{NN}`` to a paradigm slug. Idempotent for same slug."""
+        existing = self.id_registry.get(slug)
+        if existing is not None:
+            return existing
+        self._paradigm_counter += 1
+        pid = f"{self.topic_id}-P{self._paradigm_counter:02d}"
+        self.id_registry[slug] = pid
+        return pid
+
+    def assign_formulation_id(self, paradigm_slug: str, formulation_name: str) -> str:
+        """Assign ``T01-P{NN}-F{NN}`` to a formulation. Idempotent for same name+paradigm."""
+        key = f"{paradigm_slug}::{formulation_name}"
+        existing = self.id_registry.get(key)
+        if existing is not None:
+            return existing
+        paradigm_id = self.id_registry.get(paradigm_slug)
+        if paradigm_id is None:
+            raise ValueError(
+                f"Paradigm '{paradigm_slug}' not in registry. "
+                "Call assign_paradigm_id first."
+            )
+        count = self._formulation_counters.get(paradigm_id, 0) + 1
+        self._formulation_counters[paradigm_id] = count
+        fid = f"{paradigm_id}-F{count:02d}"
+        self.id_registry[key] = fid
+        return fid
+
+    def get_id(self, slug: str) -> str | None:
+        """Look up ID by slug. Returns ``None`` if not registered."""
+        return self.id_registry.get(slug)
+
+    def get_slug(self, registry_id: str) -> str | None:
+        """Reverse look up slug by ID. Returns ``None`` if not found."""
+        for slug, rid in self.id_registry.items():
+            if rid == registry_id:
+                return slug
+        return None
+
     # -- persistence ---------------------------------------------------------
 
     def save(self) -> None:
@@ -79,6 +126,10 @@ class PipelineState:
                 {"target": r.target, "paradigm": r.paradigm, "feedback": r.feedback}
                 for r in self.pending_reruns
             ],
+            "topic_id": self.topic_id,
+            "id_registry": self.id_registry,
+            "paradigm_counter": self._paradigm_counter,
+            "formulation_counters": self._formulation_counters,
         }
         dest = self.reports_dir / _STATE_FILENAME
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -125,6 +176,10 @@ class PipelineState:
                 RerunRequest(target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"])
                 for r in data.get("pending_reruns", [])
             ],
+            topic_id=data.get("topic_id", "T01"),
+            id_registry=data.get("id_registry", {}),
+            _paradigm_counter=data.get("paradigm_counter", 0),
+            _formulation_counters=data.get("formulation_counters", {}),
         )
 
 

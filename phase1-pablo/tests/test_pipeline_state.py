@@ -41,6 +41,15 @@ class TestPipelineStateDefaults:
         assert state.build_results == {}
         assert state.pending_reruns == []
 
+    def test_id_registry_defaults(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        assert state.topic_id == "T01"
+        assert state.id_registry == {}
+        assert state._paradigm_counter == 0
+        assert state._formulation_counters == {}
+
 
 class TestSaveLoad:
     def test_save_load_roundtrip(self, tmp_path):
@@ -177,3 +186,177 @@ class TestSaveLoad:
 
         loaded = PipelineState.load(tmp_path)
         assert loaded.build_results == results
+
+
+class TestAssignParadigmId:
+    def test_first_paradigm(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        pid = state.assign_paradigm_id("homeostatic-regulation")
+        assert pid == "T01-P01"
+        assert state._paradigm_counter == 1
+        assert state.id_registry["homeostatic-regulation"] == "T01-P01"
+
+    def test_sequential_paradigms(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        p1 = state.assign_paradigm_id("homeostatic-regulation")
+        p2 = state.assign_paradigm_id("hedonic-reward")
+        assert p1 == "T01-P01"
+        assert p2 == "T01-P02"
+        assert state._paradigm_counter == 2
+
+    def test_duplicate_slug_returns_existing(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        p1 = state.assign_paradigm_id("homeostatic-regulation")
+        p2 = state.assign_paradigm_id("homeostatic-regulation")
+        assert p1 == p2 == "T01-P01"
+        assert state._paradigm_counter == 1
+
+
+class TestAssignFormulationId:
+    def test_first_formulation(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        fid = state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        assert fid == "T01-P01-F01"
+        assert state.id_registry["homeostatic-regulation::pi-controller"] == "T01-P01-F01"
+
+    def test_sequential_formulations(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        f1 = state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        f2 = state.assign_formulation_id("homeostatic-regulation", "dual-process")
+        assert f1 == "T01-P01-F01"
+        assert f2 == "T01-P01-F02"
+
+    def test_formulations_across_paradigms(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        state.assign_paradigm_id("hedonic-reward")
+        f1 = state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        f2 = state.assign_formulation_id("hedonic-reward", "temporal-difference")
+        assert f1 == "T01-P01-F01"
+        assert f2 == "T01-P02-F01"
+
+    def test_unknown_paradigm_raises(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        with pytest.raises(ValueError, match="not in registry"):
+            state.assign_formulation_id("unknown-paradigm", "some-formulation")
+
+    def test_duplicate_formulation_returns_existing(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        f1 = state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        f2 = state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        assert f1 == f2 == "T01-P01-F01"
+        assert state._formulation_counters["T01-P01"] == 1
+
+    def test_same_name_different_paradigms(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("paradigm-a")
+        state.assign_paradigm_id("paradigm-b")
+        f1 = state.assign_formulation_id("paradigm-a", "baseline")
+        f2 = state.assign_formulation_id("paradigm-b", "baseline")
+        assert f1 == "T01-P01-F01"
+        assert f2 == "T01-P02-F01"
+
+
+class TestGetIdGetSlug:
+    def test_get_id(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        assert state.get_id("homeostatic-regulation") == "T01-P01"
+
+    def test_get_id_missing(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        assert state.get_id("nonexistent") is None
+
+    def test_get_slug(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        assert state.get_slug("T01-P01") == "homeostatic-regulation"
+
+    def test_get_slug_missing(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        assert state.get_slug("T01-P99") is None
+
+    def test_get_slug_formulation(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        assert state.get_slug("T01-P01-F01") == "homeostatic-regulation::pi-controller"
+
+
+class TestIdRegistryPersistence:
+    def test_save_load_roundtrip(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        state.assign_paradigm_id("hedonic-reward")
+        state.assign_formulation_id("homeostatic-regulation", "pi-controller")
+        state.save()
+
+        loaded = PipelineState.load(tmp_path)
+        assert loaded.topic_id == "T01"
+        assert loaded.id_registry == {
+            "homeostatic-regulation": "T01-P01",
+            "hedonic-reward": "T01-P02",
+            "homeostatic-regulation::pi-controller": "T01-P01-F01",
+        }
+        assert loaded._paradigm_counter == 2
+        assert loaded._formulation_counters == {"T01-P01": 1}
+
+    def test_load_continues_counters(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        state.assign_paradigm_id("homeostatic-regulation")
+        state.save()
+
+        loaded = PipelineState.load(tmp_path)
+        pid = loaded.assign_paradigm_id("hedonic-reward")
+        assert pid == "T01-P02"
+
+    def test_backward_compat_missing_registry(self, tmp_path):
+        """Old pipeline_state.json without registry fields loads fine."""
+        import json
+        old_data = {
+            "stage": "research",
+            "problem": "test",
+            "reports_dir": str(tmp_path),
+        }
+        (tmp_path / "pipeline_state.json").write_text(json.dumps(old_data))
+
+        loaded = PipelineState.load(tmp_path)
+        assert loaded.topic_id == "T01"
+        assert loaded.id_registry == {}
+        assert loaded._paradigm_counter == 0
+        assert loaded._formulation_counters == {}
