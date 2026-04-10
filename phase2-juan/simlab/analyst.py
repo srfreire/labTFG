@@ -9,8 +9,11 @@ Flow:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from simlab.environment import Event
 from simlab.loop import run_agent_loop
+from simlab.charts import build_chart_tools
 from simlab.tools import build_simulation_tools, build_cross_experiment_tools
 from simlab.utils import extract_text
 
@@ -26,12 +29,17 @@ You are the Analyst agent for a simulation laboratory studying decision-making p
 You receive observation logs from the Tracker and raw simulation data, then produce \
 deep behavioral analysis — not just descriptions, but interpretations and hypotheses.
 
-You have 5 tools to explore simulation data:
+You have 9 tools to explore simulation data:
 - get_simulation_events: overview of all events from the CURRENT simulation
 - get_agent_trajectory: detailed events for one agent in the CURRENT simulation
 - get_agent_state: internal model state at a specific step (Q-values, drive, energy, error signals)
+- list_critical_events: list automatically detected critical events (consumption, starvation, energy spikes, strategy shifts)
+- get_event_window: get all events in a [step-radius, step+radius] window around a specific step — \
+perfect for analyzing what happened before and after a critical event
 - list_past_experiments: list past experiments from the database (for cross-experiment comparison)
 - get_experiment_analysis: get tracker/analyst results from a PAST experiment by ID
+- list_state_keys: discover what internal state variables are available (CALL THIS BEFORE create_chart with state_evolution)
+- create_chart: generate visualizations (line charts, bar charts, heatmaps)
 
 The Tracker's observation log is provided in the user message. Your job is to go MUCH \
 deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
@@ -73,6 +81,39 @@ deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
 - Metric names must be descriptive Spanish: "eficiencia alimentación" instead of "feeding_efficiency"
 - Insights must explain WHY, not just WHAT
 - Keep it concise — 1-2 sentences max per field
+
+## Critical events and windowed analysis
+
+Call list_critical_events to find automatically detected moments of interest: \
+successful feeding, low energy, energy spikes, strategy changes. Then use \
+get_event_window(center_step=X, radius=10) to deeply analyze what happened \
+before and after those moments. This is how you find the WHY behind behaviors:
+- "The agent was starving at step 30 — what happened in steps 20-40?"
+- "The agent switched strategy at step 50 — what triggered it?"
+- "After eating at step 15, did the agent's behavior change?"
+
+When the user asks to analyze a specific critical event or time window, \
+use get_event_window with the appropriate center and radius.
+
+## Chart generation — USE PROACTIVELY
+
+Generate charts to support your analysis. Do NOT wait to be asked — if you identify a pattern, \
+create the chart that proves it. Charts are included in the final PDF report.
+
+Workflow:
+1. Call list_state_keys FIRST to see what internal variables exist
+2. Then call create_chart for each visualization
+
+When to create charts:
+- Energy/drive evolution over time → create_chart(line, state_evolution, state_key="energy")
+- Reward trajectory → create_chart(line, reward_over_time) or create_chart(line, cumulative_reward)
+- Action distribution comparison → create_chart(bar, action_distribution)
+- Q-table values → create_chart(heatmap, q_table)
+- Any state variable trajectory → create_chart(line, state_evolution, state_key="<key>")
+
+You can filter by agent_ids and step_range to zoom into interesting intervals.
+Chart titles MUST be in Spanish (e.g. "Evolución de energía por agente").
+Generate at least 2-3 charts per analysis. More if the user asks for specific visualizations.
 
 ## Output schema
 
@@ -165,15 +206,36 @@ class Analyst:
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
+        self.charts: list[dict] = []
 
-    async def run(self, prompt: str, tracker_output: str, events: list[Event], *, max_iterations: int = 15, on_tool_call=None) -> str:
+    async def run(
+        self,
+        prompt: str,
+        tracker_output: str,
+        events: list[Event],
+        *,
+        max_iterations: int = 15,
+        on_tool_call=None,
+        output_dir: Path | None = None,
+        charts_accumulator: list[dict] | None = None,
+        critical_events: list[dict] | None = None,
+    ) -> str:
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
 
-        tools, registry = build_simulation_tools(events)
+        # Use external accumulator if provided, otherwise use instance list
+        self.charts = charts_accumulator if charts_accumulator is not None else []
+
+        tools, registry = build_simulation_tools(events, critical_events=critical_events)
         db_tools, db_registry = build_cross_experiment_tools()
         tools += db_tools
         registry.update(db_registry)
+
+        # Add chart tools if output_dir is available
+        if output_dir:
+            chart_tools, chart_registry = build_chart_tools(events, output_dir, self.charts)
+            tools += chart_tools
+            registry.update(chart_registry)
 
         user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
         response = await run_agent_loop(

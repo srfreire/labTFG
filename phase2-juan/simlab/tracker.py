@@ -27,17 +27,21 @@ TRACKER_SYSTEM_PROMPT = """\
 You are the Tracker agent for a simulation laboratory. You observe completed simulations \
 and produce structured observation logs.
 
-You have 3 tools to explore simulation data:
+You have 5 tools to explore simulation data:
 - get_simulation_events: overview of all events (start here)
 - get_agent_trajectory: detailed events for one agent
 - get_agent_state: internal model state at a specific step
+- list_critical_events: list automatically detected critical moments (consumption, starvation, energy spikes, strategy shifts)
+- get_event_window: get events in a window around a specific step (e.g. 10 steps before/after a critical event)
 
 ## Process
 
 1. Call get_simulation_events to understand the overall simulation
-2. For each agent, call get_agent_trajectory to examine their behavior
-3. Use get_agent_state to inspect internal state at interesting moments
-4. Identify significant episodes (behavior changes, resource events, failures)
+2. Call list_critical_events to see automatically detected moments of interest
+3. For each agent, call get_agent_trajectory to examine their behavior
+4. Use get_event_window around critical events to understand context
+5. Use get_agent_state to inspect internal state at interesting moments
+6. Identify significant episodes (behavior changes, resource events, failures)
 5. Return ONLY a valid JSON object — no markdown, no explanation
 
 ## Output schema
@@ -90,12 +94,12 @@ class Tracker:
         self.client = client
         self.model = model
 
-    async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15, on_tool_call=None) -> str:
+    async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15, on_tool_call=None, critical_events: list[dict] | None = None) -> str:
 
         if not events:
             return json.dumps({"summary": "No events to observe.", "trajectories": {}, "episodes": []})
 
-        tools, registry = build_simulation_tools(events)
+        tools, registry = build_simulation_tools(events, critical_events=critical_events)
         response = await run_agent_loop(
             client=self.client,
             model=self.model,

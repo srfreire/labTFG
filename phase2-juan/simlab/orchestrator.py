@@ -19,6 +19,7 @@ from simlab.architect import Architect
 from simlab.tracker import Tracker
 from simlab.analyst import Analyst
 from simlab.reporter import Reporter
+from simlab.critical_events import detect_critical_events, critical_events_to_json
 from simlab.environment import Agent, Position
 from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
@@ -86,12 +87,19 @@ ANALYZE_RESULTS_TOOL = {
 
 GENERATE_REPORT_TOOL = {
     "name": "generate_report",
-    "description": "Generate a PDF report with all results. Requires analyze_results first. "
-                   "Use quality='detailed' for a deeper, more analytical report (slower, uses a more powerful model).",
+    "description": "Generate a PDF report. Can be called MULTIPLE TIMES for different reports "
+                   "(e.g. one per agent, one comparative). Each call produces a separate PDF with "
+                   "a unique name. Requires analyze_results first. "
+                   "Use the focus parameter to specify EXACTLY what to include or exclude.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "focus": {"type": "string", "description": "What to emphasize in the report (optional)"},
+            "focus": {
+                "type": "string",
+                "description": "Detailed instructions for the Reporter: what agents to cover, "
+                               "which charts/metrics to include, what sections to skip, "
+                               "what tone or emphasis to use. Be specific.",
+            },
             "quality": {
                 "type": "string",
                 "enum": ["standard", "detailed"],
@@ -122,10 +130,29 @@ LIST_EXPERIMENTS_TOOL = {
     },
 }
 
+READ_PREDICTIONS_TOOL = {
+    "name": "read_predictions",
+    "description": "Read the scientific predictions for a decision-making paradigm from Phase 1 deep research. "
+                   "Call this AFTER the user chooses a model and BEFORE running the simulation. "
+                   "The paradigm slug is the prefix of the model formulation ID "
+                   "(e.g. 'homeostatic-regulation' from 'homeostatic-regulation_drive_reduction_rl').",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "paradigm_slug": {
+                "type": "string",
+                "description": "Paradigm slug matching a deep research file (e.g. 'homeostatic-regulation')",
+            },
+        },
+        "required": ["paradigm_slug"],
+    },
+}
+
 ALL_TOOLS = [
     CREATE_ENVIRONMENT_TOOL,
     RUN_SIMULATION_TOOL,
     LIST_AVAILABLE_MODELS_TOOL,
+    READ_PREDICTIONS_TOOL,
     OBSERVE_SIMULATION_TOOL,
     ANALYZE_RESULTS_TOOL,
     GENERATE_REPORT_TOOL,
@@ -147,9 +174,11 @@ simulations of decision-making paradigms.
 1. **create_environment** — generates a simulation environment spec from a description
 2. **run_simulation** — runs the simulation with agents in the environment
 3. **observe_simulation** — the Tracker observes what happened (trajectories, episodes)
-4. **analyze_results** — the Analyst finds patterns and compares agents
-5. **generate_report** — the Reporter creates a PDF with everything
+4. **analyze_results** — the Analyst finds patterns, compares agents, AND generates charts. \
+Can be called MULTIPLE TIMES with different focus to explore different aspects interactively.
+5. **generate_report** — the Reporter creates a PDF with everything (including all charts)
 6. **list_experiments** — shows past experiments with status and models used. Offer this when the user asks about history or wants to repeat/compare experiments.
+7. **read_predictions** — reads scientific predictions from Phase 1 deep research for a paradigm
 
 ## How to respond
 
@@ -174,17 +203,43 @@ After the Tracker reports, DO NOT automatically call analyze_results. Instead:
 
 The user guides the exploration. You propose, they decide.
 
+## Iterative analysis with charts
+
+The Analyst now generates charts (line, bar, heatmap) alongside its text analysis. \
+After the first analysis, the user can ask follow-up questions like:
+- "Muéstrame la evolución de energía" → call analyze_results with focus="Genera una gráfica de la evolución de energía de cada agente"
+- "¿Qué pasa en los pasos 20-50?" → call analyze_results with focus="Analiza el intervalo de pasos 20-50 con gráficas"
+- "Quiero ver la Q-table" → call analyze_results with focus="Muestra los Q-values de cada agente como heatmap"
+- "Compara las acciones de ambos agentes" → call analyze_results with focus="Genera una gráfica de distribución de acciones comparando los agentes"
+
+Each call to analyze_results generates new charts that accumulate. All charts are \
+included in the final report. Encourage the user to explore different aspects — \
+this is the interactive analysis phase.
+
 EXCEPTION: If the user explicitly asks for the full pipeline ("hazlo todo", "quiero un informe completo"), \
 then run all steps automatically with sensible defaults.
 
-## Report quality
+## Report generation — human in the loop
 
-Before generating a report, ask the user if they want:
-- **Informe estándar** — rápido, cubre lo esencial (uses standard quality)
-- **Informe detallado** — análisis más profundo, conecta con la literatura, propone hipótesis (uses detailed quality, slower)
+Before generating a report, present the user with what's available and ask what to include. \
+This is a collaborative step — the user decides the report's scope.
 
-Then call generate_report with the appropriate quality parameter.
-If the user asked for the full pipeline automatically, default to standard.
+1. Summarize available data: which agents were analyzed, what charts were generated, \
+what patterns/comparisons exist, what metrics are available.
+2. Ask the user what they want in the report:
+   - Full comprehensive report? Or focused on specific agents/aspects?
+   - Which charts to include?
+   - Any metrics or sections to exclude?
+   - Do they want multiple reports (e.g. one per agent + one comparative)?
+3. Ask about quality: estándar (fast, Haiku) or detallado (deeper, Sonnet).
+4. Call generate_report with a clear focus parameter that tells the Reporter exactly what to include/exclude.
+
+The user can request MULTIPLE reports. Each call to generate_report produces a separate PDF \
+with a descriptive filename chosen by the Reporter (e.g. "analisis_drive_reduction.pdf", \
+"comparativa_modelos.pdf"). Encourage this: "¿Quieres un informe individual por agente además \
+del comparativo?"
+
+If the user asked for the full pipeline automatically, default to a single standard report.
 
 ## Model selection
 
@@ -196,6 +251,27 @@ IMPORTANT: Always use model_ids (an array) to pass model formulation IDs to run_
 For a single model: model_ids=["homeostatic-regulation_drive_reduction_rl"]. \
 For comparison: model_ids=["homeostatic-regulation_drive_reduction_rl", "homeostatic-regulation_pi_negative_feedback"]. \
 Each model gets its own agent(s) in the shared environment.
+
+## Predictions — THIS IS CRITICAL
+
+After the user chooses which model(s) to use, and BEFORE running the simulation:
+1. Call read_predictions with the paradigm slug for each chosen model (extract it from the formulation ID — \
+the part before the first underscore after the paradigm name, e.g. "homeostatic-regulation" from \
+"homeostatic-regulation_drive_reduction_rl").
+2. Read the predictions returned and present them to the user in a clear, conversational way.
+3. Comment on what you EXPECT to happen in this specific environment given those predictions \
+(e.g. "Given homeostatic regulation theory, I expect the agent to eat more aggressively when its \
+energy is low and slow down once it's satisfied").
+4. Ask the user if they want to proceed with the simulation OR choose a different model.
+5. ONLY THEN call run_simulation.
+
+If the user changes their mind after seeing predictions (e.g. "let me try another model", \
+"better use X instead"), that is perfectly fine — call read_predictions again for the new model \
+and repeat the cycle. The user can iterate on model selection as many times as they want. \
+Only the predictions for the FINAL chosen model(s) will be passed to the report.
+
+This prediction step is essential — it sets scientific expectations that can later be validated \
+against the actual simulation results. The predictions will also be included in the final report.
 
 ## Environment creation — IMPORTANT
 
@@ -211,13 +287,35 @@ Example description: "Grid 8x8, 5 food with regeneration, actions: move_up, move
 
 ## Pipeline order
 
-create_environment → run_simulation → [ask user] → observe_simulation → [ask user] → analyze_results → generate_report
+create_environment → list_available_models → [user chooses] → read_predictions → [comment & ask user] → run_simulation → [ask user] → observe_simulation → [ask user] → analyze_results → generate_report
 
 - Always call create_environment before run_simulation
+- Always call read_predictions AFTER the user chooses models and BEFORE run_simulation
 - Always call run_simulation before observe_simulation
 - Always call observe_simulation before analyze_results
 - Always call analyze_results before generate_report
 - You can skip generate_report if the user only wants data
+
+## The conversation NEVER ends — THIS IS CRITICAL
+
+The pipeline is NOT linear with a fixed endpoint. It is a LOOP. After generating reports \
+(or at any point), the user can:
+- Start a completely new simulation with different parameters or models
+- Re-run the same simulation with a different seed
+- Ask for more analysis on the same data ("ahora muéstrame la Q-table")
+- Generate additional reports with different focus
+- Compare with past experiments (list_experiments)
+- Change the environment and run again
+- Go back to any step: new environment, new model, new analysis, new report
+
+After generating a report, DO NOT act like the conversation is finished. Instead, \
+proactively suggest next steps:
+- "¿Quieres probar con otro modelo para comparar?"
+- "¿Exploramos qué pasa con más pasos de simulación?"
+- "¿Te gustaría un informe enfocado en un aspecto específico?"
+- "¿Empezamos un nuevo experimento con un entorno diferente?"
+
+The session continues until the user explicitly says goodbye or closes the connection.
 """
 
 
@@ -256,6 +354,39 @@ class Orchestrator:
 
         # Initialize experiment store
         init_db()
+
+    def _build_interaction_summary(self) -> str:
+        """Build a structured summary of the user–orchestrator interaction.
+
+        Extracts user messages and orchestrator tool calls from the conversation
+        history to document how the experiment was conducted.
+        """
+        entries: list[str] = []
+        for msg in self._messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "user" and isinstance(content, str):
+                entries.append(f"- **Usuario**: {content}")
+            elif role == "assistant":
+                # content can be a list of blocks (text + tool_use)
+                blocks = content if isinstance(content, list) else []
+                text_parts = []
+                tool_parts = []
+                for block in blocks:
+                    if hasattr(block, "type"):
+                        if block.type == "text" and block.text.strip():
+                            text_parts.append(block.text.strip())
+                        elif block.type == "tool_use":
+                            tool_parts.append(block.name)
+                if text_parts:
+                    # Truncate long orchestrator responses
+                    summary = text_parts[0][:300]
+                    if len(text_parts[0]) > 300:
+                        summary += "…"
+                    entries.append(f"- **Orquestador**: {summary}")
+                if tool_parts:
+                    entries.append(f"  - Herramientas invocadas: {', '.join(tool_parts)}")
+        return "\n".join(entries) if entries else "No interaction history available."
 
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
@@ -301,6 +432,8 @@ class Orchestrator:
             state["events"] = None
             state["tracker_output"] = None
             state["analyst_output"] = None
+            state["predictions"] = None
+            state["charts"] = []
             # Persist experiment
             exp_id = create_experiment(description=params["description"])
             state["experiment_id"] = exp_id
@@ -320,6 +453,26 @@ class Orchestrator:
                     for m in self._discovered_models.values()
                 ]
             })
+
+        # --- read_predictions: reads deep research predictions for a paradigm ---
+        async def read_predictions(params: dict) -> str:
+            slug = params["paradigm_slug"]
+            deep_dir = self.research_dir / "deep"
+            deep_file = deep_dir / f"{slug}.md"
+            if not deep_file.exists():
+                return json.dumps({"error": f"No deep research file for '{slug}'. Available: {[f.stem for f in deep_dir.glob('*.md')]}"})
+            content = deep_file.read_text()
+            # Extract the Predictions section
+            import re
+            match = re.search(r'## Predictions\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+            if not match:
+                return json.dumps({"error": f"No '## Predictions' section found in {slug}.md"})
+            predictions = match.group(1).strip()
+            # Accumulate predictions per paradigm; reset downstream state
+            if not state.get("predictions"):
+                state["predictions"] = {}
+            state["predictions"][slug] = predictions
+            return json.dumps({"paradigm": slug, "predictions": predictions})
 
         # --- run_simulation: creates agents, runs the simulation loop ---
         async def run_simulation(params: dict) -> str:
@@ -383,13 +536,19 @@ class Orchestrator:
                     ],
                 })
 
+            # Detect critical events (rule-based, no LLM)
+            critical = detect_critical_events(all_events)
+            critical_json = critical_events_to_json(critical)
+
             # Save state for downstream agents
             state["events"] = all_events
+            state["critical_events"] = critical_json
             state["replay"] = {
                 "grid_width": env.width,
                 "grid_height": env.height,
                 "total_steps": len(replay_frames),
                 "frames": replay_frames,
+                "critical_events": critical_json,
             }
             state["tracker_output"] = None
             state["analyst_output"] = None
@@ -429,25 +588,42 @@ class Orchestrator:
                 return json.dumps({"error": "No simulation data. Call run_simulation first."})
             tracker = Tracker(client=client)
             focus = params.get("focus", "Observa la simulacion y reporta que paso.")
-            result = await tracker.run(focus, state["events"], on_tool_call=self._make_tool_callback("Tracker"))
+            result = await tracker.run(
+                focus, state["events"],
+                on_tool_call=self._make_tool_callback("Tracker"),
+                critical_events=state.get("critical_events"),
+            )
             state["tracker_output"] = result
             if state.get("experiment_id"):
                 update_experiment(state["experiment_id"], tracker_json=result, status=TRACKED)
             return result
 
-        # --- analyze_results: calls the Analyst ---
+        # --- analyze_results: calls the Analyst (can be called multiple times) ---
         async def analyze_results(params: dict) -> str:
             if not state.get("tracker_output"):
                 return json.dumps({"error": "No observations yet. Call observe_simulation first."})
+            # Initialize chart accumulator on first call
+            if "charts" not in state:
+                state["charts"] = []
             analyst = Analyst(client=client)
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
-            result = await analyst.run(focus, state["tracker_output"], state["events"], on_tool_call=self._make_tool_callback("Analyst"))
+            result = await analyst.run(
+                focus,
+                state["tracker_output"],
+                state["events"],
+                on_tool_call=self._make_tool_callback("Analyst"),
+                output_dir=self.output_dir,
+                charts_accumulator=state["charts"],
+                critical_events=state.get("critical_events"),
+            )
             state["analyst_output"] = result
+            # Track new charts from this call for the WS response
+            state["_last_charts"] = analyst.charts[:]
             if state.get("experiment_id"):
                 update_experiment(state["experiment_id"], analyst_json=result, status=ANALYZED)
             return result
 
-        # --- generate_report: calls the Reporter ---
+        # --- generate_report: calls the Reporter (can be called multiple times) ---
         async def generate_report(params: dict) -> str:
             if not state.get("analyst_output"):
                 return json.dumps({"error": "No analysis yet. Call analyze_results first."})
@@ -465,12 +641,26 @@ class Orchestrator:
                 research_dir=self.research_dir,
                 output_dir=self.output_dir,
                 on_tool_call=self._make_tool_callback("Reporter"),
+                interaction_summary=self._build_interaction_summary(),
+                predictions=state.get("predictions"),
+                charts=state.get("charts"),
             )
-            pdf_path = self.output_dir / "report.pdf"
-            if pdf_path.exists():
-                state["pdf_path"] = str(pdf_path)
+            # Find any new PDFs generated by the Reporter
+            if "pdf_paths" not in state:
+                state["pdf_paths"] = []
+            for pdf in self.output_dir.glob("*.pdf"):
+                path_str = str(pdf)
+                if path_str not in state["pdf_paths"]:
+                    state["pdf_paths"].append(path_str)
+            # Keep pdf_path pointing to the latest for backwards compat
+            if state["pdf_paths"]:
+                state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):
-                    update_experiment(state["experiment_id"], pdf_path=str(pdf_path), status=REPORTED)
+                    update_experiment(
+                        state["experiment_id"],
+                        pdf_path=json.dumps(state["pdf_paths"]),
+                        status=REPORTED,
+                    )
             return result
 
         # --- list_experiments: shows past experiments ---
@@ -487,6 +677,7 @@ class Orchestrator:
         registry: Registry = {
             "create_environment": create_environment,
             "list_available_models": list_available_models,
+            "read_predictions": read_predictions,
             "run_simulation": run_simulation,
             "observe_simulation": observe_simulation,
             "analyze_results": analyze_results,

@@ -8,6 +8,13 @@ interface Props {
 }
 const SPEEDS = [0.5, 1, 2, 4]
 
+const CRITICAL_COLORS: Record<string, string> = {
+  consumption: 'var(--color-accent-green)',
+  starvation: 'var(--color-accent-red)',
+  energy_spike: 'var(--color-accent-amber)',
+  strategy_shift: 'var(--color-analyst)',
+}
+
 export function SimulationGrid({ replay }: Props) {
   const [currentStep, setCurrentStep] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -15,6 +22,17 @@ export function SimulationGrid({ replay }: Props) {
   const [trail, setTrail] = useState<Record<string, { x: number; y: number }[]>>({})
   const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
+
+  // Index critical events by step for fast lookup
+  const criticalByStep = useMemo(() => {
+    const map = new Map<number, typeof replay.critical_events>()
+    for (const ce of replay.critical_events || []) {
+      const existing = map.get(ce.step) || []
+      existing.push(ce)
+      map.set(ce.step, existing)
+    }
+    return map
+  }, [replay.critical_events])
 
   // Reset state when replay changes
   useEffect(() => {
@@ -39,23 +57,28 @@ export function SimulationGrid({ replay }: Props) {
     })
   }, [currentStep, replay.frames])
 
-  // Playback interval
+  // Playback — adaptive speed: slower at critical events
   useEffect(() => {
-    if (playing) {
-      intervalRef.current = window.setInterval(() => {
-        setCurrentStep(prev => {
-          if (prev >= replay.total_steps - 1) {
-            setPlaying(false)
-            return prev
-          }
-          return prev + 1
-        })
-      }, 200 / speed)
+    if (!playing) return
+    const tick = () => {
+      setCurrentStep(prev => {
+        if (prev >= replay.total_steps - 1) {
+          setPlaying(false)
+          return prev
+        }
+        const next = prev + 1
+        // Slow down 3x at critical events
+        const isCritical = criticalByStep.has(next)
+        const delay = isCritical ? (600 / speed) : (200 / speed)
+        intervalRef.current = window.setTimeout(tick, delay)
+        return next
+      })
     }
+    intervalRef.current = window.setTimeout(tick, 200 / speed)
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (intervalRef.current) clearTimeout(intervalRef.current)
     }
-  }, [playing, speed, replay.total_steps])
+  }, [playing, speed, replay.total_steps, criticalByStep])
 
   const togglePlay = useCallback(() => setPlaying(p => !p), [])
   const stepBack = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.max(0, s - 1)) }, [])
@@ -179,6 +202,57 @@ export function SimulationGrid({ replay }: Props) {
           <Gauge size={11} />{speed}×
         </button>
       </div>
+
+      {/* Critical events timeline */}
+      {replay.critical_events && replay.critical_events.length > 0 && (
+        <div className="mt-2">
+          <div className="text-[8px] uppercase tracking-[1px] text-text-dim mb-1">Eventos críticos</div>
+          <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            {/* Current position indicator */}
+            <div
+              className="absolute top-0 h-full transition-all duration-150"
+              style={{
+                left: `${(currentStep / Math.max(replay.total_steps - 1, 1)) * 100}%`,
+                width: 2,
+                background: 'rgba(255,255,255,0.4)',
+              }}
+            />
+            {/* Critical event markers */}
+            {replay.critical_events.map((ce, i) => (
+              <button
+                key={i}
+                className="absolute top-0 h-full cursor-pointer hover:opacity-100 transition-opacity"
+                style={{
+                  left: `${(ce.step / Math.max(replay.total_steps - 1, 1)) * 100}%`,
+                  width: Math.max(3, 100 / replay.total_steps),
+                  background: CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)',
+                  opacity: ce.severity * 0.8 + 0.2,
+                }}
+                title={ce.description}
+                onClick={() => { setPlaying(false); setCurrentStep(ce.step) }}
+              />
+            ))}
+          </div>
+          {/* Current step's critical events */}
+          {criticalByStep.has(currentStep) && (
+            <div className="flex gap-1.5 flex-wrap mt-1.5">
+              {criticalByStep.get(currentStep)!.map((ce, i) => (
+                <span
+                  key={i}
+                  className="text-[8px] px-1.5 py-0.5 rounded-[var(--radius-sm)] border"
+                  style={{
+                    color: CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)',
+                    borderColor: (CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)') + '30',
+                    background: (CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)') + '10',
+                  }}
+                >
+                  {ce.description}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Agent legend — bottom left */}
       {frame.agents.length > 0 && (

@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]",
     "websockets",
     "shared",
+    "matplotlib>=3.9.0",
 ]
 
 [tool.pytest.ini_options]

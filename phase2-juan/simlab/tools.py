@@ -101,13 +101,52 @@ GET_AGENT_STATE_TOOL = {
 # Tool factory — creates closures bound to a specific simulation's events
 # ---------------------------------------------------------------------------
 
-def build_simulation_tools(events: list[Event]) -> tuple[list[dict], Registry]:
+GET_EVENT_WINDOW_TOOL = {
+    "name": "get_event_window",
+    "description": (
+        "Get all events in a window around a specific step. "
+        "Useful for analyzing what happened before and after a critical event. "
+        "Returns events for ALL agents in the [step - radius, step + radius] range, "
+        "plus the critical event info if it matches a known critical event."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "center_step": {"type": "integer", "description": "The step to center the window on"},
+            "radius": {"type": "integer", "description": "Number of steps before and after (default 10)"},
+            "agent_id": {"type": "string", "description": "Filter to a specific agent (optional)"},
+        },
+        "required": ["center_step"],
+    },
+}
+
+LIST_CRITICAL_EVENTS_TOOL = {
+    "name": "list_critical_events",
+    "description": (
+        "List all critical events detected in the simulation (rule-based). "
+        "Types: consumption (successful eat), starvation (low energy), "
+        "energy_spike (big energy change), strategy_shift (action pattern change). "
+        "Use this to find interesting moments to analyze with get_event_window."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+    },
+}
+
+
+def build_simulation_tools(
+    events: list[Event],
+    critical_events: list[dict] | None = None,
+) -> tuple[list[dict], Registry]:
     """Build tool schemas and implementations for exploring simulation data.
 
     Returns (schemas, registry) where:
       - schemas: list of tool definitions to send to Claude
       - registry: dict mapping tool names to their async implementations
     """
+    _critical = critical_events or []
+
     # Index events by agent for fast lookup
     by_agent: dict[str, list[Event]] = {}
     for e in events:
@@ -128,19 +167,59 @@ def build_simulation_tools(events: list[Event]) -> tuple[list[dict], Registry]:
         return json.dumps([_event_to_dict(e) for e in agent_events])
 
     async def get_agent_state(params: dict) -> str:
-        """Return the internal model state of an agent at a specific step."""
+        """Return the internal model state of an agent at a specific simulation step."""
         agent_id = params["agent_id"]
         step = params["step"]
         agent_events = by_agent.get(agent_id, [])
-        if step < 0 or step >= len(agent_events):
-            return json.dumps({"error": f"No event for {agent_id} at step {step}"})
-        return json.dumps(_make_serializable(agent_events[step].outcome.get("model_state", {})))
+        # Look up by simulation step number, not array index
+        for e in agent_events:
+            if e.step == step:
+                return json.dumps(_make_serializable(e.outcome.get("model_state", {})))
+        return json.dumps({"error": f"No event for {agent_id} at step {step}"})
 
-    schemas = [GET_SIMULATION_EVENTS_TOOL, GET_AGENT_TRAJECTORY_TOOL, GET_AGENT_STATE_TOOL]
+    async def get_event_window(params: dict) -> str:
+        """Return events in a window around a center step."""
+        center = params["center_step"]
+        radius = params.get("radius", 10)
+        agent_filter = params.get("agent_id")
+        start = max(0, center - radius)
+        end = center + radius
+
+        window_events = [
+            e for e in events
+            if start <= e.step <= end
+            and (not agent_filter or e.agent_id == agent_filter)
+        ]
+        # Find any critical events in this window
+        window_critical = [
+            ce for ce in _critical
+            if start <= ce["step"] <= end
+            and (not agent_filter or ce["agent_id"] == agent_filter)
+        ]
+        return json.dumps({
+            "center_step": center,
+            "range": [start, end],
+            "events": [_event_to_dict(e) for e in window_events],
+            "critical_events_in_window": window_critical,
+        })
+
+    async def list_critical_events_fn(params: dict) -> str:
+        """Return all detected critical events."""
+        return json.dumps({
+            "total": len(_critical),
+            "events": _critical,
+        })
+
+    schemas = [
+        GET_SIMULATION_EVENTS_TOOL, GET_AGENT_TRAJECTORY_TOOL,
+        GET_AGENT_STATE_TOOL, GET_EVENT_WINDOW_TOOL, LIST_CRITICAL_EVENTS_TOOL,
+    ]
     registry: Registry = {
         "get_simulation_events": get_simulation_events,
         "get_agent_trajectory": get_agent_trajectory,
         "get_agent_state": get_agent_state,
+        "get_event_window": get_event_window,
+        "list_critical_events": list_critical_events_fn,
     }
     return schemas, registry
 

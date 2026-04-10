@@ -3,7 +3,7 @@
  * Activate by adding ?mock to the URL: http://localhost:5173/?mock
  */
 import { useState, useCallback, useRef } from 'react'
-import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData, SimAgent } from '../types'
+import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData, ChartSpec, SimAgent, CriticalEvent } from '../types'
 import { AGENT_COLORS } from '../constants'
 
 const INITIAL_AGENTS: AgentState[] = [
@@ -16,6 +16,17 @@ const INITIAL_AGENTS: AgentState[] = [
 
 // --- Mock data generators ---
 
+function mockCriticalEvents(): CriticalEvent[] {
+  return [
+    { step: 3, agent_id: 'drive_reduction_rl', type: 'consumption', severity: 0.5, description: 'drive_reduction_rl consumió food (reward=1.0)' },
+    { step: 8, agent_id: 'drive_reduction_rl', type: 'starvation', severity: 0.7, description: 'drive_reduction_rl energía crítica: 12.3' },
+    { step: 9, agent_id: 'drive_reduction_rl', type: 'energy_spike', severity: 0.8, description: 'drive_reduction_rl energía subió 45.0 (12.3→57.3)' },
+    { step: 14, agent_id: 'pi_negative_feedback', type: 'consumption', severity: 0.5, description: 'pi_negative_feedback consumió food (reward=1.0)' },
+    { step: 18, agent_id: 'drive_reduction_rl', type: 'strategy_shift', severity: 0.6, description: 'drive_reduction_rl cambió de \'move_up\' a \'eat\'' },
+    { step: 22, agent_id: 'pi_negative_feedback', type: 'starvation', severity: 0.9, description: 'pi_negative_feedback energía crítica: 5.1' },
+  ]
+}
+
 function mockReplay(): ReplayData {
   const W = 8, H = 8, STEPS = 30
   const frames = []
@@ -25,11 +36,10 @@ function mockReplay(): ReplayData {
     { type: 'food', x: 3, y: 2 }, { type: 'food', x: 5, y: 1 },
     { type: 'food', x: 2, y: 5 }, { type: 'food', x: 6, y: 3 },
     { type: 'food', x: 4, y: 6 }, { type: 'food', x: 1, y: 4 },
-    { type: 'water', x: 7, y: 0 }, { type: 'water', x: 0, y: 7 },
   ]
 
   for (let step = 0; step < STEPS; step++) {
-    const dirs = [[-1,0],[1,0],[0,-1],[0,1],[0,0]]
+    const dirs: [number, number][] = [[-1,0],[1,0],[0,-1],[0,1],[0,0]]
     const [dax, day] = dirs[Math.floor(Math.random() * 4)]
     ax = Math.max(0, Math.min(W - 1, ax + dax))
     ay = Math.max(0, Math.min(H - 1, ay + day))
@@ -37,44 +47,43 @@ function mockReplay(): ReplayData {
     bx = Math.max(0, Math.min(W - 1, bx + dbx))
     by = Math.max(0, Math.min(H - 1, by + dby))
 
-    const actions = [
-      { agent_id: 'QLearning', action: dax === 0 && day === 0 ? 'stay' : 'move', reward: Math.random() > 0.7 ? 1 : 0 },
-      { agent_id: 'RandomWalker', action: dbx === 0 && dby === 0 ? 'stay' : 'move', reward: Math.random() > 0.85 ? 1 : 0 },
-    ]
-
     frames.push({
       step,
       agents: [
-        { id: 'QLearning', x: ax, y: ay, alive: step < 28 },
-        { id: 'RandomWalker', x: bx, y: by, alive: true },
+        { id: 'drive_reduction_rl', x: ax, y: ay, alive: step < 28 },
+        { id: 'pi_negative_feedback', x: bx, y: by, alive: true },
       ],
       resources: resources.filter(() => Math.random() > 0.15),
-      actions,
+      actions: [
+        { agent_id: 'drive_reduction_rl', action: dax === 0 && day === 0 ? 'stay' : 'move', reward: Math.random() > 0.7 ? 1 : 0 },
+        { agent_id: 'pi_negative_feedback', action: dbx === 0 && dby === 0 ? 'stay' : 'move', reward: Math.random() > 0.85 ? 1 : 0 },
+      ],
     })
   }
 
-  return { grid_width: W, grid_height: H, total_steps: STEPS, frames }
+  return { grid_width: W, grid_height: H, total_steps: STEPS, frames, critical_events: mockCriticalEvents() }
 }
 
 function mockTracker(): TrackerData {
   return {
-    summary: 'Resumen de la simulación con 2 agentes durante 30 pasos.',
+    summary: 'Simulación con 2 agentes de regulación homeostática durante 30 pasos.',
     trajectories: {
-      QLearning: {
+      drive_reduction_rl: {
         steps_survived: 28,
         resources_consumed: 7,
-        actions: { move: 20, eat: 7, stay: 1 },
+        actions: { move_up: 8, move_down: 4, move_left: 3, move_right: 5, eat: 7, stay: 1 },
       },
-      RandomWalker: {
+      pi_negative_feedback: {
         steps_survived: 30,
         resources_consumed: 3,
-        actions: { move: 27, eat: 3 },
+        actions: { move_up: 9, move_down: 7, move_left: 5, move_right: 6, eat: 3 },
       },
     },
     episodes: [
-      { agent: 'QLearning', type: 'learning', step: 5, description: 'El agente comenzó a dirigirse hacia recursos' },
-      { agent: 'QLearning', type: 'stuck', steps: [18, 19, 20, 21, 22], description: 'El agente se quedó inmóvil durante 5 pasos consecutivos' },
-      { agent: 'RandomWalker', type: 'competition', step: 12, description: 'Ambos agentes compitieron por el mismo recurso' },
+      { agent: 'drive_reduction_rl', type: 'learning', step: 5, description: 'El agente comenzó a dirigirse hacia recursos tras aprender Q-values iniciales' },
+      { agent: 'drive_reduction_rl', type: 'starvation', step: 8, description: 'Energía bajó a nivel crítico (12.3) antes de encontrar comida' },
+      { agent: 'drive_reduction_rl', type: 'strategy_shift', step: 18, description: 'Cambió de exploración a explotación al aprender la ubicación de recursos' },
+      { agent: 'pi_negative_feedback', type: 'competition', step: 14, description: 'Compitió con drive_reduction_rl por el mismo recurso' },
     ],
   }
 }
@@ -83,56 +92,97 @@ function mockAnalyst(): AnalystData {
   return {
     patterns: [
       {
-        id: 'P1', type: 'estrategia', agents: ['QLearning'],
-        description: 'QLearning aprendió a moverse hacia los recursos tras los primeros 5 pasos, formando un patrón de búsqueda dirigida',
+        id: 'P1', type: 'estrategia', agents: ['drive_reduction_rl'],
+        description: 'El agente drive_reduction aprendió a moverse hacia los recursos tras los primeros 5 pasos, formando un patrón de búsqueda dirigida basado en Q-values',
         evidence: 'Entre los pasos 1-5 el movimiento era aleatorio (tasa de acierto 12%), pero a partir del paso 6 subió al 45%',
       },
       {
-        id: 'P2', type: 'recursos', agents: ['QLearning', 'RandomWalker'],
-        description: 'Ambos agentes compitieron por el mismo recurso en el paso 12, pero solo RandomWalker logró recogerlo por estar más cerca',
-        evidence: 'En el paso 12, QLearning estaba a 3 celdas del recurso en (3,5), RandomWalker a 1 celda',
+        id: 'P2', type: 'recursos', agents: ['drive_reduction_rl', 'pi_negative_feedback'],
+        description: 'El modelo PI mantuvo niveles de energía más estables gracias a su mecanismo de control proporcional-integral, pero fue menos eficiente recolectando',
+        evidence: 'Desviación estándar de energía: PI=8.2, Drive=15.7. Recursos: PI=3, Drive=7',
       },
       {
-        id: 'P3', type: 'anomaly', agents: ['QLearning'],
-        description: 'QLearning dejó de moverse entre los pasos 18-22, sugiriendo que su modelo entró en un ciclo sin exploración',
-        evidence: '5 acciones consecutivas de tipo "stay" entre los pasos 18 y 22',
+        id: 'P3', type: 'anomaly', agents: ['drive_reduction_rl'],
+        description: 'El agente drive_reduction experimentó un pico crítico de hambre en el paso 8, con energía cayendo a 12.3 antes de recuperarse',
+        evidence: 'Energía paso 7: 58.1, paso 8: 12.3, paso 9: 57.3 (tras consumo exitoso)',
       },
     ],
     comparisons: [
       {
-        agents: ['QLearning', 'RandomWalker'],
+        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
         metric: 'Recursos recogidos',
-        values: { QLearning: 7, RandomWalker: 3 },
-        insight: 'QLearning recogió más del doble de recursos porque aprendió a dirigirse hacia ellos en vez de moverse al azar',
+        values: { drive_reduction_rl: 7, pi_negative_feedback: 3 },
+        insight: 'Drive reduction recogió más del doble porque su señal de impulso le motiva a buscar comida activamente cuando tiene hambre',
       },
       {
-        agents: ['QLearning', 'RandomWalker'],
+        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
+        metric: 'Estabilidad energética',
+        values: { drive_reduction_rl: 15.7, pi_negative_feedback: 8.2 },
+        insight: 'PI fue más estable gracias a su mecanismo de control integral que suaviza las oscilaciones, aunque a costa de menor recolección',
+      },
+      {
+        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
         metric: 'Pasos sobrevividos',
-        values: { QLearning: 28, RandomWalker: 30 },
-        insight: 'RandomWalker sobrevivió toda la simulación gracias a que encontró comida de forma uniforme, mientras que QLearning se quedó atascado al final',
-      },
-      {
-        agents: ['QLearning', 'RandomWalker'],
-        metric: 'Tasa de movimiento',
-        values: { QLearning: 0.73, RandomWalker: 0.97 },
-        insight: 'RandomWalker se movió casi en cada paso, mientras que QLearning pasó un 27% del tiempo quieto esperando',
+        values: { drive_reduction_rl: 28, pi_negative_feedback: 30 },
+        insight: 'PI sobrevivió toda la simulación con regulación conservadora, drive_reduction murió por agotamiento tras no encontrar comida a tiempo',
       },
     ],
     metrics: {
-      QLearning: {
+      drive_reduction_rl: {
         'pasos vivo': 28,
         'recursos comidos': 7,
         'tasa supervivencia': 0.93,
-        'acciones totales': 28,
       },
-      RandomWalker: {
+      pi_negative_feedback: {
         'pasos vivo': 30,
         'recursos comidos': 3,
         'tasa supervivencia': 1.0,
-        'acciones totales': 30,
       },
     },
   }
+}
+
+function mockCharts(): ChartSpec[] {
+  return [
+    {
+      id: 'chart_1',
+      type: 'line',
+      title: 'Evolución de energía por agente',
+      x_label: 'Paso',
+      y_label: 'Energía',
+      series: [
+        {
+          name: 'drive_reduction_rl', color: '#4ade80',
+          data: Array.from({ length: 28 }, (_, i) => ({
+            x: i, y: Math.max(0, 80 - i * 3 + Math.sin(i * 0.5) * 20 + (i === 8 ? -40 : 0) + (i === 9 ? 45 : 0)),
+          })),
+        },
+        {
+          name: 'pi_negative_feedback', color: '#fbbf24',
+          data: Array.from({ length: 30 }, (_, i) => ({
+            x: i, y: 70 + Math.sin(i * 0.3) * 8,
+          })),
+        },
+      ],
+    },
+    {
+      id: 'chart_2',
+      type: 'bar',
+      title: 'Distribución de acciones',
+      x_label: 'Acción',
+      y_label: 'Cantidad',
+      series: [
+        {
+          name: 'drive_reduction_rl', color: '#4ade80',
+          data: [{ x: 'eat', y: 7 }, { x: 'move_down', y: 4 }, { x: 'move_left', y: 3 }, { x: 'move_right', y: 5 }, { x: 'move_up', y: 8 }, { x: 'stay', y: 1 }],
+        },
+        {
+          name: 'pi_negative_feedback', color: '#fbbf24',
+          data: [{ x: 'eat', y: 3 }, { x: 'move_down', y: 7 }, { x: 'move_left', y: 5 }, { x: 'move_right', y: 6 }, { x: 'move_up', y: 9 }, { x: 'stay', y: 0 }],
+        },
+      ],
+    },
+  ]
 }
 
 // --- The hook ---
@@ -174,38 +224,47 @@ export function useMockWebSocket() {
     setAgent('Architect', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Architect** ha diseñado el entorno de simulación: un grid 8×8 con food ×6, water ×2. Ahora voy a buscar los modelos disponibles y lanzar la simulación.',
+      text: 'El **Architect** ha diseñado el entorno de simulación: un grid 8×8 con food ×6. Voy a buscar los modelos disponibles.',
       card: {
         title: 'Environment Spec',
         data: {
           Grid: '8 × 8',
-          'Acciones posibles': 'move_up, move_down, move_left, move_right, eat',
-          Recursos: 'food ×6, water ×2',
-          Pasos: '30',
+          'Acciones posibles': 'move_up, move_down, move_left, move_right, eat, stay',
+          Recursos: 'food ×6',
         },
       },
     })
     setPipeline([{ step: 'arch', status: 'done' }])
     await delay(500)
 
+    // 1.5. Predictions
+    setAgent('Orchestrator', 'working', 'read_predictions')
+    await delay(800)
+    addMsg({
+      from: 'orchestrator',
+      text: 'Según la teoría de **regulación homeostática**, esperamos que:\n- El agente **drive_reduction** coma más agresivamente cuando su energía baje\n- El agente **PI** mantenga niveles más estables pero sea menos eficiente\n- Ambos muestren saciación: dejar de comer tras alcanzar el set point\n\n¿Procedemos con la simulación?',
+    })
+    await delay(300)
+
     // 2. Simulation
     setAgent('Orchestrator', 'working', 'run_simulation')
     await delay(2000)
     const replay = mockReplay()
-    // Extract simulation agents with colors
     const ids = replay.frames[0].agents.map(a => a.id)
     setSimAgents(ids.map((id, i) => ({ id, color: AGENT_COLORS[i % AGENT_COLORS.length] })))
     addMsg({
       from: 'orchestrator',
-      text: 'Simulación completada: **2 agentes** durante **30 pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.',
+      text: `Simulación completada: **2 agentes** durante **30 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos**. Puedes explorar el replay — se ralentiza automáticamente en los momentos importantes.`,
       replay,
     })
     setPipeline(p => [...p, { step: 'sim', status: 'done' }])
     await delay(500)
 
     // 3. Tracker
-    setAgent('Tracker', 'working', 'get_simulation_events')
+    setAgent('Tracker', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'observe_simulation')
+    await delay(800)
+    setAgent('Tracker', 'working', 'get_event_window')
     await delay(1000)
     setAgent('Tracker', 'working', 'get_agent_trajectory')
     await delay(1200)
@@ -213,26 +272,30 @@ export function useMockWebSocket() {
     const tracker = mockTracker()
     addMsg({
       from: 'orchestrator',
-      text: 'El **Tracker** ha registrado las trayectorias de **2 agentes**.\n\nEpisodios detectados:\n- **QLearning**: comenzó a dirigirse hacia recursos a partir del paso 5\n- **QLearning**: se quedó inmóvil durante 5 pasos consecutivos (pasos 18-22)\n- **RandomWalker**: compitió con QLearning por un recurso en el paso 12\n\nAhora el Analyst va a buscar patrones.',
+      text: 'El **Tracker** ha registrado las trayectorias de **2 agentes**.\n\nEpisodios detectados:\n- **drive_reduction_rl**: aprendió a dirigirse a recursos (paso 5)\n- **drive_reduction_rl**: energía crítica en paso 8 (12.3)\n- **drive_reduction_rl**: cambio de estrategia en paso 18\n- **pi_negative_feedback**: competencia por recursos en paso 14',
       tracker,
     })
     setPipeline(p => [...p, { step: 'track', status: 'done' }])
     await delay(500)
 
     // 4. Analyst
-    setAgent('Analyst', 'working', 'get_simulation_events')
+    setAgent('Analyst', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'analyze_results')
-    await delay(800)
-    setAgent('Analyst', 'working', 'get_agent_trajectory')
-    await delay(1000)
-    setAgent('Analyst', 'working', 'get_agent_state')
+    await delay(600)
+    setAgent('Analyst', 'working', 'list_state_keys')
+    await delay(500)
+    setAgent('Analyst', 'working', 'create_chart')
+    await delay(1200)
+    setAgent('Analyst', 'working', 'get_event_window')
     await delay(800)
     setAgent('Analyst', 'done')
     const analyst = mockAnalyst()
+    const charts = mockCharts()
     addMsg({
       from: 'orchestrator',
-      text: 'El **Analyst** ha encontrado **3 patrones** y realizado **3 comparaciones** entre los agentes. Ahora el Reporter va a generar el informe PDF.',
+      text: 'El **Analyst** ha encontrado **3 patrones**, realizado **3 comparaciones** y generado **2 gráficas**.',
       analyst,
+      charts,
     })
     setPipeline(p => [...p, { step: 'anal', status: 'done' }])
     await delay(500)
@@ -246,17 +309,17 @@ export function useMockWebSocket() {
     setAgent('Reporter', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Reporter** ha generado el informe PDF en `output/report.pdf`.',
+      text: 'El **Reporter** ha generado el informe PDF: `output/analisis_homeostatic_regulation.pdf`.',
     })
     setPipeline(p => [...p, { step: 'repo', status: 'done' }])
     await delay(300)
 
-    // 6. Final summary
+    // 6. Continuation prompt
     setAgent('Orchestrator', 'done')
     setThinking(false)
     addMsg({
       from: 'orchestrator',
-      text: 'Pipeline completo. **QLearning** fue más eficiente recogiendo recursos (7 vs 3), pero su tendencia a quedarse quieto le costó 2 pasos de vida. **RandomWalker** sobrevivió toda la simulación gracias a su movimiento constante, aunque fue menos eficiente.\n\nEl informe PDF con todos los detalles está en `output/report.pdf`. ¿Quieres hacer otra simulación con parámetros diferentes?',
+      text: '¿Quieres explorar algo más? Algunas opciones:\n- "Muéstrame la evolución de la Q-table"\n- "Analiza qué pasó en los pasos 6-12"\n- "Genera un informe solo del agente PI"\n- "Empezar un nuevo experimento con otro modelo"',
     })
 
     runningRef.current = false

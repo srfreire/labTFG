@@ -18,6 +18,23 @@ export interface ChatMessage {
   tracker?: TrackerData
   analyst?: AnalystData
   replay?: ReplayData
+  charts?: ChartSpec[]
+}
+
+export interface ChartSpec {
+  id: string
+  type: 'line' | 'bar' | 'heatmap'
+  title: string
+  x_label: string
+  y_label: string
+  series: ChartSeries[]
+  image_path?: string
+}
+
+export interface ChartSeries {
+  name: string
+  color?: string
+  data: { x: number | string; y: number }[]
 }
 
 export interface DataCard {
@@ -70,9 +87,18 @@ export interface SimAgent {
   color: string
 }
 
+export interface CriticalEvent {
+  step: number
+  agent_id: string
+  type: 'consumption' | 'starvation' | 'energy_spike' | 'strategy_shift'
+  severity: number
+  description: string
+}
+
 export interface ReplayData {
   grid_width: number
   grid_height: number
   total_steps: number
   frames: ReplayFrame[]
+  critical_events?: CriticalEvent[]
 }

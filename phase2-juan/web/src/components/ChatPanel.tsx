@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import { Send, FlaskConical } from 'lucide-react'
 import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
+import { ChartCard } from './ChartCard'
 import { FROM_COLORS } from '../constants'
 
 function getAgentColor(text: string): string | null {
@@ -43,7 +44,11 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
   const isEmpty = messages.length === 0 && !thinking
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    // Delay to let recharts measure containers before scrolling
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }, 100)
+    return () => clearTimeout(id)
   }, [messages, thinking])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -194,6 +199,9 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
           {msg.card && <DataCard card={msg.card} color={dotColor} />}
           {msg.tracker && <TrackerCard tracker={msg.tracker} />}
           {msg.analyst && <AnalystCard analyst={msg.analyst} />}
+          {msg.charts && msg.charts.map(chart => (
+            <ChartCard key={chart.id} spec={chart} />
+          ))}
           {msg.replay && <SimulationGrid replay={msg.replay} />}
         </div>
       </div>

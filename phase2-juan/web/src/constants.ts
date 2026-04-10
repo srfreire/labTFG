@@ -30,10 +30,15 @@ export const TOOL_LABELS: Record<string, string> = {
   generate_report: 'Generando informe',
   // Architect
   validate_spec: 'Validando spec',
+  read_predictions: 'Leyendo predicciones',
   // Tracker & Analyst
   get_simulation_events: 'Leyendo eventos',
   get_agent_trajectory: 'Trayectoria',
   get_agent_state: 'Estado agente',
+  list_critical_events: 'Eventos críticos',
+  get_event_window: 'Ventana de eventos',
+  list_state_keys: 'Variables disponibles',
+  create_chart: 'Generando gráfica',
   list_past_experiments: 'Historial',
   get_experiment_analysis: 'Comparando',
   // Reporter

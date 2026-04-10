@@ -182,20 +182,35 @@ async def websocket_chat(ws: WebSocket):
                 if "patterns" in analyst:
                     n_pat = len(analyst["patterns"])
                     n_comp = len(analyst.get("comparisons", []))
-                    await ws.send_json({
+                    # Include any new charts from this analysis call
+                    charts = state.get("_last_charts") or []
+                    chart_text = f" y generado **{len(charts)} gráficas**" if charts else ""
+                    msg: dict = {
                         "type": "message",
                         "from": "orchestrator",
-                        "text": f"El **Analyst** ha encontrado **{n_pat} patrones** y realizado **{n_comp} comparaciones** entre los agentes. Ahora el Reporter va a generar el informe PDF.",
+                        "text": f"El **Analyst** ha encontrado **{n_pat} patrones**, realizado **{n_comp} comparaciones**{chart_text}.",
                         "analyst": analyst,
-                    })
+                    }
+                    if charts:
+                        msg["charts"] = charts
+                    await ws.send_json(msg)
             except (json.JSONDecodeError, TypeError):
                 pass
-        elif tool_name == "generate_report" and state.get("pdf_path"):
-            await ws.send_json({
-                "type": "message",
-                "from": "orchestrator",
-                "text": f"El **Reporter** ha generado el informe PDF en `{state['pdf_path']}`.",
-            })
+        elif tool_name == "generate_report" and state.get("pdf_paths"):
+            paths = state["pdf_paths"]
+            if len(paths) == 1:
+                await ws.send_json({
+                    "type": "message",
+                    "from": "orchestrator",
+                    "text": f"El **Reporter** ha generado el informe PDF: `{paths[0]}`.",
+                })
+            else:
+                pdf_list = "\n".join(f"- `{p}`" for p in paths)
+                await ws.send_json({
+                    "type": "message",
+                    "from": "orchestrator",
+                    "text": f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}",
+                })
 
     def patched_build():
         tools, registry = original_build()
