@@ -42,9 +42,9 @@ Generado por código (no por LLM) leyendo el registry.
 - [x] AC1: PipelineState tiene id_registry que persiste en pipeline_state.json
 - [x] AC2: Paradigmas reciben IDs `T{NN}-P{NN}` automáticamente al ser descubiertos
 - [x] AC3: Formulaciones reciben IDs `T{NN}-P{NN}-F{NN}` automáticamente al ser generadas
-- [ ] AC4: Archivos del Reasoner y Builder usan el ID del registry como nombre
+- [x] AC4: Archivos del Reasoner y Builder usan el ID del registry como nombre
 - [x] AC5: report.md contiene tree map generado programáticamente después del Formalizer
-- [ ] AC6: Runs existentes sin IDs no crashean (backward compatible)
+- [x] AC6: Runs existentes sin IDs no crashean (backward compatible)
 
 ## Technical Notes
 - `PipelineState` está en `router.py:52` — extender dataclass + save/load
