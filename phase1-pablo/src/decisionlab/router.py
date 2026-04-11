@@ -378,6 +378,8 @@ class Router:
             self.state, selected,
         )
         self.state.save()
+        from decisionlab.tools.reports import generate_tree_map
+        generate_tree_map(self.state)
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
