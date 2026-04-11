@@ -1,7 +1,7 @@
 ---
 id: P3-001
 title: Bootstrap shared infrastructure in Phase 2 API
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: bootstrap
@@ -29,11 +29,11 @@ Initialize shared infrastructure (MinIO + Postgres) in the FastAPI app lifecycle
 - Remove the `api.py` monkey-patching of `Orchestrator._build_tools()` path parameters if they reference filesystem paths
 
 ## Acceptance Criteria
-- [ ] FastAPI app starts with `shared.init()`, shuts down with `shared.shutdown()`
-- [ ] No `RESEARCH_DIR`, `OUTPUT_DIR`, `BUILDER_DIR` variables in `api.py`
-- [ ] Orchestrator accepts storage/db services instead of filesystem paths
-- [ ] WebSocket connection still works (Orchestrator instantiation succeeds)
-- [ ] Health endpoint still returns `{"status": "ok"}`
+- [x] FastAPI app starts with `shared.init()`, shuts down with `shared.shutdown()`
+- [x] No `RESEARCH_DIR`, `OUTPUT_DIR`, `BUILDER_DIR` variables in `api.py`
+- [x] Orchestrator accepts storage/db services instead of filesystem paths
+- [x] WebSocket connection still works (Orchestrator instantiation succeeds)
+- [x] Health endpoint still returns `{"status": "ok"}`
 
 ## Files Likely Affected
 - `phase2-juan/simlab/api.py` — path config removal, lifespan handler, Orchestrator construction

@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Add run_id concept and shared.init to Phase 1 pipeline
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: pipeline
@@ -30,11 +30,11 @@ Introduce a UUID `run_id` per pipeline execution, create a Run record in Postgre
 - Add `shared` dependency already exists in Phase 1's pyproject.toml — verify it points to the updated shared package
 
 ## Acceptance Criteria
-- [ ] `decisionlab run "problem"` creates a Run record in Postgres with a UUID
-- [ ] `run_id` is threaded through all agents (Researcher, Formalizer, Reasoner, Builder)
-- [ ] `reports_dir: Path` parameter no longer exists in any agent constructor
-- [ ] `shared.init()` called on startup, `shared.shutdown()` called on exit
-- [ ] `decisionlab resume --run-id <uuid>` works (loads Run from Postgres)
+- [x] `decisionlab run "problem"` creates a Run record in Postgres with a UUID
+- [x] `run_id` is threaded through all agents (Researcher, Formalizer, Reasoner, Builder)
+- [x] `reports_dir: Path` parameter no longer exists in any agent constructor
+- [x] `shared.init()` called on startup, `shared.shutdown()` called on exit
+- [x] `decisionlab resume --run-id <uuid>` works (loads Run from Postgres)
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/router.py` — PipelineState, reports_dir → run_id
