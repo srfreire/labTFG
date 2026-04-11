@@ -1,7 +1,7 @@
 ---
 id: P2-002
 title: Primary locus en deep reports
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: deep-report
@@ -26,8 +26,8 @@ Añadir sección `## Primary Locus` al output format del DeepResearcher para que
 - Las regiones deben estar respaldadas por los papers encontrados
 
 ## Acceptance Criteria
-- [ ] DEEP_RESEARCHER_SYSTEM_PROMPT incluye sección ## Primary Locus en el output format
-- [ ] Deep reports generados contienen la sección con regiones cerebrales citadas
+- [x] DEEP_RESEARCHER_SYSTEM_PROMPT incluye sección ## Primary Locus en el output format
+- [x] Deep reports generados contienen la sección con regiones cerebrales citadas
 
 ## Files Likely Affected
 - `src/decisionlab/agents/deep_researcher.py` — DEEP_RESEARCHER_SYSTEM_PROMPT
@@ -36,3 +36,17 @@ Añadir sección `## Primary Locus` al output format del DeepResearcher para que
 Phase spec: `docs/specs/phase1-improvements/phase-2-researcher-improvements.md`
 General spec: `docs/specs/phase1-improvements/general.md`
 Heat: `deep-report`
+
+## Completion Summary
+
+**Commit:** `488d68a` — `feat[deep-researcher]: add Primary Locus section to deep report output format (P2-002)`
+
+### What was built
+- Added `## Primary Locus` section to `DEEP_RESEARCHER_SYSTEM_PROMPT` output format template
+- Section instructs the LLM to list brain regions / neural substrates relevant to the paradigm, with citations
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/deep_researcher.py` — added Primary Locus section between Predictions and Identified variables in the prompt template
+
+### Decisions
+- No deviations from spec
