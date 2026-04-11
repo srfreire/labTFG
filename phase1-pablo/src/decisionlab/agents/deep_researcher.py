@@ -51,6 +51,9 @@ P1. {Falsifiable statement} ({Author, Year})
 ## Primary Locus
 {Brain regions / neural substrates relevant to this paradigm, with citations}
 
+## Key Concepts
+- **{Term}**: {brief definition as used in this paradigm's literature}
+
 ## Identified variables
 | Variable | Role | Type | Range | Behavior |
 |----------|------|------|-------|----------|
