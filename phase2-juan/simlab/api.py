@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from pathlib import Path
+from contextlib import asynccontextmanager
 
 import anthropic
 from dotenv import load_dotenv
@@ -26,7 +25,15 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="DecisionLab API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    import shared
+    await shared.init()
+    yield
+    await shared.shutdown()
+
+app = FastAPI(title="DecisionLab API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,21 +41,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ---------------------------------------------------------------------------
-# Path configuration — env vars with sensible defaults
-# ---------------------------------------------------------------------------
-
-_DEFAULT_RESEARCH = Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
-_DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "output"
-
-def _env_path(var: str, default: Path) -> Path:
-    return Path(os.environ[var]) if os.environ.get(var) else default
-
-RESEARCH_DIR = _env_path("RESEARCH_DIR", _DEFAULT_RESEARCH)
-OUTPUT_DIR = _env_path("OUTPUT_DIR", _DEFAULT_OUTPUT)
-BUILDER_DIR = _env_path("BUILDER_DIR", RESEARCH_DIR / "builder")
 
 
 # ---------------------------------------------------------------------------
@@ -102,12 +94,7 @@ async def websocket_chat(ws: WebSocket):
     await ws.accept()
 
     client = anthropic.AsyncAnthropic()
-    orch = Orchestrator(
-        client=client,
-        research_dir=RESEARCH_DIR,
-        output_dir=OUTPUT_DIR,
-        builder_dir=BUILDER_DIR,
-    )
+    orch = Orchestrator(client=client)
 
     # Send initial agent states + color palette to the UI
     await ws.send_json({

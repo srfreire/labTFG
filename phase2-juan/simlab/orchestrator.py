@@ -334,16 +334,10 @@ class Orchestrator:
         self,
         *,
         client,
-        research_dir: Path,
-        output_dir: Path,
         model: str = DEFAULT_MODEL,
-        builder_dir: Path | None = None,
     ):
         self.client = client
-        self.research_dir = research_dir
-        self.output_dir = output_dir
         self.model = model
-        self.builder_dir = builder_dir
 
         # Pipeline state — tracks what has been done so far
         self._state: dict = {}
@@ -352,8 +346,23 @@ class Orchestrator:
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
 
-        # Initialize experiment store
+        # Initialize experiment store (backward compat — will be removed in P3-003)
         init_db()
+
+    @property
+    def research_dir(self) -> Path:
+        """Transitional — will be removed when P3-002 migrates to S3."""
+        return Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
+
+    @property
+    def output_dir(self) -> Path:
+        """Transitional — will be removed when P3-004 migrates to S3."""
+        return Path(__file__).resolve().parent.parent / "output"
+
+    @property
+    def builder_dir(self) -> Path:
+        """Transitional — will be removed when P3-002 migrates to S3."""
+        return self.research_dir / "builder"
 
     def _build_interaction_summary(self) -> str:
         """Build a structured summary of the user–orchestrator interaction.
