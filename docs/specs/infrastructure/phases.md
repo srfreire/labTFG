@@ -5,9 +5,10 @@
 
 ## Phases
 
-- [ ] **Phase 1: Shared Infrastructure Layer** — StorageService (MinIO), DatabaseService (async Postgres + SQLAlchemy), Alembic migrations, shared.init() lifecycle, docker-compose with MinIO + Postgres
+- [x] **Phase 1: Shared Infrastructure Layer** — StorageService (MinIO), DatabaseService (async Postgres + SQLAlchemy), Alembic migrations, shared.init() lifecycle, docker-compose with MinIO + Postgres
   - Dependencies: none
-  - Estimated issues: ~6
+  - Issues: P1-001, P1-002, P1-003, P1-004, P1-005, P1-006
+  - Heats: infra (P1-001→P1-002), storage (P1-003), database (P1-004→P1-005), lifecycle (P1-006)
 
 - [ ] **Phase 2: Phase 1 Integration** — Modify Phase 1 tool functions to use StorageService, add run_id to pipeline, register artifacts in DB
   - Dependencies: Phase 1
