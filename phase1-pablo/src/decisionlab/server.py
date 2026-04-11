@@ -207,7 +207,7 @@ async def run_pipeline(
                 await session.commit()
             await emit({"type": "pipeline_done"})
         except asyncio.CancelledError:
-            state.save()
+            await state.save()
             raise
         except Exception as exc:
             logger.exception("Pipeline failed")

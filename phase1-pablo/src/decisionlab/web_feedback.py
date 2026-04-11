@@ -132,20 +132,23 @@ async def review_formalize(
     reports_dir: Path,
     paradigm_slugs: list[str],
     emit: Callable[[dict], Awaitable[None]],
+    *,
+    run_id: str = "",
 ) -> dict[str, list[int]]:
     """WebSocket review of formalization results.
 
     Returns ``{paradigm_slug: [1-based formulation numbers]}``.
-    Also rewrites each paradigm's ``formulations/{slug}.md``.
+    Also rewrites each paradigm's formulation file in S3.
     """
-    formulations_dir = reports_dir / "formulations"
+    import shared
 
     paradigms_data: list[dict] = []
     for slug in paradigm_slugs:
-        md_path = formulations_dir / f"{slug}.md"
-        if not md_path.exists():
+        s3_key = f"research/{run_id}/formulations/{slug}.md"
+        try:
+            text = await shared.storage.get_text(s3_key)
+        except Exception:
             continue
-        text = md_path.read_text()
         headers = _parse_formulation_headers(text)
         formulations = [
             {"id": num, "name": name, "content": text[start:end]}
@@ -164,13 +167,16 @@ async def review_formalize(
     # response shape: {"selected": {"slug": [1, 3], ...}}
     selections: dict[str, list[int]] = response.get("selected", {})
 
-    # Rewrite files to keep only selected formulations
+    # Rewrite formulation files in S3 to keep only selected formulations
     for slug, kept in selections.items():
-        md_path = formulations_dir / f"{slug}.md"
-        if kept and md_path.exists():
-            text = md_path.read_text()
-            filtered = _filter_formulations_md(text, kept)
-            md_path.write_text(filtered)
+        if kept:
+            s3_key = f"research/{run_id}/formulations/{slug}.md"
+            try:
+                text = await shared.storage.get_text(s3_key)
+                filtered = _filter_formulations_md(text, kept)
+                await shared.storage.put_text(s3_key, filtered)
+            except Exception:
+                pass
 
     return selections
 
@@ -186,7 +192,7 @@ async def get_env_spec(
     """WebSocket prompt for env_spec.json content.
 
     The frontend sends either a file path or the JSON content directly.
-    Returns a Path to a validated JSON file.
+    Returns a Path to a validated JSON file (caller uploads to S3).
     """
     import tempfile
 

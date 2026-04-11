@@ -109,13 +109,17 @@ async def review_research(reports_dir: Path) -> tuple[list[str], str | None]:
 async def review_formalize(
     reports_dir: Path,
     paradigm_slugs: list[str],
+    *,
+    run_id: str = "",
 ) -> dict[str, list[int]]:
     """Double-level interactive selection of formalized paradigms/formulations.
 
     Returns ``{paradigm_slug: [1-based formulation numbers]}``.
-    Also rewrites each selected paradigm's ``formulations/{slug}.md`` to keep
+    Also rewrites each selected paradigm's formulation file in S3 to keep
     only the chosen formulations.
     """
+    import shared
+
     console.print()
     console.rule("[bold green]Review Formalization Results")
 
@@ -129,15 +133,15 @@ async def review_formalize(
         return {}
 
     selected_formulations: dict[str, list[int]] = {}
-    formulations_dir = reports_dir / "formulations"
 
     for slug in approved_paradigms:
-        md_path = formulations_dir / f"{slug}.md"
-        if not md_path.exists():
-            console.print(f"[yellow]Warning: {md_path} not found, skipping.[/yellow]")
+        s3_key = f"research/{run_id}/formulations/{slug}.md"
+        try:
+            text = await shared.storage.get_text(s3_key)
+        except Exception:
+            console.print(f"[yellow]Warning: {s3_key} not found, skipping.[/yellow]")
             continue
 
-        text = md_path.read_text()
         headers = _parse_formulation_headers(text)
 
         if not headers:
@@ -161,11 +165,11 @@ async def review_formalize(
 
         selected_formulations[slug] = kept
 
-        # Rewrite the .md file to keep only selected formulations
+        # Rewrite the formulation file in S3 to keep only selected formulations
         if kept:
             filtered = _filter_formulations_md(text, kept)
-            md_path.write_text(filtered)
-            console.print(f"  [dim]Kept {len(kept)} formulation(s), rewrote {md_path.name}[/dim]")
+            await shared.storage.put_text(s3_key, filtered)
+            console.print(f"  [dim]Kept {len(kept)} formulation(s), rewrote {slug}.md[/dim]")
         else:
             console.print(f"  [yellow]No formulations selected for {slug}.[/yellow]")
 
