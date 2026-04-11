@@ -78,6 +78,22 @@ Use pseudocode or numbered if/then rules. Must reference the equations above.}
 
 ## Formulation 2: {descriptive name}
 ...
+
+## Cross-formulation comparison
+
+After ALL formulations, add this comparison table. Each column is one formulation. \
+The comparison must reflect real, substantive differences — not superficial rephrasing.
+
+| Aspect | Formulation 1: {name} | Formulation 2: {name} | Formulation 3: {name} |
+|--------|----------------------|----------------------|----------------------|
+| Framework | {e.g., ODE / Algebraic / Probabilistic} | ... | ... |
+| Key variables | {list the 2-3 most important} | ... | ... |
+| Core equation | {the single most defining equation} | ... | ... |
+| Decision mechanism | {how the agent selects an action} | ... | ... |
+| Strengths | {brief, 1-2 points} | ... | ... |
+| Limitations | {brief, 1-2 points} | ... | ... |
+
+If only 2 formulations, drop the third column.
 """
 
 _MAX_ITERATIONS = 5

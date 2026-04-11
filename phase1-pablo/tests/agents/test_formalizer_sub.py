@@ -11,6 +11,15 @@ def test_system_prompt_exists():
     assert "formulation" in FORMALIZER_SUB_SYSTEM_PROMPT.lower()
 
 
+def test_system_prompt_includes_cross_formulation_comparison():
+    prompt = FORMALIZER_SUB_SYSTEM_PROMPT.lower()
+    assert "cross-formulation comparison" in prompt
+    assert "framework" in prompt
+    assert "decision mechanism" in prompt
+    assert "strengths" in prompt
+    assert "limitations" in prompt
+
+
 def test_formalizer_sub_has_correct_tools(tmp_path):
     client = AsyncMock()
     agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
