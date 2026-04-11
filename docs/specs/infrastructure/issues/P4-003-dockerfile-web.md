@@ -1,7 +1,7 @@
 ---
 id: P4-003
 title: Create Dockerfile for Phase 2 web frontend
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: containers

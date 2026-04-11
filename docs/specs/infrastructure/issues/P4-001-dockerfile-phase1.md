@@ -1,7 +1,7 @@
 ---
 id: P4-001
 title: Create Dockerfile for Phase 1 server
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: containers
