@@ -1,7 +1,7 @@
 ---
 id: P3-003
 title: Migrate orchestrator experiment lifecycle and analyst tools to async Postgres + S3
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: core
@@ -50,15 +50,15 @@ Replace all SQLite store calls with async Postgres and move large JSON blobs to 
 - Remove `init_db()` call from `Orchestrator.__init__`
 
 ## Acceptance Criteria
-- [ ] `create_experiment` creates row in async Postgres
-- [ ] Events, replay, tracker, analyst JSON stored in S3 with keys in DB
-- [ ] Experiment status progresses correctly through lifecycle
-- [ ] `list_experiments` returns from Postgres
-- [ ] `read_predictions` reads from S3 using model's run_id
-- [ ] PDF discovery uses DB/S3 instead of filesystem glob
-- [ ] Analyst `list_past_experiments` and `get_experiment_analysis` use async Postgres
-- [ ] No `shared.store` imports remain in orchestrator.py or tools.py
-- [ ] Full pipeline works: create env → simulate → track → analyze → report
+- [x] `create_experiment` creates row in async Postgres
+- [x] Events, replay, tracker, analyst JSON stored in S3 with keys in DB
+- [x] Experiment status progresses correctly through lifecycle
+- [x] `list_experiments` returns from Postgres
+- [x] `read_predictions` reads from S3 using model's run_id
+- [x] PDF discovery uses DB/S3 instead of filesystem glob
+- [x] Analyst `list_past_experiments` and `get_experiment_analysis` use async Postgres
+- [x] No `shared.store` imports remain in orchestrator.py or tools.py
+- [x] Full pipeline works: create env → simulate → track → analyze → report
 
 ## Files Likely Affected
 - `phase2-juan/simlab/orchestrator.py` — all store.* calls, read_predictions, generate_report PDF handling
