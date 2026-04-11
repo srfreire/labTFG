@@ -44,11 +44,15 @@ authoritative for available actions, resource types, and their properties.
 4. For *each* formulation, produce a JSON spec and call `write_file` to save it at \
 `reasoner/{formulation_id}.json`.
 
-### Deriving `formulation_id`
+### Formulation IDs
 
-Combine the paradigm slug with a short descriptive slug derived from the formulation \
-heading. Example: paradigm "homeostatic", formulation heading "PI Controller (Jacquier \
-variant)" → `formulation_id` = `homeostatic_pi_controller`.
+If formulation IDs are provided in the user message, use them EXACTLY as given for the \
+`formulation_id` field and for file naming (`reasoner/{formulation_id}.json`). \
+Do not derive, rename, or construct IDs yourself. Match each ID to the corresponding \
+formulation in order (first ID → first formulation, etc.).
+
+If no IDs are provided, derive the `formulation_id` by combining the paradigm slug with \
+a short descriptive slug from the formulation heading.
 
 ## Pseudocode style
 
@@ -137,8 +141,23 @@ class ReasonerSubAgent:
             "write_file": create_write_file(reports_dir),
         }
 
-    async def run(self, paradigm_slug: str) -> str:
+    async def run(
+        self,
+        paradigm_slug: str,
+        formulation_ids: list[str] | None = None,
+    ) -> str:
         logger.info("ReasonerSubAgent starting — paradigm: %s", paradigm_slug)
+
+        id_instruction = ""
+        if formulation_ids:
+            id_list = "\n".join(f"  - {fid}" for fid in formulation_ids)
+            id_instruction = (
+                f"\n\nUse the following formulation IDs for the JSON specs "
+                f"(one spec per ID, matched in order to the formulations in the .md)."
+                f" Use each ID as the `formulation_id` field and for file naming "
+                f"(`reasoner/{{id}}.json`):\n{id_list}"
+            )
+
         messages = [
             {
                 "role": "user",
@@ -147,6 +166,7 @@ class ReasonerSubAgent:
                     f"Read the deep report at: deep/{paradigm_slug}.md\n"
                     f"Read the formulations at: formulations/{paradigm_slug}.md\n"
                     f"Read the env spec at: env_spec.json"
+                    + id_instruction
                 ),
             }
         ]

@@ -109,8 +109,8 @@ async def test_builder_sub_run_returns_content(
 
     agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
     result = await agent.run(
-        "homeostatic",
-        ["reasoner/homeostatic_pi_controller.json"],
+        "homeostatic_pi_controller",
+        "reasoner/homeostatic_pi_controller.json",
     )
 
     assert "homeostatic_pi_controller" in result
@@ -125,7 +125,7 @@ async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_res
     client.messages.create.return_value = resp
 
     agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-    await agent.run("homeostatic", ["reasoner/homeostatic_pi_controller.json"])
+    await agent.run("homeostatic_pi_controller", "reasoner/homeostatic_pi_controller.json")
 
     call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-sonnet-4-6"

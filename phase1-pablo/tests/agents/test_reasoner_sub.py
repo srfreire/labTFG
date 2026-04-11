@@ -105,3 +105,33 @@ async def test_reasoner_sub_uses_opus_model(tmp_path, make_text_block, make_resp
 
     call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+
+
+# ---- P1-003: ID propagation tests ----
+
+
+@pytest.mark.asyncio
+async def test_reasoner_sub_includes_formulation_ids_in_message(
+    tmp_path, make_text_block, make_response,
+):
+    """When formulation_ids are passed, they appear in the user message."""
+    final_text = make_text_block("Done")
+    resp = make_response("end_turn", [final_text])
+
+    client = AsyncMock()
+    client.messages.create.return_value = resp
+
+    agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
+    await agent.run("homeostatic", formulation_ids=["T01-P01-F01", "T01-P01-F02"])
+
+    call_kwargs = client.messages.create.call_args
+    messages = call_kwargs.kwargs["messages"]
+    user_msg = messages[0]["content"]
+    assert "T01-P01-F01" in user_msg
+    assert "T01-P01-F02" in user_msg
+
+
+def test_system_prompt_does_not_derive_formulation_id():
+    """System prompt should NOT instruct LLM to derive formulation_id."""
+    assert "Deriving" not in REASONER_SUB_SYSTEM_PROMPT
+    assert "Combine the paradigm slug" not in REASONER_SUB_SYSTEM_PROMPT

@@ -403,9 +403,11 @@ class Router:
     async def _do_reason(self) -> None:
         from decisionlab.agents.reasoner import Reasoner
 
-        paradigms = list(self.state.approved_paradigms)
+        selected = self.state.selected_formulations
+        n_formulations = sum(len(v) for v in selected.values())
         self.console.print(
-            f"[bold]Running Reasoner for {len(paradigms)} paradigm(s)...[/bold]"
+            f"[bold]Running Reasoner for {n_formulations} formulation(s) "
+            f"across {len(selected)} paradigm(s)...[/bold]"
         )
         await self._emit({"type": "node_add", "node": {"id": "reasoner", "kind": "agent", "label": "Reasoner", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}})
@@ -414,7 +416,7 @@ class Router:
                 client=self.client,
                 reports_dir=self.state.reports_dir,
             )
-            await r.run(paradigms)
+            await r.run(selected)
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
@@ -451,7 +453,8 @@ class Router:
                         client=self.client,
                         reports_dir=self.state.reports_dir,
                     )
-                    await r.run([paradigm_slug])
+                    fids = self.state.selected_formulations.get(paradigm_slug, [])
+                    await r.run({paradigm_slug: fids})
                 except Exception as exc:
                     self.console.print(
                         f"[bold red]Reasoner re-run failed for '{paradigm_slug}': {exc}[/bold red]"
@@ -464,9 +467,9 @@ class Router:
     async def _do_build(self) -> None:
         from decisionlab.agents.builder import Builder
 
-        paradigms = list(self.state.approved_paradigms)
+        spec_ids = list(self.state.approved_specs)
         self.console.print(
-            f"[bold]Running Builder for {len(paradigms)} paradigm(s)...[/bold]"
+            f"[bold]Running Builder for {len(spec_ids)} spec(s)...[/bold]"
         )
         await self._emit({"type": "node_add", "node": {"id": "builder", "kind": "agent", "label": "Builder", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
@@ -476,7 +479,7 @@ class Router:
                 reports_dir=self.state.reports_dir,
                 project_root=self.project_root,
             )
-            report = await b.run(paradigms)
+            report = await b.run(spec_ids)
             self.state.build_results = report.results
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
@@ -593,7 +596,8 @@ class Router:
                         client=self.client,
                         reports_dir=self.state.reports_dir,
                     )
-                    await r.run([paradigm])
+                    fids = self.state.selected_formulations.get(paradigm, [])
+                    await r.run({paradigm: fids})
 
                 elif stage_name == "builder":
                     from decisionlab.agents.builder import Builder
@@ -606,8 +610,17 @@ class Router:
                         reports_dir=self.state.reports_dir,
                         project_root=self.project_root,
                     )
-                    report = await b.run([paradigm])
-                    self.state.build_results = report.results
+                    # Build only specs belonging to this paradigm
+                    paradigm_id = self.state.get_id(paradigm)
+                    if paradigm_id:
+                        paradigm_specs = [
+                            sid for sid in self.state.approved_specs
+                            if sid.startswith(paradigm_id + "-")
+                        ]
+                    else:
+                        paradigm_specs = None  # discover from disk
+                    report = await b.run(paradigm_specs)
+                    self.state.build_results.update(report.results)
 
             except Exception as exc:
                 self.console.print(

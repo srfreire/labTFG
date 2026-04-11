@@ -130,20 +130,19 @@ class BuilderSubAgent:
             "run_tests": create_run_tests(reports_dir, project_root),
         }
 
-    async def run(self, paradigm_slug: str, spec_paths: list[str]) -> str:
+    async def run(self, spec_id: str, spec_path: str) -> str:
         logger.info(
-            "BuilderSubAgent starting — paradigm: %s, specs: %s",
-            paradigm_slug,
-            spec_paths,
+            "BuilderSubAgent starting — spec: %s (%s)",
+            spec_id,
+            spec_path,
         )
-        spec_list = "\n".join(f"  - {p}" for p in spec_paths)
         messages = [
             {
                 "role": "user",
                 "content": (
-                    f"Implement Python DecisionModel classes for paradigm: {paradigm_slug}\n"
-                    f"Process each of the following JSON spec files:\n{spec_list}\n"
-                    "For each spec: read it, implement the model, write tests, run them, "
+                    f"Implement a Python DecisionModel class for formulation: {spec_id}\n"
+                    f"Read the JSON spec at: {spec_path}\n"
+                    "Read the spec, implement the model, write tests, run them, "
                     "and fix any failures."
                 ),
             }
@@ -165,7 +164,7 @@ class BuilderSubAgent:
 
         logger.info(
             "BuilderSubAgent finished for: %s (%d chars)",
-            paradigm_slug,
+            spec_id,
             len(content),
         )
         return content

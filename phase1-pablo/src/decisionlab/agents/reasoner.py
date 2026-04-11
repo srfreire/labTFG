@@ -17,14 +17,25 @@ class Reasoner:
         self.client = client
         self.reports_dir = reports_dir
 
-    async def run(self, paradigm_slugs: list[str]) -> ReasonerReport:
-        if not paradigm_slugs:
+    async def run(
+        self,
+        selected_formulations: dict[str, list[str]] | list[str],
+    ) -> ReasonerReport:
+        # Accept either {slug: [fid, ...]} or legacy [slug, ...] list
+        if isinstance(selected_formulations, list):
+            selected_formulations = {slug: [] for slug in selected_formulations}
+
+        if not selected_formulations:
             formulations_dir = self.reports_dir / "formulations"
             paradigm_slugs = [p.stem for p in sorted(formulations_dir.glob("*.md"))]
             logger.info("Discovered %d paradigms from disk: %s", len(paradigm_slugs), paradigm_slugs)
+            selected_formulations = {slug: [] for slug in paradigm_slugs}
+
+        paradigm_slugs = list(selected_formulations.keys())
 
         tasks = [
-            ReasonerSubAgent(client=self.client, reports_dir=self.reports_dir).run(slug)
+            ReasonerSubAgent(client=self.client, reports_dir=self.reports_dir)
+            .run(slug, formulation_ids=selected_formulations[slug] or None)
             for slug in paradigm_slugs
         ]
 
