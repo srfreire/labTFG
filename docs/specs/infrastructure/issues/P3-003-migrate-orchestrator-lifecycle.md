@@ -1,7 +1,7 @@
 ---
 id: P3-003
 title: Migrate orchestrator experiment lifecycle and analyst tools to async Postgres + S3
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: core
