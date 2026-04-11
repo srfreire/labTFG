@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Create docker-compose with MinIO and Postgres
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: infra
@@ -26,13 +26,13 @@ Set up the foundational containers that all other infrastructure depends on.
 - `.gitignore` entry for `.env` if not already present
 
 ## Acceptance Criteria
-- [ ] `docker-compose up -d` starts both containers without errors
-- [ ] MinIO console accessible at `localhost:9001`
-- [ ] MinIO API accessible at `localhost:9000`
-- [ ] Postgres accessible at `localhost:5432` with `labtfg` database
-- [ ] `labtfg` bucket auto-created on first startup
-- [ ] Data survives `docker-compose down` + `docker-compose up` (volumes persist)
-- [ ] `.env.example` exists with all required vars documented
+- [x] `docker-compose up -d` starts both containers without errors
+- [x] MinIO console accessible at `localhost:9001`
+- [x] MinIO API accessible at `localhost:9000`
+- [x] Postgres accessible at `localhost:5432` with `labtfg` database
+- [x] `labtfg` bucket auto-created on first startup
+- [x] Data survives `docker-compose down` + `docker-compose up` (volumes persist)
+- [x] `.env.example` exists with all required vars documented
 
 ## Files Likely Affected
 - `docker-compose.yml` — new file at repo root
@@ -42,3 +42,23 @@ Set up the foundational containers that all other infrastructure depends on.
 Phase spec: `docs/specs/infrastructure/phase-1-shared-infrastructure.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `infra`
+
+## Completion Summary
+
+**Commit:** `215f0bd` — `feat[infra]: add docker-compose with MinIO and Postgres (P1-001)`
+
+### What was built
+- Docker Compose stack with MinIO (S3-compatible) and Postgres 17
+- MinIO init container using `mc` CLI to auto-create `labtfg` bucket
+- Health checks for both services
+- Named volumes for data persistence
+- `.env.example` with all required vars and dev defaults
+
+### Files created/modified
+- `docker-compose.yml` — MinIO + Postgres + minio-init services
+- `.env.example` — all env vars with defaults for local dev
+
+### Decisions
+- Used `minio/mc:latest` as init container (not entrypoint script) — cleaner separation
+- Postgres 17-alpine for smaller image size
+- `restart: "no"` on init container — runs once then exits

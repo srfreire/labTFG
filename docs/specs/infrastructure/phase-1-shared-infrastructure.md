@@ -115,7 +115,7 @@ Keep `shared/shared/store.py` working during transition:
 
 ## Acceptance Criteria
 
-- [ ] AC1: `docker-compose up -d` starts MinIO + Postgres, both healthy, `labtfg` bucket exists
+- [x] AC1: `docker-compose up -d` starts MinIO + Postgres, both healthy, `labtfg` bucket exists
 - [ ] AC2: `StorageService.put()` + `StorageService.get()` round-trips bytes correctly
 - [ ] AC3: `StorageService.put_text()` + `StorageService.get_text()` round-trips UTF-8 strings
 - [ ] AC4: `StorageService.list(prefix)` returns correct keys after uploads
@@ -125,7 +125,7 @@ Keep `shared/shared/store.py` working during transition:
 - [ ] AC8: `get_session()` yields working async sessions that can CRUD all tables
 - [ ] AC9: `shared.init()` boots both services, `shared.shutdown()` tears down cleanly
 - [ ] AC10: Existing `store.py` functions still work (backward compat)
-- [ ] AC11: `.env.example` documents all required env vars with defaults
+- [x] AC11: `.env.example` documents all required env vars with defaults
 
 ## Technical Notes
 
