@@ -24,12 +24,12 @@ El Researcher, al generar `report.md`, consolida en una sección `## References`
 La cross-paradigm table pasa de listar zonas por paradigma a una matriz: filas = paradigmas, columnas = todas las zonas encontradas (de los `## Primary Locus`), celdas = ✓/✗.
 
 ## Acceptance Criteria
-- [ ] AC1: DeepResearcher tiene herramienta search_papers que consulta Semantic Scholar API
+- [x] AC1: DeepResearcher tiene herramienta search_papers que consulta Semantic Scholar API
 - [x] AC2: Deep reports contienen sección ## Primary Locus
 - [x] AC3: Deep reports contienen sección ## Key Concepts
 - [x] AC4: report.md contiene sección ## References con papers consolidados de todos los deep reports
 - [ ] AC5: Cross-paradigm table usa formato matriz zonas×paradigmas con ✓/✗
-- [ ] AC6: web_search y search_papers coexisten como herramientas del DeepResearcher
+- [x] AC6: web_search y search_papers coexisten como herramientas del DeepResearcher
 
 ## Technical Notes
 - DeepResearcher prompt en `deep_researcher.py:15`
