@@ -225,10 +225,10 @@ async def get_env_spec(
 async def review_reason(
     reports_dir: Path,
     emit: Callable[[dict], Awaitable[None]],
-) -> tuple[list[str], list[tuple[str, str, str]]]:
+) -> tuple[list[str], list[tuple[str, str, str]], list[str]]:
     """WebSocket review of reasoner JSON specs.
 
-    Returns ``(approved_spec_ids, [(spec_id, paradigm_slug, feedback)])``.
+    Returns ``(approved_spec_ids, [(spec_id, paradigm_slug, feedback)], formalizer_rerun_slugs)``.
     """
     reasoner_dir = reports_dir / "reasoner"
     specs_data: list[dict] = []
@@ -239,25 +239,41 @@ async def review_reason(
                 data = json.loads(spec_file.read_text())
             except (json.JSONDecodeError, OSError):
                 continue
-            specs_data.append({
-                "id": data.get("formulation_id", spec_file.stem),
-                "spec_id": data.get("formulation_id", spec_file.stem),
-                "paradigm": data.get("paradigm", "unknown"),
-                "name": data.get("name", spec_file.stem),
-                "description": data.get("description", ""),
-                "variables": data.get("variables", []),
-                "env_mapping": data.get("env_mapping", {}),
-                "full_spec": data,
-            })
+
+            spec_id = data.get("formulation_id", spec_file.stem)
+            paradigm = data.get("paradigm", "unknown")
+
+            if data.get("status") == "invalid":
+                specs_data.append({
+                    "id": spec_id,
+                    "spec_id": spec_id,
+                    "paradigm": paradigm,
+                    "name": spec_id,
+                    "status": "invalid",
+                    "problems": data.get("problems", []),
+                    "full_spec": data,
+                })
+            else:
+                specs_data.append({
+                    "id": spec_id,
+                    "spec_id": spec_id,
+                    "paradigm": paradigm,
+                    "name": data.get("name", spec_file.stem),
+                    "description": data.get("description", ""),
+                    "variables": data.get("variables", []),
+                    "env_mapping": data.get("env_mapping", {}),
+                    "full_spec": data,
+                })
 
     response = await wait_for_review("review_reason", emit, {
         "specs": specs_data,
     })
 
-    # response shape: {"decisions": {"spec_id": {"approved": bool, "feedback": "..."}}}
+    # response shape: {"decisions": {"spec_id": {"approved": bool, "feedback": "...", "rerun_formalizer": bool}}}
     decisions = response.get("decisions", {})
     approved: list[str] = []
     rejections: list[tuple[str, str, str]] = []
+    formalizer_reruns: list[str] = []
     for spec_id, decision in decisions.items():
         # Find paradigm slug for this spec_id from specs_data
         paradigm = "unknown"
@@ -265,11 +281,14 @@ async def review_reason(
             if s["spec_id"] == spec_id:
                 paradigm = s["paradigm"]
                 break
-        if decision.get("approved", False):
+        if decision.get("rerun_formalizer", False):
+            if paradigm not in formalizer_reruns:
+                formalizer_reruns.append(paradigm)
+        elif decision.get("approved", False):
             approved.append(spec_id)
         else:
             rejections.append((spec_id, paradigm, decision.get("feedback", "")))
-    return approved, rejections
+    return approved, rejections, formalizer_reruns
 
 
 # ---------------------------------------------------------------------------

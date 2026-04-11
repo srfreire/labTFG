@@ -690,16 +690,29 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
             data = json.loads(sf.read_text())
         except (json.JSONDecodeError, OSError):
             continue
-        specs_data.append({
-            "id": data.get("formulation_id", sf.stem),
-            "spec_id": data.get("formulation_id", sf.stem),
-            "paradigm": data.get("paradigm", "unknown"),
-            "name": data.get("name", sf.stem),
-            "description": data.get("description", ""),
-            "variables": data.get("variables", []),
-            "env_mapping": data.get("env_mapping", {}),
-            "full_spec": data,
-        })
+        spec_id = data.get("formulation_id", sf.stem)
+        paradigm = data.get("paradigm", "unknown")
+        if data.get("status") == "invalid":
+            specs_data.append({
+                "id": spec_id,
+                "spec_id": spec_id,
+                "paradigm": paradigm,
+                "name": spec_id,
+                "status": "invalid",
+                "problems": data.get("problems", []),
+                "full_spec": data,
+            })
+        else:
+            specs_data.append({
+                "id": spec_id,
+                "spec_id": spec_id,
+                "paradigm": paradigm,
+                "name": data.get("name", sf.stem),
+                "description": data.get("description", ""),
+                "variables": data.get("variables", []),
+                "env_mapping": data.get("env_mapping", {}),
+                "full_spec": data,
+            })
 
     response = await wait_for_review("review_reason", emit, {"specs": specs_data})
     await emit({"type": "stage_change", "stage": "review_reason", "status": "done"})

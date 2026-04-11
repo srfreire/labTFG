@@ -1,9 +1,15 @@
 """Tests for pure helper functions in feedback.py."""
 
+import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from decisionlab.feedback import (
     _discover_paradigm_slugs,
     _filter_formulations_md,
     _parse_formulation_headers,
+    review_reason,
 )
 
 # ---------------------------------------------------------------------------
@@ -145,3 +151,110 @@ class TestDiscoverParadigmSlugs:
     def test_discover_no_deep_dir(self, tmp_path):
         slugs = _discover_paradigm_slugs(tmp_path)
         assert slugs == []
+
+
+# ---------------------------------------------------------------------------
+# P4-001: review_reason with invalid specs
+# ---------------------------------------------------------------------------
+
+
+def _make_valid_spec(formulation_id: str, paradigm: str) -> dict:
+    return {
+        "formulation_id": formulation_id,
+        "paradigm": paradigm,
+        "name": f"Valid Spec ({formulation_id})",
+        "description": "A valid spec.",
+        "variables": [{"symbol": "X", "name": "x_var", "description": "...", "type": "float", "initial_value": 0.0, "range": [0, 1]}],
+        "parameters": [],
+        "rules": [],
+        "decision_logic": {"description": "...", "pseudocode": ["return Action('stay')"]},
+        "env_mapping": {"perception_to_variables": {}, "actions_used": ["stay"], "reward_source": "none"},
+        "expected_behaviors": [],
+        "references": [],
+    }
+
+
+def _make_invalid_spec(formulation_id: str, paradigm: str) -> dict:
+    return {
+        "formulation_id": formulation_id,
+        "paradigm": paradigm,
+        "status": "invalid",
+        "problems": [
+            {"type": "undefined_variable", "detail": "Variable 'Z' used in rule R2 but not defined"},
+            {"type": "unreasonable_default", "detail": "Parameter 'rate' has default 0"},
+        ],
+    }
+
+
+def _write_spec(reports_dir, spec: dict) -> None:
+    reasoner_dir = reports_dir / "reasoner"
+    reasoner_dir.mkdir(parents=True, exist_ok=True)
+    fid = spec["formulation_id"]
+    (reasoner_dir / f"{fid}.json").write_text(json.dumps(spec, indent=2))
+
+
+class TestReviewReasonInvalidSpecs:
+    @pytest.mark.asyncio
+    async def test_invalid_spec_detected_and_user_chooses_rerun(self, tmp_path):
+        """Invalid spec triggers rerun option; user chooses rerun formalizer."""
+        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
+        invalid = _make_invalid_spec("T01-P01-F02", "homeostatic")
+        _write_spec(tmp_path, valid)
+        _write_spec(tmp_path, invalid)
+
+        # Mock questionary: approve the valid spec, then choose "rerun formalizer" for invalid
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [
+                True,   # approve valid spec T01-P01-F01
+                True,   # rerun formalizer for invalid T01-P01-F02
+            ]
+            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+
+        assert "T01-P01-F01" in approved
+        assert "T01-P01-F02" not in approved
+        assert len(rejections) == 0
+        assert "homeostatic" in formalizer_reruns
+
+    @pytest.mark.asyncio
+    async def test_invalid_spec_detected_and_user_skips(self, tmp_path):
+        """Invalid spec, user chooses to skip (not rerun)."""
+        invalid = _make_invalid_spec("T01-P01-F01", "homeostatic")
+        _write_spec(tmp_path, invalid)
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [
+                False,  # skip (don't rerun formalizer)
+            ]
+            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+
+        assert len(approved) == 0
+        assert len(rejections) == 0
+        assert len(formalizer_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_all_valid_specs_returns_empty_formalizer_reruns(self, tmp_path):
+        """When all specs are valid, formalizer_reruns is empty."""
+        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
+        _write_spec(tmp_path, valid)
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [True]  # approve
+            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+
+        assert "T01-P01-F01" in approved
+        assert len(formalizer_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_duplicate_paradigm_deduplication(self, tmp_path):
+        """Two invalid specs for the same paradigm produce one formalizer rerun."""
+        inv1 = _make_invalid_spec("T01-P01-F01", "homeostatic")
+        inv2 = _make_invalid_spec("T01-P01-F02", "homeostatic")
+        _write_spec(tmp_path, inv1)
+        _write_spec(tmp_path, inv2)
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [True, True]  # rerun for both
+            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+
+        assert len(formalizer_reruns) == 1
+        assert formalizer_reruns == ["homeostatic"]

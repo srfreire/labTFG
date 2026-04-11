@@ -432,18 +432,55 @@ class Router:
             if self._web_mode:
                 from decisionlab.web_feedback import review_reason
                 assert self.emit is not None
-                approved, rejections = await review_reason(
+                approved, rejections, formalizer_reruns = await review_reason(
                     self.state.reports_dir, self.emit,
                 )
             else:
                 from decisionlab.feedback import review_reason
-                approved, rejections = await review_reason(
+                approved, rejections, formalizer_reruns = await review_reason(
                     self.state.reports_dir,
                 )
-            if not rejections:
+            if not rejections and not formalizer_reruns:
                 self.state.approved_specs = approved
                 break
-            # Re-run Reasoner for each rejected paradigm
+
+            # Re-run Formalizer → Reasoner for paradigms with invalid formulations
+            for paradigm_slug in formalizer_reruns:
+                self.console.print(
+                    f"[bold]Re-running Formalizer for '{paradigm_slug}'...[/bold]"
+                )
+                try:
+                    from decisionlab.agents.formalizer import Formalizer
+
+                    f = Formalizer(
+                        client=self.client,
+                        reports_dir=self.state.reports_dir,
+                    )
+                    await f.run([paradigm_slug])
+                except Exception as exc:
+                    self.console.print(
+                        f"[bold red]Formalizer re-run failed for '{paradigm_slug}': {exc}[/bold red]"
+                    )
+                    logger.exception("Formalizer re-run failed for %s", paradigm_slug)
+                    continue
+
+                self.console.print(
+                    f"[bold]Re-running Reasoner for '{paradigm_slug}'...[/bold]"
+                )
+                try:
+                    r = Reasoner(
+                        client=self.client,
+                        reports_dir=self.state.reports_dir,
+                    )
+                    fids = self.state.selected_formulations.get(paradigm_slug, [])
+                    await r.run({paradigm_slug: fids})
+                except Exception as exc:
+                    self.console.print(
+                        f"[bold red]Reasoner re-run failed for '{paradigm_slug}': {exc}[/bold red]"
+                    )
+                    logger.exception("Reasoner re-run failed for %s", paradigm_slug)
+
+            # Re-run Reasoner for each rejected paradigm (normal rejections)
             for _, paradigm_slug, _ in rejections:
                 self.console.print(
                     f"[bold]Re-running Reasoner for '{paradigm_slug}'...[/bold]"

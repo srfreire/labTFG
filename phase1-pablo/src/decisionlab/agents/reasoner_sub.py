@@ -41,8 +41,51 @@ authoritative for available actions, resource types, and their properties.
 1. Call `read_file` with path `deep/{slug}.md` to read the deep research report.
 2. Call `read_file` with path `formulations/{slug}.md` to read all mathematical formulations.
 3. Call `read_file` with path `env_spec.json` to read the simulation environment specification.
-4. For *each* formulation, produce a JSON spec and call `write_file` to save it at \
+4. **Validate each formulation** before generating the spec (see Validation below).
+5. For each **valid** formulation, produce a JSON spec and call `write_file` to save it at \
 `reasoner/{formulation_id}.json`.
+6. For each **invalid** formulation, produce a validation report and call `write_file` to \
+save it at `reasoner/{formulation_id}.json` (same path, different schema).
+
+## Validation
+
+Before generating the JSON spec for a formulation, critically analyze it for coherence:
+
+1. **Variables used must be defined**: every variable referenced in equations and decision \
+logic must appear in the Variables section of the formulation.
+2. **No circular equations**: a variable's update rule must not depend on itself in a way \
+that creates an unresolvable loop (differential equations like `dF/dt = f(F)` are fine — \
+that is standard ODE form — but `F = F + g(F)` where `g` itself requires the new value \
+of `F` is circular).
+3. **Decision logic references existing constructs**: the decision rule must only reference \
+variables and equations that are defined in the formulation.
+4. **Parameters have reasonable defaults**: rates should not be 0 (would make the equation \
+inert), counts and magnitudes should not be negative unless semantically justified.
+5. **Env mapping is consistent**: actions_used must be a subset of the actions available in \
+the env_spec; perception_to_variables must map to fields that exist in the perception template.
+
+If ALL checks pass → proceed to generate the normal JSON spec.
+If ANY check fails → write a **validation report** instead:
+
+```json
+{
+  "formulation_id": "...",
+  "paradigm": "...",
+  "status": "invalid",
+  "problems": [
+    {"type": "undefined_variable", "detail": "Variable 'X' used in rule R2 but not defined in Variables section"},
+    {"type": "circular_dependency", "detail": "Rule R1 defines F in terms of itself (not ODE form)"},
+    {"type": "invalid_reference", "detail": "Decision logic references 'utility_score' but no such variable or rule exists"},
+    {"type": "unreasonable_default", "detail": "Parameter 'decay_rate' has default 0, which makes rule R3 inert"},
+    {"type": "inconsistent_mapping", "detail": "actions_used includes 'fly' but env_spec only supports up/down/left/right/stay/eat"},
+    {"type": "other", "detail": "Free-text description of the problem"}
+  ]
+}
+```
+
+Be strict but fair: flag genuine incoherences, not stylistic preferences. If a formulation \
+is mostly sound but has a minor issue, still flag it — the user will decide whether to \
+rerun or accept.
 
 ### Formulation IDs
 

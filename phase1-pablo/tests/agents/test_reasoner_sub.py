@@ -135,3 +135,23 @@ def test_system_prompt_does_not_derive_formulation_id():
     """System prompt should NOT instruct LLM to derive formulation_id."""
     assert "Deriving" not in REASONER_SUB_SYSTEM_PROMPT
     assert "Combine the paradigm slug" not in REASONER_SUB_SYSTEM_PROMPT
+
+
+# ---- P4-001: Validation tests ----
+
+
+def test_system_prompt_contains_validation_step():
+    """System prompt must include a validation phase before spec generation."""
+    prompt_lower = REASONER_SUB_SYSTEM_PROMPT.lower()
+    assert "validation" in prompt_lower
+    assert "invalid" in prompt_lower
+    assert "problems" in prompt_lower
+
+
+def test_system_prompt_lists_validation_checks():
+    """System prompt must list the specific coherence checks."""
+    assert "undefined_variable" in REASONER_SUB_SYSTEM_PROMPT
+    assert "circular_dependency" in REASONER_SUB_SYSTEM_PROMPT
+    assert "invalid_reference" in REASONER_SUB_SYSTEM_PROMPT
+    assert "unreasonable_default" in REASONER_SUB_SYSTEM_PROMPT
+    assert "inconsistent_mapping" in REASONER_SUB_SYSTEM_PROMPT

@@ -208,10 +208,10 @@ async def get_env_spec() -> Path:
 
 async def review_reason(
     reports_dir: Path,
-) -> tuple[list[str], list[tuple[str, str, str]]]:
+) -> tuple[list[str], list[tuple[str, str, str]], list[str]]:
     """Interactive review of reasoner JSON specs.
 
-    Returns ``(approved_spec_ids, [(spec_id, paradigm_slug, feedback)])``.
+    Returns ``(approved_spec_ids, [(spec_id, paradigm_slug, feedback)], formalizer_rerun_slugs)``.
     """
     console.print()
     console.rule("[bold green]Review Reasoner Specs")
@@ -219,15 +219,16 @@ async def review_reason(
     reasoner_dir = reports_dir / "reasoner"
     if not reasoner_dir.is_dir():
         console.print("[bold red]No reasoner directory found.[/bold red]")
-        return [], []
+        return [], [], []
 
     spec_files = sorted(reasoner_dir.glob("*.json"))
     if not spec_files:
         console.print("[bold red]No spec files found.[/bold red]")
-        return [], []
+        return [], [], []
 
     approved: list[str] = []
     rejections: list[tuple[str, str, str]] = []
+    formalizer_reruns: list[str] = []
 
     for spec_file in spec_files:
         try:
@@ -238,6 +239,26 @@ async def review_reason(
 
         spec_id = data.get("formulation_id", spec_file.stem)
         paradigm = data.get("paradigm", "unknown")
+
+        # Handle invalid specs from Reasoner validation
+        if data.get("status") == "invalid":
+            console.print()
+            console.rule(f"[bold red]INVALID: {spec_id}[/bold red]")
+            console.print(f"[dim]Paradigm:[/dim] {paradigm}")
+            problems = data.get("problems", [])
+            for p in problems:
+                console.print(f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}")
+
+            rerun: bool = await _ask(
+                questionary.confirm(
+                    f"Rerun Formalizer for paradigm '{paradigm}'?",
+                    default=True,
+                ),
+            )
+            if rerun and paradigm not in formalizer_reruns:
+                formalizer_reruns.append(paradigm)
+            continue
+
         name = data.get("name", spec_id)
         description = data.get("description", "")
 
@@ -272,7 +293,7 @@ async def review_reason(
             )
             rejections.append((spec_id, paradigm, feedback))
 
-    return approved, rejections
+    return approved, rejections, formalizer_reruns
 
 
 # ---------------------------------------------------------------------------
