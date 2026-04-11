@@ -11,11 +11,15 @@ historical comparison and aggregated analysis.
 from __future__ import annotations
 
 import json
+import uuid
 from collections import Counter
 
+from sqlalchemy import select
+
+import shared
+from shared.models import Experiment as DBExperiment
 from simlab.environment import Event
 from simlab.loop import Registry
-from shared.store import list_experiments, get_experiment
 
 
 # ---------------------------------------------------------------------------
@@ -255,31 +259,50 @@ GET_EXPERIMENT_ANALYSIS_TOOL = {
 
 
 def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
-    """Build tools for querying past experiments from the DB."""
-
-    _list_keys = ("id", "status", "description", "models_used", "steps", "created_at")
+    """Build tools for querying past experiments from Postgres + S3."""
 
     async def list_past_experiments_fn(params: dict) -> str:
         limit = params.get("limit", 10)
-        exps = list_experiments(limit=limit)
-        return json.dumps(
-            [{k: exp.get(k) for k in _list_keys} for exp in exps],
-            default=str,
-        )
+        async with shared.db.get_session() as session:
+            result = await session.execute(
+                select(DBExperiment)
+                .order_by(DBExperiment.created_at.desc())
+                .limit(limit)
+            )
+            experiments = result.scalars().all()
+        return json.dumps([{
+            "id": str(e.id),
+            "status": e.status,
+            "description": e.description,
+            "models_used": e.models_used,
+            "steps": e.steps,
+            "created_at": str(e.created_at),
+        } for e in experiments], default=str)
 
     async def get_experiment_analysis_fn(params: dict) -> str:
         exp_id = params["experiment_id"]
-        exp = get_experiment(exp_id)
+        async with shared.db.get_session() as session:
+            result = await session.execute(
+                select(DBExperiment).where(DBExperiment.id == uuid.UUID(exp_id))
+            )
+            exp = result.scalar_one_or_none()
         if not exp:
             return json.dumps({"error": f"Experiment {exp_id} not found"})
+        # Fetch tracker and analyst data from S3
+        tracker_data = None
+        analyst_data = None
+        if exp.s3_tracker_key:
+            tracker_data = await shared.storage.get_text(exp.s3_tracker_key)
+        if exp.s3_analyst_key:
+            analyst_data = await shared.storage.get_text(exp.s3_analyst_key)
         return json.dumps({
-            "id": exp["id"],
-            "status": exp["status"],
-            "description": exp.get("description"),
-            "models_used": exp.get("models_used"),
-            "steps": exp.get("steps"),
-            "tracker_json": exp.get("tracker_json"),
-            "analyst_json": exp.get("analyst_json"),
+            "id": str(exp.id),
+            "status": exp.status,
+            "description": exp.description,
+            "models_used": exp.models_used,
+            "steps": exp.steps,
+            "tracker_json": tracker_data,
+            "analyst_json": analyst_data,
         }, default=str)
 
     schemas = [LIST_PAST_EXPERIMENTS_TOOL, GET_EXPERIMENT_ANALYSIS_TOOL]

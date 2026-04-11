@@ -13,6 +13,11 @@ from __future__ import annotations
 
 import json
 import random
+import uuid
+
+import shared
+from shared.models import Experiment as DBExperiment
+from sqlalchemy import select, update
 
 from simlab.architect import Architect
 from simlab.tracker import Tracker
@@ -22,10 +27,6 @@ from simlab.critical_events import detect_critical_events, critical_events_to_js
 from simlab.environment import Agent, Position
 from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
-from shared.store import (
-    init_db, create_experiment, update_experiment, list_experiments,
-    SIMULATED, TRACKED, ANALYZED, REPORTED,
-)
 from simlab.model_loader import discover_models, load_model as _load_model
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
@@ -346,9 +347,6 @@ class Orchestrator:
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
 
-        # Initialize experiment store (backward compat — will be removed in P3-003)
-        init_db()
-
     def _build_interaction_summary(self) -> str:
         """Build a structured summary of the user–orchestrator interaction.
 
@@ -428,10 +426,18 @@ class Orchestrator:
             state["analyst_output"] = None
             state["predictions"] = None
             state["charts"] = []
-            # Persist experiment
-            exp_id = create_experiment(description=params["description"])
+            # Persist experiment to Postgres
+            exp_id = str(uuid.uuid4())
+            async with shared.db.get_session() as session:
+                exp = DBExperiment(
+                    id=uuid.UUID(exp_id),
+                    description=params["description"],
+                    status="created",
+                    spec=json.loads(spec_json),
+                )
+                session.add(exp)
+                await session.commit()
             state["experiment_id"] = exp_id
-            update_experiment(exp_id, spec_json=spec_json)
             return spec_json
 
         # --- list_available_models: discovers Phase 1 models from Postgres ---
@@ -550,8 +556,9 @@ class Orchestrator:
             state["tracker_output"] = None
             state["analyst_output"] = None
 
-            # Persist simulation results
+            # Persist simulation results to S3 + Postgres
             if state.get("experiment_id"):
+                exp_id = state["experiment_id"]
                 events_stripped = json.dumps([
                     {
                         "step": e.step,
@@ -561,15 +568,24 @@ class Orchestrator:
                     }
                     for e in all_events
                 ])
-                update_experiment(
-                    state["experiment_id"],
-                    events_json=events_stripped,
-                    replay_json=json.dumps(state["replay"]),
-                    models_used=json.dumps(models_used),
-                    steps=steps,
-                    seed=params.get("seed"),
-                    status=SIMULATED,
-                )
+                events_key = f"experiments/{exp_id}/events.json"
+                replay_key = f"experiments/{exp_id}/replay.json"
+                await shared.storage.put_text(events_key, events_stripped)
+                await shared.storage.put_text(replay_key, json.dumps(state["replay"]))
+                async with shared.db.get_session() as session:
+                    await session.execute(
+                        update(DBExperiment)
+                        .where(DBExperiment.id == uuid.UUID(exp_id))
+                        .values(
+                            s3_events_key=events_key,
+                            s3_replay_key=replay_key,
+                            models_used=models_used,
+                            steps=steps,
+                            seed=params.get("seed"),
+                            status="simulated",
+                        )
+                    )
+                    await session.commit()
 
             return json.dumps({
                 "agents": len(env._agents),
@@ -592,7 +608,16 @@ class Orchestrator:
             )
             state["tracker_output"] = result
             if state.get("experiment_id"):
-                update_experiment(state["experiment_id"], tracker_json=result, status=TRACKED)
+                exp_id = state["experiment_id"]
+                tracker_key = f"experiments/{exp_id}/tracker.json"
+                await shared.storage.put_text(tracker_key, result)
+                async with shared.db.get_session() as session:
+                    await session.execute(
+                        update(DBExperiment)
+                        .where(DBExperiment.id == uuid.UUID(exp_id))
+                        .values(s3_tracker_key=tracker_key, status="tracked")
+                    )
+                    await session.commit()
             return result
 
         # --- analyze_results: calls the Analyst (can be called multiple times) ---
@@ -617,7 +642,16 @@ class Orchestrator:
             # Track new charts from this call for the WS response
             state["_last_charts"] = analyst.charts[:]
             if state.get("experiment_id"):
-                update_experiment(state["experiment_id"], analyst_json=result, status=ANALYZED)
+                exp_id = state["experiment_id"]
+                analyst_key = f"experiments/{exp_id}/analyst.json"
+                await shared.storage.put_text(analyst_key, result)
+                async with shared.db.get_session() as session:
+                    await session.execute(
+                        update(DBExperiment)
+                        .where(DBExperiment.id == uuid.UUID(exp_id))
+                        .values(s3_analyst_key=analyst_key, status="analyzed")
+                    )
+                    await session.commit()
             return result
 
         # --- generate_report: calls the Reporter (can be called multiple times) ---
@@ -646,7 +680,7 @@ class Orchestrator:
             # Track PDF S3 keys
             if "pdf_paths" not in state:
                 state["pdf_paths"] = []
-            # Extract pdf_path from reporter result if present
+            # Extract pdf_path (S3 key) from reporter result if present
             try:
                 result_data = json.loads(result) if result.strip().startswith("{") else None
             except (json.JSONDecodeError, AttributeError):
@@ -658,23 +692,37 @@ class Orchestrator:
             if state["pdf_paths"]:
                 state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):
-                    update_experiment(
-                        state["experiment_id"],
-                        pdf_path=json.dumps(state["pdf_paths"]),
-                        status=REPORTED,
-                    )
+                    exp_id = state["experiment_id"]
+                    async with shared.db.get_session() as session:
+                        await session.execute(
+                            update(DBExperiment)
+                            .where(DBExperiment.id == uuid.UUID(exp_id))
+                            .values(
+                                s3_pdf_key=state["pdf_path"],
+                                status="reported",
+                            )
+                        )
+                        await session.commit()
             return result
 
         # --- list_experiments: shows past experiments ---
         async def list_experiments_fn(params: dict) -> str:
             limit = params.get("limit", 10)
-            exps = list_experiments(limit=limit)
-            # Strip large JSON blobs for readability
-            for exp in exps:
-                for key in ("events_json", "replay_json", "tracker_json", "analyst_json"):
-                    if exp.get(key):
-                        exp[key] = f"[{len(exp[key])} chars]"
-            return json.dumps(exps, default=str)
+            async with shared.db.get_session() as session:
+                result = await session.execute(
+                    select(DBExperiment)
+                    .order_by(DBExperiment.created_at.desc())
+                    .limit(limit)
+                )
+                experiments = result.scalars().all()
+            return json.dumps([{
+                "id": str(e.id),
+                "description": e.description,
+                "status": e.status,
+                "models_used": e.models_used,
+                "steps": e.steps,
+                "created_at": str(e.created_at),
+            } for e in experiments], default=str)
 
         registry: Registry = {
             "create_environment": create_environment,
