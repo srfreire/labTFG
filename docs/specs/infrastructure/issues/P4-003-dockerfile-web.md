@@ -1,7 +1,7 @@
 ---
 id: P4-003
 title: Create Dockerfile for Phase 2 web frontend
-status: in-progress
+status: done
 kind: strike
 phase: 4
 heat: containers
@@ -36,11 +36,11 @@ Containerize the Phase 2 React frontend with nginx serving static files and prox
 - `.dockerignore` (exclude `node_modules/`, `dist/`, `.env`)
 
 ## Acceptance Criteria
-- [ ] `docker build -t labtfg-web phase2-juan/web/` builds without errors
-- [ ] Container serves the React app on port 80
-- [ ] Nginx proxies WebSocket connections to Phase 2 server
-- [ ] SPA routing works (direct URL access to any route serves index.html)
-- [ ] Static assets (JS, CSS) served with correct content types
+- [x] `docker build -t labtfg-web phase2-juan/web/` builds without errors
+- [x] Container serves the React app on port 80
+- [x] Nginx proxies WebSocket connections to Phase 2 server
+- [x] SPA routing works (direct URL access to any route serves index.html)
+- [x] Static assets (JS, CSS) served with correct content types
 
 ## Files Likely Affected
 - `phase2-juan/web/Dockerfile` — new file

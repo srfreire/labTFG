@@ -1,7 +1,7 @@
 ---
 id: P4-001
 title: Create Dockerfile for Phase 1 server
-status: in-progress
+status: done
 kind: strike
 phase: 4
 heat: containers
@@ -35,10 +35,10 @@ Containerize the Phase 1 FastAPI/WebSocket server with all dependencies includin
 - `.dockerignore` for Phase 1 (exclude `.venv`, `__pycache__`, `examples/`, `.env`, `node_modules/`)
 
 ## Acceptance Criteria
-- [ ] `docker build -t labtfg-phase1 phase1-pablo/` builds without errors
-- [ ] Container starts and Phase 1 WebSocket server is accessible on port 8001
-- [ ] Container can connect to MinIO and Postgres (when running in docker-compose network)
-- [ ] `.dockerignore` excludes irrelevant files
+- [x] `docker build -t labtfg-phase1 phase1-pablo/` builds without errors
+- [x] Container starts and Phase 1 WebSocket server is accessible on port 8001
+- [x] Container can connect to MinIO and Postgres (when running in docker-compose network)
+- [x] `.dockerignore` excludes irrelevant files
 
 ## Files Likely Affected
 - `phase1-pablo/Dockerfile` — new file

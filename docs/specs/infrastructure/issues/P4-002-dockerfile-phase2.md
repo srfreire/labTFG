@@ -1,7 +1,7 @@
 ---
 id: P4-002
 title: Create Dockerfile for Phase 2 server
-status: in-progress
+status: done
 kind: strike
 phase: 4
 heat: containers
@@ -37,11 +37,11 @@ Containerize the Phase 2 FastAPI/WebSocket server with all dependencies includin
 - `.dockerignore` for Phase 2 (exclude `.venv`, `__pycache__`, `web/`, `output/`, `.env`, `node_modules/`)
 
 ## Acceptance Criteria
-- [ ] `docker build -t labtfg-phase2 phase2-juan/` builds without errors
-- [ ] Container starts and Phase 2 WebSocket server is accessible on port 8000
-- [ ] `tectonic` is available in the container (`tectonic --version` works)
-- [ ] Container can connect to MinIO and Postgres
-- [ ] `.dockerignore` excludes irrelevant files
+- [x] `docker build -t labtfg-phase2 phase2-juan/` builds without errors
+- [x] Container starts and Phase 2 WebSocket server is accessible on port 8000
+- [x] `tectonic` is available in the container (`tectonic --version` works)
+- [x] Container can connect to MinIO and Postgres
+- [x] `.dockerignore` excludes irrelevant files
 
 ## Files Likely Affected
 - `phase2-juan/Dockerfile` — new file
