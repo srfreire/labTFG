@@ -9,12 +9,25 @@ def test_system_prompt_exists():
     assert "paradigm" in DEEP_RESEARCHER_SYSTEM_PROMPT.lower()
 
 
+def test_system_prompt_mentions_both_tools():
+    assert "search_papers" in DEEP_RESEARCHER_SYSTEM_PROMPT
+    assert "web_search" in DEEP_RESEARCHER_SYSTEM_PROMPT
+
+
 def test_deep_researcher_has_correct_tools():
     client = AsyncMock()
     dr = DeepResearcher(client=client, search=MockWebSearch())
     tool_names = [t["name"] for t in dr.tools]
     assert "web_search" in tool_names
+    assert "search_papers" in tool_names
     assert "launch_deep_research" not in tool_names
+
+
+def test_deep_researcher_registry_has_search_papers():
+    client = AsyncMock()
+    dr = DeepResearcher(client=client, search=MockWebSearch())
+    assert "search_papers" in dr.registry
+    assert "web_search" in dr.registry
 
 
 @pytest.mark.asyncio

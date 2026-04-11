@@ -8,6 +8,7 @@ from pathlib import Path
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.reports import save_deep_report
+from decisionlab.tools.papers import SEARCH_PAPERS_SCHEMA, create_search_papers
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
 
 logger = logging.getLogger(__name__)
@@ -19,16 +20,24 @@ This report will be used by a mathematical formalization agent to generate equat
 decision rules for an autonomous agent in a simulation. Focus on quantifiable mechanisms, \
 measurable variables, and causal relationships that can be translated into mathematics.
 
+## Tools
+
+You have two search tools — use BOTH:
+- **search_papers**: Search Semantic Scholar for verified academic papers with DOI, authors, \
+citations. Use this FIRST for core references and foundational work.
+- **web_search**: Search the web for general context, recent developments, and broader information. \
+Use this to fill gaps after academic search.
+
 ## Process
 
-1. Run 2-3 targeted web searches: paradigm + key authors, paradigm + theoretical foundations, \
-paradigm + review paper.
-2. Synthesize findings into the report format below.
-3. STOP searching. Write the report.
+1. Run 1-2 search_papers queries: paradigm name, paradigm + key theoretical terms.
+2. Run 1-2 web searches to fill gaps: paradigm + key authors, paradigm + review paper.
+3. Synthesize findings into the report format below.
+4. STOP searching. Write the report.
 
 ## Constraints
 
-- Maximum 3 web searches.
+- Maximum 5 total searches (search_papers + web_search combined).
 - Only cite papers/authors found in results. Never fabricate.
 - If information is insufficient, state gaps explicitly — do not invent.
 
@@ -74,7 +83,7 @@ Summarize the above report in exactly this format (no extra text):
 **Key variables**: {comma-separated}
 """
 
-_MAX_ITERATIONS = 5
+_MAX_ITERATIONS = 7
 _MAX_TOKENS = 16384
 
 
@@ -82,9 +91,10 @@ class DeepResearcher:
     def __init__(self, *, client, search: WebSearchPort, reports_dir: Path | None = None):
         self.client = client
         self.reports_dir = reports_dir
-        self.tools = [WEB_SEARCH_SCHEMA]
+        self.tools = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
         self.registry = {
             "web_search": create_web_search(search),
+            "search_papers": create_search_papers(),
         }
 
     async def run(self, paradigm: str) -> str:
