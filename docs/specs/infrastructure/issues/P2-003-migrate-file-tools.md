@@ -1,7 +1,7 @@
 ---
 id: P2-003
 title: Migrate Phase 1 file tools and builder pytest to StorageService
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: tools
@@ -32,15 +32,15 @@ Replace the generic `write_file`/`read_file` LLM tools with S3-backed versions a
 - Formalizer, Reasoner sub-agents: update constructor to pass S3 prefix instead of local base_dir
 
 ## Acceptance Criteria
-- [ ] Formulations appear in MinIO at `research/{run_id}/formulations/{slug}.md`
-- [ ] Reasoner specs appear in MinIO at `models/{run_id}/reasoner/{fid}.json`
-- [ ] Builder models appear in MinIO at `models/{run_id}/builder/{fid}_model.py`
-- [ ] Builder tests appear in MinIO at `models/{run_id}/builder/test_{fid}.py`
-- [ ] Builder pytest runs from temp dir, passes for valid models
-- [ ] Builder retry loop (max 3 attempts) works with S3 round-trip
-- [ ] Validation JSON files appear in MinIO when model is unimplementable
-- [ ] All artifacts registered in `artifacts` table
-- [ ] No local filesystem writes except temp dirs (cleaned up after use)
+- [x] Formulations appear in MinIO at `research/{run_id}/formulations/{slug}.md`
+- [x] Reasoner specs appear in MinIO at `models/{run_id}/reasoner/{fid}.json`
+- [x] Builder models appear in MinIO at `models/{run_id}/builder/{fid}_model.py`
+- [x] Builder tests appear in MinIO at `models/{run_id}/builder/test_{fid}.py`
+- [x] Builder pytest runs from temp dir, passes for valid models
+- [x] Builder retry loop (max 3 attempts) works with S3 round-trip
+- [x] Validation JSON files appear in MinIO when model is unimplementable
+- [x] All artifacts registered in `artifacts` table
+- [x] No local filesystem writes except temp dirs (cleaned up after use)
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/tools/files.py` — `create_write_file`, `create_read_file`

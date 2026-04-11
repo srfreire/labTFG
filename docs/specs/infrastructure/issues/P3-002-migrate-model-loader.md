@@ -1,7 +1,7 @@
 ---
 id: P3-002
 title: Migrate model loader and orchestrator model calls to S3 + Postgres
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: core
@@ -37,13 +37,13 @@ Replace filesystem-based model discovery with Postgres queries and S3-based mode
   - Present available `run_id`s to user so they can pick which Phase 1 run's models to use
 
 ## Acceptance Criteria
-- [ ] `discover_models()` returns models from Postgres, not filesystem
-- [ ] `load_model()` downloads from S3, loads via importlib, model executes correctly
-- [ ] Seed-based RNG isolation still works (deterministic runs)
-- [ ] No filesystem glob or hardcoded path in model_loader.py
-- [ ] Orchestrator's `list_available_models` works with new discover_models
-- [ ] Orchestrator's `run_simulation` works with new load_model
-- [ ] Temp dirs cleaned up after experiment ends
+- [x] `discover_models()` returns models from Postgres, not filesystem
+- [x] `load_model()` downloads from S3, loads via importlib, model executes correctly
+- [x] Seed-based RNG isolation still works (deterministic runs)
+- [x] No filesystem glob or hardcoded path in model_loader.py
+- [x] Orchestrator's `list_available_models` works with new discover_models
+- [x] Orchestrator's `run_simulation` works with new load_model
+- [x] Temp dirs cleaned up after experiment ends
 
 ## Files Likely Affected
 - `phase2-juan/simlab/model_loader.py` — discover_models, load_model, ModelInfo

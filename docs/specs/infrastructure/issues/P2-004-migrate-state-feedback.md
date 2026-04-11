@@ -1,7 +1,7 @@
 ---
 id: P2-004
 title: Migrate Phase 1 pipeline state and feedback to StorageService
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: pipeline
@@ -39,13 +39,13 @@ Move pipeline state persistence, feedback formulation filtering, env_spec upload
 - Update `Run` status in Postgres as pipeline progresses
 
 ## Acceptance Criteria
-- [ ] Pipeline state saves to MinIO at `research/{run_id}/pipeline_state.json`
-- [ ] `decisionlab resume --run-id <uuid>` loads state from S3 and continues
-- [ ] Feedback formulation filtering reads from and writes to S3
-- [ ] Env spec uploaded to S3 at `research/{run_id}/env_spec.json`
-- [ ] Stale validation files deleted from S3
-- [ ] Run status updated in Postgres at each stage
-- [ ] No local filesystem writes (no temp files, no shutil.copy2)
+- [x] Pipeline state saves to MinIO at `research/{run_id}/pipeline_state.json`
+- [x] `decisionlab resume --run-id <uuid>` loads state from S3 and continues
+- [x] Feedback formulation filtering reads from and writes to S3
+- [x] Env spec uploaded to S3 at `research/{run_id}/env_spec.json`
+- [x] Stale validation files deleted from S3
+- [x] Run status updated in Postgres at each stage
+- [x] No local filesystem writes (no temp files, no shutil.copy2)
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/router.py` — PipelineState.save(), _review_build(), _get_env_spec()

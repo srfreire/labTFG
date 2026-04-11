@@ -1,7 +1,7 @@
 ---
 id: P3-004
 title: Migrate reporter and charts output to S3
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: output
@@ -47,13 +47,13 @@ Replace filesystem reads/writes in reporter and charts with S3 operations. Resea
 - No more `OUTPUT_DIR/charts/` or `OUTPUT_DIR/*.pdf` local directories
 
 ## Acceptance Criteria
-- [ ] Reporter reads research files from S3 (`report.md`, `deep/*.md`, `formulations/*.md`)
-- [ ] Reporter writes `.tex` and `.pdf` to S3 at `experiments/{exp_id}/`
-- [ ] Chart PNGs uploaded to S3 at `experiments/{exp_id}/charts/`
-- [ ] LaTeX compilation works: charts downloaded to temp dir, tectonic produces PDF
-- [ ] All output artifacts registered in `artifacts` table
-- [ ] No local `output/` directory created
-- [ ] Path traversal guard on `read_research` works against S3 prefix
+- [x] Reporter reads research files from S3 (`report.md`, `deep/*.md`, `formulations/*.md`)
+- [x] Reporter writes `.tex` and `.pdf` to S3 at `experiments/{exp_id}/`
+- [x] Chart PNGs uploaded to S3 at `experiments/{exp_id}/charts/`
+- [x] LaTeX compilation works: charts downloaded to temp dir, tectonic produces PDF
+- [x] All output artifacts registered in `artifacts` table
+- [x] No local `output/` directory created
+- [x] Path traversal guard on `read_research` works against S3 prefix
 
 ## Files Likely Affected
 - `phase2-juan/simlab/reporter.py` — read_research, compile_report

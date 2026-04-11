@@ -1,7 +1,7 @@
 ---
 id: P2-002
 title: Migrate Phase 1 report tools to StorageService
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: tools
@@ -33,12 +33,12 @@ Replace all filesystem writes/reads in `tools/reports.py` with StorageService ca
 - Update callers in `researcher.py` and `deep_researcher.py` to await
 
 ## Acceptance Criteria
-- [ ] Deep reports appear in MinIO at `research/{run_id}/deep/{slug}.md`
-- [ ] Summary report appears in MinIO at `research/{run_id}/report.md`
-- [ ] Tree map generation reads from and writes to S3
-- [ ] Read report tool reads from S3
-- [ ] Each report is registered in `artifacts` table with correct type
-- [ ] No local filesystem writes in `tools/reports.py`
+- [x] Deep reports appear in MinIO at `research/{run_id}/deep/{slug}.md`
+- [x] Summary report appears in MinIO at `research/{run_id}/report.md`
+- [x] Tree map generation reads from and writes to S3
+- [x] Read report tool reads from S3
+- [x] Each report is registered in `artifacts` table with correct type
+- [x] No local filesystem writes in `tools/reports.py`
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/tools/reports.py` — all 4 functions
