@@ -1,7 +1,7 @@
 ---
 id: P1-006
 title: Implement shared.init() and shutdown() lifecycle
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: lifecycle
