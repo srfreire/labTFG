@@ -121,7 +121,7 @@ Keep `shared/shared/store.py` working during transition:
 - [x] AC4: `StorageService.list(prefix)` returns correct keys after uploads
 - [x] AC5: `StorageService.delete()` removes objects, `exists()` returns False after
 - [x] AC6: SQLAlchemy models create all 4 tables with correct columns, types, FKs
-- [ ] AC7: Alembic `upgrade head` applies initial migration cleanly on empty Postgres
+- [x] AC7: Alembic `upgrade head` applies initial migration cleanly on empty Postgres
 - [x] AC8: `get_session()` yields working async sessions that can CRUD all tables
 - [ ] AC9: `shared.init()` boots both services, `shared.shutdown()` tears down cleanly
 - [ ] AC10: Existing `store.py` functions still work (backward compat)

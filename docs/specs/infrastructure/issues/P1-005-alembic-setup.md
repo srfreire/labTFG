@@ -1,7 +1,7 @@
 ---
 id: P1-005
 title: Set up Alembic with initial migration
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: database
@@ -27,10 +27,10 @@ Configure Alembic for async Postgres migrations and generate the initial schema 
 - Add `alembic` to `shared/pyproject.toml` dependencies
 
 ## Acceptance Criteria
-- [ ] `cd shared && alembic upgrade head` creates all 4 tables on empty Postgres
-- [ ] `alembic downgrade base` drops all tables cleanly
-- [ ] `alembic revision --autogenerate -m "test"` detects no diff after upgrade (schema matches models)
-- [ ] Migration works against docker-compose Postgres
+- [x] `cd shared && alembic upgrade head` creates all 4 tables on empty Postgres
+- [x] `alembic downgrade base` drops all tables cleanly
+- [x] `alembic revision --autogenerate -m "test"` detects no diff after upgrade (schema matches models)
+- [x] Migration works against docker-compose Postgres
 
 ## Files Likely Affected
 - `shared/alembic.ini` — new file
@@ -41,3 +41,20 @@ Configure Alembic for async Postgres migrations and generate the initial schema 
 Phase spec: `docs/specs/infrastructure/phase-1-shared-infrastructure.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `database`
+
+## Completion Summary
+
+**Commit:** `7323606` — `feat[shared]: set up Alembic with initial migration (P1-005)`
+
+### What was built
+- Alembic config with async migrations (asyncpg)
+- env.py reads POSTGRES_DSN from env, imports Base.metadata
+- Initial migration creates all 4 tables (runs, models, experiments, artifacts)
+- Upgrade/downgrade verified, autogenerate detects no diff after upgrade
+
+### Files created/modified
+- `shared/alembic.ini` — Alembic config
+- `shared/migrations/env.py` — async migration runner
+- `shared/migrations/script.py.mako` — migration template
+- `shared/migrations/versions/e8157a385508_initial_schema.py` — initial migration
+- `shared/pyproject.toml` — added alembic dependency
