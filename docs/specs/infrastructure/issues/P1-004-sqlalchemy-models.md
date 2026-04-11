@@ -1,7 +1,7 @@
 ---
 id: P1-004
 title: Define SQLAlchemy async models for all tables
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: database
@@ -36,12 +36,12 @@ Define the 4 Postgres tables as SQLAlchemy 2.0 declarative models with async eng
 - Add `sqlalchemy[asyncio]`, `asyncpg` to `shared/pyproject.toml`
 
 ## Acceptance Criteria
-- [ ] All 4 models importable from `shared.models`
-- [ ] FKs correctly defined (Model.run_id → Run.id, Artifact.run_id → Run.id, Artifact.experiment_id → Experiment.id)
-- [ ] `DatabaseService.connect()` creates engine and verifies connectivity
-- [ ] `get_session()` yields async sessions that can insert/query all 4 tables
-- [ ] JSONB columns accept and return Python dicts
-- [ ] UUID PKs auto-generate when not provided
+- [x] All 4 models importable from `shared.models`
+- [x] FKs correctly defined (Model.run_id → Run.id, Artifact.run_id → Run.id, Artifact.experiment_id → Experiment.id)
+- [x] `DatabaseService.connect()` creates engine and verifies connectivity
+- [x] `get_session()` yields async sessions that can insert/query all 4 tables
+- [x] JSONB columns accept and return Python dicts
+- [x] UUID PKs auto-generate when not provided
 
 ## Files Likely Affected
 - `shared/shared/models.py` — new file
@@ -52,3 +52,18 @@ Define the 4 Postgres tables as SQLAlchemy 2.0 declarative models with async eng
 Phase spec: `docs/specs/infrastructure/phase-1-shared-infrastructure.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `database`
+
+## Completion Summary
+
+**Commit:** `ec81e42` — `feat[shared]: define SQLAlchemy models and DatabaseService (P1-004)`
+
+### What was built
+- SQLAlchemy 2.0 declarative models: Run, Model, Experiment, Artifact with FKs and relationships
+- DatabaseService with async engine, session factory, get_session() context manager
+- 6 integration tests against Postgres
+
+### Files created/modified
+- `shared/shared/models.py` — 4 SQLAlchemy models with JSONB, UUID PKs, FKs
+- `shared/shared/database.py` — DatabaseService class
+- `shared/pyproject.toml` — added sqlalchemy[asyncio], asyncpg
+- `shared/tests/test_database.py` — 6 integration tests
