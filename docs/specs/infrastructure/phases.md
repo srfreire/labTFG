@@ -20,6 +20,7 @@
   - Issues: P3-001, P3-002, P3-003, P3-004
   - Heats: bootstrap (P3-001), core (P3-002→P3-003), output (P3-004 parallel)
 
-- [ ] **Phase 4: Containerization** — Dockerfiles for all services, complete docker-compose stack, data migration script
+- [x] **Phase 4: Containerization** — Dockerfiles for all services, complete docker-compose stack, data migration script
   - Dependencies: Phase 2, Phase 3
-  - Estimated issues: ~4
+  - Issues: P4-001, P4-002, P4-003, P4-004
+  - Heats: containers (P4-001, P4-002, P4-003 parallel), compose (P4-004)
