@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Implement StorageService with aioboto3
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: storage

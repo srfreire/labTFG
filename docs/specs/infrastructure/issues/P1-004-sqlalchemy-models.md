@@ -1,7 +1,7 @@
 ---
 id: P1-004
 title: Define SQLAlchemy async models for all tables
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: database
