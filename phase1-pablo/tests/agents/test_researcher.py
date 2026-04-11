@@ -100,6 +100,36 @@ async def test_researcher_accumulates_deep_reports():
 
 
 @pytest.mark.asyncio
+async def test_researcher_populates_paradigms_from_deep_reports(tmp_path):
+    """Paradigms should be populated with slugs consistent with deep report filenames."""
+    tool_block = _make_tool_use_block(
+        "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
+    )
+    tool_response = _make_response("tool_use", [tool_block])
+
+    summary_block = _make_text_block("# Paradigms\n\n## 1. Homeostatic\nDesc")
+    final_response = _make_response("end_turn", [summary_block])
+
+    client = AsyncMock()
+    deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
+    deep_loop_response = _make_response("end_turn", [deep_text])
+    deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
+    deep_summary_response = MagicMock()
+    deep_summary_response.content = [deep_summary_text]
+    client.messages.create.side_effect = [
+        tool_response, deep_loop_response, deep_summary_response, final_response,
+    ]
+
+    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    report = await r.run("food intake")
+
+    assert len(report.paradigms) == 1
+    p = report.paradigms[0]
+    assert p.name == "Homeostatic regulation"
+    assert p.id == "homeostatic-regulation"  # slug must match deep/*.md filename
+
+
+@pytest.mark.asyncio
 async def test_researcher_clears_deep_reports_between_runs():
     """Verify that deep_reports from a previous run don't leak into a new run."""
     text_block = _make_text_block("# Summary")

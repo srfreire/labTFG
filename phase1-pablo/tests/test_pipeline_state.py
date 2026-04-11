@@ -77,7 +77,7 @@ class TestSaveLoad:
             problem="full pipeline test",
             reports_dir=tmp_path,
             approved_paradigms=["homeostatic", "hedonic", "integrated"],
-            selected_formulations={"homeostatic": [1, 3], "hedonic": [2]},
+            selected_formulations={"homeostatic": ["T01-P01-F01", "T01-P01-F03"], "hedonic": ["T01-P02-F02"]},
             env_spec_path=env_path,
             approved_specs=["spec_a", "spec_b"],
             build_results={"homeostatic": "ok", "hedonic": "fail"},
@@ -91,7 +91,7 @@ class TestSaveLoad:
         assert loaded.stage == Stage.REVIEW_BUILD
         assert loaded.problem == "full pipeline test"
         assert loaded.approved_paradigms == ["homeostatic", "hedonic", "integrated"]
-        assert loaded.selected_formulations == {"homeostatic": [1, 3], "hedonic": [2]}
+        assert loaded.selected_formulations == {"homeostatic": ["T01-P01-F01", "T01-P01-F03"], "hedonic": ["T01-P02-F02"]}
         assert loaded.env_spec_path == env_path
         assert loaded.approved_specs == ["spec_a", "spec_b"]
         assert loaded.build_results == {"homeostatic": "ok", "hedonic": "fail"}
@@ -360,3 +360,165 @@ class TestIdRegistryPersistence:
         assert loaded.id_registry == {}
         assert loaded._paradigm_counter == 0
         assert loaded._formulation_counters == {}
+
+
+class TestSelectedFormulationsUsesStringIds:
+    """selected_formulations must use registry IDs (str), not raw ints."""
+
+    def test_selected_formulations_accepts_string_ids(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.REVIEW_FORMALIZE,
+            problem="test",
+            reports_dir=tmp_path,
+            selected_formulations={"homeostatic": ["T01-P01-F01", "T01-P01-F03"]},
+        )
+        assert state.selected_formulations == {"homeostatic": ["T01-P01-F01", "T01-P01-F03"]}
+
+    def test_save_load_roundtrip_string_ids(self, tmp_path):
+        state = PipelineState(
+            stage=Stage.REVIEW_FORMALIZE,
+            problem="test",
+            reports_dir=tmp_path,
+            approved_paradigms=["homeostatic", "hedonic"],
+            selected_formulations={
+                "homeostatic": ["T01-P01-F01", "T01-P01-F02"],
+                "hedonic": ["T01-P02-F01"],
+            },
+        )
+        state.assign_paradigm_id("homeostatic")
+        state.assign_paradigm_id("hedonic")
+        state.assign_formulation_id("homeostatic", "PI Controller")
+        state.assign_formulation_id("homeostatic", "Dual-Process Model")
+        state.assign_formulation_id("hedonic", "Temporal Difference")
+        state.save()
+
+        loaded = PipelineState.load(tmp_path)
+        assert loaded.selected_formulations == {
+            "homeostatic": ["T01-P01-F01", "T01-P01-F02"],
+            "hedonic": ["T01-P02-F01"],
+        }
+        # Values must be strings, not ints
+        for ids in loaded.selected_formulations.values():
+            for fid in ids:
+                assert isinstance(fid, str), f"Expected str, got {type(fid)}: {fid}"
+
+
+class TestReviewResearchAssignsIds:
+    """_review_research must assign paradigm IDs after approval."""
+
+    def test_assign_ids_for_approved_paradigms(self, tmp_path):
+        """Simulates what _review_research should do after approval."""
+        state = PipelineState(
+            stage=Stage.REVIEW_RESEARCH, problem="test", reports_dir=tmp_path,
+        )
+        approved = ["homeostatic-regulation", "hedonic-reward", "prospect-theory"]
+        state.approved_paradigms = approved
+        for slug in approved:
+            state.assign_paradigm_id(slug)
+        state.save()
+
+        assert state.get_id("homeostatic-regulation") == "T01-P01"
+        assert state.get_id("hedonic-reward") == "T01-P02"
+        assert state.get_id("prospect-theory") == "T01-P03"
+
+        loaded = PipelineState.load(tmp_path)
+        assert loaded.get_id("homeostatic-regulation") == "T01-P01"
+        assert loaded._paradigm_counter == 3
+
+
+class TestReviewFormalizeConvertsToIds:
+    """_review_formalize must convert int formulation numbers to registry IDs."""
+
+    def _setup_state_with_formulations(self, tmp_path):
+        """Create state with paradigm IDs and formulation .md files."""
+        state = PipelineState(
+            stage=Stage.REVIEW_FORMALIZE, problem="test", reports_dir=tmp_path,
+        )
+        # Assign paradigm IDs (done during _review_research)
+        state.assign_paradigm_id("homeostatic-regulation")
+        state.assign_paradigm_id("hedonic-reward")
+
+        # Create formulation .md files with headers
+        formulations_dir = tmp_path / "formulations"
+        formulations_dir.mkdir()
+
+        (formulations_dir / "homeostatic-regulation.md").write_text(
+            "# Homeostatic Regulation\n\n"
+            "## Formulation 1: PI Controller\nContent for PI...\n\n"
+            "## Formulation 3: Dual-Process Model\nContent for dual...\n"
+        )
+        (formulations_dir / "hedonic-reward.md").write_text(
+            "# Hedonic Reward\n\n"
+            "## Formulation 2: Temporal Difference\nContent for TD...\n"
+        )
+        return state
+
+    def test_convert_int_selections_to_ids(self, tmp_path):
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        raw_selected = {"homeostatic-regulation": [1, 3], "hedonic-reward": [2]}
+
+        converted = _convert_formulations_to_ids(state, raw_selected)
+
+        assert converted == {
+            "homeostatic-regulation": ["T01-P01-F01", "T01-P01-F02"],
+            "hedonic-reward": ["T01-P02-F01"],
+        }
+
+    def test_ids_are_in_registry_after_conversion(self, tmp_path):
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        raw_selected = {"homeostatic-regulation": [1, 3], "hedonic-reward": [2]}
+
+        _convert_formulations_to_ids(state, raw_selected)
+
+        assert state.get_id("homeostatic-regulation::PI Controller") == "T01-P01-F01"
+        assert state.get_id("homeostatic-regulation::Dual-Process Model") == "T01-P01-F02"
+        assert state.get_id("hedonic-reward::Temporal Difference") == "T01-P02-F01"
+
+    def test_persist_after_conversion(self, tmp_path):
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        raw_selected = {"homeostatic-regulation": [1], "hedonic-reward": [2]}
+
+        converted = _convert_formulations_to_ids(state, raw_selected)
+        state.selected_formulations = converted
+        state.save()
+
+        loaded = PipelineState.load(tmp_path)
+        assert loaded.selected_formulations == {
+            "homeostatic-regulation": ["T01-P01-F01"],
+            "hedonic-reward": ["T01-P02-F01"],
+        }
+
+    def test_empty_selection(self, tmp_path):
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        converted = _convert_formulations_to_ids(state, {})
+        assert converted == {}
+
+    def test_paradigm_with_no_kept_formulations(self, tmp_path):
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        converted = _convert_formulations_to_ids(state, {"homeostatic-regulation": []})
+        assert converted == {"homeostatic-regulation": []}
+
+    def test_missing_formulation_file_returns_empty_and_warns(self, tmp_path, caplog):
+        import logging
+        from decisionlab.router import _convert_formulations_to_ids
+
+        state = self._setup_state_with_formulations(tmp_path)
+        # Remove the file to simulate missing formulation
+        (tmp_path / "formulations" / "homeostatic-regulation.md").unlink()
+
+        with caplog.at_level(logging.WARNING):
+            converted = _convert_formulations_to_ids(
+                state, {"homeostatic-regulation": [1, 3]},
+            )
+        assert converted == {"homeostatic-regulation": []}
+        assert "not found" in caplog.text

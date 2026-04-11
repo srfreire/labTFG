@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from decisionlab.agents.deep_researcher import DeepResearcher
-from decisionlab.domain.models import ResearchReport
+from decisionlab.domain.models import Paradigm, ResearchReport
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.agents import LAUNCH_DEEP_RESEARCH_SCHEMA, create_launch_deep_research
@@ -14,6 +14,7 @@ from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
     create_read_report,
     save_summary_report,
+    slugify,
 )
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
 
@@ -109,9 +110,13 @@ class Researcher:
         if self.reports_dir:
             save_summary_report(self.reports_dir, summary)
 
-        # TODO: parse paradigms from LLM summary text into structured Paradigm objects
+        # TODO: extract one-line description from deep report or summary text
+        paradigms = [
+            Paradigm(id=slugify(name), name=name, description="")
+            for name in self._deep_reports
+        ]
         return ResearchReport(
-            paradigms=[],
+            paradigms=paradigms,
             summary=summary,
             deep_reports=dict(self._deep_reports),
         )

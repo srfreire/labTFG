@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass, field
@@ -46,6 +47,9 @@ class Stage(str, Enum):
 # ---------------------------------------------------------------------------
 
 _STATE_FILENAME = "pipeline_state.json"
+_FORMULATION_HEADER_RE = re.compile(
+    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE,
+)
 
 
 @dataclass
@@ -56,7 +60,7 @@ class PipelineState:
 
     # Filled progressively
     approved_paradigms: list[str] = field(default_factory=list)
-    selected_formulations: dict[str, list[int]] = field(default_factory=dict)
+    selected_formulations: dict[str, list[str]] = field(default_factory=dict)
     env_spec_path: Path | None = None
     approved_specs: list[str] = field(default_factory=list)
     build_results: dict[str, str] = field(default_factory=dict)
@@ -183,6 +187,38 @@ class PipelineState:
         )
 
 
+def _convert_formulations_to_ids(
+    state: PipelineState,
+    raw_selected: dict[str, list[int]],
+) -> dict[str, list[str]]:
+    """Convert ``{slug: [int]}`` from feedback to ``{slug: [registry_id]}``."""
+    converted: dict[str, list[str]] = {}
+    for slug, kept_numbers in raw_selected.items():
+        if not kept_numbers:
+            converted[slug] = []
+            continue
+        md_path = state.reports_dir / "formulations" / f"{slug}.md"
+        if not md_path.exists():
+            logger.warning("Formulation file not found for '%s'; skipping", slug)
+            converted[slug] = []
+            continue
+        text = md_path.read_text()
+        num_to_name = {
+            int(m.group(1)): m.group(2).strip()
+            for m in _FORMULATION_HEADER_RE.finditer(text)
+        }
+        ids: list[str] = []
+        for num in kept_numbers:
+            name = num_to_name.get(num)
+            if name is None:
+                logger.warning("Formulation %d not found in %s.md", num, slug)
+                continue
+            fid = state.assign_formulation_id(slug, name)
+            ids.append(fid)
+        converted[slug] = ids
+    return converted
+
+
 # ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
@@ -295,8 +331,11 @@ class Router:
                     logger.exception("DeepResearcher failed for %s", additional)
                 # Loop back to let user review again
                 continue
-            # No more additions — store approved and advance
+            # No more additions — store approved and assign IDs
             self.state.approved_paradigms = approved
+            for slug in approved:
+                self.state.assign_paradigm_id(slug)
+            self.state.save()
             break
         self.state.stage = Stage.FORMALIZE
 
@@ -335,7 +374,10 @@ class Router:
                 self.state.reports_dir,
                 self.state.approved_paradigms,
             )
-        self.state.selected_formulations = selected
+        self.state.selected_formulations = _convert_formulations_to_ids(
+            self.state, selected,
+        )
+        self.state.save()
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
