@@ -30,6 +30,7 @@ class ModelInfo:
     class_name: str         # e.g. "DriveReductionRLModel"
     description: str        # from the module docstring
     s3_model_key: str       # S3 key for the model source file
+    run_id: str | None = None  # UUID of the Phase 1 run that produced this model
 
 
 def _has_decision_model_interface(cls: type) -> bool:
@@ -61,6 +62,7 @@ async def discover_models() -> dict[str, ModelInfo]:
                 class_name=row.class_name,
                 description=row.description or "",
                 s3_model_key=row.s3_model_key,
+                run_id=str(row.run_id) if row.run_id else None,
             )
     return models
 

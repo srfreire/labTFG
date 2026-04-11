@@ -446,6 +446,11 @@ class Orchestrator:
                 self._discovered_models = await discover_models()
             if not self._discovered_models:
                 return json.dumps({"models": [], "note": "No models registered in database"})
+            # Store run_id from first model for read_predictions / generate_report
+            for m in self._discovered_models.values():
+                if m.run_id and not state.get("run_id"):
+                    state["run_id"] = m.run_id
+                    break
             return json.dumps({
                 "models": [
                     {"formulation_id": m.formulation_id, "class_name": m.class_name, "description": m.description}
@@ -455,24 +460,39 @@ class Orchestrator:
 
         # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
-            import shared
+            import re as _re
+            from shared.models import Model as DBModel
 
             slug = params["paradigm_slug"]
-            # Look for the deep research file under any run's research prefix
-            key = f"research/deep/{slug}.md"
-            if not await shared.storage.exists(key):
-                # Try listing available deep research files
-                available_keys = await shared.storage.list("research/deep/")
+
+            # Find the run_id from models that match this paradigm
+            run_id = state.get("run_id")
+            if not run_id:
+                async with shared.db.get_session() as session:
+                    result = await session.execute(
+                        select(DBModel).where(DBModel.paradigm.ilike(f"%{slug}%")).limit(1)
+                    )
+                    model = result.scalar_one_or_none()
+                    if model and model.run_id:
+                        run_id = str(model.run_id)
+                        state["run_id"] = run_id
+
+            if not run_id:
+                return json.dumps({"error": f"No run_id found for paradigm '{slug}'. Models may not be registered yet."})
+
+            key = f"research/{run_id}/deep/{slug}.md"
+            try:
+                content = await shared.storage.get_text(key)
+            except Exception:
+                # Try listing available deep research files for this run
+                available_keys = await shared.storage.list(f"research/{run_id}/deep/")
                 available = [k.split("/")[-1].removesuffix(".md") for k in available_keys]
                 return json.dumps({"error": f"No deep research file for '{slug}'. Available: {available}"})
-            content = await shared.storage.get_text(key)
-            # Extract the Predictions section
-            import re
-            match = re.search(r'## Predictions\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+
+            match = _re.search(r'## Predictions\s*\n(.*?)(?=\n## |\Z)', content, _re.DOTALL)
             if not match:
                 return json.dumps({"error": f"No '## Predictions' section found in {slug}.md"})
             predictions = match.group(1).strip()
-            # Accumulate predictions per paradigm; reset downstream state
             if not state.get("predictions"):
                 state["predictions"] = {}
             state["predictions"][slug] = predictions
@@ -670,7 +690,7 @@ class Orchestrator:
                 focus,
                 state["tracker_output"],
                 state["analyst_output"],
-                run_id=state.get("run_id", "default"),
+                run_id=state.get("run_id", ""),
                 experiment_id=exp_id,
                 on_tool_call=self._make_tool_callback("Reporter"),
                 interaction_summary=self._build_interaction_summary(),
