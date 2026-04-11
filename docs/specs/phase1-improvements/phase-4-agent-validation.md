@@ -1,6 +1,6 @@
 # Phase 4: Validación entre agentes
 
-> Status: current | Created: 2026-04-10 | Last updated: 2026-04-11
+> Status: done | Created: 2026-04-10 | Last updated: 2026-04-11
 
 > References: [general.md](general.md) | [phases.md](phases.md)
 
@@ -32,7 +32,7 @@ Tests automatizados que mandan input absurdo/sin sentido a cada agente y verific
 ## Acceptance Criteria
 - [x] AC1: Reasoner detecta formulaciones con ecuaciones incoherentes y reporta en vez de generar spec
 - [x] AC2: Builder detecta specs con lógica no implementable y reporta en vez de generar código
-- [ ] AC3: Tests de robustez pasan para cada agente con input absurdo
+- [x] AC3: Tests de robustez pasan para cada agente con input absurdo
 - [x] AC4: El pipeline maneja gracefully los status "invalid" (no crashea, informa al usuario)
 
 ## Technical Notes
