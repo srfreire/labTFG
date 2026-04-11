@@ -16,6 +16,7 @@ from typing import Awaitable, Callable
 from anthropic import AsyncAnthropic
 from rich.console import Console
 
+import shared
 from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
 
@@ -200,7 +201,7 @@ class PipelineState:
         )
 
 
-def _convert_formulations_to_ids(
+async def _convert_formulations_to_ids(
     state: PipelineState,
     raw_selected: dict[str, list[int]],
 ) -> dict[str, list[str]]:
@@ -210,12 +211,12 @@ def _convert_formulations_to_ids(
         if not kept_numbers:
             converted[slug] = []
             continue
-        md_path = state.reports_dir / "formulations" / f"{slug}.md"
-        if not md_path.exists():
+        key = f"{state.research_prefix}/formulations/{slug}.md"
+        if not await shared.storage.exists(key):
             logger.warning("Formulation file not found for '%s'; skipping", slug)
             converted[slug] = []
             continue
-        text = md_path.read_text()
+        text = await shared.storage.get_text(key)
         num_to_name = {
             int(m.group(1)): m.group(2).strip()
             for m in _FORMULATION_HEADER_RE.finditer(text)
@@ -300,7 +301,7 @@ class Router:
             r = Researcher(
                 client=self.client,
                 search=self.search,
-                reports_dir=self.state.reports_dir,
+                run_id=self.state.run_id,
             )
             await r.run(self.state.problem)
         except Exception as exc:
@@ -334,7 +335,7 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
-                        reports_dir=self.state.reports_dir,
+                        run_id=self.state.run_id,
                     )
                     await dr.run(additional)
                 except Exception as exc:
@@ -361,7 +362,8 @@ class Router:
         try:
             f = Formalizer(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                research_prefix=self.state.research_prefix,
+                run_id=self.state.run_id,
             )
             await f.run(self.state.approved_paradigms)
         except Exception as exc:
@@ -387,12 +389,12 @@ class Router:
                 self.state.reports_dir,
                 self.state.approved_paradigms,
             )
-        self.state.selected_formulations = _convert_formulations_to_ids(
+        self.state.selected_formulations = await _convert_formulations_to_ids(
             self.state, selected,
         )
         self.state.save()
         from decisionlab.tools.reports import generate_tree_map
-        generate_tree_map(self.state)
+        await generate_tree_map(self.state)
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
@@ -404,9 +406,16 @@ class Router:
             else:
                 from decisionlab.feedback import get_env_spec
                 src_path = await get_env_spec()
+            # Copy env_spec locally and also upload to S3
             dest = self.state.reports_dir / "env_spec.json"
             shutil.copy2(src_path, dest)
             self.state.env_spec_path = dest
+            # Also upload to research prefix so agents can read it
+            env_content = dest.read_text()
+            await shared.storage.put_text(
+                f"{self.state.research_prefix}/env_spec.json",
+                env_content,
+            )
         except Exception as exc:
             self.console.print(f"[bold red]env_spec setup failed: {exc}[/bold red]")
             logger.exception("env_spec setup failed")
@@ -427,7 +436,9 @@ class Router:
         try:
             r = Reasoner(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                research_prefix=self.state.research_prefix,
+                models_prefix=self.state.models_prefix,
+                run_id=self.state.run_id,
             )
             await r.run(selected)
         except Exception as exc:
@@ -467,7 +478,8 @@ class Router:
 
                     f = Formalizer(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        run_id=self.state.run_id,
                     )
                     await f.run([paradigm_slug])
                 except Exception as exc:
@@ -483,7 +495,9 @@ class Router:
                 try:
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -501,7 +515,9 @@ class Router:
                 try:
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -526,7 +542,8 @@ class Router:
         try:
             b = Builder(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                models_prefix=self.state.models_prefix,
+                run_id=self.state.run_id,
                 project_root=self.project_root,
             )
             report = await b.run(spec_ids)
@@ -568,7 +585,9 @@ class Router:
 
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -585,7 +604,8 @@ class Router:
                 try:
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
                     paradigm_id = self.state.get_id(paradigm_slug)
@@ -598,16 +618,6 @@ class Router:
                         paradigm_specs = None
                     report = await b.run(paradigm_specs)
                     self.state.build_results.update(report.results)
-                    # Clean up stale validation reports for this paradigm
-                    builder_dir = self.state.reports_dir / "builder"
-                    if builder_dir.is_dir():
-                        for vfile in builder_dir.glob("*_validation.json"):
-                            try:
-                                vdata = json.loads(vfile.read_text())
-                                if vdata.get("paradigm") == paradigm_slug:
-                                    vfile.unlink(missing_ok=True)
-                            except (json.JSONDecodeError, OSError):
-                                pass
                 except Exception as exc:
                     self.console.print(
                         f"[bold red]Builder re-run failed for '{paradigm_slug}': {exc}[/bold red]"
@@ -622,7 +632,8 @@ class Router:
                 try:
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
                     report = await b.run([slug])
@@ -653,7 +664,7 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
-                        reports_dir=self.state.reports_dir,
+                        run_id=self.state.run_id,
                     )
                     await dr.run(paradigm)
 
@@ -665,7 +676,8 @@ class Router:
                     )
                     f = Formalizer(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        run_id=self.state.run_id,
                     )
                     await f.run([paradigm])
 
@@ -677,7 +689,9 @@ class Router:
                     )
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm, [])
                     await r.run({paradigm: fids})
@@ -690,7 +704,8 @@ class Router:
                     )
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
                     # Build only specs belonging to this paradigm
@@ -701,7 +716,7 @@ class Router:
                             if sid.startswith(paradigm_id + "-")
                         ]
                     else:
-                        paradigm_specs = None  # discover from disk
+                        paradigm_specs = None  # discover from S3
                     report = await b.run(paradigm_specs)
                     self.state.build_results.update(report.results)
 

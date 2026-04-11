@@ -1,7 +1,15 @@
+"""Tools for reading and writing files via StorageService."""
+
 from __future__ import annotations
 
-from pathlib import Path
+import logging
+import uuid
 from typing import Any, Awaitable, Callable
+
+import shared
+from shared.models import Artifact
+
+logger = logging.getLogger(__name__)
 
 READ_FILE_SCHEMA: dict[str, Any] = {
     "name": "read_file",
@@ -17,7 +25,7 @@ READ_FILE_SCHEMA: dict[str, Any] = {
 
 WRITE_FILE_SCHEMA: dict[str, Any] = {
     "name": "write_file",
-    "description": "Write content to a file at the given relative path, creating parent directories as needed.",
+    "description": "Write content to a file at the given relative path.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -29,34 +37,63 @@ WRITE_FILE_SCHEMA: dict[str, Any] = {
 }
 
 
-def validate_path(base_dir: Path, path: str) -> Path:
-    resolved = (base_dir / path).resolve()
-    if not resolved.is_relative_to(base_dir.resolve()):
-        raise ValueError(f"Path escapes base directory: {path}")
-    return resolved
+def _infer_artifact_type(path: str) -> str:
+    if path.startswith("formulations/") and path.endswith(".md"):
+        return "formulation"
+    if path.startswith("reasoner/") and path.endswith(".json"):
+        return "reasoner_spec"
+    if path.startswith("builder/") and path.endswith("_model.py"):
+        return "model"
+    if path.startswith("builder/test_"):
+        return "test"
+    if path.endswith("_validation.json"):
+        return "reasoner_spec"
+    return "unknown"
 
 
-def create_read_file(base_dir: Path) -> Callable[[dict], Awaitable[str]]:
+def create_read_file(s3_prefix: str) -> Callable[[dict], Awaitable[str]]:
     async def read_file(params: dict) -> str:
         if "path" not in params:
             raise ValueError("read_file requires 'path' parameter")
-        resolved = validate_path(base_dir, params["path"])
-        if not resolved.exists():
-            raise ValueError(f"File not found: {params['path']}")
-        return resolved.read_text()
+        path = params["path"]
+        # Path traversal guard
+        if ".." in path or path.startswith("/"):
+            raise ValueError(f"Invalid path: {path}")
+        key = f"{s3_prefix}/{path}"
+        return await shared.storage.get_text(key)
 
     return read_file
 
 
-def create_write_file(base_dir: Path) -> Callable[[dict], Awaitable[str]]:
+def create_write_file(
+    s3_prefix: str,
+    run_id: str | None = None,
+) -> Callable[[dict], Awaitable[str]]:
     async def write_file(params: dict) -> str:
         if "path" not in params:
             raise ValueError("write_file requires 'path' parameter")
         if "content" not in params:
             raise ValueError("write_file requires 'content' parameter")
-        resolved = validate_path(base_dir, params["path"])
-        resolved.parent.mkdir(parents=True, exist_ok=True)
-        resolved.write_text(params["content"])
-        return f"Written {len(params['content'])} chars to {params['path']}"
+        path = params["path"]
+        content = params["content"]
+        if ".." in path or path.startswith("/"):
+            raise ValueError(f"Invalid path: {path}")
+        key = f"{s3_prefix}/{path}"
+        await shared.storage.put_text(key, content)
+        # Register artifact
+        if run_id:
+            artifact_type = _infer_artifact_type(path)
+            async with shared.db.get_session() as session:
+                artifact = Artifact(
+                    id=uuid.uuid4(),
+                    s3_key=key,
+                    artifact_type=artifact_type,
+                    run_id=uuid.UUID(run_id),
+                    size_bytes=len(content.encode()),
+                    content_type="text/plain",
+                )
+                session.add(artifact)
+                await session.commit()
+        return f"Written {len(content)} chars to {path}"
 
     return write_file

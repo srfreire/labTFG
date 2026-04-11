@@ -88,8 +88,17 @@ def research(
     reports_dir = _reports_dir(problem)
 
     async def _run():
-        r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
-        return await r.run(problem)
+        import uuid as _uuid
+
+        import shared
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            r = Researcher(client=_client(), search=DuckDuckGoAdapter(), run_id=run_id)
+            return await r.run(problem)
+        finally:
+            await shared.shutdown()
 
     report = _run_async(_run())
     _print_research_report("Research Report", report, reports_dir)
@@ -108,8 +117,17 @@ def deep_research(
     reports_dir = _reports_dir(paradigm)
 
     async def _run():
-        dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
-        return await dr.run(paradigm)
+        import uuid as _uuid
+
+        import shared
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter(), run_id=run_id)
+            return await dr.run(paradigm)
+        finally:
+            await shared.shutdown()
 
     result = _run_async(_run())
 
@@ -117,28 +135,33 @@ def deep_research(
     console.rule("[bold cyan]Deep Research Summary")
     console.print(Markdown(result))
     console.print()
-    console.print(f"[bold]Full report saved to: {reports_dir}/[/bold]")
+    console.print(f"[bold]Full report saved to S3[/bold]")
 
 
 @app.command()
 def formalize(
     reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to formalize (discovers from disk if empty)"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to formalize (discovers from S3 if empty)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Formalizer agent — produces formal mathematical models from deep research."""
     _setup_logging(verbose)
 
-    deep_dir = reports_dir / "deep"
-    if not deep_dir.exists():
-        console.print(f"[bold red]Error: deep/ subdirectory not found in {reports_dir}[/bold red]")
-        raise typer.Exit(code=1)
-
     from decisionlab.agents.formalizer import Formalizer
 
     async def _run():
-        f = Formalizer(client=_client(), reports_dir=reports_dir)
-        return await f.run(paradigms)
+        import uuid as _uuid
+
+        import shared
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            research_prefix = f"research/{run_id}"
+            f = Formalizer(client=_client(), research_prefix=research_prefix, run_id=run_id)
+            return await f.run(paradigms)
+        finally:
+            await shared.shutdown()
 
     report = _run_async(_run())
 
@@ -153,28 +176,41 @@ def formalize(
 def reason(
     reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
     env_spec: Path = typer.Option(..., "--env-spec", help="Path to env_spec.json (environment specification)"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to reason about (discovers from disk if empty)"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to reason about (discovers from S3 if empty)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Reasoner agent — produces agent specs from formalized models and an environment."""
     _setup_logging(verbose)
 
-    formulations_dir = reports_dir / "formulations"
-    if not formulations_dir.exists():
-        console.print(f"[bold red]Error: formulations/ subdirectory not found in {reports_dir}[/bold red]")
-        raise typer.Exit(code=1)
-
     if not env_spec.exists():
         console.print(f"[bold red]Error: env_spec file not found at {env_spec}[/bold red]")
         raise typer.Exit(code=1)
 
-    shutil.copy2(env_spec, reports_dir / "env_spec.json")
-
     from decisionlab.agents.reasoner import Reasoner
 
     async def _run():
-        r = Reasoner(client=_client(), reports_dir=reports_dir)
-        return await r.run(paradigms)
+        import uuid as _uuid
+
+        import shared
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            research_prefix = f"research/{run_id}"
+            models_prefix = f"models/{run_id}"
+            # Upload env_spec to S3 so the agent can read it
+            env_content = env_spec.read_text()
+            await shared.storage.put_text(f"{research_prefix}/env_spec.json", env_content)
+
+            r = Reasoner(
+                client=_client(),
+                research_prefix=research_prefix,
+                models_prefix=models_prefix,
+                run_id=run_id,
+            )
+            return await r.run(paradigms)
+        finally:
+            await shared.shutdown()
 
     report = _run_async(_run())
 
@@ -188,22 +224,32 @@ def reason(
 @app.command()
 def build(
     reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Spec IDs to build (discovers from disk if empty)"),
+    paradigms: list[str] = typer.Option([], "--paradigms", help="Spec IDs to build (discovers from S3 if empty)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Builder agent — generates DecisionModel implementations from JSON specs."""
     _setup_logging(verbose)
 
-    reasoner_dir = reports_dir / "reasoner"
-    if not reasoner_dir.exists():
-        console.print(f"[bold red]Error: reasoner/ subdirectory not found in {reports_dir}[/bold red]")
-        raise typer.Exit(code=1)
-
     from decisionlab.agents.builder import Builder
 
     async def _run():
-        b = Builder(client=_client(), reports_dir=reports_dir, project_root=Path.cwd())
-        return await b.run(paradigms or None)
+        import uuid as _uuid
+
+        import shared
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            models_prefix = f"models/{run_id}"
+            b = Builder(
+                client=_client(),
+                models_prefix=models_prefix,
+                run_id=run_id,
+                project_root=Path.cwd(),
+            )
+            return await b.run(paradigms or None)
+        finally:
+            await shared.shutdown()
 
     report = _run_async(_run())
 

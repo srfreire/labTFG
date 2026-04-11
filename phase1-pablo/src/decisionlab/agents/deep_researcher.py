@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
@@ -88,9 +87,9 @@ _MAX_TOKENS = 16384
 
 
 class DeepResearcher:
-    def __init__(self, *, client, search: WebSearchPort, reports_dir: Path | None = None):
+    def __init__(self, *, client, search: WebSearchPort, run_id: str | None = None):
         self.client = client
-        self.reports_dir = reports_dir
+        self.run_id = run_id
         self.tools = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
         self.registry = {
             "web_search": create_web_search(search),
@@ -118,8 +117,8 @@ class DeepResearcher:
             logger.warning("DeepResearcher produced empty output for paradigm: %s", paradigm)
             return f"No results found for paradigm: {paradigm}"
 
-        if self.reports_dir:
-            save_deep_report(self.reports_dir, paradigm, full_report)
+        if self.run_id:
+            await save_deep_report(self.run_id, paradigm, full_report)
 
         try:
             summary_response = await self.client.messages.create(
@@ -134,7 +133,7 @@ class DeepResearcher:
             summary = ""
 
         if not summary.strip():
-            summary = full_report[:500] + "\n\n[Full report saved to disk]"
+            summary = full_report[:500] + "\n\n[Full report saved to S3]"
 
         logger.info(
             "DeepResearcher finished for: %s (report: %d chars, summary: %d chars)",

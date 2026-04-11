@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from decisionlab.agents.deep_researcher import DeepResearcher
 from decisionlab.domain.models import Paradigm, ResearchReport
@@ -82,10 +81,10 @@ _MAX_ITERATIONS = 10
 
 
 class Researcher:
-    def __init__(self, *, client, search: WebSearchPort, reports_dir: Path | None = None):
+    def __init__(self, *, client, search: WebSearchPort, run_id: str | None = None):
         self.client = client
         self.search = search
-        self.reports_dir = reports_dir
+        self.run_id = run_id
 
         self._deep_reports: dict[str, str] = {}
 
@@ -95,13 +94,13 @@ class Researcher:
             "launch_deep_research": create_launch_deep_research(self._run_deep_research),
         }
 
-        if reports_dir:
+        if run_id:
             self.tools.append(READ_REPORT_SCHEMA)
-            self.registry["read_report"] = create_read_report(reports_dir)
+            self.registry["read_report"] = create_read_report(run_id)
 
     async def _run_deep_research(self, paradigm: str) -> str:
         logger.info("Launching DeepResearcher for paradigm: %s", paradigm)
-        dr = DeepResearcher(client=self.client, search=self.search, reports_dir=self.reports_dir)
+        dr = DeepResearcher(client=self.client, search=self.search, run_id=self.run_id)
         summary = await dr.run(paradigm)
         self._deep_reports[paradigm] = summary
         logger.info("DeepResearcher finished for: %s", paradigm)
@@ -127,9 +126,9 @@ class Researcher:
         if not summary.strip():
             logger.warning("Researcher produced empty summary for problem: %s", problem)
 
-        # Save final summary to disk
-        if self.reports_dir:
-            save_summary_report(self.reports_dir, summary)
+        # Save final summary to S3
+        if self.run_id:
+            await save_summary_report(self.run_id, summary)
 
         # TODO: extract one-line description from deep report or summary text
         paradigms = [

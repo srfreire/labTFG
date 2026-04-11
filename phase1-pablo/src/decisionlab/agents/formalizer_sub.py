@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
@@ -101,13 +100,12 @@ _MAX_TOKENS = 16384
 
 
 class FormalizerSubAgent:
-    def __init__(self, *, client, reports_dir: Path):
+    def __init__(self, *, client, research_prefix: str, run_id: str | None = None):
         self.client = client
-        self.reports_dir = reports_dir
         self.tools = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
         self.registry = {
-            "read_file": create_read_file(reports_dir),
-            "write_file": create_write_file(reports_dir),
+            "read_file": create_read_file(research_prefix),
+            "write_file": create_write_file(research_prefix, run_id=run_id),
         }
 
     async def run(self, paradigm_slug: str) -> str:

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
+
+import shared
 
 from decisionlab.agents.reasoner_sub import ReasonerSubAgent
 from decisionlab.domain.models import ReasonerReport
@@ -13,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class Reasoner:
-    def __init__(self, *, client, reports_dir: Path):
+    def __init__(self, *, client, research_prefix: str, models_prefix: str, run_id: str | None = None):
         self.client = client
-        self.reports_dir = reports_dir
+        self.research_prefix = research_prefix
+        self.models_prefix = models_prefix
+        self.run_id = run_id
 
     async def run(
         self,
@@ -26,15 +29,25 @@ class Reasoner:
             selected_formulations = {slug: [] for slug in selected_formulations}
 
         if not selected_formulations:
-            formulations_dir = self.reports_dir / "formulations"
-            paradigm_slugs = [p.stem for p in sorted(formulations_dir.glob("*.md"))]
-            logger.info("Discovered %d paradigms from disk: %s", len(paradigm_slugs), paradigm_slugs)
+            formulations_prefix = f"{self.research_prefix}/formulations/"
+            keys = await shared.storage.list(formulations_prefix)
+            paradigm_slugs = [
+                k[len(formulations_prefix):].removesuffix(".md")
+                for k in keys
+                if k.endswith(".md")
+            ]
+            logger.info("Discovered %d paradigms from S3: %s", len(paradigm_slugs), paradigm_slugs)
             selected_formulations = {slug: [] for slug in paradigm_slugs}
 
         paradigm_slugs = list(selected_formulations.keys())
 
         tasks = [
-            ReasonerSubAgent(client=self.client, reports_dir=self.reports_dir)
+            ReasonerSubAgent(
+                client=self.client,
+                research_prefix=self.research_prefix,
+                models_prefix=self.models_prefix,
+                run_id=self.run_id,
+            )
             .run(slug, formulation_ids=selected_formulations[slug] or None)
             for slug in paradigm_slugs
         ]

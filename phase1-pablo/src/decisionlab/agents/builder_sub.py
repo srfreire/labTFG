@@ -159,14 +159,13 @@ _MAX_TOKENS = 16384
 
 
 class BuilderSubAgent:
-    def __init__(self, *, client, reports_dir: Path, project_root: Path):
+    def __init__(self, *, client, models_prefix: str, run_id: str | None = None, project_root: Path):
         self.client = client
-        self.reports_dir = reports_dir
         self.tools = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, RUN_TESTS_SCHEMA]
         self.registry = {
-            "read_file": create_read_file(reports_dir),
-            "write_file": create_write_file(reports_dir),
-            "run_tests": create_run_tests(reports_dir, project_root),
+            "read_file": create_read_file(models_prefix),
+            "write_file": create_write_file(models_prefix, run_id=run_id),
+            "run_tests": create_run_tests(models_prefix, project_root),
         }
 
     async def run(self, spec_id: str, spec_path: str) -> str:

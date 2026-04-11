@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
+
+import shared
 
 from decisionlab.agents.formalizer_sub import FormalizerSubAgent
 from decisionlab.domain.models import FormalizationReport
@@ -13,18 +14,28 @@ logger = logging.getLogger(__name__)
 
 
 class Formalizer:
-    def __init__(self, *, client, reports_dir: Path):
+    def __init__(self, *, client, research_prefix: str, run_id: str | None = None):
         self.client = client
-        self.reports_dir = reports_dir
+        self.research_prefix = research_prefix
+        self.run_id = run_id
 
     async def run(self, paradigm_slugs: list[str]) -> FormalizationReport:
         if not paradigm_slugs:
-            deep_dir = self.reports_dir / "deep"
-            paradigm_slugs = [p.stem for p in sorted(deep_dir.glob("*.md"))]
-            logger.info("Discovered %d paradigms from disk: %s", len(paradigm_slugs), paradigm_slugs)
+            deep_prefix = f"{self.research_prefix}/deep/"
+            keys = await shared.storage.list(deep_prefix)
+            paradigm_slugs = [
+                k[len(deep_prefix):].removesuffix(".md")
+                for k in keys
+                if k.endswith(".md")
+            ]
+            logger.info("Discovered %d paradigms from S3: %s", len(paradigm_slugs), paradigm_slugs)
 
         tasks = [
-            FormalizerSubAgent(client=self.client, reports_dir=self.reports_dir).run(slug)
+            FormalizerSubAgent(
+                client=self.client,
+                research_prefix=self.research_prefix,
+                run_id=self.run_id,
+            ).run(slug)
             for slug in paradigm_slugs
         ]
 

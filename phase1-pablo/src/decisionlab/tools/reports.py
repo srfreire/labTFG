@@ -1,11 +1,14 @@
-"""Tools for persisting and reading research reports."""
+"""Tools for persisting and reading research reports via StorageService."""
 
 from __future__ import annotations
 
 import logging
 import re
-from pathlib import Path
+import uuid
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
+
+import shared
+from shared.models import Artifact
 
 if TYPE_CHECKING:
     from decisionlab.router import PipelineState
@@ -31,36 +34,57 @@ def slugify(name: str) -> str:
     return re.sub(r"-{2,}", "-", slug).strip("-")
 
 
-def create_read_report(reports_dir: Path) -> Callable[[dict], Awaitable[str]]:
+async def _register_artifact(
+    s3_key: str,
+    artifact_type: str,
+    run_id: str,
+    content_length: int,
+    content_type: str = "text/plain",
+) -> None:
+    """Register an artifact in the DB."""
+    async with shared.db.get_session() as session:
+        artifact = Artifact(
+            id=uuid.uuid4(),
+            s3_key=s3_key,
+            artifact_type=artifact_type,
+            run_id=uuid.UUID(run_id) if run_id else None,
+            created_at=None,  # server_default handles it
+            size_bytes=content_length,
+            content_type=content_type,
+        )
+        session.add(artifact)
+        await session.commit()
+
+
+def create_read_report(run_id: str) -> Callable[[dict], Awaitable[str]]:
     async def read_report(params: dict) -> str:
         if "paradigm" not in params:
             raise ValueError("read_report requires 'paradigm' parameter")
         slug = slugify(params["paradigm"])
-        path = reports_dir / "deep" / f"{slug}.md"
-        if not path.exists():
+        key = f"research/{run_id}/deep/{slug}.md"
+        if not await shared.storage.exists(key):
             return f"No report found for paradigm '{params['paradigm']}'. It may not have been researched yet."
-        return path.read_text()
+        return await shared.storage.get_text(key)
     return read_report
 
 
-def save_deep_report(reports_dir: Path, paradigm: str, content: str) -> Path:
-    """Save a deep research report to disk. Returns the file path."""
-    deep_dir = reports_dir / "deep"
-    deep_dir.mkdir(parents=True, exist_ok=True)
+async def save_deep_report(run_id: str, paradigm: str, content: str) -> str:
+    """Save a deep research report to S3. Returns the S3 key."""
     slug = slugify(paradigm)
-    path = deep_dir / f"{slug}.md"
-    path.write_text(content)
-    logger.info("Saved deep report: %s", path)
-    return path
+    key = f"research/{run_id}/deep/{slug}.md"
+    await shared.storage.put_text(key, content)
+    await _register_artifact(key, "deep_report", run_id, len(content.encode()))
+    logger.info("Saved deep report: %s", key)
+    return key
 
 
-def save_summary_report(reports_dir: Path, summary: str) -> Path:
-    """Save the final research summary to disk. Returns the file path."""
-    reports_dir.mkdir(parents=True, exist_ok=True)
-    path = reports_dir / "report.md"
-    path.write_text(summary)
-    logger.info("Saved summary report: %s", path)
-    return path
+async def save_summary_report(run_id: str, summary: str) -> str:
+    """Save the final research summary to S3. Returns the S3 key."""
+    key = f"research/{run_id}/report.md"
+    await shared.storage.put_text(key, summary)
+    await _register_artifact(key, "report", run_id, len(summary.encode()))
+    logger.info("Saved summary report: %s", key)
+    return key
 
 
 # ---------------------------------------------------------------------------
@@ -73,19 +97,20 @@ _TREE_MAP_SECTION_RE = re.compile(
 )
 
 
-def _paradigm_name_from_deep_report(reports_dir: Path, slug: str) -> str:
+async def _paradigm_name_from_deep_report(run_id: str, slug: str) -> str:
     """Extract the paradigm title from ``deep/{slug}.md``, falling back to slug."""
-    path = reports_dir / "deep" / f"{slug}.md"
-    if not path.exists():
+    key = f"research/{run_id}/deep/{slug}.md"
+    if not await shared.storage.exists(key):
         return slug
-    m = _DEEP_TITLE_RE.search(path.read_text())
+    text = await shared.storage.get_text(key)
+    m = _DEEP_TITLE_RE.search(text)
     return m.group(1) if m else slug
 
 
-def generate_tree_map(state: PipelineState) -> str:
+async def generate_tree_map(state: PipelineState) -> str:
     """Build a Markdown tree map from ``state.id_registry`` and insert it into report.md."""
-    reports_dir = state.reports_dir
-    report_path = reports_dir / "report.md"
+    run_id = state.run_id
+    report_key = f"research/{run_id}/report.md"
 
     # Separate paradigms from formulations in the registry
     paradigms: dict[str, str] = {}
@@ -103,7 +128,9 @@ def generate_tree_map(state: PipelineState) -> str:
         formulations[slug].sort(key=lambda x: x[0])
 
     # Read report.md once for both topic label extraction and later replacement
-    existing_content = report_path.read_text() if report_path.exists() else None
+    existing_content = None
+    if await shared.storage.exists(report_key):
+        existing_content = await shared.storage.get_text(report_key)
 
     topic_label = state.topic_id
     if existing_content is not None:
@@ -116,7 +143,7 @@ def generate_tree_map(state: PipelineState) -> str:
     for i, (slug, pid) in enumerate(sorted_paradigms):
         is_last_paradigm = i == len(sorted_paradigms) - 1
         p_prefix = "└──" if is_last_paradigm else "├──"
-        p_name = _paradigm_name_from_deep_report(reports_dir, slug)
+        p_name = await _paradigm_name_from_deep_report(run_id, slug)
         lines.append(f"{p_prefix} {pid}: {p_name}")
 
         for j, (fid, fname) in enumerate(formulations.get(slug, [])):
@@ -134,9 +161,9 @@ def generate_tree_map(state: PipelineState) -> str:
             content = _TREE_MAP_SECTION_RE.sub(section, existing_content)
         else:
             content = existing_content.rstrip() + "\n" + section
-        report_path.write_text(content)
+        await shared.storage.put_text(report_key, content)
     else:
-        report_path.write_text(section)
+        await shared.storage.put_text(report_key, section)
 
-    logger.info("Tree map generated in %s", report_path)
+    logger.info("Tree map generated in %s", report_key)
     return tree_text
