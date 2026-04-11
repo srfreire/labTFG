@@ -1,7 +1,7 @@
 ---
 id: P1-005
 title: Set up Alembic with initial migration
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: database
