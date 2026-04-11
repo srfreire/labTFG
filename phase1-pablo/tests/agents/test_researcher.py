@@ -10,6 +10,17 @@ def test_system_prompt_exists():
     assert "paradigm" in RESEARCHER_SYSTEM_PROMPT.lower()
 
 
+def test_system_prompt_has_cross_paradigm_matrix_instructions():
+    """P2-005: Prompt must instruct the matrix format for cross-paradigm table."""
+    prompt = RESEARCHER_SYSTEM_PROMPT.lower()
+    # Must reference cross-paradigm interaction map
+    assert "cross-paradigm interaction map" in prompt
+    # Must instruct matrix format with zones as columns
+    assert "primary locus" in prompt
+    # Must reference ✓/✗ cell markers
+    assert "✓" in RESEARCHER_SYSTEM_PROMPT and "✗" in RESEARCHER_SYSTEM_PROMPT
+
+
 def test_researcher_has_correct_tools():
     client = AsyncMock()
     r = Researcher(client=client, search=MockWebSearch())

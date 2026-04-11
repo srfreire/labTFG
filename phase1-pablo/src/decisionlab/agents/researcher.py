@@ -36,9 +36,9 @@ own assumptions, measurable variables, and decision mechanisms.
 3. Call `launch_deep_research` ONCE per paradigm. Each call returns a concise summary.
 4. After all deep research returns, STOP searching.
 5. Use `read_report` for EVERY paradigm you researched to read the full deep reports. \
-Extract the `## References` section from each one.
-6. Write your final summary including a consolidated `## References` section at the end \
-(see Output format below).
+Extract the `## References` section and the `## Primary Locus` section from each one.
+6. Write your final summary including a `## Cross-paradigm interaction map` and a \
+consolidated `## References` section at the end (see Output format below).
 
 ## Constraints
 
@@ -58,6 +58,18 @@ Extract the `## References` section from each one.
 
 ## 2. {Paradigm name}
 ...
+
+## Cross-paradigm interaction map
+
+{Build a matrix table from the `## Primary Locus` sections of all deep reports. \
+Collect every distinct brain region / neural substrate mentioned across ALL paradigms \
+and use them as columns. Each row is a paradigm. Mark ✓ if the region is relevant \
+to that paradigm (mentioned in its Primary Locus), ✗ otherwise.}
+
+| Paradigm | {Region 1} | {Region 2} | {Region 3} | ... |
+|----------|:---:|:---:|:---:|:---:|
+| {Paradigm 1} | ✓ | ✗ | ✓ | ... |
+| {Paradigm 2} | ✗ | ✓ | ✗ | ... |
 
 ## References
 {Consolidated list of ALL papers cited across ALL deep reports, deduplicated. \
