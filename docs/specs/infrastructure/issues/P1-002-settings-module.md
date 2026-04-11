@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Create settings module with env var config
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: infra
