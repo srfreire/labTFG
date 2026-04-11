@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Create docker-compose with MinIO and Postgres
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: infra
