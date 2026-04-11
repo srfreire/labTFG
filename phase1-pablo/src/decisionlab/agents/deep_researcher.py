@@ -48,6 +48,9 @@ P1. {Falsifiable statement} ({Author, Year})
 ## Predictions
 - {Observable behaviors predicted by this paradigm}
 
+## Primary Locus
+{Brain regions / neural substrates relevant to this paradigm, with citations}
+
 ## Identified variables
 | Variable | Role | Type | Range | Behavior |
 |----------|------|------|-------|----------|
