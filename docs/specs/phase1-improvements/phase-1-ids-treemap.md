@@ -1,6 +1,6 @@
 # Phase 1: Sistema de IDs y Tree Map
 
-> Status: current | Created: 2026-04-10 | Last updated: 2026-04-10
+> Status: current | Created: 2026-04-10 | Last updated: 2026-04-11
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -43,7 +43,7 @@ Generado por código (no por LLM) leyendo el registry.
 - [x] AC2: Paradigmas reciben IDs `T{NN}-P{NN}` automáticamente al ser descubiertos
 - [x] AC3: Formulaciones reciben IDs `T{NN}-P{NN}-F{NN}` automáticamente al ser generadas
 - [ ] AC4: Archivos del Reasoner y Builder usan el ID del registry como nombre
-- [ ] AC5: report.md contiene tree map generado programáticamente después del Formalizer
+- [x] AC5: report.md contiene tree map generado programáticamente después del Formalizer
 - [ ] AC6: Runs existentes sin IDs no crashean (backward compatible)
 
 ## Technical Notes

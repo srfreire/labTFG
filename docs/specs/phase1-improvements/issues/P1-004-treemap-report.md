@@ -1,7 +1,7 @@
 ---
 id: P1-004
 title: Tree map en report.md
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: treemap
@@ -26,10 +26,10 @@ Generar programáticamente un tree map Markdown con la jerarquía T→P→F y su
 - Se regenera si se añaden formulaciones nuevas (rerun)
 
 ## Acceptance Criteria
-- [ ] report.md contiene sección `## Research Tree Map` con la jerarquía completa
-- [ ] Tree map muestra IDs y nombres descriptivos para cada nivel
-- [ ] Tree map se genera por código, no por LLM
-- [ ] Tree map se actualiza si hay reruns que añaden/cambian formulaciones
+- [x] report.md contiene sección `## Research Tree Map` con la jerarquía completa
+- [x] Tree map muestra IDs y nombres descriptivos para cada nivel
+- [x] Tree map se genera por código, no por LLM
+- [x] Tree map se actualiza si hay reruns que añaden/cambian formulaciones
 
 ## Files Likely Affected
 - `src/decisionlab/tools/reports.py` — nueva función generate_tree_map()
@@ -39,3 +39,25 @@ Generar programáticamente un tree map Markdown con la jerarquía T→P→F y su
 Phase spec: `docs/specs/phase1-improvements/phase-1-ids-treemap.md`
 General spec: `docs/specs/phase1-improvements/general.md`
 Heat: `treemap`
+
+## Completion Summary
+
+**Commit:** `8e3a357` — `feat[phase1]: generate tree map in report.md after Formalizer (P1-004)`
+
+### What was built
+- `generate_tree_map(state)` in `tools/reports.py` — reads `id_registry` to build T→P→F hierarchy with tree characters
+- Paradigm names extracted from deep report titles (`# Name — Deep Research`), falls back to slug
+- Formulation names extracted from registry keys (`slug::name`)
+- Tree map inserted/replaced as `## Research Tree Map` section in `report.md` (code block)
+- Regex uses stop anchor (`(?=\n##|\Z)`) to avoid eating subsequent sections on replacement
+- Called in `_review_formalize()` after `_convert_formulations_to_ids` + `state.save()`
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/tools/reports.py` — added `generate_tree_map()`, `_paradigm_name_from_deep_report()`, `_DEEP_TITLE_RE`, `_TREE_MAP_SECTION_RE`
+- `phase1-pablo/src/decisionlab/router.py` — added `generate_tree_map()` call in `_review_formalize()`
+- `phase1-pablo/tests/tools/test_reports.py` — 10 new tests covering: single/multi paradigm, formulations, insertion, replacement on rerun, tree characters, slug fallback, empty registry, missing report.md, section preservation
+
+### Decisions
+- Simplified `generate_tree_map` signature to take only `state` (derives `reports_dir` from `state.reports_dir`) per simplifier recommendation
+- Single `report.md` read to avoid redundant I/O
+- Topic label derived from `report.md` first heading (e.g. `T01: Decision-making paradigms...`)
