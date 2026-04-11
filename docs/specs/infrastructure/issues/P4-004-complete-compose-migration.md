@@ -1,7 +1,7 @@
 ---
 id: P4-004
 title: Complete docker-compose stack and data migration script
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: compose
