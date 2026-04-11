@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Add run_id concept and shared.init to Phase 1 pipeline
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: pipeline

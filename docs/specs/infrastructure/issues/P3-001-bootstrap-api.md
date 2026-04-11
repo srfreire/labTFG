@@ -1,7 +1,7 @@
 ---
 id: P3-001
 title: Bootstrap shared infrastructure in Phase 2 API
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: bootstrap
