@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from pathlib import Path
 
 from simlab.environment import Event
 from simlab.loop import Registry
@@ -137,14 +136,16 @@ _AXIS_LABELS = {
 _MPL_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"]
 
 
-def _generate_chart_image(spec: dict, output_path: Path) -> None:
-    """Generate a clean matplotlib PNG for the PDF report."""
+def _generate_chart_image(spec: dict) -> bytes | None:
+    """Generate a matplotlib PNG and return the raw bytes (or None on failure)."""
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except ImportError:
-        return
+        return None
+
+    from io import BytesIO
 
     fig, ax = plt.subplots(figsize=(7, 4))
     chart_type = spec["type"]
@@ -161,7 +162,7 @@ def _generate_chart_image(spec: dict, output_path: Path) -> None:
     elif chart_type == "bar":
         if not series:
             plt.close(fig)
-            return
+            return None
         import numpy as np
         categories = sorted(set(d["x"] for s in series for d in s["data"]))
         x = np.arange(len(categories))
@@ -191,9 +192,11 @@ def _generate_chart_image(spec: dict, output_path: Path) -> None:
     ax.tick_params(labelsize=8)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    buf = BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
+    buf.seek(0)
+    return buf.read()
 
 
 # ---------------------------------------------------------------------------
@@ -269,20 +272,23 @@ LIST_STATE_KEYS_TOOL = {
 
 def build_chart_tools(
     events: list[Event],
-    output_dir: Path,
+    experiment_id: str,
     charts_accumulator: list[dict],
 ) -> tuple[list[dict], Registry]:
     """Build chart generation tools for the Analyst.
 
     Args:
         events: simulation events to extract data from
-        output_dir: directory to save chart PNGs (under charts/ subfolder)
+        experiment_id: experiment UUID — charts are uploaded to S3 under this prefix
         charts_accumulator: mutable list — chart specs are appended here
     """
-    chart_dir = output_dir / "charts"
     counter = [len(charts_accumulator)]  # continue numbering
 
     async def create_chart(params: dict) -> str:
+        import shared
+        from shared.models import Artifact
+        import uuid as _uuid
+
         chart_type = params["chart_type"]
         metric = params["metric"]
         title = params["title"]
@@ -334,11 +340,25 @@ def build_chart_tools(
             "series": series,
         }
 
-        # Generate matplotlib PNG for the report
-        png_path = chart_dir / f"{chart_id}.png"
-        _generate_chart_image(spec, png_path)
-        if png_path.exists():
-            spec["image_path"] = str(png_path)
+        # Generate matplotlib PNG and upload to S3
+        png_bytes = _generate_chart_image(spec)
+        if png_bytes:
+            s3_key = f"experiments/{experiment_id}/charts/{chart_id}.png"
+            await shared.storage.put(s3_key, png_bytes, "image/png")
+            spec["image_path"] = s3_key
+
+            # Register artifact
+            async with shared.db.get_session() as session:
+                artifact = Artifact(
+                    id=_uuid.uuid4(),
+                    s3_key=s3_key,
+                    artifact_type="chart",
+                    experiment_id=_uuid.UUID(experiment_id),
+                    size_bytes=len(png_bytes),
+                    content_type="image/png",
+                )
+                session.add(artifact)
+                await session.commit()
 
         charts_accumulator.append(spec)
 

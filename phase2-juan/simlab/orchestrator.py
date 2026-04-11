@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import random
-from pathlib import Path
 
 from simlab.architect import Architect
 from simlab.tracker import Tracker
@@ -27,6 +26,7 @@ from shared.store import (
     init_db, create_experiment, update_experiment, list_experiments,
     SIMULATED, TRACKED, ANALYZED, REPORTED,
 )
+from simlab.model_loader import discover_models, load_model as _load_model
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
@@ -349,21 +349,6 @@ class Orchestrator:
         # Initialize experiment store (backward compat — will be removed in P3-003)
         init_db()
 
-    @property
-    def research_dir(self) -> Path:
-        """Transitional — will be removed when P3-002 migrates to S3."""
-        return Path(__file__).resolve().parent.parent.parent / "phase1-pablo" / "examples" / "sample-run"
-
-    @property
-    def output_dir(self) -> Path:
-        """Transitional — will be removed when P3-004 migrates to S3."""
-        return Path(__file__).resolve().parent.parent / "output"
-
-    @property
-    def builder_dir(self) -> Path:
-        """Transitional — will be removed when P3-002 migrates to S3."""
-        return self.research_dir / "builder"
-
     def _build_interaction_summary(self) -> str:
         """Build a structured summary of the user–orchestrator interaction.
 
@@ -449,13 +434,12 @@ class Orchestrator:
             update_experiment(exp_id, spec_json=spec_json)
             return spec_json
 
-        # --- list_available_models: discovers Phase 1 models ---
+        # --- list_available_models: discovers Phase 1 models from Postgres ---
         async def list_available_models(params: dict) -> str:
-            if not self.builder_dir or not self.builder_dir.exists():
-                return json.dumps({"models": [], "note": "No builder directory configured"})
-            from simlab.model_loader import discover_models
             if self._discovered_models is None:
-                self._discovered_models = discover_models(self.builder_dir)
+                self._discovered_models = await discover_models()
+            if not self._discovered_models:
+                return json.dumps({"models": [], "note": "No models registered in database"})
             return json.dumps({
                 "models": [
                     {"formulation_id": m.formulation_id, "class_name": m.class_name, "description": m.description}
@@ -463,14 +447,19 @@ class Orchestrator:
                 ]
             })
 
-        # --- read_predictions: reads deep research predictions for a paradigm ---
+        # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
+            import shared
+
             slug = params["paradigm_slug"]
-            deep_dir = self.research_dir / "deep"
-            deep_file = deep_dir / f"{slug}.md"
-            if not deep_file.exists():
-                return json.dumps({"error": f"No deep research file for '{slug}'. Available: {[f.stem for f in deep_dir.glob('*.md')]}"})
-            content = deep_file.read_text()
+            # Look for the deep research file under any run's research prefix
+            key = f"research/deep/{slug}.md"
+            if not await shared.storage.exists(key):
+                # Try listing available deep research files
+                available_keys = await shared.storage.list("research/deep/")
+                available = [k.split("/")[-1].removesuffix(".md") for k in available_keys]
+                return json.dumps({"error": f"No deep research file for '{slug}'. Available: {available}"})
+            content = await shared.storage.get_text(key)
             # Extract the Predictions section
             import re
             match = re.search(r'## Predictions\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
@@ -496,17 +485,16 @@ class Orchestrator:
             # Resolve which models to use
             model_ids = params.get("model_ids") or []
             available = {}
-            if model_ids and self.builder_dir:
-                from simlab.model_loader import discover_models, load_model as _load
+            if model_ids:
                 if self._discovered_models is None:
-                    self._discovered_models = discover_models(self.builder_dir)
+                    self._discovered_models = await discover_models()
                 available = self._discovered_models
 
             # Create agents — one (or num_agents) per model
             models_used = []
             if model_ids:
                 if not available:
-                    return json.dumps({"error": "No models available. Check that builder_dir is configured correctly."})
+                    return json.dumps({"error": "No models available in database."})
                 for mid in model_ids:
                     info = available.get(mid)
                     if not info:
@@ -515,7 +503,7 @@ class Orchestrator:
                     parts = mid.split("_", 1)
                     label = parts[1] if len(parts) > 1 else mid[:12]
                     for i in range(num_agents):
-                        model = _load(info, seed=rng.randint(0, 2**32))
+                        model = await _load_model(info, seed=rng.randint(0, 2**32))
                         pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
                         agent_id = f"{label}_{i}" if num_agents > 1 else label
                         env.add_agent(Agent(id=agent_id, position=pos, decision_model=model))
@@ -621,7 +609,7 @@ class Orchestrator:
                 state["tracker_output"],
                 state["events"],
                 on_tool_call=self._make_tool_callback("Analyst"),
-                output_dir=self.output_dir,
+                experiment_id=state.get("experiment_id", ""),
                 charts_accumulator=state["charts"],
                 critical_events=state.get("critical_events"),
             )
@@ -643,25 +631,30 @@ class Orchestrator:
             )
             reporter = Reporter(client=client, model=reporter_model)
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
+            exp_id = state.get("experiment_id", "")
             result = await reporter.run(
                 focus,
                 state["tracker_output"],
                 state["analyst_output"],
-                research_dir=self.research_dir,
-                output_dir=self.output_dir,
+                run_id=state.get("run_id", "default"),
+                experiment_id=exp_id,
                 on_tool_call=self._make_tool_callback("Reporter"),
                 interaction_summary=self._build_interaction_summary(),
                 predictions=state.get("predictions"),
                 charts=state.get("charts"),
             )
-            # Find any new PDFs generated by the Reporter
+            # Track PDF S3 keys
             if "pdf_paths" not in state:
                 state["pdf_paths"] = []
-            for pdf in self.output_dir.glob("*.pdf"):
-                path_str = str(pdf)
-                if path_str not in state["pdf_paths"]:
-                    state["pdf_paths"].append(path_str)
-            # Keep pdf_path pointing to the latest for backwards compat
+            # Extract pdf_path from reporter result if present
+            try:
+                result_data = json.loads(result) if result.strip().startswith("{") else None
+            except (json.JSONDecodeError, AttributeError):
+                result_data = None
+            if result_data and result_data.get("pdf_path"):
+                pdf_key = result_data["pdf_path"]
+                if pdf_key not in state["pdf_paths"]:
+                    state["pdf_paths"].append(pdf_key)
             if state["pdf_paths"]:
                 state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):

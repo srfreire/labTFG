@@ -2,8 +2,7 @@
 Dynamic loader for Phase 1 Builder decision models.
 
 Phase 1 generates *_model.py files that contain decision model classes.
-This module discovers those files, checks they implement the DecisionModel interface,
-and provides a way to instantiate them with isolated RNG seeds.
+This module discovers models from Postgres and loads them on-demand from S3.
 """
 from __future__ import annotations
 
@@ -11,11 +10,11 @@ import importlib.util
 import inspect
 import logging
 import random
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-
-from shared.store import init_db, register_model as _register_model
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,7 @@ class ModelInfo:
     formulation_id: str     # e.g. "homeostatic-regulation_drive_reduction_rl"
     class_name: str         # e.g. "DriveReductionRLModel"
     description: str        # from the module docstring
-    path: Path              # path to the *_model.py file
-    model_class: type       # the actual class
+    s3_model_key: str       # S3 key for the model source file
 
 
 def _has_decision_model_interface(cls: type) -> bool:
@@ -44,100 +42,84 @@ def _has_decision_model_interface(cls: type) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Discovery — scan a directory for model files
+# Discovery -- query Postgres for registered models
 # ---------------------------------------------------------------------------
 
-def discover_models(builder_dir: Path) -> dict[str, ModelInfo]:
-    """Scan builder_dir for *_model.py files and return discovered models.
+async def discover_models() -> dict[str, ModelInfo]:
+    """Discover models from the Postgres models table."""
+    import shared
+    from shared.models import Model as DBModel
+    from sqlalchemy import select
 
-    Each file is loaded as a module, and the first class implementing
-    the DecisionModel interface is registered.
-    """
     models: dict[str, ModelInfo] = {}
-
-    for path in sorted(builder_dir.glob("*_model.py")):
-        formulation_id = path.stem.removesuffix("_model")
-        module_name = f"_builder_{path.stem}"
-
-        try:
-            spec = importlib.util.spec_from_file_location(module_name, path)
-            if spec is None or spec.loader is None:
-                continue
-            mod = importlib.util.module_from_spec(spec)
-            sys.modules[module_name] = mod
-            spec.loader.exec_module(mod)
-
-            # Find the first class that implements the DecisionModel interface
-            for name, obj in inspect.getmembers(mod, inspect.isclass):
-                if obj.__module__ == module_name and _has_decision_model_interface(obj):
-                    desc = (mod.__doc__ or "").strip()
-                    models[formulation_id] = ModelInfo(
-                        formulation_id=formulation_id,
-                        class_name=name,
-                        description=desc,
-                        path=path,
-                        model_class=obj,
-                    )
-                    # Persist to DB
-                    try:
-                        init_db()
-                        paradigm = formulation_id.split("_", 1)[0] if "_" in formulation_id else None
-                        _register_model(
-                            formulation_id=formulation_id,
-                            class_name=name,
-                            paradigm=paradigm,
-                            description=desc or None,
-                            file_path=str(path),
-                        )
-                    except Exception:
-                        logger.debug("Could not register model %s in DB", formulation_id, exc_info=True)
-                    break
-        except Exception:
-            logger.warning("Failed to load model from %s", path, exc_info=True)
-
+    async with shared.db.get_session() as session:
+        result = await session.execute(select(DBModel))
+        rows = result.scalars().all()
+        for row in rows:
+            models[row.formulation_id] = ModelInfo(
+                formulation_id=row.formulation_id,
+                class_name=row.class_name,
+                description=row.description or "",
+                s3_model_key=row.s3_model_key,
+            )
     return models
 
 
 # ---------------------------------------------------------------------------
-# Instantiation — create a model instance with an isolated RNG
+# Instantiation -- download from S3, load via importlib
 # ---------------------------------------------------------------------------
 
-def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> object:
-    """Instantiate a discovered model.
+async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> object:
+    """Download a model from S3 and instantiate it.
 
-    If seed is provided, the model file is loaded into a fresh private module
-    and its `random` attribute is replaced with a newly-seeded Random instance.
-    This ensures two models with the same seed produce identical decisions
-    even when called interleaved for reproducibility.
+    The model source is written to a temp directory and loaded as a module.
+    If seed is provided, the module's `random` attribute is replaced with
+    a newly-seeded Random instance for reproducibility.
     """
-    if seed is not None:
-        # Load into an isolated module so the RNG is not shared
-        unique_name = f"_builder_{model_info.path.stem}_{id(object())}"
-        spec = importlib.util.spec_from_file_location(unique_name, model_info.path)
-        if spec is None or spec.loader is None:
-            raise ValueError(f"Cannot reload {model_info.path}")
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[unique_name] = mod
-        spec.loader.exec_module(mod)
+    import shared
 
-        # Replace the module's RNG with a seeded one
-        if hasattr(mod, "random"):
-            mod.random = random.Random(seed)
+    model_bytes = await shared.storage.get(model_info.s3_model_key)
+    tmp_dir = tempfile.mkdtemp(prefix="model_")
+    tmp_path = Path(tmp_dir) / f"{model_info.formulation_id}_model.py"
+    tmp_path.write_bytes(model_bytes)
 
-        # Find the class in the fresh module
-        model_class: type | None = None
-        for name, obj in inspect.getmembers(mod, inspect.isclass):
-            if obj.__module__ == unique_name and _has_decision_model_interface(obj):
-                model_class = obj
-                break
-        del sys.modules[unique_name]
+    module_name = f"_builder_{model_info.formulation_id}_{id(object())}"
+    spec = importlib.util.spec_from_file_location(module_name, tmp_path)
+    if spec is None or spec.loader is None:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise ValueError(f"Cannot load module from {model_info.s3_model_key}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
 
-        if model_class is None:
-            raise ValueError(f"No decision model class found in {model_info.path}")
-    else:
-        model_class = model_info.model_class
+    if seed is not None and hasattr(mod, "random"):
+        mod.random = random.Random(seed)
+
+    model_class: type | None = None
+    for name, obj in inspect.getmembers(mod, inspect.isclass):
+        if obj.__module__ == module_name and _has_decision_model_interface(obj):
+            model_class = obj
+            break
+
+    del sys.modules[module_name]
+
+    # Don't clean up tmp_dir yet -- the class object references the file
+    # Store for later cleanup
+    if not hasattr(load_model, '_tmp_dirs'):
+        load_model._tmp_dirs = []
+    load_model._tmp_dirs.append(tmp_dir)
+
+    if model_class is None:
+        raise ValueError(f"No decision model class found in {model_info.s3_model_key}")
 
     try:
         return model_class(**kwargs)
     except TypeError as e:
-        raise ValueError(f"Failed to instantiate {model_info.class_name}: {e}") from e
+        raise ValueError(f"Failed to instantiate {model_info.formulation_id}: {e}") from e
+
+
+def cleanup_temp_models() -> None:
+    """Clean up temp dirs created by load_model."""
+    for d in getattr(load_model, '_tmp_dirs', []):
+        shutil.rmtree(d, ignore_errors=True)
+    load_model._tmp_dirs = []

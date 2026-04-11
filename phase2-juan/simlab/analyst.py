@@ -9,8 +9,6 @@ Flow:
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from simlab.environment import Event
 from simlab.loop import run_agent_loop
 from simlab.charts import build_chart_tools
@@ -216,7 +214,7 @@ class Analyst:
         *,
         max_iterations: int = 15,
         on_tool_call=None,
-        output_dir: Path | None = None,
+        experiment_id: str | None = None,
         charts_accumulator: list[dict] | None = None,
         critical_events: list[dict] | None = None,
     ) -> str:
@@ -231,9 +229,9 @@ class Analyst:
         tools += db_tools
         registry.update(db_registry)
 
-        # Add chart tools if output_dir is available
-        if output_dir:
-            chart_tools, chart_registry = build_chart_tools(events, output_dir, self.charts)
+        # Add chart tools if experiment_id is available
+        if experiment_id:
+            chart_tools, chart_registry = build_chart_tools(events, experiment_id, self.charts)
             tools += chart_tools
             registry.update(chart_registry)
 
