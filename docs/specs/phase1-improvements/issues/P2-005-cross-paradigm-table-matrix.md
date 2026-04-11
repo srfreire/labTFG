@@ -1,7 +1,7 @@
 ---
 id: P2-005
 title: Cross-paradigm table reformateada (zonas x paradigmas)
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: summary-report
@@ -30,10 +30,10 @@ Reformatear la cross-paradigm interaction table en report.md para que las column
 - El Researcher lee los deep reports para extraer las zonas y construir la tabla
 
 ## Acceptance Criteria
-- [ ] RESEARCHER_SYSTEM_PROMPT contiene instrucciones para la tabla matriz
-- [ ] report.md tiene cross-paradigm table con zonas como columnas y paradigmas como filas
-- [ ] Celdas usan ✓/✗ para indicar relevancia
-- [ ] Todas las zonas de todos los deep reports aparecen como columnas
+- [x] RESEARCHER_SYSTEM_PROMPT contiene instrucciones para la tabla matriz
+- [x] report.md tiene cross-paradigm table con zonas como columnas y paradigmas como filas
+- [x] Celdas usan ✓/✗ para indicar relevancia
+- [x] Todas las zonas de todos los deep reports aparecen como columnas
 
 ## Files Likely Affected
 - `src/decisionlab/agents/researcher.py` — RESEARCHER_SYSTEM_PROMPT
@@ -42,3 +42,19 @@ Reformatear la cross-paradigm interaction table en report.md para que las column
 Phase spec: `docs/specs/phase1-improvements/phase-2-researcher-improvements.md`
 General spec: `docs/specs/phase1-improvements/general.md`
 Heat: `summary-report`
+
+## Completion Summary
+
+**Commit:** `5c41656` — `feat[researcher]: add cross-paradigm interaction map matrix to report format (P2-005)`
+
+### What was built
+- Added `## Cross-paradigm interaction map` section to `RESEARCHER_SYSTEM_PROMPT` output format
+- Instructions tell the LLM to collect all brain regions from `## Primary Locus` sections of deep reports, use them as columns, paradigms as rows, and mark ✓/✗ relevance
+- Updated process step 5 to also extract `## Primary Locus` from deep reports (not just References)
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/researcher.py` — added matrix table instructions to RESEARCHER_SYSTEM_PROMPT
+- `phase1-pablo/tests/agents/test_researcher.py` — added test verifying prompt contains cross-paradigm matrix instructions
+
+### Decisions
+- No deviations from spec
