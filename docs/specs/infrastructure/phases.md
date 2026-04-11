@@ -10,13 +10,15 @@
   - Issues: P1-001, P1-002, P1-003, P1-004, P1-005, P1-006
   - Heats: infra (P1-001→P1-002), storage (P1-003), database (P1-004→P1-005), lifecycle (P1-006)
 
-- [ ] **Phase 2: Phase 1 Integration** — Modify Phase 1 tool functions to use StorageService, add run_id to pipeline, register artifacts in DB
+- [x] **Phase 2: Phase 1 Integration** — Modify Phase 1 tool functions to use StorageService, add run_id to pipeline, register artifacts in DB
   - Dependencies: Phase 1
-  - Estimated issues: ~4
+  - Issues: P2-001, P2-002, P2-003, P2-004
+  - Heats: pipeline (P2-001→P2-004), tools (P2-002, P2-003 parallel)
 
-- [ ] **Phase 3: Phase 2 Integration** — Modify model_loader, orchestrator, reporter, api.py to read from MinIO/Postgres, update experiment lifecycle with S3 keys
+- [x] **Phase 3: Phase 2 Integration** — Modify model_loader, orchestrator, reporter, api.py to read from MinIO/Postgres, update experiment lifecycle with S3 keys
   - Dependencies: Phase 1 (parallel with Phase 2)
-  - Estimated issues: ~5
+  - Issues: P3-001, P3-002, P3-003, P3-004
+  - Heats: bootstrap (P3-001), core (P3-002→P3-003), output (P3-004 parallel)
 
 - [ ] **Phase 4: Containerization** — Dockerfiles for all services, complete docker-compose stack, data migration script
   - Dependencies: Phase 2, Phase 3
