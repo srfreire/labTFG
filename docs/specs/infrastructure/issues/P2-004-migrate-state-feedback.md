@@ -1,7 +1,7 @@
 ---
 id: P2-004
 title: Migrate Phase 1 pipeline state and feedback to StorageService
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: pipeline

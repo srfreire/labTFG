@@ -1,7 +1,7 @@
 ---
 id: P3-004
 title: Migrate reporter and charts output to S3
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: output

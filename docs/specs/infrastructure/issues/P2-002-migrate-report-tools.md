@@ -1,7 +1,7 @@
 ---
 id: P2-002
 title: Migrate Phase 1 report tools to StorageService
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: tools

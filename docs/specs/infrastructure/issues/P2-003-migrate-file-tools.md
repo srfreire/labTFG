@@ -1,7 +1,7 @@
 ---
 id: P2-003
 title: Migrate Phase 1 file tools and builder pytest to StorageService
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: tools

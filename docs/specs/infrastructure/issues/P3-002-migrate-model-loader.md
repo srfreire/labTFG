@@ -1,7 +1,7 @@
 ---
 id: P3-002
 title: Migrate model loader and orchestrator model calls to S3 + Postgres
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: core
