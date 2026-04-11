@@ -224,36 +224,79 @@ def run(
 
     from decisionlab.router import PipelineState, Router, Stage
 
-    reports_dir = _reports_dir(problem)
-    state = PipelineState(stage=Stage.RESEARCH, problem=problem, reports_dir=reports_dir)
-    state.save()
-    router = Router(
-        client=_client(), state=state,
-        search=DuckDuckGoAdapter(), project_root=Path.cwd(),
-    )
-    _run_async(router.run())
+    async def _run():
+        import uuid as _uuid
+
+        import shared
+        from shared.models import Run
+
+        await shared.init()
+        try:
+            run_id = str(_uuid.uuid4())
+            async with shared.db.get_session() as session:
+                db_run = Run(
+                    id=_uuid.UUID(run_id),
+                    problem_description=problem,
+                    status="running",
+                    s3_prefix=f"research/{run_id}",
+                )
+                session.add(db_run)
+                await session.commit()
+
+            reports_dir = _reports_dir(problem)
+            state = PipelineState(
+                stage=Stage.RESEARCH, problem=problem,
+                reports_dir=reports_dir, run_id=run_id,
+            )
+            state.save()
+            router = Router(
+                client=_client(), state=state,
+                search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+            )
+            await router.run()
+        finally:
+            await shared.shutdown()
+
+    _run_async(_run())
 
 
 @app.command()
 def resume(
-    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing pipeline run"),
+    reports_dir: Path = typer.Option(None, "--reports-dir", help="Path to existing pipeline run"),
+    run_id: str = typer.Option(None, "--run-id", help="Run ID to resume (requires --reports-dir for now)"),
     from_stage: str = typer.Option(None, "--from", help="Jump to specific stage"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Resume a pipeline from saved state or from a specific stage."""
     _setup_logging(verbose)
 
+    if run_id and not reports_dir:
+        console.print("[bold red]--run-id without --reports-dir not yet supported (coming in P2-004)[/bold red]")
+        raise typer.Exit(code=1)
+    if not reports_dir:
+        console.print("[bold red]Provide --reports-dir or --run-id[/bold red]")
+        raise typer.Exit(code=1)
+
     from decisionlab.router import PipelineState, Router, Stage
 
-    state = PipelineState.load(reports_dir)
-    if from_stage:
-        state.stage = Stage[from_stage.upper()]
-        state.save()
-    router = Router(
-        client=_client(), state=state,
-        search=DuckDuckGoAdapter(), project_root=Path.cwd(),
-    )
-    _run_async(router.run())
+    async def _run():
+        import shared
+
+        await shared.init()
+        try:
+            state = PipelineState.load(reports_dir)
+            if from_stage:
+                state.stage = Stage[from_stage.upper()]
+                state.save()
+            router = Router(
+                client=_client(), state=state,
+                search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+            )
+            await router.run()
+        finally:
+            await shared.shutdown()
+
+    _run_async(_run())
 
 
 if __name__ == "__main__":

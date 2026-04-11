@@ -14,6 +14,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "questionary>=2.1.1",
     "rich>=14.3.3",
+    "shared",
     "typer>=0.24.1",
     "uvicorn[standard]>=0.34.0",
 ]
@@ -31,6 +32,9 @@ asyncio_mode = "auto"
 markers = [
     "integration: tests that require internet access (deselect with -k 'not integration')",
 ]
+
+[tool.uv.sources]
+shared = { path = "../shared", editable = true }
 
 [dependency-groups]
 dev = [

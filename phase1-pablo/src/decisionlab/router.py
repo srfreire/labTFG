@@ -7,6 +7,7 @@ import logging
 import re
 import shutil
 import tempfile
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -56,6 +57,7 @@ class PipelineState:
     stage: Stage
     problem: str
     reports_dir: Path
+    run_id: str = ""
 
     # Filled progressively
     approved_paradigms: list[str] = field(default_factory=list)
@@ -70,6 +72,16 @@ class PipelineState:
     id_registry: dict[str, str] = field(default_factory=dict)
     _paradigm_counter: int = 0
     _formulation_counters: dict[str, int] = field(default_factory=dict)
+
+    # -- S3 prefix helpers ---------------------------------------------------
+
+    @property
+    def research_prefix(self) -> str:
+        return f"research/{self.run_id}"
+
+    @property
+    def models_prefix(self) -> str:
+        return f"models/{self.run_id}"
 
     # -- ID assignment -------------------------------------------------------
 
@@ -120,6 +132,7 @@ class PipelineState:
             "stage": self.stage.value,
             "problem": self.problem,
             "reports_dir": str(self.reports_dir),
+            "run_id": self.run_id,
             "approved_paradigms": self.approved_paradigms,
             "selected_formulations": self.selected_formulations,
             "env_spec_path": str(self.env_spec_path) if self.env_spec_path else None,
@@ -170,6 +183,7 @@ class PipelineState:
             stage=Stage(data["stage"]),
             problem=data["problem"],
             reports_dir=Path(data["reports_dir"]),
+            run_id=data.get("run_id") or str(uuid.uuid4()),
             approved_paradigms=data.get("approved_paradigms", []),
             selected_formulations=data.get("selected_formulations", {}),
             env_spec_path=Path(env_path) if env_path else None,

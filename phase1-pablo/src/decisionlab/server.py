@@ -152,37 +152,65 @@ async def run_pipeline(
     emit: EmitFn,
 ) -> None:
     """Run the full pipeline, emitting events via *emit*."""
+    import uuid
+
     from anthropic import AsyncAnthropic
+
+    import shared
+    from shared.models import Run
 
     from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
 
-    client = AsyncAnthropic()
-    search = DuckDuckGoAdapter()
-
-    slug = problem.lower().replace(" ", "-")[:50]
-    reports_dir = Path(f"reports/{date.today().isoformat()}-{slug}")
-    reports_dir.mkdir(parents=True, exist_ok=True)
-
-    state = PipelineState(
-        stage=Stage.RESEARCH,
-        problem=problem,
-        reports_dir=reports_dir,
-    )
-
-    router = Router(
-        client=client,
-        state=state,
-        search=search,
-        project_root=Path.cwd(),
-        emit=emit,
-    )
-
+    await shared.init()
     try:
-        await router.run()
-        await emit({"type": "pipeline_done"})
-    except asyncio.CancelledError:
-        state.save()
-        raise
-    except Exception as exc:
-        logger.exception("Pipeline failed")
-        await emit({"type": "error", "message": str(exc)})
+        client = AsyncAnthropic()
+        search = DuckDuckGoAdapter()
+
+        run_id = str(uuid.uuid4())
+        async with shared.db.get_session() as session:
+            db_run = Run(
+                id=uuid.UUID(run_id),
+                problem_description=problem,
+                status="running",
+                s3_prefix=f"research/{run_id}",
+            )
+            session.add(db_run)
+            await session.commit()
+
+        slug = problem.lower().replace(" ", "-")[:50]
+        reports_dir = Path(f"reports/{date.today().isoformat()}-{slug}")
+        reports_dir.mkdir(parents=True, exist_ok=True)
+
+        state = PipelineState(
+            stage=Stage.RESEARCH,
+            problem=problem,
+            reports_dir=reports_dir,
+            run_id=run_id,
+        )
+
+        router = Router(
+            client=client,
+            state=state,
+            search=search,
+            project_root=Path.cwd(),
+            emit=emit,
+        )
+
+        try:
+            await router.run()
+            # Update Run status on success
+            async with shared.db.get_session() as session:
+                from sqlalchemy import update
+                await session.execute(
+                    update(Run).where(Run.id == uuid.UUID(run_id)).values(status="done")
+                )
+                await session.commit()
+            await emit({"type": "pipeline_done"})
+        except asyncio.CancelledError:
+            state.save()
+            raise
+        except Exception as exc:
+            logger.exception("Pipeline failed")
+            await emit({"type": "error", "message": str(exc)})
+    finally:
+        await shared.shutdown()
