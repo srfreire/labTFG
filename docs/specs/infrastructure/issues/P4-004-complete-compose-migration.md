@@ -1,7 +1,7 @@
 ---
 id: P4-004
 title: Complete docker-compose stack and data migration script
-status: in-progress
+status: done
 kind: strike
 phase: 4
 heat: compose
@@ -50,15 +50,15 @@ Add all application services to docker-compose, configure networking and depende
   - `docker-compose run --rm phase2-server python scripts/migrate_sample_run.py` — run migration
 
 ## Acceptance Criteria
-- [ ] `docker-compose up` starts all 5 services, all healthy
-- [ ] Web frontend at `localhost:5173` connects to Phase 2 server via WebSocket
-- [ ] Phase 1 server at `localhost:8001` accepts WebSocket connections
-- [ ] MinIO console at `localhost:9001` shows `labtfg` bucket
-- [ ] Migration script uploads sample-run data to MinIO
-- [ ] After migration, Phase 2 discovers sample-run models via Postgres
-- [ ] Full e2e works: open web → chat → pick model → simulate → report generates
-- [ ] `docker-compose down && docker-compose up` preserves data (volumes)
-- [ ] Running migration script twice is safe (idempotent)
+- [x] `docker-compose up` starts all 5 services, all healthy
+- [x] Web frontend at `localhost:5173` connects to Phase 2 server via WebSocket
+- [x] Phase 1 server at `localhost:8001` accepts WebSocket connections
+- [x] MinIO console at `localhost:9001` shows `labtfg` bucket
+- [x] Migration script uploads sample-run data to MinIO
+- [x] After migration, Phase 2 discovers sample-run models via Postgres
+- [x] Full e2e works: open web → chat → pick model → simulate → report generates
+- [x] `docker-compose down && docker-compose up` preserves data (volumes)
+- [x] Running migration script twice is safe (idempotent)
 
 ## Files Likely Affected
 - `docker-compose.yml` — add 3 service definitions, network
