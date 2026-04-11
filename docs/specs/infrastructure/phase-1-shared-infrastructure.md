@@ -123,8 +123,8 @@ Keep `shared/shared/store.py` working during transition:
 - [x] AC6: SQLAlchemy models create all 4 tables with correct columns, types, FKs
 - [x] AC7: Alembic `upgrade head` applies initial migration cleanly on empty Postgres
 - [x] AC8: `get_session()` yields working async sessions that can CRUD all tables
-- [ ] AC9: `shared.init()` boots both services, `shared.shutdown()` tears down cleanly
-- [ ] AC10: Existing `store.py` functions still work (backward compat)
+- [x] AC9: `shared.init()` boots both services, `shared.shutdown()` tears down cleanly
+- [x] AC10: Existing `store.py` functions still work (backward compat)
 - [x] AC11: `.env.example` documents all required env vars with defaults
 
 ## Technical Notes
