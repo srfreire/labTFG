@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Create settings module with env var config
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: infra
@@ -25,10 +25,10 @@ Centralize all infrastructure configuration in a single Settings dataclass read 
 - Add `python-dotenv` to `shared` dependencies for `.env` file loading (optional, loaded if present)
 
 ## Acceptance Criteria
-- [ ] `load_settings()` returns defaults when no env vars set
-- [ ] `load_settings()` picks up env var overrides
-- [ ] `Settings` is a frozen dataclass (immutable after creation)
-- [ ] All fields match what docker-compose exposes
+- [x] `load_settings()` returns defaults when no env vars set
+- [x] `load_settings()` picks up env var overrides
+- [x] `Settings` is a frozen dataclass (immutable after creation)
+- [x] All fields match what docker-compose exposes
 
 ## Files Likely Affected
 - `shared/shared/settings.py` — new file
@@ -38,3 +38,20 @@ Centralize all infrastructure configuration in a single Settings dataclass read 
 Phase spec: `docs/specs/infrastructure/phase-1-shared-infrastructure.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `infra`
+
+## Completion Summary
+
+**Commit:** `97cbda6` — `feat[shared]: add settings module with env var config (P1-002)`
+
+### What was built
+- `Settings` frozen dataclass with all MinIO + Postgres fields
+- `load_settings()` reads env vars with dev defaults, optional dotenv support
+- 3 tests covering defaults, overrides, and immutability
+
+### Files created/modified
+- `shared/shared/settings.py` — Settings dataclass + load_settings()
+- `shared/pyproject.toml` — added python-dotenv dependency
+- `shared/tests/test_settings.py` — 3 tests
+
+### Decisions
+- POSTGRES_DSN default uses `labtfg:labtfg` (matching docker-compose), not `postgres:postgres` as originally in spec
