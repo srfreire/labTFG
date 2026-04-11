@@ -15,7 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 
 import shared
-from shared.models import Run, Model, Artifact
+from shared.artifacts import register_artifact as _register_artifact
+from shared.models import Run, Model
 from sqlalchemy import select
 
 
@@ -62,7 +63,7 @@ async def main():
         if report_path.exists():
             key = f"research/{run_id}/report.md"
             await shared.storage.put_text(key, report_path.read_text())
-            await _register_artifact(key, "report", run_id, report_path.stat().st_size)
+            await _register_artifact(key, "report", report_path.stat().st_size, run_id=run_id)
             uploaded += 1
 
         # deep/*.md
@@ -71,7 +72,7 @@ async def main():
             for f in sorted(deep_dir.glob("*.md")):
                 key = f"research/{run_id}/deep/{f.name}"
                 await shared.storage.put_text(key, f.read_text())
-                await _register_artifact(key, "deep_report", run_id, f.stat().st_size)
+                await _register_artifact(key, "deep_report", f.stat().st_size, run_id=run_id)
                 uploaded += 1
 
         # formulations/*.md
@@ -80,7 +81,7 @@ async def main():
             for f in sorted(form_dir.glob("*.md")):
                 key = f"research/{run_id}/formulations/{f.name}"
                 await shared.storage.put_text(key, f.read_text())
-                await _register_artifact(key, "formulation", run_id, f.stat().st_size)
+                await _register_artifact(key, "formulation", f.stat().st_size, run_id=run_id)
                 uploaded += 1
 
         # reasoner/*.json
@@ -89,7 +90,7 @@ async def main():
             for f in sorted(reasoner_dir.glob("*.json")):
                 key = f"models/{run_id}/reasoner/{f.name}"
                 await shared.storage.put_text(key, f.read_text())
-                await _register_artifact(key, "reasoner_spec", run_id, f.stat().st_size)
+                await _register_artifact(key, "reasoner_spec", f.stat().st_size, run_id=run_id)
                 uploaded += 1
 
         # builder/*_model.py and test_*.py
@@ -97,12 +98,11 @@ async def main():
         if builder_dir.exists():
             for f in sorted(builder_dir.glob("*_model.py")):
                 fid = f.stem.removesuffix("_model")
-                model_key = f"models/{run_id}/builder/{f.name}"
-                await shared.storage.put(model_key, f.read_bytes(), "text/x-python")
-                await _register_artifact(model_key, "model", run_id, f.stat().st_size, "text/x-python")
-
-                # Try to extract class name and description
                 content = f.read_text()
+                content_bytes = content.encode()
+                model_key = f"models/{run_id}/builder/{f.name}"
+                await shared.storage.put(model_key, content_bytes, "text/x-python")
+                await _register_artifact(model_key, "model", len(content_bytes), run_id=run_id, content_type="text/x-python")
                 class_match = re.search(r"class\s+(\w+)", content)
                 class_name = class_match.group(1) if class_match else fid
                 paradigm = fid.split("_", 1)[0] if "_" in fid else None
@@ -115,7 +115,7 @@ async def main():
                 if test_file.exists():
                     test_key = f"models/{run_id}/builder/test_{fid}.py"
                     await shared.storage.put(test_key, test_file.read_bytes(), "text/x-python")
-                    await _register_artifact(test_key, "test", run_id, test_file.stat().st_size, "text/x-python")
+                    await _register_artifact(test_key, "test", test_file.stat().st_size, run_id=run_id, content_type="text/x-python")
                     uploaded += 1
 
                 async with shared.db.get_session() as session:
@@ -137,7 +137,7 @@ async def main():
         if env_spec.exists():
             key = f"research/{run_id}/env_spec.json"
             await shared.storage.put_text(key, env_spec.read_text())
-            await _register_artifact(key, "report", run_id, env_spec.stat().st_size, "application/json")
+            await _register_artifact(key, "report", env_spec.stat().st_size, run_id=run_id, content_type="application/json")
             uploaded += 1
 
         # pipeline_state.json
@@ -150,20 +150,6 @@ async def main():
         print(f"Done! Uploaded {uploaded} files to MinIO, registered models in Postgres.")
     finally:
         await shared.shutdown()
-
-
-async def _register_artifact(s3_key, artifact_type, run_id, size_bytes, content_type="text/plain"):
-    async with shared.db.get_session() as session:
-        artifact = Artifact(
-            id=uuid.uuid4(),
-            s3_key=s3_key,
-            artifact_type=artifact_type,
-            run_id=uuid.UUID(run_id),
-            size_bytes=size_bytes,
-            content_type=content_type,
-        )
-        session.add(artifact)
-        await session.commit()
 
 
 if __name__ == "__main__":

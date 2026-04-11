@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from shared.database import DatabaseService
 from shared.models import Artifact, Base, Experiment, Model, Run
-from shared.settings import Settings
+from shared.settings import Settings, load_settings
 
-DSN = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg"
+DSN = load_settings().POSTGRES_DSN
 
 
 @pytest_asyncio.fixture

@@ -118,8 +118,7 @@ def _build_tools(
         import shared
         import shutil
         import tempfile
-        import uuid as _uuid
-        from shared.models import Artifact
+        from shared.artifacts import register_artifact
 
         content = _fix_markdown_in_latex(params["content"])
         # Sanitize filename: lowercase, underscores only, no path traversal
@@ -166,26 +165,12 @@ def _build_tools(
             # Upload tex and pdf to S3
             tex_key = f"experiments/{experiment_id}/report.tex"
             pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
-            await shared.storage.put_text(tex_key, full_latex)
-            await shared.storage.put(pdf_key, pdf_path.read_bytes(), "application/pdf")
-
-            # Register artifacts
-            for key, atype, ctype in [
-                (tex_key, "tex", "text/x-tex"),
-                (pdf_key, "pdf", "application/pdf"),
-            ]:
-                data = await shared.storage.get(key)
-                async with shared.db.get_session() as session:
-                    artifact = Artifact(
-                        id=_uuid.uuid4(),
-                        s3_key=key,
-                        artifact_type=atype,
-                        experiment_id=_uuid.UUID(experiment_id),
-                        size_bytes=len(data),
-                        content_type=ctype,
-                    )
-                    session.add(artifact)
-                    await session.commit()
+            tex_bytes = full_latex.encode()
+            pdf_bytes = pdf_path.read_bytes()
+            await shared.storage.put(tex_key, tex_bytes, "text/x-tex")
+            await shared.storage.put(pdf_key, pdf_bytes, "application/pdf")
+            await register_artifact(tex_key, "tex", len(tex_bytes), experiment_id=experiment_id, content_type="text/x-tex")
+            await register_artifact(pdf_key, "pdf", len(pdf_bytes), experiment_id=experiment_id, content_type="application/pdf")
 
             shutil.rmtree(tmp, ignore_errors=True)
             return json.dumps({"success": True, "pdf_path": pdf_key})

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 import re
-import uuid
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import shared
-from shared.models import Artifact
+from shared.artifacts import register_artifact as _register_artifact
 
 if TYPE_CHECKING:
     from decisionlab.router import PipelineState
@@ -34,37 +33,16 @@ def slugify(name: str) -> str:
     return re.sub(r"-{2,}", "-", slug).strip("-")
 
 
-async def _register_artifact(
-    s3_key: str,
-    artifact_type: str,
-    run_id: str,
-    content_length: int,
-    content_type: str = "text/plain",
-) -> None:
-    """Register an artifact in the DB."""
-    async with shared.db.get_session() as session:
-        artifact = Artifact(
-            id=uuid.uuid4(),
-            s3_key=s3_key,
-            artifact_type=artifact_type,
-            run_id=uuid.UUID(run_id) if run_id else None,
-            created_at=None,  # server_default handles it
-            size_bytes=content_length,
-            content_type=content_type,
-        )
-        session.add(artifact)
-        await session.commit()
-
-
 def create_read_report(run_id: str) -> Callable[[dict], Awaitable[str]]:
     async def read_report(params: dict) -> str:
         if "paradigm" not in params:
             raise ValueError("read_report requires 'paradigm' parameter")
         slug = slugify(params["paradigm"])
         key = f"research/{run_id}/deep/{slug}.md"
-        if not await shared.storage.exists(key):
+        try:
+            return await shared.storage.get_text(key)
+        except Exception:
             return f"No report found for paradigm '{params['paradigm']}'. It may not have been researched yet."
-        return await shared.storage.get_text(key)
     return read_report
 
 
@@ -73,7 +51,7 @@ async def save_deep_report(run_id: str, paradigm: str, content: str) -> str:
     slug = slugify(paradigm)
     key = f"research/{run_id}/deep/{slug}.md"
     await shared.storage.put_text(key, content)
-    await _register_artifact(key, "deep_report", run_id, len(content.encode()))
+    await _register_artifact(key, "deep_report", len(content.encode()), run_id=run_id)
     logger.info("Saved deep report: %s", key)
     return key
 
@@ -82,7 +60,7 @@ async def save_summary_report(run_id: str, summary: str) -> str:
     """Save the final research summary to S3. Returns the S3 key."""
     key = f"research/{run_id}/report.md"
     await shared.storage.put_text(key, summary)
-    await _register_artifact(key, "report", run_id, len(summary.encode()))
+    await _register_artifact(key, "report", len(summary.encode()), run_id=run_id)
     logger.info("Saved summary report: %s", key)
     return key
 
@@ -100,9 +78,10 @@ _TREE_MAP_SECTION_RE = re.compile(
 async def _paradigm_name_from_deep_report(run_id: str, slug: str) -> str:
     """Extract the paradigm title from ``deep/{slug}.md``, falling back to slug."""
     key = f"research/{run_id}/deep/{slug}.md"
-    if not await shared.storage.exists(key):
+    try:
+        text = await shared.storage.get_text(key)
+    except Exception:
         return slug
-    text = await shared.storage.get_text(key)
     m = _DEEP_TITLE_RE.search(text)
     return m.group(1) if m else slug
 

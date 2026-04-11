@@ -286,8 +286,7 @@ def build_chart_tools(
 
     async def create_chart(params: dict) -> str:
         import shared
-        from shared.models import Artifact
-        import uuid as _uuid
+        from shared.artifacts import register_artifact
 
         chart_type = params["chart_type"]
         metric = params["metric"]
@@ -347,18 +346,7 @@ def build_chart_tools(
             await shared.storage.put(s3_key, png_bytes, "image/png")
             spec["image_path"] = s3_key
 
-            # Register artifact
-            async with shared.db.get_session() as session:
-                artifact = Artifact(
-                    id=_uuid.uuid4(),
-                    s3_key=s3_key,
-                    artifact_type="chart",
-                    experiment_id=_uuid.UUID(experiment_id),
-                    size_bytes=len(png_bytes),
-                    content_type="image/png",
-                )
-                session.add(artifact)
-                await session.commit()
+            await register_artifact(s3_key, "chart", len(png_bytes), experiment_id=experiment_id, content_type="image/png")
 
         charts_accumulator.append(spec)
 

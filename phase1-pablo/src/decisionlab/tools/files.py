@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from typing import Any, Awaitable, Callable
 
 import shared
-from shared.models import Artifact
+from shared.artifacts import register_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -80,20 +79,10 @@ def create_write_file(
             raise ValueError(f"Invalid path: {path}")
         key = f"{s3_prefix}/{path}"
         await shared.storage.put_text(key, content)
-        # Register artifact
         if run_id:
-            artifact_type = _infer_artifact_type(path)
-            async with shared.db.get_session() as session:
-                artifact = Artifact(
-                    id=uuid.uuid4(),
-                    s3_key=key,
-                    artifact_type=artifact_type,
-                    run_id=uuid.UUID(run_id),
-                    size_bytes=len(content.encode()),
-                    content_type="text/plain",
-                )
-                session.add(artifact)
-                await session.commit()
+            await register_artifact(
+                key, _infer_artifact_type(path), len(content.encode()), run_id=run_id,
+            )
         return f"Written {len(content)} chars to {path}"
 
     return write_file
