@@ -27,7 +27,7 @@ La cross-paradigm table pasa de listar zonas por paradigma a una matriz: filas =
 - [ ] AC1: DeepResearcher tiene herramienta search_papers que consulta Semantic Scholar API
 - [x] AC2: Deep reports contienen sección ## Primary Locus
 - [ ] AC3: Deep reports contienen sección ## Key Concepts
-- [ ] AC4: report.md contiene sección ## References con papers consolidados de todos los deep reports
+- [x] AC4: report.md contiene sección ## References con papers consolidados de todos los deep reports
 - [ ] AC5: Cross-paradigm table usa formato matriz zonas×paradigmas con ✓/✗
 - [ ] AC6: web_search y search_papers coexisten como herramientas del DeepResearcher
 
