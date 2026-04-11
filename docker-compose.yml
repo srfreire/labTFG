@@ -45,6 +45,53 @@ services:
       "
     restart: "no"
 
+  phase1-server:
+    build:
+      context: .
+      dockerfile: phase1-pablo/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-labtfg}
+      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-labtfg}:${POSTGRES_PASSWORD:-labtfg}@postgres:5432/${POSTGRES_DB:-labtfg}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  phase2-server:
+    build:
+      context: .
+      dockerfile: phase2-juan/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-labtfg}
+      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-labtfg}:${POSTGRES_PASSWORD:-labtfg}@postgres:5432/${POSTGRES_DB:-labtfg}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web:
+    build:
+      context: phase2-juan/web
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - phase2-server
+
 volumes:
   pgdata:
   miniodata:
