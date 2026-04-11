@@ -1,7 +1,7 @@
 ---
 id: P2-003
 title: Key concepts en deep reports
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: deep-report
@@ -26,8 +26,8 @@ Añadir sección `## Key Concepts` al output format del DeepResearcher — un gl
 - Los conceptos deben ser términos técnicos específicos del paradigma, no genéricos
 
 ## Acceptance Criteria
-- [ ] DEEP_RESEARCHER_SYSTEM_PROMPT incluye sección ## Key Concepts en el output format
-- [ ] Deep reports generados contienen glosario de términos técnicos del paradigma
+- [x] DEEP_RESEARCHER_SYSTEM_PROMPT incluye sección ## Key Concepts en el output format
+- [x] Deep reports generados contienen glosario de términos técnicos del paradigma
 
 ## Files Likely Affected
 - `src/decisionlab/agents/deep_researcher.py` — DEEP_RESEARCHER_SYSTEM_PROMPT
@@ -36,3 +36,17 @@ Añadir sección `## Key Concepts` al output format del DeepResearcher — un gl
 Phase spec: `docs/specs/phase1-improvements/phase-2-researcher-improvements.md`
 General spec: `docs/specs/phase1-improvements/general.md`
 Heat: `deep-report`
+
+## Completion Summary
+
+**Commit:** `24fea90` — `feat[deep-researcher]: add Key Concepts section to deep report output format (P2-003)`
+
+### What was built
+- Added `## Key Concepts` section to `DEEP_RESEARCHER_SYSTEM_PROMPT` output format template
+- Section instructs the LLM to produce a glossary of paradigm-specific technical terms with brief definitions
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/deep_researcher.py` — added Key Concepts section between Primary Locus and Identified variables in the prompt template
+
+### Decisions
+- No deviations from spec
