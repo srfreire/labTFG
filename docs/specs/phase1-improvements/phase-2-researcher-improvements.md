@@ -28,7 +28,7 @@ La cross-paradigm table pasa de listar zonas por paradigma a una matriz: filas =
 - [x] AC2: Deep reports contienen sección ## Primary Locus
 - [x] AC3: Deep reports contienen sección ## Key Concepts
 - [x] AC4: report.md contiene sección ## References con papers consolidados de todos los deep reports
-- [ ] AC5: Cross-paradigm table usa formato matriz zonas×paradigmas con ✓/✗
+- [x] AC5: Cross-paradigm table usa formato matriz zonas×paradigmas con ✓/✗
 - [x] AC6: web_search y search_papers coexisten como herramientas del DeepResearcher
 
 ## Technical Notes
