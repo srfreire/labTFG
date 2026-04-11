@@ -34,8 +34,11 @@ computational/RL, economic) to discover paradigms from diverse traditions.
 2. Identify distinct paradigms — each must be a coherent theoretical framework with its \
 own assumptions, measurable variables, and decision mechanisms.
 3. Call `launch_deep_research` ONCE per paradigm. Each call returns a concise summary.
-4. After all deep research returns, STOP searching and write your final summary.
-5. Use `read_report` only if you need more detail on a specific paradigm.
+4. After all deep research returns, STOP searching.
+5. Use `read_report` for EVERY paradigm you researched to read the full deep reports. \
+Extract the `## References` section from each one.
+6. Write your final summary including a consolidated `## References` section at the end \
+(see Output format below).
 
 ## Constraints
 
@@ -55,6 +58,12 @@ own assumptions, measurable variables, and decision mechanisms.
 
 ## 2. {Paradigm name}
 ...
+
+## References
+{Consolidated list of ALL papers cited across ALL deep reports, deduplicated. \
+If the same paper appears in multiple deep reports, list it only once. Format each entry as:}
+- {Author (Year)} - {Title} — DOI: {doi}
+{Omit the DOI part if not available. Sort alphabetically by first author surname.}
 """
 
 _MAX_ITERATIONS = 10
