@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
@@ -527,67 +526,100 @@ class Router:
         self.state.stage = Stage.REVIEW_BUILD
 
     async def _review_build(self) -> None:
-        from decisionlab.routing_llm import classify_feedback
-
-        build_results = self.state.build_results
+        from decisionlab.agents.builder import Builder
 
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_build
                 assert self.emit is not None
-                user_feedback = await review_build(build_results, self.emit)
+                approved, rejections, reasoner_reruns = await review_build(
+                    self.state.reports_dir, self.state.build_results, self.emit,
+                )
             else:
                 from decisionlab.feedback import review_build
-                user_feedback = await review_build(build_results)
-            if user_feedback is None:
+                approved, rejections, reasoner_reruns = await review_build(
+                    self.state.reports_dir, self.state.build_results,
+                )
+            if not rejections and not reasoner_reruns:
                 self.state.stage = Stage.DONE
                 return
 
-            # Classify the feedback to determine re-run target
-            self.console.print("[bold]Classifying feedback...[/bold]")
-            try:
-                rerun = await classify_feedback(
-                    client=self.client,
-                    feedback=user_feedback,
-                    paradigms=self.state.approved_paradigms,
-                    build_output="\n\n".join(
-                        f"--- {slug} ---\n{content}"
-                        for slug, content in build_results.items()
-                    ) or None,
-                )
-            except Exception as exc:
+            # Re-run Reasoner → Builder for paradigms with invalid builds
+            for paradigm_slug in reasoner_reruns:
                 self.console.print(
-                    f"[bold red]Feedback classification failed: {exc}[/bold red]"
+                    f"[bold]Re-running Reasoner for '{paradigm_slug}'...[/bold]"
                 )
-                logger.exception("classify_feedback failed")
-                continue
+                try:
+                    from decisionlab.agents.reasoner import Reasoner
 
-            self.console.print(
-                f"[bold yellow]Re-run target:[/bold yellow] {rerun.target} "
-                f"for paradigm '{rerun.paradigm}'"
-            )
+                    r = Reasoner(
+                        client=self.client,
+                        reports_dir=self.state.reports_dir,
+                    )
+                    fids = self.state.selected_formulations.get(paradigm_slug, [])
+                    await r.run({paradigm_slug: fids})
+                except Exception as exc:
+                    self.console.print(
+                        f"[bold red]Reasoner re-run failed for '{paradigm_slug}': {exc}[/bold red]"
+                    )
+                    logger.exception("Reasoner re-run failed for %s", paradigm_slug)
+                    continue
 
-            # Confirm with user
-            if self._web_mode:
-                # In web mode, the user already confirmed via the review panel
-                confirmed = True
-            else:
-                import questionary
-                confirmed = await asyncio.to_thread(
-                    questionary.confirm(
-                        f"Re-run from {rerun.target} for '{rerun.paradigm}'?",
-                        default=True,
-                    ).unsafe_ask,
+                self.console.print(
+                    f"[bold]Re-running Builder for '{paradigm_slug}'...[/bold]"
                 )
-            if not confirmed:
-                self.console.print("[dim]Re-run cancelled. Returning to review.[/dim]")
-                continue
+                try:
+                    b = Builder(
+                        client=self.client,
+                        reports_dir=self.state.reports_dir,
+                        project_root=self.project_root,
+                    )
+                    paradigm_id = self.state.get_id(paradigm_slug)
+                    if paradigm_id:
+                        paradigm_specs = [
+                            sid for sid in self.state.approved_specs
+                            if sid.startswith(paradigm_id + "-")
+                        ]
+                    else:
+                        paradigm_specs = None
+                    report = await b.run(paradigm_specs)
+                    self.state.build_results.update(report.results)
+                    # Clean up stale validation reports for this paradigm
+                    builder_dir = self.state.reports_dir / "builder"
+                    if builder_dir.is_dir():
+                        for vfile in builder_dir.glob("*_validation.json"):
+                            try:
+                                vdata = json.loads(vfile.read_text())
+                                if vdata.get("paradigm") == paradigm_slug:
+                                    vfile.unlink(missing_ok=True)
+                            except (json.JSONDecodeError, OSError):
+                                pass
+                except Exception as exc:
+                    self.console.print(
+                        f"[bold red]Builder re-run failed for '{paradigm_slug}': {exc}[/bold red]"
+                    )
+                    logger.exception("Builder re-run failed for %s", paradigm_slug)
 
-            # Execute re-run cascade
-            await self._emit({"type": "rerun", "target": rerun.target, "paradigm": rerun.paradigm})
-            await self._emit({"type": "graph_clear", "from_stage": rerun.target})
-            await self._execute_rerun_cascade(rerun)
-            # Loop back to REVIEW_BUILD with fresh build results
+            # Re-run Builder for each rejected build (normal rejections)
+            for slug, _, _ in rejections:
+                self.console.print(
+                    f"[bold]Re-running Builder for '{slug}'...[/bold]"
+                )
+                try:
+                    b = Builder(
+                        client=self.client,
+                        reports_dir=self.state.reports_dir,
+                        project_root=self.project_root,
+                    )
+                    report = await b.run([slug])
+                    self.state.build_results.update(report.results)
+                except Exception as exc:
+                    self.console.print(
+                        f"[bold red]Builder re-run failed for '{slug}': {exc}[/bold red]"
+                    )
+                    logger.exception("Builder re-run failed for %s", slug)
+            # Loop back to let user review again
+            continue
 
     async def _execute_rerun_cascade(self, rerun: RerunRequest) -> None:
         """Run the cascade of agents from *rerun.target* down to builder."""

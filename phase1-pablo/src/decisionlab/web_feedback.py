@@ -297,14 +297,39 @@ async def review_reason(
 
 
 async def review_build(
+    reports_dir: Path,
     build_results: dict[str, str],
     emit: Callable[[dict], Awaitable[None]],
-) -> str | None:
+) -> tuple[list[str], list[tuple[str, str, str]], list[str]]:
     """WebSocket review of builder results.
 
-    Returns ``None`` if approved, or a feedback string for re-routing.
+    Returns ``(approved_slugs, [(slug, paradigm, feedback)], reasoner_rerun_slugs)``.
     """
-    models_data = []
+    models_data: list[dict] = []
+
+    # Add invalid builds from validation reports
+    builder_dir = reports_dir / "builder"
+    if builder_dir.is_dir():
+        for vfile in sorted(builder_dir.glob("*_validation.json")):
+            try:
+                data = json.loads(vfile.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if data.get("status") != "invalid":
+                continue
+            fid = data.get("formulation_id", vfile.stem)
+            paradigm = data.get("paradigm", "unknown")
+            models_data.append({
+                "slug": fid,
+                "paradigm": paradigm,
+                "status": "invalid",
+                "problems": data.get("problems", []),
+                "code": "",
+                "test_results": "",
+                "passed": False,
+            })
+
+    # Add valid builds
     for slug, content in build_results.items():
         lower = content.lower()
         has_issues = any(w in lower for w in ("error", "fail", "traceback", "exception"))
@@ -319,14 +344,25 @@ async def review_build(
         "models": models_data,
     })
 
-    # response shape: {"decisions": {"slug": {"approved": bool, "feedback": "..."}}}
+    # response shape: {"decisions": {"slug": {"approved": bool, "feedback": "...", "rerun_reasoner": bool}}}
     decisions = response.get("decisions", {})
-    all_approved = all(d.get("approved", False) for d in decisions.values())
-    if all_approved:
-        return None
-    feedbacks = [
-        d.get("feedback", "")
-        for d in decisions.values()
-        if not d.get("approved", False) and d.get("feedback")
-    ]
-    return "; ".join(feedbacks) if feedbacks else None
+    approved: list[str] = []
+    rejections: list[tuple[str, str, str]] = []
+    reasoner_reruns: list[str] = []
+
+    for slug, decision in decisions.items():
+        # Find paradigm for this slug from models_data
+        paradigm = "unknown"
+        for m in models_data:
+            if m["slug"] == slug:
+                paradigm = m.get("paradigm", "unknown")
+                break
+        if decision.get("rerun_reasoner", False):
+            if paradigm not in reasoner_reruns:
+                reasoner_reruns.append(paradigm)
+        elif decision.get("approved", False):
+            approved.append(slug)
+        else:
+            rejections.append((slug, paradigm, decision.get("feedback", "")))
+
+    return approved, rejections, reasoner_reruns

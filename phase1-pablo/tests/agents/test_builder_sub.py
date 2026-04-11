@@ -116,6 +116,24 @@ async def test_builder_sub_run_returns_content(
     assert "homeostatic_pi_controller" in result
 
 
+# ---- P4-002: Validation tests ----
+
+
+def test_system_prompt_contains_validation_step():
+    """System prompt must include a validation phase before code generation."""
+    prompt_lower = BUILDER_SUB_SYSTEM_PROMPT.lower()
+    assert "validation" in prompt_lower
+    assert "invalid" in prompt_lower
+    assert "problems" in prompt_lower
+
+
+def test_system_prompt_lists_validation_checks():
+    """System prompt must list the specific implementability checks."""
+    assert "ambiguous_logic" in BUILDER_SUB_SYSTEM_PROMPT
+    assert "missing_perception_key" in BUILDER_SUB_SYSTEM_PROMPT
+    assert "untestable_behavior" in BUILDER_SUB_SYSTEM_PROMPT
+
+
 @pytest.mark.asyncio
 async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_response):
     final_text = make_text_block("# Output")

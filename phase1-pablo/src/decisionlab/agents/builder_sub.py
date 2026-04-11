@@ -52,15 +52,54 @@ the files are `builder/homeostatic-regulation_pi_negative_feedback_model.py` and
 
 Never create a second copy of a file with a different name. Write each file once.
 
+## Validation
+
+Before generating code for a spec, critically analyze it for implementability:
+
+1. **Decision logic is implementable**: each pseudocode step must be concrete and \
+unambiguous — no vague instructions like "use judgment" or "consider context". Every step \
+must translate directly to Python code.
+2. **Env mapping variables exist in perception**: every key in `perception_to_variables` must \
+map to a field that exists in the perception template (`x`, `y`, `grid_width`, `grid_height`, \
+`step`, `resources`, `last_action_result`).
+3. **Expected behaviors are testable**: each `expected_behaviors[]` entry must have a \
+`test_pseudocode` that can be translated into a deterministic unit test with clear \
+setup, action, and assertion.
+
+If ALL checks pass → proceed to generate code normally.
+If ANY check fails → write a **validation report** instead of model/test files:
+
+```json
+{
+  "formulation_id": "...",
+  "paradigm": "...",
+  "status": "invalid",
+  "problems": [
+    {"type": "ambiguous_logic", "detail": "Step 3 of decision_logic says 'choose wisely' — not translatable to code"},
+    {"type": "missing_perception_key", "detail": "perception_to_variables maps 'temperature' but perception has no such key"},
+    {"type": "untestable_behavior", "detail": "Behavior B2 has no test_pseudocode or its pseudocode is too vague to automate"},
+    {"type": "other", "detail": "Free-text description of the problem"}
+  ]
+}
+```
+
+Save the validation report at `builder/{formulation_id}_validation.json` using `write_file`.
+Do NOT write model or test files for invalid specs.
+
+Be strict but fair: flag genuine implementability issues, not stylistic preferences.
+
 ## Process
 
 For EACH JSON spec:
 
 1. `read_file` the spec.
-2. `write_file` the model (`builder/{formulation_id}_model.py`).
-3. `write_file` the tests (`builder/test_{formulation_id}.py`).
-4. `run_tests` on the test file.
-5. If tests fail → fix via `write_file` + `run_tests` (max 3 attempts). Then next spec.
+2. **Validate** the spec (see Validation above).
+3. If invalid → `write_file` the validation report (`builder/{formulation_id}_validation.json`) \
+and move to the next spec.
+4. `write_file` the model (`builder/{formulation_id}_model.py`).
+5. `write_file` the tests (`builder/test_{formulation_id}.py`).
+6. `run_tests` on the test file.
+7. If tests fail → fix via `write_file` + `run_tests` (max 3 attempts). Then next spec.
 
 ### CRITICAL: batch tool calls
 

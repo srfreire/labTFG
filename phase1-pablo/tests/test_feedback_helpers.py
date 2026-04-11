@@ -9,6 +9,7 @@ from decisionlab.feedback import (
     _discover_paradigm_slugs,
     _filter_formulations_md,
     _parse_formulation_headers,
+    review_build,
     review_reason,
 )
 
@@ -258,3 +259,96 @@ class TestReviewReasonInvalidSpecs:
 
         assert len(formalizer_reruns) == 1
         assert formalizer_reruns == ["homeostatic"]
+
+
+# ---------------------------------------------------------------------------
+# P4-002: review_build with invalid builds
+# ---------------------------------------------------------------------------
+
+
+def _make_invalid_build(formulation_id: str, paradigm: str) -> dict:
+    return {
+        "formulation_id": formulation_id,
+        "paradigm": paradigm,
+        "status": "invalid",
+        "problems": [
+            {"type": "ambiguous_logic", "detail": "Step 3 says 'choose wisely'"},
+            {"type": "missing_perception_key", "detail": "'temperature' not in perception"},
+        ],
+    }
+
+
+def _write_validation(reports_dir, data: dict) -> None:
+    builder_dir = reports_dir / "builder"
+    builder_dir.mkdir(parents=True, exist_ok=True)
+    fid = data["formulation_id"]
+    (builder_dir / f"{fid}_validation.json").write_text(json.dumps(data, indent=2))
+
+
+class TestReviewBuildInvalidBuilds:
+    @pytest.mark.asyncio
+    async def test_invalid_build_detected_and_user_chooses_rerun(self, tmp_path):
+        """Invalid build triggers rerun option; user chooses rerun reasoner."""
+        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+
+        build_results = {"T01-P01-F02": "Implemented model and tests passed."}
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [
+                True,   # rerun reasoner for invalid T01-P01-F01
+                True,   # approve valid build T01-P01-F02
+            ]
+            approved, rejections, reasoner_reruns = await review_build(
+                tmp_path, build_results,
+            )
+
+        assert "T01-P01-F02" in approved
+        assert "T01-P01-F01" not in approved
+        assert len(rejections) == 0
+        assert "homeostatic" in reasoner_reruns
+
+    @pytest.mark.asyncio
+    async def test_invalid_build_detected_and_user_skips(self, tmp_path):
+        """Invalid build, user chooses to skip (not rerun)."""
+        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [
+                False,  # skip (don't rerun reasoner)
+            ]
+            approved, rejections, reasoner_reruns = await review_build(
+                tmp_path, {},
+            )
+
+        assert len(approved) == 0
+        assert len(rejections) == 0
+        assert len(reasoner_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_all_valid_builds_returns_empty_reasoner_reruns(self, tmp_path):
+        """When all builds are valid, reasoner_reruns is empty."""
+        build_results = {"T01-P01-F01": "Model implemented. All tests passed."}
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [True]  # approve
+            approved, rejections, reasoner_reruns = await review_build(
+                tmp_path, build_results,
+            )
+
+        assert "T01-P01-F01" in approved
+        assert len(reasoner_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_duplicate_paradigm_deduplication(self, tmp_path):
+        """Two invalid builds for the same paradigm produce one reasoner rerun."""
+        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("T01-P01-F02", "homeostatic"))
+
+        with patch("decisionlab.feedback._ask") as mock_ask:
+            mock_ask.side_effect = [True, True]  # rerun for both
+            approved, rejections, reasoner_reruns = await review_build(
+                tmp_path, {},
+            )
+
+        assert len(reasoner_reruns) == 1
+        assert reasoner_reruns == ["homeostatic"]

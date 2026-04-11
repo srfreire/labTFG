@@ -855,6 +855,26 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
     await emit({"type": "stage_change", "stage": "review_build", "status": "running"})
 
     models_data: list[dict] = []
+
+    # Check for validation reports (invalid builds)
+    builder_dir = SAMPLE_DIR / "builder"
+    if builder_dir.is_dir():
+        for vfile in sorted(builder_dir.glob("*_validation.json")):
+            try:
+                data = json.loads(vfile.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if data.get("status") == "invalid":
+                models_data.append({
+                    "slug": data.get("formulation_id", vfile.stem),
+                    "paradigm": data.get("paradigm", "unknown"),
+                    "status": "invalid",
+                    "problems": data.get("problems", []),
+                    "code": "",
+                    "test_results": "",
+                    "passed": False,
+                })
+
     for model_file, test_file in builder_pairs:
         code = _read_file_full(model_file)
         test_results = _read_file_full(test_file) if test_file else ""

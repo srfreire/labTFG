@@ -300,19 +300,52 @@ async def review_reason(
 # REVIEW_BUILD
 # ---------------------------------------------------------------------------
 
-async def review_build(build_results: dict[str, str]) -> str | None:
+async def review_build(
+    reports_dir: Path,
+    build_results: dict[str, str],
+) -> tuple[list[str], list[tuple[str, str, str]], list[str]]:
     """Interactive review of builder results.
 
-    Returns ``None`` if all good, or a feedback string for re-routing.
+    Returns ``(approved_slugs, [(slug, paradigm, feedback)], reasoner_rerun_slugs)``.
     """
     console.print()
     console.rule("[bold green]Review Build Results")
 
-    if not build_results:
-        console.print("[yellow]No build results to review.[/yellow]")
-        return None
+    approved: list[str] = []
+    rejections: list[tuple[str, str, str]] = []
+    reasoner_reruns: list[str] = []
 
-    all_ok = True
+    # Check for validation reports (invalid builds)
+    builder_dir = reports_dir / "builder"
+    if builder_dir.is_dir():
+        for vfile in sorted(builder_dir.glob("*_validation.json")):
+            try:
+                data = json.loads(vfile.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if data.get("status") != "invalid":
+                continue
+
+            fid = data.get("formulation_id", vfile.stem)
+            paradigm = data.get("paradigm", "unknown")
+
+            console.print()
+            console.rule(f"[bold red]INVALID BUILD: {fid}[/bold red]")
+            console.print(f"[dim]Paradigm:[/dim] {paradigm}")
+            problems = data.get("problems", [])
+            for p in problems:
+                console.print(f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}")
+
+            rerun: bool = await _ask(
+                questionary.confirm(
+                    f"Rerun Reasoner for paradigm '{paradigm}'?",
+                    default=True,
+                ),
+            )
+            if rerun and paradigm not in reasoner_reruns:
+                reasoner_reruns.append(paradigm)
+
+    # Review valid builds
     for slug, content in build_results.items():
         console.print()
         console.rule(f"[bold cyan]{slug}[/bold cyan]")
@@ -322,22 +355,16 @@ async def review_build(build_results: dict[str, str]) -> str | None:
         lower = content.lower()
         if any(word in lower for word in ("error", "fail", "traceback", "exception")):
             console.print(f"[yellow]Potential issues detected in {slug}.[/yellow]")
-            all_ok = False
 
-    console.print()
-
-    if all_ok:
-        happy: bool = await _ask(
-            questionary.confirm("All builds look good. Accept results?", default=True),
+        ok: bool = await _ask(
+            questionary.confirm(f"Approve build '{slug}'?", default=True),
         )
-        if happy:
-            return None
+        if ok:
+            approved.append(slug)
+        else:
+            feedback: str = await _ask(
+                questionary.text("What needs fixing?"),
+            )
+            rejections.append((slug, "unknown", feedback))
 
-    feedback: str = await _ask(
-        questionary.text("Describe what needs fixing (free-form feedback):"),
-    )
-
-    if not feedback or not feedback.strip():
-        return None
-
-    return feedback.strip()
+    return approved, rejections, reasoner_reruns
