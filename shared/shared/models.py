@@ -1,0 +1,134 @@
+"""SQLAlchemy 2.0 async ORM models for labtfg infrastructure."""
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Run(Base):
+    __tablename__ = "runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    problem_description: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(50), default="created")
+    s3_report_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_prefix: Mapped[str] = mapped_column(String(500))
+
+    # relationships
+    models: Mapped[list[Model]] = relationship(back_populates="run")
+    artifacts: Mapped[list[Artifact]] = relationship(back_populates="run")
+
+
+class Model(Base):
+    __tablename__ = "models"
+
+    formulation_id: Mapped[str] = mapped_column(
+        String(255), primary_key=True
+    )
+    class_name: Mapped[str] = mapped_column(String(255))
+    paradigm: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    s3_model_key: Mapped[str] = mapped_column(String(500))
+    s3_test_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    registered_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    metadata_: Mapped[dict | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+
+    # relationship
+    run: Mapped[Run | None] = relationship(back_populates="models")
+
+
+class Experiment(Base):
+    __tablename__ = "experiments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    description: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(50), default="created")
+    spec: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    models_used: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    steps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    s3_events_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_replay_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_tracker_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_analyst_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_pdf_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_tex_key: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    s3_charts_prefix: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+
+    # relationships
+    artifacts: Mapped[list[Artifact]] = relationship(
+        back_populates="experiment"
+    )
+
+
+class Artifact(Base):
+    __tablename__ = "artifacts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    s3_key: Mapped[str] = mapped_column(String(500), unique=True)
+    artifact_type: Mapped[str] = mapped_column(String(50))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    experiment_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("experiments.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(String(100))
+
+    # relationships
+    run: Mapped[Run | None] = relationship(back_populates="artifacts")
+    experiment: Mapped[Experiment | None] = relationship(
+        back_populates="artifacts"
+    )
