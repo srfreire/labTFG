@@ -40,6 +40,15 @@ class _AlwaysEat:
     def get_state(self) -> dict: return {}
 
 
+class _LearningModel:
+    """A model whose state changes on update, so pre != post."""
+    def __init__(self):
+        self.counter = 0
+    def decide(self, perception: dict) -> Action: return Action("stay")
+    def update(self, action, reward, new_perception): self.counter += 1
+    def get_state(self) -> dict: return {"counter": self.counter}
+
+
 # --- Helpers ---
 
 def _basic_actions():
@@ -295,3 +304,37 @@ def test_duplicate_resource_types_raises():
     resources = [ResourceRule(type="food", count=1), ResourceRule(type="food", count=2)]
     with pytest.raises(ValueError, match="Duplicate resource types"):
         Environment(5, 5, actions=[], resources=resources)
+
+
+# --- Decision traces ---
+
+def test_step_populates_decision_trace_fields():
+    """Events from step() include perception, pre_state, and available_actions."""
+    env = Environment(5, 5, actions=_basic_actions(), resources=_food_rule(), seed=42)
+    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay()))
+    events = env.step()
+    e = events[0]
+    assert "x" in e.perception
+    assert "y" in e.perception
+    assert "resources" in e.perception
+    assert e.perception["x"] == 0
+    assert e.pre_state == {"dummy": True}
+    assert set(e.available_actions) == {"right", "left", "up", "down", "stay", "eat"}
+
+
+def test_pre_state_captures_before_update():
+    """pre_state reflects model state BEFORE update; outcome.model_state reflects AFTER."""
+    env = Environment(5, 5, actions=[ActionRule("stay", NoopEffect())], resources=[])
+    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_LearningModel()))
+    events = env.step()
+    e = events[0]
+    assert e.pre_state["counter"] == 0
+    assert e.outcome["model_state"]["counter"] == 1
+
+
+def test_event_default_fields_backward_compatible():
+    """Events created without new fields default to empty."""
+    e = Event(step=0, agent_id="a1", action=Action("stay"))
+    assert e.perception == {}
+    assert e.pre_state == {}
+    assert e.available_actions == []

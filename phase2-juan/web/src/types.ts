@@ -19,6 +19,7 @@ export interface ChatMessage {
   analyst?: AnalystData
   replay?: ReplayData
   charts?: ChartSpec[]
+  traces?: DecisionTrace[]
 }
 
 export interface ChartSpec {
@@ -75,6 +76,17 @@ export interface AnalystData {
   metrics: Record<string, Record<string, number>>
 }
 
+export interface DecisionTrace {
+  agent_id: string
+  step: number
+  perception: Record<string, unknown> | null
+  pre_state: Record<string, unknown> | null
+  post_state: Record<string, unknown>
+  available_actions: string[] | null
+  action_chosen: { name: string; params: Record<string, unknown> }
+  outcome: { reward: number; action_result: Record<string, unknown> }
+}
+
 export interface ReplayFrame {
   step: number
   agents: { id: string; x: number; y: number; alive: boolean }[]
@@ -90,7 +102,7 @@ export interface SimAgent {
 export interface CriticalEvent {
   step: number
   agent_id: string
-  type: 'consumption' | 'starvation' | 'energy_spike' | 'strategy_shift'
+  type: 'consumption' | 'starvation' | 'energy_spike' | 'strategy_shift' | 'decision_confidence_drop'
   severity: number
   description: string
 }
@@ -101,4 +113,5 @@ export interface ReplayData {
   total_steps: number
   frames: ReplayFrame[]
   critical_events?: CriticalEvent[]
+  traces?: Record<number, DecisionTrace[]>
 }

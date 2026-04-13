@@ -6,6 +6,7 @@ import { Send, FlaskConical } from 'lucide-react'
 import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
+import { DecisionTraceCard } from './DecisionTraceCard'
 import { FROM_COLORS } from '../constants'
 
 function getAgentColor(text: string): string | null {
@@ -203,6 +204,15 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
             <ChartCard key={chart.id} spec={chart} />
           ))}
           {msg.replay && <SimulationGrid replay={msg.replay} />}
+          {msg.traces && msg.traces.length > 0 && (
+            <div className={`mt-3 flex gap-2.5 ${msg.traces.length > 1 ? 'overflow-x-auto' : ''}`}>
+              {msg.traces.map((trace, i) => (
+                <div key={i} className={msg.traces!.length > 1 ? 'min-w-[280px] flex-1' : ''}>
+                  <DecisionTraceCard trace={trace} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

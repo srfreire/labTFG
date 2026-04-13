@@ -3,7 +3,7 @@
  * Activate by adding ?mock to the URL: http://localhost:5173/?mock
  */
 import { useState, useCallback, useRef } from 'react'
-import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData, ChartSpec, SimAgent, CriticalEvent } from '../types'
+import type { AgentState, PipelineStep, ChatMessage, ReplayData, TrackerData, AnalystData, ChartSpec, SimAgent, CriticalEvent, DecisionTrace } from '../types'
 import { AGENT_COLORS } from '../constants'
 
 const INITIAL_AGENTS: AgentState[] = [
@@ -22,6 +22,7 @@ function mockCriticalEvents(): CriticalEvent[] {
     { step: 8, agent_id: 'drive_reduction_rl', type: 'starvation', severity: 0.7, description: 'drive_reduction_rl energía crítica: 12.3' },
     { step: 9, agent_id: 'drive_reduction_rl', type: 'energy_spike', severity: 0.8, description: 'drive_reduction_rl energía subió 45.0 (12.3→57.3)' },
     { step: 14, agent_id: 'pi_negative_feedback', type: 'consumption', severity: 0.5, description: 'pi_negative_feedback consumió food (reward=1.0)' },
+    { step: 16, agent_id: 'drive_reduction_rl', type: 'decision_confidence_drop', severity: 0.7, description: 'drive_reduction_rl perdió confianza en su decisión: gap Q-values bajó de 2.10 a 0.35' },
     { step: 18, agent_id: 'drive_reduction_rl', type: 'strategy_shift', severity: 0.6, description: 'drive_reduction_rl cambió de \'move_up\' a \'eat\'' },
     { step: 22, agent_id: 'pi_negative_feedback', type: 'starvation', severity: 0.9, description: 'pi_negative_feedback energía crítica: 5.1' },
   ]
@@ -61,7 +62,7 @@ function mockReplay(): ReplayData {
     })
   }
 
-  return { grid_width: W, grid_height: H, total_steps: STEPS, frames, critical_events: mockCriticalEvents() }
+  return { grid_width: W, grid_height: H, total_steps: STEPS, frames, critical_events: mockCriticalEvents(), traces: mockReplayTraces() }
 }
 
 function mockTracker(): TrackerData {
@@ -182,7 +183,74 @@ function mockCharts(): ChartSpec[] {
         },
       ],
     },
+    {
+      id: 'chart_3',
+      type: 'line',
+      title: 'Evolución Q-values por acción (drive_reduction_rl)',
+      x_label: 'Paso',
+      y_label: 'Q-valor',
+      series: [
+        {
+          name: 'drive_reduction_rl:eat', color: '#4ade80',
+          data: Array.from({ length: 28 }, (_, i) => ({
+            x: i, y: Math.round((0.5 + i * 0.4 + Math.sin(i * 0.3) * 0.5) * 100) / 100,
+          })),
+        },
+        {
+          name: 'drive_reduction_rl:move_up', color: '#38bdf8',
+          data: Array.from({ length: 28 }, (_, i) => ({
+            x: i, y: Math.round((0.3 + i * 0.15 + Math.cos(i * 0.4) * 0.3) * 100) / 100,
+          })),
+        },
+        {
+          name: 'drive_reduction_rl:stay', color: '#f472b6',
+          data: Array.from({ length: 28 }, (_, i) => ({
+            x: i, y: Math.round((0.1 + i * 0.05) * 100) / 100,
+          })),
+        },
+      ],
+    },
   ]
+}
+
+function mockDecisionTraces(): DecisionTrace[] {
+  return [
+    {
+      agent_id: 'drive_reduction_rl',
+      step: 16,
+      perception: { x: 3, y: 4, grid_width: 8, grid_height: 8, step: 16, resources: { food: [{ x: 3, y: 4 }, { x: 5, y: 1 }] } },
+      pre_state: { energy: 25.3, drive: 0.82, epsilon: 0.15, q_table: { eat: 12.3, move_right: 8.1, stay: 5.4, move_left: 3.2 } },
+      post_state: { energy: 40.3, drive: 0.31, epsilon: 0.14, q_table: { eat: 12.8, move_right: 8.1, stay: 5.4, move_left: 3.2 } },
+      available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
+      action_chosen: { name: 'eat', params: {} },
+      outcome: { reward: 15, action_result: { consumed: true, resource_type: 'food' } },
+    },
+    {
+      agent_id: 'pi_negative_feedback',
+      step: 16,
+      perception: { x: 5, y: 3, grid_width: 8, grid_height: 8, step: 16, resources: { food: [{ x: 5, y: 1 }, { x: 6, y: 3 }] } },
+      pre_state: { energy: 62.1, error_signal: 0.31, proportional_control: 0.15, integral_control: 0.08, total_control_signal: 0.23 },
+      post_state: { energy: 60.1, error_signal: 0.42, proportional_control: 0.21, integral_control: 0.10, total_control_signal: 0.31 },
+      available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
+      action_chosen: { name: 'move_up', params: {} },
+      outcome: { reward: 0, action_result: {} },
+    },
+  ]
+}
+
+function mockReplayTraces(): Record<number, DecisionTrace[]> {
+  const traces: Record<number, DecisionTrace[]> = {}
+  traces[8] = [{
+    agent_id: 'drive_reduction_rl', step: 8,
+    perception: { x: 2, y: 3, grid_width: 8, grid_height: 8, step: 8, resources: { food: [{ x: 5, y: 1 }] } },
+    pre_state: { energy: 12.3, drive: 0.95, epsilon: 0.2, q_table: { eat: 3.1, move_right: 4.5, stay: 1.2, move_up: 2.8 } },
+    post_state: { energy: 10.3, drive: 0.98, epsilon: 0.19, q_table: { eat: 3.1, move_right: 4.8, stay: 1.2, move_up: 2.8 } },
+    available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
+    action_chosen: { name: 'move_right', params: {} },
+    outcome: { reward: 0, action_result: {} },
+  }]
+  traces[16] = mockDecisionTraces()
+  return traces
 }
 
 // --- The hook ---
@@ -264,10 +332,12 @@ export function useMockWebSocket() {
     setAgent('Tracker', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'observe_simulation')
     await delay(800)
+    setAgent('Tracker', 'working', 'get_decision_trace')
+    await delay(700)
     setAgent('Tracker', 'working', 'get_event_window')
-    await delay(1000)
+    await delay(800)
     setAgent('Tracker', 'working', 'get_agent_trajectory')
-    await delay(1200)
+    await delay(1000)
     setAgent('Tracker', 'done')
     const tracker = mockTracker()
     addMsg({
@@ -281,21 +351,26 @@ export function useMockWebSocket() {
     // 4. Analyst
     setAgent('Analyst', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'analyze_results')
-    await delay(600)
-    setAgent('Analyst', 'working', 'list_state_keys')
     await delay(500)
+    setAgent('Analyst', 'working', 'get_decision_trace')
+    await delay(600)
+    setAgent('Analyst', 'working', 'compare_decision_traces')
+    await delay(700)
+    setAgent('Analyst', 'working', 'list_state_keys')
+    await delay(400)
     setAgent('Analyst', 'working', 'create_chart')
-    await delay(1200)
+    await delay(1000)
     setAgent('Analyst', 'working', 'get_event_window')
-    await delay(800)
+    await delay(600)
     setAgent('Analyst', 'done')
     const analyst = mockAnalyst()
     const charts = mockCharts()
     addMsg({
       from: 'orchestrator',
-      text: 'El **Analyst** ha encontrado **3 patrones**, realizado **3 comparaciones** y generado **2 gráficas**.',
+      text: 'El **Analyst** ha encontrado **3 patrones**, realizado **3 comparaciones** y generado **3 gráficas** (incluyendo evolución de Q-values por acción).',
       analyst,
       charts,
+      traces: mockDecisionTraces(),
     })
     setPipeline(p => [...p, { step: 'anal', status: 'done' }])
     await delay(500)

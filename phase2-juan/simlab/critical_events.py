@@ -7,6 +7,7 @@ Detects noteworthy moments in the simulation without LLM:
   - death: agent dies
   - energy_spike: large change in energy between steps
   - strategy_shift: agent switches dominant action pattern
+  - decision_confidence_drop: gap between top-2 Q-values narrows
 """
 from __future__ import annotations
 
@@ -122,6 +123,46 @@ def _detect_strategy_shift(events: list[Event], window: int = 5) -> list[Critica
     return deduped
 
 
+def _detect_decision_confidence_drop(events: list[Event], threshold: float = 0.5) -> list[CriticalEvent]:
+    """Detect when the gap between top-2 Q-values narrows significantly.
+
+    A narrowing gap means the agent is becoming uncertain about which
+    action is best — a potential exploration-exploitation crisis.
+    """
+    result = []
+    by_agent: dict[str, list[Event]] = {}
+    for e in events:
+        by_agent.setdefault(e.agent_id, []).append(e)
+
+    for agent_id, agent_events in by_agent.items():
+        prev_gap = None
+        for e in agent_events:
+            q = e.pre_state.get("q_values") or e.pre_state.get("Q") or e.pre_state.get("q_table")
+            if not isinstance(q, dict):
+                continue
+            values = sorted(
+                [v for v in q.values() if isinstance(v, (int, float))],
+                reverse=True,
+            )
+            if len(values) < 2:
+                continue
+            gap = values[0] - values[1]
+            if prev_gap is not None and prev_gap > threshold and gap <= threshold:
+                result.append(CriticalEvent(
+                    step=e.step,
+                    agent_id=agent_id,
+                    type="decision_confidence_drop",
+                    severity=min(1.0, prev_gap / max(gap, 0.01)),
+                    description=(
+                        f"{agent_id} perdió confianza en su decisión: "
+                        f"gap Q-values bajó de {prev_gap:.2f} a {gap:.2f}"
+                    ),
+                    data={"prev_gap": round(prev_gap, 4), "new_gap": round(gap, 4)},
+                ))
+            prev_gap = gap
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -132,6 +173,7 @@ def detect_critical_events(events: list[Event]) -> list[CriticalEvent]:
     critical.extend(_detect_consumption(events))
     critical.extend(_detect_energy_events(events))
     critical.extend(_detect_strategy_shift(events))
+    critical.extend(_detect_decision_confidence_drop(events))
     critical.sort(key=lambda ce: (ce.step, ce.agent_id))
     return critical
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { RotateCcw, ChevronLeft, ChevronRight, Play, Pause, Gauge } from 'lucide-react'
-import type { ReplayData } from '../types'
+import type { ReplayData, DecisionTrace, CriticalEvent } from '../types'
 import { AGENT_COLORS } from '../constants'
+import { ReplayTracePopover } from './ReplayTracePopover'
 
 interface Props {
   replay: ReplayData
@@ -13,6 +14,7 @@ const CRITICAL_COLORS: Record<string, string> = {
   starvation: 'var(--color-accent-red)',
   energy_spike: 'var(--color-accent-amber)',
   strategy_shift: 'var(--color-analyst)',
+  decision_confidence_drop: 'var(--color-accent-cyan, #38bdf8)',
 }
 
 export function SimulationGrid({ replay }: Props) {
@@ -22,6 +24,7 @@ export function SimulationGrid({ replay }: Props) {
   const [trail, setTrail] = useState<Record<string, { x: number; y: number }[]>>({})
   const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
+  const [activeTrace, setActiveTrace] = useState<{ traces: DecisionTrace[]; criticalEvent?: CriticalEvent } | null>(null)
 
   // Index critical events by step for fast lookup
   const criticalByStep = useMemo(() => {
@@ -83,7 +86,7 @@ export function SimulationGrid({ replay }: Props) {
   const togglePlay = useCallback(() => setPlaying(p => !p), [])
   const stepBack = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.max(0, s - 1)) }, [])
   const stepForward = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.min(replay.total_steps - 1, s + 1)) }, [replay.total_steps])
-  const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setTrail({}) }, [])
+  const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setTrail({}); setActiveTrace(null) }, [])
   const cycleSpeed = useCallback(() => setSpeedIdx(i => (i + 1) % SPEEDS.length), [])
 
   const controlBtn = 'flex items-center text-[9px] px-2 py-1.5 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover hover:text-text-muted transition-colors duration-150 cursor-pointer'
@@ -229,7 +232,17 @@ export function SimulationGrid({ replay }: Props) {
                   opacity: ce.severity * 0.8 + 0.2,
                 }}
                 title={ce.description}
-                onClick={() => { setPlaying(false); setCurrentStep(ce.step) }}
+                onClick={() => {
+                  setPlaying(false)
+                  setCurrentStep(ce.step)
+                  const stepTraces = replay.traces?.[ce.step]
+                  if (stepTraces) {
+                    const agentTrace = stepTraces.find(t => t.agent_id === ce.agent_id) || stepTraces[0]
+                    setActiveTrace({ traces: [agentTrace], criticalEvent: ce })
+                  } else {
+                    setActiveTrace(null)
+                  }
+                }}
               />
             ))}
           </div>
@@ -251,6 +264,16 @@ export function SimulationGrid({ replay }: Props) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTrace && activeTrace.traces[0] && (
+        <div className="mt-2">
+          <ReplayTracePopover
+            trace={activeTrace.traces[0]}
+            criticalEvent={activeTrace.criticalEvent}
+            onClose={() => setActiveTrace(null)}
+          />
         </div>
       )}
 

@@ -111,12 +111,53 @@ def _extract_q_table(events: list[Event], agents: list[str], **_) -> list[dict]:
     return series
 
 
+def _extract_action_scores_evolution(events: list[Event], agents: list[str], **_) -> list[dict]:
+    """For models with Q-tables: plot Q-value per action over time from pre_state."""
+    series = []
+    for agent_id in agents:
+        action_data: dict[str, list[dict]] = {}
+        for e in events:
+            if e.agent_id != agent_id:
+                continue
+            q = e.pre_state.get("q_values") or e.pre_state.get("Q") or e.pre_state.get("q_table")
+            if not isinstance(q, dict):
+                continue
+            for action_name, val in q.items():
+                if isinstance(val, (int, float)):
+                    action_data.setdefault(str(action_name), []).append(
+                        {"x": e.step, "y": round(float(val), 4)}
+                    )
+        for action_name in sorted(action_data):
+            series.append({"name": f"{agent_id}:{action_name}", "data": action_data[action_name]})
+    return series
+
+
+def _extract_pre_post_state_delta(events: list[Event], agents: list[str], state_key: str = "energy", **_) -> list[dict]:
+    """Plot the delta (post - pre) for any scalar state key over time."""
+    series = []
+    for agent_id in agents:
+        data = []
+        for e in events:
+            if e.agent_id != agent_id:
+                continue
+            pre_val = e.pre_state.get(state_key)
+            post_val = e.outcome.get("model_state", {}).get(state_key)
+            if isinstance(pre_val, (int, float)) and isinstance(post_val, (int, float)):
+                delta = float(post_val) - float(pre_val)
+                data.append({"x": e.step, "y": round(delta, 4)})
+        if data:
+            series.append({"name": agent_id, "data": data})
+    return series
+
+
 _EXTRACTORS = {
     "reward_over_time": _extract_reward_over_time,
     "cumulative_reward": _extract_cumulative_reward,
     "action_distribution": _extract_action_distribution,
     "state_evolution": _extract_state_evolution,
     "q_table": _extract_q_table,
+    "action_scores_evolution": _extract_action_scores_evolution,
+    "pre_post_state_delta": _extract_pre_post_state_delta,
 }
 
 _AXIS_LABELS = {
@@ -125,6 +166,8 @@ _AXIS_LABELS = {
     "action_distribution": ("Acción", "Cantidad"),
     "state_evolution": None,  # dynamic — uses state_key
     "q_table": ("Estado-Acción", "Q-valor"),
+    "action_scores_evolution": ("Paso", "Q-valor"),
+    "pre_post_state_delta": None,  # dynamic — uses state_key
 }
 
 
@@ -224,13 +267,16 @@ CREATE_CHART_TOOL = {
             "metric": {
                 "type": "string",
                 "enum": ["reward_over_time", "cumulative_reward", "action_distribution",
-                         "state_evolution", "q_table"],
+                         "state_evolution", "q_table", "action_scores_evolution",
+                         "pre_post_state_delta"],
                 "description": (
                     "reward_over_time: per-step reward; "
                     "cumulative_reward: accumulated reward; "
                     "action_distribution: action counts; "
                     "state_evolution: internal state variable (set state_key); "
-                    "q_table: Q-values from last step"
+                    "q_table: Q-values from last step; "
+                    "action_scores_evolution: Q-value per action over time (shows learning); "
+                    "pre_post_state_delta: change in a state variable per step (set state_key)"
                 ),
             },
             "title": {"type": "string", "description": "Chart title in Spanish"},
@@ -329,6 +375,8 @@ def build_chart_tools(
         labels = _AXIS_LABELS.get(metric, ("", ""))
         if metric == "state_evolution":
             labels = ("Paso", state_key.replace("_", " ").title())
+        elif metric == "pre_post_state_delta":
+            labels = ("Paso", f"Δ {state_key.replace('_', ' ').title()}")
 
         spec: dict = {
             "id": chart_id,

@@ -40,6 +40,9 @@ class Event:
     agent_id: str
     action: Action
     outcome: dict = field(default_factory=dict)
+    perception: dict = field(default_factory=dict)
+    pre_state: dict = field(default_factory=dict)
+    available_actions: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -336,6 +339,9 @@ class Environment:
             # 1. What does the agent see?
             perception = self._build_perception(agent)
 
+            # 1b. Snapshot internal state BEFORE deciding (for decision traces)
+            pre_state = self._snapshot_model_state(agent.decision_model)
+
             # 2. What does the agent decide to do?
             action = agent.decision_model.decide(perception)
 
@@ -347,7 +353,7 @@ class Environment:
             new_perception["last_action_result"] = action_result
             agent.decision_model.update(action, reward, new_perception)
 
-            # 5. Record the event
+            # 5. Record the event (with full decision trace)
             event = Event(
                 step=self._step,
                 agent_id=agent.id,
@@ -357,6 +363,9 @@ class Environment:
                     "reward": reward,
                     "model_state": self._snapshot_model_state(agent.decision_model),
                 },
+                perception=perception,
+                pre_state=pre_state,
+                available_actions=list(self._action_registry.keys()),
             )
             step_events.append(event)
             self._events.append(event)

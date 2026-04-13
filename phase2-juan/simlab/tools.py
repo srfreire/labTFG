@@ -37,12 +37,19 @@ def _make_serializable(obj):
 
 def _event_to_dict(event: Event) -> dict:
     """Convert an Event dataclass to a JSON-serializable dict."""
-    return {
+    d = {
         "step": event.step,
         "agent_id": event.agent_id,
         "action": {"name": event.action.name, "params": event.action.params},
         "outcome": _make_serializable(event.outcome),
     }
+    if event.perception:
+        d["perception"] = _make_serializable(event.perception)
+    if event.pre_state:
+        d["pre_state"] = _make_serializable(event.pre_state)
+    if event.available_actions:
+        d["available_actions"] = event.available_actions
+    return d
 
 
 def _count_actions(events: list[Event]) -> dict[str, int]:
@@ -138,6 +145,47 @@ LIST_CRITICAL_EVENTS_TOOL = {
     },
 }
 
+GET_DECISION_TRACE_TOOL = {
+    "name": "get_decision_trace",
+    "description": (
+        "Get the full decision trace for one agent at one step: "
+        "what the agent perceived, its internal state BEFORE deciding, "
+        "the action chosen, available actions, and the outcome "
+        "(reward, action result, internal state AFTER). "
+        "Use this to understand WHY an agent made a specific decision."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "agent_id": {"type": "string", "description": "The agent ID"},
+            "step": {"type": "integer", "description": "The simulation step number"},
+        },
+        "required": ["agent_id", "step"],
+    },
+}
+
+COMPARE_DECISION_TRACES_TOOL = {
+    "name": "compare_decision_traces",
+    "description": (
+        "Compare decision traces of multiple agents at the same step. "
+        "Shows what each agent perceived, their internal state before deciding, "
+        "what action each chose, and the outcome. "
+        "Use this to understand why agents made different decisions at the same moment."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "step": {"type": "integer", "description": "The simulation step to compare"},
+            "agent_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Agent IDs to compare (omit for all agents at that step)",
+            },
+        },
+        "required": ["step"],
+    },
+}
+
 
 def build_simulation_tools(
     events: list[Event],
@@ -214,9 +262,58 @@ def build_simulation_tools(
             "events": _critical,
         })
 
+    async def get_decision_trace(params: dict) -> str:
+        """Return the full decision trace for one agent at one step."""
+        agent_id = params["agent_id"]
+        step = params["step"]
+        agent_events = by_agent.get(agent_id, [])
+        for e in agent_events:
+            if e.step == step:
+                trace = {
+                    "step": e.step,
+                    "agent_id": e.agent_id,
+                    "perception": _make_serializable(e.perception) if e.perception else None,
+                    "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+                    "available_actions": e.available_actions or None,
+                    "action_chosen": {"name": e.action.name, "params": e.action.params},
+                    "outcome": {
+                        "reward": e.outcome.get("reward"),
+                        "action_result": e.outcome.get("action_result"),
+                        "post_state": _make_serializable(e.outcome.get("model_state", {})),
+                    },
+                }
+                return json.dumps(trace)
+        return json.dumps({"error": f"No event for {agent_id} at step {step}"})
+
+    async def compare_decision_traces(params: dict) -> str:
+        """Compare decision traces of multiple agents at the same step."""
+        step = params["step"]
+        agent_filter = params.get("agent_ids")
+        step_events = [e for e in events if e.step == step]
+        if agent_filter:
+            step_events = [e for e in step_events if e.agent_id in agent_filter]
+        if not step_events:
+            return json.dumps({"error": f"No events at step {step}"})
+        traces = []
+        for e in step_events:
+            traces.append({
+                "agent_id": e.agent_id,
+                "perception": _make_serializable(e.perception) if e.perception else None,
+                "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+                "available_actions": e.available_actions or None,
+                "action_chosen": {"name": e.action.name, "params": e.action.params},
+                "outcome": {
+                    "reward": e.outcome.get("reward"),
+                    "action_result": e.outcome.get("action_result"),
+                    "post_state": _make_serializable(e.outcome.get("model_state", {})),
+                },
+            })
+        return json.dumps({"step": step, "traces": traces})
+
     schemas = [
         GET_SIMULATION_EVENTS_TOOL, GET_AGENT_TRAJECTORY_TOOL,
         GET_AGENT_STATE_TOOL, GET_EVENT_WINDOW_TOOL, LIST_CRITICAL_EVENTS_TOOL,
+        GET_DECISION_TRACE_TOOL, COMPARE_DECISION_TRACES_TOOL,
     ]
     registry: Registry = {
         "get_simulation_events": get_simulation_events,
@@ -224,6 +321,8 @@ def build_simulation_tools(
         "get_agent_state": get_agent_state,
         "get_event_window": get_event_window,
         "list_critical_events": list_critical_events_fn,
+        "get_decision_trace": get_decision_trace,
+        "compare_decision_traces": compare_decision_traces,
     }
     return schemas, registry
 

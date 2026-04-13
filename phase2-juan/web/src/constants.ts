@@ -37,6 +37,8 @@ export const TOOL_LABELS: Record<string, string> = {
   get_agent_state: 'Estado agente',
   list_critical_events: 'Eventos críticos',
   get_event_window: 'Ventana de eventos',
+  get_decision_trace: 'Traza de decisión',
+  compare_decision_traces: 'Comparando decisiones',
   list_state_keys: 'Variables disponibles',
   create_chart: 'Generando gráfica',
   list_past_experiments: 'Historial',
