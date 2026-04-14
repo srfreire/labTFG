@@ -6,15 +6,17 @@ from shared.database import DatabaseService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.settings import Settings, load_settings
 from shared.storage import StorageService
+from shared.vector_store import VectorStore
 
 storage: StorageService | None = None
 db: DatabaseService | None = None
 kg: KnowledgeGraph | None = None
+vectors: VectorStore | None = None
 
 
 async def init(settings: Settings | None = None) -> None:
     """Boot all infrastructure services, expose as module-level singletons."""
-    global storage, db, kg
+    global storage, db, kg, vectors
     if settings is None:
         settings = load_settings()
     storage = StorageService(settings)
@@ -25,11 +27,14 @@ async def init(settings: Settings | None = None) -> None:
         settings.NEO4J_URI, settings.NEO4J_USER, settings.NEO4J_PASSWORD
     )
     await kg.init_schema()
+    vectors = VectorStore(settings)
+    await vectors.connect()
+    await vectors.init_collections()
 
 
 async def shutdown() -> None:
     """Tear down all services."""
-    global storage, db, kg
+    global storage, db, kg, vectors
     if storage is not None:
         await storage.close()
         storage = None
@@ -39,3 +44,6 @@ async def shutdown() -> None:
     if kg is not None:
         await kg.close()
         kg = None
+    if vectors is not None:
+        await vectors.close()
+        vectors = None

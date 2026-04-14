@@ -16,6 +16,7 @@ class Settings:
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "labtfg-neo4j"
+    QDRANT_URL: str = "http://localhost:6333"
 
 
 def load_settings() -> Settings:
