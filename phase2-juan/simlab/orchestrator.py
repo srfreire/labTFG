@@ -59,7 +59,7 @@ RUN_SIMULATION_TOOL = {
             "num_agents": {"type": "integer", "description": "Number of agents PER MODEL to place in the simulation (default 1)"},
             "steps": {"type": "integer", "description": "Number of simulation steps to run"},
             "seed": {"type": "integer", "description": "Random seed for reproducibility (optional)"},
-            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model formulation IDs to run. Each gets num_agents agents. Pass a single-element array for one model."},
+            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model keys (paradigm/formulation) to run. Each gets num_agents agents. Pass a single-element array for one model."},
         },
         "required": ["steps"],
     },
@@ -136,8 +136,8 @@ READ_PREDICTIONS_TOOL = {
     "name": "read_predictions",
     "description": "Read the scientific predictions for a decision-making paradigm from Phase 1 deep research. "
                    "Call this AFTER the user chooses a model and BEFORE running the simulation. "
-                   "The paradigm slug is the prefix of the model formulation ID "
-                   "(e.g. 'homeostatic-regulation' from 'homeostatic-regulation_drive_reduction_rl').",
+                   "The paradigm slug is the paradigm field from the model listing "
+                   "(e.g. 'homeostatic-regulation').",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -246,20 +246,19 @@ If the user asked for the full pipeline automatically, default to a single stand
 ## Model selection
 
 Before running a simulation, call list_available_models to check what decision models are available. \
-Present the options to the user and let them choose. Then pass the chosen model IDs to run_simulation via model_ids. \
+Present the options to the user and let them choose. Then pass the chosen model keys to run_simulation via model_ids. \
 If no models are available, tell the user and do NOT run the simulation.
 
-IMPORTANT: Always use model_ids (an array) to pass model formulation IDs to run_simulation. \
-For a single model: model_ids=["homeostatic-regulation_drive_reduction_rl"]. \
-For comparison: model_ids=["homeostatic-regulation_drive_reduction_rl", "homeostatic-regulation_pi_negative_feedback"]. \
+IMPORTANT: Always use model_ids (an array) to pass model keys (paradigm/formulation) to run_simulation. \
+For a single model: model_ids=["homeostatic-regulation/drive-reduction-rl"]. \
+For comparison: model_ids=["homeostatic-regulation/drive-reduction-rl", "homeostatic-regulation/pi-negative-feedback"]. \
 Each model gets its own agent(s) in the shared environment.
 
 ## Predictions — THIS IS CRITICAL
 
 After the user chooses which model(s) to use, and BEFORE running the simulation:
-1. Call read_predictions with the paradigm slug for each chosen model (extract it from the formulation ID — \
-the part before the first underscore after the paradigm name, e.g. "homeostatic-regulation" from \
-"homeostatic-regulation_drive_reduction_rl").
+1. Call read_predictions with the paradigm slug for each chosen model (the paradigm field from list_available_models, \
+e.g. "homeostatic-regulation").
 2. Read the predictions returned and present them to the user in a clear, conversational way.
 3. Comment on what you EXPECT to happen in this specific environment given those predictions \
 (e.g. "Given homeostatic regulation theory, I expect the agent to eat more aggressively when its \
@@ -454,8 +453,14 @@ class Orchestrator:
                     break
             return json.dumps({
                 "models": [
-                    {"formulation_id": m.formulation_id, "class_name": m.class_name, "description": m.description}
-                    for m in self._discovered_models.values()
+                    {
+                        "key": key,
+                        "paradigm": m.paradigm,
+                        "formulation": m.formulation,
+                        "class_name": m.class_name,
+                        "description": m.description,
+                    }
+                    for key, m in self._discovered_models.items()
                 ]
             })
 
@@ -526,9 +531,7 @@ class Orchestrator:
                     info = available.get(mid)
                     if not info:
                         return json.dumps({"error": f"Model '{mid}' not found. Call list_available_models to see available models."})
-                    # Short label from formulation ID (e.g. "drive_reduction_rl")
-                    parts = mid.split("_", 1)
-                    label = parts[1] if len(parts) > 1 else mid[:12]
+                    label = info.formulation
                     for i in range(num_agents):
                         model = await _load_model(info, seed=rng.randint(0, 2**32))
                         pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))

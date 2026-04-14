@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ModelInfo:
     """Metadata about a discovered decision model."""
-    formulation_id: str     # e.g. "homeostatic-regulation_drive_reduction_rl"
+    id: str                 # UUID primary key
+    paradigm: str           # e.g. "homeostatic-regulation"
+    formulation: str        # e.g. "drive-reduction-rl"
     class_name: str         # e.g. "DriveReductionRLModel"
     description: str        # from the module docstring
     s3_model_key: str       # S3 key for the model source file
@@ -47,7 +49,12 @@ def _has_decision_model_interface(cls: type) -> bool:
 # ---------------------------------------------------------------------------
 
 async def discover_models() -> dict[str, ModelInfo]:
-    """Discover models from the Postgres models table."""
+    """Discover models from the Postgres models table.
+
+    Returns a dict keyed by ``"{paradigm}/{formulation}"`` compound string.
+    When multiple runs produce the same paradigm/formulation, the last row
+    encountered wins (non-deterministic order).
+    """
     import shared
     from shared.models import Model as DBModel
     from sqlalchemy import select
@@ -57,8 +64,16 @@ async def discover_models() -> dict[str, ModelInfo]:
         result = await session.execute(select(DBModel))
         rows = result.scalars().all()
         for row in rows:
-            models[row.formulation_id] = ModelInfo(
-                formulation_id=row.formulation_id,
+            key = f"{row.paradigm}/{row.formulation}"
+            if key in models:
+                logger.warning(
+                    "Duplicate model key %s (run_id=%s overwrites run_id=%s)",
+                    key, row.run_id, models[key].run_id,
+                )
+            models[key] = ModelInfo(
+                id=str(row.id),
+                paradigm=row.paradigm,
+                formulation=row.formulation,
                 class_name=row.class_name,
                 description=row.description or "",
                 s3_model_key=row.s3_model_key,
@@ -82,10 +97,10 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
 
     model_bytes = await shared.storage.get(model_info.s3_model_key)
     tmp_dir = tempfile.mkdtemp(prefix="model_")
-    tmp_path = Path(tmp_dir) / f"{model_info.formulation_id}_model.py"
+    tmp_path = Path(tmp_dir) / f"{model_info.formulation}_model.py"
     tmp_path.write_bytes(model_bytes)
 
-    module_name = f"_builder_{model_info.formulation_id}_{id(object())}"
+    module_name = f"_builder_{model_info.paradigm}_{model_info.formulation}_{id(object())}"
     spec = importlib.util.spec_from_file_location(module_name, tmp_path)
     if spec is None or spec.loader is None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -117,7 +132,7 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
     try:
         return model_class(**kwargs)
     except TypeError as e:
-        raise ValueError(f"Failed to instantiate {model_info.formulation_id}: {e}") from e
+        raise ValueError(f"Failed to instantiate {model_info.paradigm}/{model_info.formulation}: {e}") from e
 
 
 def cleanup_temp_models() -> None:
