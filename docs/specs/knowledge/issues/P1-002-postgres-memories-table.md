@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Add Postgres memories table with SQLAlchemy model
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: data-model
