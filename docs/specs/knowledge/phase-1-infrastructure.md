@@ -55,7 +55,7 @@ Stand up the data layer for the knowledge backbone: Neo4j knowledge graph, Qdran
 - [ ] AC2: `shared.init()` connects to all 4 services and creates Neo4j schema + Qdrant collections idempotently
 - [x] AC3: Can create a Paradigm node with properties and a SUPPORTS relation between Paper → Postulate via `KnowledgeGraph` client, then query it back
 - [ ] AC4: Can insert a Memory row via SQLAlchemy, query by namespace and confidence threshold
-- [ ] AC5: Can upsert a dense vector + sparse vector for the same document into Qdrant, then search both and get the document back
+- [x] AC5: Can upsert a dense vector + sparse vector for the same document into Qdrant, then search both and get the document back
 - [ ] AC6: Can embed a list of 5 texts via `EmbeddingService` and get 5 vectors of dimension 1024 back
 - [ ] AC7: Can rerank 10 documents against a query via `EmbeddingService.rerank()` and get ordered results with scores
 - [ ] AC8: Pipeline still works without Neo4j/Qdrant/Voyage (graceful degradation — clients return empty results or raise clear errors caught by callers)

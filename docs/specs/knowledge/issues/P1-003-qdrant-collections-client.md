@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Create Qdrant vector store collections and async client
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: vector
@@ -48,12 +48,12 @@ Set up 4 Qdrant collections (dense + sparse for both artifacts and memories) and
 - Qdrant filters mapped from dict: `{"namespace": "paradigm", "confidence": {"gte": 0.5}}` → Qdrant `Filter` objects
 
 ## Acceptance Criteria
-- [ ] AC1: `init_collections()` creates all 4 collections on fresh Qdrant, and is idempotent
-- [ ] AC2: Can upsert a dense vector with payload into `artifacts_dense`, search with a query vector, and get the point back with correct payload
-- [ ] AC3: Can upsert a sparse vector into `artifacts_sparse`, search with sparse query, and get the point back
-- [ ] AC4: Filter by namespace works: upsert 3 points with different namespaces, search with namespace filter returns only matching points
-- [ ] AC5: Filter by confidence threshold works: `{"confidence": {"gte": 0.7}}` excludes low-confidence points
-- [ ] AC6: `delete()` removes points and subsequent search does not return them
+- [x] AC1: `init_collections()` creates all 4 collections on fresh Qdrant, and is idempotent
+- [x] AC2: Can upsert a dense vector with payload into `artifacts_dense`, search with a query vector, and get the point back with correct payload
+- [x] AC3: Can upsert a sparse vector into `artifacts_sparse`, search with sparse query, and get the point back
+- [x] AC4: Filter by namespace works: upsert 3 points with different namespaces, search with namespace filter returns only matching points
+- [x] AC5: Filter by confidence threshold works: `{"confidence": {"gte": 0.7}}` excludes low-confidence points
+- [x] AC6: `delete()` removes points and subsequent search does not return them
 
 ## Files Likely Affected
 - `shared/shared/vector_store.py` — new file, VectorStore class
@@ -63,3 +63,29 @@ Set up 4 Qdrant collections (dense + sparse for both artifacts and memories) and
 Phase spec: `docs/specs/knowledge/phase-1-infrastructure.md`
 General spec: `docs/specs/knowledge/general.md`
 Heat: `vector`
+
+## Completion Summary
+
+**Commit:** `82b753e` — `feat[shared]: implement VectorStore collections + async CRUD (P1-003)`
+
+### What was built
+- `VectorStore` class with full async CRUD: `init_collections`, `upsert_dense`, `upsert_sparse`, `search_dense`, `search_sparse`, `delete`
+- 4 Qdrant collections: `artifacts_dense` (1024d cosine), `memories_dense` (1024d cosine), `artifacts_sparse` (sparse), `memories_sparse` (sparse)
+- `ScoredPoint` frozen dataclass for search results
+- `_build_filter()` helper: dict → Qdrant `Filter` (exact match + range)
+- `QDRANT_URL` setting in `Settings` dataclass
+- Wired into `shared.init()`/`shared.shutdown()` lifecycle as `shared.vectors` singleton
+- 9 integration tests covering all 6 ACs + guard test + upsert-update semantics
+
+### Files created/modified
+- `shared/shared/vector_store.py` — VectorStore implementation (replaced P1-005 stub)
+- `shared/shared/settings.py` — added `QDRANT_URL` setting
+- `shared/shared/__init__.py` — wired `vectors` into init/shutdown
+- `shared/pyproject.toml` — added `qdrant-client>=1.12`, pytest dev deps
+- `shared/tests/test_vector_store.py` — 9 integration tests
+- `shared/uv.lock` — lockfile update
+
+### Decisions
+- Replaced the P1-005 VectorStore stub (connect/close only) with the full implementation per spec
+- Used `query_points` API (Qdrant 1.12+) instead of deprecated `search` method
+- Test fixture wipes collections before each test for isolation across runs
