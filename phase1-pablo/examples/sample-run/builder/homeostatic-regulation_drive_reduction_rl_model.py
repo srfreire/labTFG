@@ -207,6 +207,7 @@ class HomeostaticDriveReductionRL:
             "energy": self.x,
             "drive": self.D,
             "reward": self.r,
+            "q_values": {a: self.Q.get((self.z, a), 0.0) for a in ALL_ACTIONS},
             "q_table": dict(self.Q),
             "discretized_state": self.z,
             "previous_energy": self.x_prev,

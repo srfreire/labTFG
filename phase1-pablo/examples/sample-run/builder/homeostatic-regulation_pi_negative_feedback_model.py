@@ -59,6 +59,13 @@ class HomeostaticPINegativeFeedback:
         self.c_I: float = 0.0         # integral control
         self.c: float = self.c_P + self.c_I  # total control = 15.0
 
+        # --- action scores (for decision trace visualization) ---
+        self._q_values: dict[str, float] = {
+            "move_up": 0.0, "move_down": 0.0,
+            "move_left": 0.0, "move_right": 0.0,
+            "stay": 0.0, "eat": 0.0,
+        }
+
     # ------------------------------------------------------------------
     # decide  (READ-ONLY)
     # ------------------------------------------------------------------
@@ -135,6 +142,27 @@ class HomeostaticPINegativeFeedback:
         # R4 – total control signal
         self.c = self.c_P + self.c_I
 
+        # Cache action utilities for decision trace visualization
+        pos = (new_perception["x"], new_perception["y"])
+        grid_w = new_perception.get("grid_width", 10)
+        grid_h = new_perception.get("grid_height", 10)
+        food_list = new_perception.get("resources", {}).get("food", [])
+        food_positions = {(f["x"], f["y"]) for f in food_list}
+
+        scores: dict[str, float] = {}
+        scores["stay"] = 0.0 if self.e > 0 else abs(self.c)
+        scores["eat"] = self.c if (self.e > 0 and pos in food_positions) else 0.0
+        for name, dx, dy in [("move_up", 0, -1), ("move_down", 0, 1),
+                              ("move_left", -1, 0), ("move_right", 1, 0)]:
+            if self.e > 0 and food_positions:
+                px = _clamp(pos[0] + dx, 0, grid_w - 1)
+                py = _clamp(pos[1] + dy, 0, grid_h - 1)
+                min_dist = min(abs(px - fx) + abs(py - fy) for fx, fy in food_positions)
+                scores[name] = self.c * (1.0 / (1 + min_dist))
+            else:
+                scores[name] = 0.0
+        self._q_values = scores
+
     # ------------------------------------------------------------------
     # get_state
     # ------------------------------------------------------------------
@@ -146,4 +174,5 @@ class HomeostaticPINegativeFeedback:
             "proportional_control": self.c_P,
             "integral_control": self.c_I,
             "total_control_signal": self.c,
+            "q_values": dict(self._q_values),
         }

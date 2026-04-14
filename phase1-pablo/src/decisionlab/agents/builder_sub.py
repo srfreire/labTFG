@@ -117,17 +117,32 @@ Every unnecessary round-trip wastes time and tokens. Minimize iterations.
 state here.
 - `update(action, reward, new_perception)`: apply ALL `rules[]` and ALL state updates here. \
 This is the ONLY method that modifies internal state.
-- `get_state()`: return dict of all variable values
+- `get_state()`: return dict of all variable values, including `q_values` (see below)
+
+### Action scores (`q_values`)
+
+`get_state()` MUST include a `q_values` key: a flat `dict[str, float]` mapping each \
+action name to the model's current evaluation score for that action.
+
+The simulation infrastructure uses `q_values` to visualize decision alternatives, \
+detect confidence drops, and chart action score evolution over time.
+
+- For Q-learning / RL models: Q-values for the current discretized state.
+- For utility / control-based models: computed utility for each candidate action.
+- Compute and cache scores in `update()` using `new_perception`. Initialize defaults \
+in `__init__` (e.g. all zeros).
+- Keys are action name strings (e.g. `"eat"`, `"stay"`, `"move_up"`). Values are floats.
 
 ### CRITICAL: decide vs update boundary
 
 The simulation calls these methods in this order:
 
+    pre_state = model.get_state()                     # snapshot BEFORE decide — includes q_values
     perception = env.build_perception(agent)          # no last_action_result
     action = model.decide(perception)                 # READ-ONLY — pick action from current state
     reward, result = env.apply(action)                # env executes the action
     new_perception = env.build_perception(agent)      # includes last_action_result
-    model.update(action, reward, new_perception)      # WRITE — update all state here
+    model.update(action, reward, new_perception)      # WRITE — update all state + q_values here
 
 `decide()` receives perception WITHOUT `last_action_result` (it is `{}`). \
 Only `update()` receives the result of the action via `new_perception["last_action_result"]`.

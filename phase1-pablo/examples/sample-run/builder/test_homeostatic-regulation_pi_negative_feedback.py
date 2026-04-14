@@ -212,7 +212,7 @@ def test_get_state_keys():
     state = model.get_state()
     expected_keys = {
         "energy", "error_signal", "proportional_control",
-        "integral_control", "total_control_signal"
+        "integral_control", "total_control_signal", "q_values"
     }
     assert expected_keys == set(state.keys()), \
         f"State keys mismatch: {set(state.keys())}"
