@@ -1,7 +1,7 @@
 ---
 id: P5-004
 title: Register models at approval + finalize run record
-status: in-progress
+status: done
 kind: strike
 phase: 5
 heat: registration
@@ -37,13 +37,13 @@ Insert `Model` rows into Postgres when the user approves builds in REVIEW_BUILD.
 - Model file doesn't exist in S3 (agent failed silently): skip registration, log warning
 
 ## Acceptance Criteria
-- [ ] Approved models have `Model` rows in Postgres after REVIEW_BUILD
-- [ ] `Model.paradigm` and `Model.formulation` are slug values
-- [ ] `Model.s3_model_key` and `Model.s3_test_key` point to correct S3 paths
-- [ ] `Model.class_name` extracted correctly from Python source
-- [ ] `runs.s3_report_key` populated when pipeline finishes
-- [ ] Re-run of a previously approved model updates the existing row
-- [ ] Missing model file in S3 logs warning, does not crash
+- [x] Approved models have `Model` rows in Postgres after REVIEW_BUILD
+- [x] `Model.paradigm` and `Model.formulation` are slug values
+- [x] `Model.s3_model_key` and `Model.s3_test_key` point to correct S3 paths
+- [x] `Model.class_name` extracted correctly from Python source
+- [x] `runs.s3_report_key` populated when pipeline finishes
+- [x] Re-run of a previously approved model updates the existing row
+- [x] Missing model file in S3 logs warning, does not crash
 
 ## Files Likely Affected
 - `src/decisionlab/router.py` — _review_build: model registration logic
@@ -54,3 +54,23 @@ Insert `Model` rows into Postgres when the user approves builds in REVIEW_BUILD.
 Phase spec: `docs/specs/infrastructure/phase-5-slug-wiring.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `registration`
+
+## Completion Summary
+
+**Commit:** `01dd71a` — `feat[router]: register models at approval + finalize run record (P5-004)`
+
+### What was built
+- `_register_approved_models()` method on Router: iterates `approved_specs`, reads model source from S3, extracts `class_name` via regex, upserts Model row in Postgres
+- Re-run handling: SELECT by `(run_id, paradigm, formulation)` unique constraint — UPDATE if exists, INSERT otherwise
+- Missing model file: logs warning and skips without crash
+- Run finalization: `s3_report_key` set to `research/{run_id}/report.md` at pipeline completion in Router.run(), server.py, and cli.py
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/router.py` — added `_register_approved_models()`, called in `_review_build` before DONE; added `s3_report_key` finalization in `run()`
+- `phase1-pablo/src/decisionlab/server.py` — added `s3_report_key` to the post-pipeline Run status update
+- `phase1-pablo/src/decisionlab/cli.py` — added `s3_report_key` finalization in both `run` and `resume` commands
+- `phase1-pablo/tests/test_router_review_build.py` — 5 new tests (model registration, class extraction, missing file, re-run update, S3 path correctness); existing 4 tests updated to mock DB
+
+### Decisions
+- Model registration placed in `_review_build` (not `_do_build`) per spec: only approved models are registered
+- `s3_report_key` finalization added to Router.run() post-loop AND explicitly in server.py/cli.py for defense-in-depth
