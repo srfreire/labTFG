@@ -1,14 +1,14 @@
 ---
 id: P2-003
 title: Build embedding and Qdrant indexing pipeline for artifacts and facts
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: indexing
 priority: 2
 blocked_by: [P2-001]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P2-003: Build embedding and Qdrant indexing pipeline for artifacts and facts
