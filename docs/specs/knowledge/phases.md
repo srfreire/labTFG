@@ -15,9 +15,10 @@
   - Issues: P2-001, P2-002, P2-003, P2-004, P2-005
   - Heats: extraction (P2-001), kg-write (P2-002, after P2-001), indexing (P2-003, after P2-001), resolution (P2-004, after P2-001+P2-003), agent (P2-005, after P2-002+P2-003+P2-004)
 
-- [ ] **Phase 3: 3-Layer Retrieval & CRAG** — The read path: parallel KG traversal (HippoRAG PPR), dense vector search, sparse BM25 search, RRF fusion, Voyage AI reranking, CRAG evaluator (Haiku) with web search fallback. Exposes retrieval as tools for pipeline agents.
+- [x] **Phase 3: 3-Layer Retrieval & CRAG** — The read path: parallel KG traversal (HippoRAG PPR), dense vector search, sparse BM25 search, RRF fusion, Voyage AI reranking, CRAG evaluator (Haiku) with web search fallback. Exposes retrieval as tools for pipeline agents.
   - Dependencies: Phase 1
-  - Estimated issues: ~5
+  - Issues: P3-001, P3-002, P3-003, P3-004, P3-005
+  - Heats: retrieval (P3-001 ∥ P3-002), fusion (P3-003, after P3-001+P3-002), crag (P3-004, after P3-003), tool (P3-005, after P3-003+P3-004)
 
 - [ ] **Phase 4: Pipeline Integration** — Wire retrieval tools into existing agents (Researcher, Formalizer, Reasoner, Builder). Wire Memory Agent into Router's stage transitions. Add `EXTRACT_KNOWLEDGE` / `RETRIEVE_KNOWLEDGE` to the pipeline state machine. Graceful degradation when infra is unavailable.
   - Dependencies: Phase 2, Phase 3
