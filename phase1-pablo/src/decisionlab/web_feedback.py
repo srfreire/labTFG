@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -49,8 +48,9 @@ async def wait_for_review(
 # Helpers (shared with feedback.py logic)
 # ---------------------------------------------------------------------------
 
-_FORMULATION_HEADER_RE = re.compile(
-    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE
+from decisionlab.parsing import (
+    filter_formulations_md,
+    parse_formulation_headers,
 )
 
 
@@ -59,27 +59,6 @@ def _discover_paradigm_slugs(reports_dir: Path) -> list[str]:
     if not deep_dir.is_dir():
         return []
     return sorted(p.stem for p in deep_dir.glob("*.md"))
-
-
-def _parse_formulation_headers(text: str) -> list[tuple[int, str, int, int]]:
-    matches = list(_FORMULATION_HEADER_RE.finditer(text))
-    results: list[tuple[int, str, int, int]] = []
-    for i, m in enumerate(matches):
-        start = m.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        results.append((int(m.group(1)), m.group(2).strip(), start, end))
-    return results
-
-
-def _filter_formulations_md(text: str, keep_numbers: list[int]) -> str:
-    headers = _parse_formulation_headers(text)
-    if not headers:
-        return text
-    preamble = text[: headers[0][2]]
-    kept_sections = [
-        text[start:end] for num, _, start, end in headers if num in keep_numbers
-    ]
-    return (preamble + "".join(kept_sections)).rstrip() + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +128,7 @@ async def review_formalize(
             text = await shared.storage.get_text(s3_key)
         except Exception:
             continue
-        headers = _parse_formulation_headers(text)
+        headers = parse_formulation_headers(text)
         formulations = [
             {"id": num, "name": name, "content": text[start:end]}
             for num, name, start, end in headers
@@ -173,7 +152,7 @@ async def review_formalize(
             s3_key = f"research/{run_id}/formulations/{slug}.md"
             try:
                 text = await shared.storage.get_text(s3_key)
-                filtered = _filter_formulations_md(text, kept)
+                filtered = filter_formulations_md(text, kept)
                 await shared.storage.put_text(s3_key, filtered)
             except Exception:
                 pass

@@ -17,7 +17,6 @@ import asyncio
 import json
 import logging
 import random
-import re
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -167,19 +166,7 @@ async def wait_for_review(stage: str, emit, review_data: dict) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
-_FORMULATION_HEADER_RE = re.compile(
-    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE
-)
-
-
-def _parse_formulation_headers(text: str) -> list[tuple[int, str, int, int]]:
-    matches = list(_FORMULATION_HEADER_RE.finditer(text))
-    results: list[tuple[int, str, int, int]] = []
-    for i, m in enumerate(matches):
-        start = m.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        results.append((int(m.group(1)), m.group(2).strip(), start, end))
-    return results
+from decisionlab.parsing import parse_formulation_headers
 
 
 def _paradigm_slugs_from_dir(subdir: str) -> list[str]:
@@ -563,7 +550,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         if not md_path.exists():
             continue
         text = md_path.read_text()
-        headers = _parse_formulation_headers(text)
+        headers = parse_formulation_headers(text)
         formulations = [
             {"id": num, "name": name, "content": text[start:end]}
             for num, name, start, end in headers

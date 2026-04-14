@@ -7,10 +7,12 @@ import pytest
 
 from decisionlab.feedback import (
     _discover_paradigm_slugs,
-    _filter_formulations_md,
-    _parse_formulation_headers,
     review_build,
     review_reason,
+)
+from decisionlab.parsing import (
+    filter_formulations_md,
+    parse_formulation_headers,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,13 +42,13 @@ Single formulation content.
 
 
 # ---------------------------------------------------------------------------
-# _parse_formulation_headers
+# parse_formulation_headers
 # ---------------------------------------------------------------------------
 
 
 class TestParseFormulationHeaders:
     def test_parse_single_formulation(self):
-        headers = _parse_formulation_headers(SINGLE_FORMULATION_MD)
+        headers = parse_formulation_headers(SINGLE_FORMULATION_MD)
         assert len(headers) == 1
         num, name, start, end = headers[0]
         assert num == 1
@@ -55,7 +57,7 @@ class TestParseFormulationHeaders:
         assert end == len(SINGLE_FORMULATION_MD)
 
     def test_parse_multiple_formulations(self):
-        headers = _parse_formulation_headers(SAMPLE_MD)
+        headers = parse_formulation_headers(SAMPLE_MD)
         assert len(headers) == 3
 
         assert headers[0][0] == 1
@@ -74,12 +76,12 @@ class TestParseFormulationHeaders:
 
     def test_parse_no_formulations(self):
         text = "# Just a title\n\nSome paragraph text.\n"
-        headers = _parse_formulation_headers(text)
+        headers = parse_formulation_headers(text)
         assert headers == []
 
     def test_parse_formulation_with_preamble(self):
         text = "# Preamble title\n\nIntro text.\n\n## Formulation 1: First\nContent.\n"
-        headers = _parse_formulation_headers(text)
+        headers = parse_formulation_headers(text)
         assert len(headers) == 1
         num, name, start, _ = headers[0]
         assert num == 1
@@ -90,35 +92,35 @@ class TestParseFormulationHeaders:
 
 
 # ---------------------------------------------------------------------------
-# _filter_formulations_md
+# filter_formulations_md
 # ---------------------------------------------------------------------------
 
 
 class TestFilterFormulationsMd:
     def test_filter_keeps_selected(self):
-        result = _filter_formulations_md(SAMPLE_MD, [1, 3])
+        result = filter_formulations_md(SAMPLE_MD, [1, 3])
         assert "## Formulation 1: Basic Homeostasis" in result
         assert "## Formulation 3: Full Integration" in result
         assert "## Formulation 2: Extended Model" not in result
 
     def test_filter_preserves_preamble(self):
-        result = _filter_formulations_md(SAMPLE_MD, [1])
+        result = filter_formulations_md(SAMPLE_MD, [1])
         assert result.startswith("# Paradigm: Homeostatic Regulation")
 
     def test_filter_no_headers(self):
         text = "# No formulations here\n\nJust plain text.\n"
-        result = _filter_formulations_md(text, [1, 2])
+        result = filter_formulations_md(text, [1, 2])
         assert result == text
 
     def test_filter_keeps_all(self):
-        result = _filter_formulations_md(SAMPLE_MD, [1, 2, 3])
+        result = filter_formulations_md(SAMPLE_MD, [1, 2, 3])
         # All three formulations present
         assert "## Formulation 1" in result
         assert "## Formulation 2" in result
         assert "## Formulation 3" in result
 
     def test_filter_empty_selection(self):
-        result = _filter_formulations_md(SAMPLE_MD, [])
+        result = filter_formulations_md(SAMPLE_MD, [])
         # Only the preamble should remain
         assert "# Paradigm: Homeostatic Regulation" in result
         assert "## Formulation 1" not in result

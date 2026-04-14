@@ -87,24 +87,11 @@ async def _paradigm_name_from_deep_report(run_id: str, slug: str) -> str:
 
 
 async def generate_tree_map(state: PipelineState) -> str:
-    """Build a Markdown tree map from ``state.id_registry`` and insert it into report.md."""
+    """Build a Markdown tree map from ``state.ids`` and insert it into report.md."""
     run_id = state.run_id
     report_key = f"research/{run_id}/report.md"
-
-    # Separate paradigms from formulations in the registry
-    paradigms: dict[str, str] = {}
-    formulations: dict[str, list[tuple[str, str]]] = {}
-
-    for key, rid in state.id_registry.items():
-        if "::" in key:
-            slug, name = key.split("::", 1)
-            formulations.setdefault(slug, []).append((rid, name))
-        else:
-            paradigms[key] = rid
-
-    sorted_paradigms = sorted(paradigms.items(), key=lambda x: x[1])
-    for slug in formulations:
-        formulations[slug].sort(key=lambda x: x[0])
+    tree = state.ids.tree()
+    sorted_slugs = list(tree.keys())
 
     # Read report.md once for both topic label extraction and later replacement
     existing_content = None
@@ -119,14 +106,18 @@ async def generate_tree_map(state: PipelineState) -> str:
 
     # Build tree lines
     lines = [topic_label]
-    for i, (slug, pid) in enumerate(sorted_paradigms):
-        is_last_paradigm = i == len(sorted_paradigms) - 1
+    for i, slug in enumerate(sorted_slugs):
+        entry = tree[slug]
+        pid = entry["id"]
+        formulations = entry["formulations"]
+        is_last_paradigm = i == len(sorted_slugs) - 1
         p_prefix = "└──" if is_last_paradigm else "├──"
         p_name = await _paradigm_name_from_deep_report(run_id, slug)
         lines.append(f"{p_prefix} {pid}: {p_name}")
 
-        for j, (fid, fname) in enumerate(formulations.get(slug, [])):
-            is_last_form = j == len(formulations[slug]) - 1
+        flist = list(formulations.items())
+        for j, (fname, fid) in enumerate(flist):
+            is_last_form = j == len(flist) - 1
             f_connector = "    " if is_last_paradigm else "│   "
             f_prefix = "└──" if is_last_form else "├──"
             lines.append(f"{f_connector}{f_prefix} {fid}: {fname}")

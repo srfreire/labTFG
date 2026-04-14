@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
@@ -16,6 +15,8 @@ from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
+from decisionlab.id_registry import IdRegistry
+from decisionlab.parsing import FORMULATION_HEADER_RE
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +45,6 @@ class Stage(str, Enum):
 # PipelineState
 # ---------------------------------------------------------------------------
 
-_STATE_FILENAME = "pipeline_state.json"
-_FORMULATION_HEADER_RE = re.compile(
-    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE,
-)
-
-
 @dataclass
 class PipelineState:
     stage: Stage
@@ -66,12 +61,13 @@ class PipelineState:
     pending_reruns: list[RerunRequest] = field(default_factory=list)
 
     # ID registry (T-P-F hierarchy)
-    topic_id: str = "T01"
-    id_registry: dict[str, str] = field(default_factory=dict)
-    _paradigm_counter: int = 0
-    _formulation_counters: dict[str, int] = field(default_factory=dict)
+    ids: IdRegistry = field(default_factory=IdRegistry)
 
     # -- S3 prefix helpers ---------------------------------------------------
+
+    @property
+    def topic_id(self) -> str:
+        return self.ids.topic_id
 
     @property
     def research_prefix(self) -> str:
@@ -81,46 +77,19 @@ class PipelineState:
     def models_prefix(self) -> str:
         return f"models/{self.run_id}"
 
-    # -- ID assignment -------------------------------------------------------
+    # -- ID assignment (delegates to IdRegistry) -----------------------------
 
     def assign_paradigm_id(self, slug: str) -> str:
-        """Assign ``T01-P{NN}`` to a paradigm slug. Idempotent for same slug."""
-        existing = self.id_registry.get(slug)
-        if existing is not None:
-            return existing
-        self._paradigm_counter += 1
-        pid = f"{self.topic_id}-P{self._paradigm_counter:02d}"
-        self.id_registry[slug] = pid
-        return pid
+        return self.ids.add_paradigm(slug)
 
     def assign_formulation_id(self, paradigm_slug: str, formulation_name: str) -> str:
-        """Assign ``T01-P{NN}-F{NN}`` to a formulation. Idempotent for same name+paradigm."""
-        key = f"{paradigm_slug}::{formulation_name}"
-        existing = self.id_registry.get(key)
-        if existing is not None:
-            return existing
-        paradigm_id = self.id_registry.get(paradigm_slug)
-        if paradigm_id is None:
-            raise ValueError(
-                f"Paradigm '{paradigm_slug}' not in registry. "
-                "Call assign_paradigm_id first."
-            )
-        count = self._formulation_counters.get(paradigm_id, 0) + 1
-        self._formulation_counters[paradigm_id] = count
-        fid = f"{paradigm_id}-F{count:02d}"
-        self.id_registry[key] = fid
-        return fid
+        return self.ids.add_formulation(paradigm_slug, formulation_name)
 
     def get_id(self, slug: str) -> str | None:
-        """Look up ID by slug. Returns ``None`` if not registered."""
-        return self.id_registry.get(slug)
+        return self.ids.paradigm_id(slug)
 
     def get_slug(self, registry_id: str) -> str | None:
-        """Reverse look up slug by ID. Returns ``None`` if not found."""
-        for slug, rid in self.id_registry.items():
-            if rid == registry_id:
-                return slug
-        return None
+        return self.ids.slug_for_id(registry_id)
 
     # -- persistence ---------------------------------------------------------
 
@@ -141,10 +110,7 @@ class PipelineState:
                 {"target": r.target, "paradigm": r.paradigm, "feedback": r.feedback}
                 for r in self.pending_reruns
             ],
-            "topic_id": self.topic_id,
-            "id_registry": self.id_registry,
-            "paradigm_counter": self._paradigm_counter,
-            "formulation_counters": self._formulation_counters,
+            "ids": self.ids.to_dict(),
         }
         key = f"research/{self.run_id}/pipeline_state.json"
         await shared.storage.put_text(key, json.dumps(data, indent=2))
@@ -166,7 +132,7 @@ class PipelineState:
         return cls(
             stage=Stage(data["stage"]),
             problem=data["problem"],
-            reports_dir=Path(data.get("reports_dir", ".")),  # backward compat
+            reports_dir=Path(data.get("reports_dir", ".")),
             run_id=data.get("run_id", run_id),
             approved_paradigms=data.get("approved_paradigms", []),
             selected_formulations=data.get("selected_formulations", {}),
@@ -177,10 +143,7 @@ class PipelineState:
                 RerunRequest(target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"])
                 for r in data.get("pending_reruns", [])
             ],
-            topic_id=data.get("topic_id", "T01"),
-            id_registry=data.get("id_registry", {}),
-            _paradigm_counter=data.get("paradigm_counter", 0),
-            _formulation_counters=data.get("formulation_counters", {}),
+            ids=IdRegistry.from_dict(data.get("ids", {})),
         )
 
 
@@ -205,7 +168,7 @@ async def _convert_formulations_to_ids(
             continue
         num_to_name = {
             int(m.group(1)): m.group(2).strip()
-            for m in _FORMULATION_HEADER_RE.finditer(text)
+            for m in FORMULATION_HEADER_RE.finditer(text)
         }
         ids: list[str] = []
         for num in kept_numbers:
@@ -392,7 +355,7 @@ class Router:
         )
         await self.state.save()
         from decisionlab.tools.reports import generate_tree_map
-        generate_tree_map(self.state)
+        await generate_tree_map(self.state)
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:

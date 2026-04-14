@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -16,13 +15,13 @@ import questionary
 from rich.console import Console
 from rich.markdown import Markdown
 
+from decisionlab.parsing import filter_formulations_md, parse_formulation_headers
+
 console = Console()
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-_FORMULATION_HEADER_RE = re.compile(r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE)
 
 
 async def _ask(question: questionary.Question) -> Any:
@@ -36,33 +35,6 @@ def _discover_paradigm_slugs(reports_dir: Path) -> list[str]:
     if not deep_dir.is_dir():
         return []
     return sorted(p.stem for p in deep_dir.glob("*.md"))
-
-
-def _parse_formulation_headers(text: str) -> list[tuple[int, str, int, int]]:
-    """Parse ``## Formulation N: name`` headers.
-
-    Returns list of ``(number, name, start_pos, end_pos)`` tuples where
-    *start_pos* is the index of the ``#`` that begins the header and
-    *end_pos* is the start of the next formulation header (or EOF).
-    """
-    matches = list(_FORMULATION_HEADER_RE.finditer(text))
-    results: list[tuple[int, str, int, int]] = []
-    for i, m in enumerate(matches):
-        start = m.start()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        results.append((int(m.group(1)), m.group(2).strip(), start, end))
-    return results
-
-
-def _filter_formulations_md(text: str, keep_numbers: list[int]) -> str:
-    """Rewrite a formulations markdown keeping only selected formulations."""
-    headers = _parse_formulation_headers(text)
-    if not headers:
-        return text  # nothing to filter
-    # Preserve any preamble before the first formulation header
-    preamble = text[: headers[0][2]]
-    kept_sections = [text[start:end] for num, _, start, end in headers if num in keep_numbers]
-    return (preamble + "".join(kept_sections)).rstrip() + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +114,7 @@ async def review_formalize(
             console.print(f"[yellow]Warning: {s3_key} not found, skipping.[/yellow]")
             continue
 
-        headers = _parse_formulation_headers(text)
+        headers = parse_formulation_headers(text)
 
         if not headers:
             console.print(f"[yellow]No formulation headers found in {slug}.md, keeping as-is.[/yellow]")
@@ -167,7 +139,7 @@ async def review_formalize(
 
         # Rewrite the formulation file in S3 to keep only selected formulations
         if kept:
-            filtered = _filter_formulations_md(text, kept)
+            filtered = filter_formulations_md(text, kept)
             await shared.storage.put_text(s3_key, filtered)
             console.print(f"  [dim]Kept {len(kept)} formulation(s), rewrote {slug}.md[/dim]")
         else:
