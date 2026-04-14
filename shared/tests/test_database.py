@@ -78,23 +78,28 @@ async def test_insert_model_with_fk_to_run(session: AsyncSession):
     await session.commit()
 
     model = Model(
-        formulation_id="test-model-001",
         class_name="TestModel",
         paradigm="prisoner_dilemma",
+        formulation="tit_for_tat",
         run_id=run.id,
         s3_model_key="models/test-model-001.py",
     )
     session.add(model)
     await session.commit()
 
+    assert model.id is not None
+    assert isinstance(model.id, uuid.UUID)
+
     from sqlalchemy import select
 
     result = await session.execute(
-        select(Model).where(Model.formulation_id == "test-model-001")
+        select(Model).where(Model.id == model.id)
     )
     fetched = result.scalar_one()
     assert fetched.run_id == run.id
     assert fetched.class_name == "TestModel"
+    assert fetched.paradigm == "prisoner_dilemma"
+    assert fetched.formulation == "tit_for_tat"
 
 
 @pytest.mark.asyncio

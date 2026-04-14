@@ -105,7 +105,8 @@ async def main():
                 await _register_artifact(model_key, "model", len(content_bytes), run_id=run_id, content_type="text/x-python")
                 class_match = re.search(r"class\s+(\w+)", content)
                 class_name = class_match.group(1) if class_match else fid
-                paradigm = fid.split("_", 1)[0] if "_" in fid else None
+                paradigm = fid.split("_", 1)[0] if "_" in fid else fid
+                formulation = fid.split("_", 1)[1] if "_" in fid else fid
                 # Get module docstring
                 doc_match = re.search(r'^"""(.+?)"""', content, re.DOTALL)
                 description = doc_match.group(1).strip() if doc_match else None
@@ -120,9 +121,9 @@ async def main():
 
                 async with shared.db.get_session() as session:
                     db_model = Model(
-                        formulation_id=fid,
                         class_name=class_name,
                         paradigm=paradigm,
+                        formulation=formulation,
                         description=description,
                         run_id=uuid.UUID(run_id),
                         s3_model_key=model_key,

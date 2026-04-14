@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -36,12 +36,16 @@ class Run(Base):
 
 class Model(Base):
     __tablename__ = "models"
+    __table_args__ = (
+        UniqueConstraint("run_id", "paradigm", "formulation"),
+    )
 
-    formulation_id: Mapped[str] = mapped_column(
-        String(255), primary_key=True
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     class_name: Mapped[str] = mapped_column(String(255))
-    paradigm: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    paradigm: Mapped[str] = mapped_column(String(255))
+    formulation: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
