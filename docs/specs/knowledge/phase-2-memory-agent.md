@@ -1,6 +1,6 @@
 # Phase 2: Memory Agent & Knowledge Extraction
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -66,7 +66,7 @@ Build the Memory Agent — a dedicated agent that runs after every pipeline stag
 - [ ] AC5: When a new fact contradicts an existing memory (e.g., different parameter default for same variable), Sonnet classifies it as CONTRADICTION and the old memory is superseded
 - [ ] AC6: When a new fact corroborates an existing memory, the existing memory's corroborations count increases and confidence rises
 - [ ] AC7: Importance scoring produces reasonable values: "ghrelin modulates hunger" scores higher than "the grid is 10x10"
-- [ ] AC8: All extracted facts are embedded and searchable in Qdrant within 2 seconds of Memory Agent completion
+- [x] AC8: All extracted facts are embedded and searchable in Qdrant within 2 seconds of Memory Agent completion
 - [ ] AC9: Pipeline runs normally when Neo4j/Qdrant are unavailable — Memory Agent logs warning and skips
 - [ ] AC10: WebSocket clients receive memory_agent status updates during pipeline execution
 
