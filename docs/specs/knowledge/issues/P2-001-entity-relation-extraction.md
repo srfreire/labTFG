@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Build entity and relation extraction module with stage-specific Haiku prompts
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: extraction
@@ -59,12 +59,12 @@ Create the core extraction logic that takes a pipeline stage's output text and p
 - Haiku response format: instruct Haiku to output JSON matching `{"nodes": [...], "relations": [...], "facts": [...]}`. Parse with `json.loads`. Handle malformed JSON gracefully (retry once, then return partial result with warning).
 
 ## Acceptance Criteria
-- [ ] AC1: `extract("researcher", deep_report_text, run_id, client)` on the sample homeostatic-regulation report produces NodeSpecs for: >=1 Paradigm, >=2 Authors, >=3 Papers, >=3 Variables, >=2 Postulates
-- [ ] AC2: `extract("formalizer", formulation_text, run_id, client)` on the sample homeostatic formulations produces NodeSpecs for: >=2 Equations, >=3 Parameters with default values and sources
-- [ ] AC3: `extract("reasoner", reasoner_json, run_id, client)` produces RelationSpecs with DERIVES_FROM linking parameters to postulates
-- [ ] AC4: `extract("builder", model_code, run_id, client)` produces a Model NodeSpec with correct class_name and a TestResult with passed=True
-- [ ] AC5: Each extraction produces >=3 plain-text facts that are atomic statements (not compound sentences)
-- [ ] AC6: Malformed Haiku JSON triggers one retry; if retry also fails, returns partial ExtractionResult with available data + logs warning
+- [x] AC1: `extract("researcher", deep_report_text, run_id, client)` on the sample homeostatic-regulation report produces NodeSpecs for: >=1 Paradigm, >=2 Authors, >=3 Papers, >=3 Variables, >=2 Postulates
+- [x] AC2: `extract("formalizer", formulation_text, run_id, client)` on the sample homeostatic formulations produces NodeSpecs for: >=2 Equations, >=3 Parameters with default values and sources
+- [x] AC3: `extract("reasoner", reasoner_json, run_id, client)` produces RelationSpecs with DERIVES_FROM linking parameters to postulates
+- [x] AC4: `extract("builder", model_code, run_id, client)` produces a Model NodeSpec with correct class_name and a TestResult with passed=True
+- [x] AC5: Each extraction produces >=3 plain-text facts that are atomic statements (not compound sentences)
+- [x] AC6: Malformed Haiku JSON triggers one retry; if retry also fails, returns partial ExtractionResult with available data + logs warning
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/knowledge/__init__.py` — new package
@@ -77,3 +77,25 @@ Phase spec: `docs/specs/knowledge/phase-2-memory-agent.md`
 General spec: `docs/specs/knowledge/general.md`
 Heat: `extraction`
 This is the foundation — all other Phase 2 issues consume ExtractionResult.
+
+## Completion Summary
+
+**Commit:** `c371763` — `feat[knowledge]: entity and relation extraction module (P2-001)`
+
+### What was built
+- Knowledge extraction module with stage-specific Haiku prompts for all 4 pipeline stages
+- `extract()` async dispatcher that calls Haiku, parses JSON, retries on malformed response
+- Robust handling: empty API content → retry, curly braces in output text, markdown-fenced JSON
+- 22 tests covering all 6 acceptance criteria plus edge cases
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/knowledge/__init__.py` — new package exposing extract + dataclasses
+- `phase1-pablo/src/decisionlab/knowledge/models.py` — NodeSpec, RelationSpec, ExtractionResult
+- `phase1-pablo/src/decisionlab/knowledge/prompts.py` — stage-specific system/user prompts
+- `phase1-pablo/src/decisionlab/knowledge/extraction.py` — extract(), _call_haiku(), _try_parse_json(), _build_result()
+- `phase1-pablo/tests/knowledge/test_extraction.py` — 22 unit tests with realistic mock Haiku responses
+
+### Decisions
+- Used `str.replace` instead of `str.format` for user prompt templating to avoid KeyError on JSON input containing curly braces
+- Return empty string on empty API content list (triggers existing retry path cleanly)
+- Narrowed except to `json.JSONDecodeError` only (was redundantly catching parent `ValueError`)
