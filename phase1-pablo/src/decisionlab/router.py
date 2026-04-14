@@ -15,8 +15,8 @@ from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
-from decisionlab.id_registry import IdRegistry
 from decisionlab.parsing import FORMULATION_HEADER_RE
+from decisionlab.tools.reports import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -56,18 +56,11 @@ class PipelineState:
     approved_paradigms: list[str] = field(default_factory=list)
     selected_formulations: dict[str, list[str]] = field(default_factory=dict)
     env_spec_path: Path | None = None
-    approved_specs: list[str] = field(default_factory=list)
+    approved_specs: dict[str, list[str]] = field(default_factory=dict)
     build_results: dict[str, str] = field(default_factory=dict)
     pending_reruns: list[RerunRequest] = field(default_factory=list)
 
-    # ID registry (T-P-F hierarchy)
-    ids: IdRegistry = field(default_factory=IdRegistry)
-
     # -- S3 prefix helpers ---------------------------------------------------
-
-    @property
-    def topic_id(self) -> str:
-        return self.ids.topic_id
 
     @property
     def research_prefix(self) -> str:
@@ -76,20 +69,6 @@ class PipelineState:
     @property
     def models_prefix(self) -> str:
         return f"models/{self.run_id}"
-
-    # -- ID assignment (delegates to IdRegistry) -----------------------------
-
-    def assign_paradigm_id(self, slug: str) -> str:
-        return self.ids.add_paradigm(slug)
-
-    def assign_formulation_id(self, paradigm_slug: str, formulation_name: str) -> str:
-        return self.ids.add_formulation(paradigm_slug, formulation_name)
-
-    def get_id(self, slug: str) -> str | None:
-        return self.ids.paradigm_id(slug)
-
-    def get_slug(self, registry_id: str) -> str | None:
-        return self.ids.slug_for_id(registry_id)
 
     # -- persistence ---------------------------------------------------------
 
@@ -110,7 +89,6 @@ class PipelineState:
                 {"target": r.target, "paradigm": r.paradigm, "feedback": r.feedback}
                 for r in self.pending_reruns
             ],
-            "ids": self.ids.to_dict(),
         }
         key = f"research/{self.run_id}/pipeline_state.json"
         await shared.storage.put_text(key, json.dumps(data, indent=2))
@@ -137,21 +115,20 @@ class PipelineState:
             approved_paradigms=data.get("approved_paradigms", []),
             selected_formulations=data.get("selected_formulations", {}),
             env_spec_path=Path(env_path) if env_path else None,
-            approved_specs=data.get("approved_specs", []),
+            approved_specs=data.get("approved_specs", {}),
             build_results=data.get("build_results", {}),
             pending_reruns=[
                 RerunRequest(target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"])
                 for r in data.get("pending_reruns", [])
             ],
-            ids=IdRegistry.from_dict(data.get("ids", {})),
         )
 
 
-async def _convert_formulations_to_ids(
+async def _convert_formulations_to_slugs(
     state: PipelineState,
     raw_selected: dict[str, list[int]],
 ) -> dict[str, list[str]]:
-    """Convert ``{slug: [int]}`` from feedback to ``{slug: [registry_id]}``."""
+    """Convert ``{slug: [int]}`` from feedback to ``{slug: [formulation_slug]}``."""
     import shared
 
     converted: dict[str, list[str]] = {}
@@ -170,15 +147,14 @@ async def _convert_formulations_to_ids(
             int(m.group(1)): m.group(2).strip()
             for m in FORMULATION_HEADER_RE.finditer(text)
         }
-        ids: list[str] = []
+        slugs: list[str] = []
         for num in kept_numbers:
             name = num_to_name.get(num)
             if name is None:
                 logger.warning("Formulation %d not found in %s.md", num, slug)
                 continue
-            fid = state.assign_formulation_id(slug, name)
-            ids.append(fid)
-        converted[slug] = ids
+            slugs.append(slugify(name))
+        converted[slug] = slugs
     return converted
 
 
@@ -305,10 +281,8 @@ class Router:
                     logger.exception("DeepResearcher failed for %s", additional)
                 # Loop back to let user review again
                 continue
-            # No more additions — store approved and assign IDs
+            # No more additions — store approved slugs
             self.state.approved_paradigms = approved
-            for slug in approved:
-                self.state.assign_paradigm_id(slug)
             await self.state.save()
             break
         self.state.stage = Stage.FORMALIZE
@@ -350,7 +324,7 @@ class Router:
                 self.state.approved_paradigms,
                 run_id=self.state.run_id,
             )
-        self.state.selected_formulations = await _convert_formulations_to_ids(
+        self.state.selected_formulations = await _convert_formulations_to_slugs(
             self.state, selected,
         )
         await self.state.save()
@@ -421,7 +395,13 @@ class Router:
                     self.state.reports_dir,
                 )
             if not rejections and not formalizer_reruns:
-                self.state.approved_specs = approved
+                # Group flat approved list by paradigm using selected_formulations
+                approved_set = set(approved)
+                self.state.approved_specs = {
+                    paradigm: [f for f in fids if f in approved_set]
+                    for paradigm, fids in self.state.selected_formulations.items()
+                    if any(f in approved_set for f in fids)
+                }
                 break
 
             # Re-run Formalizer → Reasoner for paradigms with invalid formulations
@@ -484,7 +464,9 @@ class Router:
     async def _do_build(self) -> None:
         from decisionlab.agents.builder import Builder
 
-        spec_ids = list(self.state.approved_specs)
+        spec_ids = [
+            f for fs in self.state.approved_specs.values() for f in fs
+        ]
         self.console.print(
             f"[bold]Running Builder for {len(spec_ids)} spec(s)...[/bold]"
         )
@@ -556,18 +538,11 @@ class Router:
                         reports_dir=self.state.reports_dir,
                         project_root=self.project_root,
                     )
-                    paradigm_id = self.state.get_id(paradigm_slug)
-                    if paradigm_id:
-                        paradigm_specs = [
-                            sid for sid in self.state.approved_specs
-                            if sid.startswith(paradigm_id + "-")
-                        ]
-                    else:
-                        paradigm_specs = None
-                    report = await b.run(paradigm_specs)
+                    paradigm_specs = self.state.approved_specs.get(paradigm_slug, [])
+                    report = await b.run(paradigm_specs or None)
                     self.state.build_results.update(report.results)
                     # Clean up stale validation reports for this paradigm in S3
-                    for sid in (paradigm_specs or []):
+                    for sid in paradigm_specs:
                         await shared.storage.delete(
                             f"models/{self.state.run_id}/builder/{sid}_validation.json"
                         )
@@ -657,15 +632,8 @@ class Router:
                         project_root=self.project_root,
                     )
                     # Build only specs belonging to this paradigm
-                    paradigm_id = self.state.get_id(paradigm)
-                    if paradigm_id:
-                        paradigm_specs = [
-                            sid for sid in self.state.approved_specs
-                            if sid.startswith(paradigm_id + "-")
-                        ]
-                    else:
-                        paradigm_specs = None  # discover from disk
-                    report = await b.run(paradigm_specs)
+                    paradigm_specs = self.state.approved_specs.get(paradigm, [])
+                    report = await b.run(paradigm_specs or None)
                     self.state.build_results.update(report.results)
 
             except Exception as exc:

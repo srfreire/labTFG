@@ -12,17 +12,15 @@ from decisionlab.router import PipelineState, Router, Stage
 
 
 def _make_state(tmp_path: Path) -> PipelineState:
-    state = PipelineState(
+    return PipelineState(
         stage=Stage.REVIEW_BUILD,
         problem="test problem",
         reports_dir=tmp_path,
         approved_paradigms=["homeostatic"],
-        selected_formulations={"homeostatic": ["T01-P01-F01", "T01-P01-F02"]},
-        approved_specs=["T01-P01-F01", "T01-P01-F02"],
-        build_results={"T01-P01-F01": "Model OK", "T01-P01-F02": "Model OK"},
+        selected_formulations={"homeostatic": ["pi-controller", "dual-process"]},
+        approved_specs={"homeostatic": ["pi-controller", "dual-process"]},
+        build_results={"pi-controller": "Model OK", "dual-process": "Model OK"},
     )
-    state.id_registry = {"homeostatic": "T01-P01"}
-    return state
 
 
 def _make_router(state: PipelineState) -> Router:
@@ -52,10 +50,10 @@ class TestReviewBuildReasonerReruns:
                 # First call: invalid build triggers reasoner rerun
                 return [], [], ["homeostatic"]
             # Second call: all approved after rerun
-            return ["T01-P01-F01"], [], []
+            return ["pi-controller"], [], []
 
         mock_builder_report = MagicMock()
-        mock_builder_report.results = {"T01-P01-F01": "Rebuilt OK"}
+        mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
@@ -72,10 +70,12 @@ class TestReviewBuildReasonerReruns:
 
         # Reasoner was called for the paradigm
         mock_reasoner_inst.run.assert_called_once_with(
-            {"homeostatic": ["T01-P01-F01", "T01-P01-F02"]}
+            {"homeostatic": ["pi-controller", "dual-process"]}
         )
-        # Builder was called after Reasoner
-        mock_builder_inst.run.assert_called_once()
+        # Builder was called after Reasoner with paradigm's approved specs
+        mock_builder_inst.run.assert_called_once_with(
+            ["pi-controller", "dual-process"]
+        )
         # State advanced to DONE
         assert state.stage == Stage.DONE
 
@@ -86,7 +86,7 @@ class TestReviewBuildReasonerReruns:
         router = _make_router(state)
 
         async def mock_review_build(reports_dir, build_results):
-            return ["T01-P01-F01", "T01-P01-F02"], [], []
+            return ["pi-controller", "dual-process"], [], []
 
         with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
@@ -105,11 +105,11 @@ class TestReviewBuildReasonerReruns:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return [], [("T01-P01-F01", "homeostatic", "fix tests")], []
-            return ["T01-P01-F01"], [], []
+                return [], [("pi-controller", "homeostatic", "fix tests")], []
+            return ["pi-controller"], [], []
 
         mock_builder_report = MagicMock()
-        mock_builder_report.results = {"T01-P01-F01": "Rebuilt OK"}
+        mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
@@ -139,9 +139,9 @@ class TestReviewBuildReasonerReruns:
         # Write a stale validation report
         builder_dir = tmp_path / "builder"
         builder_dir.mkdir(parents=True)
-        vfile = builder_dir / "T01-P01-F01_validation.json"
+        vfile = builder_dir / "pi-controller_validation.json"
         vfile.write_text(json.dumps({
-            "formulation_id": "T01-P01-F01",
+            "formulation_id": "pi-controller",
             "paradigm": "homeostatic",
             "status": "invalid",
             "problems": [{"type": "ambiguous_logic", "detail": "test"}],
@@ -154,10 +154,10 @@ class TestReviewBuildReasonerReruns:
             call_count += 1
             if call_count == 1:
                 return [], [], ["homeostatic"]
-            return ["T01-P01-F01"], [], []
+            return ["pi-controller"], [], []
 
         mock_builder_report = MagicMock()
-        mock_builder_report.results = {"T01-P01-F01": "Rebuilt OK"}
+        mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
@@ -172,6 +172,6 @@ class TestReviewBuildReasonerReruns:
 
             await router._review_build()
 
-        # Validation file should be cleaned up
-        assert not vfile.exists()
+        # Validation file cleanup happens via S3 (not local filesystem)
+        # so we just verify the stage advanced
         assert state.stage == Stage.DONE

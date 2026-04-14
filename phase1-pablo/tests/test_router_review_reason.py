@@ -11,15 +11,13 @@ from decisionlab.router import PipelineState, Router, Stage
 
 
 def _make_state(tmp_path: Path) -> PipelineState:
-    state = PipelineState(
+    return PipelineState(
         stage=Stage.REVIEW_REASON,
         problem="test problem",
         reports_dir=tmp_path,
         approved_paradigms=["homeostatic"],
-        selected_formulations={"homeostatic": ["T01-P01-F01", "T01-P01-F02"]},
+        selected_formulations={"homeostatic": ["pi-controller", "dual-process"]},
     )
-    state.id_registry = {"homeostatic": "T01-P01"}
-    return state
 
 
 def _make_router(state: PipelineState) -> Router:
@@ -49,7 +47,7 @@ class TestReviewReasonFormalizerReruns:
                 # First call: invalid spec triggers formalizer rerun
                 return [], [], ["homeostatic"]
             # Second call: all approved after rerun
-            return ["T01-P01-F01"], [], []
+            return ["pi-controller"], [], []
 
         with (
             patch("decisionlab.feedback.review_reason", side_effect=mock_review_reason),
@@ -67,11 +65,12 @@ class TestReviewReasonFormalizerReruns:
         mock_formalizer_inst.run.assert_called_once_with(["homeostatic"])
         # Reasoner was called after Formalizer
         mock_reasoner_inst.run.assert_called_once_with(
-            {"homeostatic": ["T01-P01-F01", "T01-P01-F02"]}
+            {"homeostatic": ["pi-controller", "dual-process"]}
         )
         # State advanced to BUILD
         assert state.stage == Stage.BUILD
-        assert "T01-P01-F01" in state.approved_specs
+        # approved_specs is now a dict keyed by paradigm slug
+        assert state.approved_specs == {"homeostatic": ["pi-controller"]}
 
     @pytest.mark.asyncio
     async def test_no_formalizer_reruns_proceeds_normally(self, tmp_path):
@@ -80,13 +79,15 @@ class TestReviewReasonFormalizerReruns:
         router = _make_router(state)
 
         async def mock_review_reason(reports_dir):
-            return ["T01-P01-F01", "T01-P01-F02"], [], []
+            return ["pi-controller", "dual-process"], [], []
 
         with patch("decisionlab.feedback.review_reason", side_effect=mock_review_reason):
             await router._review_reason()
 
         assert state.stage == Stage.BUILD
-        assert state.approved_specs == ["T01-P01-F01", "T01-P01-F02"]
+        assert state.approved_specs == {
+            "homeostatic": ["pi-controller", "dual-process"],
+        }
 
     @pytest.mark.asyncio
     async def test_rejections_still_rerun_reasoner(self, tmp_path):
@@ -100,8 +101,8 @@ class TestReviewReasonFormalizerReruns:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return [], [("T01-P01-F01", "homeostatic", "fix equations")], []
-            return ["T01-P01-F01"], [], []
+                return [], [("pi-controller", "homeostatic", "fix equations")], []
+            return ["pi-controller"], [], []
 
         with (
             patch("decisionlab.feedback.review_reason", side_effect=mock_review_reason),

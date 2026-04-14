@@ -87,40 +87,36 @@ async def _paradigm_name_from_deep_report(run_id: str, slug: str) -> str:
 
 
 async def generate_tree_map(state: PipelineState) -> str:
-    """Build a Markdown tree map from ``state.ids`` and insert it into report.md."""
+    """Build a Markdown tree map from selected_formulations and insert into report.md."""
     run_id = state.run_id
     report_key = f"research/{run_id}/report.md"
-    tree = state.ids.tree()
-    sorted_slugs = list(tree.keys())
+    sorted_slugs = sorted(state.selected_formulations.keys())
 
     # Read report.md once for both topic label extraction and later replacement
     existing_content = None
     if await shared.storage.exists(report_key):
         existing_content = await shared.storage.get_text(report_key)
 
-    topic_label = state.topic_id
+    topic_label = state.problem
     if existing_content is not None:
         first_heading = re.search(r"^#\s+(.+)$", existing_content, re.MULTILINE)
         if first_heading:
-            topic_label = f"{state.topic_id}: {first_heading.group(1).strip()}"
+            topic_label = first_heading.group(1).strip()
 
     # Build tree lines
     lines = [topic_label]
     for i, slug in enumerate(sorted_slugs):
-        entry = tree[slug]
-        pid = entry["id"]
-        formulations = entry["formulations"]
+        formulations = state.selected_formulations[slug]
         is_last_paradigm = i == len(sorted_slugs) - 1
         p_prefix = "└──" if is_last_paradigm else "├──"
         p_name = await _paradigm_name_from_deep_report(run_id, slug)
-        lines.append(f"{p_prefix} {pid}: {p_name}")
+        lines.append(f"{p_prefix} {p_name}")
 
-        flist = list(formulations.items())
-        for j, (fname, fid) in enumerate(flist):
-            is_last_form = j == len(flist) - 1
+        for j, fslug in enumerate(formulations):
+            is_last_form = j == len(formulations) - 1
             f_connector = "    " if is_last_paradigm else "│   "
             f_prefix = "└──" if is_last_form else "├──"
-            lines.append(f"{f_connector}{f_prefix} {fid}: {fname}")
+            lines.append(f"{f_connector}{f_prefix} {fslug}")
 
     tree_text = "\n".join(lines)
 

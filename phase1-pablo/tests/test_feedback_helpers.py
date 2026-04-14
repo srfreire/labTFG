@@ -200,28 +200,28 @@ class TestReviewReasonInvalidSpecs:
     @pytest.mark.asyncio
     async def test_invalid_spec_detected_and_user_chooses_rerun(self, tmp_path):
         """Invalid spec triggers rerun option; user chooses rerun formalizer."""
-        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
-        invalid = _make_invalid_spec("T01-P01-F02", "homeostatic")
+        valid = _make_valid_spec("pi-controller", "homeostatic")
+        invalid = _make_invalid_spec("dual-process", "homeostatic")
         _write_spec(tmp_path, valid)
         _write_spec(tmp_path, invalid)
 
         # Mock questionary: approve the valid spec, then choose "rerun formalizer" for invalid
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [
-                True,   # approve valid spec T01-P01-F01
-                True,   # rerun formalizer for invalid T01-P01-F02
+                True,   # approve valid spec pi-controller
+                True,   # rerun formalizer for invalid dual-process
             ]
             approved, rejections, formalizer_reruns = await review_reason(tmp_path)
 
-        assert "T01-P01-F01" in approved
-        assert "T01-P01-F02" not in approved
+        assert "pi-controller" in approved
+        assert "dual-process" not in approved
         assert len(rejections) == 0
         assert "homeostatic" in formalizer_reruns
 
     @pytest.mark.asyncio
     async def test_invalid_spec_detected_and_user_skips(self, tmp_path):
         """Invalid spec, user chooses to skip (not rerun)."""
-        invalid = _make_invalid_spec("T01-P01-F01", "homeostatic")
+        invalid = _make_invalid_spec("pi-controller", "homeostatic")
         _write_spec(tmp_path, invalid)
 
         with patch("decisionlab.feedback._ask") as mock_ask:
@@ -237,21 +237,21 @@ class TestReviewReasonInvalidSpecs:
     @pytest.mark.asyncio
     async def test_all_valid_specs_returns_empty_formalizer_reruns(self, tmp_path):
         """When all specs are valid, formalizer_reruns is empty."""
-        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
+        valid = _make_valid_spec("pi-controller", "homeostatic")
         _write_spec(tmp_path, valid)
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True]  # approve
             approved, rejections, formalizer_reruns = await review_reason(tmp_path)
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert len(formalizer_reruns) == 0
 
     @pytest.mark.asyncio
     async def test_duplicate_paradigm_deduplication(self, tmp_path):
         """Two invalid specs for the same paradigm produce one formalizer rerun."""
-        inv1 = _make_invalid_spec("T01-P01-F01", "homeostatic")
-        inv2 = _make_invalid_spec("T01-P01-F02", "homeostatic")
+        inv1 = _make_invalid_spec("pi-controller", "homeostatic")
+        inv2 = _make_invalid_spec("dual-process", "homeostatic")
         _write_spec(tmp_path, inv1)
         _write_spec(tmp_path, inv2)
 
@@ -291,28 +291,28 @@ class TestReviewBuildInvalidBuilds:
     @pytest.mark.asyncio
     async def test_invalid_build_detected_and_user_chooses_rerun(self, tmp_path):
         """Invalid build triggers rerun option; user chooses rerun reasoner."""
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("pi-controller", "homeostatic"))
 
-        build_results = {"T01-P01-F02": "Implemented model and tests passed."}
+        build_results = {"dual-process": "Implemented model and tests passed."}
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [
-                True,   # rerun reasoner for invalid T01-P01-F01
-                True,   # approve valid build T01-P01-F02
+                True,   # rerun reasoner for invalid pi-controller
+                True,   # approve valid build dual-process
             ]
             approved, rejections, reasoner_reruns = await review_build(
                 tmp_path, build_results,
             )
 
-        assert "T01-P01-F02" in approved
-        assert "T01-P01-F01" not in approved
+        assert "dual-process" in approved
+        assert "pi-controller" not in approved
         assert len(rejections) == 0
         assert "homeostatic" in reasoner_reruns
 
     @pytest.mark.asyncio
     async def test_invalid_build_detected_and_user_skips(self, tmp_path):
         """Invalid build, user chooses to skip (not rerun)."""
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("pi-controller", "homeostatic"))
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [
@@ -329,7 +329,7 @@ class TestReviewBuildInvalidBuilds:
     @pytest.mark.asyncio
     async def test_all_valid_builds_returns_empty_reasoner_reruns(self, tmp_path):
         """When all builds are valid, reasoner_reruns is empty."""
-        build_results = {"T01-P01-F01": "Model implemented. All tests passed."}
+        build_results = {"pi-controller": "Model implemented. All tests passed."}
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True]  # approve
@@ -337,14 +337,14 @@ class TestReviewBuildInvalidBuilds:
                 tmp_path, build_results,
             )
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert len(reasoner_reruns) == 0
 
     @pytest.mark.asyncio
     async def test_duplicate_paradigm_deduplication(self, tmp_path):
         """Two invalid builds for the same paradigm produce one reasoner rerun."""
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F02", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("pi-controller", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("dual-process", "homeostatic"))
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True, True]  # rerun for both

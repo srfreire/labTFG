@@ -46,7 +46,7 @@ class TestWebReviewReasonInvalidSpecs:
     @pytest.mark.asyncio
     async def test_invalid_spec_sent_with_status_and_problems(self, tmp_path):
         """Invalid specs include status and problems in data sent to frontend."""
-        invalid = _make_invalid_spec("T01-P01-F01", "homeostatic")
+        invalid = _make_invalid_spec("pi-controller", "homeostatic")
         _write_spec(tmp_path, invalid)
 
         emit = AsyncMock()
@@ -54,7 +54,7 @@ class TestWebReviewReasonInvalidSpecs:
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
                 "decisions": {
-                    "T01-P01-F01": {"rerun_formalizer": True},
+                    "pi-controller": {"rerun_formalizer": True},
                 },
             }
             approved, rejections, formalizer_reruns = await review_reason(
@@ -76,8 +76,8 @@ class TestWebReviewReasonInvalidSpecs:
     @pytest.mark.asyncio
     async def test_mixed_valid_and_invalid_specs(self, tmp_path):
         """Mix of valid and invalid specs processed correctly."""
-        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
-        invalid = _make_invalid_spec("T01-P01-F02", "homeostatic")
+        valid = _make_valid_spec("pi-controller", "homeostatic")
+        invalid = _make_invalid_spec("dual-process", "homeostatic")
         _write_spec(tmp_path, valid)
         _write_spec(tmp_path, invalid)
 
@@ -86,35 +86,35 @@ class TestWebReviewReasonInvalidSpecs:
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
                 "decisions": {
-                    "T01-P01-F01": {"approved": True},
-                    "T01-P01-F02": {"rerun_formalizer": True},
+                    "pi-controller": {"approved": True},
+                    "dual-process": {"rerun_formalizer": True},
                 },
             }
             approved, rejections, formalizer_reruns = await review_reason(
                 tmp_path, emit,
             )
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert "homeostatic" in formalizer_reruns
         assert len(rejections) == 0
 
     @pytest.mark.asyncio
     async def test_all_valid_returns_empty_formalizer_reruns(self, tmp_path):
         """When all specs valid, formalizer_reruns is empty."""
-        valid = _make_valid_spec("T01-P01-F01", "homeostatic")
+        valid = _make_valid_spec("pi-controller", "homeostatic")
         _write_spec(tmp_path, valid)
 
         emit = AsyncMock()
 
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
-                "decisions": {"T01-P01-F01": {"approved": True}},
+                "decisions": {"pi-controller": {"approved": True}},
             }
             approved, rejections, formalizer_reruns = await review_reason(
                 tmp_path, emit,
             )
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert len(formalizer_reruns) == 0
 
 
@@ -145,16 +145,16 @@ class TestWebReviewBuildInvalidBuilds:
     @pytest.mark.asyncio
     async def test_invalid_build_sent_with_status_and_problems(self, tmp_path):
         """Invalid builds include status and problems in data sent to frontend."""
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F01", "homeostatic"))
+        _write_validation(tmp_path, _make_invalid_build("pi-controller", "homeostatic"))
 
         emit = AsyncMock()
-        build_results = {"T01-P01-F02": "Model implemented. All tests passed."}
+        build_results = {"dual-process": "Model implemented. All tests passed."}
 
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
                 "decisions": {
-                    "T01-P01-F01": {"rerun_reasoner": True},
-                    "T01-P01-F02": {"approved": True},
+                    "pi-controller": {"rerun_reasoner": True},
+                    "dual-process": {"approved": True},
                 },
             }
             approved, rejections, reasoner_reruns = await review_build(
@@ -169,46 +169,46 @@ class TestWebReviewBuildInvalidBuilds:
         assert len(invalid_models[0]["problems"]) == 1
 
         # Verify return values
-        assert "T01-P01-F02" in approved
+        assert "dual-process" in approved
         assert len(rejections) == 0
         assert "homeostatic" in reasoner_reruns
 
     @pytest.mark.asyncio
     async def test_mixed_valid_and_invalid_builds(self, tmp_path):
         """Mix of valid and invalid builds processed correctly."""
-        _write_validation(tmp_path, _make_invalid_build("T01-P01-F02", "homeostatic"))
-        build_results = {"T01-P01-F01": "Model implemented."}
+        _write_validation(tmp_path, _make_invalid_build("dual-process", "homeostatic"))
+        build_results = {"pi-controller": "Model implemented."}
 
         emit = AsyncMock()
 
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
                 "decisions": {
-                    "T01-P01-F01": {"approved": True},
-                    "T01-P01-F02": {"rerun_reasoner": True},
+                    "pi-controller": {"approved": True},
+                    "dual-process": {"rerun_reasoner": True},
                 },
             }
             approved, rejections, reasoner_reruns = await review_build(
                 tmp_path, build_results, emit,
             )
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert "homeostatic" in reasoner_reruns
         assert len(rejections) == 0
 
     @pytest.mark.asyncio
     async def test_all_valid_returns_empty_reasoner_reruns(self, tmp_path):
         """When all builds valid, reasoner_reruns is empty."""
-        build_results = {"T01-P01-F01": "All tests passed."}
+        build_results = {"pi-controller": "All tests passed."}
         emit = AsyncMock()
 
         with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
             mock_wait.return_value = {
-                "decisions": {"T01-P01-F01": {"approved": True}},
+                "decisions": {"pi-controller": {"approved": True}},
             }
             approved, rejections, reasoner_reruns = await review_build(
                 tmp_path, build_results, emit,
             )
 
-        assert "T01-P01-F01" in approved
+        assert "pi-controller" in approved
         assert len(reasoner_reruns) == 0

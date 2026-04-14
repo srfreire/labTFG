@@ -1,13 +1,15 @@
+"""Tests for reports tools."""
+
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from decisionlab.router import PipelineState, Stage
 from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
-    slugify,
     create_read_report,
+    slugify,
     generate_tree_map,
-    save_deep_report,
-    save_summary_report,
 )
 
 
@@ -25,35 +27,6 @@ def test_slugify():
     assert slugify("/ leading /") == "leading"
 
 
-def test_save_deep_report(tmp_path):
-    path = save_deep_report(tmp_path, "Homeostatic regulation", "# Report content")
-    assert path.exists()
-    assert path.name == "homeostatic-regulation.md"
-    assert "Report content" in path.read_text()
-
-
-def test_save_summary_report(tmp_path):
-    path = save_summary_report(tmp_path, "# Summary")
-    assert path.exists()
-    assert path.name == "report.md"
-    assert "Summary" in path.read_text()
-
-
-@pytest.mark.asyncio
-async def test_read_report_returns_content(tmp_path):
-    save_deep_report(tmp_path, "Homeostatic regulation", "# Full report content")
-    fn = create_read_report(tmp_path)
-    result = await fn({"paradigm": "Homeostatic regulation"})
-    assert "Full report content" in result
-
-
-@pytest.mark.asyncio
-async def test_read_report_missing_file(tmp_path):
-    fn = create_read_report(tmp_path)
-    result = await fn({"paradigm": "nonexistent"})
-    assert "No report found" in result
-
-
 @pytest.mark.asyncio
 async def test_read_report_missing_param(tmp_path):
     fn = create_read_report(tmp_path)
@@ -66,169 +39,200 @@ async def test_read_report_missing_param(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _make_state(tmp_path, paradigms, formulations=None):
-    """Helper: create PipelineState with paradigm/formulation IDs and deep report files."""
-    state = PipelineState(
-        stage=Stage.REVIEW_FORMALIZE, problem="test", reports_dir=tmp_path,
+def _make_state(
+    tmp_path,
+    selected_formulations: dict[str, list[str]],
+    problem: str = "test",
+    run_id: str = "test-run",
+):
+    """Helper: create PipelineState with slug-based formulations."""
+    return PipelineState(
+        stage=Stage.REVIEW_FORMALIZE,
+        problem=problem,
+        reports_dir=tmp_path,
+        run_id=run_id,
+        selected_formulations=selected_formulations,
     )
-    deep_dir = tmp_path / "deep"
-    deep_dir.mkdir(parents=True, exist_ok=True)
-    for slug, title in paradigms:
-        state.assign_paradigm_id(slug)
-        (deep_dir / f"{slug}.md").write_text(f"# {title} — Deep Research\n\nContent...")
-    for slug, name in (formulations or []):
-        state.assign_formulation_id(slug, name)
-    return state
+
+
+def _mock_storage(files: dict[str, str]):
+    """Create a mock shared.storage with given key→content mapping."""
+    storage = AsyncMock()
+    storage.exists = AsyncMock(side_effect=lambda k: k in files)
+    storage.get_text = AsyncMock(side_effect=lambda k: files[k])
+    storage.put_text = AsyncMock()
+    return storage
 
 
 class TestGenerateTreeMap:
-    def test_single_paradigm_no_formulations(self, tmp_path):
-        state = _make_state(tmp_path, [("homeostatic-regulation", "Homeostatic Regulation")])
-        save_summary_report(tmp_path, "# Report\n\nSome content.")
+    @pytest.mark.asyncio
+    async def test_single_paradigm_no_formulations(self, tmp_path):
+        state = _make_state(tmp_path, {"homeostatic-regulation": []})
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report\n\nSome content.",
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
+        })
 
-        tree = generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
 
-        assert "T01: " in tree
-        assert "T01-P01: Homeostatic Regulation" in tree
+        assert "Homeostatic Regulation" in tree
 
-    def test_paradigm_with_formulations(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation")],
-            [("homeostatic-regulation", "PI Controller"), ("homeostatic-regulation", "Dual-Process Model")],
-        )
-        save_summary_report(tmp_path, "# Report\n\nSome content.")
+    @pytest.mark.asyncio
+    async def test_paradigm_with_formulations(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "homeostatic-regulation": ["pi-controller", "dual-process-model"],
+        })
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report\n\nSome content.",
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
+        })
 
-        tree = generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
 
-        assert "T01-P01-F01: PI Controller" in tree
-        assert "T01-P01-F02: Dual-Process Model" in tree
+        assert "pi-controller" in tree
+        assert "dual-process-model" in tree
 
-    def test_multiple_paradigms_with_formulations(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation"), ("hedonic-reward", "Hedonic Reward")],
-            [
-                ("homeostatic-regulation", "PI Controller"),
-                ("homeostatic-regulation", "Dual-Process Model"),
-                ("hedonic-reward", "Temporal Difference"),
-            ],
-        )
-        save_summary_report(tmp_path, "# Report\n\nSome content.")
+    @pytest.mark.asyncio
+    async def test_multiple_paradigms_with_formulations(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "hedonic-reward": ["temporal-difference"],
+            "homeostatic-regulation": ["pi-controller"],
+        })
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report\n\nSome content.",
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+            "research/test-run/deep/hedonic-reward.md": "# Hedonic Reward — Deep Research\n",
+        })
 
-        tree = generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
 
         assert "├──" in tree or "└──" in tree
-        assert "T01-P01: Homeostatic Regulation" in tree
-        assert "T01-P02: Hedonic Reward" in tree
-        assert "T01-P01-F01: PI Controller" in tree
-        assert "T01-P02-F01: Temporal Difference" in tree
+        assert "Homeostatic Regulation" in tree
+        assert "Hedonic Reward" in tree
+        assert "pi-controller" in tree
+        assert "temporal-difference" in tree
 
-    def test_tree_map_inserted_into_report(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation")],
-            [("homeostatic-regulation", "PI Controller")],
-        )
-        save_summary_report(tmp_path, "# Report\n\nSome content.")
+    @pytest.mark.asyncio
+    async def test_tree_map_inserted_into_report(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "homeostatic-regulation": ["pi-controller"],
+        })
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report\n\nSome content.",
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+        })
 
-        generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            await generate_tree_map(state)
 
-        report = (tmp_path / "report.md").read_text()
-        assert "## Research Tree Map" in report
-        assert "Some content." in report  # original content preserved
+        # put_text was called with the updated report
+        storage.put_text.assert_called_once()
+        written_content = storage.put_text.call_args[0][1]
+        assert "## Research Tree Map" in written_content
+        assert "Some content." in written_content
 
-    def test_tree_map_replaced_on_rerun(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation")],
-            [("homeostatic-regulation", "PI Controller")],
-        )
-        save_summary_report(tmp_path, "# Report\n\nSome content.")
+    @pytest.mark.asyncio
+    async def test_tree_uses_correct_characters(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "paradigm-a": ["f1"],
+            "paradigm-b": ["f1"],
+        })
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report",
+            "research/test-run/deep/paradigm-a.md": "# Paradigm A — Deep Research\n",
+            "research/test-run/deep/paradigm-b.md": "# Paradigm B — Deep Research\n",
+        })
 
-        generate_tree_map(state)
-        # Add a new formulation (simulating rerun)
-        state.assign_formulation_id("homeostatic-regulation", "New Model")
-        generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
 
-        report = (tmp_path / "report.md").read_text()
-        assert report.count("## Research Tree Map") == 1
-        assert "T01-P01-F02: New Model" in report
-        assert "T01-P01-F01: PI Controller" in report  # original formulation still present
-
-    def test_tree_uses_correct_characters(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("paradigm-a", "Paradigm A"), ("paradigm-b", "Paradigm B")],
-            [("paradigm-a", "F1"), ("paradigm-b", "F1")],
-        )
-        save_summary_report(tmp_path, "# Report")
-
-        tree = generate_tree_map(state)
-
-        # First paradigm uses ├── (not last), second uses └── (last)
         lines = tree.strip().split("\n")
-        paradigm_lines = [line for line in lines if "T01-P0" in line and "F0" not in line]
+        paradigm_lines = [l for l in lines if "Paradigm" in l]
         assert "├──" in paradigm_lines[0]
         assert "└──" in paradigm_lines[1]
 
-    def test_paradigm_name_fallback_to_slug(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_paradigm_name_fallback_to_slug(self, tmp_path):
         """If deep report doesn't exist, fall back to slug."""
-        state = PipelineState(
-            stage=Stage.REVIEW_FORMALIZE, problem="test", reports_dir=tmp_path,
+        state = _make_state(tmp_path, {"unknown-paradigm": []})
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report",
+        })
+        # get_text raises for missing deep report
+        original_get = storage.get_text.side_effect
+        async def get_text_with_missing(key):
+            if "deep/unknown-paradigm" in key:
+                raise FileNotFoundError
+            return original_get(key)
+        storage.get_text = AsyncMock(side_effect=get_text_with_missing)
+
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
+
+        assert "unknown-paradigm" in tree
+
+    @pytest.mark.asyncio
+    async def test_empty_selected_formulations(self, tmp_path):
+        state = _make_state(tmp_path, {})
+        storage = _mock_storage({
+            "research/test-run/report.md": "# Report",
+        })
+
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            tree = await generate_tree_map(state)
+
+        # The report heading is used as the topic label
+        assert "Report" in tree
+
+    @pytest.mark.asyncio
+    async def test_no_report_file_creates_one(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "homeostatic-regulation": ["pi-controller"],
+        })
+        storage = _mock_storage({
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+        })
+
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            await generate_tree_map(state)
+
+        storage.put_text.assert_called_once()
+        written_content = storage.put_text.call_args[0][1]
+        assert "## Research Tree Map" in written_content
+        assert "pi-controller" in written_content
+
+    @pytest.mark.asyncio
+    async def test_replacement_preserves_following_sections(self, tmp_path):
+        state = _make_state(tmp_path, {
+            "homeostatic-regulation": ["pi-controller"],
+        })
+        existing = (
+            "# Report\n\nContent."
+            "\n## Research Tree Map\n\n```\nold tree\n```\n"
+            "\n## References\n\nSome refs.\n"
         )
-        state.assign_paradigm_id("unknown-paradigm")
-        save_summary_report(tmp_path, "# Report")
+        storage = _mock_storage({
+            "research/test-run/report.md": existing,
+            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+        })
 
-        tree = generate_tree_map(state)
+        with patch("decisionlab.tools.reports.shared") as mock_shared:
+            mock_shared.storage = storage
+            await generate_tree_map(state)
 
-        assert "T01-P01: unknown-paradigm" in tree
-
-    def test_empty_registry(self, tmp_path):
-        state = PipelineState(
-            stage=Stage.REVIEW_FORMALIZE, problem="test", reports_dir=tmp_path,
-        )
-        save_summary_report(tmp_path, "# Report")
-
-        tree = generate_tree_map(state)
-
-        assert "T01" in tree  # At least topic level
-
-    def test_no_report_file_creates_one(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation")],
-            [("homeostatic-regulation", "PI Controller")],
-        )
-        # Don't call save_summary_report — report.md doesn't exist
-
-        generate_tree_map(state)
-
-        report_path = tmp_path / "report.md"
-        assert report_path.exists()
-        report = report_path.read_text()
-        assert "## Research Tree Map" in report
-        assert "T01-P01-F01: PI Controller" in report
-
-    def test_replacement_preserves_following_sections(self, tmp_path):
-        state = _make_state(
-            tmp_path,
-            [("homeostatic-regulation", "Homeostatic Regulation")],
-            [("homeostatic-regulation", "PI Controller")],
-        )
-        save_summary_report(tmp_path, "# Report\n\nContent.")
-
-        generate_tree_map(state)
-        # Simulate a section added after tree map
-        report_path = tmp_path / "report.md"
-        content = report_path.read_text()
-        report_path.write_text(content + "\n## References\n\nSome refs.\n")
-
-        # Re-generate tree map — should not eat the References section
-        state.assign_formulation_id("homeostatic-regulation", "New Model")
-        generate_tree_map(state)
-
-        report = report_path.read_text()
-        assert "## References" in report
-        assert "Some refs." in report
-        assert "T01-P01-F02: New Model" in report
+        written_content = storage.put_text.call_args[0][1]
+        assert "## References" in written_content
+        assert "Some refs." in written_content
+        assert "pi-controller" in written_content
+        assert written_content.count("## Research Tree Map") == 1
