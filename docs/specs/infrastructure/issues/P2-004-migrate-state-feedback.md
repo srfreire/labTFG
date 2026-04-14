@@ -57,3 +57,22 @@ Move pipeline state persistence, feedback formulation filtering, env_spec upload
 Phase spec: `docs/specs/infrastructure/phase-2-phase1-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `pipeline`
+
+## Completion Summary
+
+**Commit:** `7a77663` — `feat[phase1]: migrate pipeline state and feedback to S3 (P2-004)`
+
+### What was built
+- `PipelineState.save()` serializes to JSON and writes to S3 at `research/{run_id}/pipeline_state.json`
+- Resume loads state from S3 via `storage.get_text`
+- Feedback formulation filtering reads/writes from S3
+- Env spec uploaded to S3 at `research/{run_id}/env_spec.json`
+- Run status updated in Postgres at each stage
+- Removed all local filesystem writes (no temp files, no shutil.copy2)
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/router.py` — PipelineState.save(), _review_build(), _get_env_spec()
+- `phase1-pablo/src/decisionlab/cli.py` — env_spec S3 upload, resume via run_id
+- `phase1-pablo/src/decisionlab/feedback.py` — S3-backed review_formalize()
+- `phase1-pablo/src/decisionlab/web_feedback.py` — S3-backed review_formalize(), get_env_spec()
+- `phase1-pablo/src/decisionlab/server.py` — minor update

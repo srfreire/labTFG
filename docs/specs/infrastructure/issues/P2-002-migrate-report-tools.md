@@ -49,3 +49,18 @@ Replace all filesystem writes/reads in `tools/reports.py` with StorageService ca
 Phase spec: `docs/specs/infrastructure/phase-2-phase1-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `tools`
+
+## Completion Summary
+
+**Commit:** `49de21e` — `feat[phase1]: migrate report and file tools to StorageService (P2-002, P2-003)`
+
+### What was built
+- Replaced all filesystem writes/reads in `tools/reports.py` with StorageService calls
+- `save_deep_report`, `save_summary_report`, `generate_tree_map`, `create_read_report` now use `storage.put_text`/`get_text`
+- All report functions made async, callers in researcher and deep_researcher updated to await
+- Artifacts registered in DB with correct types
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/tools/reports.py` — all 4 functions migrated to S3
+- `phase1-pablo/src/decisionlab/agents/researcher.py` — async caller updates
+- `phase1-pablo/src/decisionlab/agents/deep_researcher.py` — async caller updates

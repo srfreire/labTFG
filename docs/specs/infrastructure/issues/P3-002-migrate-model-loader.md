@@ -53,3 +53,18 @@ Replace filesystem-based model discovery with Postgres queries and S3-based mode
 Phase spec: `docs/specs/infrastructure/phase-3-phase2-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `core`
+
+## Completion Summary
+
+**Commit:** `c03f1db` — `feat[phase2]: migrate model loader, reporter, charts to S3 (P3-002, P3-004)`
+
+### What was built
+- `discover_models()` queries Postgres `models` table instead of filesystem glob
+- `load_model()` downloads from S3 via `storage.get`, loads via importlib from tempdir
+- `ModelInfo` dataclass uses `s3_model_key` instead of `file_path`
+- Orchestrator's `list_available_models` and `run_simulation` tools updated for new API
+- Temp dirs tracked and cleaned up after experiment
+
+### Files created/modified
+- `phase2-juan/simlab/model_loader.py` — discover_models, load_model, ModelInfo rewrite
+- `phase2-juan/simlab/orchestrator.py` — updated call sites

@@ -43,3 +43,17 @@ Initialize shared infrastructure (MinIO + Postgres) in the FastAPI app lifecycle
 Phase spec: `docs/specs/infrastructure/phase-3-phase2-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `bootstrap`
+
+## Completion Summary
+
+**Commit:** `e84c030` — `feat[phase2]: bootstrap shared.init in API, remove path config (P3-001)`
+
+### What was built
+- Added FastAPI lifespan handler with `shared.init()` on startup and `shared.shutdown()` on shutdown
+- Removed `RESEARCH_DIR`, `OUTPUT_DIR`, `BUILDER_DIR` path variables from api.py
+- Updated Orchestrator constructor to use `shared.storage`/`shared.db` instead of filesystem paths
+- Updated WebSocket handler to pass new params
+
+### Files created/modified
+- `phase2-juan/simlab/api.py` — lifespan handler, path config removal
+- `phase2-juan/simlab/orchestrator.py` — constructor signature change

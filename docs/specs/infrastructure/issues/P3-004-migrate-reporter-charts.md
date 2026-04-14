@@ -64,3 +64,20 @@ Replace filesystem reads/writes in reporter and charts with S3 operations. Resea
 Phase spec: `docs/specs/infrastructure/phase-3-phase2-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `output`
+
+## Completion Summary
+
+**Commit:** `c03f1db` — `feat[phase2]: migrate model loader, reporter, charts to S3 (P3-002, P3-004)`
+
+### What was built
+- Reporter reads research files from S3 (`report.md`, `deep/*.md`, `formulations/*.md`)
+- Reporter writes `.tex` and `.pdf` to S3, downloads chart PNGs to tempdir for LaTeX compilation
+- Charts module renders matplotlib to BytesIO, uploads PNGs to S3 at `experiments/{exp_id}/charts/`
+- All output artifacts registered in `artifacts` table
+- Removed `output_dir` parameter from Reporter and chart tools
+
+### Files created/modified
+- `phase2-juan/simlab/reporter.py` — read_research from S3, compile_report with S3 upload
+- `phase2-juan/simlab/charts.py` — S3-backed chart generation
+- `phase2-juan/simlab/orchestrator.py` — pass run_id/exp_id to reporter
+- `phase2-juan/simlab/analyst.py` — updated for new tool signatures

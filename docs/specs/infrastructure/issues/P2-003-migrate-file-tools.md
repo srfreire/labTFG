@@ -52,3 +52,27 @@ Replace the generic `write_file`/`read_file` LLM tools with S3-backed versions a
 Phase spec: `docs/specs/infrastructure/phase-2-phase1-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `tools`
+
+## Completion Summary
+
+**Commit:** `49de21e` — `feat[phase1]: migrate report and file tools to StorageService (P2-002, P2-003)`
+
+### What was built
+- Replaced `write_file`/`read_file` LLM tools with S3-backed versions
+- `create_write_file` and `create_read_file` use S3 prefixes instead of local paths
+- Builder pytest handling downloads models to tempdir, runs tests, cleans up
+- Formalizer, Reasoner, Builder sub-agents updated to pass S3 prefix instead of local base_dir
+- Path traversal guards on file writes
+- All artifacts registered in DB
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/tools/files.py` — S3-backed write/read
+- `phase1-pablo/src/decisionlab/tools/tests.py` — pytest tempdir handling
+- `phase1-pablo/src/decisionlab/agents/builder.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/agents/builder_sub.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/agents/formalizer.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/agents/formalizer_sub.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/agents/reasoner.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/agents/reasoner_sub.py` — S3 prefix
+- `phase1-pablo/src/decisionlab/cli.py` — updated for new tool signatures
+- `phase1-pablo/src/decisionlab/router.py` — updated for new tool signatures

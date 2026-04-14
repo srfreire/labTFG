@@ -69,3 +69,19 @@ Add all application services to docker-compose, configure networking and depende
 Phase spec: `docs/specs/infrastructure/phase-4-containerization.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `compose`
+
+## Completion Summary
+
+**Commit:** `8aa246d` — `feat[infra]: complete docker-compose stack and migration script (P4-004)`
+
+### What was built
+- Added phase1-server, phase2-server, and web services to docker-compose.yml with health-dependent startup
+- Shared `labtfg-net` network, environment variables from .env, internal service hostnames
+- Migration script `scripts/migrate_sample_run.py` — reads sample-run data from filesystem, creates Run record in Postgres, uploads all artifacts to MinIO, registers models and artifacts in DB
+- Migration is idempotent (checks before inserting)
+- Updated .env.example with all service vars
+
+### Files created/modified
+- `docker-compose.yml` — 3 new service definitions
+- `.env.example` — all service env vars
+- `scripts/migrate_sample_run.py` — new migration script

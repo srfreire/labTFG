@@ -1,14 +1,14 @@
 ---
 id: P2-001
 title: Build entity and relation extraction module with stage-specific Haiku prompts
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: extraction
 priority: 1
 blocked_by: []
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P2-001: Build entity and relation extraction module with stage-specific Haiku prompts

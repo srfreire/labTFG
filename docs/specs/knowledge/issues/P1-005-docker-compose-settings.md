@@ -37,13 +37,13 @@ Add Neo4j and Qdrant services to the existing Docker Compose setup, extend `shar
 - `.env.example` updated with all new variables (commented, with descriptions)
 
 ## Acceptance Criteria
-- [ ] AC1: `docker compose up` starts Neo4j, Qdrant, Postgres, and MinIO — all pass health checks
-- [ ] AC2: `docker compose down -v && docker compose up` starts clean (volumes recreated, schemas re-initialized)
-- [ ] AC3: `shared.init()` connects to all services when all are available; `shared.knowledge_graph` and `shared.vector_store` are usable after init
-- [ ] AC4: `shared.init()` succeeds with a warning when Neo4j/Qdrant are unavailable; `shared.knowledge_graph` and `shared.vector_store` are None
-- [ ] AC5: `shared.shutdown()` closes all connections without error
-- [ ] AC6: `.env.example` documents all new environment variables
-- [ ] AC7: Existing pipeline (Researcher → Builder) still works when knowledge services are unavailable (no regressions)
+- [x] AC1: `docker compose up` starts Neo4j, Qdrant, Postgres, and MinIO — all pass health checks
+- [x] AC2: `docker compose down -v && docker compose up` starts clean (volumes recreated, schemas re-initialized)
+- [x] AC3: `shared.init()` connects to all services when all are available; `shared.knowledge_graph` and `shared.vector_store` are usable after init
+- [x] AC4: `shared.init()` succeeds with a warning when Neo4j/Qdrant are unavailable; `shared.knowledge_graph` and `shared.vector_store` are None
+- [x] AC5: `shared.shutdown()` closes all connections without error
+- [x] AC6: `.env.example` documents all new environment variables
+- [x] AC7: Existing pipeline (Researcher → Builder) still works when knowledge services are unavailable (no regressions)
 
 ## Files Likely Affected
 - `docker-compose.yml` (or `docker-compose.yaml`) — add neo4j + qdrant services

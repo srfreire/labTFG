@@ -51,3 +51,20 @@ Introduce a UUID `run_id` per pipeline execution, create a Run record in Postgre
 Phase spec: `docs/specs/infrastructure/phase-2-phase1-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `pipeline`
+
+## Completion Summary
+
+**Commit:** `50965ad` — `feat[phase1]: add run_id and shared.init to pipeline (P2-001)`
+
+### What was built
+- Added `run_id` field to `PipelineState` with UUID generation
+- Wired `shared.init()` / `shared.shutdown()` into CLI and server entry points
+- Replaced `reports_dir: Path` with `run_id: str` throughout the pipeline chain
+- Added shared package dependency to Phase 1's pyproject.toml
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/router.py` — PipelineState run_id field
+- `phase1-pablo/src/decisionlab/cli.py` — shared.init/shutdown, run_id creation
+- `phase1-pablo/src/decisionlab/server.py` — shared.init/shutdown, run_id creation
+- `phase1-pablo/pyproject.toml` — shared dependency
+- `phase1-pablo/uv.lock` — lockfile update

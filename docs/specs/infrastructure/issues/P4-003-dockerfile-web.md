@@ -51,3 +51,17 @@ Containerize the Phase 2 React frontend with nginx serving static files and prox
 Phase spec: `docs/specs/infrastructure/phase-4-containerization.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `containers`
+
+## Completion Summary
+
+**Commit:** `bf79b25` — `feat[infra]: add Dockerfiles for all services (P4-001, P4-002, P4-003)`
+
+### What was built
+- Multi-stage Dockerfile for web frontend (node:22-slim build stage with pnpm, nginx:alpine serve stage)
+- Nginx config with WebSocket proxy to phase2-server, API proxy, and SPA fallback
+- .dockerignore for web directory
+
+### Files created
+- `phase2-juan/web/Dockerfile` — multi-stage build
+- `phase2-juan/web/nginx.conf` — proxy + SPA config
+- `phase2-juan/web/.dockerignore` — node_modules, dist, .env

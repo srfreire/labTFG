@@ -1,7 +1,7 @@
 ---
 id: P5-002
 title: Remove IdRegistry, simplify PipelineState to slugs
-status: in-progress
+status: done
 kind: strike
 phase: 5
 heat: pipeline

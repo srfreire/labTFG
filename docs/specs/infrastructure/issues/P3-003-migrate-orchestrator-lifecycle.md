@@ -68,3 +68,18 @@ Replace all SQLite store calls with async Postgres and move large JSON blobs to 
 Phase spec: `docs/specs/infrastructure/phase-3-phase2-integration.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `core`
+
+## Completion Summary
+
+**Commit:** `9aa222a` — `feat[phase2]: migrate orchestrator lifecycle to async Postgres + S3 (P3-003)`
+
+### What was built
+- Replaced all SQLite store calls with async Postgres via `shared.db.get_session()`
+- Experiment lifecycle: create_environment, run_simulation, observe_simulation, analyze_results, generate_report all write JSON blobs to S3 and update Postgres rows
+- Experiment status progresses through CREATED → SIMULATED → TRACKED → ANALYZED → REPORTED
+- Analyst tools (`list_past_experiments`, `get_experiment_analysis`) use async Postgres
+- Removed all `shared.store` imports
+
+### Files created/modified
+- `phase2-juan/simlab/orchestrator.py` — full lifecycle migration to async Postgres + S3
+- `phase2-juan/simlab/tools.py` — analyst tool functions migrated

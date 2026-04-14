@@ -51,3 +51,14 @@ Containerize the Phase 2 FastAPI/WebSocket server with all dependencies includin
 Phase spec: `docs/specs/infrastructure/phase-4-containerization.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `containers`
+
+## Completion Summary
+
+**Commit:** `bf79b25` — `feat[infra]: add Dockerfiles for all services (P4-001, P4-002, P4-003)`
+
+### What was built
+- Multi-stage Dockerfile for Phase 2 server (python:3.12-slim base, uv sync, tectonic binary, uvicorn entrypoint on port 8000)
+- Templates directory copied for LaTeX compilation
+
+### Files created
+- `phase2-juan/Dockerfile` — multi-stage build with tectonic
