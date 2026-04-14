@@ -20,13 +20,15 @@
   - Issues: P3-001, P3-002, P3-003, P3-004, P3-005
   - Heats: retrieval (P3-001 ∥ P3-002), fusion (P3-003, after P3-001+P3-002), crag (P3-004, after P3-003), tool (P3-005, after P3-003+P3-004)
 
-- [ ] **Phase 4: Pipeline Integration** — Wire retrieval tools into existing agents (Researcher, Formalizer, Reasoner, Builder). Wire Memory Agent into Router's stage transitions. Add `EXTRACT_KNOWLEDGE` / `RETRIEVE_KNOWLEDGE` to the pipeline state machine. Graceful degradation when infra is unavailable.
+- [x] **Phase 4: Pipeline Integration** — Wire retrieval tools into existing agents (Researcher, Formalizer, Reasoner, Builder). Wire Memory Agent into Router's stage transitions. Graceful degradation when infra is unavailable.
   - Dependencies: Phase 2, Phase 3
-  - Estimated issues: ~5
+  - Issues: P4-001, P4-002, P4-003, P4-004, P4-005
+  - Heats: agent-tools (P4-001→P4-002), router (P4-003), resilience (P4-004 after P4-001+P4-003, P4-005 after P4-003)
 
-- [ ] **Phase 5: Cross-Run Memory & Consolidation** — Persistent memory across runs: cross-run retrieval scoping, confidence evolution (corroboration/contradiction tracking), post-run consolidation (clustering, reflection generation, pruning), temporal validity management.
+- [x] **Phase 5: Cross-Run Memory & Consolidation** — Persistent memory across runs: cross-run retrieval scoping, confidence evolution (corroboration/contradiction tracking), post-run consolidation (clustering, reflection generation, pruning), temporal validity management.
   - Dependencies: Phase 4
-  - Estimated issues: ~4
+  - Issues: P5-001, P5-002, P5-003, P5-004
+  - Heats: cross-run (P5-001→P5-002), consolidation (P5-003 after P5-002, P5-004 after P5-001)
 
 - [ ] **Phase 6: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, cross-run knowledge diff.
   - Dependencies: Phase 5
