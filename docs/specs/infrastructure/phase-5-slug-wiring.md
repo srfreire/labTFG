@@ -1,6 +1,6 @@
 # Phase 5: Slug-based Pipeline Wiring
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15 (P5-004 done)
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15 (P5-005 done)
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -32,8 +32,8 @@ When user approves builds in `_review_build`, insert `Model` rows in Postgres. E
 - [x] Router validates agent filenames after write, auto-renames mismatches
 - [x] Approved models are inserted into `models` table at REVIEW_BUILD
 - [x] `runs.s3_report_key` populated at pipeline completion
-- [ ] Phase 2 `discover_models()` returns models from live pipeline runs
-- [ ] All existing tests pass (updated for new API)
+- [x] Phase 2 `discover_models()` returns models from live pipeline runs
+- [x] All existing tests pass (updated for new API)
 
 ## Technical Notes
 - `slugify()` already exists in `tools/reports.py` — reuse for formulation name → slug conversion

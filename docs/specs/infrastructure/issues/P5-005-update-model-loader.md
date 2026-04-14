@@ -1,7 +1,7 @@
 ---
 id: P5-005
 title: Update Phase 2 model_loader for new schema
-status: in-progress
+status: done
 kind: strike
 phase: 5
 heat: phase2
@@ -35,11 +35,11 @@ Update Phase 2's model discovery to work with the restructured `models` table (U
 - Model with no run_id: handle gracefully (migration-era data)
 
 ## Acceptance Criteria
-- [ ] `discover_models()` returns models from live pipeline runs (P5-004)
-- [ ] `ModelInfo` has `paradigm` and `formulation` fields
-- [ ] Orchestrator presents models with readable paradigm/formulation names
-- [ ] `read_predictions` still correctly reads deep reports from S3
-- [ ] Models from multiple runs are discoverable
+- [x] `discover_models()` returns models from live pipeline runs (P5-004)
+- [x] `ModelInfo` has `paradigm` and `formulation` fields
+- [x] Orchestrator presents models with readable paradigm/formulation names
+- [x] `read_predictions` still correctly reads deep reports from S3
+- [x] Models from multiple runs are discoverable
 
 ## Files Likely Affected
 - `phase2-juan/simlab/model_loader.py` — discover_models, ModelInfo
@@ -49,3 +49,26 @@ Update Phase 2's model discovery to work with the restructured `models` table (U
 Phase spec: `docs/specs/infrastructure/phase-5-slug-wiring.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `phase2`
+
+## Completion Summary
+
+**Commit:** `89eaf0d` — `feat[model_loader]: update Phase 2 model_loader for new schema (P5-005)`
+
+### What was built
+- `ModelInfo` dataclass: replaced `formulation_id: str` with `id: str` (UUID), `paradigm: str`, `formulation: str`
+- `discover_models()`: keys results by `"{paradigm}/{formulation}"` compound string, queries UUID-based Model table
+- Duplicate key collision warning: logs when multiple runs produce the same paradigm/formulation
+- Orchestrator `list_available_models`: returns `key`, `paradigm`, `formulation`, `class_name`, `description`
+- Orchestrator `run_simulation`: accepts `paradigm/formulation` keys via `model_ids`, uses `info.formulation` for agent labels
+- System prompt and tool descriptions updated from `formulation_id` to `paradigm/formulation` key format
+
+### Files created/modified
+- `phase2-juan/simlab/model_loader.py` — ModelInfo, discover_models, load_model updated for new schema
+- `phase2-juan/simlab/orchestrator.py` — tool schemas, system prompt, list_available_models, run_simulation
+- `phase2-juan/tests/test_model_loader.py` — fully rewritten: 11 async tests with Postgres mocks
+- `phase2-juan/pyproject.toml` — added pytest-asyncio, asyncio_mode=auto
+
+### Decisions
+- `discover_models` returns last-seen row per paradigm/formulation key with a warning on collision (not filtered by latest run)
+- Model keys use compound `paradigm/formulation` string rather than UUID to keep orchestrator prompts human-readable
+- Old filesystem-based tests replaced entirely with async mock-based tests
