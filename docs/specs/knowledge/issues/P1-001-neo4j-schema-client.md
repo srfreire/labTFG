@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Create Neo4j knowledge graph schema and async Python client
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: data-model
