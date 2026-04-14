@@ -1,6 +1,7 @@
 # Phase 1: Infrastructure & Storage Layer
 
 > Status: current | Created: 2026-04-14 | Last updated: 2026-04-14
+
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -50,7 +51,7 @@ Stand up the data layer for the knowledge backbone: Neo4j knowledge graph, Qdran
 
 ## Acceptance Criteria
 
-- [ ] AC1: `docker compose up` starts Neo4j, Qdrant, Postgres, and MinIO — all healthy within 30 seconds
+- [x] AC1: `docker compose up` starts Neo4j, Qdrant, Postgres, and MinIO — all healthy within 30 seconds
 - [ ] AC2: `shared.init()` connects to all 4 services and creates Neo4j schema + Qdrant collections idempotently
 - [ ] AC3: Can create a Paradigm node with properties and a SUPPORTS relation between Paper → Postulate via `KnowledgeGraph` client, then query it back
 - [ ] AC4: Can insert a Memory row via SQLAlchemy, query by namespace and confidence threshold
@@ -58,7 +59,7 @@ Stand up the data layer for the knowledge backbone: Neo4j knowledge graph, Qdran
 - [ ] AC6: Can embed a list of 5 texts via `EmbeddingService` and get 5 vectors of dimension 1024 back
 - [ ] AC7: Can rerank 10 documents against a query via `EmbeddingService.rerank()` and get ordered results with scores
 - [ ] AC8: Pipeline still works without Neo4j/Qdrant/Voyage (graceful degradation — clients return empty results or raise clear errors caught by callers)
-- [ ] AC9: All new settings have sensible defaults and are documented in `.env.example`
+- [x] AC9: All new settings have sensible defaults and are documented in `.env.example`
 
 ## Technical Notes
 

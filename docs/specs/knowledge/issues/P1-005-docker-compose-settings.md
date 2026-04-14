@@ -1,7 +1,7 @@
 ---
 id: P1-005
 title: Extend Docker Compose and shared settings for knowledge infrastructure
-status: in-progress
+status: done
 kind: strike
 phase: 1
 heat: infra
@@ -56,3 +56,37 @@ Phase spec: `docs/specs/knowledge/phase-1-infrastructure.md`
 General spec: `docs/specs/knowledge/general.md`
 Heat: `infra`
 Independent of other issues but conceptually should run after P1-001 and P1-003 produce the client classes it wires up. If run in parallel, the wiring can use stubs and be connected once clients exist.
+
+## Completion Summary
+
+**Commit:** `3bf0cf2` — `feat[shared]: add Neo4j + Qdrant infrastructure with graceful degradation (P1-005)`
+
+### What was built
+- Neo4j (5-community + APOC) and Qdrant services in Docker Compose with healthchecks, volumes, and env vars passed to phase servers
+- Settings: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, QDRANT_URL, VOYAGE_API_KEY added to frozen Settings dataclass
+- KnowledgeGraph client stub (neo4j async driver wrapper with connect/close/driver property)
+- VectorStore client stub (qdrant-client async wrapper with connect/close/client property)
+- shared.init() wires both with graceful degradation — logs warning and sets to None if unreachable
+- shared.shutdown() closes all connections including Neo4j and Qdrant
+- .env.example documents all new variables
+- 7 new tests: graceful degradation (neo4j, qdrant, both), connect success, shutdown cleanup, not-connected guard for both clients
+
+### Files created/modified
+- `docker-compose.yml` — added neo4j + qdrant services, volumes, env vars, depends_on
+- `shared/shared/settings.py` — 5 new fields (NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, QDRANT_URL, VOYAGE_API_KEY)
+- `shared/shared/__init__.py` — wired knowledge_graph + vector_store into lifecycle
+- `shared/shared/knowledge_graph.py` — new KnowledgeGraph async client
+- `shared/shared/vector_store.py` — new VectorStore async client
+- `shared/pyproject.toml` — added neo4j>=5.0, qdrant-client>=1.9
+- `.env.example` — documented new env vars
+- `shared/tests/test_knowledge_lifecycle.py` — 7 new tests
+- `shared/tests/test_lifecycle.py` — updated for new singletons
+- `shared/tests/test_settings.py` — updated for new settings fields
+
+### Decisions
+- Used `wget -qO- http://localhost:7474` for Neo4j healthcheck instead of `cypher-shell` (more reliable during startup, doesn't need auth)
+- Used `/readyz` endpoint for Qdrant healthcheck instead of `/healthz` (correct Qdrant endpoint)
+- NEO4J_PASSWORD defaults to `labtfg` (matches project convention) instead of `password` from spec
+- VOYAGE_API_KEY defaults to empty string instead of raising — required only when knowledge features are used
+- Client stubs expose `.driver` / `.client` properties for P1-001 and P1-003 to build on
+- Resource leak prevention: connect() methods clean up driver/client on verification failure
