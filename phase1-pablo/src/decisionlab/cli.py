@@ -64,10 +64,14 @@ def _run_async(coro):
     try:
         return asyncio.run(coro)
     except anthropic.AuthenticationError:
-        console.print("[bold red]Error: Invalid or missing ANTHROPIC_API_KEY. Set it in .env or as an environment variable.[/bold red]")
+        console.print(
+            "[bold red]Error: Invalid or missing ANTHROPIC_API_KEY. Set it in .env or as an environment variable.[/bold red]"
+        )
         raise typer.Exit(code=1)
     except anthropic.APIConnectionError:
-        console.print("[bold red]Error: Could not connect to the API. Check your network and ANTHROPIC_BASE_URL.[/bold red]")
+        console.print(
+            "[bold red]Error: Could not connect to the API. Check your network and ANTHROPIC_BASE_URL.[/bold red]"
+        )
         raise typer.Exit(code=1)
     except RuntimeError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
@@ -87,7 +91,9 @@ def research(
     reports_dir = _reports_dir(problem)
 
     async def _run():
-        r = Researcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
+        r = Researcher(
+            client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir
+        )
         return await r.run(problem)
 
     report = _run_async(_run())
@@ -107,7 +113,9 @@ def deep_research(
     reports_dir = _reports_dir(paradigm)
 
     async def _run():
-        dr = DeepResearcher(client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir)
+        dr = DeepResearcher(
+            client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir
+        )
         return await dr.run(paradigm)
 
     result = _run_async(_run())
@@ -121,8 +129,14 @@ def deep_research(
 
 @app.command()
 def formalize(
-    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to formalize (discovers from disk if empty)"),
+    reports_dir: Path = typer.Option(
+        ..., "--reports-dir", help="Path to existing research run"
+    ),
+    paradigms: list[str] = typer.Option(
+        [],
+        "--paradigms",
+        help="Paradigm slugs to formalize (discovers from disk if empty)",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Formalizer agent — produces formal mathematical models from deep research."""
@@ -130,7 +144,9 @@ def formalize(
 
     deep_dir = reports_dir / "deep"
     if not deep_dir.exists():
-        console.print(f"[bold red]Error: deep/ subdirectory not found in {reports_dir}[/bold red]")
+        console.print(
+            f"[bold red]Error: deep/ subdirectory not found in {reports_dir}[/bold red]"
+        )
         raise typer.Exit(code=1)
 
     from decisionlab.agents.formalizer import Formalizer
@@ -150,9 +166,17 @@ def formalize(
 
 @app.command()
 def reason(
-    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
-    env_spec: Path = typer.Option(..., "--env-spec", help="Path to env_spec.json (environment specification)"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Paradigm slugs to reason about (discovers from disk if empty)"),
+    reports_dir: Path = typer.Option(
+        ..., "--reports-dir", help="Path to existing research run"
+    ),
+    env_spec: Path = typer.Option(
+        ..., "--env-spec", help="Path to env_spec.json (environment specification)"
+    ),
+    paradigms: list[str] = typer.Option(
+        [],
+        "--paradigms",
+        help="Paradigm slugs to reason about (discovers from disk if empty)",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Reasoner agent — produces agent specs from formalized models and an environment."""
@@ -160,11 +184,15 @@ def reason(
 
     formulations_dir = reports_dir / "formulations"
     if not formulations_dir.exists():
-        console.print(f"[bold red]Error: formulations/ subdirectory not found in {reports_dir}[/bold red]")
+        console.print(
+            f"[bold red]Error: formulations/ subdirectory not found in {reports_dir}[/bold red]"
+        )
         raise typer.Exit(code=1)
 
     if not env_spec.exists():
-        console.print(f"[bold red]Error: env_spec file not found at {env_spec}[/bold red]")
+        console.print(
+            f"[bold red]Error: env_spec file not found at {env_spec}[/bold red]"
+        )
         raise typer.Exit(code=1)
 
     from decisionlab.agents.reasoner import Reasoner
@@ -195,8 +223,12 @@ def reason(
 
 @app.command()
 def build(
-    reports_dir: Path = typer.Option(..., "--reports-dir", help="Path to existing research run"),
-    paradigms: list[str] = typer.Option([], "--paradigms", help="Spec IDs to build (discovers from disk if empty)"),
+    reports_dir: Path = typer.Option(
+        ..., "--reports-dir", help="Path to existing research run"
+    ),
+    paradigms: list[str] = typer.Option(
+        [], "--paradigms", help="Spec IDs to build (discovers from disk if empty)"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
     """Run the Builder agent — generates DecisionModel implementations from JSON specs."""
@@ -204,7 +236,9 @@ def build(
 
     reasoner_dir = reports_dir / "reasoner"
     if not reasoner_dir.exists():
-        console.print(f"[bold red]Error: reasoner/ subdirectory not found in {reports_dir}[/bold red]")
+        console.print(
+            f"[bold red]Error: reasoner/ subdirectory not found in {reports_dir}[/bold red]"
+        )
         raise typer.Exit(code=1)
 
     from decisionlab.agents.builder import Builder
@@ -253,15 +287,33 @@ def run(
 
             reports_dir = _reports_dir(problem)
             state = PipelineState(
-                stage=Stage.RESEARCH, problem=problem,
-                reports_dir=reports_dir, run_id=run_id,
+                stage=Stage.RESEARCH,
+                problem=problem,
+                reports_dir=reports_dir,
+                run_id=run_id,
             )
             await state.save()
             router = Router(
-                client=_client(), state=state,
-                search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+                client=_client(),
+                state=state,
+                search=DuckDuckGoAdapter(),
+                project_root=Path.cwd(),
             )
             await router.run()
+
+            # Finalize: set s3_report_key
+            async with shared.db.get_session() as session:
+                from sqlalchemy import update
+
+                await session.execute(
+                    update(Run)
+                    .where(Run.id == _uuid.UUID(run_id))
+                    .values(
+                        status="done",
+                        s3_report_key=f"research/{run_id}/report.md",
+                    )
+                )
+                await session.commit()
         finally:
             await shared.shutdown()
 
@@ -270,8 +322,12 @@ def run(
 
 @app.command()
 def resume(
-    reports_dir: Path = typer.Option(None, "--reports-dir", help="Path to existing pipeline run"),
-    run_id: str = typer.Option(None, "--run-id", help="Run ID to resume (requires --reports-dir for now)"),
+    reports_dir: Path = typer.Option(
+        None, "--reports-dir", help="Path to existing pipeline run"
+    ),
+    run_id: str = typer.Option(
+        None, "--run-id", help="Run ID to resume (requires --reports-dir for now)"
+    ),
     from_stage: str = typer.Option(None, "--from", help="Jump to specific stage"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
 ):
@@ -294,16 +350,37 @@ def resume(
             else:
                 # Legacy: load from local reports_dir
                 state = await PipelineState.load("")  # will fail; use run_id
-                console.print("[bold red]--reports-dir is deprecated; use --run-id[/bold red]")
+                console.print(
+                    "[bold red]--reports-dir is deprecated; use --run-id[/bold red]"
+                )
                 raise typer.Exit(code=1)
             if from_stage:
                 state.stage = Stage[from_stage.upper()]
                 await state.save()
             router = Router(
-                client=_client(), state=state,
-                search=DuckDuckGoAdapter(), project_root=Path.cwd(),
+                client=_client(),
+                state=state,
+                search=DuckDuckGoAdapter(),
+                project_root=Path.cwd(),
             )
             await router.run()
+
+            # Finalize: set s3_report_key
+            if state.stage == Stage.DONE:
+                from sqlalchemy import update
+                from shared.models import Run
+                import uuid as _uuid2
+
+                async with shared.db.get_session() as session:
+                    await session.execute(
+                        update(Run)
+                        .where(Run.id == _uuid2.UUID(state.run_id))
+                        .values(
+                            status="done",
+                            s3_report_key=f"research/{state.run_id}/report.md",
+                        )
+                    )
+                    await session.commit()
         finally:
             await shared.shutdown()
 

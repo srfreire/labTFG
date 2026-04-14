@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
@@ -44,6 +45,7 @@ class Stage(str, Enum):
 # ---------------------------------------------------------------------------
 # PipelineState
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineState:
@@ -118,7 +120,9 @@ class PipelineState:
             approved_specs=data.get("approved_specs", {}),
             build_results=data.get("build_results", {}),
             pending_reruns=[
-                RerunRequest(target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"])
+                RerunRequest(
+                    target=r["target"], paradigm=r["paradigm"], feedback=r["feedback"]
+                )
                 for r in data.get("pending_reruns", [])
             ],
         )
@@ -202,26 +206,51 @@ class Router:
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
-            await self._emit({
-                "type": "stage_change",
-                "stage": current_stage.value,
-                "status": "running",
-            })
+            await self._emit(
+                {
+                    "type": "stage_change",
+                    "stage": current_stage.value,
+                    "status": "running",
+                }
+            )
             await handler()
-            await self._emit({
-                "type": "stage_change",
-                "stage": current_stage.value,
-                "status": "done",
-            })
+            await self._emit(
+                {
+                    "type": "stage_change",
+                    "stage": current_stage.value,
+                    "status": "done",
+                }
+            )
             await self.state.save()
             # Update Run status in Postgres
             import shared
+
             async with shared.db.get_session() as session:
                 from sqlalchemy import update
                 from shared.models import Run
+
                 await session.execute(
-                    update(Run).where(Run.id == uuid.UUID(self.state.run_id)).values(
+                    update(Run)
+                    .where(Run.id == uuid.UUID(self.state.run_id))
+                    .values(
                         status=self.state.stage.value,
+                    )
+                )
+                await session.commit()
+
+        # Finalize run: populate s3_report_key
+        if self.state.stage == Stage.DONE:
+            import shared
+
+            async with shared.db.get_session() as session:
+                from sqlalchemy import update
+                from shared.models import Run
+
+                await session.execute(
+                    update(Run)
+                    .where(Run.id == uuid.UUID(self.state.run_id))
+                    .values(
+                        s3_report_key=f"{self.state.research_prefix}/report.md",
                     )
                 )
                 await session.commit()
@@ -232,7 +261,17 @@ class Router:
         from decisionlab.agents.researcher import Researcher
 
         self.console.print("[bold]Running Researcher...[/bold]")
-        await self._emit({"type": "node_add", "node": {"id": "researcher", "kind": "agent", "label": "Researcher", "status": "running"}})
+        await self._emit(
+            {
+                "type": "node_add",
+                "node": {
+                    "id": "researcher",
+                    "kind": "agent",
+                    "label": "Researcher",
+                    "status": "running",
+                },
+            }
+        )
         try:
             r = Researcher(
                 client=self.client,
@@ -243,7 +282,9 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")
-            await self._emit({"type": "node_update", "id": "researcher", "status": "error"})
+            await self._emit(
+                {"type": "node_update", "id": "researcher", "status": "error"}
+            )
             return  # stay at current stage
         await self._emit({"type": "node_update", "id": "researcher", "status": "done"})
         self.state.stage = Stage.REVIEW_RESEARCH
@@ -254,12 +295,15 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_research
+
                 assert self.emit is not None
                 approved, additional = await review_research(
-                    self.state.reports_dir, self.emit,
+                    self.state.reports_dir,
+                    self.emit,
                 )
             else:
                 from decisionlab.feedback import review_research
+
                 approved, additional = await review_research(
                     self.state.reports_dir,
                 )
@@ -291,8 +335,23 @@ class Router:
         from decisionlab.agents.formalizer import Formalizer
 
         self.console.print("[bold]Running Formalizer...[/bold]")
-        await self._emit({"type": "node_add", "node": {"id": "formalizer", "kind": "agent", "label": "Formalizer", "status": "running"}})
-        await self._emit({"type": "edge_add", "edge": {"source": "researcher", "target": "formalizer"}})
+        await self._emit(
+            {
+                "type": "node_add",
+                "node": {
+                    "id": "formalizer",
+                    "kind": "agent",
+                    "label": "Formalizer",
+                    "status": "running",
+                },
+            }
+        )
+        await self._emit(
+            {
+                "type": "edge_add",
+                "edge": {"source": "researcher", "target": "formalizer"},
+            }
+        )
         try:
             f = Formalizer(
                 client=self.client,
@@ -303,7 +362,9 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Formalizer failed: {exc}[/bold red]")
             logger.exception("Formalizer failed")
-            await self._emit({"type": "node_update", "id": "formalizer", "status": "error"})
+            await self._emit(
+                {"type": "node_update", "id": "formalizer", "status": "error"}
+            )
             return
         await self._emit({"type": "node_update", "id": "formalizer", "status": "done"})
         self.state.stage = Stage.REVIEW_FORMALIZE
@@ -311,6 +372,7 @@ class Router:
     async def _review_formalize(self) -> None:
         if self._web_mode:
             from decisionlab.web_feedback import review_formalize
+
             assert self.emit is not None
             selected = await review_formalize(
                 self.state.reports_dir,
@@ -320,16 +382,19 @@ class Router:
             )
         else:
             from decisionlab.feedback import review_formalize
+
             selected = await review_formalize(
                 self.state.reports_dir,
                 self.state.approved_paradigms,
                 run_id=self.state.run_id,
             )
         self.state.selected_formulations = await _convert_formulations_to_slugs(
-            self.state, selected,
+            self.state,
+            selected,
         )
         await self.state.save()
         from decisionlab.tools.reports import generate_tree_map
+
         await generate_tree_map(self.state)
         self.state.stage = Stage.GET_ENV_SPEC
 
@@ -339,10 +404,12 @@ class Router:
         try:
             if self._web_mode:
                 from decisionlab.web_feedback import get_env_spec
+
                 assert self.emit is not None
                 src_path = await get_env_spec(self.emit)
             else:
                 from decisionlab.feedback import get_env_spec
+
                 src_path = await get_env_spec()
             # Upload env_spec to S3
             env_spec_data = src_path.read_text()
@@ -364,8 +431,20 @@ class Router:
             f"[bold]Running Reasoner for {n_formulations} formulation(s) "
             f"across {len(selected)} paradigm(s)...[/bold]"
         )
-        await self._emit({"type": "node_add", "node": {"id": "reasoner", "kind": "agent", "label": "Reasoner", "status": "running"}})
-        await self._emit({"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}})
+        await self._emit(
+            {
+                "type": "node_add",
+                "node": {
+                    "id": "reasoner",
+                    "kind": "agent",
+                    "label": "Reasoner",
+                    "status": "running",
+                },
+            }
+        )
+        await self._emit(
+            {"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}}
+        )
         try:
             r = Reasoner(
                 client=self.client,
@@ -378,7 +457,9 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
-            await self._emit({"type": "node_update", "id": "reasoner", "status": "error"})
+            await self._emit(
+                {"type": "node_update", "id": "reasoner", "status": "error"}
+            )
             return
         await self._emit({"type": "node_update", "id": "reasoner", "status": "done"})
         self.state.stage = Stage.REVIEW_REASON
@@ -389,12 +470,15 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_reason
+
                 assert self.emit is not None
                 approved, rejections, formalizer_reruns = await review_reason(
-                    self.state.reports_dir, self.emit,
+                    self.state.reports_dir,
+                    self.emit,
                 )
             else:
                 from decisionlab.feedback import review_reason
+
                 approved, rejections, formalizer_reruns = await review_reason(
                     self.state.reports_dir,
                 )
@@ -474,11 +558,21 @@ class Router:
         from decisionlab.agents.builder import Builder
 
         n_specs = sum(len(fs) for fs in self.state.approved_specs.values())
-        self.console.print(
-            f"[bold]Running Builder for {n_specs} spec(s)...[/bold]"
+        self.console.print(f"[bold]Running Builder for {n_specs} spec(s)...[/bold]")
+        await self._emit(
+            {
+                "type": "node_add",
+                "node": {
+                    "id": "builder",
+                    "kind": "agent",
+                    "label": "Builder",
+                    "status": "running",
+                },
+            }
         )
-        await self._emit({"type": "node_add", "node": {"id": "builder", "kind": "agent", "label": "Builder", "status": "running"}})
-        await self._emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
+        await self._emit(
+            {"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}}
+        )
         try:
             b = Builder(
                 client=self.client,
@@ -492,7 +586,9 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
-            await self._emit({"type": "node_update", "id": "builder", "status": "error"})
+            await self._emit(
+                {"type": "node_update", "id": "builder", "status": "error"}
+            )
             return
         await self._emit({"type": "node_update", "id": "builder", "status": "done"})
         self.state.stage = Stage.REVIEW_BUILD
@@ -504,16 +600,22 @@ class Router:
         while True:
             if self._web_mode:
                 from decisionlab.web_feedback import review_build
+
                 assert self.emit is not None
                 approved, rejections, reasoner_reruns = await review_build(
-                    self.state.reports_dir, self.state.build_results, self.emit,
+                    self.state.reports_dir,
+                    self.state.build_results,
+                    self.emit,
                 )
             else:
                 from decisionlab.feedback import review_build
+
                 approved, rejections, reasoner_reruns = await review_build(
-                    self.state.reports_dir, self.state.build_results,
+                    self.state.reports_dir,
+                    self.state.build_results,
                 )
             if not rejections and not reasoner_reruns:
+                await self._register_approved_models()
                 self.state.stage = Stage.DONE
                 return
 
@@ -551,7 +653,9 @@ class Router:
                         project_root=self.project_root,
                     )
                     paradigm_specs = self.state.approved_specs.get(paradigm_slug, [])
-                    report = await b.run({paradigm_slug: paradigm_specs} if paradigm_specs else None)
+                    report = await b.run(
+                        {paradigm_slug: paradigm_specs} if paradigm_specs else None
+                    )
                     self.state.build_results.update(report.results)
                     # Clean up stale validation reports for this paradigm in S3
                     for sid in paradigm_specs:
@@ -609,7 +713,9 @@ class Router:
                     old_key = json_keys[0]
                     await shared.storage.rename(old_key, expected)
                     logger.warning(
-                        "Reasoner file renamed: %s → %s", old_key, expected,
+                        "Reasoner file renamed: %s → %s",
+                        old_key,
+                        expected,
                     )
                 else:
                     logger.warning("Reasoner file missing: %s", expected)
@@ -634,10 +740,83 @@ class Router:
                     old_key = model_keys[0]
                     await shared.storage.rename(old_key, expected)
                     logger.warning(
-                        "Builder file renamed: %s → %s", old_key, expected,
+                        "Builder file renamed: %s → %s",
+                        old_key,
+                        expected,
                     )
                 else:
                     logger.warning("Builder file missing: %s", expected)
+
+    async def _register_approved_models(self) -> None:
+        """Insert or update Model rows in Postgres for each approved build."""
+        import shared
+        from shared.models import Model
+        from sqlalchemy import select
+
+        run_uuid = uuid.UUID(self.state.run_id)
+
+        async with shared.db.get_session() as session:
+            for paradigm, formulations in self.state.approved_specs.items():
+                for formulation in formulations:
+                    s3_model_key = (
+                        f"{self.state.models_prefix}/builder/"
+                        f"{paradigm}/{formulation}_model.py"
+                    )
+                    s3_test_key = (
+                        f"{self.state.models_prefix}/builder/"
+                        f"{paradigm}/test_{formulation}.py"
+                    )
+
+                    # Read model source to extract class_name
+                    try:
+                        source = await shared.storage.get_text(s3_model_key)
+                    except Exception:
+                        logger.warning(
+                            "Model file not found in S3: %s — skipping registration",
+                            s3_model_key,
+                        )
+                        continue
+
+                    match = re.search(r"class\s+(\w+)", source)
+                    class_name = match.group(1) if match else "Unknown"
+
+                    # Upsert: update if exists (re-run), insert otherwise
+                    result = await session.execute(
+                        select(Model).where(
+                            Model.run_id == run_uuid,
+                            Model.paradigm == paradigm,
+                            Model.formulation == formulation,
+                        )
+                    )
+                    existing = result.scalar_one_or_none()
+
+                    if existing:
+                        existing.class_name = class_name
+                        existing.s3_model_key = s3_model_key
+                        existing.s3_test_key = s3_test_key
+                        logger.info(
+                            "Updated Model row for %s/%s",
+                            paradigm,
+                            formulation,
+                        )
+                    else:
+                        session.add(
+                            Model(
+                                run_id=run_uuid,
+                                paradigm=paradigm,
+                                formulation=formulation,
+                                class_name=class_name,
+                                s3_model_key=s3_model_key,
+                                s3_test_key=s3_test_key,
+                            )
+                        )
+                        logger.info(
+                            "Registered Model for %s/%s",
+                            paradigm,
+                            formulation,
+                        )
+
+            await session.commit()
 
     async def _execute_rerun_cascade(self, rerun: RerunRequest) -> None:
         """Run the cascade of agents from *rerun.target* down to builder."""
@@ -703,7 +882,9 @@ class Router:
                     )
                     # Build only specs belonging to this paradigm
                     paradigm_specs = self.state.approved_specs.get(paradigm, [])
-                    report = await b.run({paradigm: paradigm_specs} if paradigm_specs else None)
+                    report = await b.run(
+                        {paradigm: paradigm_specs} if paradigm_specs else None
+                    )
                     self.state.build_results.update(report.results)
 
             except Exception as exc:

@@ -105,12 +105,14 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         if manager.pending_review:
             await ws.send_json(manager.pending_review)
         else:
-            await ws.send_json({
-                "type": "state_sync",
-                "nodes": manager.nodes,
-                "edges": manager.edges,
-                "stage": manager.current_stage,
-            })
+            await ws.send_json(
+                {
+                    "type": "state_sync",
+                    "nodes": manager.nodes,
+                    "edges": manager.edges,
+                    "stage": manager.current_stage,
+                }
+            )
 
     try:
         while True:
@@ -201,8 +203,14 @@ async def run_pipeline(
             # Update Run status on success
             async with shared.db.get_session() as session:
                 from sqlalchemy import update
+
                 await session.execute(
-                    update(Run).where(Run.id == uuid.UUID(run_id)).values(status="done")
+                    update(Run)
+                    .where(Run.id == uuid.UUID(run_id))
+                    .values(
+                        status="done",
+                        s3_report_key=f"research/{run_id}/report.md",
+                    )
                 )
                 await session.commit()
             await emit({"type": "pipeline_done"})

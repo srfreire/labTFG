@@ -1,7 +1,8 @@
-"""Tests for Router._review_build (P4-002 + P5-003)."""
+"""Tests for Router._review_build (P4-002 + P5-003 + P5-004)."""
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,13 +10,15 @@ import pytest
 
 from decisionlab.router import PipelineState, Router, Stage
 
+TEST_RUN_ID = "00000000-0000-4000-8000-000000000001"
+
 
 def _make_state(tmp_path: Path) -> PipelineState:
     return PipelineState(
         stage=Stage.REVIEW_BUILD,
         problem="test problem",
         reports_dir=tmp_path,
-        run_id="run-1",
+        run_id=TEST_RUN_ID,
         approved_paradigms=["homeostatic"],
         selected_formulations={"homeostatic": ["pi-controller", "dual-process"]},
         approved_specs={"homeostatic": ["pi-controller", "dual-process"]},
@@ -32,6 +35,22 @@ def _make_router(state: PipelineState) -> Router:
         search=search,
         project_root=state.reports_dir.parent,
     )
+
+
+def _mock_db_session():
+    """Return (mock_db, mock_session) for patching shared.db."""
+    mock_session = AsyncMock()
+    mock_session.commit = AsyncMock()
+    mock_session.add = MagicMock()
+
+    mock_db = MagicMock()
+
+    @asynccontextmanager
+    async def fake_get_session():
+        yield mock_session
+
+    mock_db.get_session = fake_get_session
+    return mock_db, mock_session
 
 
 class TestReviewBuildReasonerReruns:
@@ -53,13 +72,22 @@ class TestReviewBuildReasonerReruns:
         mock_builder_report = MagicMock()
         mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
             patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
         ):
             mock_storage.delete = AsyncMock()
+            mock_storage.get_text = AsyncMock(
+                return_value="class PIControllerModel:\n    pass\n"
+            )
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -80,14 +108,27 @@ class TestReviewBuildReasonerReruns:
 
     @pytest.mark.asyncio
     async def test_no_reasoner_reruns_proceeds_normally(self, tmp_path):
-        """Without reasoner_reruns, proceeds to DONE."""
+        """Without reasoner_reruns, proceeds to DONE and registers models."""
         state = _make_state(tmp_path)
         router = _make_router(state)
 
         async def mock_review_build(reports_dir, build_results):
             return ["pi-controller", "dual-process"], [], []
 
-        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
+        mock_db, mock_session = _mock_db_session()
+        # execute() returns a result with scalar_one_or_none() = None (no existing row)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                return_value="class PIControllerModel:\n    pass\n"
+            )
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -110,11 +151,21 @@ class TestReviewBuildReasonerReruns:
         mock_builder_report = MagicMock()
         mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
         ):
+            mock_storage.get_text = AsyncMock(
+                return_value="class PIControllerModel:\n    pass\n"
+            )
             mock_builder_inst = AsyncMock()
             mock_builder_inst.run.return_value = mock_builder_report
             MockBuilder.return_value = mock_builder_inst
@@ -124,9 +175,7 @@ class TestReviewBuildReasonerReruns:
             await router._review_build()
 
         # Builder was called with dict-based approved_specs for the rejection
-        mock_builder_inst.run.assert_called_with(
-            {"homeostatic": ["pi-controller"]}
-        )
+        mock_builder_inst.run.assert_called_with({"homeostatic": ["pi-controller"]})
         # Reasoner was NOT called
         mock_reasoner_inst.run.assert_not_called()
         assert state.stage == Stage.DONE
@@ -149,13 +198,22 @@ class TestReviewBuildReasonerReruns:
         mock_builder_report = MagicMock()
         mock_builder_report.results = {"pi-controller": "Rebuilt OK"}
 
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
             patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
         ):
             mock_storage.delete = AsyncMock()
+            mock_storage.get_text = AsyncMock(
+                return_value="class PIControllerModel:\n    pass\n"
+            )
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -167,9 +225,209 @@ class TestReviewBuildReasonerReruns:
         # Validation cleanup uses nested paths
         delete_calls = mock_storage.delete.call_args_list
         expected_paths = {
-            "models/run-1/builder/homeostatic/pi-controller_validation.json",
-            "models/run-1/builder/homeostatic/dual-process_validation.json",
+            f"models/{TEST_RUN_ID}/builder/homeostatic/pi-controller_validation.json",
+            f"models/{TEST_RUN_ID}/builder/homeostatic/dual-process_validation.json",
         }
-        actual_paths = {call.args[0] for call in delete_calls}
+        actual_paths = {c.args[0] for c in delete_calls}
         assert actual_paths == expected_paths
         assert state.stage == Stage.DONE
+
+
+class TestModelRegistration:
+    """P5-004: Model registration at approval in _review_build."""
+
+    @pytest.mark.asyncio
+    async def test_approved_models_are_registered(self, tmp_path):
+        """Approved builds insert Model rows in Postgres."""
+        state = _make_state(tmp_path)
+        router = _make_router(state)
+
+        async def mock_review_build(reports_dir, build_results):
+            return ["pi-controller", "dual-process"], [], []
+
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        added_models = []
+        original_add = mock_session.add
+
+        def track_add(obj):
+            added_models.append(obj)
+            original_add(obj)
+
+        mock_session.add = track_add
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                side_effect=lambda key: (
+                    "class PIControllerModel:\n    pass\n"
+                    if "pi-controller" in key
+                    else "class DualProcessModel:\n    pass\n"
+                )
+            )
+            await router._review_build()
+
+        assert state.stage == Stage.DONE
+        assert len(added_models) == 2
+
+        from shared.models import Model
+
+        for m in added_models:
+            assert isinstance(m, Model)
+            assert m.paradigm == "homeostatic"
+            assert m.formulation in ("pi-controller", "dual-process")
+            assert m.s3_model_key.startswith(
+                f"models/{TEST_RUN_ID}/builder/homeostatic/"
+            )
+            assert m.s3_test_key.startswith(
+                f"models/{TEST_RUN_ID}/builder/homeostatic/"
+            )
+
+        class_names = {m.class_name for m in added_models}
+        assert class_names == {"PIControllerModel", "DualProcessModel"}
+
+    @pytest.mark.asyncio
+    async def test_class_name_extracted_correctly(self, tmp_path):
+        """class_name is extracted from the first class definition in the file."""
+        state = _make_state(tmp_path)
+        state.approved_specs = {"homeostatic": ["pi-controller"]}
+        router = _make_router(state)
+
+        async def mock_review_build(reports_dir, build_results):
+            return ["pi-controller"], [], []
+
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        added_models = []
+        mock_session.add = lambda obj: added_models.append(obj)
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                return_value='import math\n\nclass HomeostaticPIController(DecisionModel):\n    """A PI controller."""\n'
+            )
+            await router._review_build()
+
+        assert len(added_models) == 1
+        assert added_models[0].class_name == "HomeostaticPIController"
+
+    @pytest.mark.asyncio
+    async def test_missing_model_file_skips_registration(self, tmp_path):
+        """Missing model file in S3 logs warning and skips without crashing."""
+        state = _make_state(tmp_path)
+        state.approved_specs = {"homeostatic": ["pi-controller"]}
+        router = _make_router(state)
+
+        async def mock_review_build(reports_dir, build_results):
+            return ["pi-controller"], [], []
+
+        mock_db, mock_session = _mock_db_session()
+        mock_session.execute = AsyncMock()
+
+        added_models = []
+        mock_session.add = lambda obj: added_models.append(obj)
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                side_effect=FileNotFoundError("not found")
+            )
+            await router._review_build()
+
+        assert state.stage == Stage.DONE
+        assert len(added_models) == 0  # No model registered
+
+    @pytest.mark.asyncio
+    async def test_rerun_updates_existing_model_row(self, tmp_path):
+        """Re-run of a previously approved model updates the existing row."""
+        state = _make_state(tmp_path)
+        state.approved_specs = {"homeostatic": ["pi-controller"]}
+        router = _make_router(state)
+
+        async def mock_review_build(reports_dir, build_results):
+            return ["pi-controller"], [], []
+
+        # Simulate an existing Model row
+        existing_model = MagicMock()
+        existing_model.class_name = "OldClassName"
+        existing_model.s3_model_key = "old/path.py"
+        existing_model.s3_test_key = "old/test.py"
+
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = existing_model
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        added_models = []
+        mock_session.add = lambda obj: added_models.append(obj)
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                return_value="class NewPIControllerModel:\n    pass\n"
+            )
+            await router._review_build()
+
+        assert state.stage == Stage.DONE
+        # No new rows added — existing was updated
+        assert len(added_models) == 0
+        assert existing_model.class_name == "NewPIControllerModel"
+        assert "pi-controller_model.py" in existing_model.s3_model_key
+        assert "test_pi-controller.py" in existing_model.s3_test_key
+
+    @pytest.mark.asyncio
+    async def test_s3_keys_use_slug_paths(self, tmp_path):
+        """Model.s3_model_key and s3_test_key use correct slug-based paths."""
+        state = _make_state(tmp_path)
+        state.approved_specs = {"homeostatic": ["pi-controller"]}
+        router = _make_router(state)
+
+        async def mock_review_build(reports_dir, build_results):
+            return ["pi-controller"], [], []
+
+        mock_db, mock_session = _mock_db_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        added_models = []
+        mock_session.add = lambda obj: added_models.append(obj)
+
+        with (
+            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
+            patch("shared.storage") as mock_storage,
+            patch("shared.db", mock_db),
+        ):
+            mock_storage.get_text = AsyncMock(
+                return_value="class PIControllerModel:\n    pass\n"
+            )
+            await router._review_build()
+
+        assert len(added_models) == 1
+        m = added_models[0]
+        assert (
+            m.s3_model_key
+            == f"models/{TEST_RUN_ID}/builder/homeostatic/pi-controller_model.py"
+        )
+        assert (
+            m.s3_test_key
+            == f"models/{TEST_RUN_ID}/builder/homeostatic/test_pi-controller.py"
+        )
