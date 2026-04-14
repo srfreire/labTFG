@@ -1,7 +1,7 @@
 ---
 id: P5-003
 title: Switch Reasoner + Builder to slug-based S3 paths
-status: todo
+status: in-progress
 kind: strike
 phase: 5
 heat: agents
