@@ -1,7 +1,7 @@
 ---
 id: P3-001
 title: Implement knowledge graph retrieval with entity linking and PPR traversal
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: retrieval
@@ -57,12 +57,12 @@ Build the knowledge graph retrieval channel: extract entities from a query using
   ```
 
 ## Acceptance Criteria
-- [ ] AC1: Query "ghrelin hunger signaling" against a populated KG extracts entities "ghrelin" and "hunger", links them to Variable nodes, and returns passages describing their relationship
-- [ ] AC2: Multi-hop discovery works: querying "dopamine" returns not just the Variable node but also connected BrainRegion (VTA, Nucleus Accumbens) and related Paradigm (hedonic, incentive salience) via 2-hop traversal
-- [ ] AC3: Entity linking handles case variations: "Berridge" matches Author node "Berridge, Kent C."
-- [ ] AC4: Entity linking handles partial matches via embedding similarity: "reward learning" links to Paradigm "hedonic-reward-based-regulation"
-- [ ] AC5: Scores decrease with hop distance: direct matches score higher than 2-hop discoveries
-- [ ] AC6: Returns empty list gracefully when no entities are found or no nodes match
+- [x] AC1: Query "ghrelin hunger signaling" against a populated KG extracts entities "ghrelin" and "hunger", links them to Variable nodes, and returns passages describing their relationship
+- [x] AC2: Multi-hop discovery works: querying "dopamine" returns not just the Variable node but also connected BrainRegion (VTA, Nucleus Accumbens) and related Paradigm (hedonic, incentive salience) via 2-hop traversal
+- [x] AC3: Entity linking handles case variations: "Berridge" matches Author node "Berridge, Kent C."
+- [x] AC4: Entity linking handles partial matches via embedding similarity: "reward learning" links to Paradigm "hedonic-reward-based-regulation"
+- [x] AC5: Scores decrease with hop distance: direct matches score higher than 2-hop discoveries
+- [x] AC6: Returns empty list gracefully when no entities are found or no nodes match
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/knowledge/retrieval/__init__.py` — new subpackage
@@ -74,3 +74,29 @@ Phase spec: `docs/specs/knowledge/phase-3-retrieval-crag.md`
 General spec: `docs/specs/knowledge/general.md`
 Heat: `retrieval`
 Uses `KnowledgeGraph` client from P1-001 and `EmbeddingService` from P1-004.
+
+## Completion Summary
+
+**Commit:** `e3b9e57` — `feat[knowledge]: implement KG retrieval with entity linking and PPR traversal (P3-001)`
+
+### What was built
+- `kg_retrieve()` async function: 4-step pipeline for knowledge graph retrieval
+- Step 1: Entity extraction via Haiku NER (`claude-haiku-4-5`) with JSON parsing, fence-stripping, 2-attempt retry
+- Step 2: Entity linking — exact match (case-insensitive Cypher `toLower`) then fuzzy match (Voyage AI embedding similarity, threshold 0.75)
+- Step 3: PPR traversal — 2-hop BFS via raw Cypher, score decay 0.85^hops, max-score for multi-path nodes
+- Step 4: Passage collection — formatted text with label, properties, relation chain
+- `RetrievalResult` frozen dataclass shared across all retrieval channels
+- 26 unit tests covering all 6 acceptance criteria
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/knowledge/__init__.py` — updated package init
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/__init__.py` — new subpackage, re-exports `kg_retrieve` + `RetrievalResult`
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/models.py` — `RetrievalResult` frozen dataclass
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/kg_retrieval.py` — full implementation (~300 lines)
+- `phase1-pablo/tests/knowledge/test_kg_retrieval.py` — 26 unit tests with mocked dependencies
+
+### Decisions
+- Used manual cosine similarity (dot product / norms) instead of adding numpy dependency
+- Dependency injection pattern: `kg_retrieve` takes explicit `KnowledgeGraph`, `EmbeddingService`, `AsyncAnthropic` params rather than using singletons
+- Filtered null-name candidates before embedding to prevent index mismatch (caught in code review)
+- Added `continue` on missing seed node with warning log (caught in code review)

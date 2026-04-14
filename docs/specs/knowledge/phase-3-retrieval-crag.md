@@ -50,7 +50,7 @@ Build the read path of the knowledge backbone: parallel 3-layer retrieval (KG tr
 - Returns: formatted text block with source attributions (paper title, DOI, stage origin) suitable for direct injection into agent context.
 
 ## Acceptance Criteria
-- [ ] AC1: KG retrieval on "ghrelin hunger signaling" against a populated graph returns passages mentioning ghrelin's role in hunger, including multi-hop connections (ghrelin → hypothalamus → hunger)
+- [x] AC1: KG retrieval on "ghrelin hunger signaling" against a populated graph returns passages mentioning ghrelin's role in hunger, including multi-hop connections (ghrelin → hypothalamus → hunger)
 - [x] AC2: Dense retrieval on "Q-learning convergence" returns relevant formulation and model chunks
 - [x] AC3: Sparse retrieval on an exact DOI string returns the chunk containing that citation
 - [ ] AC4: RRF fusion combines results from all 3 channels — a document found by 2 channels scores higher than one found by 1
