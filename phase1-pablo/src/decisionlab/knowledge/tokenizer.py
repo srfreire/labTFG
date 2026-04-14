@@ -6,6 +6,7 @@ consistent sparse representations.
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 STOPWORDS = frozenset(
@@ -36,8 +37,8 @@ def tokenize_to_sparse(text: str) -> tuple[list[int], list[float]]:
     """Convert text to a sparse vector (indices, values) for Qdrant.
 
     Tokenization: lowercase → split on non-alphanumeric → remove stopwords.
-    Indices: deterministic hash of each token (Python's built-in hash masked
-    to a positive 32-bit int).
+    Indices: deterministic MD5-based hash of each token (stable across
+    Python processes regardless of PYTHONHASHSEED).
     Values: raw term frequency (count of each token).
     """
     if not text:
@@ -50,7 +51,8 @@ def tokenize_to_sparse(text: str) -> tuple[list[int], list[float]]:
 
     freq: dict[int, float] = {}
     for token in tokens:
-        idx = hash(token) & 0x7FFFFFFF
+        digest = hashlib.md5(token.encode(), usedforsecurity=False).digest()
+        idx = int.from_bytes(digest[:4], "little") & 0x7FFFFFFF
         freq[idx] = freq.get(idx, 0.0) + 1.0
 
     indices = sorted(freq.keys())

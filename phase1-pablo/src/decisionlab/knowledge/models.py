@@ -1,4 +1,4 @@
-"""Dataclasses for knowledge extraction results."""
+"""Dataclasses for knowledge extraction and indexing results."""
 
 from __future__ import annotations
 
@@ -50,3 +50,24 @@ class ExtractionResult:
     """Which pipeline stage produced this."""
 
     run_id: str
+
+
+@dataclass
+class Chunk:
+    """A chunk of text prepared for embedding and indexing."""
+
+    text: str
+    chunk_type: str
+    """'artifact' or 'fact'."""
+
+    source_section: str | None = None
+    metadata: dict = field(default_factory=dict)
+
+
+@dataclass
+class IndexResult:
+    """Summary of an indexing operation."""
+
+    artifacts_indexed: int
+    facts_indexed: int
+    total_chunks: int
