@@ -1,14 +1,14 @@
 ---
 id: P3-002
 title: Implement dense vector and sparse lexical retrieval channels
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: retrieval
 priority: 1
 blocked_by: []
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P3-002: Implement dense vector and sparse lexical retrieval channels
