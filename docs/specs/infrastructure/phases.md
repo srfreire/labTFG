@@ -24,3 +24,8 @@
   - Dependencies: Phase 2, Phase 3
   - Issues: P4-001, P4-002, P4-003, P4-004
   - Heats: containers (P4-001, P4-002, P4-003 parallel), compose (P4-004)
+
+- [ ] **Phase 5: Slug-based Pipeline Wiring** — Drop T-P-F IDs, use slugs everywhere in S3, UUIDs in DB. Register models at approval, finalize run records.
+  - Dependencies: Phase 1, Phase 2, Phase 3
+  - Issues: P5-001, P5-002, P5-003, P5-004, P5-005
+  - Heats: schema (P5-001), pipeline (P5-002→P5-003), registration (P5-004, after P5-001+P5-003), phase2 (P5-005, after P5-004)
