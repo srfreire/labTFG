@@ -53,8 +53,8 @@ Build the read path of the knowledge backbone: parallel 3-layer retrieval (KG tr
 - [x] AC1: KG retrieval on "ghrelin hunger signaling" against a populated graph returns passages mentioning ghrelin's role in hunger, including multi-hop connections (ghrelin → hypothalamus → hunger)
 - [x] AC2: Dense retrieval on "Q-learning convergence" returns relevant formulation and model chunks
 - [x] AC3: Sparse retrieval on an exact DOI string returns the chunk containing that citation
-- [ ] AC4: RRF fusion combines results from all 3 channels — a document found by 2 channels scores higher than one found by 1
-- [ ] AC5: Reranking reorders RRF results — a semantically relevant but low-RRF-ranked result can move up
+- [x] AC4: RRF fusion combines results from all 3 channels — a document found by 2 channels scores higher than one found by 1
+- [x] AC5: Reranking reorders RRF results — a semantically relevant but low-RRF-ranked result can move up
 - [ ] AC6: CRAG evaluator classifies a stale memory about an unrelated topic as INCORRECT and triggers web fallback
 - [ ] AC7: CRAG evaluator classifies a relevant, current memory as CORRECT and passes it through
 - [ ] AC8: Full pipeline (KG + dense + sparse → RRF → rerank → CRAG) completes within 3 seconds on a warm knowledge base with ~500 memories
