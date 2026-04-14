@@ -4,7 +4,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -135,4 +145,59 @@ class Artifact(Base):
     run: Mapped[Run | None] = relationship(back_populates="artifacts")
     experiment: Mapped[Experiment | None] = relationship(
         back_populates="artifacts"
+    )
+
+
+class Memory(Base):
+    __tablename__ = "memories"
+    __table_args__ = (
+        Index("ix_memories_namespace", "namespace"),
+        Index("ix_memories_run_id", "run_id"),
+        Index("ix_memories_source_stage", "source_stage"),
+        Index("ix_memories_confidence", "confidence"),
+        Index("ix_memories_valid_to", "valid_to"),
+        Index("ix_memories_ns_confidence", "namespace", "confidence"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    content: Mapped[str] = mapped_column(Text)
+    namespace: Mapped[str] = mapped_column(String(50))
+    memory_type: Mapped[str] = mapped_column(String(50))
+    source_stage: Mapped[str] = mapped_column(String(100))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    last_accessed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+    access_count: Mapped[int] = mapped_column(Integer, default=0)
+    importance: Mapped[float] = mapped_column(Float)
+    confidence: Mapped[float] = mapped_column(Float)
+    corroborations: Mapped[int] = mapped_column(Integer, default=0)
+    contradictions: Mapped[int] = mapped_column(Integer, default=0)
+    valid_from: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now()
+    )
+    valid_to: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("memories.id"), nullable=True
+    )
+    metadata_: Mapped[dict | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+
+    # relationships
+    run: Mapped[Run | None] = relationship()
+    superseding_memory: Mapped[Memory | None] = relationship(
+        remote_side=[id],
     )
