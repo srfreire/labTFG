@@ -44,7 +44,7 @@ function AppShell({ connected, agents, messages, thinking, simAgents, send }: Sh
             <span className="text-[13px] text-text-muted">Laboratorio</span>
             <span
               className="w-2 h-2 rounded-full inline-block shrink-0"
-              style={{ background: connected ? '#4ade80' : '#ef4444' }}
+              style={{ background: connected ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }}
             />
             {isMock && (
               <span className="text-[9px] px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>

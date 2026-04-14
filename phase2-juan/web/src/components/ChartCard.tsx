@@ -29,11 +29,11 @@ function pivotSeries(spec: ChartSpec, sortNumeric = true): Record<string, number
 // Shared dark tooltip style
 const tooltipStyle = {
   contentStyle: {
-    background: 'rgba(15,15,15,0.95)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 8,
+    background: 'var(--color-surface-frosted)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-md)',
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'var(--color-text-muted)',
   },
 }
 
@@ -64,10 +64,10 @@ function LineChartView({ spec }: { spec: ChartSpec }) {
             key={s.name}
             type="monotone"
             dataKey={s.name}
-            stroke={s.color || '#4ade80'}
+            stroke={s.color || 'var(--color-accent-green-light)'}
             strokeWidth={1.5}
             dot={false}
-            activeDot={{ r: 3, stroke: s.color || '#4ade80', strokeWidth: 1 }}
+            activeDot={{ r: 3, stroke: s.color || 'var(--color-accent-green-light)', strokeWidth: 1 }}
           />
         ))}
       </LineChart>
@@ -101,7 +101,7 @@ function BarChartView({ spec }: { spec: ChartSpec }) {
           <Bar
             key={s.name}
             dataKey={s.name}
-            fill={s.color || '#4ade80'}
+            fill={s.color || 'var(--color-accent-green-light)'}
             radius={[3, 3, 0, 0]}
             opacity={0.85}
           />
@@ -139,7 +139,7 @@ function HeatmapView({ spec }: { spec: ChartSpec }) {
           <Bar
             key={s.name}
             dataKey={s.name}
-            fill={s.color || '#a78bfa'}
+            fill={s.color || 'var(--color-accent-purple)'}
             radius={[0, 3, 3, 0]}
             opacity={0.85}
           />

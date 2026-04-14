@@ -21,7 +21,7 @@ function formatDelta(pre: number, post: number): { text: string; color: string }
   const delta = post - pre
   if (Math.abs(delta) < 0.005) return { text: '', color: '' }
   const sign = delta > 0 ? '+' : ''
-  return { text: `${sign}${delta.toFixed(1)}`, color: delta > 0 ? '#4ade80' : '#dc2626' }
+  return { text: `${sign}${delta.toFixed(1)}`, color: delta > 0 ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }
 }
 
 const FILTER_KEYS = ['q_values', 'Q', 'q_table', 'discretized_state', 'previous_state', 'previous_action', 'previous_energy']
@@ -36,14 +36,14 @@ export function DecisionTraceCard({ trace }: Props) {
   const qValues = extractQValues(trace.pre_state)
 
   return (
-    <div className="font-mono text-[11px] text-text-dim rounded-lg border border-border-subtle p-3.5" style={{ background: '#0f172a' }}>
+    <div className="font-mono text-[11px] text-text-dim rounded-lg border border-border-subtle p-3.5 bg-surface">
       {/* Header */}
       <div className="flex justify-between items-center mb-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.5px]" style={{ color: '#4ade80' }}>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.5px]" style={{ color: 'var(--color-accent-green-light)' }}>
             Decision Trace
           </span>
-          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#166534', color: '#4ade80' }}>
+          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--color-accent-green) 30%, var(--color-surface))', color: 'var(--color-accent-green-light)' }}>
             {trace.action_chosen.name}
           </span>
         </div>
@@ -52,19 +52,19 @@ export function DecisionTraceCard({ trace }: Props) {
 
       {/* Pre / Post columns */}
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <div className="rounded-md p-2.5" style={{ background: '#0a0f1a' }}>
-          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: '#fbbf24' }}>Pre-decisión</div>
+        <div className="rounded-md p-2.5 bg-surface-hover">
+          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: 'var(--color-accent-amber)' }}>Pre-decisión</div>
           <div className="text-[10px] leading-[1.8]">
             {trace.perception && (
               <div className="text-text">pos <span className="text-text-dim">({String(trace.perception.x ?? '?')}, {String(trace.perception.y ?? '?')})</span></div>
             )}
             {preScalars.map(([key, val]) => (
-              <div key={key} className="text-text">{key} <span style={{ color: '#fbbf24', fontWeight: 600 }}>{val.toFixed(2)}</span></div>
+              <div key={key} className="text-text">{key} <span style={{ color: 'var(--color-accent-amber)', fontWeight: 600 }}>{val.toFixed(2)}</span></div>
             ))}
           </div>
         </div>
-        <div className="rounded-md p-2.5" style={{ background: '#0a0f1a' }}>
-          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: '#38bdf8' }}>Post-decisión</div>
+        <div className="rounded-md p-2.5 bg-surface-hover">
+          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: 'var(--color-accent-cyan, #38bdf8)' }}>Post-decisión</div>
           <div className="text-[10px] leading-[1.8]">
             {trace.perception && (
               <div className="text-text">pos <span className="text-text-dim">({String(trace.perception.x ?? '?')}, {String(trace.perception.y ?? '?')})</span></div>
@@ -74,7 +74,7 @@ export function DecisionTraceCard({ trace }: Props) {
               const delta = preVal != null ? formatDelta(preVal, val) : { text: '', color: '' }
               return (
                 <div key={key} className="text-text">
-                  {key} <span style={{ color: '#4ade80', fontWeight: 600 }}>{val.toFixed(2)}</span>
+                  {key} <span style={{ color: 'var(--color-accent-green-light)', fontWeight: 600 }}>{val.toFixed(2)}</span>
                   {delta.text && <span className="text-[9px] ml-1" style={{ color: delta.color }}>{delta.text}</span>}
                 </div>
               )
@@ -92,10 +92,10 @@ export function DecisionTraceCard({ trace }: Props) {
               const isChosen = String(action) === trace.action_chosen.name
               return (
                 <span key={action} className="text-[10px] px-2 py-0.5 rounded" style={{
-                  background: isChosen ? '#166534' : '#1e293b',
-                  color: isChosen ? '#4ade80' : '#94a3b8',
+                  background: isChosen ? 'color-mix(in srgb, var(--color-accent-green) 30%, var(--color-surface))' : 'var(--color-surface-hover)',
+                  color: isChosen ? 'var(--color-accent-green-light)' : 'var(--color-orchestrator)',
                   fontWeight: isChosen ? 600 : 400,
-                  border: isChosen ? '1px solid #22c55e40' : '1px solid transparent',
+                  border: isChosen ? `1px solid color-mix(in srgb, var(--color-accent-green) 25%, transparent)` : '1px solid transparent',
                 }}>{String(action)}: {val.toFixed(1)}</span>
               )
             })}
@@ -107,7 +107,7 @@ export function DecisionTraceCard({ trace }: Props) {
 
       {/* Result footer */}
       <div className="pt-2 border-t border-border-subtle text-[10px]">
-        <span style={{ color: trace.outcome.reward > 0 ? '#4ade80' : '#dc2626', fontWeight: 600 }}>
+        <span style={{ color: trace.outcome.reward > 0 ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)', fontWeight: 600 }}>
           reward: {trace.outcome.reward > 0 ? '+' : ''}{trace.outcome.reward}
         </span>
         {trace.outcome.action_result?.consumed && (

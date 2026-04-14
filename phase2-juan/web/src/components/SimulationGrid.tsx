@@ -217,7 +217,7 @@ export function SimulationGrid({ replay }: Props) {
               style={{
                 left: `${(currentStep / Math.max(replay.total_steps - 1, 1)) * 100}%`,
                 width: 2,
-                background: 'rgba(255,255,255,0.4)',
+                background: 'var(--color-text-dim)',
               }}
             />
             {/* Critical event markers */}
@@ -255,8 +255,8 @@ export function SimulationGrid({ replay }: Props) {
                   className="text-[8px] px-1.5 py-0.5 rounded-[var(--radius-sm)] border"
                   style={{
                     color: CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)',
-                    borderColor: (CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)') + '30',
-                    background: (CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)') + '10',
+                    borderColor: `color-mix(in srgb, ${CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)'} 19%, transparent)`,
+                    background: `color-mix(in srgb, ${CRITICAL_COLORS[ce.type] || 'var(--color-accent-amber)'} 6%, transparent)`,
                   }}
                 >
                   {ce.description}

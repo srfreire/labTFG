@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DecisionLab — Design System Showcase</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Satoshi';
+      src: url('https://cdn.fontshare.com/wf/ZALNXLKM3JMXHKAFVFWJMBAREI3QJNHI/QTKYZGMTHJOH7FWBXLFOWRZT2NNCZXEN/WH73XG2RTRKYIH65IJ5APKXWLKIQCZOO.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Satoshi';
+      src: url('https://cdn.fontshare.com/wf/ZALNXLKM3JMXHKAFVFWJMBAREI3QJNHI/3CBYAQGPCT2FHXQSMFB3ECADEPQC5RQF/JFUSBYEMKEG6T7UETF4MUVL2VE6HZSMY.woff2') format('woff2');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Satoshi';
+      src: url('https://cdn.fontshare.com/wf/ZALNXLKM3JMXHKAFVFWJMBAREI3QJNHI/VZR2DSMHK5IOBUEK4NZAHYCRQY35RO37/XGDUFJAKKBQWGN4Q5XCH3WCDLVHEZS7I.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px),
+        var(--color-bg);
+      background-size: 28px 28px, 28px 28px, 100% 100%;
+      color: var(--color-text);
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .showcase-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      width: 220px;
+      height: 100vh;
+      border-right: 1px solid var(--color-border-subtle);
+      padding: 32px 20px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      background: rgba(9,9,9,0.8);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .sidebar-subtitle {
+      font-size: 10px;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+    .sidebar-section {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--color-text-faint);
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    .sidebar a {
+      display: block;
+      font-size: 12px;
+      color: var(--color-text-dim);
+      text-decoration: none;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      transition: all 150ms;
+    }
+    .sidebar a:hover, .sidebar a.active {
+      color: var(--color-text);
+      background: var(--color-surface-hover);
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      padding: 40px 48px;
+      max-width: 900px;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 56px;
+      scroll-margin-top: 32px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--color-accent-green-light);
+      margin-bottom: 24px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--color-border-faint);
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--color-text-dim);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    /* Variant row */
+    .variants {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .variant-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--color-text-faint);
+      margin-bottom: 8px;
+    }
+    .variant-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Token annotation */
+    .tokens-used {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-text-ghost);
+      margin-top: 12px;
+      padding: 8px 12px;
+      border: 1px dashed var(--color-border-faint);
+      border-radius: var(--radius-sm);
+    }
+    .tokens-used span {
+      color: var(--color-accent-purple);
+    }
+
+    /* ── Component styles ── */
+
+    /* Floating Panel */
+    .demo-panel {
+      border-radius: var(--radius-2xl);
+      background: rgba(9,9,9,0.8);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-panel);
+      overflow: hidden;
+      padding: 20px;
+    }
+
+    /* Buttons */
+    .btn-send {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: var(--radius-xl);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      transition: background 150ms;
+    }
+    .btn-send:hover { background: rgba(255,255,255,0.8); }
+    .btn-send:disabled { background: var(--color-text-ghost); color: var(--color-text-dim); cursor: default; }
+    .btn-send.sm { width: 48px; height: 40px; font-size: 14px; }
+    .btn-send.md { width: 56px; height: 48px; font-size: 16px; }
+
+    .btn-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      font-family: var(--font-sans);
+      padding: 6px 8px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-text-dim);
+      background: transparent;
+      cursor: pointer;
+      transition: all 150ms;
+    }
+    .btn-control:hover { background: var(--color-surface-hover); color: var(--color-text-muted); }
+
+    .btn-chip {
+      font-size: 12px;
+      font-family: var(--font-sans);
+      padding: 8px 14px;
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-lg);
+      color: var(--color-text-dim);
+      background: transparent;
+      cursor: pointer;
+      transition: all 150ms;
+    }
+    .btn-chip:hover { color: var(--color-text-muted); border-color: var(--color-border); background: var(--color-surface-hover); }
+
+    /* Input */
+    .input-chat {
+      background: transparent;
+      border: 1px solid var(--color-text-ghost);
+      color: var(--color-text);
+      font-size: 15px;
+      font-family: var(--font-sans);
+      padding: 12px 20px;
+      border-radius: var(--radius-xl);
+      outline: none;
+      transition: border-color 150ms;
+      width: 100%;
+    }
+    .input-chat:focus { border-color: var(--color-text-dim); }
+    .input-chat:disabled { opacity: 0.4; cursor: not-allowed; }
+    .input-chat::placeholder { color: var(--color-text-ghost); }
+
+    /* Cards */
+    .card-base {
+      border: 1px solid;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-card);
+    }
+    .card-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .card-inner-cell {
+      padding: 8px 10px;
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-md);
+    }
+    .card-inner-cell .label { font-size: 10px; color: var(--color-text-dim); }
+    .card-inner-cell .value { font-size: 15px; font-weight: 600; margin-top: 2px; }
+
+    /* Decision Trace */
+    .trace-card {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-text-dim);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border-subtle);
+      padding: 14px;
+      background: var(--color-surface);
+    }
+    .trace-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .trace-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-accent-green-light);
+    }
+    .trace-action-badge {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--color-accent-green) 30%, var(--color-surface));
+      color: var(--color-accent-green-light);
+      margin-left: 8px;
+    }
+    .trace-meta {
+      font-size: 10px;
+      color: var(--color-text-faint);
+    }
+    .trace-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .trace-col {
+      border-radius: var(--radius-md);
+      padding: 10px;
+      background: var(--color-surface-hover);
+    }
+    .trace-col-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .trace-col-label.pre { color: #fbbf24; }
+    .trace-col-label.post { color: #38bdf8; }
+    .trace-row {
+      font-size: 10px;
+      line-height: 1.8;
+      color: var(--color-text);
+    }
+    .trace-val-pre { color: #fbbf24; font-weight: 600; }
+    .trace-val-post { color: var(--color-accent-green-light); font-weight: 600; }
+    .trace-delta-pos { font-size: 9px; margin-left: 4px; color: var(--color-accent-green-light); }
+    .trace-delta-neg { font-size: 9px; margin-left: 4px; color: var(--color-accent-red); }
+
+    /* Q-value pills */
+    .q-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .q-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+    }
+    .q-pill.chosen {
+      background: color-mix(in srgb, var(--color-accent-green) 30%, var(--color-surface));
+      color: var(--color-accent-green-light);
+      font-weight: 600;
+      border-color: rgba(34, 197, 94, 0.25);
+    }
+    .q-pill.other {
+      background: var(--color-surface-hover);
+      color: #94a3b8;
+    }
+
+    /* Trace footer */
+    .trace-footer {
+      padding-top: 8px;
+      border-top: 1px solid var(--color-border-subtle);
+      font-size: 10px;
+    }
+    .reward-pos { color: var(--color-accent-green-light); font-weight: 600; }
+    .reward-neg { color: var(--color-accent-red); font-weight: 600; }
+
+    /* Replay Trace Popover */
+    .popover {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-text-dim);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border-subtle);
+      padding: 14px;
+      background: var(--color-surface);
+      box-shadow: var(--shadow-popover);
+      max-width: 320px;
+    }
+    .popover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .popover-agent { font-size: 11px; font-weight: 600; color: var(--color-accent-green-light); }
+    .popover-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      color: #38bdf8;
+      background: rgba(12, 74, 110, 0.25);
+    }
+    .popover-close {
+      background: none;
+      border: none;
+      color: var(--color-text-faint);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .popover-close:hover { color: var(--color-text-dim); }
+
+    /* Q-value bars */
+    .q-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+    .q-bar-label {
+      width: 48px;
+      text-align: right;
+      font-size: 10px;
+      color: #64748b;
+    }
+    .q-bar-label.chosen { color: var(--color-accent-green-light); font-weight: 600; }
+    .q-bar-track {
+      flex: 1;
+      height: 16px;
+      border-radius: var(--radius-sm);
+      background: var(--color-surface-hover);
+      position: relative;
+      overflow: hidden;
+    }
+    .q-bar-fill {
+      height: 100%;
+      border-radius: var(--radius-sm);
+      background: var(--color-border);
+    }
+    .q-bar-fill.chosen {
+      background: linear-gradient(90deg, #166534, var(--color-accent-green-light));
+    }
+    .q-bar-value {
+      position: absolute;
+      right: 4px;
+      top: 1px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+    .q-bar-value.chosen { color: #fff; }
+
+    /* Context row */
+    .context-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      background: var(--color-surface-hover);
+      font-size: 10px;
+      margin-top: 10px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    .badge-working {
+      font-size: 7px;
+      padding: 2px 6px;
+    }
+
+    /* Critical event badge */
+    .badge-critical {
+      font-size: 8px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Message bubbles */
+    .bubble {
+      padding: 12px 16px;
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 500px;
+    }
+    .bubble-user {
+      border-radius: 18px 18px 4px 18px;
+      background: var(--color-border);
+      color: rgba(255,255,255,0.9);
+      margin-left: auto;
+    }
+    .bubble-agent {
+      border-radius: 4px 18px 18px 18px;
+      background: var(--color-surface-hover);
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* Pipeline node */
+    .pipeline-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 16px;
+    }
+    .pipeline-node {
+      display: flex;
+      gap: 16px;
+      padding-bottom: 32px;
+      position: relative;
+    }
+    .pipeline-node:last-child { padding-bottom: 0; }
+    .pipeline-line {
+      position: absolute;
+      left: 14px;
+      top: 28px;
+      width: 2px;
+      height: calc(100% - 28px);
+    }
+    .node-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .node-dot.sm { width: 24px; height: 24px; opacity: 0.4; }
+    .node-dot.done { width: 24px; height: 24px; }
+    .node-dot-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1.5px solid;
+      opacity: 0.3;
+      animation: ping 2s ease-in-out infinite;
+    }
+    .node-name {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* Simulation grid */
+    .sim-grid-demo {
+      display: inline-grid;
+      gap: 1px;
+    }
+    .sim-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.02);
+    }
+    .sim-dot-agent {
+      border-radius: 50%;
+    }
+    .sim-dot-resource {
+      border-radius: 50%;
+      background: var(--color-accent-green);
+      opacity: 0.6;
+    }
+    .sim-dot-trail {
+      border-radius: 50%;
+      background: var(--color-border-subtle);
+    }
+
+    /* Chart mock */
+    .chart-mock {
+      border: 1px solid;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+    }
+    .chart-area {
+      height: 120px;
+      background: rgba(255,255,255,0.02);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      padding: 8px;
+    }
+    .chart-bar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      opacity: 0.85;
+    }
+
+    /* Color swatches */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .swatch {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border-subtle);
+      overflow: hidden;
+    }
+    .swatch-color {
+      height: 40px;
+    }
+    .swatch-info {
+      padding: 6px 8px;
+      background: var(--color-surface);
+    }
+    .swatch-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+    .swatch-value {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+    }
+
+    /* Typography scale */
+    .type-scale {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+    .type-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      width: 80px;
+      flex-shrink: 0;
+    }
+
+    /* Spacing scale */
+    .space-scale {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .space-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .space-bar {
+      height: 12px;
+      background: var(--color-accent-green-light);
+      opacity: 0.3;
+      border-radius: 2px;
+    }
+    .space-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    /* Radius demo */
+    .radius-demos {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .radius-demo {
+      width: 64px;
+      height: 64px;
+      border: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+    }
+
+    /* Animation demos */
+    @keyframes ping { 0% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.5); opacity: 0; } 100% { transform: scale(1); opacity: 0; } }
+    @keyframes card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes typing-dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
+
+    .anim-box {
+      width: 80px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--color-text-dim);
+      border: 1px solid var(--color-border);
+    }
+    .anim-card-in { animation: card-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) both; }
+    .anim-card-in.delay-1 { animation-delay: 0.1s; }
+    .anim-card-in.delay-2 { animation-delay: 0.2s; }
+    .anim-card-in.delay-3 { animation-delay: 0.3s; }
+
+    .typing-dots span { animation: typing-dot 1.4s ease-in-out infinite; font-size: 16px; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--color-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 3px; }
+
+    /* Highlight active section in nav */
+    .sidebar a.active {
+      color: var(--color-accent-green-light);
+      background: rgba(74, 222, 128, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="showcase-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-title">DecisionLab</div>
+      <div class="sidebar-subtitle">Design System</div>
+
+      <div class="sidebar-section">Foundations</div>
+      <a href="#colors">Colors</a>
+      <a href="#typography">Typography</a>
+      <a href="#spacing">Spacing</a>
+      <a href="#shape">Shape</a>
+      <a href="#animation">Animation</a>
+
+      <div class="sidebar-section">Components</div>
+      <a href="#floating-panel">Floating Panel</a>
+      <a href="#buttons">Buttons</a>
+      <a href="#input">Input</a>
+      <a href="#message-bubble">Message Bubble</a>
+      <a href="#data-card">Data Card</a>
+      <a href="#tracker-card">Tracker Card</a>
+      <a href="#analyst-card">Analyst Card</a>
+      <a href="#decision-trace">Decision Trace</a>
+      <a href="#replay-popover">Replay Popover</a>
+      <a href="#chart-card">Chart Card</a>
+      <a href="#simulation-grid">Simulation Grid</a>
+      <a href="#pipeline-node">Pipeline Node</a>
+      <a href="#badges">Badges</a>
+    </nav>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- ═══════ FOUNDATIONS ═══════ -->
+
+      <!-- Colors -->
+      <section class="section" id="colors">
+        <div class="section-title">Colors</div>
+        <div class="section-desc">Dark-only palette. Monochrome base with saturated accent colors per agent role.</div>
+
+        <div class="variant-label">Base</div>
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch-color" style="background:#0a0a0a"></div><div class="swatch-info"><div class="swatch-name">bg</div><div class="swatch-value">#0a0a0a</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#090909"></div><div class="swatch-info"><div class="swatch-name">surface</div><div class="swatch-value">#090909</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.05)"></div><div class="swatch-info"><div class="swatch-name">surface-hover</div><div class="swatch-value">white/5%</div></div></div>
+        </div>
+
+        <div class="variant-label">Borders</div>
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.1)"></div><div class="swatch-info"><div class="swatch-name">border</div><div class="swatch-value">white/10%</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.08)"></div><div class="swatch-info"><div class="swatch-name">border-subtle</div><div class="swatch-value">white/8%</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.06)"></div><div class="swatch-info"><div class="swatch-name">border-faint</div><div class="swatch-value">white/6%</div></div></div>
+        </div>
+
+        <div class="variant-label">Text</div>
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch-color" style="background:#fff"></div><div class="swatch-info"><div class="swatch-name">text</div><div class="swatch-value">#fff</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.6)"></div><div class="swatch-info"><div class="swatch-name">text-muted</div><div class="swatch-value">white/60%</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.4)"></div><div class="swatch-info"><div class="swatch-name">text-dim</div><div class="swatch-value">white/40%</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.3)"></div><div class="swatch-info"><div class="swatch-name">text-faint</div><div class="swatch-value">white/30%</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:rgba(255,255,255,0.15)"></div><div class="swatch-info"><div class="swatch-name">text-ghost</div><div class="swatch-value">white/15%</div></div></div>
+        </div>
+
+        <div class="variant-label">Accents</div>
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch-color" style="background:#22c55e"></div><div class="swatch-info"><div class="swatch-name">green</div><div class="swatch-value">#22c55e</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#4ade80"></div><div class="swatch-info"><div class="swatch-name">green-light</div><div class="swatch-value">#4ade80</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#fbbf24"></div><div class="swatch-info"><div class="swatch-name">amber</div><div class="swatch-value">#fbbf24</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#ef4444"></div><div class="swatch-info"><div class="swatch-name">red</div><div class="swatch-value">#ef4444</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#4a9eff"></div><div class="swatch-info"><div class="swatch-name">blue</div><div class="swatch-value">#4a9eff</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#38bdf8"></div><div class="swatch-info"><div class="swatch-name">cyan</div><div class="swatch-value">#38bdf8</div></div></div>
+        </div>
+
+        <div class="variant-label">Agent Palette</div>
+        <div class="swatch-grid">
+          <div class="swatch"><div class="swatch-color" style="background:#4ade80"></div><div class="swatch-info"><div class="swatch-name">Architect</div><div class="swatch-value">#4ade80</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#fbbf24"></div><div class="swatch-info"><div class="swatch-name">Tracker</div><div class="swatch-value">#fbbf24</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#a78bfa"></div><div class="swatch-info"><div class="swatch-name">Analyst</div><div class="swatch-value">#a78bfa</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#f472b6"></div><div class="swatch-info"><div class="swatch-name">Reporter</div><div class="swatch-value">#f472b6</div></div></div>
+          <div class="swatch"><div class="swatch-color" style="background:#94a3b8"></div><div class="swatch-info"><div class="swatch-name">Orchestrator</div><div class="swatch-value">#94a3b8</div></div></div>
+        </div>
+      </section>
+
+      <!-- Typography -->
+      <section class="section" id="typography">
+        <div class="section-title">Typography</div>
+        <div class="section-desc">Satoshi for body, IBM Plex Mono for data and labels. Tight uppercase labels create hierarchy.</div>
+
+        <div class="type-scale">
+          <div class="type-row"><span class="type-label">20px xl</span><span style="font-size:20px;font-weight:600;letter-spacing:-0.3px">DecisionLab</span></div>
+          <div class="type-row"><span class="type-label">17px lg</span><span style="font-size:17px;font-weight:600;letter-spacing:-0.2px">Laboratorio Virtual</span></div>
+          <div class="type-row"><span class="type-label">15px md</span><span style="font-size:15px;line-height:1.6">El agente drive_reduction aprendio a moverse hacia los recursos.</span></div>
+          <div class="type-row"><span class="type-label">12px chip</span><span style="font-size:12px;color:var(--color-text-dim)">Simula el dilema del prisionero con 3 agentes</span></div>
+          <div class="type-row"><span class="type-label">11px base</span><span style="font-size:11px;color:var(--color-text-muted)">drive_reduction_rl · step 16</span></div>
+          <div class="type-row"><span class="type-label">10px title</span><span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;color:var(--color-accent-green-light)">Environment Spec</span></div>
+          <div class="type-row"><span class="type-label">9px label</span><span style="font-size:9px;text-transform:uppercase;letter-spacing:2px;font-weight:600;color:var(--color-text-faint)">Pipeline</span></div>
+          <div class="type-row"><span class="type-label">8px micro</span><span style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-dim)">Eventos criticos</span></div>
+        </div>
+
+        <div class="variant-label">Monospace</div>
+        <div class="type-scale">
+          <div class="type-row"><span class="type-label">11px mono</span><span style="font-family:var(--font-mono);font-size:11px">energy: 25.30 → 40.30 (+15.0)</span></div>
+          <div class="type-row"><span class="type-label">10px mono</span><span style="font-family:var(--font-mono);font-size:10px">q_table: { eat: 12.3, move_right: 8.1 }</span></div>
+          <div class="type-row"><span class="type-label">9px mono</span><span style="font-family:var(--font-mono);font-size:9px;color:var(--color-text-dim)">Traza de decision</span></div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--font-sans</span>, <span>--font-mono</span></div>
+      </section>
+
+      <!-- Spacing -->
+      <section class="section" id="spacing">
+        <div class="section-title">Spacing</div>
+        <div class="section-desc">4px base scale, density-first for dashboard layout.</div>
+
+        <div class="space-scale">
+          <div class="space-row"><span class="space-label">0.5 · 2px</span><div class="space-bar" style="width:2px"></div></div>
+          <div class="space-row"><span class="space-label">1 · 4px</span><div class="space-bar" style="width:4px"></div></div>
+          <div class="space-row"><span class="space-label">1.5 · 6px</span><div class="space-bar" style="width:6px"></div></div>
+          <div class="space-row"><span class="space-label">2 · 8px</span><div class="space-bar" style="width:8px"></div></div>
+          <div class="space-row"><span class="space-label">2.5 · 10px</span><div class="space-bar" style="width:10px"></div></div>
+          <div class="space-row"><span class="space-label">3 · 12px</span><div class="space-bar" style="width:12px"></div></div>
+          <div class="space-row"><span class="space-label">4 · 16px</span><div class="space-bar" style="width:16px"></div></div>
+          <div class="space-row"><span class="space-label">5 · 20px</span><div class="space-bar" style="width:20px"></div></div>
+          <div class="space-row"><span class="space-label">6 · 24px</span><div class="space-bar" style="width:24px"></div></div>
+          <div class="space-row"><span class="space-label">8 · 32px</span><div class="space-bar" style="width:32px"></div></div>
+          <div class="space-row"><span class="space-label">10 · 40px</span><div class="space-bar" style="width:40px"></div></div>
+        </div>
+      </section>
+
+      <!-- Shape -->
+      <section class="section" id="shape">
+        <div class="section-title">Shape</div>
+        <div class="section-desc">Small radii for controls, large for containers. Industrial but not harsh.</div>
+
+        <div class="radius-demos">
+          <div class="radius-demo" style="border-radius:var(--radius-sm)">sm · 6px</div>
+          <div class="radius-demo" style="border-radius:var(--radius-md)">md · 8px</div>
+          <div class="radius-demo" style="border-radius:var(--radius-lg)">lg · 12px</div>
+          <div class="radius-demo" style="border-radius:var(--radius-xl)">xl · 16px</div>
+          <div class="radius-demo" style="border-radius:var(--radius-2xl)">2xl · 20px</div>
+          <div class="radius-demo" style="border-radius:var(--radius-full);width:48px;height:48px">full</div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--radius-sm</span>, <span>--radius-md</span>, <span>--radius-lg</span>, <span>--radius-xl</span>, <span>--radius-2xl</span>, <span>--radius-full</span></div>
+      </section>
+
+      <!-- Animation -->
+      <section class="section" id="animation">
+        <div class="section-title">Animation</div>
+        <div class="section-desc">Subtle entrances with ease-out curve. Ping for active states.</div>
+
+        <div class="variant-label">Card entrance (staggered)</div>
+        <div class="variants" id="anim-cards">
+          <div class="anim-box anim-card-in">card 1</div>
+          <div class="anim-box anim-card-in delay-1">card 2</div>
+          <div class="anim-box anim-card-in delay-2">card 3</div>
+          <div class="anim-box anim-card-in delay-3">card 4</div>
+        </div>
+        <button class="btn-control" onclick="replayAnim()">Replay</button>
+
+        <div class="variant-label" style="margin-top:20px">Typing indicator</div>
+        <div class="typing-dots" style="font-size:15px;color:var(--color-text-dim);padding:8px 0">
+          Pensando<span>.</span><span>.</span><span>.</span>
+        </div>
+
+        <div class="variant-label" style="margin-top:20px">Active ping</div>
+        <div style="position:relative;width:28px;height:28px;margin:16px 0">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--color-accent-green-light)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;border:1.5px solid var(--color-accent-green-light);animation:ping 2s ease-in-out infinite;opacity:0.3"></div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--ease-out</span> (cubic-bezier(0.23, 1, 0.32, 1)), <span>--duration-normal</span> (250ms), <span>--duration-slow</span> (300ms)</div>
+      </section>
+
+      <!-- ═══════ COMPONENTS ═══════ -->
+
+      <!-- Floating Panel -->
+      <section class="section" id="floating-panel">
+        <div class="section-title">Floating Panel</div>
+        <div class="section-desc">Frosted glass container for sidebar and main areas. Blur 24px, 80% opacity.</div>
+
+        <div class="demo-panel" style="max-width:280px">
+          <div style="font-size:17px;font-weight:600;letter-spacing:-0.2px;margin-bottom:4px">DecisionLab</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--color-text-muted)">Laboratorio</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--color-accent-green-light)"></span>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--radius-2xl</span>, <span>--color-border</span>, <span>--shadow-panel</span>, backdrop-filter: blur(24px)</div>
+      </section>
+
+      <!-- Buttons -->
+      <section class="section" id="buttons">
+        <div class="section-title">Buttons</div>
+
+        <div class="variant-label">Send (Primary)</div>
+        <div class="variants">
+          <div class="variant-group">
+            <div class="variant-label">SM</div>
+            <button class="btn-send sm">&#x27A4;</button>
+          </div>
+          <div class="variant-group">
+            <div class="variant-label">MD</div>
+            <button class="btn-send md">&#x27A4;</button>
+          </div>
+          <div class="variant-group">
+            <div class="variant-label">Hover</div>
+            <button class="btn-send md" style="background:rgba(255,255,255,0.8)">&#x27A4;</button>
+          </div>
+          <div class="variant-group">
+            <div class="variant-label">Disabled</div>
+            <button class="btn-send md" disabled>&#x27A4;</button>
+          </div>
+        </div>
+
+        <div class="variant-label">Control (Utility)</div>
+        <div class="variants">
+          <button class="btn-control">&#x25C0;</button>
+          <button class="btn-control">&#x25B6;</button>
+          <button class="btn-control">&#x23F8;</button>
+          <button class="btn-control">&#x21BB;</button>
+          <button class="btn-control" style="gap:4px">&#x23F1; 2x</button>
+        </div>
+
+        <div class="variant-label">Prompt Chip</div>
+        <div class="variants">
+          <button class="btn-chip">Simula el dilema del prisionero</button>
+          <button class="btn-chip">Compara Q-Learning vs Random</button>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--radius-xl</span>, <span>--radius-sm</span>, <span>--radius-lg</span>, <span>--color-text-ghost</span>, <span>--color-surface-hover</span></div>
+      </section>
+
+      <!-- Input -->
+      <section class="section" id="input">
+        <div class="section-title">Input</div>
+
+        <div class="variant-label">Default</div>
+        <div style="max-width:500px;margin-bottom:12px">
+          <input class="input-chat" placeholder="Describe un paradigma de decision...">
+        </div>
+
+        <div class="variant-label">Focused</div>
+        <div style="max-width:500px;margin-bottom:12px">
+          <input class="input-chat" value="Compara homeostatic vs PI control" style="border-color:var(--color-text-dim)">
+        </div>
+
+        <div class="variant-label">Disabled</div>
+        <div style="max-width:500px;margin-bottom:12px">
+          <input class="input-chat" disabled placeholder="Esperando por Analyst...">
+        </div>
+
+        <div class="tokens-used">Uses: <span>--radius-xl</span>, <span>--color-text-ghost</span>, <span>--color-text-dim</span></div>
+      </section>
+
+      <!-- Message Bubble -->
+      <section class="section" id="message-bubble">
+        <div class="section-title">Message Bubble</div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:500px">
+          <div class="bubble bubble-user">Simula regulacion homeostatica con 2 agentes</div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-orchestrator);flex-shrink:0"></div>
+            <div>
+              <div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--color-orchestrator)">Orchestrator</div>
+              <div class="bubble bubble-agent" style="border:1px solid rgba(148,163,184,0.12)">
+                El <strong style="color:var(--color-architect)">Architect</strong> ha disenado el entorno. Grid 8x8 con food x6.
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--color-analyst);flex-shrink:0"></div>
+            <div>
+              <div style="font-size:11px;font-weight:500;margin-bottom:4px;color:var(--color-analyst)">Analyst</div>
+              <div class="bubble bubble-agent" style="border:1px solid rgba(167,139,250,0.12)">
+                Se encontraron <strong style="color:var(--color-analyst)">3 patrones</strong> y <strong style="color:var(--color-analyst)">3 comparaciones</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-border</span>, <span>--color-surface-hover</span>, <span>--radius-xl</span>, agent colors for border tint</div>
+      </section>
+
+      <!-- Data Card -->
+      <section class="section" id="data-card">
+        <div class="section-title">Data Card</div>
+
+        <div class="card-base" style="border-color:rgba(74,222,128,0.12);max-width:400px">
+          <div class="card-title" style="color:var(--color-accent-green-light)">Environment Spec</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="card-inner-cell"><div class="label">Grid</div><div class="value">8 x 8</div></div>
+            <div class="card-inner-cell"><div class="label">Recursos</div><div class="value">food x6</div></div>
+            <div class="card-inner-cell"><div class="label">Pasos</div><div class="value">30</div></div>
+            <div class="card-inner-cell"><div class="label">Agentes</div><div class="value">2</div></div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-surface</span>, <span>--radius-lg</span>, <span>--radius-md</span>, <span>--color-border-subtle</span>, <span>--shadow-card</span></div>
+      </section>
+
+      <!-- Tracker Card -->
+      <section class="section" id="tracker-card">
+        <div class="section-title">Tracker Card</div>
+
+        <div class="card-base" style="border-color:rgba(251,191,36,0.12);max-width:500px">
+          <div class="card-title" style="color:var(--color-accent-amber)">Trayectorias</div>
+
+          <div style="margin-bottom:10px;padding:10px;border:1px solid rgba(74,222,128,0.12);border-radius:var(--radius-md)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600;color:var(--color-accent-green-light)">drive_reduction_rl</span>
+              <span style="font-size:11px;color:var(--color-text-faint)">28 pasos</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;padding:4px 10px;border:1px solid rgba(74,222,128,0.15);border-radius:var(--radius-md);color:var(--color-accent-green-light);background:rgba(74,222,128,0.03)">7 consumidos</span>
+              <span style="font-size:11px;padding:4px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-muted)">eat: 7</span>
+              <span style="font-size:11px;padding:4px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-muted)">move_up: 8</span>
+              <span style="font-size:11px;padding:4px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-muted)">stay: 1</span>
+            </div>
+          </div>
+
+          <div style="padding:10px;border:1px solid rgba(251,191,36,0.12);border-radius:var(--radius-md)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600;color:var(--color-accent-amber)">pi_negative_feedback</span>
+              <span style="font-size:11px;color:var(--color-text-faint)">30 pasos</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;padding:4px 10px;border:1px solid rgba(251,191,36,0.15);border-radius:var(--radius-md);color:var(--color-accent-amber);background:rgba(251,191,36,0.03)">3 consumidos</span>
+              <span style="font-size:11px;padding:4px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-muted)">eat: 3</span>
+              <span style="font-size:11px;padding:4px 10px;border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-muted)">move_up: 9</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-surface</span>, <span>--color-accent-amber</span>, <span>--radius-md</span>, agent color tints</div>
+      </section>
+
+      <!-- Analyst Card -->
+      <section class="section" id="analyst-card">
+        <div class="section-title">Analyst Card</div>
+
+        <div class="card-base" style="border-color:rgba(167,139,250,0.12);max-width:500px">
+          <div class="card-title" style="color:var(--color-accent-purple)">Analisis</div>
+
+          <div style="font-size:10px;color:var(--color-text-faint);margin-bottom:6px">Patrones</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-border-faint)">
+            <span class="badge" style="background:rgba(167,139,250,0.15);color:var(--color-accent-purple);border:1px solid rgba(167,139,250,0.2)">estrategia</span>
+            <span style="font-size:11px;line-height:1.6;color:var(--color-text-muted)">El agente drive_reduction aprendio a moverse hacia los recursos</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-border-faint)">
+            <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--color-accent-red);border:1px solid rgba(239,68,68,0.2)">anomaly</span>
+            <span style="font-size:11px;line-height:1.6;color:var(--color-text-muted)">Pico critico de hambre en el paso 8</span>
+          </div>
+
+          <div style="font-size:10px;color:var(--color-text-faint);margin-top:12px;margin-bottom:6px">Comparaciones</div>
+          <div style="padding:8px 0;border-bottom:1px solid var(--color-border-faint)">
+            <div style="font-size:11px;font-weight:600;color:var(--color-accent-purple);margin-bottom:6px">Recursos recogidos</div>
+            <div style="display:flex;gap:8px;margin-bottom:6px">
+              <div class="card-inner-cell" style="flex:1;border-color:rgba(74,222,128,0.2);background:rgba(74,222,128,0.03)">
+                <div style="font-size:9px;color:var(--color-accent-green-light)">drive_reduction_rl</div>
+                <div style="font-size:15px;font-weight:700;color:var(--color-accent-green-light);margin-top:2px">7</div>
+              </div>
+              <div class="card-inner-cell" style="flex:1;background:var(--color-surface-hover)">
+                <div style="font-size:9px;color:var(--color-text-faint)">pi_negative_feedback</div>
+                <div style="font-size:15px;font-weight:700;color:var(--color-text-muted);margin-top:2px">3</div>
+              </div>
+            </div>
+            <div style="font-size:10px;line-height:1.6;color:var(--color-text-dim)">Drive reduction recogio mas del doble porque su senal de impulso le motiva a buscar comida activamente</div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-analyst</span>, <span>--color-accent-green-light</span>, <span>--radius-md</span>, <span>--color-border-faint</span></div>
+      </section>
+
+      <!-- Decision Trace Card -->
+      <section class="section" id="decision-trace">
+        <div class="section-title">Decision Trace Card</div>
+        <div class="section-desc">Split pre/post view of agent decision context. Q-value pills show all alternatives.</div>
+
+        <div class="trace-card" style="max-width:450px">
+          <div class="trace-header">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="trace-label">Decision Trace</span>
+              <span class="trace-action-badge">eat</span>
+            </div>
+            <span class="trace-meta">drive_reduction_rl · step 16</span>
+          </div>
+
+          <div class="trace-columns">
+            <div class="trace-col">
+              <div class="trace-col-label pre">Pre-decision</div>
+              <div class="trace-row">pos <span style="color:var(--color-text-dim)">(3, 4)</span></div>
+              <div class="trace-row">energy <span class="trace-val-pre">25.30</span></div>
+              <div class="trace-row">drive <span class="trace-val-pre">0.82</span></div>
+              <div class="trace-row">epsilon <span class="trace-val-pre">0.15</span></div>
+            </div>
+            <div class="trace-col">
+              <div class="trace-col-label post">Post-decision</div>
+              <div class="trace-row">pos <span style="color:var(--color-text-dim)">(3, 4)</span></div>
+              <div class="trace-row">energy <span class="trace-val-post">40.30</span><span class="trace-delta-pos">+15.0</span></div>
+              <div class="trace-row">drive <span class="trace-val-post">0.31</span><span class="trace-delta-pos">-0.5</span></div>
+              <div class="trace-row">epsilon <span class="trace-val-post">0.14</span><span class="trace-delta-neg">-0.0</span></div>
+            </div>
+          </div>
+
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-faint);margin-bottom:6px">Alternativas (Q-values)</div>
+          <div class="q-pills">
+            <span class="q-pill chosen">eat: 12.3</span>
+            <span class="q-pill other">move_right: 8.1</span>
+            <span class="q-pill other">stay: 5.4</span>
+            <span class="q-pill other">move_left: 3.2</span>
+          </div>
+
+          <div class="trace-footer">
+            <span class="reward-pos">reward: +15</span>
+            <span style="color:var(--color-text-faint);margin:0 4px">·</span>
+            <span style="color:var(--color-text-dim)">consumed food</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <div class="variant-label">PI model variant (no Q-values)</div>
+          <div class="trace-card" style="max-width:450px">
+            <div class="trace-header">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="trace-label">Decision Trace</span>
+                <span class="trace-action-badge" style="background:#92400e;color:#fbbf24">move_up</span>
+              </div>
+              <span class="trace-meta">pi_negative_feedback · step 16</span>
+            </div>
+            <div class="trace-columns">
+              <div class="trace-col">
+                <div class="trace-col-label pre">Pre-decision</div>
+                <div class="trace-row">energy <span class="trace-val-pre">62.10</span></div>
+                <div class="trace-row">error_signal <span class="trace-val-pre">0.31</span></div>
+              </div>
+              <div class="trace-col">
+                <div class="trace-col-label post">Post-decision</div>
+                <div class="trace-row">energy <span class="trace-val-post">60.10</span><span class="trace-delta-neg">-2.0</span></div>
+                <div class="trace-row">error_signal <span class="trace-val-post">0.42</span><span class="trace-delta-neg">+0.1</span></div>
+              </div>
+            </div>
+            <div style="font-size:9px;color:var(--color-text-faint);font-style:italic;margin-bottom:6px">Sin Q-values (control directo)</div>
+            <div class="trace-footer">
+              <span class="reward-neg">reward: 0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--font-mono</span>, <span>--radius-lg</span>, <span>--radius-md</span>, <span>--color-border-subtle</span>, #0f172a (trace bg), #0a0f1a (col bg)</div>
+      </section>
+
+      <!-- Replay Trace Popover -->
+      <section class="section" id="replay-popover">
+        <div class="section-title">Replay Trace Popover</div>
+        <div class="section-desc">Compact bar-first display. Appears on critical event click in the simulation timeline.</div>
+
+        <div class="popover">
+          <div class="popover-header">
+            <span class="popover-agent">drive_reduction_rl</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="popover-badge">decision confidence drop</span>
+              <button class="popover-close">&times;</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+            <div class="q-bar-row">
+              <span class="q-bar-label chosen">eat</span>
+              <div class="q-bar-track"><div class="q-bar-fill chosen" style="width:100%"></div><span class="q-bar-value chosen">12.3</span></div>
+            </div>
+            <div class="q-bar-row">
+              <span class="q-bar-label">move_r</span>
+              <div class="q-bar-track"><div class="q-bar-fill" style="width:66%"></div><span class="q-bar-value">8.1</span></div>
+            </div>
+            <div class="q-bar-row">
+              <span class="q-bar-label">stay</span>
+              <div class="q-bar-track"><div class="q-bar-fill" style="width:44%"></div><span class="q-bar-value">5.4</span></div>
+            </div>
+            <div class="q-bar-row">
+              <span class="q-bar-label">move_l</span>
+              <div class="q-bar-track"><div class="q-bar-fill" style="width:26%"></div><span class="q-bar-value">3.2</span></div>
+            </div>
+          </div>
+
+          <div class="context-row">
+            <span>energy <span style="color:#fbbf24">25.3</span> &rarr; <span style="color:var(--color-accent-green-light)">40.3</span></span>
+            <span>drive <span style="color:#fbbf24">0.82</span> &rarr; <span style="color:var(--color-accent-green-light)">0.31</span></span>
+            <span>reward <span class="reward-pos">+15</span></span>
+          </div>
+
+          <div style="margin-top:6px;font-size:9px;color:#38bdf8">gap Q-values: 2.10 &rarr; 0.35</div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--font-mono</span>, <span>--radius-lg</span>, <span>--radius-sm</span>, <span>--shadow-popover</span>, #0f172a, #0a0f1a, #1e293b</div>
+      </section>
+
+      <!-- Chart Card -->
+      <section class="section" id="chart-card">
+        <div class="section-title">Chart Card</div>
+        <div class="section-desc">Recharts wrapper. Purple-tinted border from Analyst agent color.</div>
+
+        <div class="chart-mock" style="border-color:rgba(167,139,250,0.12);max-width:450px">
+          <div class="card-title" style="color:var(--color-accent-purple)">Distribucion de acciones</div>
+          <div class="chart-area">
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:80%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:40%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:30%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:50%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:90%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-green-light);height:10%"></div>
+            <div style="width:8px"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:30%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:70%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:50%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:60%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:95%"></div>
+            <div class="chart-bar" style="background:var(--color-accent-amber);height:5%"></div>
+          </div>
+          <div style="display:flex;gap:16px;justify-content:center;margin-top:8px">
+            <span style="font-size:10px;color:var(--color-accent-green-light)">&#9679; drive_reduction_rl</span>
+            <span style="font-size:10px;color:var(--color-accent-amber)">&#9679; pi_negative_feedback</span>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-surface</span>, <span>--color-analyst</span>, <span>--radius-lg</span>, <span>--shadow-card</span></div>
+      </section>
+
+      <!-- Simulation Grid -->
+      <section class="section" id="simulation-grid">
+        <div class="section-title">Simulation Grid</div>
+        <div class="section-desc">Interactive replay with agent dots, resource markers, trail, and critical event timeline.</div>
+
+        <div style="border:1px solid var(--color-border);padding:12px;border-radius:var(--radius-lg);background:var(--color-bg);max-width:350px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-dim)">Simulacion</span>
+            <span style="font-size:9px;color:var(--color-text-faint)">Step 16 / 30</span>
+          </div>
+
+          <!-- Mini grid -->
+          <div class="sim-grid-demo" style="grid-template-columns:repeat(6,24px);grid-template-rows:repeat(4,24px);margin:0 auto">
+            <!-- Row 0 -->
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-resource" style="width:7px;height:7px"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <!-- Row 1 -->
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-trail" style="width:5px;height:5px"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-agent" style="width:16px;height:16px;background:#4ade80;box-shadow:0 0 10px rgba(74,222,128,0.25)"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-resource" style="width:7px;height:7px"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <!-- Row 2 -->
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-resource" style="width:7px;height:7px"></div></div>
+            <!-- Row 3 -->
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-trail" style="width:5px;height:5px"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"><div class="sim-dot-agent" style="width:16px;height:16px;background:#fbbf24;box-shadow:0 0 10px rgba(251,191,36,0.25)"></div></div>
+            <div class="sim-cell" style="width:24px;height:24px"></div>
+          </div>
+
+          <!-- Controls -->
+          <div style="display:flex;justify-content:center;gap:8px;margin-top:8px">
+            <button class="btn-control">&#x21BB;</button>
+            <button class="btn-control">&#x25C0;</button>
+            <button class="btn-control" style="padding:6px 10px;color:var(--color-text-muted)">&#x25B6;</button>
+            <button class="btn-control">&#x25B6;</button>
+            <button class="btn-control">&#x23F1; 1x</button>
+          </div>
+
+          <!-- Timeline -->
+          <div style="margin-top:8px">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-dim);margin-bottom:4px">Eventos criticos</div>
+            <div style="position:relative;height:12px;border-radius:var(--radius-full);background:rgba(255,255,255,0.04);overflow:hidden">
+              <div style="position:absolute;left:10%;top:0;height:100%;width:4px;background:var(--color-accent-green);opacity:0.7"></div>
+              <div style="position:absolute;left:27%;top:0;height:100%;width:4px;background:var(--color-accent-red);opacity:0.8"></div>
+              <div style="position:absolute;left:30%;top:0;height:100%;width:4px;background:var(--color-accent-amber);opacity:0.9"></div>
+              <div style="position:absolute;left:53%;top:0;height:100%;width:4px;background:#38bdf8;opacity:0.7"></div>
+              <div style="position:absolute;left:60%;top:0;height:100%;width:4px;background:var(--color-accent-purple);opacity:0.6"></div>
+              <div style="position:absolute;left:53%;top:0;height:100%;width:2px;background:rgba(255,255,255,0.4)"></div>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-dim)">Agentes</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,0.25);flex-shrink:0"></span>
+              <span style="font-size:11px;font-weight:500;color:#4ade80">drive_reduction_rl</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.25);flex-shrink:0"></span>
+              <span style="font-size:11px;font-weight:500;color:#fbbf24">pi_negative_feedback</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--color-bg</span>, <span>--color-border</span>, <span>--radius-lg</span>, <span>--radius-sm</span>, <span>--radius-full</span>, <span>--color-accent-*</span>, AGENT_COLORS</div>
+      </section>
+
+      <!-- Pipeline Node -->
+      <section class="section" id="pipeline-node">
+        <div class="section-title">Pipeline Node</div>
+        <div class="section-desc">Vertical pipeline with avatar dots, connecting lines, and status badges.</div>
+
+        <div class="demo-panel" style="max-width:220px">
+          <div class="pipeline-demo">
+            <!-- Done -->
+            <div class="pipeline-node">
+              <div class="pipeline-line" style="background:rgba(74,222,128,0.37)"></div>
+              <div>
+                <div class="node-dot done" style="background:var(--color-accent-green-light)">
+                  <div style="position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:var(--color-surface);border:1.5px solid var(--color-accent-green-light);display:flex;align-items:center;justify-content:center">
+                    <svg width="6" height="6" viewBox="0 0 6 6"><path d="M1 3L2.5 4.5L5 1.5" stroke="#4ade80" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="node-name" style="color:var(--color-text-muted)">Architect</div>
+                <div style="font-size:9px;margin-top:2px;color:var(--color-text-ghost)">Completado</div>
+              </div>
+            </div>
+
+            <!-- Active -->
+            <div class="pipeline-node">
+              <div class="pipeline-line" style="background:var(--color-text-ghost)"></div>
+              <div>
+                <div class="node-dot" style="background:var(--color-accent-amber);box-shadow:0 0 12px rgba(251,191,36,0.19)">
+                  <div class="node-dot-ring" style="border-color:var(--color-accent-amber)"></div>
+                </div>
+              </div>
+              <div>
+                <div class="node-name" style="color:var(--color-accent-amber)">Tracker</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                  <span class="badge badge-working" style="color:var(--color-accent-amber);background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.19)">working</span>
+                </div>
+                <div style="font-size:9px;margin-top:4px;font-family:var(--font-mono);color:rgba(251,191,36,0.67)">Traza de decision</div>
+              </div>
+            </div>
+
+            <!-- Idle -->
+            <div class="pipeline-node" style="padding-bottom:0">
+              <div>
+                <div class="node-dot sm" style="background:var(--color-accent-purple)"></div>
+              </div>
+              <div>
+                <div class="node-name" style="color:var(--color-text-faint)">Analyst</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--font-mono</span>, <span>--radius-sm</span>, <span>--radius-full</span>, agent colors, ping animation</div>
+      </section>
+
+      <!-- Badges -->
+      <section class="section" id="badges">
+        <div class="section-title">Badges</div>
+
+        <div class="variant-label">Status badges</div>
+        <div class="variants" style="margin-bottom:16px">
+          <span class="badge badge-working" style="color:var(--color-accent-green-light);background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.19)">working</span>
+          <span class="badge badge-working" style="color:var(--color-accent-amber);background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.19)">working</span>
+          <span class="badge badge-working" style="color:var(--color-accent-purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.19)">working</span>
+          <span class="badge" style="font-size:9px;padding:2px 6px;background:rgba(251,191,36,0.15);color:var(--color-accent-amber);border:1px solid rgba(251,191,36,0.25)">mock</span>
+        </div>
+
+        <div class="variant-label">Critical event badges</div>
+        <div class="variants" style="margin-bottom:16px">
+          <span class="badge-critical" style="color:var(--color-accent-green);border:1px solid rgba(34,197,94,0.19);background:rgba(34,197,94,0.06);border-radius:var(--radius-sm)">consumption</span>
+          <span class="badge-critical" style="color:var(--color-accent-red);border:1px solid rgba(239,68,68,0.19);background:rgba(239,68,68,0.06);border-radius:var(--radius-sm)">starvation</span>
+          <span class="badge-critical" style="color:var(--color-accent-amber);border:1px solid rgba(251,191,36,0.19);background:rgba(251,191,36,0.06);border-radius:var(--radius-sm)">energy spike</span>
+          <span class="badge-critical" style="color:var(--color-accent-purple);border:1px solid rgba(167,139,250,0.19);background:rgba(167,139,250,0.06);border-radius:var(--radius-sm)">strategy shift</span>
+          <span class="badge-critical" style="color:#38bdf8;border:1px solid rgba(56,189,248,0.19);background:rgba(56,189,248,0.06);border-radius:var(--radius-sm)">confidence drop</span>
+        </div>
+
+        <div class="variant-label">Pattern type badges</div>
+        <div class="variants">
+          <span class="badge" style="background:rgba(167,139,250,0.15);color:var(--color-accent-purple);border:1px solid rgba(167,139,250,0.2)">estrategia</span>
+          <span class="badge" style="background:rgba(167,139,250,0.15);color:var(--color-accent-purple);border:1px solid rgba(167,139,250,0.2)">recursos</span>
+          <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--color-accent-red);border:1px solid rgba(239,68,68,0.2)">anomaly</span>
+        </div>
+
+        <div class="tokens-used">Uses: <span>--radius-sm</span>, <span>--color-accent-*</span>, alpha-tinted backgrounds</div>
+      </section>
+
+      <!-- Footer -->
+      <div style="text-align:center;padding:32px 0;font-size:10px;color:var(--color-text-ghost);border-top:1px solid var(--color-border-faint)">
+        Generated by Chisel &middot; Last updated: 2026-04-14
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Smooth scroll nav
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault()
+        const id = link.getAttribute('href').slice(1)
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+      })
+    })
+
+    // Highlight active section
+    const sections = document.querySelectorAll('.section')
+    const navLinks = document.querySelectorAll('.sidebar a')
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove('active'))
+          const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`)
+          if (active) active.classList.add('active')
+        }
+      })
+    }, { rootMargin: '-20% 0px -70% 0px' })
+    sections.forEach(s => observer.observe(s))
+
+    // Replay animation
+    function replayAnim() {
+      const boxes = document.querySelectorAll('#anim-cards .anim-box')
+      boxes.forEach(b => { b.style.animation = 'none'; b.offsetHeight; b.style.animation = '' })
+    }
+  </script>
+</body>
+</html>

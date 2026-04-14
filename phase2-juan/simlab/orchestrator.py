@@ -24,6 +24,7 @@ from simlab.tracker import Tracker
 from simlab.analyst import Analyst
 from simlab.reporter import Reporter
 from simlab.critical_events import detect_critical_events, critical_events_to_json
+from simlab.tools import _make_serializable
 from simlab.environment import Agent, Position
 from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
@@ -563,6 +564,24 @@ class Orchestrator:
             critical = detect_critical_events(all_events)
             critical_json = critical_events_to_json(critical)
 
+            # Build decision traces indexed by step for the frontend
+            traces: dict[int, list[dict]] = {}
+            for e in all_events:
+                trace = {
+                    "agent_id": e.agent_id,
+                    "step": e.step,
+                    "perception": _make_serializable(e.perception) if e.perception else None,
+                    "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+                    "post_state": _make_serializable(e.outcome.get("model_state", {})),
+                    "available_actions": e.available_actions or None,
+                    "action_chosen": {"name": e.action.name, "params": e.action.params},
+                    "outcome": {
+                        "reward": e.outcome.get("reward", 0),
+                        "action_result": e.outcome.get("action_result", {}),
+                    },
+                }
+                traces.setdefault(e.step, []).append(trace)
+
             # Save state for downstream agents
             state["events"] = all_events
             state["critical_events"] = critical_json
@@ -572,6 +591,7 @@ class Orchestrator:
                 "total_steps": len(replay_frames),
                 "frames": replay_frames,
                 "critical_events": critical_json,
+                "traces": traces,
             }
             state["tracker_output"] = None
             state["analyst_output"] = None

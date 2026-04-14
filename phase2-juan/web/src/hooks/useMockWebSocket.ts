@@ -62,7 +62,7 @@ function mockReplay(): ReplayData {
     })
   }
 
-  return { grid_width: W, grid_height: H, total_steps: STEPS, frames, critical_events: mockCriticalEvents(), traces: mockReplayTraces() }
+  return { grid_width: W, grid_height: H, total_steps: STEPS, frames, critical_events: mockCriticalEvents(), traces: mockReplayTraces(STEPS) }
 }
 
 function mockTracker(): TrackerData {
@@ -238,17 +238,42 @@ function mockDecisionTraces(): DecisionTrace[] {
   ]
 }
 
-function mockReplayTraces(): Record<number, DecisionTrace[]> {
+function mockReplayTraces(steps: number): Record<number, DecisionTrace[]> {
+  const actions = ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay']
   const traces: Record<number, DecisionTrace[]> = {}
-  traces[8] = [{
-    agent_id: 'drive_reduction_rl', step: 8,
-    perception: { x: 2, y: 3, grid_width: 8, grid_height: 8, step: 8, resources: { food: [{ x: 5, y: 1 }] } },
-    pre_state: { energy: 12.3, drive: 0.95, epsilon: 0.2, q_table: { eat: 3.1, move_right: 4.5, stay: 1.2, move_up: 2.8 } },
-    post_state: { energy: 10.3, drive: 0.98, epsilon: 0.19, q_table: { eat: 3.1, move_right: 4.8, stay: 1.2, move_up: 2.8 } },
-    available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
-    action_chosen: { name: 'move_right', params: {} },
-    outcome: { reward: 0, action_result: {} },
-  }]
+
+  for (let step = 0; step < steps; step++) {
+    const energyA = Math.max(0, 80 - step * 3 + Math.sin(step * 0.5) * 20 + (step === 8 ? -40 : 0) + (step === 9 ? 45 : 0))
+    const energyB = 70 + Math.sin(step * 0.3) * 8
+    const driveA = Math.min(1, Math.max(0, 1 - energyA / 100))
+    const qEat = 0.5 + step * 0.4 + Math.sin(step * 0.3) * 0.5
+    const qMove = 0.3 + step * 0.15 + Math.cos(step * 0.4) * 0.3
+    const qStay = 0.1 + step * 0.05
+    const chosenA = qEat > qMove ? 'eat' : 'move_right'
+
+    traces[step] = [
+      {
+        agent_id: 'drive_reduction_rl', step,
+        perception: { x: Math.floor(Math.random() * 8), y: Math.floor(Math.random() * 8), grid_width: 8, grid_height: 8, step, resources: { food: [{ x: 3, y: 2 }] } },
+        pre_state: { energy: +energyA.toFixed(1), drive: +driveA.toFixed(2), epsilon: +(0.25 - step * 0.005).toFixed(3), q_table: { eat: +qEat.toFixed(1), move_right: +qMove.toFixed(1), stay: +qStay.toFixed(1), move_up: +(qMove * 0.8).toFixed(1) } },
+        post_state: { energy: +(energyA + (chosenA === 'eat' ? 15 : -2)).toFixed(1), drive: +Math.min(1, Math.max(0, driveA + (chosenA === 'eat' ? -0.3 : 0.02))).toFixed(2), epsilon: +(0.25 - step * 0.005 - 0.001).toFixed(3), q_table: { eat: +(qEat + 0.1).toFixed(1), move_right: +qMove.toFixed(1), stay: +qStay.toFixed(1), move_up: +(qMove * 0.8).toFixed(1) } },
+        available_actions: actions,
+        action_chosen: { name: chosenA, params: {} },
+        outcome: { reward: chosenA === 'eat' ? 15 : 0, action_result: chosenA === 'eat' ? { consumed: true, resource_type: 'food' } : {} },
+      },
+      {
+        agent_id: 'pi_negative_feedback', step,
+        perception: { x: Math.floor(Math.random() * 8), y: Math.floor(Math.random() * 8), grid_width: 8, grid_height: 8, step, resources: { food: [{ x: 5, y: 1 }] } },
+        pre_state: { energy: +energyB.toFixed(1), error_signal: +(0.3 + Math.sin(step * 0.2) * 0.15).toFixed(2), proportional_control: 0.15, integral_control: 0.08, total_control_signal: 0.23 },
+        post_state: { energy: +(energyB - 2).toFixed(1), error_signal: +(0.3 + Math.sin(step * 0.2) * 0.15 + 0.05).toFixed(2), proportional_control: 0.18, integral_control: 0.09, total_control_signal: 0.27 },
+        available_actions: actions,
+        action_chosen: { name: actions[1 + Math.floor(Math.random() * 4)], params: {} },
+        outcome: { reward: 0, action_result: {} },
+      },
+    ]
+  }
+
+  // Override step 16 with the specific mock data for chat traces
   traces[16] = mockDecisionTraces()
   return traces
 }
