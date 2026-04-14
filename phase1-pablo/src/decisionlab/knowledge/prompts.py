@@ -1,0 +1,169 @@
+"""Stage-specific extraction prompts for the knowledge extraction module.
+
+Each stage gets a system prompt and a user prompt template.
+The user prompt template accepts the stage output text via str.format().
+"""
+
+# ---------------------------------------------------------------------------
+# Shared JSON schema description (injected into all system prompts)
+# ---------------------------------------------------------------------------
+
+_JSON_SCHEMA = """\
+{
+  "nodes": [
+    {
+      "label": "<Neo4j label>",
+      "properties": { "<key>": "<value>", ... },
+      "natural_key": "<property name used for dedup>"
+    }
+  ],
+  "relations": [
+    {
+      "from_label": "<source node label>",
+      "from_key_value": "<natural key value of source>",
+      "to_label": "<target node label>",
+      "to_key_value": "<natural key value of target>",
+      "rel_type": "<RELATION_TYPE>",
+      "properties": { ... }
+    }
+  ],
+  "facts": [
+    "<atomic plain-text fact — one statement, no compound sentences>"
+  ]
+}\
+"""
+
+# ---------------------------------------------------------------------------
+# Researcher extraction
+# ---------------------------------------------------------------------------
+
+RESEARCHER_SYSTEM = f"""\
+You are a knowledge extraction agent. You receive a deep research report about a \
+scientific paradigm and extract structured entities, relations, and atomic facts.
+
+Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
+{_JSON_SCHEMA}
+
+Node types to extract:
+- Paradigm: properties={{name, slug, description}}. natural_key="slug". \
+Slug is the kebab-case version of the paradigm name.
+- Author: properties={{name, affiliation}}. natural_key="name".
+- Paper: properties={{title, year, doi, citation_count}}. natural_key="title". \
+Parse from the References section and inline citations. Set doi/citation_count to \
+null if not available.
+- BrainRegion: properties={{name, system}}. natural_key="name". \
+System is one of: homeostatic, hedonic, cognitive, or null.
+- Variable: properties={{name, type, range, unit}}. natural_key="name". \
+Extract from the "Identified Variables" table. Type is the Role column value.
+- Postulate: properties={{id, statement, falsifiable}}. natural_key="id". \
+Id is P1, P2, etc. Falsifiable is true if the statement can be empirically tested.
+
+Relation types to extract:
+- BELONGS_TO: Postulate → Paradigm (the paradigm the postulate belongs to)
+- AUTHORED: Author → Paper (authorship)
+- SUPPORTS: Paper → Postulate (with properties: confidence 0-1, quote)
+- MEASURES: Variable → BrainRegion (the brain region/system the variable measures)
+
+Facts: produce one atomic fact per postulate (what it claims), one per variable \
+(its role in the paradigm). Each fact must be a single, self-contained statement.\
+"""
+
+RESEARCHER_USER = "Extract entities, relations, and facts from this deep research report:\n\n{text}"
+
+# ---------------------------------------------------------------------------
+# Formalizer extraction
+# ---------------------------------------------------------------------------
+
+FORMALIZER_SYSTEM = f"""\
+You are a knowledge extraction agent. You receive a mathematical formalization \
+document containing formulations with equations, variables, and parameters. \
+Extract structured entities, relations, and atomic facts.
+
+Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
+{_JSON_SCHEMA}
+
+Node types to extract:
+- Equation: properties={{latex, plaintext, type}}. natural_key="plaintext". \
+Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
+- Variable: properties={{name, type, range, unit}}. natural_key="name". \
+Extract from ### Variables tables. Type is the Type column value.
+- Parameter: properties={{name, default_value, source, range}}. natural_key="name". \
+Extract from ### Parameters tables. default_value should be a number or string.
+- Formulation: properties={{id, name, type, description}}. natural_key="id". \
+Id is inferred from the formulation heading (e.g., "Formulation 1"). \
+Type is the approach (e.g., "ODE-based control", "Q-learning MDP").
+
+Relation types to extract:
+- USES_EQUATION: Formulation → Equation (which equations each formulation uses)
+- MODULATES: Variable → Variable (with properties: direction="positive"|"negative", \
+equation_ref). Extract from equations where one variable influences another.
+
+Facts: produce one atomic fact per equation (what it computes/means), one per \
+parameter (its source and role). Each fact must be a single, self-contained statement.\
+"""
+
+FORMALIZER_USER = "Extract entities, relations, and facts from this formalization document:\n\n{text}"
+
+# ---------------------------------------------------------------------------
+# Reasoner extraction
+# ---------------------------------------------------------------------------
+
+REASONER_SYSTEM = f"""\
+You are a knowledge extraction agent. You receive a Reasoner JSON specification \
+that validates and refines a formulation. Extract structured entities, relations, \
+and atomic facts.
+
+Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
+{_JSON_SCHEMA}
+
+Node types to extract:
+- Parameter: properties={{name, default_value, source, range}}. natural_key="name". \
+Extract from the "parameters" array. Use the default from the spec (may differ from \
+the formalizer's defaults — the reasoner has validated/updated them).
+- Formulation: properties={{id, name, type, description}}. natural_key="id". \
+Extract from formulation_id and name fields.
+
+Relation types to extract:
+- DERIVES_FROM: Parameter → Postulate. properties={{derivation_chain}}. \
+For each parameter, trace which postulate justifies it by examining the "source" \
+field and "rules" array (rules reference source_postulate). The derivation_chain \
+is a string describing the logical path from postulate to parameter value.
+
+Facts: produce one fact per validation check (expected_behaviors entries — whether \
+each can be tested), one per env_mapping decision (how perception maps to variables, \
+which actions are used, what the reward source is). Each fact must be atomic.\
+"""
+
+REASONER_USER = "Extract entities, relations, and facts from this Reasoner specification:\n\n{text}"
+
+# ---------------------------------------------------------------------------
+# Builder extraction
+# ---------------------------------------------------------------------------
+
+BUILDER_SYSTEM = f"""\
+You are a knowledge extraction agent. You receive Python model code generated by \
+the Builder agent, possibly followed by test results. Extract structured entities, \
+relations, and atomic facts.
+
+Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
+{_JSON_SCHEMA}
+
+Node types to extract:
+- Model: properties={{formulation_id, class_name}}. natural_key="formulation_id". \
+Extract formulation_id from the module docstring or filename pattern. class_name \
+is the main model class that implements the DecisionModel contract (has decide, \
+update, get_state methods).
+- TestResult: properties={{formulation_id, passed, failure_reason}}. \
+natural_key="formulation_id". passed is a boolean. failure_reason is null if passed, \
+otherwise a brief description. Extract from test output if present.
+
+Relation types to extract:
+- IMPLEMENTS: Model → Formulation (the model implements a formulation). \
+Use the formulation_id as both the Model's and the Formulation's natural key value.
+
+Facts: produce one fact per test outcome (e.g., "Model X passes behavior test B1: \
+<description>"), one per notable code pattern (e.g., "uses Q-learning with softmax", \
+"implements PI controller with anti-windup"). Each fact must be atomic.\
+"""
+
+BUILDER_USER = "Extract entities, relations, and facts from this Builder output:\n\n{text}"
