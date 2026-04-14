@@ -5,9 +5,10 @@
 
 ## Phases
 
-- [ ] **Phase 1: Infrastructure & Storage Layer** — Neo4j schema, Qdrant collections, Postgres memories table, Voyage AI client, Docker Compose integration. No agents yet — just the data layer and Python clients.
+- [x] **Phase 1: Infrastructure & Storage Layer** — Neo4j schema, Qdrant collections, Postgres memories table, Voyage AI client, Docker Compose integration. No agents yet — just the data layer and Python clients.
   - Dependencies: none
-  - Estimated issues: ~5
+  - Issues: P1-001, P1-002, P1-003, P1-004, P1-005
+  - Heats: data-model (P1-001→P1-002), vector (P1-003→P1-004), infra (P1-005)
 
 - [ ] **Phase 2: Memory Agent & Knowledge Extraction** — The Memory Agent that runs after each pipeline stage: entity/relation extraction (Haiku), KG population (Neo4j writes), embedding + indexing (Qdrant writes), importance scoring, mem0-style conflict resolution (Sonnet), provenance edge creation.
   - Dependencies: Phase 1
