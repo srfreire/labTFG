@@ -1,8 +1,7 @@
-"""Tests for Router._review_build handling of reasoner reruns (P4-002)."""
+"""Tests for Router._review_build (P4-002 + P5-003)."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,6 +15,7 @@ def _make_state(tmp_path: Path) -> PipelineState:
         stage=Stage.REVIEW_BUILD,
         problem="test problem",
         reports_dir=tmp_path,
+        run_id="run-1",
         approved_paradigms=["homeostatic"],
         selected_formulations={"homeostatic": ["pi-controller", "dual-process"]},
         approved_specs={"homeostatic": ["pi-controller", "dual-process"]},
@@ -47,9 +47,7 @@ class TestReviewBuildReasonerReruns:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                # First call: invalid build triggers reasoner rerun
                 return [], [], ["homeostatic"]
-            # Second call: all approved after rerun
             return ["pi-controller"], [], []
 
         mock_builder_report = MagicMock()
@@ -59,7 +57,9 @@ class TestReviewBuildReasonerReruns:
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
+            patch("shared.storage") as mock_storage,
         ):
+            mock_storage.delete = AsyncMock()
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -72,11 +72,10 @@ class TestReviewBuildReasonerReruns:
         mock_reasoner_inst.run.assert_called_once_with(
             {"homeostatic": ["pi-controller", "dual-process"]}
         )
-        # Builder was called after Reasoner with paradigm's approved specs
+        # Builder was called with dict-based approved_specs
         mock_builder_inst.run.assert_called_once_with(
-            ["pi-controller", "dual-process"]
+            {"homeostatic": ["pi-controller", "dual-process"]}
         )
-        # State advanced to DONE
         assert state.stage == Stage.DONE
 
     @pytest.mark.asyncio
@@ -124,28 +123,19 @@ class TestReviewBuildReasonerReruns:
 
             await router._review_build()
 
-        # Builder was called (for rejection rebuild)
-        mock_builder_inst.run.assert_called()
+        # Builder was called with dict-based approved_specs for the rejection
+        mock_builder_inst.run.assert_called_with(
+            {"homeostatic": ["pi-controller"]}
+        )
         # Reasoner was NOT called
         mock_reasoner_inst.run.assert_not_called()
         assert state.stage == Stage.DONE
 
     @pytest.mark.asyncio
     async def test_stale_validation_files_cleaned_after_rerun(self, tmp_path):
-        """Validation files are deleted after successful Reasoner→Builder rerun."""
+        """Validation files at nested paths are deleted after Reasoner→Builder rerun."""
         state = _make_state(tmp_path)
         router = _make_router(state)
-
-        # Write a stale validation report
-        builder_dir = tmp_path / "builder"
-        builder_dir.mkdir(parents=True)
-        vfile = builder_dir / "pi-controller_validation.json"
-        vfile.write_text(json.dumps({
-            "formulation_id": "pi-controller",
-            "paradigm": "homeostatic",
-            "status": "invalid",
-            "problems": [{"type": "ambiguous_logic", "detail": "test"}],
-        }))
 
         call_count = 0
 
@@ -163,7 +153,9 @@ class TestReviewBuildReasonerReruns:
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
+            patch("shared.storage") as mock_storage,
         ):
+            mock_storage.delete = AsyncMock()
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -172,6 +164,12 @@ class TestReviewBuildReasonerReruns:
 
             await router._review_build()
 
-        # Validation file cleanup happens via S3 (not local filesystem)
-        # so we just verify the stage advanced
+        # Validation cleanup uses nested paths
+        delete_calls = mock_storage.delete.call_args_list
+        expected_paths = {
+            "models/run-1/builder/homeostatic/pi-controller_validation.json",
+            "models/run-1/builder/homeostatic/dual-process_validation.json",
+        }
+        actual_paths = {call.args[0] for call in delete_calls}
+        assert actual_paths == expected_paths
         assert state.stage == Stage.DONE

@@ -14,9 +14,13 @@ def test_system_prompt_exists():
     assert "env" in REASONER_SUB_SYSTEM_PROMPT.lower()
 
 
-def test_reasoner_sub_has_correct_tools(tmp_path):
+def test_reasoner_sub_has_correct_tools():
     client = AsyncMock()
-    agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
+    agent = ReasonerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        models_prefix="models/run-1",
+    )
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
     assert "write_file" in tool_names
@@ -24,7 +28,7 @@ def test_reasoner_sub_has_correct_tools(tmp_path):
 
 @pytest.mark.asyncio
 async def test_reasoner_sub_run_returns_content(
-    tmp_path, make_tool_use_block, make_text_block, make_response,
+    make_tool_use_block, make_text_block, make_response,
 ):
     # Step 1: LLM calls read_file for deep report
     read_deep = make_tool_use_block(
@@ -44,9 +48,9 @@ async def test_reasoner_sub_run_returns_content(
     )
     resp3 = make_response("tool_use", [read_env])
 
-    # Step 4: LLM calls write_file with JSON spec
+    # Step 4: LLM calls write_file with JSON spec (nested path)
     spec = {
-        "formulation_id": "homeostatic_pi_controller",
+        "formulation_id": "pi_controller",
         "paradigm": "homeostatic",
         "name": "Homeostatic PI Controller",
     }
@@ -54,7 +58,7 @@ async def test_reasoner_sub_run_returns_content(
         "call_4",
         "write_file",
         {
-            "path": "reasoner/homeostatic_pi_controller.json",
+            "path": "reasoner/homeostatic/pi_controller.json",
             "content": json.dumps(spec, indent=2),
         },
     )
@@ -62,79 +66,81 @@ async def test_reasoner_sub_run_returns_content(
 
     # Step 5: LLM produces final text
     final_text = make_text_block(
-        "Produced JSON spec for homeostatic_pi_controller."
+        "Produced JSON spec for pi_controller."
     )
     resp5 = make_response("end_turn", [final_text])
-
-    # Prepare fixture files so read_file succeeds
-    deep_dir = tmp_path / "deep"
-    deep_dir.mkdir(parents=True)
-    (deep_dir / "homeostatic.md").write_text(
-        "# Homeostatic — Deep research\n\nContent."
-    )
-
-    form_dir = tmp_path / "formulations"
-    form_dir.mkdir(parents=True)
-    (form_dir / "homeostatic.md").write_text(
-        "# Homeostatic — Mathematical formulations\n\n## Formulation 1: PI Controller"
-    )
-
-    (tmp_path / "env_spec.json").write_text(
-        json.dumps({"actions": ["up", "down", "left", "right", "stay", "eat"]})
-    )
 
     client = AsyncMock()
     client.messages.create.side_effect = [resp1, resp2, resp3, resp4, resp5]
 
-    agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
+    agent = ReasonerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        models_prefix="models/run-1",
+    )
     result = await agent.run("homeostatic")
 
-    assert "homeostatic_pi_controller" in result
+    assert "pi_controller" in result
 
 
 @pytest.mark.asyncio
-async def test_reasoner_sub_uses_opus_model(tmp_path, make_text_block, make_response):
+async def test_reasoner_sub_uses_opus_model(make_text_block, make_response):
     final_text = make_text_block("# Output")
     resp = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.return_value = resp
 
-    agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
+    agent = ReasonerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        models_prefix="models/run-1",
+    )
     await agent.run("homeostatic")
 
     call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
 
 
-# ---- P1-003: ID propagation tests ----
+# ---- P5-003: Slug-based path tests ----
 
 
 @pytest.mark.asyncio
-async def test_reasoner_sub_includes_formulation_ids_in_message(
-    tmp_path, make_text_block, make_response,
+async def test_reasoner_sub_includes_formulation_slugs_in_message(
+    make_text_block, make_response,
 ):
-    """When formulation_ids are passed, they appear in the user message."""
+    """When formulation_slugs are passed, they appear in the user message."""
     final_text = make_text_block("Done")
     resp = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.return_value = resp
 
-    agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
-    await agent.run("homeostatic", formulation_ids=["T01-P01-F01", "T01-P01-F02"])
+    agent = ReasonerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        models_prefix="models/run-1",
+    )
+    await agent.run("homeostatic", formulation_slugs=["pi-controller", "dual-process"])
 
     call_kwargs = client.messages.create.call_args
     messages = call_kwargs.kwargs["messages"]
     user_msg = messages[0]["content"]
-    assert "T01-P01-F01" in user_msg
-    assert "T01-P01-F02" in user_msg
+    assert "pi-controller" in user_msg
+    assert "dual-process" in user_msg
+    # Path instruction uses paradigm slug in path
+    assert "reasoner/homeostatic/" in user_msg
 
 
-def test_system_prompt_does_not_derive_formulation_id():
-    """System prompt should NOT instruct LLM to derive formulation_id."""
-    assert "Deriving" not in REASONER_SUB_SYSTEM_PROMPT
-    assert "Combine the paradigm slug" not in REASONER_SUB_SYSTEM_PROMPT
+def test_system_prompt_uses_paradigm_slug_paths():
+    """System prompt should instruct writing to reasoner/{paradigm_slug}/{formulation_slug}.json."""
+    assert "reasoner/{paradigm_slug}/{formulation_slug}.json" in REASONER_SUB_SYSTEM_PROMPT
+
+
+def test_system_prompt_does_not_reference_formulation_ids():
+    """System prompt should NOT reference 'Formulation IDs' section."""
+    assert "Formulation IDs" not in REASONER_SUB_SYSTEM_PROMPT
+    assert "formulation_id}.json" not in REASONER_SUB_SYSTEM_PROMPT
 
 
 # ---- P4-001: Validation tests ----

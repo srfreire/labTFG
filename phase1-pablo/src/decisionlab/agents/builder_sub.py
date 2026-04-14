@@ -40,15 +40,14 @@ Define inline in each model file — never import from external packages:
 
 ## File naming
 
-Use the `formulation_id` field from the JSON spec EXACTLY as-is for file names. \
-Do NOT rename, normalize, or transform it in any way.
+The user message provides `paradigm_slug` and `formulation_slug`. Use these for paths:
 
-- Model: `builder/{formulation_id}_model.py`
-- Tests: `builder/test_{formulation_id}.py`
+- Model: `builder/{paradigm_slug}/{formulation_slug}_model.py`
+- Tests: `builder/{paradigm_slug}/test_{formulation_slug}.py`
 
-Example: if `formulation_id` is `"homeostatic-regulation_pi_negative_feedback"`, \
-the files are `builder/homeostatic-regulation_pi_negative_feedback_model.py` and \
-`builder/test_homeostatic-regulation_pi_negative_feedback.py`.
+Example: if paradigm is `"homeostatic"` and formulation is `"pi_negative_feedback"`, \
+the files are `builder/homeostatic/pi_negative_feedback_model.py` and \
+`builder/homeostatic/test_pi_negative_feedback.py`.
 
 Never create a second copy of a file with a different name. Write each file once.
 
@@ -83,7 +82,7 @@ If ANY check fails → write a **validation report** instead of model/test files
 }
 ```
 
-Save the validation report at `builder/{formulation_id}_validation.json` using `write_file`.
+Save the validation report at `builder/{paradigm_slug}/{formulation_slug}_validation.json` using `write_file`.
 Do NOT write model or test files for invalid specs.
 
 Be strict but fair: flag genuine implementability issues, not stylistic preferences.
@@ -94,10 +93,10 @@ For EACH JSON spec:
 
 1. `read_file` the spec.
 2. **Validate** the spec (see Validation above).
-3. If invalid → `write_file` the validation report (`builder/{formulation_id}_validation.json`) \
+3. If invalid → `write_file` the validation report (`builder/{paradigm_slug}/{formulation_slug}_validation.json`) \
 and move to the next spec.
-4. `write_file` the model (`builder/{formulation_id}_model.py`).
-5. `write_file` the tests (`builder/test_{formulation_id}.py`).
+4. `write_file` the model (`builder/{paradigm_slug}/{formulation_slug}_model.py`).
+5. `write_file` the tests (`builder/{paradigm_slug}/test_{formulation_slug}.py`).
 6. `run_tests` on the test file.
 7. If tests fail → fix via `write_file` + `run_tests` (max 3 attempts). Then next spec.
 
@@ -157,7 +156,7 @@ Putting state updates in `decide()` WILL break the simulation. No exceptions.
 
 ## Test structure
 
-- `from {formulation_id}_model import ClassName, Action` (PYTHONPATH is pre-configured)
+- `from {formulation_slug}_model import ClassName, Action` (PYTHONPATH is pre-configured)
 - One test per `expected_behaviors[]` entry, guided by `test_pseudocode`
 - Pure unit tests, no external dependencies beyond stdlib/math
 - Seed random for determinism when model uses randomness

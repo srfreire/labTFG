@@ -1,4 +1,4 @@
-"""Tests for Router._review_reason handling of formalizer reruns (P4-001)."""
+"""Tests for Router._review_reason (P4-001 + P5-003)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ def _make_state(tmp_path: Path) -> PipelineState:
         stage=Stage.REVIEW_REASON,
         problem="test problem",
         reports_dir=tmp_path,
+        run_id="run-1",
         approved_paradigms=["homeostatic"],
         selected_formulations={"homeostatic": ["pi-controller", "dual-process"]},
     )
@@ -44,9 +45,7 @@ class TestReviewReasonFormalizerReruns:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                # First call: invalid spec triggers formalizer rerun
                 return [], [], ["homeostatic"]
-            # Second call: all approved after rerun
             return ["pi-controller"], [], []
 
         with (
@@ -61,20 +60,16 @@ class TestReviewReasonFormalizerReruns:
 
             await router._review_reason()
 
-        # Formalizer was called for the paradigm
         mock_formalizer_inst.run.assert_called_once_with(["homeostatic"])
-        # Reasoner was called after Formalizer
         mock_reasoner_inst.run.assert_called_once_with(
             {"homeostatic": ["pi-controller", "dual-process"]}
         )
-        # State advanced to BUILD
         assert state.stage == Stage.BUILD
-        # approved_specs is now a dict keyed by paradigm slug
         assert state.approved_specs == {"homeostatic": ["pi-controller"]}
 
     @pytest.mark.asyncio
     async def test_no_formalizer_reruns_proceeds_normally(self, tmp_path):
-        """Without formalizer_reruns, proceeds as before (just rejections or approval)."""
+        """Without formalizer_reruns, proceeds as before."""
         state = _make_state(tmp_path)
         router = _make_router(state)
 
@@ -116,8 +111,6 @@ class TestReviewReasonFormalizerReruns:
 
             await router._review_reason()
 
-        # Reasoner was called (for rejection)
         mock_reasoner_inst.run.assert_called()
-        # Formalizer was NOT called
         mock_formalizer_inst.run.assert_not_called()
         assert state.stage == Stage.BUILD

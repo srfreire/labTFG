@@ -43,7 +43,7 @@ def _infer_artifact_type(path: str) -> str:
         return "reasoner_spec"
     if path.startswith("builder/") and path.endswith("_model.py"):
         return "model"
-    if path.startswith("builder/test_"):
+    if path.startswith("builder/") and "/test_" in path:
         return "test"
     if path.endswith("_validation.json"):
         return "reasoner_spec"

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from decisionlab.agents.deep_researcher import DeepResearcher, DEEP_RESEARCHER_SYSTEM_PROMPT
 from decisionlab.adapters.mock import MockWebSearch
@@ -61,7 +61,7 @@ async def test_deep_researcher_run_returns_summary():
 
 
 @pytest.mark.asyncio
-async def test_deep_researcher_saves_report_to_disk(tmp_path):
+async def test_deep_researcher_saves_report_to_s3():
     text_block = MagicMock()
     text_block.type = "text"
     text_block.text = "# Homeostatic — Deep research\n\nFull content."
@@ -80,12 +80,11 @@ async def test_deep_researcher_saves_report_to_disk(tmp_path):
     client = AsyncMock()
     client.messages.create.side_effect = [loop_response, summary_response]
 
-    dr = DeepResearcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
-    await dr.run("Homeostatic regulation")
+    dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
 
-    report_file = tmp_path / "deep" / "homeostatic-regulation.md"
-    assert report_file.exists()
-    assert "Full content" in report_file.read_text()
+    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock) as mock_save:
+        await dr.run("Homeostatic regulation")
+        mock_save.assert_called_once_with("run-1", "Homeostatic regulation", "# Homeostatic — Deep research\n\nFull content.")
 
 
 @pytest.mark.asyncio
@@ -110,8 +109,8 @@ async def test_deep_researcher_empty_report_returns_early():
 
 
 @pytest.mark.asyncio
-async def test_deep_researcher_empty_report_no_disk_save(tmp_path):
-    """When agent loop returns empty text, nothing is saved to disk."""
+async def test_deep_researcher_empty_report_no_s3_save():
+    """When agent loop returns empty text, nothing is saved to S3."""
     text_block = MagicMock()
     text_block.type = "text"
     text_block.text = ""
@@ -123,11 +122,11 @@ async def test_deep_researcher_empty_report_no_disk_save(tmp_path):
     client = AsyncMock()
     client.messages.create.return_value = loop_response
 
-    dr = DeepResearcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
-    await dr.run("Empty paradigm")
+    dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
 
-    deep_dir = tmp_path / "deep"
-    assert not deep_dir.exists()
+    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock) as mock_save:
+        await dr.run("Empty paradigm")
+        mock_save.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -148,4 +147,4 @@ async def test_deep_researcher_summary_fallback_on_api_error():
     result = await dr.run("Failing paradigm")
 
     assert "Paradigm report" in result
-    assert "[Full report saved to disk]" in result
+    assert "[Full report saved to S3]" in result

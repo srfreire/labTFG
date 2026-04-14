@@ -48,7 +48,7 @@ class Reasoner:
                 models_prefix=self.models_prefix,
                 run_id=self.run_id,
             )
-            .run(slug, formulation_ids=selected_formulations[slug] or None)
+            .run(slug, formulation_slugs=selected_formulations[slug] or None)
             for slug in paradigm_slugs
         ]
 

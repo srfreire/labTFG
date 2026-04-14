@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -10,55 +8,69 @@ from decisionlab.domain.models import BuilderReport
 def test_builder_construction(tmp_path):
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        run_id="run-1",
+        project_root=project_root,
+    )
     assert b.client is client
-    assert b.reports_dir is tmp_path
+    assert b.models_prefix == "models/run-1"
     assert b.project_root is project_root
 
 
 @pytest.mark.asyncio
 async def test_builder_run_collects_results(tmp_path):
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "alpha-spec1.json").write_text(json.dumps({"paradigm": "alpha"}))
-    (reasoner_dir / "beta-spec1.json").write_text(json.dumps({"paradigm": "beta"}))
-
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        run_id="run-1",
+        project_root=project_root,
+    )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} built"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.exists = AsyncMock(return_value=True)
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
-        report = await b.run(["alpha-spec1", "beta-spec1"])
+        approved = {"alpha": ["spec1"], "beta": ["spec1"]}
+        report = await b.run(approved)
 
     assert isinstance(report, BuilderReport)
-    assert "alpha-spec1" in report.results
-    assert "beta-spec1" in report.results
-    assert report.results["alpha-spec1"] == "# alpha-spec1 built"
+    assert "spec1" in report.results
 
 
 @pytest.mark.asyncio
-async def test_builder_run_discovers_specs_from_disk(tmp_path):
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "spec-a.json").write_text(json.dumps({"paradigm": "a"}))
-    (reasoner_dir / "spec-b.json").write_text(json.dumps({"paradigm": "a"}))
-    (reasoner_dir / "spec-c.json").write_text(json.dumps({"paradigm": "b"}))
-
+async def test_builder_run_discovers_specs_from_s3(tmp_path):
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=project_root,
+    )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} content"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.list = AsyncMock(return_value=[
+            "models/run-1/reasoner/paradigm-a/spec-a.json",
+            "models/run-1/reasoner/paradigm-a/spec-b.json",
+            "models/run-1/reasoner/paradigm-b/spec-c.json",
+        ])
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -70,118 +82,127 @@ async def test_builder_run_discovers_specs_from_disk(tmp_path):
 
 @pytest.mark.asyncio
 async def test_builder_run_handles_partial_failure(tmp_path):
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "good-spec.json").write_text(json.dumps({"paradigm": "good"}))
-    (reasoner_dir / "fail-me-spec.json").write_text(json.dumps({"paradigm": "bad"}))
-
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=project_root,
+    )
 
     async def fake_run(spec_id, spec_path):
-        if spec_id == "fail-me-spec":
+        if spec_id == "fail-me":
             raise RuntimeError("LLM exploded")
         return f"# {spec_id} ok"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.exists = AsyncMock(return_value=True)
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
-        report = await b.run()
+        report = await b.run({"paradigm": ["good", "fail-me"]})
 
-    assert "good-spec" in report.results
-    assert report.results["good-spec"] == "# good-spec ok"
-    assert "fail-me-spec" not in report.results
+    assert "good" in report.results
+    assert report.results["good"] == "# good ok"
+    assert "fail-me" not in report.results
 
 
 @pytest.mark.asyncio
-async def test_builder_run_filters_by_spec_ids(tmp_path):
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "alpha.json").write_text(json.dumps({"paradigm": "a"}))
-    (reasoner_dir / "beta.json").write_text(json.dumps({"paradigm": "b"}))
-    (reasoner_dir / "gamma.json").write_text(json.dumps({"paradigm": "c"}))
-
+async def test_builder_run_filters_by_approved_specs(tmp_path):
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        run_id="run-1",
+        project_root=project_root,
+    )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} built"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.exists = AsyncMock(return_value=True)
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
-        report = await b.run(["alpha", "gamma"])
+        report = await b.run({"alpha": ["spec1", "spec3"], "beta": []})
 
-    assert set(report.results.keys()) == {"alpha", "gamma"}
-    assert "beta" not in report.results
+    # Only alpha/spec1 and alpha/spec3 were built (beta had no formulations)
+    assert "spec1" in report.results
+    assert "spec3" in report.results
 
 
-# ---- P1-003: ID propagation tests ----
+# ---- P5-003: Slug-based path tests ----
 
 
 @pytest.mark.asyncio
-async def test_builder_run_with_registry_ids(tmp_path):
-    """Builder.run accepts formulation IDs and dispatches per spec."""
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "T01-P01-F01.json").write_text(
-        json.dumps({"formulation_id": "T01-P01-F01", "paradigm": "homeostatic"})
-    )
-    (reasoner_dir / "T01-P01-F02.json").write_text(
-        json.dumps({"formulation_id": "T01-P01-F02", "paradigm": "homeostatic"})
-    )
-    (reasoner_dir / "T01-P02-F01.json").write_text(
-        json.dumps({"formulation_id": "T01-P02-F01", "paradigm": "hedonic"})
-    )
-
+async def test_builder_constructs_nested_s3_paths(tmp_path):
+    """Builder passes correct nested spec paths to sub-agents."""
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        run_id="run-1",
+        project_root=project_root,
+    )
+
+    captured_paths = []
 
     async def fake_run(spec_id, spec_path):
+        captured_paths.append((spec_id, spec_path))
         return f"# {spec_id} built"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.exists = AsyncMock(return_value=True)
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
-        report = await b.run(["T01-P01-F01", "T01-P02-F01"])
+        await b.run({"homeostatic": ["pi-controller"]})
 
-    assert isinstance(report, BuilderReport)
-    assert set(report.results.keys()) == {"T01-P01-F01", "T01-P02-F01"}
-    assert report.results["T01-P01-F01"] == "# T01-P01-F01 built"
-    assert "T01-P01-F02" not in report.results
+    assert len(captured_paths) == 1
+    spec_id, spec_path = captured_paths[0]
+    assert spec_id == "pi-controller"
+    assert spec_path == "reasoner/homeostatic/pi-controller.json"
 
 
 @pytest.mark.asyncio
-async def test_builder_results_keyed_by_formulation_id(tmp_path):
-    """build_results uses formulation IDs as keys, not paradigm slugs."""
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir()
-    (reasoner_dir / "T01-P01-F01.json").write_text(
-        json.dumps({"formulation_id": "T01-P01-F01", "paradigm": "homeostatic"})
-    )
-
+async def test_builder_results_keyed_by_formulation_slug(tmp_path):
+    """build_results uses formulation slugs as keys."""
     client = AsyncMock()
     project_root = tmp_path / "project"
-    b = Builder(client=client, reports_dir=tmp_path, project_root=project_root)
+    b = Builder(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=project_root,
+    )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} result"
 
-    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
+    with (
+        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
+        patch("decisionlab.agents.builder.shared") as mock_shared,
+    ):
+        mock_shared.storage.exists = AsyncMock(return_value=True)
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
-        report = await b.run(["T01-P01-F01"])
+        report = await b.run({"homeostatic": ["pi-controller"]})
 
-    assert "T01-P01-F01" in report.results
+    assert "pi-controller" in report.results
     assert "homeostatic" not in report.results

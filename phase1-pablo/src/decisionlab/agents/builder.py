@@ -21,56 +21,69 @@ class Builder:
         self.run_id = run_id
         self.project_root = project_root
 
-    async def run(self, spec_ids: list[str] | None = None) -> BuilderReport:
+    async def run(
+        self,
+        approved_specs: dict[str, list[str]] | None = None,
+    ) -> BuilderReport:
         """Build models from reasoner specs.
 
-        *spec_ids* — formulation IDs (e.g. ``["T01-P01-F01"]``).
+        *approved_specs* — ``{paradigm_slug: [formulation_slug, ...]}``.
         When provided, only those specs are built.  When ``None`` or
-        empty, all ``reasoner/*.json`` files are discovered from S3.
+        empty, all ``reasoner/{paradigm}/*.json`` files are discovered from S3.
         """
         reasoner_prefix = f"{self.models_prefix}/reasoner/"
 
-        if spec_ids:
-            spec_files = []
-            for sid in spec_ids:
-                key = f"{reasoner_prefix}{sid}.json"
-                if await shared.storage.exists(key):
-                    spec_files.append((sid, f"reasoner/{sid}.json"))
+        # Build list of (paradigm, formulation, relative_spec_path) tuples
+        spec_files: list[tuple[str, str, str]] = []
+
+        if approved_specs:
+            for paradigm, formulations in approved_specs.items():
+                for formulation in formulations:
+                    key = f"{reasoner_prefix}{paradigm}/{formulation}.json"
+                    if await shared.storage.exists(key):
+                        spec_files.append(
+                            (paradigm, formulation, f"reasoner/{paradigm}/{formulation}.json")
+                        )
         else:
+            # Discovery: list all paradigm dirs, then files within each
             keys = await shared.storage.list(reasoner_prefix)
-            spec_files = []
             for key in keys:
                 if key.endswith(".json"):
-                    filename = key[len(reasoner_prefix):]
-                    fid = filename.removesuffix(".json")
-                    spec_files.append((fid, f"reasoner/{filename}"))
+                    rel = key[len(reasoner_prefix):]  # e.g. "homeostatic/pi-controller.json"
+                    parts = rel.split("/")
+                    if len(parts) == 2:
+                        paradigm = parts[0]
+                        formulation = parts[1].removesuffix(".json")
+                        spec_files.append(
+                            (paradigm, formulation, f"reasoner/{rel}")
+                        )
             logger.info(
                 "Discovered %d spec(s) from S3: %s",
                 len(spec_files),
-                [f[0] for f in spec_files],
+                [(p, f) for p, f, _ in spec_files],
             )
 
-        # Dispatch one BuilderSubAgent per spec (keyed by formulation ID)
-        fids: list[str] = []
+        # Dispatch one BuilderSubAgent per spec
+        labels: list[str] = []
         tasks: list = []
-        for fid, spec_path in spec_files:
-            fids.append(fid)
+        for paradigm, formulation, spec_path in spec_files:
+            labels.append(formulation)
             tasks.append(
                 BuilderSubAgent(
                     client=self.client,
                     models_prefix=self.models_prefix,
                     run_id=self.run_id,
                     project_root=self.project_root,
-                ).run(fid, spec_path)
+                ).run(formulation, spec_path)
             )
 
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
         results: dict[str, str] = {}
-        for fid, outcome in zip(fids, outcomes):
+        for label, outcome in zip(labels, outcomes):
             if isinstance(outcome, BaseException):
-                logger.error("BuilderSubAgent failed for %s: %s", fid, outcome)
+                logger.error("BuilderSubAgent failed for %s: %s", label, outcome)
             else:
-                results[fid] = outcome
+                results[label] = outcome
 
         return BuilderReport(results=results)

@@ -10,7 +10,7 @@ detection of the invalid input.  We verify:
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -62,13 +62,44 @@ def _mock_client(*responses) -> AsyncMock:
     return client
 
 
-def _assert_invalid_report(tmp_path, subdir: str, filename: str, min_problems: int = 1):
-    """Assert a validation report exists with status 'invalid' and enough problems."""
-    report_path = tmp_path / subdir / filename
-    assert report_path.exists()
-    data = json.loads(report_path.read_text())
+def _assert_invalid_report(s3_store: dict, prefix: str, subdir: str, filename: str, min_problems: int = 1):
+    """Assert a validation report exists in mock S3 with status 'invalid' and enough problems."""
+    key = f"{prefix}/{subdir}/{filename}"
+    assert key in s3_store, f"Expected key {key} in S3 store, got: {list(s3_store.keys())}"
+    data = json.loads(s3_store[key])
     assert data["status"] == "invalid"
     assert len(data["problems"]) >= min_problems
+
+
+def _make_s3_mock(s3_store: dict | None = None):
+    """Return (s3_store, mock_storage_obj) for patching shared.storage."""
+    if s3_store is None:
+        s3_store = {}
+
+    async def fake_get_text(key):
+        if key not in s3_store:
+            raise FileNotFoundError(key)
+        return s3_store[key]
+
+    async def fake_put_text(key, content):
+        s3_store[key] = content
+
+    async def fake_get(key):
+        if key not in s3_store:
+            raise FileNotFoundError(key)
+        val = s3_store[key]
+        return val.encode() if isinstance(val, str) else val
+
+    async def fake_list(prefix):
+        return [k for k in s3_store if k.startswith(prefix)]
+
+    mock = MagicMock()
+    mock.get_text = AsyncMock(side_effect=fake_get_text)
+    mock.put_text = AsyncMock(side_effect=fake_put_text)
+    mock.get = AsyncMock(side_effect=fake_get)
+    mock.list = AsyncMock(side_effect=fake_list)
+
+    return s3_store, mock
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -171,14 +202,14 @@ class TestFormalizerSubRobustness:
     """FormalizerSubAgent receives a deep report full of nonsense."""
 
     @pytest.mark.asyncio
-    async def test_incoherent_report_no_crash(self, tmp_path):
+    async def test_incoherent_report_no_crash(self):
         """Deep report is gibberish -> LLM reads it, signals failure, no crash."""
-        deep_dir = tmp_path / "deep"
-        deep_dir.mkdir()
-        (deep_dir / "gibberish.md").write_text(
-            "asdfghjkl 🎉🎉🎉 qwertyuiop !@#$% lorem ipsum dolor sit amet "
-            "this is not a real research report and contains no paradigm info."
-        )
+        s3_store, mock_storage = _make_s3_mock({
+            "research/run-1/deep/gibberish.md": (
+                "asdfghjkl 🎉🎉🎉 qwertyuiop !@#$% lorem ipsum dolor sit amet "
+                "this is not a real research report and contains no paradigm info."
+            ),
+        })
 
         read_call = _tool_block("c1", "read_file", {"path": "deep/gibberish.md"})
         resp1 = _response("tool_use", [read_call])
@@ -196,15 +227,18 @@ class TestFormalizerSubRobustness:
         )])
         client = _mock_client(resp1, resp2, final)
 
-        agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
-        result = await agent.run("gibberish")
+        with patch("shared.storage", mock_storage):
+            agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+            result = await agent.run("gibberish")
 
         assert isinstance(result, str)
         assert result
 
     @pytest.mark.asyncio
-    async def test_missing_deep_report_no_crash(self, tmp_path):
+    async def test_missing_deep_report_no_crash(self):
         """Deep report file doesn't exist -> read_file returns error -> no crash."""
+        s3_store, mock_storage = _make_s3_mock()
+
         read_call = _tool_block("c1", "read_file", {"path": "deep/nonexistent.md"})
         resp1 = _response("tool_use", [read_call])
         final = _response("end_turn", [_text_block(
@@ -212,18 +246,19 @@ class TestFormalizerSubRobustness:
         )])
         client = _mock_client(resp1, final)
 
-        agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
-        result = await agent.run("nonexistent")
+        with patch("shared.storage", mock_storage):
+            agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+            result = await agent.run("nonexistent")
 
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    async def test_emoji_slug_no_crash(self, tmp_path):
+    async def test_emoji_slug_no_crash(self):
         """Paradigm slug is pure emojis -> agent handles gracefully."""
         final = _response("end_turn", [_text_block("Invalid paradigm slug.")])
         client = _mock_client(final)
 
-        agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
+        agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
         result = await agent.run("🎉🎉🎉")
 
         assert isinstance(result, str)
@@ -239,16 +274,13 @@ class TestReasonerSubRobustness:
 
     _ENV_SPEC = {"actions": ["up", "down", "left", "right", "stay", "eat"]}
 
-    def _setup_reasoner_dirs(self, tmp_path, slug: str, deep_text: str, form_text: str):
-        """Create deep report, formulations, env_spec, and reasoner output dir."""
-        (tmp_path / "deep").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "deep" / f"{slug}.md").write_text(deep_text)
-
-        (tmp_path / "formulations").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "formulations" / f"{slug}.md").write_text(form_text)
-
-        (tmp_path / "env_spec.json").write_text(json.dumps(self._ENV_SPEC))
-        (tmp_path / "reasoner").mkdir(parents=True, exist_ok=True)
+    def _setup_s3_store(self, slug: str, deep_text: str, form_text: str) -> dict:
+        """Create S3 mock store with deep report, formulations, env_spec."""
+        return {
+            f"research/run-1/deep/{slug}.md": deep_text,
+            f"research/run-1/formulations/{slug}.md": form_text,
+            "research/run-1/env_spec.json": json.dumps(self._ENV_SPEC),
+        }
 
     def _read_three_files_responses(self, slug: str):
         """Return the 3 mock responses for reading deep, formulations, env_spec."""
@@ -266,10 +298,10 @@ class TestReasonerSubRobustness:
         })])
 
     @pytest.mark.asyncio
-    async def test_detects_nonsense_and_writes_invalid(self, tmp_path):
+    async def test_detects_nonsense_and_writes_invalid(self):
         """Nonsensical formulations -> LLM detects -> writes status:invalid."""
-        self._setup_reasoner_dirs(
-            tmp_path, "nonsense",
+        s3_store = self._setup_s3_store(
+            "nonsense",
             deep_text="# Nonsense paradigm\n\nasdfghjkl qwertyuiop the cat sat on the mat.",
             form_text=(
                 "# Nonsense formulations\n\n## Formulation 1: Random\n"
@@ -299,17 +331,19 @@ class TestReasonerSubRobustness:
         )])
         client = _mock_client(*reads, write, final)
 
-        agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
-        result = await agent.run("nonsense", formulation_ids=["nonsense-F01"])
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            result = await agent.run("nonsense", formulation_slugs=["nonsense-F01"])
 
         assert isinstance(result, str)
-        _assert_invalid_report(tmp_path, "reasoner", "nonsense-F01.json", min_problems=1)
+        _assert_invalid_report(s3_store, "models/run-1", "reasoner", "nonsense-F01.json", min_problems=1)
 
     @pytest.mark.asyncio
-    async def test_empty_formulations_no_crash(self, tmp_path):
+    async def test_empty_formulations_no_crash(self):
         """Empty formulation file -> LLM detects, reports invalid, no crash."""
-        self._setup_reasoner_dirs(
-            tmp_path, "empty",
+        s3_store = self._setup_s3_store(
+            "empty",
             deep_text="# Empty paradigm\n\n",
             form_text="",
         )
@@ -330,14 +364,16 @@ class TestReasonerSubRobustness:
         )])
         client = _mock_client(*reads, write, final)
 
-        agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
-        result = await agent.run("empty", formulation_ids=["empty-F01"])
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            result = await agent.run("empty", formulation_slugs=["empty-F01"])
 
         assert isinstance(result, str)
-        _assert_invalid_report(tmp_path, "reasoner", "empty-F01.json")
+        _assert_invalid_report(s3_store, "models/run-1", "reasoner", "empty-F01.json")
 
     @pytest.mark.asyncio
-    async def test_path_injection_slug_no_crash(self, tmp_path):
+    async def test_path_injection_slug_no_crash(self):
         """Slug with path traversal chars -> agent handles gracefully."""
         read_deep = _tool_block("c1", "read_file", {"path": "deep/../../etc/passwd.md"})
         resp1 = _response("tool_use", [read_deep])
@@ -346,8 +382,10 @@ class TestReasonerSubRobustness:
         )])
         client = _mock_client(resp1, final)
 
-        agent = ReasonerSubAgent(client=client, reports_dir=tmp_path)
-        result = await agent.run("../../etc/passwd")
+        s3_store, mock_storage = _make_s3_mock()
+        with patch("shared.storage", mock_storage):
+            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            result = await agent.run("../../etc/passwd")
 
         assert isinstance(result, str)
 
@@ -360,15 +398,13 @@ class TestReasonerSubRobustness:
 class TestBuilderSubRobustness:
     """BuilderSubAgent receives a broken or absurd JSON spec."""
 
-    def _write_spec(self, tmp_path, spec_id: str, spec_content):
-        """Write a spec file to the reasoner dir; return relative path."""
-        (tmp_path / "reasoner").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "builder").mkdir(parents=True, exist_ok=True)
-        spec_path = tmp_path / "reasoner" / f"{spec_id}.json"
+    def _write_spec_to_s3(self, s3_store: dict, spec_id: str, spec_content):
+        """Write a spec to mock S3 store; return relative path."""
         if isinstance(spec_content, str):
-            spec_path.write_text(spec_content)
+            content = spec_content
         else:
-            spec_path.write_text(json.dumps(spec_content, indent=2))
+            content = json.dumps(spec_content, indent=2)
+        s3_store[f"models/run-1/reasoner/{spec_id}.json"] = content
         return f"reasoner/{spec_id}.json"
 
     def _read_then_write_invalid(self, spec_path: str, validation: dict):
@@ -388,8 +424,9 @@ class TestBuilderSubRobustness:
     @pytest.mark.asyncio
     async def test_absurd_spec_writes_validation_report(self, tmp_path):
         """Spec with nonsensical decision_logic -> LLM writes validation report."""
+        s3_store: dict[str, str] = {}
         spec_id = "nonsense-spec"
-        spec_path = self._write_spec(tmp_path, spec_id, {
+        spec_path = self._write_spec_to_s3(s3_store, spec_id, {
             "formulation_id": spec_id,
             "paradigm": "nonsense",
             "name": "Nonsense Model",
@@ -433,20 +470,23 @@ class TestBuilderSubRobustness:
         )])
         client = _mock_client(resp1, resp2, final)
 
-        agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-        result = await agent.run(spec_id, spec_path)
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(tmp_path, "builder", f"{spec_id}_validation.json", min_problems=3)
+        _assert_invalid_report(s3_store, "models/run-1", "builder", f"{spec_id}_validation.json", min_problems=3)
         # No model/test files should be created for invalid specs
-        assert not (tmp_path / "builder" / f"{spec_id}_model.py").exists()
-        assert not (tmp_path / "builder" / f"test_{spec_id}.py").exists()
+        assert f"models/run-1/builder/{spec_id}_model.py" not in s3_store
+        assert f"models/run-1/builder/test_{spec_id}.py" not in s3_store
 
     @pytest.mark.asyncio
     async def test_empty_spec_no_crash(self, tmp_path):
         """Empty/minimal spec -> LLM detects, writes validation report."""
+        s3_store: dict[str, str] = {}
         spec_id = "empty-spec"
-        spec_path = self._write_spec(tmp_path, spec_id, {})
+        spec_path = self._write_spec_to_s3(s3_store, spec_id, {})
 
         validation = {
             "formulation_id": spec_id,
@@ -460,17 +500,20 @@ class TestBuilderSubRobustness:
         final = _response("end_turn", [_text_block("Empty spec — validation failed.")])
         client = _mock_client(resp1, resp2, final)
 
-        agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-        result = await agent.run(spec_id, spec_path)
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(tmp_path, "builder", f"{spec_id}_validation.json")
-        assert not (tmp_path / "builder" / f"{spec_id}_model.py").exists()
+        _assert_invalid_report(s3_store, "models/run-1", "builder", f"{spec_id}_validation.json")
+        assert f"models/run-1/builder/{spec_id}_model.py" not in s3_store
 
     @pytest.mark.asyncio
     async def test_malformed_json_spec_no_crash(self, tmp_path):
         """Spec file contains invalid JSON -> read succeeds (it's text), LLM handles it."""
-        spec_path = self._write_spec(tmp_path, "broken", "this is not json {{{")
+        s3_store: dict[str, str] = {}
+        spec_path = self._write_spec_to_s3(s3_store, "broken", "this is not json {{{")
 
         validation = {
             "formulation_id": "broken",
@@ -484,17 +527,19 @@ class TestBuilderSubRobustness:
         final = _response("end_turn", [_text_block("Invalid JSON — cannot build.")])
         client = _mock_client(resp1, resp2, final)
 
-        agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-        result = await agent.run("broken", spec_path)
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            result = await agent.run("broken", spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(tmp_path, "builder", "broken_validation.json")
-        assert not (tmp_path / "builder" / "broken_model.py").exists()
+        _assert_invalid_report(s3_store, "models/run-1", "builder", "broken_validation.json")
+        assert "models/run-1/builder/broken_model.py" not in s3_store
 
     @pytest.mark.asyncio
     async def test_spec_not_found_no_crash(self, tmp_path):
         """Spec file doesn't exist -> read_file returns error -> LLM ends gracefully."""
-        (tmp_path / "builder").mkdir(parents=True, exist_ok=True)
+        s3_store: dict[str, str] = {}
 
         read_call = _tool_block("c1", "read_file", {"path": "reasoner/ghost.json"})
         resp1 = _response("tool_use", [read_call])
@@ -503,8 +548,10 @@ class TestBuilderSubRobustness:
         )])
         client = _mock_client(resp1, final)
 
-        agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-        result = await agent.run("ghost", "reasoner/ghost.json")
+        _, mock_storage = _make_s3_mock(s3_store)
+        with patch("shared.storage", mock_storage):
+            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            result = await agent.run("ghost", "reasoner/ghost.json")
 
         assert isinstance(result, str)
 
@@ -531,10 +578,17 @@ class TestMaxIterationsRobustness:
         ])
         client = _mock_client(stuck_resp)
 
-        kwargs = {"client": client, "reports_dir": tmp_path}
-        if agent_cls is BuilderSubAgent:
-            kwargs["project_root"] = tmp_path
-        agent = agent_cls(**kwargs)
+        if agent_cls is FormalizerSubAgent:
+            kwargs = {"client": client, "research_prefix": "research/run-1"}
+        elif agent_cls is ReasonerSubAgent:
+            kwargs = {"client": client, "research_prefix": "research/run-1", "models_prefix": "models/run-1"}
+        elif agent_cls is BuilderSubAgent:
+            kwargs = {"client": client, "models_prefix": "models/run-1", "project_root": tmp_path}
+        else:
+            kwargs = {"client": client}
 
-        with pytest.raises(RuntimeError, match="Max iterations"):
-            await agent.run(*run_args)
+        s3_store, mock_storage = _make_s3_mock()
+        with patch("shared.storage", mock_storage):
+            agent = agent_cls(**kwargs)
+            with pytest.raises(RuntimeError, match="Max iterations"):
+                await agent.run(*run_args)

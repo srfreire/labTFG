@@ -237,7 +237,7 @@ class Router:
             r = Researcher(
                 client=self.client,
                 search=self.search,
-                reports_dir=self.state.reports_dir,
+                run_id=self.state.run_id,
             )
             await r.run(self.state.problem)
         except Exception as exc:
@@ -271,7 +271,7 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
-                        reports_dir=self.state.reports_dir,
+                        run_id=self.state.run_id,
                     )
                     await dr.run(additional)
                 except Exception as exc:
@@ -296,7 +296,8 @@ class Router:
         try:
             f = Formalizer(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                research_prefix=self.state.research_prefix,
+                run_id=self.state.run_id,
             )
             await f.run(self.state.approved_paradigms)
         except Exception as exc:
@@ -368,9 +369,12 @@ class Router:
         try:
             r = Reasoner(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                research_prefix=self.state.research_prefix,
+                models_prefix=self.state.models_prefix,
+                run_id=self.state.run_id,
             )
             await r.run(selected)
+            await self._validate_reasoner_files(selected)
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
@@ -414,7 +418,8 @@ class Router:
 
                     f = Formalizer(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        run_id=self.state.run_id,
                     )
                     await f.run([paradigm_slug])
                 except Exception as exc:
@@ -430,7 +435,9 @@ class Router:
                 try:
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -448,7 +455,9 @@ class Router:
                 try:
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -464,22 +473,22 @@ class Router:
     async def _do_build(self) -> None:
         from decisionlab.agents.builder import Builder
 
-        spec_ids = [
-            f for fs in self.state.approved_specs.values() for f in fs
-        ]
+        n_specs = sum(len(fs) for fs in self.state.approved_specs.values())
         self.console.print(
-            f"[bold]Running Builder for {len(spec_ids)} spec(s)...[/bold]"
+            f"[bold]Running Builder for {n_specs} spec(s)...[/bold]"
         )
         await self._emit({"type": "node_add", "node": {"id": "builder", "kind": "agent", "label": "Builder", "status": "running"}})
         await self._emit({"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}})
         try:
             b = Builder(
                 client=self.client,
-                reports_dir=self.state.reports_dir,
+                models_prefix=self.state.models_prefix,
+                run_id=self.state.run_id,
                 project_root=self.project_root,
             )
-            report = await b.run(spec_ids)
+            report = await b.run(self.state.approved_specs)
             self.state.build_results = report.results
+            await self._validate_builder_files(self.state.approved_specs)
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
@@ -518,7 +527,9 @@ class Router:
 
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -535,16 +546,17 @@ class Router:
                 try:
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
                     paradigm_specs = self.state.approved_specs.get(paradigm_slug, [])
-                    report = await b.run(paradigm_specs or None)
+                    report = await b.run({paradigm_slug: paradigm_specs} if paradigm_specs else None)
                     self.state.build_results.update(report.results)
                     # Clean up stale validation reports for this paradigm in S3
                     for sid in paradigm_specs:
                         await shared.storage.delete(
-                            f"models/{self.state.run_id}/builder/{sid}_validation.json"
+                            f"{self.state.models_prefix}/builder/{paradigm_slug}/{sid}_validation.json"
                         )
                 except Exception as exc:
                     self.console.print(
@@ -553,25 +565,79 @@ class Router:
                     logger.exception("Builder re-run failed for %s", paradigm_slug)
 
             # Re-run Builder for each rejected build (normal rejections)
-            for slug, _, _ in rejections:
+            for formulation_slug, paradigm_slug, _ in rejections:
                 self.console.print(
-                    f"[bold]Re-running Builder for '{slug}'...[/bold]"
+                    f"[bold]Re-running Builder for '{formulation_slug}'...[/bold]"
                 )
                 try:
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
-                    report = await b.run([slug])
+                    report = await b.run({paradigm_slug: [formulation_slug]})
                     self.state.build_results.update(report.results)
                 except Exception as exc:
                     self.console.print(
-                        f"[bold red]Builder re-run failed for '{slug}': {exc}[/bold red]"
+                        f"[bold red]Builder re-run failed for '{formulation_slug}': {exc}[/bold red]"
                     )
-                    logger.exception("Builder re-run failed for %s", slug)
+                    logger.exception("Builder re-run failed for %s", formulation_slug)
             # Loop back to let user review again
             continue
+
+    # -- filename validation ---------------------------------------------------
+
+    async def _validate_reasoner_files(
+        self,
+        selected: dict[str, list[str]],
+    ) -> None:
+        """Verify expected reasoner files exist; rename mismatches."""
+        import shared
+
+        prefix = f"{self.state.models_prefix}/reasoner/"
+        for paradigm, formulations in selected.items():
+            for formulation in formulations:
+                expected = f"{prefix}{paradigm}/{formulation}.json"
+                if await shared.storage.exists(expected):
+                    continue
+                # Try to find a misnamed file in the paradigm dir
+                paradigm_prefix = f"{prefix}{paradigm}/"
+                keys = await shared.storage.list(paradigm_prefix)
+                json_keys = [k for k in keys if k.endswith(".json")]
+                if json_keys:
+                    old_key = json_keys[0]
+                    await shared.storage.rename(old_key, expected)
+                    logger.warning(
+                        "Reasoner file renamed: %s → %s", old_key, expected,
+                    )
+                else:
+                    logger.warning("Reasoner file missing: %s", expected)
+
+    async def _validate_builder_files(
+        self,
+        approved_specs: dict[str, list[str]],
+    ) -> None:
+        """Verify expected builder files exist; rename mismatches."""
+        import shared
+
+        prefix = f"{self.state.models_prefix}/builder/"
+        for paradigm, formulations in approved_specs.items():
+            for formulation in formulations:
+                expected = f"{prefix}{paradigm}/{formulation}_model.py"
+                if await shared.storage.exists(expected):
+                    continue
+                paradigm_prefix = f"{prefix}{paradigm}/"
+                keys = await shared.storage.list(paradigm_prefix)
+                model_keys = [k for k in keys if k.endswith("_model.py")]
+                if model_keys:
+                    old_key = model_keys[0]
+                    await shared.storage.rename(old_key, expected)
+                    logger.warning(
+                        "Builder file renamed: %s → %s", old_key, expected,
+                    )
+                else:
+                    logger.warning("Builder file missing: %s", expected)
 
     async def _execute_rerun_cascade(self, rerun: RerunRequest) -> None:
         """Run the cascade of agents from *rerun.target* down to builder."""
@@ -591,7 +657,7 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
-                        reports_dir=self.state.reports_dir,
+                        run_id=self.state.run_id,
                     )
                     await dr.run(paradigm)
 
@@ -603,7 +669,8 @@ class Router:
                     )
                     f = Formalizer(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        run_id=self.state.run_id,
                     )
                     await f.run([paradigm])
 
@@ -615,7 +682,9 @@ class Router:
                     )
                     r = Reasoner(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        research_prefix=self.state.research_prefix,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                     )
                     fids = self.state.selected_formulations.get(paradigm, [])
                     await r.run({paradigm: fids})
@@ -628,12 +697,13 @@ class Router:
                     )
                     b = Builder(
                         client=self.client,
-                        reports_dir=self.state.reports_dir,
+                        models_prefix=self.state.models_prefix,
+                        run_id=self.state.run_id,
                         project_root=self.project_root,
                     )
                     # Build only specs belonging to this paradigm
                     paradigm_specs = self.state.approved_specs.get(paradigm, [])
-                    report = await b.run(paradigm_specs or None)
+                    report = await b.run({paradigm: paradigm_specs} if paradigm_specs else None)
                     self.state.build_results.update(report.results)
 
             except Exception as exc:

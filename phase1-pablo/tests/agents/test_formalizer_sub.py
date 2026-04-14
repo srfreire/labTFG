@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from decisionlab.agents.formalizer_sub import (
     FormalizerSubAgent,
@@ -20,9 +20,9 @@ def test_system_prompt_includes_cross_formulation_comparison():
     assert "limitations" in prompt
 
 
-def test_formalizer_sub_has_correct_tools(tmp_path):
+def test_formalizer_sub_has_correct_tools():
     client = AsyncMock()
-    agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
+    agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
     assert "write_file" in tool_names
@@ -30,7 +30,7 @@ def test_formalizer_sub_has_correct_tools(tmp_path):
 
 @pytest.mark.asyncio
 async def test_formalizer_sub_run_returns_content(
-    tmp_path, make_tool_use_block, make_text_block, make_response,
+    make_tool_use_block, make_text_block, make_response,
 ):
     # Step 1: LLM calls read_file
     read_call = make_tool_use_block(
@@ -55,30 +55,43 @@ async def test_formalizer_sub_run_returns_content(
     )
     resp3 = make_response("end_turn", [final_text])
 
-    # Prepare deep report so read_file succeeds
-    deep_dir = tmp_path / "deep"
-    deep_dir.mkdir(parents=True)
-    (deep_dir / "homeostatic.md").write_text("# Homeostatic — Deep research\n\nContent.")
+    # Mock S3 storage so read_file/write_file succeed
+    s3_store: dict[str, str] = {
+        "research/run-1/deep/homeostatic.md": "# Homeostatic — Deep research\n\nContent.",
+    }
+
+    async def fake_get_text(key):
+        if key not in s3_store:
+            raise FileNotFoundError(key)
+        return s3_store[key]
+
+    async def fake_put_text(key, content):
+        s3_store[key] = content
+
+    mock_storage = MagicMock()
+    mock_storage.get_text = AsyncMock(side_effect=fake_get_text)
+    mock_storage.put_text = AsyncMock(side_effect=fake_put_text)
 
     client = AsyncMock()
     client.messages.create.side_effect = [resp1, resp2, resp3]
 
-    agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
-    result = await agent.run("homeostatic")
+    with patch("shared.storage", mock_storage):
+        agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+        result = await agent.run("homeostatic")
 
     assert "Homeostatic" in result
     assert "Formulation 1" in result
 
 
 @pytest.mark.asyncio
-async def test_formalizer_sub_uses_opus_model(tmp_path, make_text_block, make_response):
+async def test_formalizer_sub_uses_opus_model(make_text_block, make_response):
     final_text = make_text_block("# Output")
     resp = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.return_value = resp
 
-    agent = FormalizerSubAgent(client=client, reports_dir=tmp_path)
+    agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
     await agent.run("homeostatic")
 
     call_kwargs = client.messages.create.call_args

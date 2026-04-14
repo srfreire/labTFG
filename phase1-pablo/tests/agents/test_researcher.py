@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from decisionlab.agents.researcher import Researcher, RESEARCHER_SYSTEM_PROMPT
 from decisionlab.adapters.mock import MockWebSearch
@@ -29,14 +29,14 @@ def test_researcher_has_correct_tools():
     assert "launch_deep_research" in tool_names
 
 
-def test_researcher_has_read_report_when_reports_dir(tmp_path):
+def test_researcher_has_read_report_when_run_id():
     client = AsyncMock()
-    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
+    r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
     tool_names = [t["name"] for t in r.tools]
     assert "read_report" in tool_names
 
 
-def test_researcher_no_read_report_without_reports_dir():
+def test_researcher_no_read_report_without_run_id():
     client = AsyncMock()
     r = Researcher(client=client, search=MockWebSearch())
     tool_names = [t["name"] for t in r.tools]
@@ -111,7 +111,7 @@ async def test_researcher_accumulates_deep_reports():
 
 
 @pytest.mark.asyncio
-async def test_researcher_populates_paradigms_from_deep_reports(tmp_path):
+async def test_researcher_populates_paradigms_from_deep_reports():
     """Paradigms should be populated with slugs consistent with deep report filenames."""
     tool_block = _make_tool_use_block(
         "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
@@ -131,8 +131,10 @@ async def test_researcher_populates_paradigms_from_deep_reports(tmp_path):
         tool_response, deep_loop_response, deep_summary_response, final_response,
     ]
 
-    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
-    report = await r.run("food intake")
+    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock), \
+         patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock):
+        r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
+        report = await r.run("food intake")
 
     assert len(report.paradigms) == 1
     p = report.paradigms[0]
@@ -158,16 +160,14 @@ async def test_researcher_clears_deep_reports_between_runs():
 
 
 @pytest.mark.asyncio
-async def test_researcher_saves_summary_to_disk(tmp_path):
+async def test_researcher_saves_summary_to_s3():
     text_block = _make_text_block("# Final summary")
     response = _make_response("end_turn", [text_block])
 
     client = AsyncMock()
     client.messages.create.return_value = response
 
-    r = Researcher(client=client, search=MockWebSearch(), reports_dir=tmp_path)
-    await r.run("test problem")
-
-    report_file = tmp_path / "report.md"
-    assert report_file.exists()
-    assert "Final summary" in report_file.read_text()
+    with patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock) as mock_save:
+        r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
+        await r.run("test problem")
+        mock_save.assert_called_once_with("run-1", "# Final summary")

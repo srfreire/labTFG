@@ -16,7 +16,11 @@ def test_system_prompt_exists():
 
 def test_builder_sub_has_correct_tools(tmp_path):
     client = AsyncMock()
-    agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
+    agent = BuilderSubAgent(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=tmp_path,
+    )
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
     assert "write_file" in tool_names
@@ -28,7 +32,7 @@ async def test_builder_sub_run_returns_content(
     tmp_path, make_tool_use_block, make_text_block, make_response,
 ):
     spec = {
-        "formulation_id": "homeostatic_pi_controller",
+        "formulation_id": "pi_controller",
         "paradigm": "homeostatic",
         "name": "Homeostatic PI Controller",
         "description": "A PI controller for homeostatic regulation.",
@@ -56,35 +60,29 @@ async def test_builder_sub_run_returns_content(
         "references": []
     }
 
-    # Set up fixture spec file
-    reasoner_dir = tmp_path / "reasoner"
-    reasoner_dir.mkdir(parents=True)
-    spec_path = reasoner_dir / "homeostatic_pi_controller.json"
-    spec_path.write_text(json.dumps(spec, indent=2))
-
-    # Step 1: LLM calls read_file for the spec
+    # Step 1: LLM calls read_file for the spec (nested path)
     read_spec = make_tool_use_block(
-        "call_1", "read_file", {"path": "reasoner/homeostatic_pi_controller.json"}
+        "call_1", "read_file", {"path": "reasoner/homeostatic/pi_controller.json"}
     )
     resp1 = make_response("tool_use", [read_spec])
 
-    # Step 2: LLM calls write_file with the model implementation
+    # Step 2: LLM calls write_file with the model (nested path)
     write_model = make_tool_use_block(
         "call_2",
         "write_file",
         {
-            "path": "builder/homeostatic_pi_controller_model.py",
+            "path": "builder/homeostatic/pi_controller_model.py",
             "content": "# model implementation\nclass HomeostaticPiControllerModel:\n    pass\n",
         },
     )
     resp2 = make_response("tool_use", [write_model])
 
-    # Step 3: LLM calls write_file with tests
+    # Step 3: LLM calls write_file with tests (nested path)
     write_tests = make_tool_use_block(
         "call_3",
         "write_file",
         {
-            "path": "builder/test_homeostatic_pi_controller.py",
+            "path": "builder/homeostatic/test_pi_controller.py",
             "content": "# tests\ndef test_placeholder(): pass\n",
         },
     )
@@ -94,26 +92,44 @@ async def test_builder_sub_run_returns_content(
     run_tests_call = make_tool_use_block(
         "call_4",
         "run_tests",
-        {"path": "builder/test_homeostatic_pi_controller.py"},
+        {"path": "builder/homeostatic/test_pi_controller.py"},
     )
     resp4 = make_response("tool_use", [run_tests_call])
 
     # Step 5: LLM produces final summary
     final_text = make_text_block(
-        "Implemented homeostatic_pi_controller model and all tests passed."
+        "Implemented pi_controller model and all tests passed."
     )
     resp5 = make_response("end_turn", [final_text])
 
     client = AsyncMock()
     client.messages.create.side_effect = [resp1, resp2, resp3, resp4, resp5]
 
-    agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
+    agent = BuilderSubAgent(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=tmp_path,
+    )
     result = await agent.run(
-        "homeostatic_pi_controller",
-        "reasoner/homeostatic_pi_controller.json",
+        "pi_controller",
+        "reasoner/homeostatic/pi_controller.json",
     )
 
-    assert "homeostatic_pi_controller" in result
+    assert "pi_controller" in result
+
+
+# ---- P5-003: Slug-based path tests ----
+
+
+def test_system_prompt_uses_nested_builder_paths():
+    """System prompt should instruct writing to builder/{paradigm_slug}/{formulation_slug}_model.py."""
+    assert "builder/{paradigm_slug}/{formulation_slug}_model.py" in BUILDER_SUB_SYSTEM_PROMPT
+    assert "builder/{paradigm_slug}/test_{formulation_slug}.py" in BUILDER_SUB_SYSTEM_PROMPT
+
+
+def test_system_prompt_uses_nested_validation_path():
+    """System prompt should use builder/{paradigm_slug}/{formulation_slug}_validation.json."""
+    assert "builder/{paradigm_slug}/{formulation_slug}_validation.json" in BUILDER_SUB_SYSTEM_PROMPT
 
 
 # ---- P4-002: Validation tests ----
@@ -142,8 +158,12 @@ async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_res
     client = AsyncMock()
     client.messages.create.return_value = resp
 
-    agent = BuilderSubAgent(client=client, reports_dir=tmp_path, project_root=tmp_path)
-    await agent.run("homeostatic_pi_controller", "reasoner/homeostatic_pi_controller.json")
+    agent = BuilderSubAgent(
+        client=client,
+        models_prefix="models/run-1",
+        project_root=tmp_path,
+    )
+    await agent.run("pi_controller", "reasoner/homeostatic/pi_controller.json")
 
     call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == "claude-sonnet-4-6"

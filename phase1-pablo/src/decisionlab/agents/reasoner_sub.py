@@ -42,9 +42,9 @@ authoritative for available actions, resource types, and their properties.
 3. Call `read_file` with path `env_spec.json` to read the simulation environment specification.
 4. **Validate each formulation** before generating the spec (see Validation below).
 5. For each **valid** formulation, produce a JSON spec and call `write_file` to save it at \
-`reasoner/{formulation_id}.json`.
+`reasoner/{paradigm_slug}/{formulation_slug}.json`.
 6. For each **invalid** formulation, produce a validation report and call `write_file` to \
-save it at `reasoner/{formulation_id}.json` (same path, different schema).
+save it at `reasoner/{paradigm_slug}/{formulation_slug}.json` (same path, different schema).
 
 ## Validation
 
@@ -86,15 +86,19 @@ Be strict but fair: flag genuine incoherences, not stylistic preferences. If a f
 is mostly sound but has a minor issue, still flag it — the user will decide whether to \
 rerun or accept.
 
-### Formulation IDs
+### File naming
 
-If formulation IDs are provided in the user message, use them EXACTLY as given for the \
-`formulation_id` field and for file naming (`reasoner/{formulation_id}.json`). \
-Do not derive, rename, or construct IDs yourself. Match each ID to the corresponding \
-formulation in order (first ID → first formulation, etc.).
+The user message provides `paradigm_slug` and optionally `formulation_slug` values. \
+Use these EXACTLY as given for file paths:
 
-If no IDs are provided, derive the `formulation_id` by combining the paradigm slug with \
-a short descriptive slug from the formulation heading.
+- Save each spec at `reasoner/{paradigm_slug}/{formulation_slug}.json`
+- Use `formulation_slug` as the `formulation_id` field in the JSON spec
+
+If formulation slugs are provided, match them in order to the formulations in the .md \
+(first slug → first formulation, etc.). Do not rename or transform them.
+
+If no formulation slugs are provided, derive `formulation_slug` by slugifying the \
+formulation heading (lowercase, hyphens for spaces, strip special chars).
 
 ## Pseudocode style
 
@@ -187,18 +191,18 @@ class ReasonerSubAgent:
     async def run(
         self,
         paradigm_slug: str,
-        formulation_ids: list[str] | None = None,
+        formulation_slugs: list[str] | None = None,
     ) -> str:
         logger.info("ReasonerSubAgent starting — paradigm: %s", paradigm_slug)
 
-        id_instruction = ""
-        if formulation_ids:
-            id_list = "\n".join(f"  - {fid}" for fid in formulation_ids)
-            id_instruction = (
-                f"\n\nUse the following formulation IDs for the JSON specs "
-                f"(one spec per ID, matched in order to the formulations in the .md)."
-                f" Use each ID as the `formulation_id` field and for file naming "
-                f"(`reasoner/{{id}}.json`):\n{id_list}"
+        slug_instruction = ""
+        if formulation_slugs:
+            slug_list = "\n".join(f"  - {s}" for s in formulation_slugs)
+            slug_instruction = (
+                f"\n\nUse the following formulation slugs for the JSON specs "
+                f"(one spec per slug, matched in order to the formulations in the .md)."
+                f" Use each slug as the `formulation_id` field and for file naming "
+                f"(`reasoner/{paradigm_slug}/{{slug}}.json`):\n{slug_list}"
             )
 
         messages = [
@@ -209,7 +213,7 @@ class ReasonerSubAgent:
                     f"Read the deep report at: deep/{paradigm_slug}.md\n"
                     f"Read the formulations at: formulations/{paradigm_slug}.md\n"
                     f"Read the env spec at: env_spec.json"
-                    + id_instruction
+                    + slug_instruction
                 ),
             }
         ]
