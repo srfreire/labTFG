@@ -13,15 +13,24 @@ def test_defaults():
     assert s.MINIO_BUCKET == "labtfg"
     assert "asyncpg" in s.POSTGRES_DSN
     assert "labtfg" in s.POSTGRES_DSN
+    assert s.NEO4J_URI == "bolt://localhost:7687"
+    assert s.NEO4J_USER == "neo4j"
+    assert s.NEO4J_PASSWORD == "labtfg"
+    assert s.QDRANT_URL == "http://localhost:6333"
+    assert s.VOYAGE_API_KEY == ""
 
 
 def test_env_override(monkeypatch):
     """load_settings picks up env var overrides."""
     monkeypatch.setenv("MINIO_ENDPOINT", "minio:9000")
     monkeypatch.setenv("POSTGRES_DSN", "postgresql+asyncpg://u:p@db:5432/test")
+    monkeypatch.setenv("NEO4J_URI", "bolt://neo4j:7687")
+    monkeypatch.setenv("QDRANT_URL", "http://qdrant:6333")
     s = load_settings()
     assert s.MINIO_ENDPOINT == "minio:9000"
     assert s.POSTGRES_DSN == "postgresql+asyncpg://u:p@db:5432/test"
+    assert s.NEO4J_URI == "bolt://neo4j:7687"
+    assert s.QDRANT_URL == "http://qdrant:6333"
     # Non-overridden fields keep defaults
     assert s.MINIO_BUCKET == "labtfg"
 

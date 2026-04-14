@@ -12,6 +12,11 @@ class Settings:
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_BUCKET: str = "labtfg"
     POSTGRES_DSN: str = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg"
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "labtfg"
+    QDRANT_URL: str = "http://localhost:6333"
+    VOYAGE_API_KEY: str = ""
 
 
 def load_settings() -> Settings:

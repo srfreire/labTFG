@@ -15,6 +15,8 @@ async def test_before_init_is_none():
     await shared.shutdown()
     assert shared.storage is None
     assert shared.db is None
+    assert shared.knowledge_graph is None
+    assert shared.vector_store is None
 
 
 @pytest.mark.asyncio
@@ -62,6 +64,8 @@ async def test_shutdown_cleans_up():
     await shared.shutdown()
     assert shared.storage is None
     assert shared.db is None
+    assert shared.knowledge_graph is None
+    assert shared.vector_store is None
 
 
 @pytest.mark.asyncio
