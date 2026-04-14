@@ -25,7 +25,7 @@ When user approves builds in `_review_build`, insert `Model` rows in Postgres. E
 `discover_models()` reads the new schema (UUID PK, paradigm + formulation slugs). `ModelInfo` updated. Orchestrator model selection works with new fields.
 
 ## Acceptance Criteria
-- [ ] `models` table has UUID PK, `paradigm` + `formulation` slug columns, unique constraint on `(run_id, paradigm, formulation)`
+- [x] `models` table has UUID PK, `paradigm` + `formulation` slug columns, unique constraint on `(run_id, paradigm, formulation)`
 - [ ] `id_registry.py` deleted, no T-P-F IDs generated anywhere
 - [ ] `PipelineState` has no `ids` field, no `topic_id`; `selected_formulations` and `approved_specs` use slug values
 - [ ] S3 paths: `reasoner/{paradigm}/{formulation}.json`, `builder/{paradigm}/{formulation}_model.py`

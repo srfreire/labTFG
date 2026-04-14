@@ -1,49 +1,192 @@
-"""Async Neo4j client for the knowledge graph."""
+"""Async Neo4j client for the knowledge backbone graph."""
+
 from __future__ import annotations
 
-import logging
+import re
+from datetime import datetime, timezone
 
-from neo4j import AsyncGraphDatabase, AsyncDriver
+from neo4j import AsyncGraphDatabase
 
-from shared.settings import Settings
+# Node labels → (unique key property, additional index properties)
+_NODE_SCHEMA: dict[str, tuple[str, list[str]]] = {
+    "Paradigm": ("slug", ["name"]),
+    "Variable": ("name", []),
+    "Equation": ("latex", []),
+    "BrainRegion": ("name", []),
+    "Author": ("name", []),
+    "Paper": ("doi", []),
+    "Postulate": ("id", []),
+    "Formulation": ("id", []),
+    "Parameter": ("name", []),
+    "Model": ("formulation_id", []),
+    "TestResult": ("formulation_id", []),
+}
 
-logger = logging.getLogger(__name__)
+_ALLOWED_LABELS = frozenset(_NODE_SCHEMA)
+_ALLOWED_REL_TYPES = frozenset(
+    [
+        "SUPPORTS",
+        "CONTRADICTS",
+        "EXTENDS",
+        "MEASURES",
+        "MODULATES",
+        "AUTHORED",
+        "DERIVES_FROM",
+        "IMPLEMENTS",
+        "USES_EQUATION",
+        "BELONGS_TO",
+        "CITES",
+    ]
+)
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _check_label(label: str) -> None:
+    if label not in _ALLOWED_LABELS:
+        raise ValueError(f"Unknown label: {label!r}")
+
+
+def _check_rel_type(rel_type: str) -> None:
+    if rel_type not in _ALLOWED_REL_TYPES:
+        raise ValueError(f"Unknown relation type: {rel_type!r}")
+
+
+def _check_ident(value: str, name: str) -> None:
+    if not _IDENT_RE.match(value):
+        raise ValueError(f"Invalid {name}: {value!r}")
 
 
 class KnowledgeGraph:
-    """Thin async wrapper around Neo4j's async driver."""
+    """Thin async wrapper around Neo4j for the knowledge backbone schema."""
 
-    def __init__(self, settings: Settings) -> None:
-        self._uri = settings.NEO4J_URI
-        self._user = settings.NEO4J_USER
-        self._password = settings.NEO4J_PASSWORD
-        self._driver: AsyncDriver | None = None
+    def __init__(self, uri: str, user: str, password: str) -> None:
+        self._driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
 
-    async def connect(self) -> None:
-        """Open the driver and verify connectivity."""
-        driver = AsyncGraphDatabase.driver(
-            self._uri,
-            auth=(self._user, self._password),
-        )
-        try:
-            await driver.verify_connectivity()
-        except Exception:
-            await driver.close()
-            raise
-        self._driver = driver
-        logger.info("Connected to Neo4j at %s", self._uri)
+    async def init_schema(self) -> None:
+        """Create uniqueness constraints and indexes. Idempotent."""
+        async with self._driver.session() as session:
+            for label, (key_prop, extra_indexes) in _NODE_SCHEMA.items():
+                constraint_name = f"uniq_{label}_{key_prop}"
+                await session.run(
+                    f"CREATE CONSTRAINT {constraint_name} IF NOT EXISTS "
+                    f"FOR (n:{label}) REQUIRE n.{key_prop} IS UNIQUE"
+                )
+                for prop in extra_indexes:
+                    index_name = f"idx_{label}_{prop}"
+                    await session.run(
+                        f"CREATE INDEX {index_name} IF NOT EXISTS "
+                        f"FOR (n:{label}) ON (n.{prop})"
+                    )
+
+    async def create_node(self, label: str, properties: dict) -> str:
+        """Create a node and return its element ID."""
+        _check_label(label)
+        async with self._driver.session() as session:
+            result = await session.run(
+                f"CREATE (n:{label} $props) RETURN elementId(n) AS eid",
+                {"props": properties},
+            )
+            record = await result.single()
+            if record is None:
+                raise RuntimeError(f"CREATE {label} returned no record")
+            return record["eid"]
+
+    async def create_relation(
+        self,
+        from_label: str,
+        from_key: str,
+        from_value: str | int,
+        to_label: str,
+        to_key: str,
+        to_value: str | int,
+        rel_type: str,
+        properties: dict | None = None,
+    ) -> None:
+        """Create a typed relation between two nodes, injecting temporal metadata.
+
+        Raises ValueError if either endpoint node is not found.
+        """
+        _check_label(from_label)
+        _check_label(to_label)
+        _check_rel_type(rel_type)
+        _check_ident(from_key, "from_key")
+        _check_ident(to_key, "to_key")
+
+        props = dict(properties or {})
+        now = datetime.now(timezone.utc).isoformat()
+        props.setdefault("created_at", now)
+        props.setdefault("valid_from", now)
+
+        async with self._driver.session() as session:
+            result = await session.run(
+                f"MATCH (a:{from_label} {{{from_key}: $fv}}), "
+                f"(b:{to_label} {{{to_key}: $tv}}) "
+                f"CREATE (a)-[r:{rel_type} $props]->(b) "
+                f"RETURN elementId(r) AS rid",
+                {"fv": from_value, "tv": to_value, "props": props},
+            )
+            record = await result.single()
+            if record is None:
+                raise ValueError(
+                    f"Cannot create {rel_type}: "
+                    f"{from_label}.{from_key}={from_value!r} or "
+                    f"{to_label}.{to_key}={to_value!r} not found"
+                )
+
+    async def get_node(
+        self, label: str, key_property: str, key_value: str | int
+    ) -> dict | None:
+        """Return a node's properties or None if not found."""
+        _check_label(label)
+        _check_ident(key_property, "key_property")
+        async with self._driver.session() as session:
+            result = await session.run(
+                f"MATCH (n:{label} {{{key_property}: $val}}) RETURN properties(n) AS props",
+                {"val": key_value},
+            )
+            record = await result.single()
+            return record["props"] if record else None
+
+    async def get_neighbors(
+        self,
+        label: str,
+        key_property: str,
+        key_value: str | int,
+        rel_type: str | None = None,
+        direction: str = "both",
+    ) -> list[dict]:
+        """Return properties of neighboring nodes, optionally filtered by relation type."""
+        _check_label(label)
+        _check_ident(key_property, "key_property")
+        if rel_type is not None:
+            _check_rel_type(rel_type)
+        if direction not in ("out", "in", "both"):
+            raise ValueError(f"Invalid direction: {direction!r}")
+
+        rel = f":{rel_type}" if rel_type else ""
+
+        if direction == "out":
+            match = f"MATCH (n:{label} {{{key_property}: $val}})-[r{rel}]->(m)"
+        elif direction == "in":
+            match = f"MATCH (n:{label} {{{key_property}: $val}})<-[r{rel}]-(m)"
+        else:
+            match = f"MATCH (n:{label} {{{key_property}: $val}})-[r{rel}]-(m)"
+
+        async with self._driver.session() as session:
+            result = await session.run(
+                f"{match} RETURN properties(m) AS props",
+                {"val": key_value},
+            )
+            records = [r async for r in result]
+            return [r["props"] for r in records]
+
+    async def query(self, cypher: str, params: dict | None = None) -> list[dict]:
+        """Execute arbitrary Cypher and return deserialized results."""
+        async with self._driver.session() as session:
+            result = await session.run(cypher, params or {})
+            records = [r async for r in result]
+            return [dict(r) for r in records]
 
     async def close(self) -> None:
         """Close the driver."""
-        if self._driver is not None:
-            await self._driver.close()
-            self._driver = None
-
-    def _d(self) -> AsyncDriver:
-        if self._driver is None:
-            raise RuntimeError("KnowledgeGraph not connected — call connect() first")
-        return self._driver
-
-    @property
-    def driver(self) -> AsyncDriver:
-        return self._d()
+        await self._driver.close()

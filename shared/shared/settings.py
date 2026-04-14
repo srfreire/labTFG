@@ -1,4 +1,5 @@
 """Infrastructure settings — read from environment variables."""
+
 from __future__ import annotations
 
 import os
@@ -14,15 +15,14 @@ class Settings:
     POSTGRES_DSN: str = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg"
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "labtfg"
-    QDRANT_URL: str = "http://localhost:6333"
-    VOYAGE_API_KEY: str = ""
+    NEO4J_PASSWORD: str = "labtfg-neo4j"
 
 
 def load_settings() -> Settings:
     """Load settings from env vars, falling back to dev defaults."""
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
         pass
