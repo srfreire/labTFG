@@ -10,9 +10,10 @@
   - Issues: P1-001, P1-002, P1-003, P1-004, P1-005
   - Heats: data-model (P1-001→P1-002), vector (P1-003→P1-004), infra (P1-005)
 
-- [ ] **Phase 2: Memory Agent & Knowledge Extraction** — The Memory Agent that runs after each pipeline stage: entity/relation extraction (Haiku), KG population (Neo4j writes), embedding + indexing (Qdrant writes), importance scoring, mem0-style conflict resolution (Sonnet), provenance edge creation.
+- [x] **Phase 2: Memory Agent & Knowledge Extraction** — The Memory Agent that runs after each pipeline stage: entity/relation extraction (Haiku), KG population (Neo4j writes), embedding + indexing (Qdrant writes), importance scoring, mem0-style conflict resolution (Sonnet), provenance edge creation.
   - Dependencies: Phase 1
-  - Estimated issues: ~5
+  - Issues: P2-001, P2-002, P2-003, P2-004, P2-005
+  - Heats: extraction (P2-001), kg-write (P2-002, after P2-001), indexing (P2-003, after P2-001), resolution (P2-004, after P2-001+P2-003), agent (P2-005, after P2-002+P2-003+P2-004)
 
 - [ ] **Phase 3: 3-Layer Retrieval & CRAG** — The read path: parallel KG traversal (HippoRAG PPR), dense vector search, sparse BM25 search, RRF fusion, Voyage AI reranking, CRAG evaluator (Haiku) with web search fallback. Exposes retrieval as tools for pipeline agents.
   - Dependencies: Phase 1
