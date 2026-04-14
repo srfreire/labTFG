@@ -53,7 +53,7 @@ Stand up the data layer for the knowledge backbone: Neo4j knowledge graph, Qdran
 
 - [x] AC1: `docker compose up` starts Neo4j, Qdrant, Postgres, and MinIO — all healthy within 30 seconds
 - [ ] AC2: `shared.init()` connects to all 4 services and creates Neo4j schema + Qdrant collections idempotently
-- [ ] AC3: Can create a Paradigm node with properties and a SUPPORTS relation between Paper → Postulate via `KnowledgeGraph` client, then query it back
+- [x] AC3: Can create a Paradigm node with properties and a SUPPORTS relation between Paper → Postulate via `KnowledgeGraph` client, then query it back
 - [ ] AC4: Can insert a Memory row via SQLAlchemy, query by namespace and confidence threshold
 - [ ] AC5: Can upsert a dense vector + sparse vector for the same document into Qdrant, then search both and get the document back
 - [ ] AC6: Can embed a list of 5 texts via `EmbeddingService` and get 5 vectors of dimension 1024 back
