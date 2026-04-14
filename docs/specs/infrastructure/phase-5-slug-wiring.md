@@ -1,6 +1,6 @@
 # Phase 5: Slug-based Pipeline Wiring
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14 (P5-002 done)
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14 (P5-003 done)
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -28,8 +28,8 @@ When user approves builds in `_review_build`, insert `Model` rows in Postgres. E
 - [x] `models` table has UUID PK, `paradigm` + `formulation` slug columns, unique constraint on `(run_id, paradigm, formulation)`
 - [x] `id_registry.py` deleted, no T-P-F IDs generated anywhere
 - [x] `PipelineState` has no `ids` field, no `topic_id`; `selected_formulations` and `approved_specs` use slug values
-- [ ] S3 paths: `reasoner/{paradigm}/{formulation}.json`, `builder/{paradigm}/{formulation}_model.py`
-- [ ] Router validates agent filenames after write, auto-renames mismatches
+- [x] S3 paths: `reasoner/{paradigm}/{formulation}.json`, `builder/{paradigm}/{formulation}_model.py`
+- [x] Router validates agent filenames after write, auto-renames mismatches
 - [ ] Approved models are inserted into `models` table at REVIEW_BUILD
 - [ ] `runs.s3_report_key` populated at pipeline completion
 - [ ] Phase 2 `discover_models()` returns models from live pipeline runs

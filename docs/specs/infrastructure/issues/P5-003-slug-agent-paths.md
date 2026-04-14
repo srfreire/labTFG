@@ -1,7 +1,7 @@
 ---
 id: P5-003
 title: Switch Reasoner + Builder to slug-based S3 paths
-status: in-progress
+status: done
 kind: strike
 phase: 5
 heat: agents
@@ -42,12 +42,12 @@ Update Reasoner and Builder agents to use `{paradigm_slug}/{formulation_slug}` S
 - Pass `{paradigm_slug: [formulation_slug]}` to Reasoner/Builder on re-runs
 
 ## Acceptance Criteria
-- [ ] Reasoner writes specs to `models/{run_id}/reasoner/{paradigm}/{formulation}.json`
-- [ ] Builder reads specs from that path and writes to `models/{run_id}/builder/{paradigm}/{formulation}_model.py`
-- [ ] No T-P-F IDs appear in any agent system prompt or user message
-- [ ] Router validates expected files after each agent run
-- [ ] Re-run logic uses dict key lookup, not string prefix matching
-- [ ] Builder re-runs correctly clean up stale validation reports at new paths
+- [x] Reasoner writes specs to `models/{run_id}/reasoner/{paradigm}/{formulation}.json`
+- [x] Builder reads specs from that path and writes to `models/{run_id}/builder/{paradigm}/{formulation}_model.py`
+- [x] No T-P-F IDs appear in any agent system prompt or user message
+- [x] Router validates expected files after each agent run
+- [x] Re-run logic uses dict key lookup, not string prefix matching
+- [x] Builder re-runs correctly clean up stale validation reports at new paths
 
 ## Files Likely Affected
 - `src/decisionlab/agents/reasoner.py` — slug-based formulation passing
@@ -60,3 +60,30 @@ Update Reasoner and Builder agents to use `{paradigm_slug}/{formulation_slug}` S
 Phase spec: `docs/specs/infrastructure/phase-5-slug-wiring.md`
 General spec: `docs/specs/infrastructure/general.md`
 Heat: `agents`
+
+## Completion Summary
+
+**Commit:** `ef5098a` — `feat[agents]: switch Reasoner + Builder to slug-based S3 paths (P5-003)`
+
+### What was built
+- Reasoner system prompt rewritten: writes specs to `reasoner/{paradigm}/{formulation}.json`
+- Builder system prompt rewritten: writes to `builder/{paradigm}/{formulation}_model.py` and `builder/{paradigm}/test_{formulation}.py`
+- Builder.run() API changed from `spec_ids: list[str]` to `approved_specs: dict[str, list[str]]` with nested S3 discovery
+- Router: all agent constructions fixed to use S3 prefix params (`research_prefix`, `models_prefix`, `run_id`)
+- Router: added `_validate_reasoner_files()` and `_validate_builder_files()` — verify expected files exist after agent runs, auto-rename mismatches
+- Router: stale validation cleanup uses nested paths `builder/{paradigm}/{formulation}_validation.json`
+- `files.py`: artifact type inference updated for nested `builder/{paradigm}/test_*` paths
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/reasoner_sub.py` — system prompt + user message rewrite (formulation_ids → formulation_slugs)
+- `phase1-pablo/src/decisionlab/agents/reasoner.py` — pass formulation_slugs to sub-agent
+- `phase1-pablo/src/decisionlab/agents/builder_sub.py` — system prompt rewrite for nested paths
+- `phase1-pablo/src/decisionlab/agents/builder.py` — run() accepts dict, nested S3 key construction + discovery
+- `phase1-pablo/src/decisionlab/router.py` — fix all agent constructions, add validation methods, update re-run logic
+- `phase1-pablo/src/decisionlab/tools/files.py` — nested test path inference
+- 13 test files updated for new S3 prefix constructor APIs (218 passed, 0 failed)
+
+### Decisions
+- `build_results` keys remain as formulation slugs (not `paradigm/formulation`) for backward compatibility with feedback functions
+- Feedback functions (`feedback.py`, `web_feedback.py`) still use local filesystem via `reports_dir` — separate migration scope
+- Also fixed pre-existing test failures for Researcher, DeepResearcher, Formalizer, and tools that had stale `reports_dir` constructors
