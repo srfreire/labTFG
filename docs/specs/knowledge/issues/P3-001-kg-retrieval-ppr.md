@@ -1,14 +1,14 @@
 ---
 id: P3-001
 title: Implement knowledge graph retrieval with entity linking and PPR traversal
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: retrieval
 priority: 1
 blocked_by: []
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P3-001: Implement knowledge graph retrieval with entity linking and PPR traversal

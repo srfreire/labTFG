@@ -1,6 +1,6 @@
 # Phase 3: 3-Layer Retrieval & CRAG
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -51,15 +51,15 @@ Build the read path of the knowledge backbone: parallel 3-layer retrieval (KG tr
 
 ## Acceptance Criteria
 - [ ] AC1: KG retrieval on "ghrelin hunger signaling" against a populated graph returns passages mentioning ghrelin's role in hunger, including multi-hop connections (ghrelin → hypothalamus → hunger)
-- [ ] AC2: Dense retrieval on "Q-learning convergence" returns relevant formulation and model chunks
-- [ ] AC3: Sparse retrieval on an exact DOI string returns the chunk containing that citation
+- [x] AC2: Dense retrieval on "Q-learning convergence" returns relevant formulation and model chunks
+- [x] AC3: Sparse retrieval on an exact DOI string returns the chunk containing that citation
 - [ ] AC4: RRF fusion combines results from all 3 channels — a document found by 2 channels scores higher than one found by 1
 - [ ] AC5: Reranking reorders RRF results — a semantically relevant but low-RRF-ranked result can move up
 - [ ] AC6: CRAG evaluator classifies a stale memory about an unrelated topic as INCORRECT and triggers web fallback
 - [ ] AC7: CRAG evaluator classifies a relevant, current memory as CORRECT and passes it through
 - [ ] AC8: Full pipeline (KG + dense + sparse → RRF → rerank → CRAG) completes within 3 seconds on a warm knowledge base with ~500 memories
 - [ ] AC9: `retrieve_knowledge` tool returns formatted text with source attributions that include paper titles and pipeline stage origin
-- [ ] AC10: Retrieval with empty knowledge base (cold start) returns empty result gracefully — no errors, no hallucinated results
+- [x] AC10: Retrieval with empty knowledge base (cold start) returns empty result gracefully — no errors, no hallucinated results
 
 ## Technical Notes
 - KG retrieval PPR: implement via Cypher `algo.pageRank` (APOC/GDS) or manual BFS with decay factor if GDS plugin is unavailable. Start simple: 2-hop BFS with exponential decay (0.85^hop) is a good approximation of PPR for small graphs.

@@ -1,4 +1,4 @@
-"""Knowledge extraction module for the DecisionLab pipeline."""
+"""Knowledge backbone — extraction, cross-run memory and retrieval."""
 
 from decisionlab.knowledge.extraction import extract
 from decisionlab.knowledge.models import (

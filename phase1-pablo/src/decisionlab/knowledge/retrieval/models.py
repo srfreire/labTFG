@@ -1,13 +1,13 @@
-"""Data models shared across all retrieval channels."""
+"""Shared data models for retrieval channels."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 
-@dataclass
+@dataclass(frozen=True)
 class RetrievalResult:
-    """A single result from any retrieval channel (dense, sparse, KG, web)."""
+    """A single retrieval result from any channel (kg, dense, sparse, web)."""
 
     text: str
     score: float
