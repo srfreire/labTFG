@@ -1,14 +1,14 @@
 ---
 id: P5-005
 title: Update Phase 2 model_loader for new schema
-status: todo
+status: in-progress
 kind: strike
 phase: 5
 heat: phase2
 priority: 3
 blocked_by: [P5-004]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P5-005: Update Phase 2 model_loader for new schema
