@@ -1,7 +1,7 @@
 ---
 id: P1-005
 title: Extend Docker Compose and shared settings for knowledge infrastructure
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: infra

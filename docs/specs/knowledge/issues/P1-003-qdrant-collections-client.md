@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Create Qdrant vector store collections and async client
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: vector
@@ -9,6 +9,7 @@ priority: 1
 blocked_by: []
 created: 2026-04-14
 updated: 2026-04-14
+
 ---
 
 # P1-003: Create Qdrant vector store collections and async client
