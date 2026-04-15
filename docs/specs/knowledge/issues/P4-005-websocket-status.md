@@ -1,14 +1,14 @@
 ---
 id: P4-005
 title: Add Memory Agent status to WebSocket agent panel
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: resilience
 priority: 4
 blocked_by: [P4-003]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P4-005: Add Memory Agent status to WebSocket agent panel
