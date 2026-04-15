@@ -149,14 +149,13 @@ _RECENCY_DECAY = 0.995
 def _apply_recency_weighting(
     results: list[RetrievalResult],
 ) -> list[RetrievalResult]:
-    """Apply recency-based score boosting (Generative Agents pattern).
+    """Apply recency and confidence-based score weighting.
 
-    For each result with a created_at/run_date timestamp, compute:
-        days_old = (now - created_at).days
-        recency_factor = 0.995 ** days_old
-        final_score = score * recency_factor
+    For each result:
+        recency_factor = 0.995 ** days_old  (1.0 if no timestamp)
+        confidence_factor = metadata["confidence"]  (1.0 if missing)
+        final_score = score * recency_factor * confidence_factor
 
-    Results without timestamps get recency_factor=1.0 (no penalty).
     Returns a new list re-sorted by final_score descending.
     """
     now = datetime.now(timezone.utc)
@@ -180,13 +179,19 @@ def _apply_recency_weighting(
                     r.source,
                 )
 
-        final_score = r.score * recency_factor
+        confidence_factor = max(0.0, min(1.0, float(r.metadata.get("confidence", 1.0))))
+
+        final_score = r.score * recency_factor * confidence_factor
         weighted.append(
             RetrievalResult(
                 text=r.text,
                 score=final_score,
                 source=r.source,
-                metadata={**r.metadata, "recency_factor": recency_factor},
+                metadata={
+                    **r.metadata,
+                    "recency_factor": recency_factor,
+                    "confidence_factor": confidence_factor,
+                },
             )
         )
 

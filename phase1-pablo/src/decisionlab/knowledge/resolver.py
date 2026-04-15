@@ -253,6 +253,7 @@ async def resolve_and_store(
             enrichments += 1
 
         elif label == "CONTRADICTION":
+            old_content = best["payload"].get("text_preview", "?")
             await update_confidence(db_session, best_id, contradict=True)
             await supersede_memory(
                 db_session,
@@ -264,6 +265,19 @@ async def resolve_and_store(
                 run_id=run_uuid,
                 importance=importance,
                 confidence=confidence,
+            )
+            await create_memory(
+                db_session,
+                content=(
+                    f"Run {run_id} contradicted memory {best_id}: "
+                    f"{old_content} → {fact}"
+                ),
+                namespace="meta",
+                memory_type="episodic",
+                source_stage="memory_agent",
+                run_id=run_uuid,
+                importance=3.0,
+                confidence=1.0,
             )
             contradictions += 1
 

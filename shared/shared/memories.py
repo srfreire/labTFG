@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.models import Memory
+
+_CONFIDENCE_CAP = 1.0
+_CONFIDENCE_FLOOR = 0.1
 
 
 async def create_memory(session: AsyncSession, **kwargs: object) -> Memory:
@@ -40,13 +44,16 @@ async def get_memories(
 
 
 async def touch_memory(session: AsyncSession, memory_id: uuid.UUID) -> None:
-    """Update last_accessed_at and increment access_count."""
+    """Update last_accessed_at, increment access_count, and boost confidence +0.02."""
     stmt = (
         update(Memory)
         .where(Memory.id == memory_id)
         .values(
             last_accessed_at=func.now(),
             access_count=Memory.access_count + 1,
+            confidence=func.least(
+                _CONFIDENCE_CAP, Memory.confidence + 0.02,
+            ),
         )
     )
     await session.execute(stmt)
@@ -82,7 +89,11 @@ async def update_confidence(
     corroborate: bool = False,
     contradict: bool = False,
 ) -> None:
-    """Increment corroboration/contradiction counters and adjust confidence."""
+    """Increment corroboration/contradiction counters and adjust confidence.
+
+    Corroboration: +0.05, Contradiction: -0.10.
+    Confidence is clamped to [0.1, 1.0].
+    """
     values: dict[str, object] = {}
     delta = 0.0
     if corroborate:
@@ -90,11 +101,67 @@ async def update_confidence(
         delta += 0.05
     if contradict:
         values["contradictions"] = Memory.contradictions + 1
-        delta -= 0.05
+        delta -= 0.10
     if not values:
         return
     if delta:
-        values["confidence"] = Memory.confidence + delta
+        raw = Memory.confidence + delta
+        values["confidence"] = func.least(
+            _CONFIDENCE_CAP, func.greatest(_CONFIDENCE_FLOOR, raw),
+        )
     stmt = update(Memory).where(Memory.id == memory_id).values(**values)
     await session.execute(stmt)
     await session.flush()
+
+
+_DECAY_RATE = 0.95
+_DECAY_PERIOD_DAYS = 30
+
+
+async def apply_time_decay(session: AsyncSession) -> int:
+    """Apply time-based confidence decay during consolidation.
+
+    For valid memories not accessed in >30 days (excluding reflections):
+        periods = (now - last_accessed_at).days // 30
+        confidence *= 0.95 ** periods
+    Confidence is floored at 0.1.
+
+    Returns the number of memories decayed.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=_DECAY_PERIOD_DAYS)
+
+    stmt = select(Memory).where(
+        and_(
+            Memory.valid_to.is_(None),
+            Memory.memory_type != "reflection",
+            Memory.last_accessed_at < cutoff,
+        ),
+    )
+    result = await session.execute(stmt)
+    memories = result.scalars().all()
+
+    count = 0
+    for mem in memories:
+        laa = mem.last_accessed_at
+        if laa is None:
+            continue
+        if laa.tzinfo is None:
+            laa = laa.replace(tzinfo=timezone.utc)
+        days_since = (now - laa).days
+        periods = days_since // _DECAY_PERIOD_DAYS
+        if periods <= 0:
+            continue
+
+        new_confidence = max(_CONFIDENCE_FLOOR, mem.confidence * _DECAY_RATE**periods)
+        stmt = (
+            update(Memory)
+            .where(Memory.id == mem.id)
+            .values(confidence=new_confidence)
+        )
+        await session.execute(stmt)
+        count += 1
+
+    if count:
+        await session.flush()
+    return count
