@@ -260,6 +260,18 @@ class Router:
         if self.emit is not None:
             await self.emit(msg)
 
+    async def _emit_agents(self) -> None:
+        """Emit the list of pipeline agents so the frontend can build its panel."""
+        agents: list[dict] = [
+            {"name": "researcher", "color": "#4a9eff"},
+            {"name": "formalizer", "color": "#9b59b6"},
+            {"name": "reasoner", "color": "#ff6b4a"},
+            {"name": "builder", "color": "#fbbf24"},
+        ]
+        if self.memory_agent is not None:
+            agents.append({"name": "memory_agent", "color": "#22d3ee"})
+        await self._emit({"type": "agents", "agents": agents})
+
     # -- DB helpers -----------------------------------------------------------
 
     async def _update_run(self, **values) -> None:
@@ -357,6 +369,10 @@ class Router:
             Stage.BUILD: self._do_build,
             Stage.REVIEW_BUILD: self._review_build,
         }
+
+        # Emit agent list so the frontend knows which agents are available
+        await self._emit_agents()
+
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
