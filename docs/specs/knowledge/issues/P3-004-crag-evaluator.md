@@ -1,14 +1,14 @@
 ---
 id: P3-004
 title: Build Corrective RAG evaluator with web search fallback
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: crag
 priority: 3
 blocked_by: [P3-003]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P3-004: Build Corrective RAG evaluator with web search fallback
