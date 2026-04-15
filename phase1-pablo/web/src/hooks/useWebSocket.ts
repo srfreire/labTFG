@@ -6,6 +6,7 @@ import {
   GraphEdge,
   ServerMessage,
   ClientMessage,
+  AgentState,
 } from "../types";
 
 /* ------------------------------------------------------------------ */
@@ -21,6 +22,7 @@ interface WebSocketState {
   reviewRequest: { stage: Stage; data: any } | null;
   isRunning: boolean;
   error: string | null;
+  agents: AgentState[];
 }
 
 function initStages(): Record<Stage, StageStatus> {
@@ -40,6 +42,7 @@ const INITIAL_STATE: WebSocketState = {
   reviewRequest: null,
   isRunning: false,
   error: null,
+  agents: [],
 };
 
 /* ------------------------------------------------------------------ */
@@ -72,6 +75,7 @@ function reducer(state: WebSocketState, action: Action): WebSocketState {
         currentStage: null,
         reviewRequest: null,
         error: null,
+        agents: [],
       };
 
     case "CANCEL_PIPELINE":
@@ -145,6 +149,27 @@ function handleServerMessage(
         edges: msg.edges,
         currentStage: msg.stage,
       };
+
+    case "agents":
+      return {
+        ...state,
+        agents: msg.agents.map((a) => ({
+          name: a.name,
+          color: a.color,
+          status: "idle" as const,
+        })),
+      };
+
+    case "agent_status":
+      return {
+        ...state,
+        agents: state.agents.map((a) =>
+          a.name === msg.agent ? { ...a, status: msg.status } : a,
+        ),
+      };
+
+    case "agent_tool":
+      return state;
 
     default:
       return state;

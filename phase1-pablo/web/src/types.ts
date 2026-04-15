@@ -1,3 +1,10 @@
+// Agent state (for the pipeline agent panel / sidebar interstitials)
+export interface AgentState {
+  name: string;
+  status: "idle" | "working" | "done";
+  color: string;
+}
+
 // Pipeline stages (mirrors backend Stage enum)
 export enum Stage {
   RESEARCH = "research",
@@ -57,7 +64,10 @@ export type ServerMessage =
   | { type: "graph_clear"; from_stage: Stage }
   | { type: "pipeline_done" }
   | { type: "error"; message: string }
-  | { type: "state_sync"; nodes: GraphNode[]; edges: GraphEdge[]; stage: Stage };
+  | { type: "state_sync"; nodes: GraphNode[]; edges: GraphEdge[]; stage: Stage }
+  | { type: "agents"; agents: Array<{ name: string; color: string }> }
+  | { type: "agent_status"; agent: string; status: "idle" | "working" | "done" }
+  | { type: "agent_tool"; agent: string; tool: string };
 
 // Frontend -> Backend messages
 export type ClientMessage =
@@ -127,12 +137,21 @@ export const STAGE_CONFIG: Array<{
   { stage: Stage.REVIEW_BUILD, label: "REVIEW", indented: true },
 ];
 
+// Stages after which the Memory Agent runs (before their REVIEW)
+export const MEMORY_AGENT_STAGES = new Set<Stage>([
+  Stage.RESEARCH,
+  Stage.FORMALIZE,
+  Stage.REASON,
+  Stage.BUILD,
+]);
+
 // Agent color mapping
 export const AGENT_COLORS: Record<string, string> = {
   researcher: "#4a9eff",
   formalizer: "#9b59b6",
   reasoner: "#ff6b4a",
   builder: "#fbbf24",
+  memory_agent: "#22d3ee",
 };
 
 // Tool icon mapping

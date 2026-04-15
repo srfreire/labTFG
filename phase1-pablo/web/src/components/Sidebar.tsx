@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stage, StageStatus, STAGE_CONFIG } from "../types";
+import { Stage, StageStatus, STAGE_CONFIG, AgentState, MEMORY_AGENT_STAGES } from "../types";
 interface SidebarProps {
   connected: boolean;
   stages: Record<Stage, StageStatus>;
@@ -7,6 +7,7 @@ interface SidebarProps {
   isRunning?: boolean;
   onCancel?: () => void;
   onStageClick?: (stage: Stage) => void;
+  agents?: AgentState[];
 }
 
 const STATUS_COLORS: Record<StageStatus, string> = {
@@ -19,6 +20,84 @@ const STATUS_COLORS: Record<StageStatus, string> = {
 const MAIN_DOT = 10;
 const REVIEW_DOT = 7;
 const LINE_LEFT = 40; // center X for dots and lines
+const MEMORY_DOT = 6;
+
+const MEMORY_STATUS_COLORS: Record<AgentState["status"], string> = {
+  idle: "rgba(255,255,255,0.08)",
+  working: "#22d3ee",
+  done: "#22d3ee",
+};
+
+function MemoryAgentDot({
+  agent,
+  parentDone,
+}: {
+  agent: AgentState;
+  parentDone: boolean;
+}) {
+  const isWorking = agent.status === "working";
+  const isDone = agent.status === "done";
+  const show = parentDone || isWorking || isDone;
+  const lineColor = show
+    ? "rgba(255,255,255,0.12)"
+    : "rgba(255,255,255,0.08)";
+
+  return (
+    <>
+      {/* Line above memory dot */}
+      <div
+        className="ml-[40px]"
+        style={{
+          borderLeft: `1px dashed ${lineColor}`,
+          height: 8,
+        }}
+      />
+      {/* Memory dot + label */}
+      <div
+        className="flex items-center gap-3.5 pr-5 shrink-0"
+        style={{ paddingLeft: LINE_LEFT - MEMORY_DOT / 2 + 0.5 }}
+      >
+        <div
+          className={`rounded-full shrink-0${isWorking ? " animate-pulse-dot" : ""}`}
+          style={{
+            width: MEMORY_DOT,
+            height: MEMORY_DOT,
+            background: MEMORY_STATUS_COLORS[agent.status],
+            opacity: show ? 1 : 0.3,
+            transition: "opacity 200ms, background 200ms",
+            ...(isWorking
+              ? { boxShadow: `0 0 6px ${MEMORY_STATUS_COLORS.working}` }
+              : {}),
+          }}
+        />
+        <span
+          style={{
+            fontSize: 8,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+            color: isWorking
+              ? "#22d3ee"
+              : isDone
+                ? "rgba(34,211,238,0.5)"
+                : "rgba(255,255,255,0.2)",
+            fontWeight: isWorking ? 600 : 400,
+            transition: "color 200ms",
+          }}
+        >
+          MEMORY
+        </span>
+      </div>
+      {/* Line below memory dot */}
+      <div
+        className="ml-[40px]"
+        style={{
+          borderLeft: `1px dashed ${lineColor}`,
+          height: 8,
+        }}
+      />
+    </>
+  );
+}
 
 export default function Sidebar({
   connected,
@@ -27,8 +106,10 @@ export default function Sidebar({
   isRunning,
   onCancel,
   onStageClick,
+  agents = [],
 }: SidebarProps) {
   const items = STAGE_CONFIG;
+  const memoryAgent = agents.find((a) => a.name === "memory_agent");
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -64,6 +145,8 @@ export default function Sidebar({
           const isReview = indented;
           const isFirst = i === 0;
           const isLast = i === items.length - 1;
+          const showMemoryAfter =
+            memoryAgent && MEMORY_AGENT_STAGES.has(stage);
 
           const dotSize = isReview ? REVIEW_DOT : MAIN_DOT;
           const lineColor = isDone
@@ -125,6 +208,11 @@ export default function Sidebar({
                   {label}
                 </span>
               </div>
+
+              {/* Memory Agent interstitial — between work stage and its REVIEW */}
+              {showMemoryAfter && (
+                <MemoryAgentDot agent={memoryAgent} parentDone={isDone} />
+              )}
 
               {/* Line segment BELOW dot — fills space to next dot */}
               <div

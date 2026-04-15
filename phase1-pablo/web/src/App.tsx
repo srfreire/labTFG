@@ -295,6 +295,7 @@ export default function App() {
     reviewRequest,
     isRunning,
     error,
+    agents,
     startPipeline,
     sendReviewResponse,
     sendRouterPrompt,
@@ -451,6 +452,7 @@ export default function App() {
           currentStage={currentStage}
           isRunning={isRunning}
           onCancel={cancelPipeline}
+          agents={agents}
         />
       )}
 
