@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Implement fact generation rules with pure helpers and tests
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: writer
@@ -40,11 +40,31 @@ Implementar las reglas deterministas que convierten el JSON del Tracker en una l
 
 ## Acceptance Criteria
 
-- [ ] AC1: Las 4 funciones públicas existen y tienen las firmas exactas.
-- [ ] AC2: Los textos generados siguen las plantillas del spec R4 al pie de la letra.
-- [ ] AC3: Los 8 casos de test pasan.
-- [ ] AC4: Ningún fact puro hace I/O ni llamadas async — todas son funciones síncronas puras.
-- [ ] AC5: `build_all_facts` concatena en orden: [summary, trajectories..., episodes...].
+- [x] AC1: Las 4 funciones públicas existen y tienen las firmas exactas.
+- [x] AC2: Los textos generados siguen las plantillas del spec R4 al pie de la letra.
+- [x] AC3: Los 8 casos de test pasan (se implementaron 18 tests parametrizados para mayor cobertura).
+- [x] AC4: Ningún fact puro hace I/O ni llamadas async — todas son funciones síncronas puras.
+- [x] AC5: `build_all_facts` concatena en orden: [summary, trajectories..., episodes...].
+
+## Completion Summary
+
+### What was built
+- `phase2-juan/simlab/knowledge/facts.py` con `FactSpec` dataclass y 4 funciones puras: `build_summary_fact`, `build_trajectory_facts`, `build_episode_facts` (tuple con contador de filtrados), `build_all_facts` (orquestador).
+- Helpers internos `_base_metadata`, `_distinct_models`, `_format_top_actions`, `_episode_step_fragment` para evitar duplicación.
+- Constantes `_FILTERED_EPISODE_TYPES` y `_EPISODE_IMPORTANCE` al principio del módulo para localizar las reglas de un vistazo.
+
+### Files created
+- `phase2-juan/simlab/knowledge/facts.py`
+- `phase2-juan/tests/knowledge/test_fact_rules.py` (18 tests, parametrizados donde aplica)
+
+### Decisions
+- **Summary en comparison run**: uso el modelo del *primer agente* como "representativo" y anoto `models_compared: [class_names...]` en metadata. Así no pierdo identidad cross-model y el Builder puede detectar que fue comparativa.
+- **`_distinct_models` preserva orden de primera aparición** (no `set()` plano) para determinismo en tests.
+- **`top_actions` es hasta 3** (puede ser menos si el agente tiene menos acciones); formato `"name(count)"` ordenado descendente.
+- **Step range**: en metadata se emite `step_start`/`step_end` y se omite la clave `step` (y viceversa para step int) — sin ambigüedad para el lector.
+- **Unknown agent_id en episode**: NO cuenta como `filtered` (eso es para tipos omitidos), cuenta como warning silencioso; el test lo refleja.
+- **Importance** se expresa como `float` aunque sean enteros, para alinearse con la columna `importance: float` de la tabla `memories`.
+- **Import de ModelInfo/SimulationContext**: desde `simlab.knowledge.writer` directamente (no re-exporta desde `__init__.py` hacia dentro del mismo paquete, evita ciclos).
 
 ## Files Likely Affected
 
