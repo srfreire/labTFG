@@ -161,7 +161,7 @@ Esto centraliza la lógica de "¿está la infra lista?" y simplifica la integrac
 
 ## Acceptance Criteria
 
-- [ ] AC1: Existe `phase2-juan/simlab/knowledge/__init__.py` y `writer.py` con `TrackerMemoryWriter`, `WriteResult`, `ModelInfo`, `SimulationContext` exportados.
+- [x] AC1: Existe `phase2-juan/simlab/knowledge/__init__.py` y `writer.py` con `TrackerMemoryWriter`, `WriteResult`, `ModelInfo`, `SimulationContext` exportados.
 - [ ] AC2: `TrackerMemoryWriter.write` aplica las reglas de filtrado de episodes: `foraging_success`, `exploration`, `exploitation` se descartan; los demás se conservan.
 - [ ] AC3: Los facts generados llevan metadata completa (`paradigm`, `formulation`, `model_class_name`, `phase2_experiment_id`, `phase1_run_id`, `environment`, `steps`, `seed`) y en el caso de trajectories/episodes también `agent_id`.
 - [ ] AC4: El writer nunca propaga excepciones — cualquier fallo interno se captura, se loguea, y se retorna `WriteResult` con `skipped_reason` poblado.

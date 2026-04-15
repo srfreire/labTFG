@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Scaffold knowledge module with data classes and factory
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: writer
@@ -32,10 +32,33 @@ Crear la estructura del módulo `phase2-juan/simlab/knowledge/` con las data cla
 
 ## Acceptance Criteria
 
-- [ ] AC1: Existen los archivos listados, `from simlab.knowledge import TrackerMemoryWriter, WriteResult, ModelInfo, SimulationContext, build_writer_from_settings` funciona.
-- [ ] AC2: `TrackerMemoryWriter(...).write(...)` retorna `WriteResult` con `skipped_reason="not_implemented"` y contadores a 0.
-- [ ] AC3: `build_writer_from_settings` con settings mockeado sin `VOYAGE_API_KEY` retorna `None` y emite un log warning.
-- [ ] AC4: Los 3 tests en `test_scaffold.py` pasan.
+- [x] AC1: Existen los archivos listados, `from simlab.knowledge import TrackerMemoryWriter, WriteResult, ModelInfo, SimulationContext, build_writer_from_settings` funciona.
+- [x] AC2: `TrackerMemoryWriter(...).write(...)` retorna `WriteResult` con `skipped_reason="not_implemented"` y contadores a 0.
+- [x] AC3: `build_writer_from_settings` con settings mockeado sin `VOYAGE_API_KEY` retorna `None` y emite un log warning.
+- [x] AC4: Los 3 tests en `test_scaffold.py` pasan (se añadieron 6 por robustez extra).
+
+## Completion Summary
+
+**Commit:** (se añade en el merge)
+
+### What was built
+- Módulo `phase2-juan/simlab/knowledge/` con `__init__.py` exportando la API pública.
+- `writer.py` con 3 frozen dataclasses (`ModelInfo`, `SimulationContext`, `WriteResult`) y stub de `TrackerMemoryWriter.write()` que retorna `skipped_reason="not_implemented"`.
+- Factory `build_writer_from_settings()` con short-circuit si faltan API keys o Postgres/Qdrant no conectan; gestión limpia de recursos (cierra `db` si Qdrant falla tras Postgres OK).
+- 6 tests en `tests/knowledge/test_scaffold.py` (3 requeridos + 3 extra cubriendo ZeroEntropy key missing y fallo de Postgres).
+
+### Files created
+- `phase2-juan/simlab/knowledge/__init__.py`
+- `phase2-juan/simlab/knowledge/writer.py`
+- `phase2-juan/tests/knowledge/__init__.py`
+- `phase2-juan/tests/knowledge/test_scaffold.py`
+
+### Decisions
+- Añadidos 3 tests extra (ZeroEntropy key vacía, Postgres falla) porque las ramas de error del factory son parte del contrato con Phase 2 integration.
+- Imports pesados (`DatabaseService`, `VectorStore`, `EmbeddingService`) se hacen dentro de `build_writer_from_settings` en vez de a nivel de módulo, para mantener el import de `simlab.knowledge` barato aunque Voyage no esté instalado.
+
+### Notas para runs futuros
+- El entorno `phase2-juan/.venv` está con Python 3.14 y `voyageai` no soporta esa versión (pydantic v1 incompat). Tests corren con `uv run --python 3.13 pytest`. El fallo afecta también a los tests existentes — conviene fijar `.python-version=3.13` o upgradear voyageai en un issue separado.
 
 ## Files Likely Affected
 
