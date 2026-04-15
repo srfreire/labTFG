@@ -1,14 +1,14 @@
 ---
 id: P5-003
 title: Build post-run consolidation with clustering, reflections, and pruning
-status: todo
+status: in-progress
 kind: strike
 phase: 5
 heat: consolidation
 priority: 3
 blocked_by: [P5-002]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P5-003: Build post-run consolidation with clustering, reflections, and pruning
