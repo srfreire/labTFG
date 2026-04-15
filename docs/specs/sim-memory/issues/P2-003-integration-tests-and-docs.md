@@ -1,0 +1,102 @@
+---
+id: P2-003
+title: Orchestrator integration tests and e2e docs
+status: todo
+kind: strike
+phase: 2
+heat: integration
+priority: 3
+blocked_by: [P2-002]
+created: 2026-04-15
+updated: 2026-04-15
+---
+
+# P2-003: Orchestrator integration tests and e2e docs
+
+## Objective
+
+Cubrir la integración con tests de orchestrator que parchean `shared.sim_memory_writer` y verifican el flow completo, y documentar el procedimiento manual docker-compose para ejecutar un e2e real en el checklist de release.
+
+## Requirements
+
+### R1: Tests del orchestrator
+
+Crear `phase2-juan/tests/test_orchestrator_knowledge.py`:
+
+- **Test happy path**:
+  - Parche `shared.sim_memory_writer` con un `AsyncMock` que tiene atributo `write = AsyncMock(return_value=WriteResult(...))`.
+  - Construye el Orchestrator con su cliente mockeado.
+  - Ejecuta la secuencia mínima: inyectar un spec válido en `state`, llamar al handler de `run_simulation` con `model_ids=["paradigm/formulation"]` y un único modelo mockeado vía `patch("simlab.model_loader.discover_models")`, luego llamar al handler de `observe_simulation` con un tracker mockeado que devuelve un JSON fijo.
+  - Asserts:
+    - `writer.write.await_count == 1`.
+    - El `SimulationContext` pasado tiene `phase2_experiment_id == state["experiment_id"]`, `environment` empieza por `"grid_"`, `steps` ≥ 0, `agent_to_model` tiene al menos 1 entrada.
+    - El `tracker_output` pasado es el string JSON que devolvió el Tracker.
+
+- **Test flag OFF / writer None**:
+  - Sin parchear `shared.sim_memory_writer` (queda None, su default).
+  - Ejecutar el mismo flow.
+  - Assert: el `observe_simulation` completa sin errores, `writer.write` no se puede invocar (no hay writer), y el `tracker_output` se devuelve al caller exactamente igual que antes.
+
+- **Test writer failure**:
+  - `writer.write = AsyncMock(side_effect=RuntimeError("boom"))`.
+  - Ejecutar flow; assert que `observe_simulation` **no propaga** la excepción y devuelve el `tracker_output` normalmente.
+  - Assert que `logger.exception` fue llamado (capturar vía `caplog`).
+
+Los tests deben correr sin infra real — todo mockeado. No deben requerir `VOYAGE_API_KEY` ni Qdrant/Postgres arriba.
+
+### R2: Documentación e2e
+
+Crear `docs/specs/sim-memory/README.md` con:
+
+- **Overview** (1 párrafo): qué es sim-memory, qué hace, link al general.md.
+- **Development** (cómo probar localmente):
+  ```bash
+  # 1. Infra
+  docker compose up -d postgres qdrant
+
+  # 2. Migraciones
+  cd shared && uv run alembic upgrade head
+
+  # 3. Config (.env)
+  # - VOYAGE_API_KEY, ZEROENTROPY_API_KEY
+  # - ENABLE_KNOWLEDGE_WRITE=true
+
+  # 4. CLI
+  cd phase2-juan && uv run simlab
+  # Correr una simulación completa (create_environment → run → observe)
+
+  # 5. Verificar Postgres
+  psql ... -c "SELECT namespace, memory_type, count(*) FROM memories GROUP BY 1,2;"
+  # Esperado: simulation | semantic | >=1 y simulation | episodic | >=0
+
+  # 6. Verificar Qdrant
+  curl -X POST http://localhost:6333/collections/memories_dense/points/scroll \
+       -H 'Content-Type: application/json' \
+       -d '{"filter":{"must":[{"key":"namespace","match":{"value":"simulation"}}]}, "limit":10}'
+  ```
+- **Integration test**: cómo ejecutar `tests/knowledge/test_integration.py` con infra real:
+  ```bash
+  cd phase2-juan && uv run pytest tests/knowledge/test_integration.py -m integration -v
+  ```
+- **Architectural links**: pointer a `general.md`, `phase-1-core-writer.md`, `phase-2-integration.md`.
+
+No se crea un test automatizado e2e con docker-compose en CI — fuera de scope.
+
+## Acceptance Criteria
+
+- [ ] AC1: Los 3 tests de `test_orchestrator_knowledge.py` pasan sin infra real (unit-level, todo mockeado).
+- [ ] AC2: El test de "writer failure" verifica explícitamente que la excepción NO se propaga al caller de `observe_simulation`.
+- [ ] AC3: El README.md existe, describe el procedimiento manual end-to-end con comandos copy-pasteables, y referencia los otros specs.
+- [ ] AC4: Los tests anteriores de Phase 1 y Phase 2 siguen verdes.
+
+## Files Likely Affected
+
+- `phase2-juan/tests/test_orchestrator_knowledge.py` — nuevo (3 tests).
+- `docs/specs/sim-memory/README.md` — nuevo.
+
+## Context
+
+Phase spec: `docs/specs/sim-memory/phase-2-integration.md` (R5, R6)
+General spec: `docs/specs/sim-memory/general.md`
+Heat: `integration`
+Depende de P2-002 (wiring completo en el orchestrator).

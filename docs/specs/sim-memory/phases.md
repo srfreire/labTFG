@@ -10,6 +10,7 @@
   - Issues: P1-001, P1-002, P1-003, P1-004
   - Heats: writer (P1-001→P1-002→P1-003→P1-004, fully sequential)
 
-- [ ] **Phase 2: Integration** — Wiring del writer al flujo real: flag `ENABLE_KNOWLEDGE_WRITE`, invocación tras `observe_simulation` en el orchestrator, graceful degradation e integration test con docker-compose.
+- [x] **Phase 2: Integration** — Wiring del writer al flujo real: flag `ENABLE_KNOWLEDGE_WRITE`, invocación tras `observe_simulation` en el orchestrator, graceful degradation e integration test con docker-compose.
   - Dependencies: Phase 1
-  - Estimated issues: ~3
+  - Issues: P2-001, P2-002, P2-003
+  - Heats: integration (P2-001→P2-002→P2-003, fully sequential)
