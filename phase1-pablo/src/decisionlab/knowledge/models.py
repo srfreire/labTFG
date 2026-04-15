@@ -95,3 +95,16 @@ class ResolutionResult:
     contradictions: int
     sonnet_calls: int
     importance_scores: dict = field(default_factory=dict)
+
+
+@dataclass
+class MemoryAgentResult:
+    """Summary of a full Memory Agent run for one pipeline stage."""
+
+    nodes_created: int
+    nodes_merged: int
+    relations_created: int
+    facts_stored: int
+    duplicates_skipped: int
+    conflicts_resolved: int
+    duration_ms: int

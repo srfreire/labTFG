@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from anthropic import AsyncAnthropic
 from rich.console import Console
@@ -18,6 +18,9 @@ from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.parsing import FORMULATION_HEADER_RE
 from decisionlab.tools.reports import slugify
+
+if TYPE_CHECKING:
+    from decisionlab.agents.memory_agent import MemoryAgent
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,15 @@ class Stage(str, Enum):
     BUILD = "build"
     REVIEW_BUILD = "review_build"
     DONE = "done"
+
+
+# Stages after which the Memory Agent should run
+_MEMORY_STAGES = {
+    Stage.RESEARCH: "researcher",
+    Stage.FORMALIZE: "formalizer",
+    Stage.REASON: "reasoner",
+    Stage.BUILD: "builder",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -183,11 +195,113 @@ class Router:
         self.console = Console()
         self.emit = emit  # None → CLI mode; set → web mode
         self._web_mode = emit is not None
+        self.memory_agent: MemoryAgent | None = self._init_memory_agent()
+
+    def _init_memory_agent(self) -> MemoryAgent | None:
+        """Create a MemoryAgent if knowledge infrastructure is available."""
+        try:
+            import shared
+
+            if shared.db is None:
+                return None
+            from decisionlab.agents.memory_agent import MemoryAgent as MA
+
+            return MA(
+                client=self.client,
+                kg=getattr(shared, "kg", None),
+                vector_store=getattr(shared, "vectors", None),
+                embedding_service=getattr(shared, "embeddings", None),
+                db=shared.db,
+            )
+        except Exception:
+            logger.debug("Knowledge infrastructure unavailable — Memory Agent disabled")
+            return None
 
     async def _emit(self, msg: dict) -> None:
         """Send an event to the frontend (no-op in CLI mode)."""
         if self.emit is not None:
             await self.emit(msg)
+
+    # -- DB helpers -----------------------------------------------------------
+
+    async def _update_run(self, **values) -> None:
+        """Update the Run row in Postgres with the given column values."""
+        import shared
+        from shared.models import Run
+        from sqlalchemy import update
+
+        async with shared.db.get_session() as session:
+            await session.execute(
+                update(Run)
+                .where(Run.id == uuid.UUID(self.state.run_id))
+                .values(**values)
+            )
+            await session.commit()
+
+    # -- memory agent ---------------------------------------------------------
+
+    async def _run_memory_agent(self, stage: Stage) -> None:
+        """Run the Memory Agent after a successful work stage. Never blocks pipeline."""
+        stage_name = _MEMORY_STAGES[stage]
+        try:
+            output = await self._collect_stage_output(stage)
+            result = await self.memory_agent.run(
+                stage_name, output, self.state.run_id, emit=self.emit
+            )
+            logger.info("Memory Agent [%s] completed: %s", stage_name, result)
+        except Exception:
+            logger.exception("Memory Agent failed for stage=%s — continuing pipeline", stage_name)
+
+    async def _collect_stage_output(self, stage: Stage) -> str:
+        """Read the stage's output artifacts from S3."""
+        import shared
+
+        prefix = self.state.research_prefix
+        models = self.state.models_prefix
+
+        if stage == Stage.RESEARCH:
+            key = f"{prefix}/report.md"
+            try:
+                return await shared.storage.get_text(key)
+            except Exception:
+                logger.warning("Could not read research report from %s", key)
+                return ""
+
+        if stage == Stage.FORMALIZE:
+            parts: list[str] = []
+            for slug in self.state.approved_paradigms:
+                key = f"{prefix}/formulations/{slug}.md"
+                try:
+                    parts.append(await shared.storage.get_text(key))
+                except Exception:
+                    logger.warning("Could not read formulation %s", key)
+            return "\n\n".join(parts)
+
+        if stage == Stage.REASON:
+            parts = []
+            for paradigm, fids in self.state.selected_formulations.items():
+                for fid in fids:
+                    key = f"{models}/reasoner/{paradigm}/{fid}.json"
+                    try:
+                        parts.append(await shared.storage.get_text(key))
+                    except Exception:
+                        logger.warning("Could not read reasoner spec %s", key)
+            return "\n\n".join(parts)
+
+        if stage == Stage.BUILD:
+            parts = []
+            for paradigm, fids in self.state.approved_specs.items():
+                for fid in fids:
+                    model_key = f"{models}/builder/{paradigm}/{fid}_model.py"
+                    try:
+                        parts.append(await shared.storage.get_text(model_key))
+                    except Exception:
+                        logger.warning("Could not read builder model %s", model_key)
+            if self.state.build_results:
+                parts.append(str(self.state.build_results))
+            return "\n\n".join(parts)
+
+        return ""
 
     # -- main loop -----------------------------------------------------------
 
@@ -214,6 +328,16 @@ class Router:
                 }
             )
             await handler()
+
+            # Memory Agent post-hook: run after successful work stages
+            stage_advanced = self.state.stage != current_stage
+            if (
+                stage_advanced
+                and current_stage in _MEMORY_STAGES
+                and self.memory_agent is not None
+            ):
+                await self._run_memory_agent(current_stage)
+
             await self._emit(
                 {
                     "type": "stage_change",
@@ -222,38 +346,13 @@ class Router:
                 }
             )
             await self.state.save()
-            # Update Run status in Postgres
-            import shared
-
-            async with shared.db.get_session() as session:
-                from sqlalchemy import update
-                from shared.models import Run
-
-                await session.execute(
-                    update(Run)
-                    .where(Run.id == uuid.UUID(self.state.run_id))
-                    .values(
-                        status=self.state.stage.value,
-                    )
-                )
-                await session.commit()
+            await self._update_run(status=self.state.stage.value)
 
         # Finalize run: populate s3_report_key
         if self.state.stage == Stage.DONE:
-            import shared
-
-            async with shared.db.get_session() as session:
-                from sqlalchemy import update
-                from shared.models import Run
-
-                await session.execute(
-                    update(Run)
-                    .where(Run.id == uuid.UUID(self.state.run_id))
-                    .values(
-                        s3_report_key=f"{self.state.research_prefix}/report.md",
-                    )
-                )
-                await session.commit()
+            await self._update_run(
+                s3_report_key=f"{self.state.research_prefix}/report.md",
+            )
 
     # -- stage handlers ------------------------------------------------------
 
