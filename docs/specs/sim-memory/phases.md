@@ -5,9 +5,10 @@
 
 ## Phases
 
-- [ ] **Phase 1: Core Writer** — Lógica pura del `TrackerMemoryWriter`: parsing del JSON del Tracker, filtrado de episodes, generación de facts en inglés, embedding + upsert a Postgres/Qdrant. Sin tocar el orchestrator. Testable en aislamiento con mocks.
+- [x] **Phase 1: Core Writer** — Lógica pura del `TrackerMemoryWriter`: parsing del JSON del Tracker, filtrado de episodes, generación de facts en inglés, embedding + upsert a Postgres/Qdrant. Sin tocar el orchestrator. Testable en aislamiento con mocks.
   - Dependencies: none
-  - Estimated issues: ~4
+  - Issues: P1-001, P1-002, P1-003, P1-004
+  - Heats: writer (P1-001→P1-002→P1-003→P1-004, fully sequential)
 
 - [ ] **Phase 2: Integration** — Wiring del writer al flujo real: flag `ENABLE_KNOWLEDGE_WRITE`, invocación tras `observe_simulation` en el orchestrator, graceful degradation e integration test con docker-compose.
   - Dependencies: Phase 1
