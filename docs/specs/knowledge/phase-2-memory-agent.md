@@ -1,6 +1,6 @@
 # Phase 2: Memory Agent & Knowledge Extraction
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15 (P2-005 done)
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -67,8 +67,8 @@ Build the Memory Agent — a dedicated agent that runs after every pipeline stag
 - [x] AC6: When a new fact corroborates an existing memory, the existing memory's corroborations count increases and confidence rises
 - [x] AC7: Importance scoring produces reasonable values: "ghrelin modulates hunger" scores higher than "the grid is 10x10"
 - [x] AC8: All extracted facts are embedded and searchable in Qdrant within 2 seconds of Memory Agent completion
-- [ ] AC9: Pipeline runs normally when Neo4j/Qdrant are unavailable — Memory Agent logs warning and skips
-- [ ] AC10: WebSocket clients receive memory_agent status updates during pipeline execution
+- [x] AC9: Pipeline runs normally when Neo4j/Qdrant are unavailable — Memory Agent logs warning and skips
+- [x] AC10: WebSocket clients receive memory_agent status updates during pipeline execution
 
 ## Technical Notes
 - Follow existing agent patterns: the Memory Agent is NOT an agentic-loop agent (no tool_use cycle). It's a deterministic pipeline: extract → populate → embed → resolve. LLM calls are direct (not through `runtime/loop.py`).

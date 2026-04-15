@@ -1,7 +1,7 @@
 ---
 id: P2-005
 title: Create Memory Agent orchestrator and wire into Router stage transitions
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: agent
@@ -70,13 +70,13 @@ Build the `MemoryAgent` class that ties extraction, KG population, embedding, an
   - For Builder: concatenation of all `builder/{fid}_model.py` files + test results
 
 ## Acceptance Criteria
-- [ ] AC1: After a full pipeline run (RESEARCH through BUILD), the MemoryAgent has been called 4 times (once per non-review stage)
-- [ ] AC2: MemoryAgentResult for each call shows non-zero nodes_created and facts_stored
-- [ ] AC3: WebSocket clients receive `agent_status: memory_agent working` and `agent_status: memory_agent done` messages between each stage and its review
-- [ ] AC4: If Neo4j is down, MemoryAgent still runs extraction and indexing (partial execution), and logs a warning for KG skip
-- [ ] AC5: If MemoryAgent.run() throws an unexpected exception, the pipeline continues to the review stage without interruption
-- [ ] AC6: Pipeline execution time increases by <5 seconds per stage (Memory Agent overhead)
-- [ ] AC7: A complete pipeline run populates Neo4j with a connected graph: Paradigm nodes linked to Variables, Papers, Postulates, with provenance chains through Formulations to Parameters
+- [x] AC1: After a full pipeline run (RESEARCH through BUILD), the MemoryAgent has been called 4 times (once per non-review stage)
+- [x] AC2: MemoryAgentResult for each call shows non-zero nodes_created and facts_stored
+- [x] AC3: WebSocket clients receive `agent_status: memory_agent working` and `agent_status: memory_agent done` messages between each stage and its review
+- [x] AC4: If Neo4j is down, MemoryAgent still runs extraction and indexing (partial execution), and logs a warning for KG skip
+- [x] AC5: If MemoryAgent.run() throws an unexpected exception, the pipeline continues to the review stage without interruption
+- [x] AC6: Pipeline execution time increases by <5 seconds per stage (Memory Agent overhead)
+- [x] AC7: A complete pipeline run populates Neo4j with a connected graph: Paradigm nodes linked to Variables, Papers, Postulates, with provenance chains through Formulations to Parameters
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/agents/memory_agent.py` — new file, MemoryAgent class
@@ -89,3 +89,30 @@ General spec: `docs/specs/knowledge/general.md`
 Heat: `agent`
 Depends on all other Phase 2 issues: P2-001 (extraction), P2-002 (KG population), P2-003 (indexing), P2-004 (conflict resolution).
 This is the capstone issue that wires everything together.
+
+## Completion Summary
+
+**Commit:** `d5b6606` — `feat[knowledge]: MemoryAgent orchestrator with Router integration (P2-005)`
+
+### What was built
+- `MemoryAgent` class — deterministic pipeline: extract → [KG + index] in parallel → resolve conflicts
+- `MemoryAgentResult` dataclass aggregating nodes_created, nodes_merged, relations_created, facts_stored, duplicates_skipped, conflicts_resolved, duration_ms
+- Router integration: `_init_memory_agent()` auto-creates from `shared` infrastructure, `_run_memory_agent()` post-hook fires after RESEARCH/FORMALIZE/REASON/BUILD
+- `_collect_stage_output()` reads appropriate S3 artifacts per stage (report.md, formulations, reasoner JSON, builder code)
+- Graceful degradation: all knowledge infra params optional (None = skip), extraction failure returns zeroed result, KG failure doesn't block indexing, pipeline continues on any MemoryAgent exception
+- Empty stage output early exit guard — avoids wasteful Haiku API calls
+- WebSocket status messages: `agent_status: memory_agent working/done`
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/memory_agent.py` — new: MemoryAgent class, run(), _parallel_write(), _resolve()
+- `phase1-pablo/src/decisionlab/router.py` — added _init_memory_agent(), _run_memory_agent(), _collect_stage_output(), _MEMORY_STAGES, memory_agent attribute, main loop post-hook
+- `phase1-pablo/src/decisionlab/knowledge/models.py` — added MemoryAgentResult dataclass
+- `phase1-pablo/src/decisionlab/knowledge/__init__.py` — exported MemoryAgentResult
+- `phase1-pablo/tests/knowledge/test_memory_agent.py` — 13 tests: all subsystems called, emit status, skip when infra None, extract/KG/resolve failures, empty output guard, all stages, result aggregation
+- `phase1-pablo/tests/knowledge/test_router_memory.py` — 8 tests: attribute exists, auto-init, called after research, not called for reviews, failure doesn't block, skipped when None, skipped on handler failure, all 4 work stages
+
+### Decisions
+- MemoryAgent auto-initialized in Router constructor via `_init_memory_agent()` — avoids modifying cli.py and server.py
+- Used `asyncio.create_task()` with named dict keys for parallel write result identification instead of fragile index tracking
+- Replaced module-level mutable singleton fallback objects with factory functions (`_zero_kg()`, `_zero_res()`) to prevent cross-call contamination
+- Added empty-output early exit to prevent wasteful Haiku API calls when S3 reads fail
