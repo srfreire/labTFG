@@ -18,6 +18,7 @@ class Settings:
     NEO4J_PASSWORD: str = "labtfg-neo4j"
     QDRANT_URL: str = "http://localhost:6333"
     VOYAGE_API_KEY: str = ""
+    ZEROENTROPY_API_KEY: str = ""
 
 
 def load_settings() -> Settings:

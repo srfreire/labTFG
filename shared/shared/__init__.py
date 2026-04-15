@@ -32,13 +32,15 @@ async def init(settings: Settings | None = None) -> None:
     vectors = VectorStore(settings)
     await vectors.connect()
     await vectors.init_collections()
-    if settings.VOYAGE_API_KEY:
-        embeddings = EmbeddingService(settings.VOYAGE_API_KEY)
+    if settings.VOYAGE_API_KEY and settings.ZEROENTROPY_API_KEY:
+        embeddings = EmbeddingService(settings.VOYAGE_API_KEY, settings.ZEROENTROPY_API_KEY)
     else:
         import warnings
 
+        missing = [k for k in ("VOYAGE_API_KEY", "ZEROENTROPY_API_KEY")
+                   if not getattr(settings, k)]
         warnings.warn(
-            "VOYAGE_API_KEY not set — EmbeddingService unavailable",
+            f"{', '.join(missing)} not set — EmbeddingService unavailable",
             stacklevel=2,
         )
 

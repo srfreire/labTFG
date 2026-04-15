@@ -11,11 +11,14 @@ from shared.embedding import EmbeddingService
 
 @pytest_asyncio.fixture
 async def svc():
-    """Yield an EmbeddingService; skip if no API key."""
-    api_key = os.environ.get("VOYAGE_API_KEY")
-    if not api_key:
+    """Yield an EmbeddingService; skip if API keys missing."""
+    voyage_key = os.environ.get("VOYAGE_API_KEY")
+    ze_key = os.environ.get("ZEROENTROPY_API_KEY")
+    if not voyage_key:
         pytest.skip("VOYAGE_API_KEY not set")
-    return EmbeddingService(api_key)
+    if not ze_key:
+        pytest.skip("ZEROENTROPY_API_KEY not set")
+    return EmbeddingService(voyage_key, ze_key)
 
 
 # -- AC1: single text embedding -----------------------------------------------

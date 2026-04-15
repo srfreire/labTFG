@@ -167,7 +167,7 @@ async def index_stage_output(
 
     # Embed all chunks in one batch
     texts = [c.text for c in all_chunks]
-    vectors = await embedding_service.embed_texts(texts, input_type="document")
+    vectors = await embedding_service.embed_texts(texts)
     if len(vectors) != len(texts):
         raise RuntimeError(
             f"embed_texts returned {len(vectors)} vectors for {len(texts)} texts "
