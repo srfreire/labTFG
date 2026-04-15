@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 import shared
@@ -142,6 +143,57 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
         await session.commit()
 
 
+_RECENCY_DECAY = 0.995
+
+
+def _apply_recency_weighting(
+    results: list[RetrievalResult],
+) -> list[RetrievalResult]:
+    """Apply recency-based score boosting (Generative Agents pattern).
+
+    For each result with a created_at/run_date timestamp, compute:
+        days_old = (now - created_at).days
+        recency_factor = 0.995 ** days_old
+        final_score = score * recency_factor
+
+    Results without timestamps get recency_factor=1.0 (no penalty).
+    Returns a new list re-sorted by final_score descending.
+    """
+    now = datetime.now(timezone.utc)
+    weighted: list[RetrievalResult] = []
+
+    for r in results:
+        created_at_str = r.metadata.get("created_at") or r.metadata.get("run_date")
+        recency_factor = 1.0
+
+        if created_at_str:
+            try:
+                created_at = datetime.fromisoformat(str(created_at_str))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                days_old = max(0, (now - created_at).days)
+                recency_factor = _RECENCY_DECAY**days_old
+            except (ValueError, TypeError):
+                logger.debug(
+                    "Unparseable timestamp %r for source=%s, using recency_factor=1.0",
+                    created_at_str,
+                    r.source,
+                )
+
+        final_score = r.score * recency_factor
+        weighted.append(
+            RetrievalResult(
+                text=r.text,
+                score=final_score,
+                source=r.source,
+                metadata={**r.metadata, "recency_factor": recency_factor},
+            )
+        )
+
+    weighted.sort(key=lambda r: r.score, reverse=True)
+    return weighted
+
+
 async def _noop_kg() -> list[RetrievalResult]:
     return []
 
@@ -224,13 +276,16 @@ def create_retrieve_knowledge(
                 embedding_service=embedding_service,
             )
 
+            # Apply recency weighting (P5-001)
+            final_results = _apply_recency_weighting(crag_result.results)
+
             # Track memory access (fire-and-forget, don't block response)
             try:
-                await _track_memory_access(crag_result.results)
+                await _track_memory_access(final_results)
             except Exception as exc:
                 logger.warning("Memory access tracking failed: %s", exc)
 
-            return _format_output(crag_result.results, top_k)
+            return _format_output(final_results, top_k)
 
         except Exception as exc:
             logger.error(

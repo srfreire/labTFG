@@ -222,6 +222,7 @@ class _ScoredNode:
     properties: dict
     score: float
     relation_chain: list[str]
+    rel_run_ids: list[str | None] | None = None
 
 
 async def _ppr_traverse(
@@ -234,7 +235,13 @@ async def _ppr_traverse(
     """
     scored: dict[str, _ScoredNode] = {}
 
-    def _update(node_id: str, row: dict, score: float, rels: list[str]):
+    def _update(
+        node_id: str,
+        row: dict,
+        score: float,
+        rels: list[str],
+        rel_run_ids: list[str | None] | None = None,
+    ):
         if node_id not in scored or score > scored[node_id].score:
             scored[node_id] = _ScoredNode(
                 node_id=node_id,
@@ -242,6 +249,7 @@ async def _ppr_traverse(
                 properties=row["props"],
                 score=score,
                 relation_chain=rels,
+                rel_run_ids=rel_run_ids,
             )
 
     for entity in linked:
@@ -271,13 +279,20 @@ async def _ppr_traverse(
             "labels(connected) AS labels, "
             "properties(connected) AS props, "
             "length(path) AS hops, "
-            "[r IN relationships(path) | type(r)] AS rel_types",
+            "[r IN relationships(path) | type(r)] AS rel_types, "
+            "[r IN relationships(path) | r.run_id] AS rel_run_ids",
             {"start_id": entity.node_id},
         )
 
         for row in traversal_results:
             score = entity.confidence * (_PPR_DECAY ** row["hops"])
-            _update(row["id"], row, score, row["rel_types"])
+            _update(
+                row["id"],
+                row,
+                score,
+                row["rel_types"],
+                rel_run_ids=row.get("rel_run_ids"),
+            )
 
     return list(scored.values())
 
@@ -308,19 +323,35 @@ def _collect_passages(
 ) -> list[RetrievalResult]:
     """Convert scored nodes into RetrievalResult list, sorted by score."""
     sorted_nodes = sorted(scored_nodes, key=lambda n: n.score, reverse=True)
-    return [
-        RetrievalResult(
-            text=_format_passage(node),
-            score=node.score,
-            source="kg",
-            metadata={
-                "node_id": node.node_id,
-                "labels": node.labels,
-                "relation_chain": node.relation_chain,
-            },
+    results: list[RetrievalResult] = []
+    for node in sorted_nodes[:limit]:
+        meta = {
+            "node_id": node.node_id,
+            "labels": node.labels,
+            "relation_chain": node.relation_chain,
+        }
+        # Add run provenance from node properties (set by populate_kg).
+        # populate_kg appends run_ids chronologically, so [-1] is the most recent.
+        run_ids = node.properties.get("run_ids")
+        if run_ids:
+            meta["run_ids"] = run_ids
+            meta["run_id"] = run_ids[-1]
+        created_at = node.properties.get("created_at")
+        if created_at:
+            meta["run_date"] = created_at
+            meta["created_at"] = created_at
+        # Add relation-level run_id provenance (AC5).
+        if node.rel_run_ids:
+            meta["rel_run_ids"] = node.rel_run_ids
+        results.append(
+            RetrievalResult(
+                text=_format_passage(node),
+                score=node.score,
+                source="kg",
+                metadata=meta,
+            )
         )
-        for node in sorted_nodes[:limit]
-    ]
+    return results
 
 
 # ---------------------------------------------------------------------------

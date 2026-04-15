@@ -1,9 +1,10 @@
-"""Tests for the unified retrieve_knowledge tool (P3-005)."""
+"""Tests for the unified retrieve_knowledge tool (P3-005 + P5-001)."""
 
 from __future__ import annotations
 
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
+    _apply_recency_weighting,
     create_retrieve_knowledge,
 )
 

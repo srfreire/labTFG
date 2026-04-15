@@ -55,12 +55,15 @@ def _to_results(
     for p in points:
         if exclude_run_id and p.payload.get("run_id") == exclude_run_id:
             continue
+        meta = {**p.payload, "collection": collection}
+        if "created_at" in meta and "run_date" not in meta:
+            meta["run_date"] = meta["created_at"]
         results.append(
             RetrievalResult(
                 text=p.payload.get("text_preview", ""),
                 score=p.score,
                 source=source,
-                metadata={**p.payload, "collection": collection},
+                metadata=meta,
             )
         )
     return results
@@ -130,8 +133,15 @@ async def sparse_retrieve(
     # Normalize scores to 0-1 (divide by max)
     max_score = max(r.score for r in raw)
     if max_score > 0:
-        for r in raw:
-            r.score = r.score / max_score
+        raw = [
+            RetrievalResult(
+                text=r.text,
+                score=r.score / max_score,
+                source=r.source,
+                metadata=r.metadata,
+            )
+            for r in raw
+        ]
 
     raw.sort(key=lambda r: r.score, reverse=True)
     return raw
