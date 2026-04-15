@@ -1,7 +1,7 @@
 ---
 id: P2-004
 title: Implement conflict resolution, importance scoring, and memory persistence
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: resolution
@@ -67,13 +67,13 @@ Score the importance of each extracted fact (Haiku), detect duplicates/contradic
   ```
 
 ## Acceptance Criteria
-- [ ] AC1: Importance scoring assigns "ghrelin modulates hunger via hypothalamic signaling" a score >= 7 and "the grid has resources" a score <= 4
-- [ ] AC2: A fact identical to an existing memory (similarity > 0.85) triggers Sonnet classification and is correctly classified as DUPLICATE — no new memory created
-- [ ] AC3: A fact that adds detail to an existing memory (e.g., "learning rate = 0.1" existing, "learning rate = 0.1, sourced from Keramati 2011" new) is classified as ENRICHMENT — old memory superseded, new memory created with merged content
-- [ ] AC4: A contradictory fact (e.g., "setpoint = 50" existing, "setpoint = 70 based on updated data" new) is classified as CONTRADICTION — old memory superseded with valid_to set, new memory created, contradictions counter incremented
-- [ ] AC5: Facts with no existing duplicates are stored directly with correct namespace, memory_type, importance, and confidence
-- [ ] AC6: Sonnet is only called when duplicates are detected (sonnet_calls == 0 when no duplicates found)
-- [ ] AC7: If Haiku importance scoring fails, all facts default to importance 5.0 and processing continues
+- [x] AC1: Importance scoring assigns "ghrelin modulates hunger via hypothalamic signaling" a score >= 7 and "the grid has resources" a score <= 4
+- [x] AC2: A fact identical to an existing memory (similarity > 0.85) triggers Sonnet classification and is correctly classified as DUPLICATE — no new memory created
+- [x] AC3: A fact that adds detail to an existing memory (e.g., "learning rate = 0.1" existing, "learning rate = 0.1, sourced from Keramati 2011" new) is classified as ENRICHMENT — old memory superseded, new memory created with merged content
+- [x] AC4: A contradictory fact (e.g., "setpoint = 50" existing, "setpoint = 70 based on updated data" new) is classified as CONTRADICTION — old memory superseded with valid_to set, new memory created, contradictions counter incremented
+- [x] AC5: Facts with no existing duplicates are stored directly with correct namespace, memory_type, importance, and confidence
+- [x] AC6: Sonnet is only called when duplicates are detected (sonnet_calls == 0 when no duplicates found)
+- [x] AC7: If Haiku importance scoring fails, all facts default to importance 5.0 and processing continues
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/knowledge/resolver.py` — new file
@@ -86,3 +86,29 @@ General spec: `docs/specs/knowledge/general.md`
 Heat: `resolution`
 Depends on P2-001 (ExtractionResult format) and P2-003 (Qdrant must be populated to detect duplicates).
 Uses `memories.py` helpers from P1-002, `EmbeddingService` from P1-004, `VectorStore` from P1-003.
+
+## Completion Summary
+
+**Commit:** `de6e135` — `feat[knowledge]: conflict resolution, importance scoring, memory persistence (P2-004)`
+
+### What was built
+- `resolver.py` with `resolve_and_store()` — 4-step pipeline: importance scoring (Haiku batch), duplicate detection (Qdrant cosine > 0.85), conflict classification (Sonnet per-duplicate), memory persistence (Postgres)
+- `ResolutionResult` dataclass tracking memories_created, duplicates_skipped, corroborations, enrichments, contradictions, sonnet_calls, importance_scores
+- Importance scoring and conflict classification prompts in `prompts.py`
+- Graceful degradation: Haiku failure defaults importance to 5.0, Sonnet failure stores fact as new
+- UUID type safety: string IDs converted to `uuid.UUID` for Postgres compatibility
+- CONTRADICTION path: `update_confidence` called before `supersede_memory` so counters update on live row
+- `merged_content: null` handling: falls back to fact text via `or` guard
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/knowledge/resolver.py` — new: `resolve_and_store()`, `_score_importance()`, `_find_duplicates()`, `_classify_conflict()`
+- `phase1-pablo/src/decisionlab/knowledge/models.py` — added `ResolutionResult` dataclass
+- `phase1-pablo/src/decisionlab/knowledge/prompts.py` — added importance scoring + conflict classification prompts
+- `phase1-pablo/src/decisionlab/knowledge/__init__.py` — exports `ResolutionResult`, `resolve_and_store`
+- `phase1-pablo/tests/knowledge/test_resolver.py` — 20 tests covering all 7 ACs plus edge cases
+
+### Decisions
+- Renamed `_NAMESPACE_BY_STAGE` → `_STAGE_NAMESPACE` (etc.) to follow `_STAGE_*` naming convention from `indexer.py`
+- Hoisted namespace/memory_type/confidence lookups out of per-fact loop (constant per invocation)
+- Simplified `_find_duplicates` to list comprehension
+- Added `exc_info=True` to warning logs for debuggability
