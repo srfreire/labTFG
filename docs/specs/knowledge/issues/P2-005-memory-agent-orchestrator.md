@@ -1,14 +1,14 @@
 ---
 id: P2-005
 title: Create Memory Agent orchestrator and wire into Router stage transitions
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: agent
 priority: 4
 blocked_by: [P2-002, P2-003, P2-004]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P2-005: Create Memory Agent orchestrator and wire into Router stage transitions
