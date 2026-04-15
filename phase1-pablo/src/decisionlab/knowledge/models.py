@@ -65,6 +65,17 @@ class Chunk:
 
 
 @dataclass
+class KGWriteResult:
+    """Summary of a knowledge graph population operation."""
+
+    nodes_created: int
+    nodes_merged: int
+    relations_created: int
+    relations_superseded: int
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass
 class IndexResult:
     """Summary of an indexing operation."""
 

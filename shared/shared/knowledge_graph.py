@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
+from typing import TypeVar
 
-from neo4j import AsyncGraphDatabase
+from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
+
+_T = TypeVar("_T")
 
 # Node labels → (unique key property, additional index properties)
 _NODE_SCHEMA: dict[str, tuple[str, list[str]]] = {
@@ -186,6 +190,20 @@ class KnowledgeGraph:
             result = await session.run(cypher, params or {})
             records = [r async for r in result]
             return [dict(r) for r in records]
+
+    @staticmethod
+    def unique_key_for(label: str) -> str:
+        """Return the unique-key property name for a node label."""
+        _check_label(label)
+        return _NODE_SCHEMA[label][0]
+
+    async def execute_write(
+        self,
+        work: Callable[[AsyncManagedTransaction], Awaitable[_T]],
+    ) -> _T:
+        """Run *work* inside a managed write transaction (auto-retry on transient errors)."""
+        async with self._driver.session() as session:
+            return await session.execute_write(work)  # type: ignore[return-value]
 
     async def close(self) -> None:
         """Close the driver."""
