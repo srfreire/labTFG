@@ -1,14 +1,14 @@
 ---
 id: P2-002
 title: Implement knowledge graph population with node dedup and provenance
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: kg-write
 priority: 2
 blocked_by: [P2-001]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P2-002: Implement knowledge graph population with node dedup and provenance
