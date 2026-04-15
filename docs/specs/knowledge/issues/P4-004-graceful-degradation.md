@@ -1,14 +1,14 @@
 ---
 id: P4-004
 title: Implement graceful degradation when knowledge infrastructure is unavailable
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: resilience
 priority: 3
 blocked_by: [P4-001, P4-003]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P4-004: Implement graceful degradation when knowledge infrastructure is unavailable

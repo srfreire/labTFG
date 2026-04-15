@@ -1,14 +1,14 @@
 ---
 id: P4-002
 title: Augment agent system prompts with knowledge retrieval instructions
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: agent-tools
 priority: 2
 blocked_by: [P4-001]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P4-002: Augment agent system prompts with knowledge retrieval instructions
