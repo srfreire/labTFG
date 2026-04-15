@@ -1,6 +1,6 @@
 # Phase 4: Pipeline Integration
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15 
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -54,7 +54,7 @@ Wire the Memory Agent (Phase 2) and the retrieval tool (Phase 3) into the existi
 - [x] AC3: The Memory Agent runs after RESEARCH, FORMALIZE, REASON, and BUILD stages — verified via MemoryAgentResult logs (4 calls total)
 - [ ] AC4: After a pipeline run, Neo4j contains a connected knowledge graph with Paradigm→Variable→BrainRegion→Paper chains
 - [ ] AC5: A second pipeline run on a related topic retrieves knowledge from the first run's memories via retrieve_knowledge
-- [ ] AC6: Pipeline runs successfully when Docker services for Neo4j/Qdrant are stopped — no errors, degraded mode warning logged
+- [x] AC6: Pipeline runs successfully when Docker services for Neo4j/Qdrant are stopped — no errors, degraded mode warning logged
 - [x] AC7: WebSocket clients see memory_agent status updates in the agent panel
 
 ## Technical Notes
