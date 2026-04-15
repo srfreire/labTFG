@@ -1,7 +1,7 @@
 ---
 id: P3-005
 title: Create unified retrieve_knowledge tool for pipeline agents
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: tool
@@ -90,14 +90,14 @@ Expose the full 3-layer retrieval + CRAG pipeline as a single tool function that
   - This enables future consolidation to know which memories are frequently used
 
 ## Acceptance Criteria
-- [ ] AC1: `create_retrieve_knowledge(...)` returns a valid Anthropic tool definition with correct schema
-- [ ] AC2: An agent calling `retrieve_knowledge(query="Q-learning convergence")` gets formatted results with source attributions
-- [ ] AC3: `namespace="paradigm"` restricts results to paradigm-namespace content only
-- [ ] AC4: Self-retrieval prevention: results from the current `run_id` are excluded
-- [ ] AC5: When knowledge infrastructure is unavailable (all None), the tool returns a graceful message instead of failing
-- [ ] AC6: `top_k=3` returns at most 3 results
-- [ ] AC7: Accessed memories have their `last_accessed_at` and `access_count` updated in Postgres
-- [ ] AC8: The tool integrates with the existing dispatcher — can be called by any agent via the standard tool_use mechanism
+- [x] AC1: `create_retrieve_knowledge(...)` returns a valid Anthropic tool definition with correct schema
+- [x] AC2: An agent calling `retrieve_knowledge(query="Q-learning convergence")` gets formatted results with source attributions
+- [x] AC3: `namespace="paradigm"` restricts results to paradigm-namespace content only
+- [x] AC4: Self-retrieval prevention: results from the current `run_id` are excluded
+- [x] AC5: When knowledge infrastructure is unavailable (all None), the tool returns a graceful message instead of failing
+- [x] AC6: `top_k=3` returns at most 3 results
+- [x] AC7: Accessed memories have their `last_accessed_at` and `access_count` updated in Postgres
+- [x] AC8: The tool integrates with the existing dispatcher — can be called by any agent via the standard tool_use mechanism
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/knowledge/retrieval/tool.py` — new file
@@ -109,3 +109,29 @@ General spec: `docs/specs/knowledge/general.md`
 Heat: `tool`
 Depends on P3-003 (fusion + reranking) and P3-004 (CRAG evaluator) — this is the capstone that assembles the full retrieval pipeline into a single tool.
 The tool will be wired into pipeline agents in Phase 4 (pipeline integration).
+
+## Completion Summary
+
+**Commit:** `74dae07` — `feat[knowledge]: unified retrieve_knowledge tool for pipeline agents (P3-005)`
+
+### What was built
+- `RETRIEVE_KNOWLEDGE_SCHEMA` — Anthropic-compatible tool definition with query, namespace (enum), and top_k parameters
+- `create_retrieve_knowledge()` — factory that captures all dependencies (KG, VectorStore, EmbeddingService, WebSearchPort, AsyncAnthropic, run_id, stage) and returns an async handler following the existing `Callable[[dict], Awaitable[str]]` pattern
+- Full pipeline orchestration: KG retrieval + dense/sparse vector retrieval (parallel via `asyncio.gather`) -> RRF fusion -> Voyage AI reranking -> CRAG evaluation with web fallback
+- `_track_memory_access()` — updates `last_accessed_at` and `access_count` for Postgres-backed memory results, with per-ID error handling
+- `_format_output()` / `_format_result()` — structured text output with source attributions (paper titles, namespaces, stages, run IDs) and separate formatting for web results
+- Stage-aware task context generation for CRAG evaluation (researcher/formalizer/reasoner/builder/memory_agent descriptions)
+- Graceful degradation: returns "Knowledge backbone not available" when all infrastructure is None
+- 19 unit tests covering all 8 acceptance criteria plus edge cases (empty results, web formatting, stage context)
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/tool.py` — new file (~233 lines)
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/__init__.py` — added `RETRIEVE_KNOWLEDGE_SCHEMA`, `create_retrieve_knowledge` exports
+- `phase1-pablo/tests/knowledge/test_retrieval_tool.py` — 19 unit tests with mocked pipeline components
+
+### Decisions
+- Followed existing `*_SCHEMA` constant + `create_*()` factory pattern (not the tuple return described in the issue spec) to match actual codebase conventions
+- Module-level `_noop_kg()` / `_noop_vec()` async fallbacks instead of inline lambdas (Python 3.11+ removed `asyncio.coroutine`)
+- Per-ID error handling in `touch_memory` loop to prevent one failed ID from blocking the rest (reviewer finding)
+- `_SENTINEL` pattern in tests to avoid shared mutable default mock instances
+- `_patch_pipeline()` context manager to eliminate ~100 lines of duplicated test setup

@@ -58,7 +58,7 @@ Build the read path of the knowledge backbone: parallel 3-layer retrieval (KG tr
 - [x] AC6: CRAG evaluator classifies a stale memory about an unrelated topic as INCORRECT and triggers web fallback
 - [x] AC7: CRAG evaluator classifies a relevant, current memory as CORRECT and passes it through
 - [ ] AC8: Full pipeline (KG + dense + sparse → RRF → rerank → CRAG) completes within 3 seconds on a warm knowledge base with ~500 memories
-- [ ] AC9: `retrieve_knowledge` tool returns formatted text with source attributions that include paper titles and pipeline stage origin
+- [x] AC9: `retrieve_knowledge` tool returns formatted text with source attributions that include paper titles and pipeline stage origin
 - [x] AC10: Retrieval with empty knowledge base (cold start) returns empty result gracefully — no errors, no hallucinated results
 
 ## Technical Notes
