@@ -1,14 +1,14 @@
 ---
 id: P4-001
 title: Add retrieve_knowledge tool to all pipeline agents
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: agent-tools
 priority: 1
 blocked_by: []
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P4-001: Add retrieve_knowledge tool to all pipeline agents
