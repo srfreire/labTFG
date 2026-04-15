@@ -1,14 +1,14 @@
 ---
 id: P2-002
 title: Wire TrackerMemoryWriter into orchestrator observe_simulation
-status: todo
+status: done
 kind: strike
 phase: 2
 heat: integration
 priority: 2
 blocked_by: [P2-001]
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # P2-002: Wire TrackerMemoryWriter into orchestrator observe_simulation
@@ -79,12 +79,32 @@ Capturar el mapping `agent_id → ModelInfo` durante `run_simulation` e invocar 
 
 ## Acceptance Criteria
 
-- [ ] AC1: Tras un `run_simulation` exitoso con N modelos y M agentes por modelo, `state["agent_to_model"]` tiene N*M entradas con los campos correctos (`model_id`, `class_name`, `paradigm`, `formulation`, `phase1_run_id`).
-- [ ] AC2: Tras `run_simulation`, `state["seed"]` refleja el seed pasado en params (o `None` si no se pasó).
-- [ ] AC3: Con `shared.sim_memory_writer=None`, `observe_simulation` no intenta escribir y no añade overhead.
-- [ ] AC4: Con writer mockeado, `observe_simulation` lo invoca exactamente una vez con un `SimulationContext` que tiene `phase2_experiment_id`, `environment="grid_WxH"` correcto, `steps`, `seed`, y `agent_to_model` poblado.
-- [ ] AC5: Una excepción inesperada del writer es capturada (`logger.exception`) y `observe_simulation` devuelve el tracker_output normalmente como si el writer no existiese.
-- [ ] AC6: Los 111 tests de phase2 siguen verdes (incluidos los del orchestrator si los hay).
+- [x] AC1: Tras un `run_simulation` exitoso con N modelos y M agentes por modelo, `state["agent_to_model"]` tiene N*M entradas con los campos correctos (verificado por smoke test + cubierto formalmente en P2-003).
+- [x] AC2: Tras `run_simulation`, `state["seed"]` refleja el seed pasado en params (o `None` si no se pasó).
+- [x] AC3: Con `shared.sim_memory_writer=None`, `observe_simulation` no intenta escribir (`getattr` retorna None → no entra en el bloque try).
+- [x] AC4: Con writer mockeado, smoke test confirma 1 sola llamada con `SimulationContext(phase2_experiment_id="exp-42", environment="grid_10x8", steps=50, seed=42, agent_to_model={...})`.
+- [x] AC5: `try/except` alrededor de `_write_tracker_memories` con `logger.exception`; tracker_output se devuelve normal.
+- [x] AC6: 112 tests de phase2-juan siguen verdes, cero regresiones.
+
+## Completion Summary
+
+### What was built
+- Helpers a nivel de módulo en `orchestrator.py`:
+  - `_to_knowledge_model_info(dict) -> simlab.knowledge.ModelInfo` — traducción local para mantener `simlab.knowledge` desacoplado de `simlab.model_loader`.
+  - `_write_tracker_memories(writer, tracker_output, state)` — construye `SimulationContext` desde `state` y llama al writer. Loguea contadores a nivel INFO. No captura excepciones internamente (lo hace el caller).
+- `create_environment`: reset inicial de `state["agent_to_model"] = {}` y `state["seed"] = None`.
+- `run_simulation`: durante el loop que añade agentes al environment, acumula el dict `agent_to_model` con `{model_id, class_name, paradigm, formulation, phase1_run_id}` por `agent_id`. Al terminar el loop, persiste `state["agent_to_model"]` + `state["seed"] = params.get("seed")`.
+- `observe_simulation`: tras el bloque de persistencia S3+DB existente, lee `getattr(shared, "sim_memory_writer", None)`. Si no es None, envuelve `_write_tracker_memories` en `try/except` con `logger.exception`. Comportamiento con flag OFF / writer None: idéntico al anterior.
+
+### Files modified
+- `phase2-juan/simlab/orchestrator.py` — 3 puntos de edición + 2 helpers nuevos + import de `logging`.
+
+### Decisions
+- **`getattr(shared, "sim_memory_writer", None)`** (en lugar de `shared.sim_memory_writer`): robusto frente a versiones antiguas de `shared` que no tengan el atributo (p.ej. si phase2 se despliega con un shared pre-P2-001).
+- **Helpers a nivel de módulo, no en la clase**: son funciones puras (o semi-puras) que no dependen del estado del Orchestrator. Facilita testing unitario (P2-003) y mantiene el método `run_simulation` legible.
+- **Import local de `simlab.knowledge` dentro de `_to_knowledge_model_info`**: evita un import a nivel de módulo que solo se ejecuta cuando el flag está ON. Mantiene el arranque del orchestrator rápido.
+- **Reset en `create_environment` pero NO en cada `run_simulation`**: run_simulation SOBRESCRIBE (`state["agent_to_model"] = agent_to_model`). No es necesario resetear antes. Si en el futuro falla a mitad del loop, el state podría quedar parcial — aceptable, el siguiente run correcto lo sobrescribe.
+- **Tests formales en P2-003**: el smoke test inline ya validó el camino feliz; los tests oficiales viven en su propio issue.
 
 ## Files Likely Affected
 

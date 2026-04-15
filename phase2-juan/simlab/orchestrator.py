@@ -30,7 +30,78 @@ from simlab.loop import run_agent_loop, Registry
 from simlab.spec import spec_to_environment
 from simlab.model_loader import discover_models, load_model as _load_model
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+
+
+# ---------------------------------------------------------------------------
+# Knowledge-Backbone wiring helpers (sim-memory / P2-002)
+# ---------------------------------------------------------------------------
+
+
+def _to_knowledge_model_info(data: dict):
+    """Translate the orchestrator-state agent model dict to simlab.knowledge.ModelInfo.
+
+    Kept as a small local helper so `simlab.knowledge` does not depend on
+    `simlab.model_loader`.
+    """
+    from simlab.knowledge import ModelInfo
+
+    return ModelInfo(
+        model_id=data["model_id"],
+        class_name=data["class_name"],
+        paradigm=data["paradigm"],
+        formulation=data["formulation"],
+        phase1_run_id=data.get("phase1_run_id"),
+    )
+
+
+async def _write_tracker_memories(writer, tracker_output: str, state: dict) -> None:
+    """Build a SimulationContext from `state` and invoke the writer.
+
+    Called from `observe_simulation` after persistence. The writer itself never
+    raises (it captures internally), but the caller wraps this in try/except
+    as an extra safety net.
+    """
+    from simlab.knowledge import SimulationContext
+
+    spec = state.get("spec") or {}
+    replay = state.get("replay") or {}
+    agent_to_model_raw = state.get("agent_to_model") or {}
+
+    width = spec.get("grid_width")
+    height = spec.get("grid_height")
+    environment = f"grid_{width}x{height}" if width and height else "unknown"
+
+    frames = replay.get("frames") or []
+
+    agent_to_model = {
+        agent_id: _to_knowledge_model_info(data)
+        for agent_id, data in agent_to_model_raw.items()
+    }
+
+    context = SimulationContext(
+        phase2_experiment_id=str(state.get("experiment_id") or ""),
+        environment=environment,
+        steps=len(frames),
+        seed=state.get("seed"),
+        agent_to_model=agent_to_model,
+    )
+
+    result = await writer.write(tracker_output, context)
+    logger.info(
+        "sim-memory: wrote %d summaries, %d trajectories, %d episodes "
+        "(filtered=%d, skipped=%s, %dms)",
+        result.summaries_written,
+        result.trajectories_written,
+        result.episodes_written,
+        result.episodes_filtered,
+        result.skipped_reason,
+        result.duration_ms,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -426,6 +497,8 @@ class Orchestrator:
             state["analyst_output"] = None
             state["predictions"] = None
             state["charts"] = []
+            state["agent_to_model"] = {}
+            state["seed"] = None
             # Persist experiment to Postgres
             exp_id = str(uuid.uuid4())
             async with shared.db.get_session() as session:
@@ -524,6 +597,7 @@ class Orchestrator:
 
             # Create agents — one (or num_agents) per model
             models_used = []
+            agent_to_model: dict[str, dict] = {}
             if model_ids:
                 if not available:
                     return json.dumps({"error": "No models available in database."})
@@ -537,6 +611,13 @@ class Orchestrator:
                         pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
                         agent_id = f"{label}_{i}" if num_agents > 1 else label
                         env.add_agent(Agent(id=agent_id, position=pos, decision_model=model))
+                        agent_to_model[agent_id] = {
+                            "model_id": info.id,
+                            "class_name": info.class_name,
+                            "paradigm": info.paradigm,
+                            "formulation": info.formulation,
+                            "phase1_run_id": info.run_id,
+                        }
                     models_used.append(mid)
             else:
                 return json.dumps({"error": "No model_ids provided. Call list_available_models first and pass the chosen model IDs."})
@@ -598,6 +679,8 @@ class Orchestrator:
             }
             state["tracker_output"] = None
             state["analyst_output"] = None
+            state["agent_to_model"] = agent_to_model
+            state["seed"] = params.get("seed")
 
             # Persist simulation results to S3 + Postgres
             if state.get("experiment_id"):
@@ -661,6 +744,17 @@ class Orchestrator:
                         .values(s3_tracker_key=tracker_key, status="tracked")
                     )
                     await session.commit()
+
+            # Knowledge-Backbone write (non-fatal — never aborts observe_simulation)
+            writer = getattr(shared, "sim_memory_writer", None)
+            if writer is not None:
+                try:
+                    await _write_tracker_memories(writer, result, state)
+                except Exception:
+                    logger.exception(
+                        "observe_simulation: knowledge writer raised (non-fatal)"
+                    )
+
             return result
 
         # --- analyze_results: calls the Analyst (can be called multiple times) ---
