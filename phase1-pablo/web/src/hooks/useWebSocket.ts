@@ -84,6 +84,7 @@ function reducer(state: WebSocketState, action: Action): WebSocketState {
         isRunning: false,
         currentStage: null,
         reviewRequest: null,
+        agents: [],
       };
 
     case "CLEAR_REVIEW":

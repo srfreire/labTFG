@@ -87,14 +87,6 @@ function MemoryAgentDot({
           MEMORY
         </span>
       </div>
-      {/* Line below memory dot */}
-      <div
-        className="ml-[40px]"
-        style={{
-          borderLeft: `1px dashed ${lineColor}`,
-          height: 8,
-        }}
-      />
     </>
   );
 }
