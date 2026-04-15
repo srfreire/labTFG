@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Implement TrackerMemoryWriter.write orchestration
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: writer
@@ -40,12 +40,33 @@ Implementar el método `TrackerMemoryWriter.write()` completo: parsea el JSON de
 
 ## Acceptance Criteria
 
-- [ ] AC1: `write()` implementado, ya no retorna `skipped_reason="not_implemented"`.
-- [ ] AC2: Una sola llamada a `embed_texts` por invocación, independientemente de cuántos facts haya.
-- [ ] AC3: Cualquier excepción dentro de `write` se captura — el método nunca propaga. Verificable por inspección (un `try/except BaseException` exceptuando `CancelledError` envuelve el cuerpo completo).
-- [ ] AC4: Si Qdrant upsert falla para un fact concreto, los demás facts siguen escribiéndose; el fact fallido deja su fila en Postgres y loguea warning.
-- [ ] AC5: El método commitea una sola vez al final del bucle (no commit por fact).
-- [ ] AC6: Todos los upserts a Qdrant usan el mismo UUID que la fila Postgres correspondiente.
+- [x] AC1: `write()` implementado, ya no retorna `skipped_reason="not_implemented"`.
+- [x] AC2: Una sola llamada a `embed_texts` por invocación, independientemente de cuántos facts haya.
+- [x] AC3: Cualquier excepción dentro de `write` se captura — el método nunca propaga. Verificable por inspección (un `try/except BaseException` exceptuando `CancelledError` envuelve el cuerpo completo).
+- [x] AC4: Si Qdrant upsert falla para un fact concreto, los demás facts siguen escribiéndose; el fact fallido deja su fila en Postgres y loguea warning (implementado vía `_safe_upsert_dense`/`_safe_upsert_sparse`).
+- [x] AC5: El método commitea una sola vez al final del bucle (no commit por fact).
+- [x] AC6: Todos los upserts a Qdrant usan el mismo UUID que la fila Postgres correspondiente (pre-generado con `uuid.uuid4()` y reutilizado).
+
+## Completion Summary
+
+### What was built
+- `TrackerMemoryWriter.write()` completo con flujo: parse JSON → build_all_facts → batch embed → tokenize sparse → insert PG + upsert Qdrant dense/sparse → commit.
+- Try/except global en `write` (solo deja pasar `CancelledError`). Cualquier otro fallo se captura, loguea y retorna `WriteResult(skipped_reason="error: ...")`.
+- Helpers privados `_safe_upsert_dense` y `_safe_upsert_sparse`: cada upsert Qdrant tiene su propio try/except, el fallo de uno no aborta los demás (AC4).
+- Dataclass interno `_Counters` para contar summaries/trajectories/episodes distinguiéndolos por `memory_type` + presencia de `agent_id` en metadata.
+- Sparse vectors vacíos (`indices=[]`) se saltan silenciosamente — Qdrant no acepta sparse vectors vacíos.
+
+### Files modified/created
+- `phase2-juan/simlab/knowledge/writer.py` — implementación completa de `write()` + helpers.
+- `shared/shared/tokenizer.py` — **portado desde `phase1-pablo/src/decisionlab/knowledge/tokenizer.py`** (60 LOC, sin deps). Necesario porque el pythonpath de phase2 para phase1 solo aplica en pytest, no en runtime.
+- `phase2-juan/tests/knowledge/test_scaffold.py` — actualizado: `test_writer_stub_returns_not_implemented` ahora verifica `skipped_reason="no_relevant_content"` tras implementación real.
+
+### Decisions
+- **Tokenizer portado a `shared/`**: el spec decía "fuera de scope" pero en el smoke test vimos que el import `from decisionlab.knowledge.tokenizer` falla en runtime (el `pythonpath` del `pyproject.toml` solo se aplica en pytest). Portar el código a `shared/` es la solución mínima, mantiene a Phase 1 intacto con su copia, y permite consolidar en un issue futuro.
+- **Payload de Qdrant**: incluye `memory_id`, `namespace`, `source_stage` y todo el `metadata` del fact (flat merge). Así el payload es suficiente para buscar por `paradigm`/`formulation` sin ir a Postgres.
+- **Sparse vectors vacíos**: Qdrant rechaza `SparseVector(indices=[], values=[])`. Si el tokenizer devuelve lista vacía (texto muy corto/stopwords), skip sparse upsert sin warning.
+- **`run_id=None`** explícito en `create_memory` (Phase 2 no vive en la tabla `runs`; el `phase2_experiment_id` viaja en metadata JSONB como decidido en el spec general).
+- **Helpers `_safe_upsert_*`** fuera de la clase: simplifica testing y mantiene `write()` legible como una pipeline lineal.
 
 ## Files Likely Affected
 

@@ -52,7 +52,7 @@ def test_tracker_memory_writer_constructs_with_mocked_services():
     assert isinstance(writer, TrackerMemoryWriter)
 
 
-async def test_writer_stub_returns_not_implemented():
+async def test_writer_with_empty_tracker_returns_no_relevant_content():
     writer = TrackerMemoryWriter(
         vector_store=MagicMock(),
         embedding_service=MagicMock(),
@@ -66,7 +66,10 @@ async def test_writer_stub_returns_not_implemented():
         agent_to_model={},
     )
     result = await writer.write("{}", context)
-    assert result == WriteResult(0, 0, 0, 0, 0, skipped_reason="not_implemented")
+    assert result.skipped_reason == "no_relevant_content"
+    assert result.summaries_written == 0
+    assert result.trajectories_written == 0
+    assert result.episodes_written == 0
 
 
 async def test_build_writer_returns_none_without_voyage_key(caplog):
