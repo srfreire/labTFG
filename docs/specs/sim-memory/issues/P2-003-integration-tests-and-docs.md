@@ -1,14 +1,14 @@
 ---
 id: P2-003
 title: Orchestrator integration tests and e2e docs
-status: todo
+status: done
 kind: strike
 phase: 2
 heat: integration
 priority: 3
 blocked_by: [P2-002]
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-04-16
 ---
 
 # P2-003: Orchestrator integration tests and e2e docs
@@ -84,10 +84,31 @@ No se crea un test automatizado e2e con docker-compose en CI — fuera de scope.
 
 ## Acceptance Criteria
 
-- [ ] AC1: Los 3 tests de `test_orchestrator_knowledge.py` pasan sin infra real (unit-level, todo mockeado).
-- [ ] AC2: El test de "writer failure" verifica explícitamente que la excepción NO se propaga al caller de `observe_simulation`.
-- [ ] AC3: El README.md existe, describe el procedimiento manual end-to-end con comandos copy-pasteables, y referencia los otros specs.
-- [ ] AC4: Los tests anteriores de Phase 1 y Phase 2 siguen verdes.
+- [x] AC1: Los 3 tests de `test_orchestrator_knowledge.py` pasan sin infra real (mocks de `Tracker` + `shared.sim_memory_writer`).
+- [x] AC2: `test_observe_simulation_swallows_writer_exception` verifica explícitamente vía `caplog` que la excepción no se propaga y el tracker_output se devuelve tal cual.
+- [x] AC3: README.md escrito con procedimiento manual paso a paso (docker compose → migrations → env → CLI run → SQL verification → Qdrant curl → integration test) + referencias a los otros specs.
+- [x] AC4: 115 tests de phase2-juan verdes (1 skipped = integration). 27 tests relevantes de shared verdes. Los 21 fallos en shared son integration tests pre-existentes que requieren MinIO/Postgres/Neo4j levantados — no afectados por este strike.
+
+## Completion Summary
+
+### What was built
+- `phase2-juan/tests/test_orchestrator_knowledge.py` — 3 tests async que instancian un `Orchestrator` real, extraen el closure `observe_simulation` vía `_build_tools()`, y mockean:
+  - `simlab.orchestrator.Tracker` para devolver un JSON fijo sin llamar al LLM.
+  - `shared.sim_memory_writer` con un AsyncMock.
+
+  Casos: (1) writer presente → invoca `write()` con el `SimulationContext` correcto (env=`grid_10x8`, steps=25, seed=7, agent resuelto); (2) writer=None → sin llamadas, tracker_output intacto; (3) writer raise → `logger.exception` capturado vía `caplog`, tracker_output se devuelve normalmente.
+
+- `docs/specs/sim-memory/README.md` — guía manual end-to-end: docker-compose + alembic + .env + CLI run + 6 comandos de verificación (SQL + Qdrant scroll) + cómo correr el integration test de P1-004.
+
+### Files created
+- `phase2-juan/tests/test_orchestrator_knowledge.py` (~140 LOC, 3 tests).
+- `docs/specs/sim-memory/README.md` (~140 líneas de guía operativa).
+
+### Decisions
+- **Tests vía `_build_tools()`**: en vez de refactorizar el orchestrator para exponer los handlers, uso la función que ya existe (`_build_tools` devuelve el registry dict con los closures). Cero intrusión en el código de producción.
+- **`experiment_id=None`** en los tests: evita el bloque S3+DB (`shared.storage.put_text` + `shared.db.get_session`) que requeriría mocking más profundo. El resultado es equivalente — el writer se invoca con `phase2_experiment_id=""` que verifica el test.
+- **Fixture `_reset_writer_singleton`** autouse: el singleton es estado global, los tests deben aislarse entre sí para no arrastrar efectos.
+- **README con comandos copy-pasteables**: formato release-checklist, no tutorial exhaustivo. Los specs tienen la justificación arquitectural.
 
 ## Files Likely Affected
 

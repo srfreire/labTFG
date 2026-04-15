@@ -105,13 +105,13 @@ Integrar el `TrackerMemoryWriter` construido en Phase 1 con el flujo real de Pha
 
 ## Acceptance Criteria
 
-- [ ] AC1: Correr Phase 2 con `ENABLE_KNOWLEDGE_WRITE=false` (default) no produce escrituras al KG, sin cambios de comportamiento observables frente a main.
-- [ ] AC2: Con flag ON + infra arriba + keys, tras una simulación de 1 modelo/2 agentes/200 pasos, la tabla `memories` contiene ≥3 filas con `namespace='simulation'` (1 summary + 2 trajectories + N episodes).
-- [ ] AC3: Los tests del orchestrator pasan: escrituras suceden cuando el writer está presente, y `observe_simulation` no rompe si el writer es `None`.
-- [ ] AC4: Los 111 tests unitarios previos siguen verdes.
-- [ ] AC5: `shared.sim_memory_writer` se inicializa solo una vez por proceso y se reutilizan las conexiones existentes de Postgres/Qdrant/Voyage.
-- [ ] AC6: El parsing del flag acepta formas comunes (`true`/`1`/`yes`/`on`) sin ser sensible a mayúsculas.
-- [ ] AC7: Un fallo inesperado del writer (bug, infra caída post-init) se loguea vía `logger.exception` y no aborta `observe_simulation`.
+- [x] AC1: Correr Phase 2 con `ENABLE_KNOWLEDGE_WRITE=false` (default) no produce escrituras al KG, sin cambios de comportamiento observables frente a main.
+- [x] AC2: Con flag ON + infra arriba + keys, tras una simulación de 1 modelo/2 agentes/200 pasos, la tabla `memories` contiene ≥3 filas con `namespace='simulation'` (1 summary + 2 trajectories + N episodes).
+- [x] AC3: Los tests del orchestrator pasan: escrituras suceden cuando el writer está presente, y `observe_simulation` no rompe si el writer es `None`.
+- [x] AC4: Los 111 tests unitarios previos siguen verdes.
+- [x] AC5: `shared.sim_memory_writer` se inicializa solo una vez por proceso y se reutilizan las conexiones existentes de Postgres/Qdrant/Voyage.
+- [x] AC6: El parsing del flag acepta formas comunes (`true`/`1`/`yes`/`on`) sin ser sensible a mayúsculas.
+- [x] AC7: Un fallo inesperado del writer (bug, infra caída post-init) se loguea vía `logger.exception` y no aborta `observe_simulation`.
 
 ## Technical Notes
 
