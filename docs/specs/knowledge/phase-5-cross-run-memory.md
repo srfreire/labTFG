@@ -1,6 +1,6 @@
 # Phase 5: Cross-Run Memory & Consolidation
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15 (P5-002 done)
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -42,12 +42,12 @@ Enable persistent memory that improves across pipeline runs: cross-run retrieval
 
 ## Acceptance Criteria
 - [x] AC1: After 3 runs on related topics, retrieve_knowledge for run 4 returns results from all 3 prior runs with appropriate recency weighting (run 3 results score higher than run 1)
-- [ ] AC2: A fact confirmed in 3 independent runs has confidence > 0.8 (starting from 0.6 + 3 corroboration boosts)
-- [ ] AC3: A fact contradicted in a later run has decreased confidence and the new fact is the one retrieved (old one has valid_to set)
+- [x] AC2: A fact confirmed in 3 independent runs has confidence > 0.8 (starting from 0.6 + 3 corroboration boosts)
+- [x] AC3: A fact contradicted in a later run has decreased confidence and the new fact is the one retrieved (old one has valid_to set)
 - [ ] AC4: Post-run consolidation generates at least 1 reflection memory from a cluster of related facts
 - [ ] AC5: Memories older than 90 days with 0 access and confidence < 0.2 are pruned (valid_to set)
-- [ ] AC6: Time decay reduces confidence of untouched memories by ~5% per 30-day period
-- [ ] AC7: Frequently accessed memories (access_count > 10) maintain or increase confidence despite age
+- [x] AC6: Time decay reduces confidence of untouched memories by ~5% per 30-day period
+- [x] AC7: Frequently accessed memories (access_count > 10) maintain or increase confidence despite age
 
 ## Technical Notes
 - Consolidation is computationally light — the most expensive part is the Haiku reflection calls (~1 per cluster of 3+ memories). Expect <10 clusters per run → <$0.01 total.

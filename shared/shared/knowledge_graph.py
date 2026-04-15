@@ -191,6 +191,63 @@ class KnowledgeGraph:
             records = [r async for r in result]
             return [dict(r) for r in records]
 
+    async def query_at_time(
+        self,
+        cypher: str,
+        as_of: datetime,
+        params: dict | None = None,
+    ) -> list[dict]:
+        """Execute Cypher with a temporal validity filter on relations.
+
+        Injects a ``WHERE`` clause before the ``RETURN`` that keeps only
+        relations valid at *as_of*:
+            r.valid_from <= $_as_of AND (r.valid_to IS NULL OR r.valid_to > $_as_of)
+
+        The input *cypher* must bind relations as ``r`` and contain a
+        ``RETURN`` keyword.  If no ``RETURN`` is found the filter is
+        appended as a ``WITH * WHERE`` clause (useful for sub-queries).
+        """
+        as_of_iso = as_of.isoformat()
+        temporal_clause = (
+            "WHERE r.valid_from <= $_as_of "
+            "AND (r.valid_to IS NULL OR r.valid_to > $_as_of)"
+        )
+
+        # Insert temporal filter before the RETURN clause
+        upper = cypher.upper()
+        ret_idx = upper.rfind("RETURN")
+        if ret_idx != -1:
+            match_part = cypher[:ret_idx].rstrip()
+            return_part = cypher[ret_idx:]
+            wrapped = f"{match_part}\n{temporal_clause}\n{return_part}"
+        else:
+            wrapped = f"{cypher}\nWITH * {temporal_clause}"
+
+        merged = dict(params or {})
+        merged["_as_of"] = as_of_iso
+        return await self.query(wrapped, merged)
+
+    async def get_node_history(
+        self,
+        label: str,
+        key_property: str,
+        key_value: str | int,
+    ) -> list[dict]:
+        """Return all versions of a node's relations ordered by valid_from.
+
+        Returns a list of dicts with keys: type, props, neighbor — showing
+        how the node's relationships evolved over time.
+        """
+        _check_label(label)
+        _check_ident(key_property, "key_property")
+        cypher = (
+            f"MATCH (n:{label} {{{key_property}: $val}})-[r]-(m) "
+            f"RETURN type(r) AS type, properties(r) AS props, "
+            f"properties(m) AS neighbor "
+            f"ORDER BY r.valid_from ASC"
+        )
+        return await self.query(cypher, {"val": key_value})
+
     @staticmethod
     def unique_key_for(label: str) -> str:
         """Return the unique-key property name for a node label."""

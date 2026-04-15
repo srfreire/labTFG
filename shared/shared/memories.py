@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.models import Memory
@@ -165,3 +165,77 @@ async def apply_time_decay(session: AsyncSession) -> int:
     if count:
         await session.flush()
     return count
+
+
+async def get_memories_at_time(
+    session: AsyncSession,
+    as_of: datetime,
+    namespace: str | None = None,
+) -> list[Memory]:
+    """Return memories that were valid at *as_of*.
+
+    Filters: valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of).
+    Strips timezone info from *as_of* to match naive TIMESTAMP columns.
+    """
+    if as_of.tzinfo is not None:
+        as_of = as_of.replace(tzinfo=None)
+    stmt = select(Memory).where(
+        Memory.valid_from <= as_of,
+        or_(Memory.valid_to.is_(None), Memory.valid_to > as_of),
+    )
+    if namespace is not None:
+        stmt = stmt.where(Memory.namespace == namespace)
+    stmt = stmt.order_by(Memory.valid_from.asc())
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_memory_history(
+    session: AsyncSession,
+    content_like: str,
+) -> list[Memory]:
+    """Return a memory and all its superseded predecessors.
+
+    Searches by LIKE pattern on content (e.g. "parameter value%") and
+    returns all matching versions ordered by valid_from ascending.
+    """
+    stmt = (
+        select(Memory)
+        .where(Memory.content.like(content_like))
+        .order_by(Memory.valid_from.asc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+_MAX_CHAIN_LENGTH = 1000
+
+
+async def get_supersession_chain(
+    session: AsyncSession,
+    memory_id: uuid.UUID,
+) -> list[Memory]:
+    """Follow superseded_by pointers from *memory_id* to the current version.
+
+    Returns the chain in chronological order (oldest first).
+    Returns empty list if memory_id does not exist.
+    Detects cycles and caps traversal at ``_MAX_CHAIN_LENGTH``.
+    """
+    chain: list[Memory] = []
+    seen: set[uuid.UUID] = set()
+    current_id: uuid.UUID | None = memory_id
+
+    while current_id is not None and len(chain) < _MAX_CHAIN_LENGTH:
+        if current_id in seen:
+            break
+        seen.add(current_id)
+        result = await session.execute(
+            select(Memory).where(Memory.id == current_id)
+        )
+        mem = result.scalar_one_or_none()
+        if mem is None:
+            break
+        chain.append(mem)
+        current_id = mem.superseded_by
+
+    return chain

@@ -63,6 +63,14 @@ RETRIEVE_KNOWLEDGE_SCHEMA: dict[str, Any] = {
                 "description": "Number of results to return (default: 5)",
                 "default": 5,
             },
+            "as_of": {
+                "type": "string",
+                "description": (
+                    "Optional ISO8601 timestamp. When set, only return knowledge "
+                    "that was valid at this point in time (created_at <= as_of "
+                    "and not yet expired). Default: current knowledge only."
+                ),
+            },
         },
         "required": ["query"],
     },
@@ -146,6 +154,27 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
 _RECENCY_DECAY = 0.995
 
 
+def _parse_utc(value: object) -> datetime | None:
+    """Parse an ISO 8601 string into a timezone-aware UTC datetime.
+
+    Returns None when *value* is falsy or unparseable.
+    """
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return None
+
+
+def _result_created_at(r: RetrievalResult) -> datetime | None:
+    """Extract and parse the creation timestamp from a retrieval result."""
+    return _parse_utc(r.metadata.get("created_at") or r.metadata.get("run_date"))
+
+
 def _apply_recency_weighting(
     results: list[RetrievalResult],
 ) -> list[RetrievalResult]:
@@ -162,22 +191,12 @@ def _apply_recency_weighting(
     weighted: list[RetrievalResult] = []
 
     for r in results:
-        created_at_str = r.metadata.get("created_at") or r.metadata.get("run_date")
+        created_at = _result_created_at(r)
         recency_factor = 1.0
 
-        if created_at_str:
-            try:
-                created_at = datetime.fromisoformat(str(created_at_str))
-                if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=timezone.utc)
-                days_old = max(0, (now - created_at).days)
-                recency_factor = _RECENCY_DECAY**days_old
-            except (ValueError, TypeError):
-                logger.debug(
-                    "Unparseable timestamp %r for source=%s, using recency_factor=1.0",
-                    created_at_str,
-                    r.source,
-                )
+        if created_at is not None:
+            days_old = max(0, (now - created_at).days)
+            recency_factor = _RECENCY_DECAY**days_old
 
         confidence_factor = max(0.0, min(1.0, float(r.metadata.get("confidence", 1.0))))
 
@@ -197,6 +216,43 @@ def _apply_recency_weighting(
 
     weighted.sort(key=lambda r: r.score, reverse=True)
     return weighted
+
+
+def _apply_temporal_filter(
+    results: list[RetrievalResult],
+    as_of: datetime | None,
+) -> list[RetrievalResult]:
+    """Filter results to only those valid at *as_of*.
+
+    When as_of is None, returns all results unchanged (current-knowledge mode).
+    When set, keeps results where:
+        created_at <= as_of AND (valid_to is absent OR valid_to > as_of)
+    Results without a created_at timestamp are excluded when as_of is set.
+    """
+    if as_of is None:
+        return results
+
+    if as_of.tzinfo is None:
+        as_of = as_of.replace(tzinfo=timezone.utc)
+
+    filtered: list[RetrievalResult] = []
+    for r in results:
+        created = _result_created_at(r)
+        if created is None or created > as_of:
+            continue
+
+        valid_to_raw = r.metadata.get("valid_to")
+        if valid_to_raw:
+            valid_to = _parse_utc(valid_to_raw)
+            if valid_to is None:
+                # Present but unparseable — exclude conservatively
+                continue
+            if valid_to <= as_of:
+                continue
+
+        filtered.append(r)
+
+    return filtered
 
 
 async def _noop_kg() -> list[RetrievalResult]:
@@ -229,6 +285,9 @@ def create_retrieve_knowledge(
         query = params["query"]
         namespace: str | None = params.get("namespace")
         top_k: int = params.get("top_k", 5)
+        as_of = _parse_utc(params.get("as_of"))
+        if params.get("as_of") and as_of is None:
+            logger.warning("Unparseable as_of value: %r", params["as_of"])
 
         # Graceful degradation: all infrastructure unavailable
         if kg is None and vector_store is None and embedding_service is None:
@@ -282,7 +341,10 @@ def create_retrieve_knowledge(
             )
 
             # Apply recency weighting (P5-001)
-            final_results = _apply_recency_weighting(crag_result.results)
+            weighted_results = _apply_recency_weighting(crag_result.results)
+
+            # Apply temporal filter when as_of is specified (P5-004)
+            final_results = _apply_temporal_filter(weighted_results, as_of)
 
             # Track memory access (fire-and-forget, don't block response)
             try:
