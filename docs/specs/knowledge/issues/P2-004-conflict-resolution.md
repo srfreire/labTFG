@@ -1,14 +1,14 @@
 ---
 id: P2-004
 title: Implement conflict resolution, importance scoring, and memory persistence
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: resolution
 priority: 3
 blocked_by: [P2-001, P2-003]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P2-004: Implement conflict resolution, importance scoring, and memory persistence
