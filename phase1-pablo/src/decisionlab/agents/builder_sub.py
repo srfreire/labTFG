@@ -171,10 +171,12 @@ Putting state updates in `decide()` WILL break the simulation. No exceptions.
 
 _KNOWLEDGE_PROMPT_SECTION = """
 
-## Knowledge backbone
+## Knowledge Backbone
 
-Use `retrieve_knowledge` to find working code patterns and test strategies from past \
-model builds.
+You have access to a knowledge backbone from past pipeline runs. Before generating \
+code, call `retrieve_knowledge` to find working code patterns, test strategies, and \
+common pitfalls from past model builds. Apply proven implementation patterns when the \
+mathematical structure is similar.
 """
 
 _MAX_ITERATIONS = 25

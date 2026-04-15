@@ -83,10 +83,13 @@ If the same paper appears in multiple deep reports, list it only once. Format ea
 
 _KNOWLEDGE_PROMPT_SECTION = """
 
-## Knowledge backbone
+## Knowledge Backbone
 
-Use `retrieve_knowledge` to check if this problem domain has been researched in past \
-pipeline runs. Avoid redundant web searches for paradigms already in the knowledge base.
+You have access to a knowledge backbone from past pipeline runs. Before starting web \
+searches, call `retrieve_knowledge` to check if this problem domain has been researched \
+before. Avoid redundant searches for paradigms already in the knowledge base. Use \
+retrieved knowledge to inform your paradigm identification and cross-paradigm interaction \
+analysis.
 """
 
 _MAX_ITERATIONS = 10

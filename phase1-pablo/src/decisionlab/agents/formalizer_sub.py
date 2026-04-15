@@ -98,10 +98,12 @@ If only 2 formulations, drop the third column.
 
 _KNOWLEDGE_PROMPT_SECTION = """
 
-## Knowledge backbone
+## Knowledge Backbone
 
-Use `retrieve_knowledge` to find formulation patterns that have worked for similar \
-paradigms. Reference existing equations and parameter sources.
+You have access to a knowledge backbone from past pipeline runs. Before writing \
+formulations, call `retrieve_knowledge` to find mathematical formulation patterns that \
+have worked for similar paradigms. Reference existing equations, parameter sources, and \
+proven mathematical structures.
 """
 
 _MAX_ITERATIONS = 5

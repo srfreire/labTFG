@@ -176,10 +176,12 @@ Follow this schema exactly. Every field is required.
 
 _KNOWLEDGE_PROMPT_SECTION = """
 
-## Knowledge backbone
+## Knowledge Backbone
 
-Use `retrieve_knowledge` to find validated parameter ranges and env_mapping patterns \
-from past runs.
+You have access to a knowledge backbone from past pipeline runs. Before adapting \
+formulations to the environment, call `retrieve_knowledge` to find validated parameter \
+ranges and env_mapping patterns from past runs. Use proven defaults and mapping \
+strategies when available.
 """
 
 _MAX_ITERATIONS = 5

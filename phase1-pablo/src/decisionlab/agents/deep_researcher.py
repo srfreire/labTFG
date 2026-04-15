@@ -85,10 +85,12 @@ Summarize the above report in exactly this format (no extra text):
 
 _KNOWLEDGE_PROMPT_SECTION = """
 
-## Knowledge backbone
+## Knowledge Backbone
 
-Use `retrieve_knowledge` to find existing deep research on this paradigm from past \
-runs. Build on existing knowledge rather than starting from scratch.
+You have access to a knowledge backbone from past pipeline runs. Before starting your \
+research loop, call `retrieve_knowledge` to find existing deep research on this paradigm. \
+Build on existing postulates, variables, and references rather than starting from scratch. \
+Use retrieved knowledge to identify gaps in existing coverage.
 """
 
 _MAX_ITERATIONS = 7
