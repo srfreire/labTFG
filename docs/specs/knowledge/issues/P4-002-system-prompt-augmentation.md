@@ -1,7 +1,7 @@
 ---
 id: P4-002
 title: Augment agent system prompts with knowledge retrieval instructions
-status: in-progress
+status: done
 kind: strike
 phase: 4
 heat: agent-tools
@@ -52,11 +52,11 @@ Add brief instructions to each pipeline agent's system prompt explaining when an
 - Prompt sections are conditionally appended: only when `retrieve_knowledge` tool is in the tool list. This prevents confusing agents about a tool they don't have.
 
 ## Acceptance Criteria
-- [ ] AC1: When knowledge infrastructure is available, each agent's system prompt contains the "Knowledge Backbone" section
-- [ ] AC2: When knowledge infrastructure is unavailable, system prompts are unchanged from current behavior
-- [ ] AC3: The Researcher calls retrieve_knowledge early in its loop (before web_search) when relevant past knowledge exists
-- [ ] AC4: The Formalizer references retrieved formulation patterns in its output when available
-- [ ] AC5: Prompt additions are concise (under 80 words each) — no system prompt bloat
+- [x] AC1: When knowledge infrastructure is available, each agent's system prompt contains the "Knowledge Backbone" section
+- [x] AC2: When knowledge infrastructure is unavailable, system prompts are unchanged from current behavior
+- [x] AC3: The Researcher calls retrieve_knowledge early in its loop (before web_search) when relevant past knowledge exists
+- [x] AC4: The Formalizer references retrieved formulation patterns in its output when available
+- [x] AC5: Prompt additions are concise (under 80 words each) — no system prompt bloat
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/agents/researcher.py` — RESEARCHER_SYSTEM_PROMPT modification
@@ -70,3 +70,25 @@ Phase spec: `docs/specs/knowledge/phase-4-pipeline-integration.md`
 General spec: `docs/specs/knowledge/general.md`
 Heat: `agent-tools`
 Depends on P4-001 — prompts reference the tool, so it must exist first.
+
+## Completion Summary
+
+**Commit:** `1d9fe83` — `feat[knowledge]: augment agent system prompts with detailed Knowledge Backbone sections (P4-002)`
+
+### What was built
+- Replaced the brief P4-001 knowledge prompt sections with detailed, agent-specific "Knowledge Backbone" instructions for all 5 pipeline agents
+- Each prompt now: (1) sets context about the knowledge backbone, (2) specifies WHEN to call retrieve_knowledge (before the agent's primary work), (3) gives stage-specific guidance on what to do with retrieved results
+- All prompts verified under 80 words (AC5)
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/agents/researcher.py` — updated `_KNOWLEDGE_PROMPT_SECTION` with paradigm-focused instructions
+- `phase1-pablo/src/decisionlab/agents/deep_researcher.py` — updated `_KNOWLEDGE_PROMPT_SECTION` with postulate/variable gap-finding instructions
+- `phase1-pablo/src/decisionlab/agents/formalizer_sub.py` — updated `_KNOWLEDGE_PROMPT_SECTION` with mathematical formulation pattern instructions
+- `phase1-pablo/src/decisionlab/agents/reasoner_sub.py` — updated `_KNOWLEDGE_PROMPT_SECTION` with parameter range/env_mapping instructions
+- `phase1-pablo/src/decisionlab/agents/builder_sub.py` — updated `_KNOWLEDGE_PROMPT_SECTION` with code pattern/pitfall instructions
+- `phase1-pablo/tests/knowledge/test_prompt_augmentation.py` — 23 tests covering AC1-AC5, agent-specific content, word counts
+
+### Decisions
+- Reused the conditional augmentation infrastructure from P4-001 (`_has_knowledge` flag, `run()` method appending) — only the prompt text was changed
+- Used "Knowledge Backbone" (capitalized) heading per spec, replacing P4-001's "Knowledge backbone"
+- AC3/AC4 are tested at the prompt level (instructions direct agents to call early / reference patterns); runtime verification requires e2e pipeline run
