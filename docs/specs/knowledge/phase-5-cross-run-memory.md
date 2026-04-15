@@ -1,6 +1,6 @@
 # Phase 5: Cross-Run Memory & Consolidation
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14
+> Status: current | Created: 2026-04-14 | Last updated: 2026-04-15
 > References: [general.md](general.md) | [phases.md](phases.md)
 
 ## Objective
@@ -41,7 +41,7 @@ Enable persistent memory that improves across pipeline runs: cross-run retrieval
   - Implemented as a Cypher query helper in `KnowledgeGraph`
 
 ## Acceptance Criteria
-- [ ] AC1: After 3 runs on related topics, retrieve_knowledge for run 4 returns results from all 3 prior runs with appropriate recency weighting (run 3 results score higher than run 1)
+- [x] AC1: After 3 runs on related topics, retrieve_knowledge for run 4 returns results from all 3 prior runs with appropriate recency weighting (run 3 results score higher than run 1)
 - [ ] AC2: A fact confirmed in 3 independent runs has confidence > 0.8 (starting from 0.6 + 3 corroboration boosts)
 - [ ] AC3: A fact contradicted in a later run has decreased confidence and the new fact is the one retrieved (old one has valid_to set)
 - [ ] AC4: Post-run consolidation generates at least 1 reflection memory from a cluster of related facts
