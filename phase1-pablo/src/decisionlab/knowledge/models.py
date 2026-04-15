@@ -108,3 +108,15 @@ class MemoryAgentResult:
     duplicates_skipped: int
     conflicts_resolved: int
     duration_ms: int
+
+
+@dataclass
+class ConsolidationResult:
+    """Summary of a post-run consolidation operation."""
+
+    clusters_found: int
+    reflections_generated: int
+    reflections_corroborated: int
+    memories_decayed: int
+    memories_pruned: int
+    duration_ms: int

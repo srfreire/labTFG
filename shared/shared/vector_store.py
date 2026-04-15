@@ -1,4 +1,5 @@
 """Async Qdrant client for dense + sparse vector operations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -59,7 +60,9 @@ class VectorStore:
             if name not in existing:
                 await client.create_collection(
                     collection_name=name,
-                    vectors_config={"dense": VectorParams(size=dim, distance=Distance.COSINE)},
+                    vectors_config={
+                        "dense": VectorParams(size=dim, distance=Distance.COSINE)
+                    },
                 )
 
         for name in COLLECTIONS_SPARSE:
@@ -164,6 +167,19 @@ class VectorStore:
             ScoredPoint(id=str(p.id), score=p.score, payload=p.payload or {})
             for p in results.points
         ]
+
+    async def set_payload(
+        self,
+        collection: str,
+        id: str,
+        payload: dict,
+    ) -> None:
+        """Update payload fields on an existing point (merge, not replace)."""
+        await self._c().set_payload(
+            collection_name=collection,
+            payload=payload,
+            points=[id],
+        )
 
     async def delete(self, collection: str, ids: list[str]) -> None:
         """Delete points by their IDs."""

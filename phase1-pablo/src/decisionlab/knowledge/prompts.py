@@ -68,7 +68,9 @@ Facts: produce one atomic fact per postulate (what it claims), one per variable 
 (its role in the paradigm). Each fact must be a single, self-contained statement.\
 """
 
-RESEARCHER_USER = "Extract entities, relations, and facts from this deep research report:\n\n{text}"
+RESEARCHER_USER = (
+    "Extract entities, relations, and facts from this deep research report:\n\n{text}"
+)
 
 # ---------------------------------------------------------------------------
 # Formalizer extraction
@@ -102,7 +104,9 @@ Facts: produce one atomic fact per equation (what it computes/means), one per \
 parameter (its source and role). Each fact must be a single, self-contained statement.\
 """
 
-FORMALIZER_USER = "Extract entities, relations, and facts from this formalization document:\n\n{text}"
+FORMALIZER_USER = (
+    "Extract entities, relations, and facts from this formalization document:\n\n{text}"
+)
 
 # ---------------------------------------------------------------------------
 # Reasoner extraction
@@ -134,7 +138,9 @@ each can be tested), one per env_mapping decision (how perception maps to variab
 which actions are used, what the reward source is). Each fact must be atomic.\
 """
 
-REASONER_USER = "Extract entities, relations, and facts from this Reasoner specification:\n\n{text}"
+REASONER_USER = (
+    "Extract entities, relations, and facts from this Reasoner specification:\n\n{text}"
+)
 
 # ---------------------------------------------------------------------------
 # Builder extraction
@@ -166,7 +172,9 @@ Facts: produce one fact per test outcome (e.g., "Model X passes behavior test B1
 "implements PI controller with anti-windup"). Each fact must be atomic.\
 """
 
-BUILDER_USER = "Extract entities, relations, and facts from this Builder output:\n\n{text}"
+BUILDER_USER = (
+    "Extract entities, relations, and facts from this Builder output:\n\n{text}"
+)
 
 # ---------------------------------------------------------------------------
 # Importance scoring (Haiku — batch all facts in one call)
@@ -229,4 +237,59 @@ New fact (stage: {new_stage}):
 {new_content}
 
 Classify the relationship between the existing memory and the new fact.\
+"""
+
+# ---------------------------------------------------------------------------
+# Reflection generation (Haiku — called per cluster of >=3 memories)
+# ---------------------------------------------------------------------------
+
+REFLECTION_SYSTEM = """\
+You are a research synthesis agent for a decision-making research lab. \
+You receive a cluster of related facts from a pipeline run and synthesize \
+1-2 higher-level insights that capture the key pattern or finding.
+
+Guidelines:
+- Be specific and scientific — no vague generalities
+- Each insight should integrate information across multiple facts
+- Insights should be actionable for future research runs
+- Keep each insight to 1-2 sentences
+
+Output ONLY valid JSON (no markdown fences, no commentary):
+[
+  "<insight 1>",
+  "<insight 2 — optional, only if there is a genuinely distinct second pattern>"
+]\
+"""
+
+REFLECTION_USER = """\
+Synthesize higher-level insights from these related facts discovered during \
+a research pipeline run:
+
+{numbered_facts}\
+"""
+
+# ---------------------------------------------------------------------------
+# Contradiction detection (Haiku — checks if two reflections contradict)
+# ---------------------------------------------------------------------------
+
+CONTRADICTION_CHECK_SYSTEM = """\
+You are a contradiction detector. You receive two reflections (higher-level \
+insights) from a research knowledge base. Determine whether they contradict \
+each other.
+
+Output ONLY valid JSON (no markdown fences, no commentary):
+{
+  "contradicts": true | false,
+  "reasoning": "<brief explanation>"
+}\
+"""
+
+CONTRADICTION_CHECK_USER = """\
+Reflection A:
+{reflection_a}
+
+Reflection B:
+{reflection_b}
+
+Do these reflections contradict each other?\
 """

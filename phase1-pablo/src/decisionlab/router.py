@@ -304,6 +304,27 @@ class Router:
                 "Memory Agent failed for stage=%s — continuing pipeline", stage_name
             )
 
+    async def _run_consolidation(self) -> None:
+        """Run post-run consolidation. Never blocks pipeline."""
+        try:
+            import shared
+            from decisionlab.knowledge.consolidation import consolidate
+
+            if shared.db is None or shared.embeddings is None or shared.vectors is None:
+                return
+
+            async with shared.db.get_session() as session:
+                result = await consolidate(
+                    db_session=session,
+                    embedding_service=shared.embeddings,
+                    vector_store=shared.vectors,
+                    client=self.client,
+                    run_id=self.state.run_id,
+                )
+            logger.info("Consolidation completed: %s", result)
+        except Exception:
+            logger.exception("Consolidation failed — continuing pipeline")
+
     async def _collect_stage_output(self, stage: Stage) -> str:
         """Read the stage's output artifacts from S3."""
         import shared
@@ -404,8 +425,10 @@ class Router:
             await self.state.save()
             await self._update_run(status=self.state.stage.value)
 
-        # Finalize run: populate s3_report_key
+        # Finalize run: consolidation + s3_report_key
         if self.state.stage == Stage.DONE:
+            if self.memory_agent is not None:
+                await self._run_consolidation()
             await self._update_run(
                 s3_report_key=f"{self.state.research_prefix}/report.md",
             )
