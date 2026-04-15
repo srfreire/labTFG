@@ -1,7 +1,7 @@
 ---
 id: P3-004
 title: Build Corrective RAG evaluator with web search fallback
-status: in-progress
+status: done
 kind: strike
 phase: 3
 heat: crag
@@ -55,14 +55,14 @@ Implement the CRAG evaluation layer that classifies each reranked result as CORR
   - When full fallback: web results only, reranked, returned as final context
 
 ## Acceptance Criteria
-- [ ] AC1: A result about "ghrelin hunger signaling" when the task is "formalize homeostatic regulation" is classified CORRECT
-- [ ] AC2: A result about "ghrelin hunger signaling" when the task is "build a Q-learning grid agent for stock trading" is classified INCORRECT (domain mismatch)
-- [ ] AC3: A result that's partially relevant (same paradigm, different formulation aspect) is classified AMBIGUOUS
-- [ ] AC4: When all results are INCORRECT, `action="web_fallback"` and `web_results_used > 0`
-- [ ] AC5: When some results are AMBIGUOUS, `action="supplemented"` and final results contain both stored + web results
-- [ ] AC6: When all results are CORRECT, `action="pass_through"` and no web search is triggered
-- [ ] AC7: Web fallback uses existing DuckDuckGo adapter — no new search infrastructure
-- [ ] AC8: If Haiku evaluation fails, all results default to CORRECT (fail-open, don't block retrieval)
+- [x] AC1: A result about "ghrelin hunger signaling" when the task is "formalize homeostatic regulation" is classified CORRECT
+- [x] AC2: A result about "ghrelin hunger signaling" when the task is "build a Q-learning grid agent for stock trading" is classified INCORRECT (domain mismatch)
+- [x] AC3: A result that's partially relevant (same paradigm, different formulation aspect) is classified AMBIGUOUS
+- [x] AC4: When all results are INCORRECT, `action="web_fallback"` and `web_results_used > 0`
+- [x] AC5: When some results are AMBIGUOUS, `action="supplemented"` and final results contain both stored + web results
+- [x] AC6: When all results are CORRECT, `action="pass_through"` and no web search is triggered
+- [x] AC7: Web fallback uses existing DuckDuckGo adapter — no new search infrastructure
+- [x] AC8: If Haiku evaluation fails, all results default to CORRECT (fail-open, don't block retrieval)
 
 ## Files Likely Affected
 - `phase1-pablo/src/decisionlab/knowledge/retrieval/crag.py` — new file
@@ -74,3 +74,27 @@ General spec: `docs/specs/knowledge/general.md`
 Heat: `crag`
 Depends on P3-003 for reranked `RetrievalResult` input.
 Uses existing `WebSearchPort` adapter from `adapters/duckduckgo.py` and `search_papers` from `tools/papers.py`.
+
+## Completion Summary
+
+**Commit:** `7dcd3ff` — `feat[knowledge]: implement CRAG evaluator with web search fallback (P3-004)`
+
+### What was built
+- `_classify_results()` — calls Haiku to batch-evaluate all retrieved passages as CORRECT/AMBIGUOUS/INCORRECT, with JSON parsing, fence stripping, bounds validation, and fill-missing-indices
+- `evaluate_results()` — action routing: pass_through (all CORRECT or CORRECT+INCORRECT), supplemented (has AMBIGUOUS, merges stored+web results with reranking), web_fallback (all INCORRECT, fresh web search)
+- `web_fallback()` — fetches results from DuckDuckGo via existing `WebSearchPort`, reranks via Voyage AI, returns as `RetrievalResult(source="web")`
+- `CRAGResult` frozen dataclass added to `models.py`
+- 13 unit tests covering all 8 acceptance criteria plus edge cases (mixed CORRECT+INCORRECT routing, OOB Haiku indices, bad JSON fail-open, empty inputs)
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/crag.py` — new file (~252 lines)
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/models.py` — added `CRAGResult` dataclass
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/__init__.py` — added `CRAGResult`, `evaluate_results`, `web_fallback` exports
+- `phase1-pablo/tests/knowledge/test_crag.py` — 13 unit tests with mocked dependencies
+
+### Decisions
+- Fail-open on Haiku errors: all results default to CORRECT (AC8), with `logger.warning` for observability
+- Mixed CORRECT+INCORRECT (no AMBIGUOUS): treated as pass_through with only CORRECT results kept — reviewer caught routing bug where this fell through to supplemented
+- OOB Haiku indices rejected during validation (bounds check `0 <= index < len(results)`) — reviewer caught this
+- Metadata shallow-copied in supplemented path to prevent shared-state mutation through frozen dataclass
+- Web fallback uses only DuckDuckGo (Semantic Scholar integration deferred — `search_papers` returns formatted text, not structured data suitable for direct embedding)
