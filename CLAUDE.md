@@ -68,7 +68,7 @@ Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
 
 ## Next Steps
 
-- [ ] **Tracker → Knowledge Backbone (namespace `simulation`)**: escribir observaciones de simulación (convergencia, fallos, comportamientos) como memorias para cerrar el loop con Phase 1 (Pablo's Builder las recupera en runs futuros).
+- [x] **Tracker → Knowledge Backbone (namespace `simulation`)** — sim-memory, completo. Ver `docs/specs/sim-memory/`.
   - [ ] (futuro) Extender a nodos en Neo4j (Simulation, Observation con aristas a Model/Formulation) si se demuestra necesario para multi-hop retrieval.
 - [ ] **Analyst/Reporter leen del KG** vía `retrieve_knowledge`: contrastar patrones observados contra postulados conocidos; enriquecer informes PDF con papers/autores/DOIs del grafo.
 - [ ] **Architect consulta specs previas** del KG para proponer entornos coherentes con paradigmas similares.
