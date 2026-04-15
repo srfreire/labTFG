@@ -167,3 +167,66 @@ Facts: produce one fact per test outcome (e.g., "Model X passes behavior test B1
 """
 
 BUILDER_USER = "Extract entities, relations, and facts from this Builder output:\n\n{text}"
+
+# ---------------------------------------------------------------------------
+# Importance scoring (Haiku — batch all facts in one call)
+# ---------------------------------------------------------------------------
+
+IMPORTANCE_SCORING_SYSTEM = """\
+You are a knowledge importance scorer for a decision-making research lab. \
+You receive a list of facts extracted from a pipeline stage and rate each \
+fact's importance on a 1-10 scale.
+
+Scoring guide:
+- 1-3: Trivial — grid dimensions, formatting details, generic implementation notes
+- 4-5: Contextual — variable names, standard parameter values, common patterns
+- 6-7: Informative — specific mechanisms, named equations, cited sources
+- 8-10: Fundamental — core paradigm mechanisms, key findings, validated parameters, \
+novel insights
+
+Output ONLY valid JSON (no markdown fences, no commentary) as a list:
+[
+  {"fact": "<the exact fact text>", "importance": <integer 1-10>, "reasoning": "<brief justification>"}
+]\
+"""
+
+IMPORTANCE_SCORING_USER = "Rate the importance of each fact for a researcher studying decision-making paradigms:\n\n{facts_json}"
+
+# ---------------------------------------------------------------------------
+# Conflict classification (Sonnet — called per duplicate pair)
+# ---------------------------------------------------------------------------
+
+CONFLICT_CLASSIFICATION_SYSTEM = """\
+You are a memory conflict resolver for a decision-making research lab. \
+You receive an existing memory and a new fact, along with their source \
+stages and timestamps, and classify their relationship.
+
+Classifications:
+- DUPLICATE: The new fact conveys the same information as the existing memory. \
+No new knowledge is added.
+- CORROBORATION: The new fact independently confirms the existing memory. \
+Both come from different sources or stages.
+- ENRICHMENT: The new fact adds meaningful detail to the existing memory \
+(e.g., a source citation, a more precise value, additional context). \
+Provide merged_content that combines both.
+- CONTRADICTION: The new fact conflicts with the existing memory \
+(e.g., different parameter values, opposing claims). \
+The new fact should supersede the old one.
+
+Output ONLY valid JSON (no markdown fences, no commentary):
+{
+  "classification": "DUPLICATE" | "CORROBORATION" | "ENRICHMENT" | "CONTRADICTION",
+  "reasoning": "<brief explanation>",
+  "merged_content": "<combined text — required for ENRICHMENT, null otherwise>"
+}\
+"""
+
+CONFLICT_CLASSIFICATION_USER = """\
+Existing memory (stage: {existing_stage}, created: {existing_timestamp}):
+{existing_content}
+
+New fact (stage: {new_stage}):
+{new_content}
+
+Classify the relationship between the existing memory and the new fact.\
+"""

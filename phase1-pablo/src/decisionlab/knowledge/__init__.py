@@ -8,7 +8,9 @@ from decisionlab.knowledge.models import (
     IndexResult,
     NodeSpec,
     RelationSpec,
+    ResolutionResult,
 )
+from decisionlab.knowledge.resolver import resolve_and_store
 
 __all__ = [
     "Chunk",
@@ -16,7 +18,9 @@ __all__ = [
     "IndexResult",
     "NodeSpec",
     "RelationSpec",
+    "ResolutionResult",
     "chunk_stage_output",
     "extract",
     "index_stage_output",
+    "resolve_and_store",
 ]

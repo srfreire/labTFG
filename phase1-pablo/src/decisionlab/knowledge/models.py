@@ -71,3 +71,16 @@ class IndexResult:
     artifacts_indexed: int
     facts_indexed: int
     total_chunks: int
+
+
+@dataclass
+class ResolutionResult:
+    """Summary of a conflict resolution and memory persistence operation."""
+
+    memories_created: int
+    duplicates_skipped: int
+    corroborations: int
+    enrichments: int
+    contradictions: int
+    sonnet_calls: int
+    importance_scores: dict = field(default_factory=dict)
