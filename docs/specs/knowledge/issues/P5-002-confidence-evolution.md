@@ -1,14 +1,14 @@
 ---
 id: P5-002
 title: Implement confidence evolution with corroboration, contradiction, and decay
-status: todo
+status: in-progress
 kind: strike
 phase: 5
 heat: cross-run
 priority: 2
 blocked_by: [P5-001]
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P5-002: Implement confidence evolution with corroboration, contradiction, and decay
