@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import Any, Awaitable, Callable
 
 import shared
 
@@ -15,11 +16,22 @@ logger = logging.getLogger(__name__)
 
 
 class Builder:
-    def __init__(self, *, client, models_prefix: str, run_id: str | None = None, project_root: Path):
+    def __init__(
+        self,
+        *,
+        client,
+        models_prefix: str,
+        run_id: str | None = None,
+        project_root: Path,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
         self.models_prefix = models_prefix
         self.run_id = run_id
         self.project_root = project_root
+        self._knowledge_tool_schema = knowledge_tool_schema
+        self._knowledge_tool_handler = knowledge_tool_handler
 
     async def run(
         self,
@@ -42,21 +54,25 @@ class Builder:
                     key = f"{reasoner_prefix}{paradigm}/{formulation}.json"
                     if await shared.storage.exists(key):
                         spec_files.append(
-                            (paradigm, formulation, f"reasoner/{paradigm}/{formulation}.json")
+                            (
+                                paradigm,
+                                formulation,
+                                f"reasoner/{paradigm}/{formulation}.json",
+                            )
                         )
         else:
             # Discovery: list all paradigm dirs, then files within each
             keys = await shared.storage.list(reasoner_prefix)
             for key in keys:
                 if key.endswith(".json"):
-                    rel = key[len(reasoner_prefix):]  # e.g. "homeostatic/pi-controller.json"
+                    rel = key[
+                        len(reasoner_prefix) :
+                    ]  # e.g. "homeostatic/pi-controller.json"
                     parts = rel.split("/")
                     if len(parts) == 2:
                         paradigm = parts[0]
                         formulation = parts[1].removesuffix(".json")
-                        spec_files.append(
-                            (paradigm, formulation, f"reasoner/{rel}")
-                        )
+                        spec_files.append((paradigm, formulation, f"reasoner/{rel}"))
             logger.info(
                 "Discovered %d spec(s) from S3: %s",
                 len(spec_files),
@@ -74,6 +90,8 @@ class Builder:
                     models_prefix=self.models_prefix,
                     run_id=self.run_id,
                     project_root=self.project_root,
+                    knowledge_tool_schema=self._knowledge_tool_schema,
+                    knowledge_tool_handler=self._knowledge_tool_handler,
                 ).run(formulation, spec_path)
             )
 

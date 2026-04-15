@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Awaitable, Callable
 
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
@@ -82,28 +83,56 @@ Summarize the above report in exactly this format (no extra text):
 **Key variables**: {comma-separated}
 """
 
+_KNOWLEDGE_PROMPT_SECTION = """
+
+## Knowledge backbone
+
+Use `retrieve_knowledge` to find existing deep research on this paradigm from past \
+runs. Build on existing knowledge rather than starting from scratch.
+"""
+
 _MAX_ITERATIONS = 7
 _MAX_TOKENS = 16384
 
 
 class DeepResearcher:
-    def __init__(self, *, client, search: WebSearchPort, run_id: str | None = None):
+    def __init__(
+        self,
+        *,
+        client,
+        search: WebSearchPort,
+        run_id: str | None = None,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
         self.run_id = run_id
-        self.tools = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
-        self.registry = {
+        self.tools: list[dict[str, Any]] = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
+        self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "web_search": create_web_search(search),
             "search_papers": create_search_papers(),
         }
 
+        self._has_knowledge = False
+        if knowledge_tool_schema is not None and knowledge_tool_handler is not None:
+            self.tools.append(knowledge_tool_schema)
+            self.registry["retrieve_knowledge"] = knowledge_tool_handler
+            self._has_knowledge = True
+
     async def run(self, paradigm: str) -> str:
         logger.info("DeepResearcher starting — paradigm: %s", paradigm)
-        messages = [{"role": "user", "content": f"Research this paradigm in depth: {paradigm}"}]
+        messages = [
+            {"role": "user", "content": f"Research this paradigm in depth: {paradigm}"}
+        ]
+
+        system = DEEP_RESEARCHER_SYSTEM_PROMPT
+        if self._has_knowledge:
+            system += _KNOWLEDGE_PROMPT_SECTION
 
         response = await run_agent_loop(
             client=self.client,
             model="claude-sonnet-4-6",
-            system=DEEP_RESEARCHER_SYSTEM_PROMPT,
+            system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,
@@ -114,7 +143,9 @@ class DeepResearcher:
         text_blocks = [b.text for b in response.content if b.type == "text"]
         full_report = "\n".join(text_blocks)
         if not full_report.strip():
-            logger.warning("DeepResearcher produced empty output for paradigm: %s", paradigm)
+            logger.warning(
+                "DeepResearcher produced empty output for paradigm: %s", paradigm
+            )
             return f"No results found for paradigm: {paradigm}"
 
         if self.run_id:
@@ -124,12 +155,23 @@ class DeepResearcher:
             summary_response = await self.client.messages.create(
                 model="claude-haiku-4-5",
                 system="You summarize research reports concisely. Return ONLY the requested format.",
-                messages=[{"role": "user", "content": full_report + "\n\n" + CONCISE_SUMMARY_PROMPT}],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": full_report + "\n\n" + CONCISE_SUMMARY_PROMPT,
+                    }
+                ],
                 max_tokens=300,
             )
-            summary = "\n".join(b.text for b in summary_response.content if b.type == "text")
+            summary = "\n".join(
+                b.text for b in summary_response.content if b.type == "text"
+            )
         except Exception:
-            logger.warning("Summary extraction failed for '%s'; using truncated report", paradigm, exc_info=True)
+            logger.warning(
+                "Summary extraction failed for '%s'; using truncated report",
+                paradigm,
+                exc_info=True,
+            )
             summary = ""
 
         if not summary.strip():
@@ -137,6 +179,8 @@ class DeepResearcher:
 
         logger.info(
             "DeepResearcher finished for: %s (report: %d chars, summary: %d chars)",
-            paradigm, len(full_report), len(summary),
+            paradigm,
+            len(full_report),
+            len(summary),
         )
         return summary

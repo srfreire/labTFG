@@ -16,6 +16,10 @@ from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
 from decisionlab.domain.ports import WebSearchPort
+from decisionlab.knowledge.retrieval.tool import (
+    RETRIEVE_KNOWLEDGE_SCHEMA,
+    create_retrieve_knowledge,
+)
 from decisionlab.parsing import FORMULATION_HEADER_RE
 from decisionlab.tools.reports import slugify
 
@@ -197,6 +201,40 @@ class Router:
         self._web_mode = emit is not None
         self.memory_agent: MemoryAgent | None = self._init_memory_agent()
 
+    def _knowledge_tool_kwargs(self, stage: str) -> dict:
+        """Return keyword args for knowledge tool injection into an agent.
+
+        Returns ``{"knowledge_tool_schema": ..., "knowledge_tool_handler": ...}``
+        when knowledge infrastructure is available, otherwise an empty dict
+        (agent runs without the tool — graceful degradation).
+        """
+        try:
+            import shared
+
+            kg = getattr(shared, "kg", None)
+            vectors = getattr(shared, "vectors", None)
+            embeddings = getattr(shared, "embeddings", None)
+
+            if kg is None and vectors is None and embeddings is None:
+                return {}
+
+            handler = create_retrieve_knowledge(
+                kg=kg,
+                vector_store=vectors,
+                embedding_service=embeddings,
+                search_adapter=self.search,
+                client=self.client,
+                run_id=self.state.run_id,
+                stage=stage,
+            )
+            return {
+                "knowledge_tool_schema": RETRIEVE_KNOWLEDGE_SCHEMA,
+                "knowledge_tool_handler": handler,
+            }
+        except Exception:
+            logger.debug("Could not create retrieve_knowledge for stage=%s", stage)
+            return {}
+
     def _init_memory_agent(self) -> MemoryAgent | None:
         """Create a MemoryAgent if knowledge infrastructure is available."""
         try:
@@ -250,7 +288,9 @@ class Router:
             )
             logger.info("Memory Agent [%s] completed: %s", stage_name, result)
         except Exception:
-            logger.exception("Memory Agent failed for stage=%s — continuing pipeline", stage_name)
+            logger.exception(
+                "Memory Agent failed for stage=%s — continuing pipeline", stage_name
+            )
 
     async def _collect_stage_output(self, stage: Stage) -> str:
         """Read the stage's output artifacts from S3."""
@@ -376,6 +416,7 @@ class Router:
                 client=self.client,
                 search=self.search,
                 run_id=self.state.run_id,
+                **self._knowledge_tool_kwargs("researcher"),
             )
             await r.run(self.state.problem)
         except Exception as exc:
@@ -415,6 +456,7 @@ class Router:
                         client=self.client,
                         search=self.search,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("deep_researcher"),
                     )
                     await dr.run(additional)
                 except Exception as exc:
@@ -456,6 +498,7 @@ class Router:
                 client=self.client,
                 research_prefix=self.state.research_prefix,
                 run_id=self.state.run_id,
+                **self._knowledge_tool_kwargs("formalizer"),
             )
             await f.run(self.state.approved_paradigms)
         except Exception as exc:
@@ -550,6 +593,7 @@ class Router:
                 research_prefix=self.state.research_prefix,
                 models_prefix=self.state.models_prefix,
                 run_id=self.state.run_id,
+                **self._knowledge_tool_kwargs("reasoner"),
             )
             await r.run(selected)
             await self._validate_reasoner_files(selected)
@@ -603,6 +647,7 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("formalizer"),
                     )
                     await f.run([paradigm_slug])
                 except Exception as exc:
@@ -621,6 +666,7 @@ class Router:
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("reasoner"),
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -641,6 +687,7 @@ class Router:
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("reasoner"),
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -678,6 +725,7 @@ class Router:
                 models_prefix=self.state.models_prefix,
                 run_id=self.state.run_id,
                 project_root=self.project_root,
+                **self._knowledge_tool_kwargs("builder"),
             )
             report = await b.run(self.state.approved_specs)
             self.state.build_results = report.results
@@ -731,6 +779,7 @@ class Router:
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("reasoner"),
                     )
                     fids = self.state.selected_formulations.get(paradigm_slug, [])
                     await r.run({paradigm_slug: fids})
@@ -750,6 +799,7 @@ class Router:
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
+                        **self._knowledge_tool_kwargs("builder"),
                     )
                     paradigm_specs = self.state.approved_specs.get(paradigm_slug, [])
                     report = await b.run(
@@ -778,6 +828,7 @@ class Router:
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
+                        **self._knowledge_tool_kwargs("builder"),
                     )
                     report = await b.run({paradigm_slug: [formulation_slug]})
                     self.state.build_results.update(report.results)
@@ -936,6 +987,7 @@ class Router:
                         client=self.client,
                         search=self.search,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("deep_researcher"),
                     )
                     await dr.run(paradigm)
 
@@ -949,6 +1001,7 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("formalizer"),
                     )
                     await f.run([paradigm])
 
@@ -963,6 +1016,7 @@ class Router:
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
+                        **self._knowledge_tool_kwargs("reasoner"),
                     )
                     fids = self.state.selected_formulations.get(paradigm, [])
                     await r.run({paradigm: fids})
@@ -978,6 +1032,7 @@ class Router:
                         models_prefix=self.state.models_prefix,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
+                        **self._knowledge_tool_kwargs("builder"),
                     )
                     # Build only specs belonging to this paradigm
                     paradigm_specs = self.state.approved_specs.get(paradigm, [])

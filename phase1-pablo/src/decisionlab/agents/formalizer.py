@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any, Awaitable, Callable
 
 import shared
 
@@ -14,27 +15,43 @@ logger = logging.getLogger(__name__)
 
 
 class Formalizer:
-    def __init__(self, *, client, research_prefix: str, run_id: str | None = None):
+    def __init__(
+        self,
+        *,
+        client,
+        research_prefix: str,
+        run_id: str | None = None,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
         self.research_prefix = research_prefix
         self.run_id = run_id
+        self._knowledge_tool_schema = knowledge_tool_schema
+        self._knowledge_tool_handler = knowledge_tool_handler
 
     async def run(self, paradigm_slugs: list[str]) -> FormalizationReport:
         if not paradigm_slugs:
             deep_prefix = f"{self.research_prefix}/deep/"
             keys = await shared.storage.list(deep_prefix)
             paradigm_slugs = [
-                k[len(deep_prefix):].removesuffix(".md")
+                k[len(deep_prefix) :].removesuffix(".md")
                 for k in keys
                 if k.endswith(".md")
             ]
-            logger.info("Discovered %d paradigms from S3: %s", len(paradigm_slugs), paradigm_slugs)
+            logger.info(
+                "Discovered %d paradigms from S3: %s",
+                len(paradigm_slugs),
+                paradigm_slugs,
+            )
 
         tasks = [
             FormalizerSubAgent(
                 client=self.client,
                 research_prefix=self.research_prefix,
                 run_id=self.run_id,
+                knowledge_tool_schema=self._knowledge_tool_schema,
+                knowledge_tool_handler=self._knowledge_tool_handler,
             ).run(slug)
             for slug in paradigm_slugs
         ]

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 EmitFn = Callable[[dict], Awaitable[None]]
 
+
 def _zero_kg() -> KGWriteResult:
     return KGWriteResult(
         nodes_created=0, nodes_merged=0, relations_created=0, relations_superseded=0
@@ -79,12 +80,16 @@ class MemoryAgent:
 
         async def _emit_status(status: str) -> None:
             if emit is not None:
-                await emit({"type": "agent_status", "agent": "memory_agent", "status": status})
+                await emit(
+                    {"type": "agent_status", "agent": "memory_agent", "status": status}
+                )
 
         await _emit_status("working")
 
         if not stage_output.strip():
-            logger.warning("Memory Agent: empty stage output for stage=%s — skipping", stage)
+            logger.warning(
+                "Memory Agent: empty stage output for stage=%s — skipping", stage
+            )
             await _emit_status("done")
             return self._zero_result(t0)
 
@@ -154,7 +159,12 @@ class MemoryAgent:
         if do_idx:
             coros["idx"] = asyncio.create_task(
                 index_stage_output(
-                    stage, stage_output, extraction, self._embeddings, self._vectors, run_id
+                    stage,
+                    stage_output,
+                    extraction,
+                    self._embeddings,
+                    self._vectors,
+                    run_id,
                 )
             )
 

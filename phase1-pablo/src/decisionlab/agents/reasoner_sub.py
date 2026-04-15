@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Awaitable, Callable
 
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
@@ -173,20 +174,43 @@ the other specs.
 Follow this schema exactly. Every field is required.
 """
 
+_KNOWLEDGE_PROMPT_SECTION = """
+
+## Knowledge backbone
+
+Use `retrieve_knowledge` to find validated parameter ranges and env_mapping patterns \
+from past runs.
+"""
+
 _MAX_ITERATIONS = 5
 _MAX_TOKENS = 16384
 
 
 class ReasonerSubAgent:
-    def __init__(self, *, client, research_prefix: str, models_prefix: str, run_id: str | None = None):
+    def __init__(
+        self,
+        *,
+        client,
+        research_prefix: str,
+        models_prefix: str,
+        run_id: str | None = None,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
-        self.tools = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
+        self.tools: list[dict[str, Any]] = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
         # read from research prefix (deep reports, formulations, env_spec)
         # write to models prefix (reasoner specs)
-        self.registry = {
+        self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "read_file": create_read_file(research_prefix),
             "write_file": create_write_file(models_prefix, run_id=run_id),
         }
+
+        self._has_knowledge = False
+        if knowledge_tool_schema is not None and knowledge_tool_handler is not None:
+            self.tools.append(knowledge_tool_schema)
+            self.registry["retrieve_knowledge"] = knowledge_tool_handler
+            self._has_knowledge = True
 
     async def run(
         self,
@@ -212,16 +236,19 @@ class ReasonerSubAgent:
                     f"Produce structured JSON specs for the paradigm: {paradigm_slug}\n"
                     f"Read the deep report at: deep/{paradigm_slug}.md\n"
                     f"Read the formulations at: formulations/{paradigm_slug}.md\n"
-                    f"Read the env spec at: env_spec.json"
-                    + slug_instruction
+                    f"Read the env spec at: env_spec.json" + slug_instruction
                 ),
             }
         ]
 
+        system = REASONER_SUB_SYSTEM_PROMPT
+        if self._has_knowledge:
+            system += _KNOWLEDGE_PROMPT_SECTION
+
         response = await run_agent_loop(
             client=self.client,
             model="claude-opus-4-6",
-            system=REASONER_SUB_SYSTEM_PROMPT,
+            system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,

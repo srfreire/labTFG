@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Awaitable, Callable
 
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
@@ -95,18 +96,40 @@ The comparison must reflect real, substantive differences — not superficial re
 If only 2 formulations, drop the third column.
 """
 
+_KNOWLEDGE_PROMPT_SECTION = """
+
+## Knowledge backbone
+
+Use `retrieve_knowledge` to find formulation patterns that have worked for similar \
+paradigms. Reference existing equations and parameter sources.
+"""
+
 _MAX_ITERATIONS = 5
 _MAX_TOKENS = 16384
 
 
 class FormalizerSubAgent:
-    def __init__(self, *, client, research_prefix: str, run_id: str | None = None):
+    def __init__(
+        self,
+        *,
+        client,
+        research_prefix: str,
+        run_id: str | None = None,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
-        self.tools = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
-        self.registry = {
+        self.tools: list[dict[str, Any]] = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
+        self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "read_file": create_read_file(research_prefix),
             "write_file": create_write_file(research_prefix, run_id=run_id),
         }
+
+        self._has_knowledge = False
+        if knowledge_tool_schema is not None and knowledge_tool_handler is not None:
+            self.tools.append(knowledge_tool_schema)
+            self.registry["retrieve_knowledge"] = knowledge_tool_handler
+            self._has_knowledge = True
 
     async def run(self, paradigm_slug: str) -> str:
         logger.info("FormalizerSubAgent starting — paradigm: %s", paradigm_slug)
@@ -120,10 +143,14 @@ class FormalizerSubAgent:
             }
         ]
 
+        system = FORMALIZER_SUB_SYSTEM_PROMPT
+        if self._has_knowledge:
+            system += _KNOWLEDGE_PROMPT_SECTION
+
         response = await run_agent_loop(
             client=self.client,
             model="claude-opus-4-6",
-            system=FORMALIZER_SUB_SYSTEM_PROMPT,
+            system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,

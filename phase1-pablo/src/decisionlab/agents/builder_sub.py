@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any, Awaitable, Callable
 
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
@@ -168,19 +169,46 @@ Putting state updates in `decide()` WILL break the simulation. No exceptions.
 - Implement ALL rules — never skip any.
 """
 
+_KNOWLEDGE_PROMPT_SECTION = """
+
+## Knowledge backbone
+
+Use `retrieve_knowledge` to find working code patterns and test strategies from past \
+model builds.
+"""
+
 _MAX_ITERATIONS = 25
 _MAX_TOKENS = 16384
 
 
 class BuilderSubAgent:
-    def __init__(self, *, client, models_prefix: str, run_id: str | None = None, project_root: Path):
+    def __init__(
+        self,
+        *,
+        client,
+        models_prefix: str,
+        run_id: str | None = None,
+        project_root: Path,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
-        self.tools = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA, RUN_TESTS_SCHEMA]
-        self.registry = {
+        self.tools: list[dict[str, Any]] = [
+            READ_FILE_SCHEMA,
+            WRITE_FILE_SCHEMA,
+            RUN_TESTS_SCHEMA,
+        ]
+        self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "read_file": create_read_file(models_prefix),
             "write_file": create_write_file(models_prefix, run_id=run_id),
             "run_tests": create_run_tests(models_prefix, project_root),
         }
+
+        self._has_knowledge = False
+        if knowledge_tool_schema is not None and knowledge_tool_handler is not None:
+            self.tools.append(knowledge_tool_schema)
+            self.registry["retrieve_knowledge"] = knowledge_tool_handler
+            self._has_knowledge = True
 
     async def run(self, spec_id: str, spec_path: str) -> str:
         logger.info(
@@ -200,10 +228,14 @@ class BuilderSubAgent:
             }
         ]
 
+        system = BUILDER_SUB_SYSTEM_PROMPT
+        if self._has_knowledge:
+            system += _KNOWLEDGE_PROMPT_SECTION
+
         response = await run_agent_loop(
             client=self.client,
             model="claude-sonnet-4-6",
-            system=BUILDER_SUB_SYSTEM_PROMPT,
+            system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,

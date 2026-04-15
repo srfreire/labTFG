@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any, Awaitable, Callable
 
 import shared
 
@@ -14,11 +15,22 @@ logger = logging.getLogger(__name__)
 
 
 class Reasoner:
-    def __init__(self, *, client, research_prefix: str, models_prefix: str, run_id: str | None = None):
+    def __init__(
+        self,
+        *,
+        client,
+        research_prefix: str,
+        models_prefix: str,
+        run_id: str | None = None,
+        knowledge_tool_schema: dict[str, Any] | None = None,
+        knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+    ):
         self.client = client
         self.research_prefix = research_prefix
         self.models_prefix = models_prefix
         self.run_id = run_id
+        self._knowledge_tool_schema = knowledge_tool_schema
+        self._knowledge_tool_handler = knowledge_tool_handler
 
     async def run(
         self,
@@ -32,11 +44,15 @@ class Reasoner:
             formulations_prefix = f"{self.research_prefix}/formulations/"
             keys = await shared.storage.list(formulations_prefix)
             paradigm_slugs = [
-                k[len(formulations_prefix):].removesuffix(".md")
+                k[len(formulations_prefix) :].removesuffix(".md")
                 for k in keys
                 if k.endswith(".md")
             ]
-            logger.info("Discovered %d paradigms from S3: %s", len(paradigm_slugs), paradigm_slugs)
+            logger.info(
+                "Discovered %d paradigms from S3: %s",
+                len(paradigm_slugs),
+                paradigm_slugs,
+            )
             selected_formulations = {slug: [] for slug in paradigm_slugs}
 
         paradigm_slugs = list(selected_formulations.keys())
@@ -47,8 +63,9 @@ class Reasoner:
                 research_prefix=self.research_prefix,
                 models_prefix=self.models_prefix,
                 run_id=self.run_id,
-            )
-            .run(slug, formulation_slugs=selected_formulations[slug] or None)
+                knowledge_tool_schema=self._knowledge_tool_schema,
+                knowledge_tool_handler=self._knowledge_tool_handler,
+            ).run(slug, formulation_slugs=selected_formulations[slug] or None)
             for slug in paradigm_slugs
         ]
 
