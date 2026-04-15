@@ -79,9 +79,7 @@ class _LinkedEntity:
 # ---------------------------------------------------------------------------
 
 
-async def _extract_entities(
-    query: str, client: AsyncAnthropic
-) -> list[dict]:
+async def _extract_entities(query: str, client: AsyncAnthropic) -> list[dict]:
     """Prompt Haiku to extract named entities from the query.
 
     Returns a list of dicts with 'name' and 'type' keys.
@@ -93,12 +91,8 @@ async def _extract_entities(
             system=_NER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": query}],
         )
-        raw = "\n".join(
-            b.text for b in response.content if b.type == "text"
-        ).strip()
-        fence_match = re.search(
-            r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL
-        )
+        raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
+        fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)
         cleaned = fence_match.group(1).strip() if fence_match else raw
 
         try:
@@ -121,9 +115,7 @@ async def _extract_entities(
                     exc,
                 )
                 continue
-            logger.error(
-                "_extract_entities: failed after 2 attempts. raw=%r", raw
-            )
+            logger.error("_extract_entities: failed after 2 attempts. raw=%r", raw)
             return []
 
     return []  # unreachable, satisfies type checker
@@ -184,8 +176,7 @@ async def _link_entities(
 
         # --- Fuzzy match via embedding similarity ---
         all_candidates = await kg.query(
-            f"MATCH (n:{label}) "
-            f"RETURN elementId(n) AS id, n.{name_prop} AS name",
+            f"MATCH (n:{label}) RETURN elementId(n) AS id, n.{name_prop} AS name",
         )
         if not all_candidates:
             continue
@@ -199,9 +190,7 @@ async def _link_entities(
         query_vec = await embedding_service.embed_query(entity_name)
         candidate_vecs = await embedding_service.embed_texts(candidate_names)
 
-        similarities = [
-            _cosine_similarity(query_vec, cvec) for cvec in candidate_vecs
-        ]
+        similarities = [_cosine_similarity(query_vec, cvec) for cvec in candidate_vecs]
         best_idx = max(range(len(similarities)), key=lambda i: similarities[i])
         best_sim = similarities[best_idx]
 
@@ -350,25 +339,33 @@ async def kg_retrieve(
 
     Pipeline: entity extraction (Haiku NER) → entity linking (exact + embedding)
     → PPR traversal (2-hop BFS with decay) → passage collection.
+
+    Returns an empty list on any connection or service error so callers
+    degrade gracefully.
     """
-    # Step 1: Extract entities.
-    entities = await _extract_entities(query, client)
-    if not entities:
-        logger.info("kg_retrieve: no entities extracted from query %r", query)
+    try:
+        # Step 1: Extract entities.
+        entities = await _extract_entities(query, client)
+        if not entities:
+            logger.info("kg_retrieve: no entities extracted from query %r", query)
+            return []
+
+        # Step 2: Link entities to graph nodes.
+        linked = await _link_entities(entities, kg, embedding_service)
+        if not linked:
+            logger.info(
+                "kg_retrieve: no entities linked for query %r (extracted: %s)",
+                query,
+                entities,
+            )
+            return []
+
+        # Step 3: PPR traversal.
+        scored_nodes = await _ppr_traverse(linked, kg)
+
+        # Step 4: Collect passages.
+        return _collect_passages(scored_nodes, limit)
+
+    except Exception as exc:
+        logger.error("kg_retrieve failed: %s", exc)
         return []
-
-    # Step 2: Link entities to graph nodes.
-    linked = await _link_entities(entities, kg, embedding_service)
-    if not linked:
-        logger.info(
-            "kg_retrieve: no entities linked for query %r (extracted: %s)",
-            query,
-            entities,
-        )
-        return []
-
-    # Step 3: PPR traversal.
-    scored_nodes = await _ppr_traverse(linked, kg)
-
-    # Step 4: Collect passages.
-    return _collect_passages(scored_nodes, limit)

@@ -8,12 +8,15 @@ Combined: runs both in parallel via asyncio.gather.
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from shared.embedding import EmbeddingService
 from shared.vector_store import ScoredPoint, VectorStore
 
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.tokenizer import tokenize_to_sparse
+
+logger = logging.getLogger(__name__)
 
 _DENSE_COLLECTIONS = ("artifacts_dense", "memories_dense")
 _SPARSE_COLLECTIONS = ("artifacts_sparse", "memories_sparse")
@@ -144,9 +147,15 @@ async def vector_retrieve(
     """Run dense and sparse retrieval in parallel.
 
     Returns (dense_results, sparse_results) as separate lists for RRF fusion.
+    Returns empty lists on any connection or service error so callers
+    degrade gracefully.
     """
-    dense_results, sparse_results = await asyncio.gather(
-        dense_retrieve(query, embedding_service, vector_store, limit, filters),
-        sparse_retrieve(query, vector_store, limit, filters),
-    )
-    return dense_results, sparse_results
+    try:
+        dense_results, sparse_results = await asyncio.gather(
+            dense_retrieve(query, embedding_service, vector_store, limit, filters),
+            sparse_retrieve(query, vector_store, limit, filters),
+        )
+        return dense_results, sparse_results
+    except Exception as exc:
+        logger.error("vector_retrieve failed: %s", exc)
+        return [], []

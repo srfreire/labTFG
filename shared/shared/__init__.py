@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from shared.database import DatabaseService
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.settings import Settings, load_settings
 from shared.storage import StorageService
 from shared.vector_store import VectorStore
+
+logger = logging.getLogger(__name__)
 
 storage: StorageService | None = None
 db: DatabaseService | None = None
@@ -25,23 +29,45 @@ async def init(settings: Settings | None = None) -> None:
     await storage.connect()
     db = DatabaseService(settings)
     await db.connect()
-    kg = KnowledgeGraph(
-        settings.NEO4J_URI, settings.NEO4J_USER, settings.NEO4J_PASSWORD
-    )
-    await kg.init_schema()
-    vectors = VectorStore(settings)
-    await vectors.connect()
-    await vectors.init_collections()
-    if settings.VOYAGE_API_KEY and settings.ZEROENTROPY_API_KEY:
-        embeddings = EmbeddingService(settings.VOYAGE_API_KEY, settings.ZEROENTROPY_API_KEY)
-    else:
-        import warnings
 
-        missing = [k for k in ("VOYAGE_API_KEY", "ZEROENTROPY_API_KEY")
-                   if not getattr(settings, k)]
-        warnings.warn(
-            f"{', '.join(missing)} not set — EmbeddingService unavailable",
-            stacklevel=2,
+    # Knowledge infrastructure — each component degrades independently.
+    _unavailable: list[str] = []
+
+    try:
+        _kg = KnowledgeGraph(
+            settings.NEO4J_URI, settings.NEO4J_USER, settings.NEO4J_PASSWORD
+        )
+        await _kg.init_schema()
+        kg = _kg
+    except Exception:
+        logger.warning("Neo4j unavailable — KnowledgeGraph disabled", exc_info=True)
+        _unavailable.append("Neo4j")
+
+    try:
+        _vs = VectorStore(settings)
+        await _vs.connect()
+        await _vs.init_collections()
+        vectors = _vs
+    except Exception:
+        logger.warning("Qdrant unavailable — VectorStore disabled", exc_info=True)
+        _unavailable.append("Qdrant")
+
+    if settings.VOYAGE_API_KEY and settings.ZEROENTROPY_API_KEY:
+        embeddings = EmbeddingService(
+            settings.VOYAGE_API_KEY, settings.ZEROENTROPY_API_KEY
+        )
+    else:
+        missing = [
+            k
+            for k in ("VOYAGE_API_KEY", "ZEROENTROPY_API_KEY")
+            if not getattr(settings, k)
+        ]
+        _unavailable.append(f"Voyage AI ({', '.join(missing)})")
+
+    if _unavailable:
+        logger.warning(
+            "Knowledge infrastructure unavailable: %s. Running in degraded mode.",
+            ", ".join(_unavailable),
         )
 
 

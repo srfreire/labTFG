@@ -75,62 +75,81 @@ class MemoryAgent:
         run_id: str,
         emit: EmitFn | None = None,
     ) -> MemoryAgentResult:
-        """Run the full memory pipeline for one stage's output."""
+        """Run the full memory pipeline for one stage's output.
+
+        Never raises — all errors are caught and logged, returning a zeroed
+        result so the pipeline continues uninterrupted.
+        """
         t0 = time.monotonic()
 
         async def _emit_status(status: str) -> None:
             if emit is not None:
-                await emit(
-                    {"type": "agent_status", "agent": "memory_agent", "status": status}
-                )
+                try:
+                    await emit(
+                        {
+                            "type": "agent_status",
+                            "agent": "memory_agent",
+                            "status": status,
+                        }
+                    )
+                except Exception:
+                    logger.warning("Memory Agent: emit(%s) failed", status)
 
-        await _emit_status("working")
-
-        if not stage_output.strip():
-            logger.warning(
-                "Memory Agent: empty stage output for stage=%s — skipping", stage
-            )
-            await _emit_status("done")
-            return self._zero_result(t0)
-
-        # Step 1: Extract entities, relations, facts
         try:
-            extraction = await extract(stage, stage_output, run_id, self._client)
+            await _emit_status("working")
+
+            if not stage_output.strip():
+                logger.warning(
+                    "Memory Agent: empty stage output for stage=%s — skipping", stage
+                )
+                await _emit_status("done")
+                return self._zero_result(t0)
+
+            # Step 1: Extract entities, relations, facts
+            try:
+                extraction = await extract(stage, stage_output, run_id, self._client)
+            except Exception:
+                logger.exception("Memory Agent extraction failed for stage=%s", stage)
+                await _emit_status("done")
+                return self._zero_result(t0)
+
+            # Step 2: Parallel KG population + embedding/indexing
+            kg_result = await self._parallel_write(
+                extraction, stage, stage_output, run_id
+            )
+
+            # Step 3: Conflict resolution + memory persistence
+            res_result = await self._resolve(extraction)
+
+            await _emit_status("done")
+
+            result = MemoryAgentResult(
+                nodes_created=kg_result.nodes_created,
+                nodes_merged=kg_result.nodes_merged,
+                relations_created=kg_result.relations_created,
+                facts_stored=res_result.memories_created,
+                duplicates_skipped=res_result.duplicates_skipped,
+                conflicts_resolved=res_result.contradictions,
+                duration_ms=int((time.monotonic() - t0) * 1000),
+            )
+            logger.info(
+                "Memory Agent [%s]: %d nodes (+%d merged), %d relations, "
+                "%d facts stored, %d dups skipped, %d conflicts — %dms",
+                stage,
+                result.nodes_created,
+                result.nodes_merged,
+                result.relations_created,
+                result.facts_stored,
+                result.duplicates_skipped,
+                result.conflicts_resolved,
+                result.duration_ms,
+            )
+            return result
+
         except Exception:
-            logger.exception("Memory Agent extraction failed for stage=%s", stage)
+            logger.exception("Memory Agent failed for stage=%s", stage)
             await _emit_status("done")
             return self._zero_result(t0)
-
-        # Step 2: Parallel KG population + embedding/indexing
-        kg_result = await self._parallel_write(extraction, stage, stage_output, run_id)
-
-        # Step 3: Conflict resolution + memory persistence
-        res_result = await self._resolve(extraction)
-
-        await _emit_status("done")
-
-        result = MemoryAgentResult(
-            nodes_created=kg_result.nodes_created,
-            nodes_merged=kg_result.nodes_merged,
-            relations_created=kg_result.relations_created,
-            facts_stored=res_result.memories_created,
-            duplicates_skipped=res_result.duplicates_skipped,
-            conflicts_resolved=res_result.contradictions,
-            duration_ms=int((time.monotonic() - t0) * 1000),
-        )
-        logger.info(
-            "Memory Agent [%s]: %d nodes (+%d merged), %d relations, "
-            "%d facts stored, %d dups skipped, %d conflicts — %dms",
-            stage,
-            result.nodes_created,
-            result.nodes_merged,
-            result.relations_created,
-            result.facts_stored,
-            result.duplicates_skipped,
-            result.conflicts_resolved,
-            result.duration_ms,
-        )
-        return result
 
     # -- internal helpers ----------------------------------------------------
 

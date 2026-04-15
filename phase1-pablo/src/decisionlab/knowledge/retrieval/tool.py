@@ -177,57 +177,70 @@ def create_retrieve_knowledge(
         if kg is None and vector_store is None and embedding_service is None:
             return "Knowledge backbone not available. Proceeding without retrieved context."
 
-        # Build filters
-        filters: dict[str, object] = {"exclude_run_id": run_id}
-        if namespace:
-            filters["namespace"] = namespace
+        try:
+            # Build filters
+            filters: dict[str, object] = {"exclude_run_id": run_id}
+            if namespace:
+                filters["namespace"] = namespace
 
-        # Run retrieval channels in parallel (fallback to empty when infra missing)
-        kg_coro = (
-            kg_retrieve(query, kg, embedding_service, client)
-            if kg is not None and embedding_service is not None
-            else _noop_kg()
-        )
-        vec_coro = (
-            vector_retrieve(query, embedding_service, vector_store, filters=filters)
-            if vector_store is not None and embedding_service is not None
-            else _noop_vec()
-        )
-
-        kg_results, (dense_results, sparse_results) = await asyncio.gather(
-            kg_coro, vec_coro,
-        )
-
-        # Fuse + rerank
-        if not embedding_service:
-            # Without embedding service, just concatenate raw results
-            reranked = (kg_results + dense_results + sparse_results)[:top_k]
-        else:
-            reranked = await fuse_and_rerank(
-                query,
-                kg_results,
-                dense_results,
-                sparse_results,
-                embedding_service,
+            # Run retrieval channels in parallel (fallback to empty when infra missing)
+            kg_coro = (
+                kg_retrieve(query, kg, embedding_service, client)
+                if kg is not None and embedding_service is not None
+                else _noop_kg()
+            )
+            vec_coro = (
+                vector_retrieve(query, embedding_service, vector_store, filters=filters)
+                if vector_store is not None and embedding_service is not None
+                else _noop_vec()
             )
 
-        # CRAG evaluation
-        task_context = _build_task_context(stage)
-        crag_result = await evaluate_results(
-            query,
-            task_context,
-            reranked,
-            client,
-            search_adapter=search_adapter,
-            embedding_service=embedding_service,
-        )
+            kg_results, (dense_results, sparse_results) = await asyncio.gather(
+                kg_coro,
+                vec_coro,
+            )
 
-        # Track memory access (fire-and-forget, don't block response)
-        try:
-            await _track_memory_access(crag_result.results)
+            # Fuse + rerank
+            if not embedding_service:
+                # Without embedding service, just concatenate raw results
+                reranked = (kg_results + dense_results + sparse_results)[:top_k]
+            else:
+                reranked = await fuse_and_rerank(
+                    query,
+                    kg_results,
+                    dense_results,
+                    sparse_results,
+                    embedding_service,
+                )
+
+            # CRAG evaluation
+            task_context = _build_task_context(stage)
+            crag_result = await evaluate_results(
+                query,
+                task_context,
+                reranked,
+                client,
+                search_adapter=search_adapter,
+                embedding_service=embedding_service,
+            )
+
+            # Track memory access (fire-and-forget, don't block response)
+            try:
+                await _track_memory_access(crag_result.results)
+            except Exception as exc:
+                logger.warning("Memory access tracking failed: %s", exc)
+
+            return _format_output(crag_result.results, top_k)
+
         except Exception as exc:
-            logger.warning("Memory access tracking failed: %s", exc)
-
-        return _format_output(crag_result.results, top_k)
+            logger.error(
+                "retrieve_knowledge failed (stage=%s): %s",
+                stage,
+                exc,
+            )
+            return (
+                "Knowledge backbone temporarily unavailable. "
+                "Proceeding without retrieved context."
+            )
 
     return handle_retrieve_knowledge
