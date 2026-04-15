@@ -1,14 +1,14 @@
 ---
 id: P5-001
 title: Enable cross-run retrieval with recency weighting
-status: todo
+status: in-progress
 kind: strike
 phase: 5
 heat: cross-run
 priority: 1
 blocked_by: []
 created: 2026-04-14
-updated: 2026-04-14
+updated: 2026-04-15
 ---
 
 # P5-001: Enable cross-run retrieval with recency weighting
