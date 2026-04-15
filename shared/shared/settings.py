@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+
+
+_BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 @dataclass(frozen=True)
@@ -19,6 +22,12 @@ class Settings:
     QDRANT_URL: str = "http://localhost:6333"
     VOYAGE_API_KEY: str = ""
     ZEROENTROPY_API_KEY: str = ""
+    ENABLE_KNOWLEDGE_WRITE: bool = False
+
+
+def _parse_bool(raw: str) -> bool:
+    """Permissive bool parsing — accepts '1', 'true', 'yes', 'on' (case-insensitive)."""
+    return raw.strip().lower() in _BOOL_TRUE
 
 
 def load_settings() -> Settings:
@@ -30,10 +39,13 @@ def load_settings() -> Settings:
     except ImportError:
         pass
 
-    fields = {f.name for f in Settings.__dataclass_fields__.values()}
-    overrides = {}
-    for name in fields:
-        val = os.environ.get(name)
-        if val is not None:
-            overrides[name] = val
+    overrides: dict[str, object] = {}
+    for f in fields(Settings):
+        val = os.environ.get(f.name)
+        if val is None:
+            continue
+        if f.type is bool or f.type == "bool":
+            overrides[f.name] = _parse_bool(val)
+        else:
+            overrides[f.name] = val
     return Settings(**overrides)

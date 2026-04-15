@@ -63,3 +63,36 @@ def test_frozen():
         assert False, "Should have raised FrozenInstanceError"
     except AttributeError:
         pass
+
+
+# ---------------------------------------------------------------------------
+# ENABLE_KNOWLEDGE_WRITE — permissive bool parsing
+# ---------------------------------------------------------------------------
+
+
+import pytest
+
+
+def test_enable_knowledge_write_default_false():
+    s = load_settings()
+    assert s.ENABLE_KNOWLEDGE_WRITE is False
+
+
+@pytest.mark.parametrize("raw", ["1", "true", "TRUE", "True", "yes", "YES", "on", " on "])
+def test_enable_knowledge_write_truthy_strings(monkeypatch, raw):
+    monkeypatch.setenv("ENABLE_KNOWLEDGE_WRITE", raw)
+    s = load_settings()
+    assert s.ENABLE_KNOWLEDGE_WRITE is True
+
+
+@pytest.mark.parametrize("raw", ["0", "false", "FALSE", "no", "off", "", "xyz", "None", "2"])
+def test_enable_knowledge_write_falsy_strings(monkeypatch, raw):
+    monkeypatch.setenv("ENABLE_KNOWLEDGE_WRITE", raw)
+    s = load_settings()
+    assert s.ENABLE_KNOWLEDGE_WRITE is False
+
+
+def test_enable_knowledge_write_absent_env(monkeypatch):
+    monkeypatch.delenv("ENABLE_KNOWLEDGE_WRITE", raising=False)
+    s = load_settings()
+    assert s.ENABLE_KNOWLEDGE_WRITE is False

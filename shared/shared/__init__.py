@@ -19,6 +19,11 @@ kg: KnowledgeGraph | None = None
 vectors: VectorStore | None = None
 embeddings: EmbeddingService | None = None
 
+# Phase 2 simulation memories — populated by `init()` when
+# ENABLE_KNOWLEDGE_WRITE is truthy and the infra above is available.
+# Typed as `object | None` here to avoid an import cycle with `simlab`.
+sim_memory_writer: object | None = None
+
 
 async def init(settings: Settings | None = None) -> None:
     """Boot all infrastructure services, expose as module-level singletons."""
@@ -70,10 +75,49 @@ async def init(settings: Settings | None = None) -> None:
             ", ".join(_unavailable),
         )
 
+    _init_sim_memory_writer(settings)
+
+
+def _init_sim_memory_writer(settings: Settings) -> None:
+    """Wire the Phase 2 simulation memories writer if the flag is on and infra is up.
+
+    Reuses `db`, `vectors`, `embeddings` already initialised above — does not
+    open new connections. Leaves `sim_memory_writer = None` silently when the
+    flag is off (the common case).
+    """
+    global sim_memory_writer
+    if not settings.ENABLE_KNOWLEDGE_WRITE:
+        return
+
+    if vectors is None or embeddings is None or db is None:
+        logger.warning(
+            "ENABLE_KNOWLEDGE_WRITE=true but infra missing — "
+            "Qdrant/Voyage/Postgres not initialised; knowledge writes disabled",
+        )
+        return
+
+    try:
+        from simlab.knowledge import TrackerMemoryWriter
+    except ImportError:
+        logger.warning(
+            "ENABLE_KNOWLEDGE_WRITE=true but simlab.knowledge import failed — "
+            "knowledge writes disabled",
+            exc_info=True,
+        )
+        return
+
+    sim_memory_writer = TrackerMemoryWriter(
+        vector_store=vectors,
+        embedding_service=embeddings,
+        db=db,
+    )
+    logger.info("Knowledge writes enabled (namespace=simulation)")
+
 
 async def shutdown() -> None:
     """Tear down all services."""
-    global storage, db, kg, vectors, embeddings
+    global storage, db, kg, vectors, embeddings, sim_memory_writer
+    sim_memory_writer = None
     if storage is not None:
         await storage.close()
         storage = None

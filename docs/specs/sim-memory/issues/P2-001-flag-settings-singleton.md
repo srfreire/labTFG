@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Add ENABLE_KNOWLEDGE_WRITE flag, settings, and shared singleton
-status: todo
+status: done
 kind: strike
 phase: 2
 heat: integration
@@ -52,12 +52,38 @@ Añadir el flag de activación `ENABLE_KNOWLEDGE_WRITE` a `Settings` con parseo 
 
 ## Acceptance Criteria
 
-- [ ] AC1: `Settings(ENABLE_KNOWLEDGE_WRITE=True)` y `Settings()` (default False) son ambos válidos; el dataclass es frozen y el field tiene tipo `bool`.
-- [ ] AC2: Test parametrizado verifica parsing: `"true"`, `"TRUE"`, `"1"`, `"yes"`, `"on"` → True; `"false"`, `"0"`, `""`, `"nope"`, ausente → False.
-- [ ] AC3: Con flag OFF (o default), `shared.sim_memory_writer` permanece `None` tras lifecycle init (sin log spam).
-- [ ] AC4: Con flag ON + `shared.db/vectors/embeddings` mockeados no-None, `shared.sim_memory_writer` queda como `TrackerMemoryWriter` tras init, con los 3 servicios inyectados.
-- [ ] AC5: Con flag ON pero `shared.vectors is None` (p.ej. Qdrant no conectado), queda `None` + warning log emitido.
-- [ ] AC6: Los 111 tests de phase2 y los tests actuales de shared siguen verdes.
+- [x] AC1: `Settings(ENABLE_KNOWLEDGE_WRITE=True)` y `Settings()` (default False) son ambos válidos; el dataclass es frozen y el field tiene tipo `bool`.
+- [x] AC2: Tests parametrizados (8 truthy + 8 falsy + absent) verifican parsing.
+- [x] AC3: Con flag OFF, `shared.sim_memory_writer` permanece `None` tras `_init_sim_memory_writer` (verificado por test).
+- [x] AC4: Con flag ON + infra no-None, `shared.sim_memory_writer` queda como `TrackerMemoryWriter` con las 3 instancias reutilizadas (test en `phase2-juan/tests/test_sim_memory_init.py`).
+- [x] AC5: Con flag ON pero cualquier servicio None, queda `None` + warning log (test parametrizado en 3 variantes).
+- [x] AC6: 27 tests en `shared/` + 112 tests en `phase2-juan/` (1 skipped = integration). Sin regresiones.
+
+## Completion Summary
+
+### What was built
+- `shared/shared/settings.py`: añadido `ENABLE_KNOWLEDGE_WRITE: bool = False` + helper `_parse_bool` aceptando `{"1","true","yes","on"}` case-insensitive. `load_settings` ahora convierte tipos bool en vez de pasar el string directo.
+- `shared/shared/__init__.py`: nueva global `sim_memory_writer`, función privada `_init_sim_memory_writer(settings)` que reutiliza `shared.vectors/embeddings/db` sin abrir conexiones propias. Llamada desde `init()`. `shutdown()` lo resetea a None.
+- `.env.example`: añadidas `ZEROENTROPY_API_KEY` (faltaba) y `ENABLE_KNOWLEDGE_WRITE=false` con comentario apuntando a los specs.
+- Tests:
+  - `shared/tests/test_settings.py`: +19 parametrizaciones para ENABLE_KNOWLEDGE_WRITE (8 truthy, 8 falsy, absent, default). Fixed `test_defaults` que asertaba `NEO4J_PASSWORD=="labtfg"` en vez del real `"labtfg-neo4j"`.
+  - `shared/tests/test_sim_memory_init.py` (nuevo): flag-off, flag-on-without-infra (3 variantes), import-failure.
+  - `phase2-juan/tests/test_sim_memory_init.py` (nuevo): happy-path con `TrackerMemoryWriter` real (requiere simlab, no puede vivir en shared/).
+
+### Files created/modified
+- `shared/shared/settings.py` — añadir flag + _parse_bool + bool type detection en load_settings.
+- `shared/shared/__init__.py` — sim_memory_writer global + _init_sim_memory_writer + shutdown reset.
+- `.env.example` — entrada ZEROENTROPY_API_KEY + ENABLE_KNOWLEDGE_WRITE documentada.
+- `shared/tests/test_settings.py` — tests del flag + fix del password default.
+- `shared/tests/test_sim_memory_init.py` — nuevo (4 escenarios short-circuit).
+- `phase2-juan/tests/test_sim_memory_init.py` — nuevo (happy-path).
+
+### Decisions
+- **`sim_memory_writer` tipado como `object | None`**: evita ciclo de imports (shared no debe importar simlab a nivel de módulo). El import de `TrackerMemoryWriter` está diferido dentro de `_init_sim_memory_writer`.
+- **Función separada `_init_sim_memory_writer`** en vez de inline en `init()`: facilita testing unitario sin levantar Postgres/Qdrant/MinIO reales.
+- **Happy-path test en phase2-juan**: `simlab` solo existe en ese entorno; shared cubre únicamente las ramas de short-circuit.
+- **Detección de tipo bool en `load_settings`**: usa `dataclasses.fields` + comparación `f.type is bool` / `f.type == "bool"` (cubre el caso `from __future__ import annotations` donde los type hints son strings).
+- **Fix colateral**: `test_defaults` tenía `NEO4J_PASSWORD == "labtfg"` (string) pero el real default es `"labtfg-neo4j"`. Fixed en este strike porque estaba en mi camino; pre-existente.
 
 ## Files Likely Affected
 
