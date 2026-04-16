@@ -108,10 +108,76 @@ def _try_parse_json(text: str) -> dict | None:
     return data
 
 
+_TEST_RESULT_PROPS = ("passed", "failure_reason")
+_MISSING = object()
+
+
+def _fold_legacy_test_results(raw_nodes: list) -> list:
+    """Drop legacy ``TestResult`` nodes, merging their test props into matching Model nodes.
+
+    Older Builder extractions emitted ``TestResult`` as a separate node. The current
+    schema carries ``passed`` / ``failure_reason`` directly on ``Model``. This keeps
+    old-format extractions usable: test props are copied onto the Model with the same
+    ``formulation_id`` (when one exists), and the TestResult entry is discarded.
+    """
+    test_props_by_fid: dict[str, dict] = {}
+    survivors: list = []
+    for raw in raw_nodes:
+        if isinstance(raw, dict) and raw.get("label") == "TestResult":
+            properties = raw.get("properties")
+            if isinstance(properties, dict):
+                fid = properties.get("formulation_id")
+                if fid is not None:
+                    test_props_by_fid[str(fid)] = {
+                        k: properties[k] for k in _TEST_RESULT_PROPS if k in properties
+                    }
+            continue
+        survivors.append(raw)
+
+    if not test_props_by_fid:
+        return survivors
+
+    matched_fids: set[str] = set()
+    for raw in survivors:
+        if not isinstance(raw, dict) or raw.get("label") != "Model":
+            continue
+        properties = raw.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        fid = properties.get("formulation_id")
+        if fid is None:
+            continue
+        fid_key = str(fid)
+        fold = test_props_by_fid.get(fid_key)
+        if not fold:
+            continue
+        matched_fids.add(fid_key)
+        for prop_key, value in fold.items():
+            existing = properties.get(prop_key, _MISSING)
+            if existing is _MISSING:
+                properties[prop_key] = value
+            elif existing != value:
+                logger.warning(
+                    "Legacy TestResult conflicts with Model on formulation_id=%r "
+                    "property=%r: keeping Model value %r (discarding %r)",
+                    fid_key, prop_key, existing, value,
+                )
+
+    orphans = set(test_props_by_fid) - matched_fids
+    if orphans:
+        logger.warning(
+            "Legacy TestResult nodes without matching Model discarded for "
+            "formulation_ids=%s",
+            sorted(orphans),
+        )
+    return survivors
+
+
 def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
     """Convert parsed JSON dict into an ExtractionResult with validated fields."""
+    raw_nodes = _fold_legacy_test_results(data.get("nodes", []))
     nodes = []
-    for raw in data.get("nodes", []):
+    for raw in raw_nodes:
         if not isinstance(raw, dict):
             continue
         label = raw.get("label")

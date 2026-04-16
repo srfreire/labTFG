@@ -5,7 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from decisionlab.knowledge.extraction import extract, _try_parse_json, _build_result
+from decisionlab.knowledge.extraction import (
+    _build_result,
+    _fold_legacy_test_results,
+    _try_parse_json,
+    extract,
+)
 from decisionlab.knowledge.models import ExtractionResult
 
 
@@ -122,8 +127,7 @@ REASONER_RESPONSE = json.dumps({
 
 BUILDER_RESPONSE = json.dumps({
     "nodes": [
-        {"label": "Model", "properties": {"formulation_id": "homeostatic-regulation_drive_reduction_rl", "class_name": "HomeostaticDriveReductionRL"}, "natural_key": "formulation_id"},
-        {"label": "TestResult", "properties": {"formulation_id": "homeostatic-regulation_drive_reduction_rl", "passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
+        {"label": "Model", "properties": {"formulation_id": "homeostatic-regulation_drive_reduction_rl", "class_name": "HomeostaticDriveReductionRL", "passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
     ],
     "relations": [
         {"from_label": "Model", "from_key_value": "homeostatic-regulation_drive_reduction_rl", "to_label": "Formulation", "to_key_value": "homeostatic-regulation_drive_reduction_rl", "rel_type": "IMPLEMENTS", "properties": {}},
@@ -132,6 +136,21 @@ BUILDER_RESPONSE = json.dumps({
         "Model HomeostaticDriveReductionRL passes all behavior tests.",
         "Uses Q-learning with softmax action selection over a discretized state space.",
         "Implements drive-reduction reward signal: reward = D(x_prev) - D(x_current).",
+    ],
+})
+
+LEGACY_BUILDER_RESPONSE = json.dumps({
+    "nodes": [
+        {"label": "Model", "properties": {"formulation_id": "homeostatic-regulation_drive_reduction_rl", "class_name": "HomeostaticDriveReductionRL"}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"formulation_id": "homeostatic-regulation_drive_reduction_rl", "passed": False, "failure_reason": "behavior test B2 failed"}, "natural_key": "formulation_id"},
+    ],
+    "relations": [
+        {"from_label": "Model", "from_key_value": "homeostatic-regulation_drive_reduction_rl", "to_label": "Formulation", "to_key_value": "homeostatic-regulation_drive_reduction_rl", "rel_type": "IMPLEMENTS", "properties": {}},
+    ],
+    "facts": [
+        "Model HomeostaticDriveReductionRL failed behavior test B2.",
+        "Uses Q-learning with softmax action selection.",
+        "Implements drive-reduction reward signal.",
     ],
 })
 
@@ -238,21 +257,37 @@ async def test_extract_reasoner_produces_derives_from():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_extract_builder_produces_model_and_test_result():
-    """AC4: extract('builder', ...) produces Model with class_name and TestResult with passed=True."""
+async def test_extract_builder_produces_model_with_test_properties():
+    """AC4: extract('builder', ...) produces a Model node carrying class_name and test outcome props."""
     client = _make_client([BUILDER_RESPONSE])
     result = await extract("builder", "# model code...", "run-1", client)
 
     models = [n for n in result.nodes if n.label == "Model"]
-    assert len(models) >= 1
+    assert len(models) == 1
     assert models[0].properties["class_name"] == "HomeostaticDriveReductionRL"
+    assert models[0].properties["passed"] is True
+    assert models[0].properties["failure_reason"] is None
 
-    test_results = [n for n in result.nodes if n.label == "TestResult"]
-    assert len(test_results) >= 1
-    assert test_results[0].properties["passed"] is True
+    assert not any(n.label == "TestResult" for n in result.nodes)
 
     implements = [r for r in result.relations if r.rel_type == "IMPLEMENTS"]
     assert len(implements) >= 1
+
+
+@pytest.mark.asyncio
+async def test_extract_builder_legacy_testresult_folds_into_model():
+    """Old-format Builder output (separate TestResult node) is folded into the Model node."""
+    client = _make_client([LEGACY_BUILDER_RESPONSE])
+    result = await extract("builder", "# model code...", "run-1", client)
+
+    assert not any(n.label == "TestResult" for n in result.nodes)
+
+    models = [n for n in result.nodes if n.label == "Model"]
+    assert len(models) == 1
+    props = models[0].properties
+    assert props["class_name"] == "HomeostaticDriveReductionRL"
+    assert props["passed"] is False
+    assert props["failure_reason"] == "behavior test B2 failed"
 
 
 # ---------------------------------------------------------------------------
@@ -379,6 +414,70 @@ def test_build_result_skips_empty_facts():
     data = {"nodes": [], "relations": [], "facts": ["valid fact", "", "  ", "another fact"]}
     result = _build_result(data, "researcher", "run-1")
     assert result.facts == ["valid fact", "another fact"]
+
+
+# ---------------------------------------------------------------------------
+# Legacy TestResult fold — edge cases (see _fold_legacy_test_results)
+# ---------------------------------------------------------------------------
+
+
+def test_fold_legacy_orphan_testresult_warns_and_drops(caplog):
+    """A TestResult with no matching Model is dropped and logged."""
+    raw_nodes = [
+        {"label": "Model", "properties": {"formulation_id": "fid-a", "class_name": "A"}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"formulation_id": "fid-missing", "passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
+    ]
+    with caplog.at_level("WARNING", logger="decisionlab.knowledge.extraction"):
+        survivors = _fold_legacy_test_results(raw_nodes)
+
+    assert [n["label"] for n in survivors] == ["Model"]
+    assert survivors[0]["properties"] == {"formulation_id": "fid-a", "class_name": "A"}
+    assert any("fid-missing" in r.message for r in caplog.records)
+
+
+def test_fold_legacy_testresult_without_formulation_id_is_ignored():
+    """A TestResult missing formulation_id is silently discarded without mutating the Model."""
+    raw_nodes = [
+        {"label": "Model", "properties": {"formulation_id": "fid-a", "class_name": "A"}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
+    ]
+    survivors = _fold_legacy_test_results(raw_nodes)
+
+    assert len(survivors) == 1
+    assert survivors[0]["properties"] == {"formulation_id": "fid-a", "class_name": "A"}
+
+
+def test_fold_legacy_conflict_keeps_model_value_and_warns(caplog):
+    """When Model and TestResult disagree, the Model's explicit value wins and the discard is logged."""
+    raw_nodes = [
+        {"label": "Model", "properties": {"formulation_id": "fid-a", "class_name": "A", "passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"formulation_id": "fid-a", "passed": False, "failure_reason": "B2 failed"}, "natural_key": "formulation_id"},
+    ]
+    with caplog.at_level("WARNING", logger="decisionlab.knowledge.extraction"):
+        survivors = _fold_legacy_test_results(raw_nodes)
+
+    model_props = survivors[0]["properties"]
+    assert model_props["passed"] is True
+    assert model_props["failure_reason"] is None
+    conflict_messages = [r.message for r in caplog.records if "conflicts with Model" in r.message]
+    assert len(conflict_messages) == 2  # one per differing prop
+
+
+def test_fold_legacy_multiple_models_each_get_their_own_test_props():
+    """Multiple Model/TestResult pairs in one payload are folded independently."""
+    raw_nodes = [
+        {"label": "Model", "properties": {"formulation_id": "fid-a", "class_name": "A"}, "natural_key": "formulation_id"},
+        {"label": "Model", "properties": {"formulation_id": "fid-b", "class_name": "B"}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"formulation_id": "fid-a", "passed": True, "failure_reason": None}, "natural_key": "formulation_id"},
+        {"label": "TestResult", "properties": {"formulation_id": "fid-b", "passed": False, "failure_reason": "x"}, "natural_key": "formulation_id"},
+    ]
+    survivors = _fold_legacy_test_results(raw_nodes)
+    by_fid = {n["properties"]["formulation_id"]: n["properties"] for n in survivors}
+
+    assert by_fid["fid-a"]["passed"] is True
+    assert by_fid["fid-a"]["failure_reason"] is None
+    assert by_fid["fid-b"]["passed"] is False
+    assert by_fid["fid-b"]["failure_reason"] == "x"
 
 
 @pytest.mark.asyncio

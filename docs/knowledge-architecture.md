@@ -24,7 +24,7 @@ Three things happen:
 
 Stores entities and their relationships as a graph.
 
-**11 node types:**
+**10 node types:**
 
 | Node | What it represents | Example |
 |------|-------------------|---------|
@@ -37,8 +37,7 @@ Stores entities and their relationships as a graph.
 | Postulate | A falsifiable claim | "Dopamine mediates wanting, not liking" |
 | Formulation | A mathematical model design | "Drive-Reduction RL" |
 | Parameter | A model parameter | "learning_rate", 0.1, from Keramati 2011 |
-| Model | Generated code | "HomeostaticDriveReductionRL" |
-| TestResult | Whether a model's tests passed | passed: true |
+| Model | Generated code + test outcome | "HomeostaticDriveReductionRL", passed: true |
 
 **11 relation types:**
 
@@ -137,7 +136,7 @@ Each pipeline stage gets a different extraction prompt:
 | Researcher | Paradigms, Authors, Papers, BrainRegions, Variables, Postulates + relations (BELONGS_TO, AUTHORED, SUPPORTS, MEASURES) |
 | Formalizer | Equations, Variables, Parameters, Formulations + relations (USES_EQUATION, MODULATES) |
 | Reasoner | Parameters, Formulations + relations (DERIVES_FROM) |
-| Builder | Models, TestResults + relations (IMPLEMENTS) |
+| Builder | Models (incl. `passed` + `failure_reason` test props) + relations (IMPLEMENTS) |
 
 Output is structured JSON: `{"nodes": [...], "relations": [...], "facts": [...]}`. Facts are plain-text statements that don't fit neatly into the graph schema — things like "Q-learning converges faster with low learning rates in sparse reward environments."
 

@@ -155,13 +155,14 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
 Node types to extract:
-- Model: properties={{formulation_id, class_name}}. natural_key="formulation_id". \
-Extract formulation_id from the module docstring or filename pattern. class_name \
-is the main model class that implements the DecisionModel contract (has decide, \
-update, get_state methods).
-- TestResult: properties={{formulation_id, passed, failure_reason}}. \
-natural_key="formulation_id". passed is a boolean. failure_reason is null if passed, \
-otherwise a brief description. Extract from test output if present.
+- Model: properties={{formulation_id, class_name, passed, failure_reason}}. \
+natural_key="formulation_id". Extract formulation_id from the module docstring or \
+filename pattern. class_name is the main model class that implements the \
+DecisionModel contract (has decide, update, get_state methods). passed is a boolean \
+test outcome (true if all tests pass, false otherwise); omit it when no test output \
+is present. failure_reason is a brief description when passed is false, otherwise \
+null. Emit exactly one Model node — do NOT emit a separate TestResult node; fold \
+test outcomes into the Model's properties.
 
 Relation types to extract:
 - IMPLEMENTS: Model → Formulation (the model implements a formulation). \

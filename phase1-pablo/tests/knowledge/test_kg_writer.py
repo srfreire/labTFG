@@ -174,7 +174,6 @@ class FakeKnowledgeGraph:
             "Formulation": "id",
             "Parameter": "name",
             "Model": "formulation_id",
-            "TestResult": "formulation_id",
         }
         if label not in schema:
             raise ValueError(f"Unknown label: {label!r}")
