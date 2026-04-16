@@ -32,8 +32,8 @@
 
 - [ ] **Phase 6: Schema Cleanse** — Simplify and clean up the KG schema, extraction prompts, and retrieval logic based on lessons learned. Remove unnecessary node types, consolidate properties, fix naming inconsistencies.
   - Dependencies: Phase 5
-  - Issues: P6-001
-  - Heats: schema (P6-001)
+  - Issues: P6-001, P6-002
+  - Heats: schema (P6-001, P6-002)
 
 - [ ] **Phase 7: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, cross-run knowledge diff.
   - Dependencies: Phase 6
