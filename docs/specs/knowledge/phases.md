@@ -30,15 +30,20 @@
   - Issues: P5-001, P5-002, P5-003, P5-004
   - Heats: cross-run (P5-001→P5-002), consolidation (P5-003 after P5-002, P5-004 after P5-001)
 
-- [ ] **Phase 6: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, cross-run knowledge diff.
+- [ ] **Phase 6: Schema Cleanse** — Simplify and clean up the KG schema, extraction prompts, and retrieval logic based on lessons learned. Remove unnecessary node types, consolidate properties, fix naming inconsistencies.
   - Dependencies: Phase 5
+  - Issues: P6-001
+  - Heats: schema (P6-001)
+
+- [ ] **Phase 7: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, cross-run knowledge diff.
+  - Dependencies: Phase 6
   - Estimated issues: ~5 (future phase, not forged now)
 
 ## Parallelism
 
 ```
 Phase 1 ──────────────────┐
-                          ├──▶ Phase 4 ──▶ Phase 5 ──▶ Phase 6
+                          ├──▶ Phase 4 ──▶ Phase 5 ──▶ Phase 6 ──▶ Phase 7
 Phase 2 (after Phase 1) ──┤
 Phase 3 (after Phase 1) ──┘
 
