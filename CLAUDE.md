@@ -70,6 +70,7 @@ Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
 
 - [x] **Tracker → Knowledge Backbone (namespace `simulation`)** — sim-memory, completo. Ver `docs/specs/sim-memory/`.
   - [ ] (futuro) Extender a nodos en Neo4j (Simulation, Observation con aristas a Model/Formulation) si se demuestra necesario para multi-hop retrieval.
+  - [ ] (cuando aterrice P6-002 de Pazos) Migrar `shared/shared/tokenizer.py` y el writer a BM25 nativo de Qdrant; nuestro MD5 tokenizer quedará obsoleto.
 - [ ] **Analyst/Reporter leen del KG** vía `retrieve_knowledge`: contrastar patrones observados contra postulados conocidos; enriquecer informes PDF con papers/autores/DOIs del grafo.
 - [ ] **Architect consulta specs previas** del KG para proponer entornos coherentes con paradigmas similares.
 - [ ] More decision paradigms from Phase 1 (when Pablo adds them)
