@@ -1,7 +1,7 @@
 ---
 id: P6-001
 title: Merge TestResult node into Model node properties
-status: todo
+status: in-progress
 kind: strike
 phase: 6
 heat: schema

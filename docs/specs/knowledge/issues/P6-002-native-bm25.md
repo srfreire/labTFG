@@ -1,7 +1,7 @@
 ---
 id: P6-002
 title: Replace MD5 sparse tokenizer with Qdrant native BM25
-status: todo
+status: in-progress
 kind: strike
 phase: 6
 heat: schema
