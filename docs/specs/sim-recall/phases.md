@@ -5,9 +5,10 @@
 
 ## Phases
 
-- [ ] **Phase 1: Context Retrieval** — Expose `retrieve_context` tool in the Orchestrator wrapping Pablo's `retrieve_knowledge`. Wire Architect, Analyst, Reporter to consult the Knowledge Backbone before reasoning. Absorbs the old TODOs #2 (Analyst/Reporter) and #3 (Architect).
+- [x] **Phase 1: Context Retrieval** — Expose `retrieve_context` tool in the Orchestrator wrapping Pablo's `retrieve_knowledge`. Wire Architect, Analyst, Reporter to consult the Knowledge Backbone before reasoning. Absorbs the old TODOs #2 (Analyst/Reporter) and #3 (Architect).
   - Dependencies: none (Pablo's retrieval stack already exists)
-  - Estimated issues: ~4
+  - Issues: P1-001, P1-002, P1-003, P1-004
+  - Heats: core (P1-001) → wiring (P1-002) ∥ prompts (P1-003) → tests (P1-004)
 
 - [ ] **Phase 2: Chat History Persistence** — New `chat_messages` table + Alembic migration. Hook `Orchestrator.chat()` to persist turns behind `ENABLE_CHAT_PERSISTENCE` flag. Foundation for Phase 3's conversation-aware queries.
   - Dependencies: none
