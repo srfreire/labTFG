@@ -1,16 +1,10 @@
-"""P1-004 — integration test with real Postgres + Qdrant + Voyage.
+"""Integration — TrackerMemoryWriter against real Postgres + Qdrant + Voyage.
 
-Marked `@pytest.mark.integration`; skipped by default. Run with:
-
-    uv run pytest tests/knowledge/test_integration.py -m integration
-
-Requires:
-- docker-compose up with Postgres + Qdrant listening on the URLs in .env.
-- VOYAGE_API_KEY and ZEROENTROPY_API_KEY set in the environment.
-- Alembic migrations applied (memories table exists).
-- Qdrant `memories_dense` / `memories_sparse` collections initialised
-  (the writer's factory does this via `VectorStore.init_collections`).
+Migrated from phase2-juan/tests/knowledge/test_integration.py to reuse the
+shared fixtures in `tests/conftest.py`. Runs with `pytest -m integration`;
+requires docker-compose services healthy and Voyage/ZeroEntropy keys set.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,29 +14,38 @@ import uuid
 import pytest
 from sqlalchemy import delete, select
 
+from shared.embedding import EmbeddingService
 from shared.models import Memory
-from shared.settings import load_settings
 from simlab.knowledge import (
     ModelInfo,
     SimulationContext,
-    build_writer_from_settings,
+    TrackerMemoryWriter,
 )
 
 pytestmark = pytest.mark.integration
 
 
-def _skip_if_no_keys():
+def _skip_if_no_keys() -> None:
     if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get("ZEROENTROPY_API_KEY"):
         pytest.skip("VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for integration tests")
 
 
-async def test_end_to_end_write_and_retrieve():
+@pytest.mark.asyncio
+async def test_writer_round_trip_postgres_and_qdrant(
+    settings, db_service, vector_store, session,
+):
+    """Write memories for a fake simulation and verify both stores + cleanup."""
     _skip_if_no_keys()
 
-    settings = load_settings()
-    writer = await build_writer_from_settings(settings)
-    if writer is None:
-        pytest.skip("build_writer_from_settings returned None — infra unavailable")
+    embeddings = EmbeddingService(
+        voyage_api_key=settings.VOYAGE_API_KEY,
+        zeroentropy_api_key=settings.ZEROENTROPY_API_KEY,
+    )
+    writer = TrackerMemoryWriter(
+        vector_store=vector_store,
+        embedding_service=embeddings,
+        db=db_service,
+    )
 
     experiment_id = f"itest-{uuid.uuid4()}"
     model = ModelInfo(
@@ -78,7 +81,6 @@ async def test_end_to_end_write_and_retrieve():
         ],
     }
 
-    # ------------------------------------------------------------------ write
     result = await writer.write(json.dumps(tracker), context)
 
     try:
@@ -87,12 +89,11 @@ async def test_end_to_end_write_and_retrieve():
         assert result.trajectories_written == 1
         assert result.episodes_written == 1
 
-        # ---------------------------------------------------- Postgres check
-        async with writer._db.get_session() as session:
-            stmt = select(Memory).where(
-                Memory.metadata_["phase2_experiment_id"].astext == experiment_id
-            )
-            rows = (await session.execute(stmt)).scalars().all()
+        # Postgres check — 3 rows with correct namespace/stage/confidence/memory_type.
+        stmt = select(Memory).where(
+            Memory.metadata_["phase2_experiment_id"].astext == experiment_id
+        )
+        rows = (await session.execute(stmt)).scalars().all()
 
         assert len(rows) == 3
         assert {r.namespace for r in rows} == {"simulation"}
@@ -104,17 +105,16 @@ async def test_end_to_end_write_and_retrieve():
             by_type[r.memory_type] = by_type.get(r.memory_type, 0) + 1
         assert by_type == {"semantic": 2, "episodic": 1}
 
-        # -------------------------------------------------------- Qdrant check
-        query_vec = await writer._embeddings.embed_query(
+        # Qdrant check — our UUIDs are retrievable via dense search.
+        query_vec = await embeddings.embed_query(
             "agent starvation in integration grid"
         )
-        hits = await writer._vectors.search_dense(
+        hits = await vector_store.search_dense(
             "memories_dense",
             query_vec,
             limit=20,
             filters={"phase2_experiment_id": experiment_id},
         )
-
         hit_ids = {h.id for h in hits}
         row_ids = {str(r.id) for r in rows}
         assert hit_ids.issuperset(row_ids), (
@@ -122,23 +122,19 @@ async def test_end_to_end_write_and_retrieve():
         )
 
     finally:
-        # ---------------------------------------------------- Cleanup Postgres
-        async with writer._db.get_session() as session:
-            await session.execute(
-                delete(Memory).where(
-                    Memory.metadata_["phase2_experiment_id"].astext == experiment_id
-                )
+        # Cleanup Postgres rows
+        await session.execute(
+            delete(Memory).where(
+                Memory.metadata_["phase2_experiment_id"].astext == experiment_id
             )
-            await session.commit()
+        )
+        await session.commit()
 
-        # ---------------------------------------------------- Cleanup Qdrant
-        qdrant_ids = [str(r.id) for r in rows] if rows else []
-        if qdrant_ids:
-            try:
-                await writer._vectors.delete("memories_dense", qdrant_ids)
-                await writer._vectors.delete("memories_sparse", qdrant_ids)
-            except Exception:  # noqa: BLE001 — best-effort cleanup
-                pass
-
-        await writer._db.close()
-        await writer._vectors.close()
+        # Cleanup Qdrant points
+        try:
+            qdrant_ids = [str(r.id) for r in rows]
+            if qdrant_ids:
+                await vector_store.delete("memories_dense", qdrant_ids)
+                await vector_store.delete("memories_sparse", qdrant_ids)
+        except Exception:
+            pass
