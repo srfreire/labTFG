@@ -46,8 +46,7 @@ The system targets researchers who run the pipeline repeatedly on related topics
 | `Postulate` | id, statement, falsifiable | "P3: Dopamine mediates wanting, not liking" |
 | `Formulation` | id, name, type, description | "T01-P01-F01", "Drive-Reduction RL" |
 | `Parameter` | name, default_value, source, range | "learning_rate", 0.1, "Keramati 2011" |
-| `Model` | formulation_id, class_name, s3_key | "T01-P01-F01", "HomeostaticDriveReductionRL" |
-| `TestResult` | formulation_id, passed, failure_reason | "T01-P01-F01", true, null |
+| `Model` | formulation_id, class_name, s3_key, passed, failure_reason | "T01-P01-F01", "HomeostaticDriveReductionRL", true, null |
 
 **Relations:**
 
