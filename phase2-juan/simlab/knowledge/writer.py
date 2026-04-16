@@ -9,6 +9,7 @@ See docs/specs/sim-memory/phase-1-core-writer.md for the full specification.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -87,12 +88,7 @@ class WriteResult:
 
 
 # ---------------------------------------------------------------------------
-# Writer (scaffold — real implementation lands in P1-003)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# Private helpers — live above TrackerMemoryWriter for module readability
+# Private helpers
 # ---------------------------------------------------------------------------
 
 
@@ -149,57 +145,67 @@ def _build_payload(memory_id: uuid.UUID, fact: "FactSpec") -> dict[str, Any]:
     }
 
 
-async def _safe_upsert_dense(
-    vector_store: "VectorStore",
+async def _safe_upsert(
+    kind: str,
+    coro,
     memory_id: uuid.UUID,
-    vector: list[float],
-    payload: dict[str, Any],
 ) -> None:
+    """Await a Qdrant upsert; log and swallow any failure so the batch keeps going.
+
+    The Postgres row is already committed (or will be), so a failed vector
+    upsert is recoverable via consolidation.
+    """
     try:
-        await vector_store.upsert_dense(
-            _COLLECTION_DENSE, str(memory_id), vector, payload
-        )
+        await coro
     except CancelledError:
         raise
-    except BaseException:
+    except Exception:
         logger.warning(
-            "TrackerMemoryWriter: dense upsert failed for memory %s — "
+            "TrackerMemoryWriter: %s upsert failed for memory %s — "
             "Postgres row kept, retry via consolidation",
+            kind,
             memory_id,
             exc_info=True,
         )
 
 
-async def _safe_upsert_sparse(
+async def _upsert_vectors(
     vector_store: "VectorStore",
     memory_id: uuid.UUID,
-    indices: list[int],
-    values: list[float],
+    dense: list[float],
+    sparse: tuple[list[int], list[float]],
     payload: dict[str, Any],
 ) -> None:
-    if not indices:
-        return
-    try:
-        await vector_store.upsert_sparse(
-            _COLLECTION_SPARSE, str(memory_id), indices, values, payload
-        )
-    except CancelledError:
-        raise
-    except BaseException:
-        logger.warning(
-            "TrackerMemoryWriter: sparse upsert failed for memory %s — "
-            "Postgres row kept, retry via consolidation",
+    """Upsert dense + sparse for one memory in parallel; swallow individual failures."""
+    mem_id_str = str(memory_id)
+    indices, values = sparse
+    coros = [
+        _safe_upsert(
+            "dense",
+            vector_store.upsert_dense(_COLLECTION_DENSE, mem_id_str, dense, payload),
             memory_id,
-            exc_info=True,
+        ),
+    ]
+    if indices:
+        coros.append(
+            _safe_upsert(
+                "sparse",
+                vector_store.upsert_sparse(
+                    _COLLECTION_SPARSE, mem_id_str, indices, values, payload
+                ),
+                memory_id,
+            )
         )
+    await asyncio.gather(*coros)
 
 
 class TrackerMemoryWriter:
     """Writes simulation observations from the Tracker into the Knowledge Backbone.
 
-    Real orchestration (parse, embed, upsert) is added in P1-003. This scaffold
-    exists so P1-002 (fact rules) and the integration in Phase 2 can import a
-    stable symbol while the logic is being built.
+    One UUID is minted per fact and reused across the Postgres row, the dense
+    Qdrant point, and the sparse Qdrant point so downstream retrieval can join
+    the three stores. Per-fact failures in Qdrant are logged and skipped; the
+    Postgres row is kept and recoverable by the consolidation job.
     """
 
     def __init__(
@@ -279,7 +285,7 @@ class TrackerMemoryWriter:
         counters = _Counters()
 
         async with self._db.get_session() as session:
-            for fact, dense, (sp_indices, sp_values) in zip(
+            for fact, dense, sparse in zip(
                 facts, dense_vectors, sparse_vectors, strict=True
             ):
                 memory_id = uuid.uuid4()
@@ -298,11 +304,8 @@ class TrackerMemoryWriter:
                     metadata_=dict(fact.metadata),
                 )
 
-                await _safe_upsert_dense(
-                    self._vectors, memory_id, dense, payload
-                )
-                await _safe_upsert_sparse(
-                    self._vectors, memory_id, sp_indices, sp_values, payload
+                await _upsert_vectors(
+                    self._vectors, memory_id, dense, sparse, payload
                 )
 
                 counters.count(fact)
