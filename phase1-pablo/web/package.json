@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ppazosp/agrex": "^0.1.7",
+    "@ppazosp/agrex": "^0.1.8",
     "@types/d3-force": "^3.0.10",
     "@xyflow/react": "^12.6.0",
     "d3-force": "^3.0.0",
