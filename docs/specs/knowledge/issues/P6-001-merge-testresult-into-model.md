@@ -53,7 +53,7 @@ Remove the `TestResult` node type from the KG schema. Store test outcomes (`pass
 - `phase1-pablo/src/decisionlab/knowledge/prompts.py` — update Builder prompt
 - `phase1-pablo/src/decisionlab/knowledge/extraction.py` — update parsing
 - `phase1-pablo/src/decisionlab/knowledge/kg_writer.py` — update if TestResult-specific logic exists
-- `docs/knowledge-architecture.md` — update node table
+- `docs/knowledge-architecture.md` — update node table (11 → 10 types), update relation table, update Builder extraction row
 - `docs/specs/knowledge/general.md` — update data model
 
 ## Context

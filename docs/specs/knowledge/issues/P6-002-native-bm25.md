@@ -67,6 +67,7 @@ Qdrant native BM25 handles all of this server-side. We just send raw text.
 - `phase1-pablo/src/decisionlab/knowledge/tokenizer.py` — DELETE
 - `shared/tests/` — update sparse vector tests
 - `phase1-pablo/tests/` — remove tokenizer tests, update integration tests
+- `docs/knowledge-architecture.md` — update Qdrant section (MD5 hash → native BM25), update sparse description, remove tokenizer references
 
 ## Context
 Phase: 6 — Schema Cleanse
