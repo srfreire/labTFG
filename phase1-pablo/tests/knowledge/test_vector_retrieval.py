@@ -61,7 +61,7 @@ def _mock_vs(
             return dense_memories or []
         return []
 
-    async def _search_sparse(collection, indices, values, limit=20, filters=None):
+    async def _search_sparse(collection, query, limit=20, filters=None):
         if collection == "artifacts_sparse":
             return sparse_artifacts or []
         if collection == "memories_sparse":
@@ -225,7 +225,7 @@ async def test_vector_retrieve_runs_in_parallel():
         order.append(f"dense_{collection}_end")
         return [_scored("d1", 0.9)]
 
-    async def slow_sparse(collection, indices, values, limit=20, filters=None):
+    async def slow_sparse(collection, query, limit=20, filters=None):
         order.append(f"sparse_{collection}_start")
         await asyncio.sleep(0.05)
         order.append(f"sparse_{collection}_end")

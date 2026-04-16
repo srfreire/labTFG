@@ -7,18 +7,21 @@ from dataclasses import dataclass
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
+    Document,
     FieldCondition,
     Filter,
     MatchValue,
+    Modifier,
     PointStruct,
     Range,
     SparseIndexParams,
-    SparseVector,
     SparseVectorParams,
     VectorParams,
 )
 
 from shared.settings import Settings
+
+BM25_MODEL = "Qdrant/bm25"
 
 COLLECTIONS_DENSE = {
     "artifacts_dense": 1024,
@@ -52,7 +55,12 @@ class VectorStore:
         self._client = AsyncQdrantClient(url=self._url)
 
     async def init_collections(self) -> None:
-        """Create all 4 collections if they don't already exist (idempotent)."""
+        """Create all 4 collections if they don't already exist (idempotent).
+
+        Sparse collections use ``Modifier.IDF`` so Qdrant applies BM25's
+        IDF weighting server-side; tokenization happens client-side via
+        FastEmbed's ``Qdrant/bm25`` model.
+        """
         client = self._c()
         existing = {c.name for c in (await client.get_collections()).collections}
 
@@ -71,7 +79,10 @@ class VectorStore:
                     collection_name=name,
                     vectors_config={},
                     sparse_vectors_config={
-                        "sparse": SparseVectorParams(index=SparseIndexParams()),
+                        "sparse": SparseVectorParams(
+                            index=SparseIndexParams(),
+                            modifier=Modifier.IDF,
+                        ),
                     },
                 )
 
@@ -111,17 +122,20 @@ class VectorStore:
         self,
         collection: str,
         id: str,
-        indices: list[int],
-        values: list[float],
+        text: str,
         payload: dict,
     ) -> None:
-        """Upsert a single sparse vector with payload."""
+        """Upsert a single sparse point from raw text.
+
+        FastEmbed tokenizes client-side; Qdrant applies BM25 with IDF
+        server-side.
+        """
         await self._c().upsert(
             collection_name=collection,
             points=[
                 PointStruct(
                     id=id,
-                    vector={"sparse": SparseVector(indices=indices, values=values)},
+                    vector={"sparse": Document(text=text, model=BM25_MODEL)},
                     payload=payload,
                 ),
             ],
@@ -150,15 +164,18 @@ class VectorStore:
     async def search_sparse(
         self,
         collection: str,
-        indices: list[int],
-        values: list[float],
+        query: str,
         limit: int = 20,
         filters: dict | None = None,
     ) -> list[ScoredPoint]:
-        """Search a sparse collection by sparse vector similarity."""
+        """Search a sparse collection by BM25 over raw query text.
+
+        FastEmbed tokenizes client-side; Qdrant scores with BM25 + IDF
+        server-side.
+        """
         results = await self._c().query_points(
             collection_name=collection,
-            query=SparseVector(indices=indices, values=values),
+            query=Document(text=query, model=BM25_MODEL),
             using="sparse",
             limit=limit,
             query_filter=_build_filter(filters) if filters else None,

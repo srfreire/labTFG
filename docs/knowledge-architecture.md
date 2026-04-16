@@ -76,13 +76,15 @@ Stores embeddings for similarity search. Four collections:
 | Collection | Content | Vector type | Dimensions |
 |-----------|---------|-------------|-----------|
 | artifacts_dense | Pipeline artifact chunks (reports, formulations, specs, code) | Dense (Voyage AI voyage-4-large) | 1024 |
-| artifacts_sparse | Same chunks, sparse representation | Sparse (MD5-hashed token indices) | variable |
+| artifacts_sparse | Same chunks, sparse representation | Sparse (Qdrant native BM25, `modifier=IDF`) | variable |
 | memories_dense | Extracted facts from the Memory Agent | Dense (Voyage AI voyage-4-large) | 1024 |
-| memories_sparse | Same facts, sparse representation | Sparse (MD5-hashed token indices) | variable |
+| memories_sparse | Same facts, sparse representation | Sparse (Qdrant native BM25, `modifier=IDF`) | variable |
 
 **Why both dense and sparse?**
 
 Dense vectors capture semantic meaning ("Q-learning" and "reinforcement learning" are close in vector space). Sparse vectors capture exact lexical matches ("Berridge" matches "Berridge", not "reward researcher"). Running both in parallel and fusing results gives the best of both.
+
+**Native BM25 over a custom tokenizer.** Sparse collections use Qdrant's built-in BM25 (`Document(text=..., model="Qdrant/bm25")`) with `modifier=Modifier.IDF` on the collection. FastEmbed tokenizes and stems client-side; Qdrant applies IDF weighting, TF saturation, and document-length normalization server-side. We send raw text — no hashing, no manual stopword lists.
 
 **Payload on every point:**
 
@@ -186,7 +188,7 @@ This is a PPR-inspired local traversal, not full iterative PageRank. At the grap
 
 ### Layer 3: Sparse vector search
 
-1. Tokenize the query into sparse vector (MD5-hashed token indices, raw count values)
+1. Send the raw query to Qdrant as `Document(text=..., model="Qdrant/bm25")`; FastEmbed tokenizes client-side, Qdrant scores with BM25 (IDF server-side)
 2. Search `artifacts_sparse` and `memories_sparse` in parallel
 3. Normalize scores to 0-1
 

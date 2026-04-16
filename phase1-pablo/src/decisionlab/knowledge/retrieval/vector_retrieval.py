@@ -1,7 +1,7 @@
 """Dense and sparse vector retrieval channels for the knowledge backbone.
 
 Dense retrieval: embeds query via Voyage AI, searches Qdrant dense collections.
-Sparse retrieval: tokenizes query, searches Qdrant sparse collections.
+Sparse retrieval: passes raw query text to Qdrant's native BM25 sparse search.
 Combined: runs both in parallel via asyncio.gather.
 """
 
@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import replace
 
 from shared.embedding import EmbeddingService
 from shared.vector_store import ScoredPoint, VectorStore
 
 from decisionlab.knowledge.retrieval.models import RetrievalResult
-from decisionlab.knowledge.tokenizer import tokenize_to_sparse
 
 logger = logging.getLogger(__name__)
 
@@ -106,45 +106,34 @@ async def sparse_retrieve(
 ) -> list[RetrievalResult]:
     """Retrieve via sparse (lexical/BM25) vector search across both collections.
 
-    Tokenizes query, searches artifacts_sparse and memories_sparse,
-    merges results with scores normalized to 0-1.
+    Passes raw query text to Qdrant's native BM25 search over
+    ``artifacts_sparse`` and ``memories_sparse``; merged scores are
+    normalized to 0-1.
     """
-    indices, values = tokenize_to_sparse(query)
-    if not indices:
+    if not query.strip():
         return []
 
     qdrant_filters, exclude_run_id = _translate_filters(filters)
 
     coros = [
-        vector_store.search_sparse(
-            coll, indices, values, limit=limit, filters=qdrant_filters
-        )
+        vector_store.search_sparse(coll, query, limit=limit, filters=qdrant_filters)
         for coll in _SPARSE_COLLECTIONS
     ]
     batches = await asyncio.gather(*coros)
 
-    raw: list[RetrievalResult] = []
+    results: list[RetrievalResult] = []
     for coll, points in zip(_SPARSE_COLLECTIONS, batches):
-        raw.extend(_to_results(points, "sparse", coll, exclude_run_id))
+        results.extend(_to_results(points, "sparse", coll, exclude_run_id))
 
-    if not raw:
+    if not results:
         return []
 
-    # Normalize scores to 0-1 (divide by max)
-    max_score = max(r.score for r in raw)
+    max_score = max(r.score for r in results)
     if max_score > 0:
-        raw = [
-            RetrievalResult(
-                text=r.text,
-                score=r.score / max_score,
-                source=r.source,
-                metadata=r.metadata,
-            )
-            for r in raw
-        ]
+        results = [replace(r, score=r.score / max_score) for r in results]
 
-    raw.sort(key=lambda r: r.score, reverse=True)
-    return raw
+    results.sort(key=lambda r: r.score, reverse=True)
+    return results
 
 
 async def vector_retrieve(
@@ -167,5 +156,7 @@ async def vector_retrieve(
         )
         return dense_results, sparse_results
     except Exception as exc:
-        logger.error("vector_retrieve failed: %s", exc)
+        logger.error(
+            "vector_retrieve failed (%s): %s", type(exc).__name__, exc, exc_info=True
+        )
         return [], []

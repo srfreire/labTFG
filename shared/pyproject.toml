@@ -9,7 +9,7 @@ dependencies = [
     "asyncpg>=0.29",
     "alembic>=1.13",
     "neo4j>=5.0",
-    "qdrant-client>=1.12",
+    "qdrant-client[fastembed]>=1.15.2",
     "voyageai>=0.3",
     "zeroentropy>=0.1.0a11",
 ]

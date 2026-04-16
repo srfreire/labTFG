@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.models import Chunk, ExtractionResult, IndexResult
-from decisionlab.knowledge.tokenizer import tokenize_to_sparse
 
 if TYPE_CHECKING:
     from shared.embedding import EmbeddingService
@@ -174,9 +173,6 @@ async def index_stage_output(
             f"(stage={stage!r}, run_id={run_id!r})"
         )
 
-    # Build sparse representations
-    sparse_vecs = [tokenize_to_sparse(t) for t in texts]
-
     namespace = _STAGE_NAMESPACE.get(stage, "meta")
     confidence = _STAGE_CONFIDENCE.get(stage, 0.5)
     now = datetime.now(timezone.utc).isoformat()
@@ -198,7 +194,6 @@ async def index_stage_output(
         }
 
         prefix = _COLLECTION_PREFIX[chunk.chunk_type]
-        indices, values = sparse_vecs[i]
 
         upsert_tasks.append(
             vector_store.upsert_dense(
@@ -212,8 +207,7 @@ async def index_stage_output(
             vector_store.upsert_sparse(
                 collection=f"{prefix}_sparse",
                 id=point_id,
-                indices=indices,
-                values=values,
+                text=chunk.text,
                 payload=payload,
             )
         )

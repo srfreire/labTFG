@@ -1,6 +1,7 @@
 """Integration tests for VectorStore (requires Qdrant on localhost:6333)."""
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import pytest
@@ -91,21 +92,48 @@ async def test_dense_upsert_and_search(vs: VectorStore):
 
 @pytest.mark.asyncio
 async def test_sparse_upsert_and_search(vs: VectorStore):
-    """Can upsert a sparse vector and search it back."""
+    """Can upsert text and search it back via native BM25."""
     await vs.init_collections()
     coll = "artifacts_sparse"
     point_id = str(uuid.uuid4())
-    indices = [0, 5, 10, 100]
-    values = [1.0, 0.5, 0.8, 0.3]
+    text = "dopamine modulates reward prediction in the ventral tegmental area"
     payload = _payload()
 
-    await vs.upsert_sparse(coll, point_id, indices, values, payload)
-    results = await vs.search_sparse(coll, indices, values, limit=5)
+    await vs.upsert_sparse(coll, point_id, text, payload)
+    results = await vs.search_sparse(coll, "dopamine reward prediction", limit=5)
 
     assert len(results) >= 1
     found = next((r for r in results if r.id == point_id), None)
     assert found is not None
     assert found.payload["namespace"] == "paradigm"
+
+
+@pytest.mark.asyncio
+async def test_sparse_bm25_idf_ranks_rare_terms_higher(vs: VectorStore):
+    """Rare terms contribute more to BM25 score than common terms (server-side IDF)."""
+    await vs.init_collections()
+    coll = "artifacts_sparse"
+
+    # Background docs establish IDF statistics for common filler words
+    filler_upserts = [
+        vs.upsert_sparse(coll, str(uuid.uuid4()), "the cat and the dog", _payload())
+        for _ in range(20)
+    ]
+    await asyncio.gather(*filler_upserts)
+
+    common_id = str(uuid.uuid4())
+    rare_id = str(uuid.uuid4())
+    await vs.upsert_sparse(
+        coll, common_id, "the cat the dog the bird the fish the tree the house", _payload()
+    )
+    await vs.upsert_sparse(
+        coll, rare_id, "serotonergic raphe nuclei modulate cortical arousal pathways", _payload()
+    )
+
+    # Query mixing one rare word with common words — rare doc should win
+    results = await vs.search_sparse(coll, "serotonergic the dog", limit=10)
+    assert results
+    assert results[0].id == rare_id
 
 
 # -- AC4: filter by namespace -------------------------------------------------
