@@ -30,7 +30,7 @@
   - Issues: P5-001, P5-002, P5-003, P5-004
   - Heats: cross-run (P5-001→P5-002), consolidation (P5-003 after P5-002, P5-004 after P5-001)
 
-- [ ] **Phase 6: Schema Cleanse** — Simplify and clean up the KG schema, extraction prompts, and retrieval logic based on lessons learned. Remove unnecessary node types, consolidate properties, fix naming inconsistencies.
+- [x] **Phase 6: Schema Cleanse** — Simplify and clean up the KG schema, extraction prompts, and retrieval logic based on lessons learned. Remove unnecessary node types, consolidate properties, fix naming inconsistencies.
   - Dependencies: Phase 5
   - Issues: P6-001, P6-002
   - Heats: schema (P6-001, P6-002)

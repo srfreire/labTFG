@@ -1,7 +1,7 @@
 ---
 id: P6-002
 title: Replace MD5 sparse tokenizer with Qdrant native BM25
-status: in-progress
+status: done
 kind: strike
 phase: 6
 heat: schema
@@ -53,12 +53,12 @@ Qdrant native BM25 handles all of this server-side. We just send raw text.
 - Remove tokenizer unit tests
 
 ## Acceptance Criteria
-- [ ] Sparse collections use `modifier=Modifier.IDF` in config
-- [ ] `upsert_sparse` accepts raw text, not pre-computed indices/values
-- [ ] `search_sparse` accepts query text, not pre-computed indices/values
-- [ ] `tokenizer.py` deleted, no imports of `tokenize_to_sparse` in codebase
-- [ ] Sparse search returns results with proper BM25 scoring (rare terms weighted higher)
-- [ ] All existing tests pass
+- [x] Sparse collections use `modifier=Modifier.IDF` in config
+- [x] `upsert_sparse` accepts raw text, not pre-computed indices/values
+- [x] `search_sparse` accepts query text, not pre-computed indices/values
+- [x] `tokenizer.py` deleted, no imports of `tokenize_to_sparse` in codebase
+- [x] Sparse search returns results with proper BM25 scoring (rare terms weighted higher)
+- [x] All existing tests pass
 
 ## Files Likely Affected
 - `shared/shared/vector_store.py` — collection config, upsert_sparse, search_sparse API change
@@ -73,3 +73,33 @@ Qdrant native BM25 handles all of this server-side. We just send raw text.
 Phase: 6 — Schema Cleanse
 Heat: `schema`
 The custom tokenizer was a pragmatic shortcut during initial implementation. Qdrant native BM25 (available since v1.15.2, our Docker image uses `latest`) gives us proper BM25 for free.
+
+## Completion Summary
+
+**Commit:** `9660544` — bundled into the P6-001 completion commit on main (P6-001's stale strike worktree left files uncommitted, so P6-002's squash-merge landed under that commit message). Code on `strike/schema-P6-002` was developed as 5 commits: `f708d4a` (main feature), `d12794a` / `9d2f542` / `cfca8ae` (simplifier passes), `9455100` (reviewer fix).
+
+### What was built
+- `shared/shared/vector_store.py`: sparse collections are created with `modifier=Modifier.IDF`. `upsert_sparse(collection, id, text, payload)` and `search_sparse(collection, query, limit, filters)` now wrap raw text in `Document(text=..., model="Qdrant/bm25")` — FastEmbed tokenizes client-side, Qdrant scores BM25 + IDF server-side. Added `BM25_MODEL` constant.
+- `phase1-pablo/src/decisionlab/knowledge/indexer.py`: removed the `tokenize_to_sparse` / `sparse_vecs` loop; chunk text is forwarded directly to `upsert_sparse`.
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/vector_retrieval.py`: `sparse_retrieve` passes the raw query, early-returns on empty input, uses `dataclasses.replace` for score normalization, and logs exception type + traceback on `vector_retrieve` failure so cold-start FastEmbed issues are diagnosable.
+- Deleted `phase1-pablo/src/decisionlab/knowledge/tokenizer.py` and `phase1-pablo/tests/knowledge/test_tokenizer.py` — no remaining callers.
+- `shared/tests/test_vector_store.py`: sparse tests use the text API; added `test_sparse_bm25_idf_ranks_rare_terms_higher` which seeds a 20-doc filler corpus (parallelized via `asyncio.gather`) so IDF statistics matter, then verifies that a rare term wins over frequent fillers.
+- `shared/pyproject.toml`: dependency bumped to `qdrant-client[fastembed]>=1.15.2` so the `Qdrant/bm25` FastEmbed model is available.
+- `docs/knowledge-architecture.md`: sparse collection rows now say "Qdrant native BM25, `modifier=IDF`"; added a "Native BM25 over a custom tokenizer" callout; the Layer 3 retrieval step describes sending raw text rather than pre-hashed indices.
+
+### Files created/modified
+- `shared/shared/vector_store.py` — IDF modifier + text-based sparse API
+- `shared/pyproject.toml` — `qdrant-client[fastembed]>=1.15.2`
+- `shared/tests/test_vector_store.py` — updated sparse tests + new BM25 IDF ranking test
+- `phase1-pablo/src/decisionlab/knowledge/indexer.py` — pass chunk text to `upsert_sparse`
+- `phase1-pablo/src/decisionlab/knowledge/retrieval/vector_retrieval.py` — pass query to `search_sparse`, wider error logging
+- `phase1-pablo/tests/knowledge/test_vector_retrieval.py` — mock signatures match new API
+- `phase1-pablo/src/decisionlab/knowledge/tokenizer.py` — **deleted**
+- `phase1-pablo/tests/knowledge/test_tokenizer.py` — **deleted**
+- `docs/knowledge-architecture.md` — MD5 references → native BM25
+
+### Decisions
+- Used the `qdrant-client[fastembed]` extra (rather than adding `fastembed` as a standalone dep). FastEmbed ships a `Qdrant/bm25` model that uses py-rust-stemmers — no large model download, so the extra is lightweight.
+- Did not add a deprecation shim for the old `(indices, values)` signature. The spec allowed either approach; all call sites were updated in one pass, so the extra surface was unnecessary.
+- Did not write a migration script. The pre-existing `init_collections` is idempotent against missing collections only, not config changes — so sparse collections need to be dropped and re-created on first run after this change. Left as an operator step per the spec.
+- Kept the existing `except Exception` guard in `vector_retrieve` (graceful-degradation path is covered by `test_vector_retrieve_never_raises` and `test_qdrant_down_neo4j_up_vector_retrieve_returns_empty`), but widened the log line to include `type(exc).__name__` and `exc_info=True` so FastEmbed cold-start errors surface in logs.
