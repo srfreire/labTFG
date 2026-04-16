@@ -1,12 +1,31 @@
 """Tests for shared.settings module."""
-import os
-
 from shared.settings import Settings, load_settings
 
+_SETTINGS_ENV_VARS = (
+    "MINIO_ENDPOINT",
+    "MINIO_ACCESS_KEY",
+    "MINIO_SECRET_KEY",
+    "MINIO_BUCKET",
+    "POSTGRES_DSN",
+    "NEO4J_URI",
+    "NEO4J_USER",
+    "NEO4J_PASSWORD",
+    "QDRANT_URL",
+    "VOYAGE_API_KEY",
+    "ZEROENTROPY_API_KEY",
+)
 
-def test_defaults():
-    """load_settings returns dev defaults when no env vars are set."""
-    s = load_settings()
+
+def _strip_env(monkeypatch) -> None:
+    """Remove all settings-related env vars so dataclass defaults take effect."""
+    for name in _SETTINGS_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_defaults(monkeypatch):
+    """Settings() (no env interference) returns dataclass defaults."""
+    _strip_env(monkeypatch)
+    s = Settings()
     assert s.MINIO_ENDPOINT == "localhost:9000"
     assert s.MINIO_ACCESS_KEY == "minioadmin"
     assert s.MINIO_SECRET_KEY == "minioadmin"
@@ -15,9 +34,10 @@ def test_defaults():
     assert "labtfg" in s.POSTGRES_DSN
     assert s.NEO4J_URI == "bolt://localhost:7687"
     assert s.NEO4J_USER == "neo4j"
-    assert s.NEO4J_PASSWORD == "labtfg"
+    assert s.NEO4J_PASSWORD == "labtfg-neo4j"
     assert s.QDRANT_URL == "http://localhost:6333"
     assert s.VOYAGE_API_KEY == ""
+    assert s.ZEROENTROPY_API_KEY == ""
 
 
 def test_env_override(monkeypatch):

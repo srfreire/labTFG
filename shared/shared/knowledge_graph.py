@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TypeVar
 
 from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
@@ -116,7 +116,7 @@ class KnowledgeGraph:
         _check_ident(to_key, "to_key")
 
         props = dict(properties or {})
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         props.setdefault("created_at", now)
         props.setdefault("valid_from", now)
 

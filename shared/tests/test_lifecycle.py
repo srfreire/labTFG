@@ -15,8 +15,9 @@ async def test_before_init_is_none():
     await shared.shutdown()
     assert shared.storage is None
     assert shared.db is None
-    assert shared.knowledge_graph is None
-    assert shared.vector_store is None
+    assert shared.kg is None
+    assert shared.vectors is None
+    assert shared.embeddings is None
 
 
 @pytest.mark.asyncio
@@ -64,14 +65,15 @@ async def test_shutdown_cleans_up():
     await shared.shutdown()
     assert shared.storage is None
     assert shared.db is None
-    assert shared.knowledge_graph is None
-    assert shared.vector_store is None
+    assert shared.kg is None
+    assert shared.vectors is None
+    assert shared.embeddings is None
 
 
 @pytest.mark.asyncio
 async def test_store_backward_compat():
     """Old store.py functions still work independently."""
-    from shared.store import init_db, create_experiment, get_experiment
+    from shared.store import create_experiment, get_experiment, init_db
     init_db()
     exp_id = create_experiment("lifecycle backward compat test")
     exp = get_experiment(exp_id)

@@ -1,0 +1,26 @@
+[project]
+name = "labtfg-tests"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "shared",
+    "decisionlab",
+    "pytest>=9.0",
+    "pytest-asyncio>=1.3",
+    "httpx>=0.27",
+    "anthropic>=0.52",
+]
+
+[tool.uv.sources]
+shared = { path = "../shared", editable = true }
+decisionlab = { path = "../phase1-pablo", editable = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Skip real-LLM tests by default — opt in with `pytest -m real_llm`
+addopts = "-m 'not real_llm'"
+markers = [
+    "integration: tests requiring docker-compose services (Postgres, Neo4j, Qdrant, MinIO)",
+    "e2e: full pipeline tests using mocked LLM but real infrastructure",
+    "real_llm: tests that hit the real Anthropic API (cost money, slow, non-deterministic)",
+]

@@ -6,13 +6,12 @@ Unit tests using a mock Neo4j driver — no real DB required.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from shared.knowledge_graph import KnowledgeGraph
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,7 +56,7 @@ class TestQueryAtTime:
     @pytest.mark.asyncio
     async def test_wraps_cypher_with_temporal_filter(self):
         """query_at_time adds valid_from/valid_to filtering to relations."""
-        as_of = datetime(2026, 4, 10, tzinfo=timezone.utc)
+        as_of = datetime(2026, 4, 10, tzinfo=UTC)
         kg, mock_session = _make_kg_with_session([{"name": "ghrelin"}])
 
         result = await kg.query_at_time(
@@ -74,7 +73,7 @@ class TestQueryAtTime:
     @pytest.mark.asyncio
     async def test_temporal_filter_inserted_before_return(self):
         """The WHERE filter appears before the RETURN clause, not after."""
-        as_of = datetime(2026, 4, 10, tzinfo=timezone.utc)
+        as_of = datetime(2026, 4, 10, tzinfo=UTC)
         kg, mock_session = _make_kg_with_session([])
 
         await kg.query_at_time(
@@ -94,7 +93,7 @@ class TestQueryAtTime:
     @pytest.mark.asyncio
     async def test_passes_as_of_param(self):
         """query_at_time passes as_of as a parameter to Neo4j."""
-        as_of = datetime(2026, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
+        as_of = datetime(2026, 4, 10, 12, 0, 0, tzinfo=UTC)
         kg, mock_session = _make_kg_with_session([])
 
         await kg.query_at_time("MATCH (n)-[r]->(m) RETURN n", as_of=as_of)
@@ -105,7 +104,7 @@ class TestQueryAtTime:
     @pytest.mark.asyncio
     async def test_merges_user_params(self):
         """query_at_time merges user params with _as_of."""
-        as_of = datetime(2026, 4, 10, tzinfo=timezone.utc)
+        as_of = datetime(2026, 4, 10, tzinfo=UTC)
         kg, mock_session = _make_kg_with_session([])
 
         await kg.query_at_time(
@@ -121,7 +120,7 @@ class TestQueryAtTime:
     @pytest.mark.asyncio
     async def test_returns_deserialized_dicts(self):
         """query_at_time returns list of dicts, same as query()."""
-        as_of = datetime(2026, 4, 10, tzinfo=timezone.utc)
+        as_of = datetime(2026, 4, 10, tzinfo=UTC)
         kg, _ = _make_kg_with_session([{"name": "ghrelin", "score": 0.9}])
 
         result = await kg.query_at_time(

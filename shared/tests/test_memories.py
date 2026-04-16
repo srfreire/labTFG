@@ -207,7 +207,8 @@ async def test_ac5_contradict_decreases_confidence(session):
     updated = result.scalar_one()
 
     assert updated.contradictions == 1
-    assert updated.confidence == pytest.approx(0.75)
+    # Contradiction decrement is -0.10
+    assert updated.confidence == pytest.approx(0.70)
 
 
 # ── AC6: touch_memory ──

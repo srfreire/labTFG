@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,14 +128,15 @@ async def apply_time_decay(session: AsyncSession) -> int:
 
     Returns the number of memories decayed.
     """
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=_DECAY_PERIOD_DAYS)
+    now = datetime.now(UTC)
+    # Strip tz for comparison against naive TIMESTAMP columns.
+    cutoff_naive = (now - timedelta(days=_DECAY_PERIOD_DAYS)).replace(tzinfo=None)
 
     stmt = select(Memory).where(
         and_(
             Memory.valid_to.is_(None),
             Memory.memory_type != "reflection",
-            Memory.last_accessed_at < cutoff,
+            Memory.last_accessed_at < cutoff_naive,
         ),
     )
     result = await session.execute(stmt)
@@ -147,7 +148,7 @@ async def apply_time_decay(session: AsyncSession) -> int:
         if laa is None:
             continue
         if laa.tzinfo is None:
-            laa = laa.replace(tzinfo=timezone.utc)
+            laa = laa.replace(tzinfo=UTC)
         days_since = (now - laa).days
         periods = days_since // _DECAY_PERIOD_DAYS
         if periods <= 0:

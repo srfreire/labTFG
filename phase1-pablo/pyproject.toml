@@ -40,4 +40,8 @@ shared = { path = "../shared", editable = true }
 dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=0.26.0",
+    "ruff>=0.12",
 ]
+
+[tool.ruff]
+extend = "../ruff.toml"
