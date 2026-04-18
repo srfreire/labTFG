@@ -3,7 +3,7 @@ import { Agrex, type AgrexNodeProps } from '@ppazosp/agrex';
 import type { AgrexNode, AgrexEdge } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Search, Globe, Eye, Pencil, FlaskConical, Microscope } from 'lucide-react';
+import { Search, Globe, Eye, Pencil, FlaskConical } from 'lucide-react';
 import { type GraphNode, type GraphEdge } from '../types';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
@@ -93,7 +93,6 @@ const TOOL_ICONS = {
   read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
-  launch_deep_research: Microscope,
 };
 
 const THEME = {
@@ -234,6 +233,7 @@ export default function Graph({
       showControls={!demo}
       showLegend={!demo}
       showToasts={!demo}
+      toastPlacement="top-right"
       showDetailPanel={false}
       fitOnUpdate={!demo}
       animateEdges
