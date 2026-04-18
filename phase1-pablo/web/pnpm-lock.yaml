@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@ppazosp/agrex':
-        specifier: ^0.1.9
-        version: 0.1.9(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^0.1.10
+        version: 0.1.10(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/d3-force':
         specifier: ^3.0.10
         version: 3.0.10
@@ -343,8 +343,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@ppazosp/agrex@0.1.9':
-    resolution: {integrity: sha512-qyK1gGm000eXEaTvsNfcriE9NjKhJmqVTxsBwyfWQbVkb1JsrUntD8p9vb1GvAcq4rembnRQvkIhIiLHZ0+luw==}
+  '@ppazosp/agrex@0.1.10':
+    resolution: {integrity: sha512-4nhIMEWGdYze0SPabxtbPomnIHi/s60xyiA5gbM0EtwTiZiXxedNkqMKFNE6ZiMKoPBcIXTweWSjwPcdNtSrkw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@dagrejs/dagre': ^3.0.0
@@ -1666,7 +1666,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@ppazosp/agrex@0.1.9(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@ppazosp/agrex@0.1.10(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@xyflow/react': 12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
