@@ -34,9 +34,13 @@ function SearchRenderer({ status, theme }: AgrexNodeProps) {
 
 function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
   const meta = node.metadata || {};
+  const approval = meta.approval as boolean | undefined;
+  const rejected = approval === false;
+  const decided = approval !== undefined;
   const glow =
     status === 'done' &&
     !meta.dismissed &&
+    !decided &&
     typeof meta.currentStage === 'string' &&
     meta.currentStage.startsWith('review_');
 
@@ -50,7 +54,10 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
   const H = Math.round((S * 2) / Math.sqrt(3));
 
   return (
-    <div className="relative" style={{ width: S, height: H }}>
+    <div
+      className="relative"
+      style={{ width: S, height: H, opacity: rejected ? 0.35 : 1 }}
+    >
       <svg
         width={S} height={H} viewBox={`0 0 ${S} ${H}`}
         className="absolute top-0 left-0 overflow-visible"
@@ -120,6 +127,7 @@ interface GraphProps {
   reviewActive?: boolean;
   currentStage?: string | null;
   dismissedOutputIds?: Set<string>;
+  outputApprovals?: Record<string, boolean>;
   demo?: boolean;
   sidebarCollapsed?: boolean;
 }
@@ -132,6 +140,7 @@ export default function Graph({
   onNodeClick,
   currentStage,
   dismissedOutputIds,
+  outputApprovals,
   demo,
   sidebarCollapsed,
 }: GraphProps) {
@@ -156,6 +165,7 @@ export default function Graph({
       map.set(n.id, n);
       const parentId = n.parent_id || parentMap.get(n.id);
       const dismissed = dismissedOutputIds?.has(n.id) ?? false;
+      const approval = outputApprovals?.[n.id];
       const prev = prevNodes.get(n.id);
       const prevMeta = prev?.metadata as Record<string, unknown> | undefined;
 
@@ -168,7 +178,8 @@ export default function Graph({
         prev.status === n.status &&
         prevMeta?.__raw === n.meta &&
         prevMeta?.currentStage === (currentStage ?? undefined) &&
-        prevMeta?.dismissed === dismissed
+        prevMeta?.dismissed === dismissed &&
+        prevMeta?.approval === approval
       ) {
         nextNodes.set(n.id, prev);
         return prev;
@@ -185,6 +196,7 @@ export default function Graph({
           __raw: n.meta,
           currentStage: currentStage ?? undefined,
           dismissed,
+          approval,
         },
       };
       nextNodes.set(n.id, node);
@@ -212,7 +224,7 @@ export default function Graph({
     prevAgrexEdgesRef.current = nextEdges;
 
     return { agrexNodes, agrexEdges };
-  }, [nodes, edges, currentStage, dismissedOutputIds]);
+  }, [nodes, edges, currentStage, dismissedOutputIds, outputApprovals]);
 
   const handleNodeClick = useCallback(
     (agrexNode: AgrexNode) => {

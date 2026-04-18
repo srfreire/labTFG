@@ -143,6 +143,7 @@ function OutputReviewModal({
   outputs,
   index,
   approvals,
+  mode,
   onIndexChange,
   onApprove,
   onDisapprove,
@@ -151,6 +152,7 @@ function OutputReviewModal({
   outputs: GraphNode[];
   index: number;
   approvals: Record<string, boolean>;
+  mode: "single" | "sequence";
   onIndexChange: (i: number) => void;
   onApprove: (id: string) => void;
   onDisapprove: (id: string) => void;
@@ -208,9 +210,11 @@ function OutputReviewModal({
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[13px] text-text-faint">
-              {index + 1} / {outputs.length}
-            </span>
+            {mode === "sequence" && (
+              <span className="text-[13px] text-text-faint">
+                {index + 1} / {outputs.length}
+              </span>
+            )}
             <button
               onClick={onClose}
               className="w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none text-text-dim text-[18px] cursor-pointer hover:bg-surface-hover"
@@ -231,23 +235,27 @@ function OutputReviewModal({
 
         {/* ── Footer ── */}
         <div className="px-5 py-3 border-t border-border-subtle flex items-center justify-between">
-          {/* Navigation */}
-          <div className="flex gap-1.5">
-            <button
-              disabled={!hasPrev}
-              onClick={() => onIndexChange(index - 1)}
-              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
-            >
-              ← Prev
-            </button>
-            <button
-              disabled={!hasNext}
-              onClick={() => onIndexChange(index + 1)}
-              className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
-            >
-              Next →
-            </button>
-          </div>
+          {/* Navigation — only in sequence mode */}
+          {mode === "sequence" ? (
+            <div className="flex gap-1.5">
+              <button
+                disabled={!hasPrev}
+                onClick={() => onIndexChange(index - 1)}
+                className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              >
+                ← Prev
+              </button>
+              <button
+                disabled={!hasNext}
+                onClick={() => onIndexChange(index + 1)}
+                className="text-[12px] uppercase tracking-[1px] cursor-pointer px-3.5 py-2 bg-transparent border border-border rounded-lg disabled:cursor-default disabled:text-text-ghost text-text-muted"
+              >
+                Next →
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
 
           {/* Approve / Disapprove */}
           <div className="flex gap-2">
@@ -310,6 +318,7 @@ export default function App() {
   /* ── Output review state ── */
   const [showOutputModal, setShowOutputModal] = useState(false);
   const [outputIndex, setOutputIndex] = useState(0);
+  const [modalMode, setModalMode] = useState<"single" | "sequence">("single");
   const [outputApprovals, setOutputApprovals] = useState<
     Record<string, boolean>
   >({});
@@ -321,23 +330,26 @@ export default function App() {
   const reviewActive = reviewRequest !== null;
   const [reviewHintDismissed, setReviewHintDismissed] = useState(false);
 
-  /* Collect done output nodes */
-  const stageOutputs = useMemo(
-    () => nodes.filter((n) => n.kind === "output" && n.status === "done"),
-    [nodes],
-  );
+  /* Collect done output nodes for the stage currently under review */
+  const stageOutputs = useMemo(() => {
+    const allDone = nodes.filter(
+      (n) => n.kind === "output" && n.status === "done",
+    );
+    if (!reviewRequest) return allDone;
+    const target = reviewRequest.stage.replace(/^review_/, "");
+    return allDone.filter((n) => n.meta?.stage === target);
+  }, [nodes, reviewRequest]);
 
-  /* Reset review state when review changes */
+  /* Reset review state when review stage changes */
+  const reviewStage = reviewRequest?.stage ?? null;
   useEffect(() => {
     setDismissedOutputs(new Set());
     setReviewHintDismissed(false);
-    if (!reviewActive) {
-      setShowOutputModal(false);
-      setOutputIndex(0);
-      setOutputApprovals({});
-      setRouterPrompt("");
-    }
-  }, [reviewActive]);
+    setOutputApprovals({});
+    setOutputIndex(0);
+    setShowOutputModal(false);
+    if (!reviewStage) setRouterPrompt("");
+  }, [reviewStage]);
 
   /* Clamp index */
   useEffect(() => {
@@ -354,6 +366,7 @@ export default function App() {
         const idx = stageOutputs.findIndex((n) => n.id === node.id);
         if (idx >= 0) {
           setOutputIndex(idx);
+          setModalMode("single");
           setShowOutputModal(true);
         }
         return;
@@ -382,18 +395,33 @@ export default function App() {
   );
 
   /* ── Output approval ── */
+  const advanceOrClose = useCallback(() => {
+    if (modalMode === "single") {
+      setShowOutputModal(false);
+      return;
+    }
+    setOutputIndex((i) => {
+      if (i < stageOutputs.length - 1) return i + 1;
+      setShowOutputModal(false);
+      return i;
+    });
+  }, [modalMode, stageOutputs.length]);
+
   const handleApproveOutput = useCallback(
     (nodeId: string) => {
       setOutputApprovals((prev) => ({ ...prev, [nodeId]: true }));
-      // Auto-advance to next
-      setOutputIndex((i) => (i < stageOutputs.length - 1 ? i + 1 : i));
+      advanceOrClose();
     },
-    [stageOutputs.length],
+    [advanceOrClose],
   );
 
-  const handleDisapproveOutput = useCallback((nodeId: string) => {
-    setOutputApprovals((prev) => ({ ...prev, [nodeId]: false }));
-  }, []);
+  const handleDisapproveOutput = useCallback(
+    (nodeId: string) => {
+      setOutputApprovals((prev) => ({ ...prev, [nodeId]: false }));
+      advanceOrClose();
+    },
+    [advanceOrClose],
+  );
 
   /* ── Continue / submit review ── */
   const handleContinue = useCallback(() => {
@@ -565,13 +593,14 @@ export default function App() {
                   reviewActive={reviewActive}
                   currentStage={currentStage}
                   dismissedOutputIds={dismissedOutputs}
+                  outputApprovals={outputApprovals}
                   sidebarCollapsed={sidebarCollapsed}
                 />
               </div>
 
               {/* ── Review hint toast ── */}
               {reviewActive && !isEnvSpec && !reviewHintDismissed && (
-                <div className="animate-slide-up absolute bottom-[160px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
+                <div className="animate-slide-up absolute bottom-[164px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
                   <span className="text-[12px] text-text-dim">
                     Click on the glowing output nodes in the graph to review them.
                   </span>
@@ -624,6 +653,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 setOutputIndex(0);
+                                setModalMode("sequence");
                                 setShowOutputModal(true);
                               }}
                               className="text-[12px] uppercase tracking-[1px] cursor-pointer px-5 py-2 bg-transparent border border-border text-text-muted rounded-lg hover:bg-surface-hover"
@@ -671,6 +701,7 @@ export default function App() {
                   outputs={stageOutputs}
                   index={outputIndex}
                   approvals={outputApprovals}
+                  mode={modalMode}
                   onIndexChange={setOutputIndex}
                   onApprove={handleApproveOutput}
                   onDisapprove={handleDisapproveOutput}
