@@ -434,6 +434,7 @@ export default function App() {
   const showIdle = !hasGraph && !isRunning;
   const [demoComplete, setDemoComplete] = useState(false);
   const handleDemoComplete = useCallback(() => setDemoComplete(true), []);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   /* Review progress */
   const reviewedCount = stageOutputs.filter(
@@ -453,6 +454,7 @@ export default function App() {
           isRunning={isRunning}
           onCancel={cancelPipeline}
           agents={agents}
+          onCollapsedChange={setSidebarCollapsed}
         />
       )}
 
@@ -563,12 +565,13 @@ export default function App() {
                   reviewActive={reviewActive}
                   currentStage={currentStage}
                   dismissedOutputIds={dismissedOutputs}
+                  sidebarCollapsed={sidebarCollapsed}
                 />
               </div>
 
               {/* ── Review hint toast ── */}
               {reviewActive && !isEnvSpec && !reviewHintDismissed && (
-                <div className="animate-slide-up absolute bottom-[110px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
+                <div className="animate-slide-up absolute bottom-[160px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
                   <span className="text-[12px] text-text-dim">
                     Click on the glowing output nodes in the graph to review them.
                   </span>

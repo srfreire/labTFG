@@ -121,6 +121,7 @@ interface GraphProps {
   currentStage?: string | null;
   dismissedOutputIds?: Set<string>;
   demo?: boolean;
+  sidebarCollapsed?: boolean;
 }
 
 /* ── Component ── */
@@ -132,6 +133,7 @@ export default function Graph({
   currentStage,
   dismissedOutputIds,
   demo,
+  sidebarCollapsed,
 }: GraphProps) {
   const nodeMapRef = useRef(new Map<string, GraphNode>());
   const prevAgrexNodesRef = useRef(new Map<string, AgrexNode>());
@@ -234,7 +236,7 @@ export default function Graph({
       showLegend={!demo}
       showToasts={!demo}
       toastPlacement="top-left"
-      toastInsets={{ left: 192 }}
+      toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
       showDetailPanel={false}
       fitOnUpdate={!demo}
       animateEdges

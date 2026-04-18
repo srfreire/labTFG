@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stage, StageStatus, STAGE_CONFIG, AgentState, MEMORY_AGENT_STAGES } from "../types";
 interface SidebarProps {
   connected: boolean;
@@ -8,6 +8,7 @@ interface SidebarProps {
   onCancel?: () => void;
   onStageClick?: (stage: Stage) => void;
   agents?: AgentState[];
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 const STATUS_COLORS: Record<StageStatus, string> = {
@@ -99,10 +100,15 @@ export default function Sidebar({
   onCancel,
   onStageClick,
   agents = [],
+  onCollapsedChange,
 }: SidebarProps) {
   const items = STAGE_CONFIG;
   const memoryAgent = agents.find((a) => a.name === "memory_agent");
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    onCollapsedChange?.(collapsed);
+  }, [collapsed, onCollapsedChange]);
 
   return (
     <>
