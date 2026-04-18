@@ -6,6 +6,7 @@ import '@ppazosp/agrex/styles.css';
 import { Search, Globe, Eye, Pencil, FlaskConical, Microscope } from 'lucide-react';
 import { type GraphNode, type GraphEdge } from '../types';
 import FileTypeLogo from './nodes/FileTypeLogo';
+import NodeHandles from './nodes/NodeHandles';
 
 /* ── Custom renderers for node types agrex doesn't have ───── */
 
@@ -25,6 +26,7 @@ function SearchRenderer({ status, theme }: AgrexNodeProps) {
         animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
       }}
     >
+      <NodeHandles />
       <Search size={14} style={{ color: theme.nodeIcon }} />
     </div>
   );
@@ -72,6 +74,7 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
         className="absolute inset-0 flex items-center justify-center"
         style={{ cursor: status === 'done' ? 'pointer' : 'default' }}
       >
+        <NodeHandles />
         <FileTypeLogo label={node.label} size={22} />
       </div>
     </div>
@@ -105,6 +108,8 @@ const THEME = {
   statusRunning: '#f59e0b',
   statusDone: '#22c55e',
   statusError: '#ef4444',
+  fontFamily: 'var(--font-sans)',
+  fontMono: 'var(--font-mono)',
 };
 
 /* ── Props (same interface as before — nothing else needs to change) ── */
@@ -230,7 +235,7 @@ export default function Graph({
       showLegend={!demo}
       showToasts={!demo}
       showDetailPanel={false}
-      fitOnUpdate
+      fitOnUpdate={!demo}
       animateEdges
       keyboardShortcuts={!demo}
     />
