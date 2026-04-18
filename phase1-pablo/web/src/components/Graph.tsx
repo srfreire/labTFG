@@ -233,7 +233,8 @@ export default function Graph({
       showControls={!demo}
       showLegend={!demo}
       showToasts={!demo}
-      toastPlacement="top-right"
+      toastPlacement="top-left"
+      toastInsets={{ left: 192 }}
       showDetailPanel={false}
       fitOnUpdate={!demo}
       animateEdges
