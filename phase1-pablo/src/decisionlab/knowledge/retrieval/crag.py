@@ -12,11 +12,11 @@ import re
 
 from anthropic import AsyncAnthropic
 
-from shared.embedding import EmbeddingService
-
 from decisionlab.domain.models import SearchResult
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
+from decisionlab.runtime.usage import record as record_usage
+from shared.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,7 @@ async def _classify_results(
             system=_EVAL_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
         )
+        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
 
         raw = "\n".join(
             b.text for b in response.content if b.type == "text"

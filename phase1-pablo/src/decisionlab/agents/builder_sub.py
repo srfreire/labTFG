@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
+from decisionlab.config import SETTINGS
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
     READ_FILE_SCHEMA,
@@ -179,8 +181,6 @@ common pitfalls from past model builds. Apply proven implementation patterns whe
 mathematical structure is similar.
 """
 
-_MAX_ITERATIONS = 25
-_MAX_TOKENS = 16384
 
 
 class BuilderSubAgent:
@@ -236,13 +236,13 @@ class BuilderSubAgent:
 
         response = await run_agent_loop(
             client=self.client,
-            model="claude-sonnet-4-6",
+            model=SETTINGS.builder.model,
             system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,
-            max_iterations=_MAX_ITERATIONS,
-            max_tokens=_MAX_TOKENS,
+            max_iterations=SETTINGS.builder.max_iterations,
+            max_tokens=SETTINGS.builder.max_tokens,
         )
 
         text_blocks = [b.text for b in response.content if b.type == "text"]

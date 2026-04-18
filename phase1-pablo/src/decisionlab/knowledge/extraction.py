@@ -17,6 +17,7 @@ from decisionlab.knowledge.prompts import (
     RESEARCHER_SYSTEM,
     RESEARCHER_USER,
 )
+from decisionlab.runtime.usage import record as record_usage
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
@@ -79,6 +80,7 @@ async def _call_haiku(
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
+    record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
     if not response.content:
         logger.warning("Haiku returned empty content list")
         return ""

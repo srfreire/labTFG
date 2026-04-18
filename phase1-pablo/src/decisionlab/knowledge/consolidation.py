@@ -11,7 +11,7 @@ import json
 import logging
 import time
 import uuid as uuid_mod
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -23,6 +23,7 @@ from decisionlab.knowledge.prompts import (
     REFLECTION_SYSTEM,
     REFLECTION_USER,
 )
+from decisionlab.runtime.usage import record as record_usage
 from shared.memories import apply_time_decay, create_memory, update_confidence
 
 if TYPE_CHECKING:
@@ -205,6 +206,7 @@ async def _generate_reflections(
                 system=REFLECTION_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}],
             )
+            record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
             raw = response.content[0].text if response.content else "[]"
             insights = json.loads(raw)
         except Exception:
@@ -248,7 +250,7 @@ async def _generate_reflections(
                     "run_id": run_id,
                     "importance": 8.0,
                     "confidence": 0.7,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "text_preview": reflection.content[:200],
                 },
             )
@@ -341,6 +343,7 @@ async def _is_contradiction(
             system=CONTRADICTION_CHECK_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
         )
+        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else "{}"
         parsed = json.loads(raw)
         return parsed.get("contradicts", False) is True
@@ -364,7 +367,7 @@ async def _apply_decay_and_sync(
     from shared.models import Memory
 
     # Collect pre-decay confidences for changed memories
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cutoff = now - timedelta(days=30)
 
     stmt = select(Memory.id, Memory.confidence).where(
@@ -416,7 +419,7 @@ async def _prune_stale(session: AsyncSession) -> int:
 
     from shared.models import Memory
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     age_cutoff = now - timedelta(days=_PRUNE_AGE_DAYS)
 
     stmt = select(Memory.id).where(

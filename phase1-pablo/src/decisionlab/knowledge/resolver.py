@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.models import ExtractionResult, ResolutionResult
@@ -20,6 +20,7 @@ from decisionlab.knowledge.prompts import (
     IMPORTANCE_SCORING_SYSTEM,
     IMPORTANCE_SCORING_USER,
 )
+from decisionlab.runtime.usage import record as record_usage
 from shared.memories import create_memory, supersede_memory, update_confidence
 
 if TYPE_CHECKING:
@@ -76,6 +77,7 @@ async def _score_importance(
             system=IMPORTANCE_SCORING_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
         )
+        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else ""
         scored = json.loads(raw)
         return {
@@ -136,6 +138,7 @@ async def _classify_conflict(
             system=CONFLICT_CLASSIFICATION_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
         )
+        record_usage(_SONNET_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else "{}"
         return json.loads(raw)
     except Exception:
@@ -246,7 +249,7 @@ async def resolve_and_store(
                     "run_id": run_id,
                     "importance": importance,
                     "confidence": confidence,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "text_preview": merged[:200],
                 },
             )

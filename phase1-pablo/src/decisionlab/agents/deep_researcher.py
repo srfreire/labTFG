@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
+from decisionlab.config import SETTINGS
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
-from decisionlab.tools.reports import save_deep_report
+from decisionlab.runtime.usage import record as record_usage
 from decisionlab.tools.papers import SEARCH_PAPERS_SCHEMA, create_search_papers
+from decisionlab.tools.reports import save_deep_report
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
 
 logger = logging.getLogger(__name__)
@@ -93,10 +96,6 @@ Build on existing postulates, variables, and references rather than starting fro
 Use retrieved knowledge to identify gaps in existing coverage.
 """
 
-_MAX_ITERATIONS = 7
-_MAX_TOKENS = 16384
-
-
 class DeepResearcher:
     def __init__(
         self,
@@ -131,15 +130,16 @@ class DeepResearcher:
         if self._has_knowledge:
             system += _KNOWLEDGE_PROMPT_SECTION
 
+        cfg = SETTINGS.deep_researcher
         response = await run_agent_loop(
             client=self.client,
-            model="claude-sonnet-4-6",
+            model=cfg.model,
             system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,
-            max_iterations=_MAX_ITERATIONS,
-            max_tokens=_MAX_TOKENS,
+            max_iterations=cfg.max_iterations,
+            max_tokens=cfg.max_tokens,
         )
 
         text_blocks = [b.text for b in response.content if b.type == "text"]
@@ -154,8 +154,9 @@ class DeepResearcher:
             await save_deep_report(self.run_id, paradigm, full_report)
 
         try:
+            summary_cfg = SETTINGS.deep_researcher_summary
             summary_response = await self.client.messages.create(
-                model="claude-haiku-4-5",
+                model=summary_cfg.model,
                 system="You summarize research reports concisely. Return ONLY the requested format.",
                 messages=[
                     {
@@ -163,8 +164,9 @@ class DeepResearcher:
                         "content": full_report + "\n\n" + CONCISE_SUMMARY_PROMPT,
                     }
                 ],
-                max_tokens=300,
+                max_tokens=summary_cfg.max_tokens,
             )
+            record_usage(summary_cfg.model, getattr(summary_response, "usage", None))
             summary = "\n".join(
                 b.text for b in summary_response.content if b.type == "text"
             )

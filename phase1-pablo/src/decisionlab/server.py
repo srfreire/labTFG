@@ -159,9 +159,8 @@ async def run_pipeline(
     from anthropic import AsyncAnthropic
 
     import shared
-    from shared.models import Run
-
     from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+    from shared.models import Run
 
     await shared.init()
     try:
@@ -221,4 +220,6 @@ async def run_pipeline(
             logger.exception("Pipeline failed")
             await emit({"type": "error", "message": str(exc)})
     finally:
+        from decisionlab.runtime.usage import log_summary as log_usage_summary
+        log_usage_summary()
         await shared.shutdown()

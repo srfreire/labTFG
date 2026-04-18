@@ -9,6 +9,7 @@ import re
 from anthropic import AsyncAnthropic
 
 from decisionlab.domain.models import RerunRequest
+from decisionlab.runtime.usage import record as record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ async def classify_feedback(
             system=CLASSIFIER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
+        record_usage(_MODEL, getattr(response, "usage", None))
 
         raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
         # Strip markdown code fences if present (```json ... ```)

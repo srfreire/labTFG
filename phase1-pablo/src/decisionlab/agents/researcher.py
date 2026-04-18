@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from decisionlab.agents.deep_researcher import DeepResearcher
+from decisionlab.config import SETTINGS
 from decisionlab.domain.models import Paradigm, ResearchReport
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.runtime.loop import run_agent_loop
@@ -92,9 +94,6 @@ retrieved knowledge to inform your paradigm identification and cross-paradigm in
 analysis.
 """
 
-_MAX_ITERATIONS = 10
-
-
 class Researcher:
     def __init__(
         self,
@@ -150,14 +149,16 @@ class Researcher:
         if self._has_knowledge:
             system += _KNOWLEDGE_PROMPT_SECTION
 
+        cfg = SETTINGS.researcher
         response = await run_agent_loop(
             client=self.client,
-            model="claude-sonnet-4-6",
+            model=cfg.model,
             system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,
-            max_iterations=_MAX_ITERATIONS,
+            max_iterations=cfg.max_iterations,
+            max_tokens=cfg.max_tokens,
         )
 
         summary = "\n".join(b.text for b in response.content if b.type == "text")

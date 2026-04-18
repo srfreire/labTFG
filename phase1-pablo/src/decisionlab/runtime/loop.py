@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from decisionlab.runtime.dispatcher import Registry, dispatch_tools
+from decisionlab.runtime.usage import record as record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ async def run_agent_loop(
             messages=messages,
             max_tokens=max_tokens,
         )
+        record_usage(model, getattr(response, "usage", None))
 
         if response.stop_reason == "end_turn":
             logger.info("Agent finished (end_turn) after %d iteration(s)", iteration + 1)

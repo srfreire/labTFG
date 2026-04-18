@@ -10,10 +10,10 @@ from dataclasses import dataclass
 
 from anthropic import AsyncAnthropic
 
+from decisionlab.knowledge.retrieval.models import RetrievalResult
+from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
-
-from decisionlab.knowledge.retrieval.models import RetrievalResult
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,7 @@ async def _extract_entities(query: str, client: AsyncAnthropic) -> list[dict]:
             system=_NER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": query}],
         )
+        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
         raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
         fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)
         cleaned = fence_match.group(1).strip() if fence_match else raw

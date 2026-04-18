@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
+from decisionlab.config import SETTINGS
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
     READ_FILE_SCHEMA,
@@ -184,8 +186,6 @@ ranges and env_mapping patterns from past runs. Use proven defaults and mapping 
 strategies when available.
 """
 
-_MAX_ITERATIONS = 5
-_MAX_TOKENS = 16384
 
 
 class ReasonerSubAgent:
@@ -249,13 +249,13 @@ class ReasonerSubAgent:
 
         response = await run_agent_loop(
             client=self.client,
-            model="claude-opus-4-6",
+            model=SETTINGS.reasoner.model,
             system=system,
             tools=self.tools,
             messages=messages,
             registry=self.registry,
-            max_iterations=_MAX_ITERATIONS,
-            max_tokens=_MAX_TOKENS,
+            max_iterations=SETTINGS.reasoner.max_iterations,
+            max_tokens=SETTINGS.reasoner.max_tokens,
         )
 
         text_blocks = [b.text for b in response.content if b.type == "text"]

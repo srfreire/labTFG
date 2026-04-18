@@ -13,6 +13,7 @@ from rich.logging import RichHandler
 from rich.markdown import Markdown
 
 from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+from decisionlab.runtime.usage import log_summary as log_usage_summary
 from decisionlab.tools.reports import slugify
 
 load_dotenv()
@@ -76,6 +77,8 @@ def _run_async(coro):
     except RuntimeError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
         raise typer.Exit(code=1)
+    finally:
+        log_usage_summary(console)
 
 
 @app.command()
@@ -367,9 +370,11 @@ def resume(
 
             # Finalize: set s3_report_key
             if state.stage == Stage.DONE:
-                from sqlalchemy import update
-                from shared.models import Run
                 import uuid as _uuid2
+
+                from sqlalchemy import update
+
+                from shared.models import Run
 
                 async with shared.db.get_session() as session:
                     await session.execute(
