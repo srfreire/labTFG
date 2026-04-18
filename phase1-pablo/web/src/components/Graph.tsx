@@ -130,6 +130,8 @@ export default function Graph({
   demo,
 }: GraphProps) {
   const nodeMapRef = useRef(new Map<string, GraphNode>());
+  const prevAgrexNodesRef = useRef(new Map<string, AgrexNode>());
+  const prevAgrexEdgesRef = useRef(new Map<string, AgrexEdge>());
 
   const { agrexNodes, agrexEdges } = useMemo(() => {
     // Derive parentId from spawn edges for nodes without parent_id
@@ -141,32 +143,67 @@ export default function Graph({
     }
 
     const map = new Map<string, GraphNode>();
+    const prevNodes = prevAgrexNodesRef.current;
+    const nextNodes = new Map<string, AgrexNode>();
+
     const agrexNodes: AgrexNode[] = nodes.map((n) => {
       map.set(n.id, n);
-      return {
+      const parentId = n.parent_id || parentMap.get(n.id);
+      const dismissed = dismissedOutputIds?.has(n.id) ?? false;
+      const prev = prevNodes.get(n.id);
+      const prevMeta = prev?.metadata as Record<string, unknown> | undefined;
+
+      // Reuse the previous AgrexNode reference if nothing observable changed
+      if (
+        prev &&
+        prev.type === n.kind &&
+        prev.label === n.label &&
+        prev.parentId === parentId &&
+        prev.status === n.status &&
+        prevMeta?.__raw === n.meta &&
+        prevMeta?.currentStage === (currentStage ?? undefined) &&
+        prevMeta?.dismissed === dismissed
+      ) {
+        nextNodes.set(n.id, prev);
+        return prev;
+      }
+
+      const node: AgrexNode = {
         id: n.id,
         type: n.kind,
         label: n.label,
-        parentId: n.parent_id || parentMap.get(n.id),
+        parentId,
         status: n.status,
         metadata: {
           ...n.meta,
+          __raw: n.meta,
           currentStage: currentStage ?? undefined,
-          dismissed: dismissedOutputIds?.has(n.id) ?? false,
+          dismissed,
         },
       };
+      nextNodes.set(n.id, node);
+      return node;
     });
     nodeMapRef.current = map;
+    prevAgrexNodesRef.current = nextNodes;
 
     // Only non-spawn, non-layout edges (spawn edges auto-derived from parentId)
+    const prevEdges = prevAgrexEdgesRef.current;
+    const nextEdges = new Map<string, AgrexEdge>();
     const agrexEdges: AgrexEdge[] = edges
       .filter((e) => e.edge_kind === 'read' || e.edge_kind === 'write')
-      .map((e) => ({
-        id: `${e.source}-${e.target}`,
-        source: e.source,
-        target: e.target,
-        type: e.edge_kind!,
-      }));
+      .map((e) => {
+        const id = `${e.source}-${e.target}`;
+        const prev = prevEdges.get(id);
+        if (prev && prev.source === e.source && prev.target === e.target && prev.type === e.edge_kind) {
+          nextEdges.set(id, prev);
+          return prev;
+        }
+        const edge: AgrexEdge = { id, source: e.source, target: e.target, type: e.edge_kind! };
+        nextEdges.set(id, edge);
+        return edge;
+      });
+    prevAgrexEdgesRef.current = nextEdges;
 
     return { agrexNodes, agrexEdges };
   }, [nodes, edges, currentStage, dismissedOutputIds]);
