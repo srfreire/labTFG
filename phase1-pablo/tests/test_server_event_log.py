@@ -101,3 +101,20 @@ async def test_graph_clear_flushes_previous_run() -> None:
     await mgr.emit({"type": "pipeline_done"})
     assert storage.objects["research/r1/events.jsonl"].count("\n") == 3
     assert storage.objects["research/r2/events.jsonl"].count("\n") == 2
+
+
+@pytest.mark.asyncio
+async def test_review_decision_emitted_on_review_response() -> None:
+    storage = FakeStorage()
+    mgr = ConnectionManager(storage=storage)
+    await mgr.emit({"type": "run_start", "run_id": "r3"})
+    await mgr.handle_review_response(
+        {"stage": "review_research", "data": {"approved": {"homeostatic": True}}}
+    )
+    await mgr._flush_log()
+    body = storage.objects["research/r3/events.jsonl"]
+    lines = [json.loads(ln) for ln in body.strip().split("\n")]
+    decisions = [e for e in lines if e["type"] == "review_decision"]
+    assert len(decisions) == 1
+    assert decisions[0]["stage"] == "review_research"
+    assert decisions[0]["approved"] == {"homeostatic": True}

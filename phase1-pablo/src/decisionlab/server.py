@@ -169,6 +169,25 @@ class ConnectionManager:
         """Call when a run is cancelled; persists the partial log."""
         await self._flush_log()
 
+    async def handle_review_response(self, data: dict) -> None:
+        """Record the user's review decision in the event stream and dispatch
+        it to the waiting pipeline."""
+        from decisionlab.web_feedback import handle_review_response as _dispatch
+
+        stage = data["stage"]
+        payload = data["data"]
+        # Extract the approved map (varies by stage shape). Keep the raw
+        # payload when no approved map is present so replays still see it.
+        approved = payload.get("approved") if isinstance(payload, dict) else None
+        await self.emit(
+            {
+                "type": "review_decision",
+                "stage": stage,
+                "approved": approved if approved is not None else payload,
+            }
+        )
+        _dispatch(stage, payload)
+
     def reset(self) -> None:
         self.nodes.clear()
         self.edges.clear()
@@ -222,9 +241,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 )
 
             elif msg_type == "review_response":
-                from decisionlab.web_feedback import handle_review_response
-
-                handle_review_response(data["stage"], data["data"])
+                await manager.handle_review_response(data)
 
             elif msg_type == "cancel":
                 if manager.pipeline_task and not manager.pipeline_task.done():
