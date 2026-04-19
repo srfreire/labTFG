@@ -3,7 +3,7 @@ import { Agrex, type AgrexNodeProps } from '@ppazosp/agrex';
 import type { AgrexNode, AgrexEdge } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Search, Globe, Eye, Pencil, FlaskConical, Database } from 'lucide-react';
+import { Search, Eye, Pencil, FlaskConical, Database } from 'lucide-react';
 import { type GraphNode, type GraphEdge } from '../types';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
@@ -95,8 +95,10 @@ const NODE_RENDERERS = {
   output: OutputRenderer,
 };
 
+// web_search is not a tool node in this pipeline — it's rendered as kind="search"
+// via SearchRenderer (magnifying-glass icon). Keep it out of TOOL_ICONS so the
+// Legend doesn't advertise an icon no graph node actually uses.
 const TOOL_ICONS = {
-  web_search: Globe,
   read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
