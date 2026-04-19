@@ -202,13 +202,19 @@ interface WebSocketActions {
 
 const MAX_BACKOFF = 16_000;
 
-export function useWebSocket(): WebSocketState & WebSocketActions {
+export function useWebSocket(
+  onServerMessage?: (msg: ServerMessage) => void,
+): WebSocketState & WebSocketActions {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoffRef = useRef(1000);
   // Track whether the hook is still mounted to avoid reconnects after unmount
   const mountedRef = useRef(true);
+  // Stable ref to the latest callback, so the socket effect doesn't re-open
+  // each render when the consumer passes a fresh closure.
+  const onMessageRef = useRef(onServerMessage);
+  onMessageRef.current = onServerMessage;
 
   /* ---------- connect / reconnect ---------- */
 
@@ -247,6 +253,7 @@ export function useWebSocket(): WebSocketState & WebSocketActions {
       try {
         const msg: ServerMessage = JSON.parse(event.data);
         dispatch({ type: "SERVER_MSG", msg });
+        onMessageRef.current?.(msg);
       } catch {
         console.error("[useWebSocket] Failed to parse message:", event.data);
       }

@@ -16,6 +16,10 @@ import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
 import { Stage, type GraphNode } from "./types";
+import Timeline from "./components/Timeline";
+import PastRunsList from "./components/PastRunsList";
+import { useReplay } from "./hooks/useReplay";
+import { deriveGraphState } from "./lib/deriveGraphState";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -295,6 +299,8 @@ function OutputReviewModal({
 /* ------------------------------------------------------------------ */
 
 export default function App() {
+  const replay = useReplay();
+
   const {
     connected,
     nodes,
@@ -311,9 +317,24 @@ export default function App() {
     sendRouterPrompt,
     cancelPipeline,
     clearError,
-  } = useWebSocket();
+  } = useWebSocket((msg) => {
+    replay.appendLive({ ts: Date.now(), ...(msg as any) });
+    if (msg.type === "run_start") replay.setMode("live");
+    if (msg.type === "pipeline_done") replay.setMode("live-finished");
+  });
 
   const memoryAgent = agents.find((a) => a.name === "memory_agent");
+
+  const handleSelectPastRun = useCallback(
+    async (runIdSel: string) => {
+      if (isRunning) return;
+      await replay.load(runIdSel);
+    },
+    [isRunning, replay],
+  );
+  const exitReplay = useCallback(() => {
+    replay.setMode("idle");
+  }, [replay]);
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
@@ -462,8 +483,21 @@ export default function App() {
     setRouterPrompt("");
   }, [routerPrompt, sendRouterPrompt]);
 
-  const hasGraph = nodes.length > 0;
-  const showIdle = !hasGraph && !isRunning;
+  const derived = useMemo(() => {
+    if (replay.mode === "replay" || replay.mode === "live-finished") {
+      return deriveGraphState(replay.events.slice(0, replay.cursor));
+    }
+    return null;
+  }, [replay.mode, replay.events, replay.cursor]);
+
+  const displayNodes = derived ? derived.nodes : nodes;
+  const displayEdges = derived ? derived.edges : edges;
+
+  const hasGraph =
+    nodes.length > 0 ||
+    replay.mode === "replay" ||
+    replay.mode === "live-finished";
+  const showIdle = !hasGraph && !isRunning && replay.mode === "idle";
   const [demoComplete, setDemoComplete] = useState(false);
   const handleDemoComplete = useCallback(() => setDemoComplete(true), []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -510,6 +544,8 @@ export default function App() {
               <div className="absolute inset-0">
                 <DemoGraph onComplete={handleDemoComplete} />
               </div>
+
+              <PastRunsList onSelect={handleSelectPastRun} />
 
               {/* Landing overlay — fades in over graph after demo */}
               <div
@@ -591,8 +627,8 @@ export default function App() {
               {/* Graph */}
               <div className="flex-1 min-w-0 h-full">
                 <Graph
-                  nodes={nodes}
-                  edges={edges}
+                  nodes={displayNodes}
+                  edges={displayEdges}
                   onNodeClick={handleNodeClick}
                   reviewActive={reviewActive}
                   currentStage={currentStage}
@@ -739,6 +775,14 @@ export default function App() {
         <KnowledgeGraphPanel
           runId={runId}
           memoryAgent={memoryAgent}
+        />
+      )}
+
+      {replay.mode !== "idle" && (
+        <Timeline
+          replay={replay}
+          onExit={replay.mode === "replay" ? exitReplay : undefined}
+          reviewActive={reviewActive}
         />
       )}
     </div>
