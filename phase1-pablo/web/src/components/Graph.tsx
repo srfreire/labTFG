@@ -95,10 +95,11 @@ const NODE_RENDERERS = {
   output: OutputRenderer,
 };
 
-// web_search is not a tool node in this pipeline — it's rendered as kind="search"
-// via SearchRenderer (magnifying-glass icon). Keep it out of TOOL_ICONS so the
-// Legend doesn't advertise an icon no graph node actually uses.
+// Match the icons the graph actually renders: web_search nodes ship as
+// kind="search" through SearchRenderer (magnifying-glass), so the Legend's
+// web_search entry uses the same Search icon for visual consistency.
 const TOOL_ICONS = {
+  web_search: Search,
   read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
