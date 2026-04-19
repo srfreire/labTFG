@@ -170,11 +170,20 @@ export default function Graph({
       const prev = prevNodes.get(n.id);
       const prevMeta = prev?.metadata as Record<string, unknown> | undefined;
 
+      // Agrex resolves tool icons via `toolIcons[node.label]`. Tool nodes in this
+      // project use a filename/query as their human-readable label, so without
+      // this mapping every tool node would fall back to the Wrench icon. Use
+      // meta.toolType (e.g. "read_file", "retrieve_knowledge") as the Agrex
+      // label; the descriptive label is preserved in metadata.displayLabel for
+      // renderers and tooltips that want it.
+      const toolType = (n.kind === 'tool' ? (n.meta?.toolType as string | undefined) : undefined);
+      const agrexLabel = toolType ?? n.label;
+
       // Reuse the previous AgrexNode reference if nothing observable changed
       if (
         prev &&
         prev.type === n.kind &&
-        prev.label === n.label &&
+        prev.label === agrexLabel &&
         prev.parentId === parentId &&
         prev.status === n.status &&
         prevMeta?.__raw === n.meta &&
@@ -189,12 +198,13 @@ export default function Graph({
       const node: AgrexNode = {
         id: n.id,
         type: n.kind,
-        label: n.label,
+        label: agrexLabel,
         parentId,
         status: n.status,
         metadata: {
           ...n.meta,
           __raw: n.meta,
+          displayLabel: n.label,
           currentStage: currentStage ?? undefined,
           dismissed,
           approval,
