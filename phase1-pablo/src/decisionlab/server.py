@@ -450,3 +450,33 @@ async def list_runs() -> list[dict]:
         }
         for r in rows
     ]
+
+
+@app.get("/api/runs/{run_id}/events")
+async def get_run_events(run_id: str):
+    """Stream the recorded WS event stream for a run (NDJSON).
+
+    Returns 409 if the run is still in progress (live observation should use
+    the WS), 404 if no event log exists.
+    """
+    import uuid
+
+    from fastapi.responses import PlainTextResponse
+    from sqlalchemy import select
+
+    import shared
+    from shared.models import Run
+
+    async with shared.db.get_session() as session:
+        result = await session.execute(
+            select(Run.status).where(Run.id == uuid.UUID(run_id))
+        )
+        row = result.first()
+    if row is not None and row[0] == "running":
+        raise HTTPException(status_code=409, detail="Run still in progress")
+
+    key = f"research/{run_id}/events.jsonl"
+    if not await shared.storage.exists(key):
+        raise HTTPException(status_code=404, detail="Event log not found")
+    body = await shared.storage.get_text(key)
+    return PlainTextResponse(body, media_type="application/x-ndjson")

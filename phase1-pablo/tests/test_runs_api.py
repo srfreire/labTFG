@@ -89,3 +89,49 @@ async def test_runs_list_excludes_running_and_orders_newest_first(seeded_runs):
         "started_at",
         "artifact_count",
     }
+
+
+@pytest.mark.asyncio
+async def test_events_endpoint_returns_ndjson(seeded_runs):
+    import shared
+    from decisionlab.server import app
+
+    run_id = seeded_runs[0]  # the 'done' run
+    # Seed an event log for this run
+    await shared.storage.put_text(
+        f"research/{run_id}/events.jsonl",
+        '{"seq":1,"type":"run_start"}\n{"seq":2,"type":"pipeline_done"}\n',
+        content_type="application/x-ndjson",
+    )
+    try:
+        with TestClient(app) as client:
+            resp = client.get(f"/api/runs/{run_id}/events")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/x-ndjson")
+        lines = resp.text.strip().split("\n")
+        assert len(lines) == 2
+    finally:
+        # TestClient's lifespan tears shared down; re-init for cleanup.
+        if shared.storage is None:
+            await shared.init()
+        await shared.storage.delete(f"research/{run_id}/events.jsonl")
+
+
+@pytest.mark.asyncio
+async def test_events_endpoint_returns_404_when_missing(seeded_runs):
+    from decisionlab.server import app
+
+    run_id = seeded_runs[0]  # 'done' but no event log seeded
+    with TestClient(app) as client:
+        resp = client.get(f"/api/runs/{run_id}/events")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_events_endpoint_returns_409_while_running(seeded_runs):
+    from decisionlab.server import app
+
+    run_id = seeded_runs[3]  # the 'running' one
+    with TestClient(app) as client:
+        resp = client.get(f"/api/runs/{run_id}/events")
+    assert resp.status_code == 409
