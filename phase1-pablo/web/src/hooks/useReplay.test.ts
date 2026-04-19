@@ -42,25 +42,62 @@ describe("useReplay", () => {
     expect(result.current.cursor).toBe(2);
   });
 
-  it("stepForward advances to the next group boundary", async () => {
+  it("stepForward advances to the next visible-event boundary", async () => {
     const { result } = renderHook(() => useReplay());
     await act(async () => { await result.current.load("r1"); });
     act(() => result.current.seek(0));
+    // Visible events: stage_change (idx 1), node_add (idx 2), stage_change (idx 4)
+    // Boundaries: [2, 3, 5]. agent_status at idx 3 is skipped.
     act(() => result.current.stepForward());
-    // idle at index 3 → boundary 4
-    expect(result.current.cursor).toBe(4);
+    expect(result.current.cursor).toBe(2);
     act(() => result.current.stepForward());
-    // stage_change at index 4 → boundary 5
+    expect(result.current.cursor).toBe(3);
+    act(() => result.current.stepForward());
     expect(result.current.cursor).toBe(5);
   });
 
-  it("stepBack retreats to the previous boundary", async () => {
+  it("stepBack retreats to the previous visible-event boundary", async () => {
     const { result } = renderHook(() => useReplay());
     await act(async () => { await result.current.load("r1"); });
+    // cursor starts at 5; boundaries [2, 3, 5].
     act(() => result.current.stepBack());
-    expect(result.current.cursor).toBe(4);
+    expect(result.current.cursor).toBe(3);
+    act(() => result.current.stepBack());
+    expect(result.current.cursor).toBe(2);
     act(() => result.current.stepBack());
     expect(result.current.cursor).toBe(0);
+  });
+
+  it("play at end auto-rewinds to 0", async () => {
+    const { result } = renderHook(() => useReplay());
+    await act(async () => { await result.current.load("r1"); });
+    expect(result.current.cursor).toBe(5);
+    act(() => result.current.play());
+    expect(result.current.cursor).toBe(0);
+    expect(result.current.playing).toBe(true);
+  });
+
+  it("appendLive is ignored in replay mode", async () => {
+    const { result } = renderHook(() => useReplay());
+    await act(async () => { await result.current.load("r1"); });
+    const before = result.current.events.length;
+    act(() =>
+      result.current.appendLive({ ts: 9999, type: "node_add", node: { id: "stray" } } as any),
+    );
+    expect(result.current.events.length).toBe(before);
+  });
+
+  it("run_start in live mode resets prior events", async () => {
+    const { result } = renderHook(() => useReplay());
+    act(() => result.current.setMode("live"));
+    act(() =>
+      result.current.appendLive({ ts: 1, type: "node_add", node: { id: "old" } } as any),
+    );
+    act(() =>
+      result.current.appendLive({ ts: 2, type: "run_start", run_id: "new" } as any),
+    );
+    expect(result.current.events).toHaveLength(1);
+    expect((result.current.events[0] as any).type).toBe("run_start");
   });
 });
 

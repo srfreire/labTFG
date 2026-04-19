@@ -2,20 +2,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecordedEvent, ReplayMode } from "../types";
 import { extractMarkers, type StageMarker, type ReviewMarker } from "../lib/markers";
 
-// Step-navigation boundaries: cursor positions that end an agent action.
-// An agent action ends when an agent transitions to "idle". The final
-// position is always included so stepping from the last action lands at
-// the end of the stream.
+// Step-navigation boundaries: cursor positions after each event that produces
+// a visible change in the graph. Non-visual events (agent_status, agent_tool,
+// run_start, review_request, review_decision) are skipped so one "step" always
+// advances the rendered graph by one observable delta.
+const VISIBLE_EVENT_TYPES = new Set([
+  "node_add",
+  "node_update",
+  "edge_add",
+  "stage_change",
+  "graph_clear",
+]);
+
 function stepBoundaries(events: readonly Record<string, any>[]): number[] {
   const out: number[] = [];
   for (let i = 0; i < events.length; i++) {
-    const ev = events[i];
-    if (ev.type === "agent_status" && ev.status === "idle") {
+    if (VISIBLE_EVENT_TYPES.has(events[i].type)) {
       out.push(i + 1);
     }
-  }
-  if (events.length > 0 && (out.length === 0 || out[out.length - 1] !== events.length)) {
-    out.push(events.length);
   }
   return out;
 }
@@ -65,6 +69,8 @@ export function useReplay(): UseReplay {
   speedRef.current = speed;
   const cursorRef = useRef(cursor);
   cursorRef.current = cursor;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   const stopTimer = useCallback(() => {
     if (playTimerRef.current) {
@@ -130,7 +136,12 @@ export function useReplay(): UseReplay {
     setCursor(eventsRef.current.length);
   }, [stopTimer]);
 
-  const play = useCallback(() => setPlaying(true), []);
+  const play = useCallback(() => {
+    // Auto-rewind when pressing play at the tail so replay always re-runs
+    // from the beginning if the user asked to play again.
+    if (cursorRef.current >= eventsRef.current.length) setCursor(0);
+    setPlaying(true);
+  }, []);
   const pause = useCallback(() => stopTimer(), [stopTimer]);
 
   useEffect(() => {
@@ -176,7 +187,23 @@ export function useReplay(): UseReplay {
   }, [playing]);
 
   const appendLive = useCallback((event: RecordedEvent) => {
-    setEvents((prev) => [...prev, event]);
+    // While replaying a saved run, live WS traffic would corrupt the loaded
+    // event stream — ignore it.
+    if (modeRef.current === "replay") return;
+    setEvents((prev) => {
+      // A new run_start resets the stream so events from prior runs don't
+      // leak into the current one (scrubbing would otherwise show both).
+      if ((event as { type?: string }).type === "run_start") {
+        setCursor(1);
+        return [event];
+      }
+      const next = [...prev, event];
+      // Keep the cursor pinned to the tail during live streaming so the
+      // derived-graph path renders the latest state. If the user scrubbed
+      // back, cursor < prev.length and stays put.
+      setCursor((c) => (c === prev.length ? next.length : c));
+      return next;
+    });
   }, []);
 
   return {
