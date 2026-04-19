@@ -20,8 +20,8 @@ async def test_flushes_when_batch_reaches_size_limit() -> None:
     assert len(flushed) == 1
     lines = flushed[0].rstrip("\n").split("\n")
     assert len(lines) == 3
-    assert '"id":"a"' in lines[0] or '"id": "a"' in lines[0]
-    assert '"id":"c"' in lines[2] or '"id": "c"' in lines[2]
+    assert '"id":"a"' in lines[0]
+    assert '"id":"c"' in lines[2]
 
 
 @pytest.mark.asyncio
@@ -45,7 +45,7 @@ async def test_age_trigger_reports_due_without_new_events() -> None:
 async def test_flush_on_empty_buffer_is_noop() -> None:
     calls = 0
 
-    async def on_flush(payload: str) -> None:
+    async def on_flush(_payload: str) -> None:
         nonlocal calls
         calls += 1
 
