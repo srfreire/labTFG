@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RecordedEvent, ReplayMode } from "../types";
 import { extractMarkers, type StageMarker, type ReviewMarker } from "../lib/markers";
 
@@ -61,6 +61,10 @@ export function useReplay(): UseReplay {
   boundariesRef.current = boundaries;
   const stageMarkersRef = useRef(stageMarkers);
   stageMarkersRef.current = stageMarkers;
+  const speedRef = useRef<1 | 2 | 4>(speed);
+  speedRef.current = speed;
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
 
   const stopTimer = useCallback(() => {
     if (playTimerRef.current) {
@@ -128,6 +132,48 @@ export function useReplay(): UseReplay {
 
   const play = useCallback(() => setPlaying(true), []);
   const pause = useCallback(() => stopTimer(), [stopTimer]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const scheduleNext = (currentCursor: number) => {
+      if (playTimerRef.current) clearTimeout(playTimerRef.current);
+      const evs = eventsRef.current;
+      if (currentCursor >= evs.length) {
+        setPlaying(false);
+        return;
+      }
+      // Compute delay to next tick. If at the last event, schedule a final
+      // tick to push cursor to evs.length and then stop.
+      let delay: number;
+      if (currentCursor >= evs.length - 1) {
+        delay = 0;
+      } else {
+        const a = evs[currentCursor];
+        const b = evs[currentCursor + 1];
+        const rawDelay = Math.max(0, Number(b.ts) - Number(a.ts));
+        delay = Math.min(300, rawDelay) / speedRef.current;
+      }
+      playTimerRef.current = setTimeout(() => {
+        setCursor((prev) => {
+          const next = prev + 1;
+          if (next >= eventsRef.current.length) {
+            setPlaying(false);
+            return eventsRef.current.length;
+          }
+          scheduleNext(next);
+          return next;
+        });
+      }, delay);
+    };
+    scheduleNext(cursorRef.current);
+    return () => {
+      if (playTimerRef.current) {
+        clearTimeout(playTimerRef.current);
+        playTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
 
   const appendLive = useCallback((event: RecordedEvent) => {
     setEvents((prev) => [...prev, event]);

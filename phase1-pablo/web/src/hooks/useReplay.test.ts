@@ -63,3 +63,65 @@ describe("useReplay", () => {
     expect(result.current.cursor).toBe(0);
   });
 });
+
+describe("useReplay playback", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    (globalThis as any).fetch = vi.fn(async () => ({
+      ok: true,
+      text: async () => [
+        { ts: 0,   type: "run_start" },
+        { ts: 100, type: "node_add", node: {} },
+        { ts: 250, type: "node_add", node: {} },
+      ].map((e) => JSON.stringify(e)).join("\n"),
+    })) as any;
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("advances the cursor at real inter-event timings when playing", async () => {
+    const { result } = renderHook(() => useReplay());
+    await act(async () => { await result.current.load("r1"); });
+    act(() => result.current.seek(0));
+    act(() => result.current.play());
+
+    await act(async () => { vi.advanceTimersByTime(100); });
+    expect(result.current.cursor).toBe(1);
+
+    await act(async () => { vi.advanceTimersByTime(150); });
+    expect(result.current.cursor).toBe(2);
+
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(result.current.cursor).toBe(3);
+    expect(result.current.playing).toBe(false);
+  });
+
+  it("caps inter-event delay at 300ms", async () => {
+    (globalThis as any).fetch = vi.fn(async () => ({
+      ok: true,
+      text: async () => [
+        { ts: 0,    type: "run_start" },
+        { ts: 5000, type: "node_add", node: {} },
+      ].map((e) => JSON.stringify(e)).join("\n"),
+    })) as any;
+
+    const { result } = renderHook(() => useReplay());
+    await act(async () => { await result.current.load("r1"); });
+    act(() => result.current.seek(0));
+    act(() => result.current.play());
+    await act(async () => { vi.advanceTimersByTime(300); });
+    expect(result.current.cursor).toBe(1);
+  });
+
+  it("speed=2 halves the delay", async () => {
+    const { result } = renderHook(() => useReplay());
+    await act(async () => { await result.current.load("r1"); });
+    act(() => result.current.seek(0));
+    act(() => result.current.setSpeed(2));
+    act(() => result.current.play());
+    await act(async () => { vi.advanceTimersByTime(50); });
+    expect(result.current.cursor).toBe(1); // 100/2 = 50ms
+  });
+});
