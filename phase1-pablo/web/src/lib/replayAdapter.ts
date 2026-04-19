@@ -123,14 +123,51 @@ export function labStepBoundaries(events: AgrexEvent[]): number[] {
 
 /**
  * Fetches and parses an NDJSON run log from the backend.
- * Replaces the transport code that used to live in useReplay.
+ *
+ * Also rewrites `node_add` events so the spawned node carries `parent_id`
+ * inline. The backend emits `node_add` first, then a separate spawn
+ * `edge_add` — that order works for burst reduction (all events applied
+ * atomically, labTFG's Graph builds its parent map from the full edge list)
+ * but NOT for incremental reduction: at the moment `node_add` is applied,
+ * the spawn edge hasn't arrived yet, so the node carries no parent and the
+ * layout drops it as a root. Its position locks before the edge catches up.
+ * Scanning the log once at fetch time and baking `parent_id` onto each
+ * sub-node eliminates the ordering hazard for all downstream replay paths
+ * (load-then-scrub, play-from-start, step-through).
  */
 export async function fetchRunEvents(runId: string): Promise<AgrexEvent[]> {
   const resp = await fetch(`/api/runs/${runId}/events`);
   if (!resp.ok) throw new Error(`Failed to load run ${runId}`);
   const text = await resp.text();
-  return text
+  const events = text
     .split("\n")
     .filter((ln) => ln.trim())
     .map((ln) => JSON.parse(ln) as AgrexEvent);
+  return injectSpawnParents(events);
+}
+
+/**
+ * Given a full event log, return a copy where each `node_add` whose target
+ * later appears as the target of a `spawn` edge_add carries `parent_id` on
+ * its node payload. Non-matching node_add events pass through unchanged.
+ */
+export function injectSpawnParents(events: AgrexEvent[]): AgrexEvent[] {
+  const spawnParent = new Map<string, string>(); // target node id → source node id
+  for (const ev of events) {
+    if (ev.type === "edge_add") {
+      const edge = ev.edge as { source?: string; target?: string; edge_kind?: string } | undefined;
+      if (edge && edge.edge_kind === "spawn" && edge.source && edge.target && !spawnParent.has(edge.target)) {
+        spawnParent.set(edge.target, edge.source);
+      }
+    }
+  }
+  if (spawnParent.size === 0) return events;
+  return events.map((ev) => {
+    if (ev.type !== "node_add") return ev;
+    const node = ev.node as { id?: string; parent_id?: string } | undefined;
+    if (!node?.id || node.parent_id) return ev;
+    const pid = spawnParent.get(node.id);
+    if (!pid) return ev;
+    return { ...ev, node: { ...node, parent_id: pid } };
+  });
 }
