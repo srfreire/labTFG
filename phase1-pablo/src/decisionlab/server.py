@@ -318,15 +318,36 @@ async def run_pipeline(
                     .values(
                         status="done",
                         s3_report_key=f"research/{run_id}/report.md",
+                        artifact_count=len(state.build_results),
                     )
                 )
                 await session.commit()
             await emit({"type": "pipeline_done"})
         except asyncio.CancelledError:
             await state.save()
+            try:
+                async with shared.db.get_session() as session:
+                    from sqlalchemy import update
+
+                    await session.execute(
+                        update(Run).where(Run.id == uuid.UUID(run_id)).values(status="cancelled")
+                    )
+                    await session.commit()
+            except Exception:
+                logger.debug("Could not mark run as cancelled")
             raise
         except Exception as exc:
             logger.exception("Pipeline failed")
+            try:
+                async with shared.db.get_session() as session:
+                    from sqlalchemy import update
+
+                    await session.execute(
+                        update(Run).where(Run.id == uuid.UUID(run_id)).values(status="failed")
+                    )
+                    await session.commit()
+            except Exception:
+                logger.debug("Could not mark run as failed")
             await emit({"type": "error", "message": str(exc)})
     finally:
         from decisionlab.runtime.usage import log_summary as log_usage_summary
