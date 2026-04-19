@@ -663,7 +663,7 @@ export default function App() {
                 <div
                   className="animate-slide-up absolute left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between"
                   style={{
-                    bottom: timelineCollapsed ? 164 : 236,
+                    bottom: timelineCollapsed ? 162 : 254,
                     transition: "bottom 250ms cubic-bezier(0.23, 1, 0.32, 1)",
                   }}
                 >
@@ -684,7 +684,7 @@ export default function App() {
                 <div
                   className="animate-slide-up absolute left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-6 py-4 rounded-2xl shadow-xl shadow-black/30"
                   style={{
-                    bottom: timelineCollapsed ? 16 : 88,
+                    bottom: timelineCollapsed ? 16: 106,
                     transition: "bottom 250ms cubic-bezier(0.23, 1, 0.32, 1)",
                   }}
                 >
