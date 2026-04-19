@@ -310,3 +310,12 @@ input, button, textarea, select {
   color: var(--color-text);
   font-size: 1em;
 }
+
+@layer components {
+  .tl-btn {
+    @apply w-7 h-7 flex items-center justify-center rounded-full bg-transparent border-none text-text-muted cursor-pointer hover:bg-surface-hover;
+  }
+  .tl-btn-primary {
+    @apply text-text;
+  }
+}
