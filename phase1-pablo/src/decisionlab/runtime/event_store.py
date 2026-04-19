@@ -7,6 +7,7 @@ Acceptable at pipeline-event volumes (hundreds to low thousands per run).
 
 from __future__ import annotations
 
+import asyncio
 from typing import Protocol
 
 
@@ -25,15 +26,17 @@ class S3EventStore:
         self._storage = storage
         self._key = f"research/{run_id}/events.jsonl"
         self._tail: str | None = None  # cached full body
+        self._lock = asyncio.Lock()
 
     async def append(self, ndjson_chunk: str) -> None:
-        if self._tail is None:
-            if await self._storage.exists(self._key):
-                self._tail = await self._storage.get_text(self._key)
-            else:
-                self._tail = ""
-        self._tail = self._tail + ndjson_chunk
-        await self._storage.put_text(self._key, self._tail, self.CONTENT_TYPE)
+        async with self._lock:
+            if self._tail is None:
+                if await self._storage.exists(self._key):
+                    self._tail = await self._storage.get_text(self._key)
+                else:
+                    self._tail = ""
+            self._tail = self._tail + ndjson_chunk
+            await self._storage.put_text(self._key, self._tail, self.CONTENT_TYPE)
 
     @property
     def key(self) -> str:
