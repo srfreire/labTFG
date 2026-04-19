@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
@@ -104,16 +105,23 @@ class ConnectionManager:
 
     async def emit(self, msg: dict) -> None:
         """Send *msg* to the WS client, track state for reconnection, and
-        persist a stamped copy to the event log."""
-        import time
+        persist a stamped copy to the event log.
 
+        Persistence is synchronous (the S3 PUT on batch boundaries blocks the
+        next emit), which preserves NDJSON ordering. Most emits only hit the
+        in-memory batch buffer so the hot path stays cheap.
+        """
         msg_type = msg.get("type")
 
         # Start a new logger when a new run_start arrives.
         if msg_type == "run_start":
-            await self._flush_log()
-            self._seq = 0
-            self._ensure_logger(msg["run_id"])
+            run_id = msg.get("run_id")
+            if run_id:
+                await self._flush_log()
+                self._seq = 0
+                self._ensure_logger(run_id)
+            else:
+                logger.warning("run_start missing run_id; skipping event log init")
 
         # -- state bookkeeping --
         if msg_type == "node_add":
