@@ -189,16 +189,10 @@ export const TOOL_ICONS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Replay engine types
+// Replay types
 // ---------------------------------------------------------------------------
-
-export interface RecordedEvent {
-  seq?: number;
-  ts: number;
-  [key: string]: unknown;
-}
-
-export type ReplayMode = "idle" | "live" | "live-finished" | "replay";
+// `AgrexEvent` and `ReplayMode` now come from `@ppazosp/agrex`. Only the
+// backend-specific `PastRun` descriptor stays here.
 
 export interface PastRun {
   run_id: string;

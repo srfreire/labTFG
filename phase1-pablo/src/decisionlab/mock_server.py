@@ -17,9 +17,12 @@ import asyncio
 import json
 import logging
 import random
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
 
@@ -415,6 +418,12 @@ def _read_file_full(path: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
+# In-memory record of past runs so the mock can exercise the replay feature
+# without a database or S3. One entry per run_id.
+_run_records: dict[str, dict] = {}
+_run_events: dict[str, list[dict]] = {}
+
+
 class MockConnectionManager:
     def __init__(self) -> None:
         self.ws: WebSocket | None = None
@@ -424,6 +433,8 @@ class MockConnectionManager:
         self.current_stage: str | None = None
         self.pending_review: dict | None = None
         self._emit_lock = asyncio.Lock()
+        self._seq: int = 0
+        self._run_id: str | None = None
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -434,10 +445,35 @@ class MockConnectionManager:
         await ws.accept()
         self.ws = ws
 
+    def _record_event(self, msg: dict) -> None:
+        if self._run_id is None:
+            return
+        self._seq += 1
+        stamped = {"seq": self._seq, "ts": int(time.time() * 1000), **msg}
+        _run_events.setdefault(self._run_id, []).append(stamped)
+
     async def emit(self, msg: dict) -> None:
         """Thread-safe emit — serializes concurrent sends from parallel tasks."""
         async with self._emit_lock:
             msg_type = msg.get("type")
+
+            # Start a new run log on run_start
+            if msg_type == "run_start":
+                run_id = msg.get("run_id")
+                if run_id:
+                    self._run_id = run_id
+                    self._seq = 0
+                    _run_events[run_id] = []
+                    _run_records[run_id] = {
+                        "run_id": run_id,
+                        "problem": _current_problem.get("value", "mock run"),
+                        "status": "running",
+                        "started_at": datetime.now(timezone.utc)
+                        .isoformat()
+                        .replace("+00:00", "Z"),
+                        "artifact_count": None,
+                    }
+
             if msg_type == "node_add":
                 self.nodes.append(msg["node"])
             elif msg_type == "edge_add":
@@ -456,12 +492,40 @@ class MockConnectionManager:
                 self.edges.clear()
             elif msg_type == "pipeline_done":
                 self.pending_review = None
+                if self._run_id and self._run_id in _run_records:
+                    rec = _run_records[self._run_id]
+                    rec["status"] = "done"
+                    # Count "output" nodes as the mock's artifact-count proxy
+                    rec["artifact_count"] = sum(
+                        1 for n in self.nodes if n.get("kind") == "output"
+                    )
+
+            self._record_event(msg)
 
             if self.ws is not None:
                 try:
                     await self.ws.send_json(msg)
                 except Exception:
                     pass
+
+    async def cancel_and_mark(self) -> None:
+        if self._run_id and self._run_id in _run_records:
+            _run_records[self._run_id]["status"] = "cancelled"
+
+    async def handle_review_response(self, data: dict) -> None:
+        """Emit a review_decision event (so replays reconstruct approvals),
+        then dispatch to the mock's own review handler."""
+        stage = data["stage"]
+        payload = data["data"]
+        approved = payload.get("approved") if isinstance(payload, dict) else None
+        await self.emit(
+            {
+                "type": "review_decision",
+                "stage": stage,
+                "approved": approved if approved is not None else payload,
+            }
+        )
+        handle_review_response(stage, payload)
 
     def reset(self) -> None:
         self.nodes.clear()
@@ -470,6 +534,8 @@ class MockConnectionManager:
         self.pending_review = None
 
 
+# Captured across a run so `run_start` can record the problem into _run_records.
+_current_problem: dict[str, str] = {}
 manager = MockConnectionManager()
 
 
@@ -1205,12 +1271,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     manager.pipeline_task.cancel()
                 manager.reset()
                 problem: str = data.get("problem", "mock run")
+                _current_problem["value"] = problem
                 manager.pipeline_task = asyncio.create_task(
                     _run_with_error_handling(manager.emit, problem)
                 )
 
             elif msg_type == "review_response":
-                handle_review_response(data["stage"], data["data"])
+                await manager.handle_review_response(data)
 
             elif msg_type == "router_prompt":
                 logger.info("Router prompt received: %s", data.get("message", ""))
@@ -1218,6 +1285,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             elif msg_type == "cancel":
                 if manager.pipeline_task and not manager.pipeline_task.done():
                     manager.pipeline_task.cancel()
+                    await manager.cancel_and_mark()
                     manager.reset()
 
     except WebSocketDisconnect:
@@ -1232,6 +1300,35 @@ async def _run_with_error_handling(emit, problem: str) -> None:
     except Exception as exc:
         logger.exception("Mock pipeline failed")
         await emit({"type": "error", "message": str(exc)})
+
+
+# ---------------------------------------------------------------------------
+# Replay REST endpoints (mock-only, in-memory)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/runs")
+async def list_runs() -> list[dict]:
+    """Return terminal runs newest-first."""
+    terminal = [
+        r for r in _run_records.values()
+        if r["status"] in ("done", "cancelled", "failed")
+    ]
+    terminal.sort(key=lambda r: r["started_at"], reverse=True)
+    return terminal
+
+
+@app.get("/api/runs/{run_id}/events")
+async def get_run_events(run_id: str):
+    """Stream the recorded event stream for a run (NDJSON)."""
+    rec = _run_records.get(run_id)
+    if rec and rec["status"] == "running":
+        raise HTTPException(status_code=409, detail="Run still in progress")
+    events = _run_events.get(run_id)
+    if not events:
+        raise HTTPException(status_code=404, detail="Event log not found")
+    body = "".join(json.dumps(e, separators=(",", ":")) + "\n" for e in events)
+    return PlainTextResponse(body, media_type="application/x-ndjson")
 
 
 # ---------------------------------------------------------------------------

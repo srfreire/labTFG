@@ -15,11 +15,15 @@ import KnowledgeGraphPanel from "./components/KnowledgeGraphPanel";
 import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
-import { Stage, type GraphNode } from "./types";
-import Timeline from "./components/Timeline";
+import { Stage, type GraphNode, type GraphEdge } from "./types";
 import PastRunsList from "./components/PastRunsList";
-import { useReplay } from "./hooks/useReplay";
-import { deriveGraphState } from "./lib/deriveGraphState";
+import { useAgrexReplay, AgrexTimeline, type AgrexEvent } from "@ppazosp/agrex";
+import {
+  extractLabMarkers,
+  fetchRunEvents,
+  labReducers,
+  labStepBoundaries,
+} from "./lib/replayAdapter";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -299,7 +303,11 @@ function OutputReviewModal({
 /* ------------------------------------------------------------------ */
 
 export default function App() {
-  const replay = useReplay();
+  const replay = useAgrexReplay({
+    reducers: labReducers,
+    markerExtractor: extractLabMarkers,
+    stepBoundaries: labStepBoundaries,
+  });
 
   const {
     connected,
@@ -318,8 +326,15 @@ export default function App() {
     cancelPipeline,
     clearError,
   } = useWebSocket((msg) => {
-    replay.appendLive({ ts: Date.now(), ...(msg as any) });
-    if (msg.type === "run_start") replay.setMode("live");
+    // A fresh run resets the replay buffer so scrubbing a new pipeline
+    // doesn't show leftover events from the previous one. Order matters:
+    // reset → setMode('live') → appendLive, because `appendLive` is a no-op
+    // in 'replay' mode.
+    if (msg.type === "run_start") {
+      replay.reset();
+      replay.setMode("live");
+    }
+    replay.appendLive({ ts: Date.now(), ...msg } as AgrexEvent);
     if (msg.type === "pipeline_done") replay.setMode("live-finished");
   });
 
@@ -328,12 +343,12 @@ export default function App() {
   const handleSelectPastRun = useCallback(
     async (runIdSel: string) => {
       if (isRunning) return;
-      await replay.load(runIdSel);
+      await replay.load(fetchRunEvents(runIdSel));
     },
     [isRunning, replay],
   );
   const exitReplay = useCallback(() => {
-    replay.setMode("idle");
+    replay.reset();
   }, [replay]);
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -483,15 +498,19 @@ export default function App() {
     setRouterPrompt("");
   }, [routerPrompt, sendRouterPrompt]);
 
-  const derived = useMemo(() => {
-    if (replay.mode === "replay" || replay.mode === "live-finished") {
-      return deriveGraphState(replay.events.slice(0, replay.cursor));
-    }
-    return null;
-  }, [replay.mode, replay.events, replay.cursor]);
-
-  const displayNodes = derived ? derived.nodes : nodes;
-  const displayEdges = derived ? derived.edges : edges;
+  // The replay hook keeps its internal store in sync with `events[0..cursor]`,
+  // so in live mode (cursor pinned to the tail) it matches the useWebSocket
+  // state, and in replay/scrubbed views it reflects the past position. Always
+  // read from it once a run has started; fall back to useWebSocket state when
+  // idle (before any events exist).
+  const displayNodes =
+    replay.events.length > 0
+      ? (replay.instance.nodes as unknown as GraphNode[])
+      : nodes;
+  const displayEdges =
+    replay.events.length > 0
+      ? (replay.instance.edges as unknown as GraphEdge[])
+      : edges;
 
   const hasGraph =
     nodes.length > 0 ||
@@ -501,6 +520,7 @@ export default function App() {
   const [demoComplete, setDemoComplete] = useState(false);
   const handleDemoComplete = useCallback(() => setDemoComplete(true), []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
 
   /* Review progress */
   const reviewedCount = stageOutputs.filter(
@@ -640,7 +660,13 @@ export default function App() {
 
               {/* ── Review hint toast ── */}
               {reviewActive && !isEnvSpec && !reviewHintDismissed && (
-                <div className="animate-slide-up absolute bottom-[164px] left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between">
+                <div
+                  className="animate-slide-up absolute left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-4 py-2.5 rounded-xl shadow-lg shadow-black/20 flex items-center justify-between"
+                  style={{
+                    bottom: timelineCollapsed ? 164 : 236,
+                    transition: "bottom 250ms cubic-bezier(0.23, 1, 0.32, 1)",
+                  }}
+                >
                   <span className="text-[12px] text-text-dim">
                     Click on the glowing output nodes in the graph to review them.
                   </span>
@@ -655,7 +681,13 @@ export default function App() {
 
               {/* ── Stage completion bar ── */}
               {reviewActive && (
-                <div className="animate-slide-up absolute bottom-4 left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-6 py-4 rounded-2xl shadow-xl shadow-black/30">
+                <div
+                  className="animate-slide-up absolute left-[192px] right-[192px] z-20 bg-surface/80 backdrop-blur-xl border border-border px-6 py-4 rounded-2xl shadow-xl shadow-black/30"
+                  style={{
+                    bottom: timelineCollapsed ? 16 : 88,
+                    transition: "bottom 250ms cubic-bezier(0.23, 1, 0.32, 1)",
+                  }}
+                >
                   {isEnvSpec ? (
                     /* ENV SPEC — upload mode */
                     <div>
@@ -779,10 +811,11 @@ export default function App() {
       )}
 
       {replay.mode !== "idle" && (
-        <Timeline
+        <AgrexTimeline
           replay={replay}
           onExit={replay.mode === "replay" ? exitReplay : undefined}
-          reviewActive={reviewActive}
+          onCollapsedChange={setTimelineCollapsed}
+          jumpMarkerKind="stage"
         />
       )}
     </div>
