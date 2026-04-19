@@ -9,7 +9,7 @@ import {
 import { useWebSocket } from "./hooks/useWebSocket";
 import { Play } from "lucide-react";
 import Sidebar from "./components/Sidebar";
-import Graph from "./components/Graph";
+import Graph, { THEME } from "./components/Graph";
 import DemoGraph from "./components/DemoGraph";
 import KnowledgeGraphPanel from "./components/KnowledgeGraphPanel";
 import { EnvSpecUpload } from "./components/reviews";
@@ -813,6 +813,7 @@ export default function App() {
       {replay.mode !== "idle" && (
         <AgrexTimeline
           replay={replay}
+          theme={THEME}
           onExit={replay.mode === "replay" ? exitReplay : undefined}
           onCollapsedChange={setTimelineCollapsed}
           jumpMarkerKind="stage"

@@ -105,7 +105,7 @@ const TOOL_ICONS = {
   retrieve_knowledge: Database,
 };
 
-const THEME = {
+export const THEME = {
   background: '#000',
   foreground: '#fff',
   nodeFill: '#0d0d0d',
