@@ -77,7 +77,7 @@ function MemoryAgentDot({
             textTransform: "uppercase",
             letterSpacing: 0.5,
             color: isWorking
-              ? "#fbbf24"
+              ? "#fff"
               : isDone
                 ? "rgba(255,255,255,0.5)"
                 : "rgba(255,255,255,0.25)",

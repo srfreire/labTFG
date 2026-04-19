@@ -25,8 +25,6 @@ interface Props {
 
 const NEW_NODE_FILL = "#22d3ee";
 const OLD_NODE_FILL = "rgba(255,255,255,0.35)";
-const NEW_EDGE_FILL = "#22d3ee";
-const OLD_EDGE_FILL = "rgba(255,255,255,0.15)";
 
 type ReagraphNode = {
   id: string;
