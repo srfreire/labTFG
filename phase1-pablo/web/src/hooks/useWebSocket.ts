@@ -23,6 +23,7 @@ interface WebSocketState {
   isRunning: boolean;
   error: string | null;
   agents: AgentState[];
+  runId: string | null;
 }
 
 function initStages(): Record<Stage, StageStatus> {
@@ -43,6 +44,7 @@ const INITIAL_STATE: WebSocketState = {
   isRunning: false,
   error: null,
   agents: [],
+  runId: null,
 };
 
 /* ------------------------------------------------------------------ */
@@ -76,6 +78,7 @@ function reducer(state: WebSocketState, action: Action): WebSocketState {
         reviewRequest: null,
         error: null,
         agents: [],
+        runId: null,
       };
 
     case "CANCEL_PIPELINE":
@@ -171,6 +174,9 @@ function handleServerMessage(
 
     case "agent_tool":
       return state;
+
+    case "run_start":
+      return { ...state, runId: msg.run_id };
 
     default:
       return state;

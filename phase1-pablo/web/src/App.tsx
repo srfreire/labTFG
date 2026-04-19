@@ -11,6 +11,7 @@ import { Play } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Graph from "./components/Graph";
 import DemoGraph from "./components/DemoGraph";
+import KnowledgeGraphPanel from "./components/KnowledgeGraphPanel";
 import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
@@ -304,12 +305,15 @@ export default function App() {
     isRunning,
     error,
     agents,
+    runId,
     startPipeline,
     sendReviewResponse,
     sendRouterPrompt,
     cancelPipeline,
     clearError,
   } = useWebSocket();
+
+  const memoryAgent = agents.find((a) => a.name === "memory_agent");
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
@@ -663,9 +667,17 @@ export default function App() {
                           )}
                           <button
                             onClick={handleContinue}
-                            className="text-[12px] uppercase tracking-[1px] cursor-pointer px-6 py-2 bg-white text-black rounded-lg font-medium"
+                            disabled={memoryAgent?.status === "working"}
+                            title={
+                              memoryAgent?.status === "working"
+                                ? "Memory agent still running — wait for it to finish"
+                                : undefined
+                            }
+                            className="text-[12px] uppercase tracking-[1px] px-6 py-2 bg-white text-black rounded-lg font-medium cursor-pointer disabled:cursor-not-allowed disabled:bg-text-ghost disabled:text-text-dim"
                           >
-                            Continue →
+                            {memoryAgent?.status === "working"
+                              ? "Memory…"
+                              : "Continue →"}
                           </button>
                         </div>
                       </div>
@@ -721,6 +733,14 @@ export default function App() {
           />
         )}
       </div>
+
+      {/* Knowledge graph panel — delta for current run, click to expand */}
+      {!showIdle && (
+        <KnowledgeGraphPanel
+          runId={runId}
+          memoryAgent={memoryAgent}
+        />
+      )}
     </div>
   );
 }

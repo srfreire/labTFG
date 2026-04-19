@@ -67,7 +67,29 @@ export type ServerMessage =
   | { type: "state_sync"; nodes: GraphNode[]; edges: GraphEdge[]; stage: Stage }
   | { type: "agents"; agents: Array<{ name: string; color: string }> }
   | { type: "agent_status"; agent: string; status: "idle" | "working" | "done" }
-  | { type: "agent_tool"; agent: string; tool: string };
+  | { type: "agent_tool"; agent: string; tool: string }
+  | { type: "run_start"; run_id: string };
+
+// Knowledge Graph snapshot (from /api/kg/snapshot)
+export interface KGNode {
+  id: string;
+  label: string;        // Neo4j label (Paradigm, Variable, ...)
+  display: string;      // human-readable display string
+  run_ids: string[];    // runs this node has been touched in
+}
+
+export interface KGRelation {
+  id: string;
+  source: string;       // KGNode.id
+  target: string;       // KGNode.id
+  type: string;         // relation type (SUPPORTS, AUTHORED, ...)
+  run_id: string | null;
+}
+
+export interface KGSnapshot {
+  nodes: KGNode[];
+  relations: KGRelation[];
+}
 
 // Frontend -> Backend messages
 export type ClientMessage =

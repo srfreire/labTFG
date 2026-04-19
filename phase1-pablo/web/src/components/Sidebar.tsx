@@ -24,20 +24,20 @@ const LINE_LEFT = 40; // center X for dots and lines
 const MEMORY_DOT = 6;
 
 const MEMORY_STATUS_COLORS: Record<AgentState["status"], string> = {
-  idle: "rgba(255,255,255,0.08)",
-  working: "#22d3ee",
-  done: "#22d3ee",
+  idle: "rgba(255,255,255,0.15)",
+  working: "#fbbf24",
+  done: "#4ade80",
 };
 
 function MemoryAgentDot({
-  agent,
+  status,
   parentDone,
 }: {
-  agent: AgentState;
+  status: AgentState["status"];
   parentDone: boolean;
 }) {
-  const isWorking = agent.status === "working";
-  const isDone = agent.status === "done";
+  const isWorking = status === "working";
+  const isDone = status === "done";
   const show = parentDone || isWorking || isDone;
   const lineColor = show
     ? "rgba(255,255,255,0.12)"
@@ -63,7 +63,7 @@ function MemoryAgentDot({
           style={{
             width: MEMORY_DOT,
             height: MEMORY_DOT,
-            background: MEMORY_STATUS_COLORS[agent.status],
+            background: MEMORY_STATUS_COLORS[status],
             opacity: show ? 1 : 0.3,
             transition: "opacity 200ms, background 200ms",
             ...(isWorking
@@ -77,10 +77,10 @@ function MemoryAgentDot({
             textTransform: "uppercase",
             letterSpacing: 0.5,
             color: isWorking
-              ? "#22d3ee"
+              ? "#fbbf24"
               : isDone
-                ? "rgba(34,211,238,0.5)"
-                : "rgba(255,255,255,0.2)",
+                ? "rgba(255,255,255,0.5)"
+                : "rgba(255,255,255,0.25)",
             fontWeight: isWorking ? 600 : 400,
             transition: "color 200ms",
           }}
@@ -106,6 +106,25 @@ export default function Sidebar({
   const memoryAgent = agents.find((a) => a.name === "memory_agent");
   const [collapsed, setCollapsed] = useState(false);
 
+  // Ordered list of main stages that have a memory interstitial.
+  const memoryStagesInOrder = items
+    .filter((it) => MEMORY_AGENT_STAGES.has(it.stage))
+    .map((it) => it.stage);
+
+  // Memory tick for stage `s`:
+  //   pending → s not done yet
+  //   done    → a later memory stage has started (pipeline moved past this memory)
+  //   else    → follow the global memory-agent status (s is the latest done one)
+  function memoryStatusFor(s: Stage): AgentState["status"] {
+    if (stages[s] !== "done") return "idle";
+    const idx = memoryStagesInOrder.indexOf(s);
+    for (let i = idx + 1; i < memoryStagesInOrder.length; i++) {
+      const later = stages[memoryStagesInOrder[i]];
+      if (later === "running" || later === "done") return "done";
+    }
+    return memoryAgent?.status ?? "idle";
+  }
+
   useEffect(() => {
     onCollapsedChange?.(collapsed);
   }, [collapsed, onCollapsedChange]);
@@ -113,8 +132,9 @@ export default function Sidebar({
   return (
     <>
     <aside
-      className="fixed left-4 top-4 bottom-4 w-[160px] z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+      className="fixed left-4 top-4 w-[160px] z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden"
       style={{
+        bottom: 212,
         transform: collapsed ? 'translateX(calc(-100% - 20px))' : 'translateX(0)',
         transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
       }}
@@ -209,7 +229,10 @@ export default function Sidebar({
 
               {/* Memory Agent interstitial — between work stage and its REVIEW */}
               {showMemoryAfter && (
-                <MemoryAgentDot agent={memoryAgent} parentDone={isDone} />
+                <MemoryAgentDot
+                  status={memoryStatusFor(stage)}
+                  parentDone={isDone}
+                />
               )}
 
               {/* Line segment BELOW dot — fills space to next dot */}
