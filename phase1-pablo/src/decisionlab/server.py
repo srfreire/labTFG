@@ -46,9 +46,9 @@ app = FastAPI(title="DecisionLab", lifespan=lifespan)
 
 class ConnectionManager:
     """Manages the single WebSocket connection and tracks graph state for
-    reconnection."""
+    reconnection, and persists the event stream for replay."""
 
-    def __init__(self) -> None:
+    def __init__(self, storage=None) -> None:
         self.ws: WebSocket | None = None
         self.pipeline_task: asyncio.Task | None = None  # type: ignore[type-arg]
         self.nodes: list[dict] = []
@@ -57,8 +57,13 @@ class ConnectionManager:
         self.pending_review: dict | None = None
         self.run_id: str | None = None
 
+        # -- event log --
+        self._storage = storage  # None → resolved lazily via `shared.storage`
+        self._seq: int = 0
+        self._logger = None  # type: ignore[assignment]
+        self._store = None  # type: ignore[assignment]
+
     async def connect(self, ws: WebSocket) -> None:
-        """Accept *ws*, closing any previously connected client."""
         if self.ws is not None:
             try:
                 await self.ws.close()
@@ -67,10 +72,50 @@ class ConnectionManager:
         await ws.accept()
         self.ws = ws
 
+    def _resolve_storage(self):
+        if self._storage is not None:
+            return self._storage
+        try:
+            import shared
+
+            return getattr(shared, "storage", None)
+        except Exception:
+            return None
+
+    def _ensure_logger(self, run_id: str) -> None:
+        """Create a fresh logger + store pair for *run_id*."""
+        from decisionlab.runtime.event_logger import EventLogger
+        from decisionlab.runtime.event_store import S3EventStore
+
+        storage = self._resolve_storage()
+        if storage is None:
+            self._logger = None
+            self._store = None
+            return
+        self._store = S3EventStore(storage, run_id=run_id)
+        self._logger = EventLogger(on_flush=self._store.append)
+
+    async def _flush_log(self) -> None:
+        if self._logger is not None:
+            try:
+                await self._logger.flush()
+            except Exception as exc:
+                logger.warning("event log flush failed: %s", exc)
+
     async def emit(self, msg: dict) -> None:
-        """Send *msg* to the WS client and track state for reconnection."""
-        # --- state bookkeeping ---
+        """Send *msg* to the WS client, track state for reconnection, and
+        persist a stamped copy to the event log."""
+        import time
+
         msg_type = msg.get("type")
+
+        # Start a new logger when a new run_start arrives.
+        if msg_type == "run_start":
+            await self._flush_log()
+            self._seq = 0
+            self._ensure_logger(msg["run_id"])
+
+        # -- state bookkeeping --
         if msg_type == "node_add":
             self.nodes.append(msg["node"])
         elif msg_type == "edge_add":
@@ -92,12 +137,29 @@ class ConnectionManager:
         elif msg_type == "pipeline_done":
             self.pending_review = None
 
-        # --- send ---
+        # -- stamp + persist --
+        if self._logger is not None:
+            self._seq += 1
+            stamped = {"seq": self._seq, "ts": int(time.time() * 1000), **msg}
+            try:
+                await self._logger.add(stamped)
+            except Exception as exc:
+                logger.warning("event log append failed: %s", exc)
+
+        # -- send over WS (unstamped) --
         if self.ws is not None:
             try:
                 await self.ws.send_json(msg)
             except Exception:
                 pass
+
+        # -- flush on terminal events --
+        if msg_type in ("pipeline_done", "error", "graph_clear"):
+            await self._flush_log()
+
+    async def cancel_and_flush(self) -> None:
+        """Call when a run is cancelled; persists the partial log."""
+        await self._flush_log()
 
     def reset(self) -> None:
         self.nodes.clear()
@@ -159,6 +221,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             elif msg_type == "cancel":
                 if manager.pipeline_task and not manager.pipeline_task.done():
                     manager.pipeline_task.cancel()
+                    await manager.cancel_and_flush()
                     manager.reset()
 
     except WebSocketDisconnect:
@@ -242,6 +305,7 @@ async def run_pipeline(
             await emit({"type": "error", "message": str(exc)})
     finally:
         from decisionlab.runtime.usage import log_summary as log_usage_summary
+
         log_usage_summary()
 
 
@@ -277,27 +341,37 @@ async def kg_snapshot() -> dict:
         props = n["props"] or {}
         label = n["labels"][0] if n["labels"] else "Node"
         # Display label: prefer 'name', fall back to the natural key value.
-        display = props.get("name") or props.get("slug") or props.get("id") \
-            or props.get("latex") or props.get("doi") \
-            or props.get("formulation_id") or label
-        nodes.append({
-            "id": n["id"],
-            "label": label,
-            "display": str(display)[:60],
-            "run_ids": props.get("run_ids", []),
-            "properties": props,
-        })
+        display = (
+            props.get("name")
+            or props.get("slug")
+            or props.get("id")
+            or props.get("latex")
+            or props.get("doi")
+            or props.get("formulation_id")
+            or label
+        )
+        nodes.append(
+            {
+                "id": n["id"],
+                "label": label,
+                "display": str(display)[:60],
+                "run_ids": props.get("run_ids", []),
+                "properties": props,
+            }
+        )
 
     relations = []
     for r in rels_raw:
         props = r["props"] or {}
-        relations.append({
-            "id": r["id"],
-            "source": r["source"],
-            "target": r["target"],
-            "type": r["type"],
-            "run_id": props.get("run_id"),
-            "properties": props,
-        })
+        relations.append(
+            {
+                "id": r["id"],
+                "source": r["source"],
+                "target": r["target"],
+                "type": r["type"],
+                "run_id": props.get("run_id"),
+                "properties": props,
+            }
+        )
 
     return {"nodes": nodes, "relations": relations}
