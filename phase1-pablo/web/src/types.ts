@@ -68,7 +68,8 @@ export type ServerMessage =
   | { type: "agents"; agents: Array<{ name: string; color: string }> }
   | { type: "agent_status"; agent: string; status: "idle" | "working" | "done" }
   | { type: "agent_tool"; agent: string; tool: string }
-  | { type: "run_start"; run_id: string };
+  | { type: "run_start"; run_id: string }
+  | { type: "review_decision"; stage: Stage; approved: Record<string, boolean> | unknown };
 
 // Knowledge Graph snapshot (from /api/kg/snapshot)
 export interface KGNode {
@@ -186,3 +187,23 @@ export const TOOL_ICONS: Record<string, string> = {
   run_tests: "FlaskConical",
   launch_deep_research: "Microscope",
 };
+
+// ---------------------------------------------------------------------------
+// Replay engine types
+// ---------------------------------------------------------------------------
+
+export interface RecordedEvent {
+  seq?: number;
+  ts: number;
+  [key: string]: unknown;
+}
+
+export type ReplayMode = "idle" | "live" | "live-finished" | "replay";
+
+export interface PastRun {
+  run_id: string;
+  problem: string;
+  status: "done" | "cancelled" | "failed";
+  started_at: string;
+  artifact_count: number | null;
+}
