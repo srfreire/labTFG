@@ -421,3 +421,32 @@ async def kg_snapshot() -> dict:
         )
 
     return {"nodes": nodes, "relations": relations}
+
+
+@app.get("/api/runs")
+async def list_runs() -> list[dict]:
+    """Return terminal runs newest-first for the idle-screen past-runs list."""
+    from sqlalchemy import select
+
+    import shared
+    from shared.models import Run
+
+    async with shared.db.get_session() as session:
+        stmt = (
+            select(Run)
+            .where(Run.status.in_(["done", "cancelled", "failed"]))
+            .order_by(Run.created_at.desc())
+        )
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
+
+    return [
+        {
+            "run_id": str(r.id),
+            "problem": r.problem_description,
+            "status": r.status,
+            "started_at": r.created_at.isoformat() + "Z",
+            "artifact_count": r.artifact_count,
+        }
+        for r in rows
+    ]
