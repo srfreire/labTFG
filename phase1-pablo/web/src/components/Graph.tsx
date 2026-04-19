@@ -3,7 +3,7 @@ import { Agrex, type AgrexNodeProps } from '@ppazosp/agrex';
 import type { AgrexNode, AgrexEdge } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Search, Globe, Eye, Pencil, FlaskConical } from 'lucide-react';
+import { Search, Globe, Eye, Pencil, FlaskConical, Database } from 'lucide-react';
 import { type GraphNode, type GraphEdge } from '../types';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
@@ -100,6 +100,7 @@ const TOOL_ICONS = {
   read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
+  retrieve_knowledge: Database,
 };
 
 const THEME = {

@@ -478,6 +478,36 @@ manager = MockConnectionManager()
 # ---------------------------------------------------------------------------
 
 
+async def _emit_retrieve_knowledge(
+    emit,
+    *,
+    node_id: str,
+    source_id: str,
+    query: str,
+    namespace: str,
+    results_hint: list[str] | None = None,
+) -> None:
+    """Emit a single retrieve_knowledge tool call: node_add → (delay) → node_update.
+
+    Mirrors the shape of the real pipeline's retrieve_knowledge tool event so
+    the agent graph shows the KG retrieval step alongside read/write/search.
+    """
+    await emit({"type": "node_add", "node": {
+        "id": node_id, "kind": "tool", "label": query[:42] + ("..." if len(query) > 42 else ""),
+        "status": "running",
+        "meta": {
+            "toolType": "retrieve_knowledge",
+            "args": {"query": query, "namespace": namespace, "top_k": 5},
+            "results": results_hint or [],
+        },
+    }})
+    await emit({"type": "edge_add", "edge": {
+        "source": source_id, "target": node_id, "edge_kind": "spawn",
+    }})
+    await asyncio.sleep(random.uniform(0.3, 0.6))
+    await emit({"type": "node_update", "id": node_id, "status": "done"})
+
+
 async def _research_deep(emit, slug: str, jitter: float) -> None:
     """Simulate one Deep Researcher sub-agent (runs concurrently with others)."""
     await asyncio.sleep(jitter)
@@ -490,6 +520,16 @@ async def _research_deep(emit, slug: str, jitter: float) -> None:
     await emit({"type": "edge_add", "edge": {
         "source": "researcher", "target": deep_id, "edge_kind": "spawn",
     }})
+
+    # retrieve_knowledge: check the KG before running paper/web searches
+    await _emit_retrieve_knowledge(
+        emit,
+        node_id=f"kg_deep_{slug}",
+        source_id=deep_id,
+        query=f"{slug.replace('-', ' ')} postulates and primary locus",
+        namespace="paradigm",
+        results_hint=[f"Prior deep report on {slug} (run_id older)"],
+    )
 
     # 2-3 web searches per paradigm (in parallel within this sub-agent)
     searches = DEEP_SEARCH_DATA.get(slug, [
@@ -563,6 +603,16 @@ async def _formalize_paradigm(emit, slug: str, jitter: float) -> None:
     await emit({"type": "edge_add", "edge": {
         "source": f"file_deep_{slug}", "target": agent_id, "edge_kind": "layout",
     }})
+
+    # retrieve_knowledge: look up prior formulations for this paradigm
+    await _emit_retrieve_knowledge(
+        emit,
+        node_id=f"kg_form_{slug}",
+        source_id=agent_id,
+        query=f"{slug.replace('-', ' ')} mathematical formulation patterns",
+        namespace="formulation",
+        results_hint=[f"Known equations for {slug} from prior runs"],
+    )
 
     # read_file tool (reads the research file)
     read_id = f"read_research_{slug}"
@@ -679,6 +729,16 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         "id": "researcher", "kind": "agent", "label": "Researcher",
         "status": "running", "meta": {},
     }})
+
+    # retrieve_knowledge: check for prior paradigm exploration on this problem
+    await _emit_retrieve_knowledge(
+        emit,
+        node_id="kg_researcher",
+        source_id="researcher",
+        query="decision-making paradigms for this problem domain",
+        namespace="paradigm",
+        results_hint=["Prior paradigm survey results"],
+    )
 
     # Phase 1: 3 broad web searches (launched in quick succession)
     broad_ids = []
@@ -807,6 +867,16 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         await emit({"type": "edge_add", "edge": {
             "source": first_form_id, "target": "reasoner", "edge_kind": "layout",
         }})
+
+    # retrieve_knowledge: look up validated parameter ranges and env-mapping patterns
+    await _emit_retrieve_knowledge(
+        emit,
+        node_id="kg_reasoner",
+        source_id="reasoner",
+        query="validated parameter ranges and env_mapping patterns",
+        namespace="formulation",
+        results_hint=["Past parameter defaults and mapping strategies"],
+    )
 
     all_spec_files: list[Path] = []
     all_reason_file_ids: list[str] = []
@@ -952,6 +1022,16 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         await emit({"type": "edge_add", "edge": {
             "source": source_id, "target": builder_id, "edge_kind": "layout",
         }})
+
+        # retrieve_knowledge: look up working code patterns for this formulation
+        await _emit_retrieve_knowledge(
+            emit,
+            node_id=f"kg_build_{model_id}",
+            source_id=builder_id,
+            query=f"Python model patterns for {model_id.split('_model')[0]}",
+            namespace="model",
+            results_hint=["Working model code from past runs"],
+        )
 
         # read_file: reasoner spec
         read_id = f"read_spec_{model_id}"
