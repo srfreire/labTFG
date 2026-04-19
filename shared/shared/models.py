@@ -38,6 +38,9 @@ class Run(Base):
         String(500), nullable=True
     )
     s3_prefix: Mapped[str] = mapped_column(String(500))
+    artifact_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
     # relationships
     models: Mapped[list[Model]] = relationship(back_populates="run")
