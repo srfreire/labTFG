@@ -76,6 +76,7 @@ export interface KGNode {
   label: string;        // Neo4j label (Paradigm, Variable, ...)
   display: string;      // human-readable display string
   run_ids: string[];    // runs this node has been touched in
+  properties: Record<string, unknown>;
 }
 
 export interface KGRelation {
@@ -84,6 +85,7 @@ export interface KGRelation {
   target: string;       // KGNode.id
   type: string;         // relation type (SUPPORTS, AUTHORED, ...)
   run_id: string | null;
+  properties: Record<string, unknown>;
 }
 
 export interface KGSnapshot {

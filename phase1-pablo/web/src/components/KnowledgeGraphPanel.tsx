@@ -76,12 +76,230 @@ function toReagraph(
   };
 }
 
+// Keys hidden from the stats panel — temporal/provenance fields are shown
+// in a dedicated footer, not mixed into the main property list.
+const HIDDEN_PROP_KEYS = new Set([
+  "run_ids",
+  "created_at",
+  "updated_at",
+]);
+
+function formatPropValue(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+
+interface NeighborEdge {
+  relId: string;
+  relType: string;
+  neighbor: KGNode;
+  direction: "out" | "in";
+  properties: Record<string, unknown>;
+}
+
+function neighborsFor(
+  nodeId: string,
+  nodes: KGNode[],
+  relations: KGRelation[],
+): NeighborEdge[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const out: NeighborEdge[] = [];
+  for (const r of relations) {
+    if (r.source === nodeId) {
+      const other = byId.get(r.target);
+      if (other) {
+        out.push({
+          relId: r.id,
+          relType: r.type,
+          neighbor: other,
+          direction: "out",
+          properties: r.properties,
+        });
+      }
+    } else if (r.target === nodeId) {
+      const other = byId.get(r.source);
+      if (other) {
+        out.push({
+          relId: r.id,
+          relType: r.type,
+          neighbor: other,
+          direction: "in",
+          properties: r.properties,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+interface NodeStatsPanelProps {
+  node: KGNode;
+  neighbors: NeighborEdge[];
+  onSelectNeighbor: (id: string) => void;
+  onClose: () => void;
+}
+
+function NodeStatsPanel({
+  node,
+  neighbors,
+  onSelectNeighbor,
+  onClose,
+}: NodeStatsPanelProps) {
+  const props = node.properties ?? {};
+  const mainEntries = Object.entries(props).filter(
+    ([k]) => !HIDDEN_PROP_KEYS.has(k),
+  );
+  const createdAt = props.created_at as string | undefined;
+  const updatedAt = props.updated_at as string | undefined;
+  const runIds = (props.run_ids as string[] | undefined) ?? node.run_ids ?? [];
+
+  const outgoing = neighbors.filter((n) => n.direction === "out");
+  const incoming = neighbors.filter((n) => n.direction === "in");
+
+  return (
+    <div className="w-[340px] border-l border-border-subtle bg-[#0a0a0a] flex flex-col shrink-0">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border-subtle flex items-start justify-between gap-3 shrink-0">
+        <div className="min-w-0">
+          <span className="text-[10px] tracking-[1.5px] uppercase text-text-faint">
+            {node.label}
+          </span>
+          <div className="text-[14px] text-text mt-0.5 truncate">
+            {node.display}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-6 h-6 flex items-center justify-center rounded-full bg-transparent border-none text-text-dim text-[15px] cursor-pointer hover:bg-surface-hover shrink-0"
+          aria-label="Close details"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-[12px]">
+        {/* Properties */}
+        <section>
+          <div className="text-[10px] uppercase tracking-[1.5px] text-text-faint mb-2">
+            Properties
+          </div>
+          {mainEntries.length === 0 ? (
+            <div className="text-text-faint italic">No properties</div>
+          ) : (
+            <dl className="space-y-2">
+              {mainEntries.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-text-muted text-[10px] uppercase tracking-[1px]">
+                    {k}
+                  </dt>
+                  <dd className="text-text break-words whitespace-pre-wrap">
+                    {formatPropValue(v)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+
+        {/* Outgoing edges */}
+        {outgoing.length > 0 && (
+          <section>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-text-faint mb-2">
+              Outgoing · {outgoing.length}
+            </div>
+            <ul className="space-y-1.5">
+              {outgoing.map((e) => (
+                <li key={e.relId}>
+                  <button
+                    onClick={() => onSelectNeighbor(e.neighbor.id)}
+                    className="w-full text-left px-2 py-1.5 rounded bg-surface/40 border border-border-subtle hover:border-border-strong transition-[border-color] duration-150 cursor-pointer"
+                  >
+                    <div className="text-[10px] text-text-faint">
+                      <span className="text-cyan-300">{e.relType}</span>
+                      <span className="mx-1">→</span>
+                      <span>{e.neighbor.label}</span>
+                    </div>
+                    <div className="text-text text-[12px] truncate">
+                      {e.neighbor.display}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Incoming edges */}
+        {incoming.length > 0 && (
+          <section>
+            <div className="text-[10px] uppercase tracking-[1.5px] text-text-faint mb-2">
+              Incoming · {incoming.length}
+            </div>
+            <ul className="space-y-1.5">
+              {incoming.map((e) => (
+                <li key={e.relId}>
+                  <button
+                    onClick={() => onSelectNeighbor(e.neighbor.id)}
+                    className="w-full text-left px-2 py-1.5 rounded bg-surface/40 border border-border-subtle hover:border-border-strong transition-[border-color] duration-150 cursor-pointer"
+                  >
+                    <div className="text-[10px] text-text-faint">
+                      <span>{e.neighbor.label}</span>
+                      <span className="mx-1">→</span>
+                      <span className="text-cyan-300">{e.relType}</span>
+                    </div>
+                    <div className="text-text text-[12px] truncate">
+                      {e.neighbor.display}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Provenance footer */}
+        {(createdAt || updatedAt || runIds.length > 0) && (
+          <section className="pt-3 border-t border-border-subtle space-y-1 text-[10px] text-text-faint">
+            {createdAt && (
+              <div>
+                <span className="uppercase tracking-[1px] mr-2">Created</span>
+                {createdAt}
+              </div>
+            )}
+            {updatedAt && (
+              <div>
+                <span className="uppercase tracking-[1px] mr-2">Updated</span>
+                {updatedAt}
+              </div>
+            )}
+            {runIds.length > 0 && (
+              <div>
+                <span className="uppercase tracking-[1px] mr-2">Runs</span>
+                {runIds.length}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function KnowledgeGraphPanel({
   runId,
   memoryAgent,
 }: Props) {
   const [snapshot, setSnapshot] = useState<KGSnapshot | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const collapsedRef = useRef<GraphCanvasRef | null>(null);
   const expandedRef = useRef<GraphCanvasRef | null>(null);
 
@@ -111,6 +329,14 @@ export default function KnowledgeGraphPanel({
     prevStatusRef.current = memoryStatus;
   }, [memoryStatus, fetchSnapshot]);
 
+  /* Clear selection when the modal closes */
+  useEffect(() => {
+    if (!expanded) {
+      setSelectedId(null);
+      setHoveredId(null);
+    }
+  }, [expanded]);
+
   const delta = useMemo(
     () =>
       toReagraph(
@@ -136,6 +362,37 @@ export default function KnowledgeGraphPanel({
   const isWorking = memoryStatus === "working";
   const deltaCount = delta.nodes.length;
   const totalCount = full.nodes.length;
+
+  /* Selected node + its neighborhood — used for the right-side panel. */
+  const selectedNode = useMemo(() => {
+    if (!selectedId) return null;
+    return snapshot?.nodes.find((n) => n.id === selectedId) ?? null;
+  }, [selectedId, snapshot]);
+
+  const selectedNeighbors = useMemo<NeighborEdge[]>(() => {
+    if (!selectedId || !snapshot) return [];
+    return neighborsFor(selectedId, snapshot.nodes, snapshot.relations);
+  }, [selectedId, snapshot]);
+
+  /* Highlight the focused node (selected takes precedence over hovered) and
+     its 1-hop neighborhood — so picking a node visually de-emphasises the
+     rest of the graph. */
+  const focusId = selectedId ?? hoveredId;
+  const { selections, actives } = useMemo(() => {
+    if (!focusId || !snapshot) return { selections: [], actives: [] };
+    const neighborIds = neighborsFor(
+      focusId,
+      snapshot.nodes,
+      snapshot.relations,
+    ).map((n) => n.neighbor.id);
+    const neighborRelIds = snapshot.relations
+      .filter((r) => r.source === focusId || r.target === focusId)
+      .map((r) => r.id);
+    return {
+      selections: [focusId],
+      actives: [...neighborIds, ...neighborRelIds],
+    };
+  }, [focusId, snapshot]);
 
   return (
     <>
@@ -248,24 +505,45 @@ export default function KnowledgeGraphPanel({
               </div>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 relative min-h-0">
-              {totalCount === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center text-[13px] text-text-faint">
-                  Knowledge graph is empty
-                </div>
-              ) : (
-                <div className="absolute inset-0">
-                  <GraphCanvas
-                    ref={expandedRef}
-                    nodes={full.nodes}
-                    edges={full.edges}
-                    theme={blackTheme}
-                    labelType="nodes"
-                    edgeLabelPosition="natural"
-                    layoutType="forceDirected2d"
-                  />
-                </div>
+            {/* Body — graph + optional right stats panel */}
+            <div className="flex-1 flex min-h-0">
+              <div className="flex-1 relative min-h-0">
+                {totalCount === 0 ? (
+                  <div className="absolute inset-0 flex items-center justify-center text-[13px] text-text-faint">
+                    Knowledge graph is empty
+                  </div>
+                ) : (
+                  <div className="absolute inset-0">
+                    <GraphCanvas
+                      ref={expandedRef}
+                      nodes={full.nodes}
+                      edges={full.edges}
+                      theme={blackTheme}
+                      labelType="nodes"
+                      edgeLabelPosition="natural"
+                      layoutType="forceDirected2d"
+                      selections={selections}
+                      actives={actives}
+                      onNodeClick={(node) =>
+                        setSelectedId((prev) =>
+                          prev === node.id ? null : node.id,
+                        )
+                      }
+                      onNodePointerOver={(node) => setHoveredId(node.id)}
+                      onNodePointerOut={() => setHoveredId(null)}
+                      onCanvasClick={() => setSelectedId(null)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {selectedNode && (
+                <NodeStatsPanel
+                  node={selectedNode}
+                  neighbors={selectedNeighbors}
+                  onSelectNeighbor={setSelectedId}
+                  onClose={() => setSelectedId(null)}
+                />
               )}
             </div>
           </div>

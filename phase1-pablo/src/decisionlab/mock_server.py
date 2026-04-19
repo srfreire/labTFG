@@ -35,33 +35,138 @@ _kg_state: dict = {"run_id": None, "new_count": 0}
 _SYNTHETIC_KG: dict = {
     "nodes": [
         # New-run candidates — surfaced incrementally as memory_agent ticks
-        {"id": "p_delta_rule", "label": "Paradigm", "display": "Delta Rule"},
-        {"id": "v_prediction_error", "label": "Variable", "display": "prediction_error"},
-        {"id": "a_rescorla", "label": "Author", "display": "Rescorla"},
-        {"id": "a_wagner", "label": "Author", "display": "Wagner"},
-        {"id": "eq_delta", "label": "Equation", "display": "dV = alpha (lambda - V)"},
-        {"id": "f_delta_1", "label": "Formulation", "display": "DeltaRule-v1"},
+        {
+            "id": "p_delta_rule", "label": "Paradigm", "display": "Delta Rule",
+            "properties": {
+                "slug": "delta-rule",
+                "name": "Delta Rule",
+                "summary": "Associative learning rule where value updates proportional to prediction error.",
+                "year": 1972,
+                "citations": 12843,
+                "created_at": "2025-11-04T09:12:44Z",
+            },
+        },
+        {
+            "id": "v_prediction_error", "label": "Variable", "display": "prediction_error",
+            "properties": {
+                "name": "prediction_error",
+                "symbol": "δ",
+                "units": "reward-units",
+                "description": "Difference between received and expected reward.",
+            },
+        },
+        {
+            "id": "a_rescorla", "label": "Author", "display": "Rescorla",
+            "properties": {
+                "name": "Rescorla",
+                "full_name": "Robert A. Rescorla",
+                "affiliation": "University of Pennsylvania",
+                "h_index": 72,
+            },
+        },
+        {
+            "id": "a_wagner", "label": "Author", "display": "Wagner",
+            "properties": {
+                "name": "Wagner",
+                "full_name": "Allan R. Wagner",
+                "affiliation": "Yale University",
+                "h_index": 58,
+            },
+        },
+        {
+            "id": "eq_delta", "label": "Equation", "display": "dV = alpha (lambda - V)",
+            "properties": {
+                "latex": "\\Delta V = \\alpha (\\lambda - V)",
+                "plain": "dV = alpha (lambda - V)",
+                "description": "Incremental value update by scaled prediction error.",
+            },
+        },
+        {
+            "id": "f_delta_1", "label": "Formulation", "display": "DeltaRule-v1",
+            "properties": {
+                "id": "DeltaRule-v1",
+                "variant": "canonical",
+                "stochastic": False,
+                "discrete_time": True,
+            },
+        },
         # Existing backbone
-        {"id": "p_td", "label": "Paradigm", "display": "TD Learning"},
-        {"id": "p_q", "label": "Paradigm", "display": "Q-Learning"},
-        {"id": "v_reward", "label": "Variable", "display": "reward"},
-        {"id": "v_value", "label": "Variable", "display": "value"},
-        {"id": "a_sutton", "label": "Author", "display": "Sutton"},
-        {"id": "eq_td", "label": "Equation", "display": "V <- V + alpha * delta"},
-        {"id": "b_striatum", "label": "BrainRegion", "display": "Striatum"},
+        {
+            "id": "p_td", "label": "Paradigm", "display": "TD Learning",
+            "properties": {
+                "slug": "td-learning",
+                "name": "TD Learning",
+                "summary": "Temporal-difference learning — bootstraps value updates from successor estimates.",
+                "year": 1988,
+                "citations": 24910,
+            },
+        },
+        {
+            "id": "p_q", "label": "Paradigm", "display": "Q-Learning",
+            "properties": {
+                "slug": "q-learning",
+                "name": "Q-Learning",
+                "summary": "Off-policy TD control that learns state-action values.",
+                "year": 1989,
+                "citations": 31205,
+            },
+        },
+        {
+            "id": "v_reward", "label": "Variable", "display": "reward",
+            "properties": {
+                "name": "reward",
+                "symbol": "r",
+                "units": "arbitrary",
+                "description": "Scalar signal from the environment.",
+            },
+        },
+        {
+            "id": "v_value", "label": "Variable", "display": "value",
+            "properties": {
+                "name": "value",
+                "symbol": "V(s)",
+                "units": "expected discounted reward",
+                "description": "Estimated return from a given state.",
+            },
+        },
+        {
+            "id": "a_sutton", "label": "Author", "display": "Sutton",
+            "properties": {
+                "name": "Sutton",
+                "full_name": "Richard S. Sutton",
+                "affiliation": "University of Alberta / DeepMind",
+                "h_index": 89,
+            },
+        },
+        {
+            "id": "eq_td", "label": "Equation", "display": "V <- V + alpha * delta",
+            "properties": {
+                "latex": "V \\leftarrow V + \\alpha \\delta",
+                "plain": "V <- V + alpha * delta",
+                "description": "One-step TD update rule.",
+            },
+        },
+        {
+            "id": "b_striatum", "label": "BrainRegion", "display": "Striatum",
+            "properties": {
+                "name": "Striatum",
+                "anatomy": "basal ganglia",
+                "function": "reward prediction & action selection",
+            },
+        },
     ],
     "relations": [
-        {"id": "r1", "source": "p_delta_rule", "target": "v_prediction_error", "type": "USES_EQUATION"},
-        {"id": "r2", "source": "a_rescorla", "target": "p_delta_rule", "type": "AUTHORED"},
-        {"id": "r3", "source": "a_wagner", "target": "p_delta_rule", "type": "AUTHORED"},
-        {"id": "r4", "source": "p_delta_rule", "target": "eq_delta", "type": "USES_EQUATION"},
-        {"id": "r5", "source": "f_delta_1", "target": "p_delta_rule", "type": "DERIVES_FROM"},
-        {"id": "r6", "source": "p_td", "target": "p_delta_rule", "type": "EXTENDS"},
-        {"id": "r7", "source": "p_q", "target": "p_td", "type": "EXTENDS"},
-        {"id": "r8", "source": "a_sutton", "target": "p_td", "type": "AUTHORED"},
-        {"id": "r9", "source": "p_td", "target": "v_value", "type": "USES_EQUATION"},
-        {"id": "r10", "source": "v_reward", "target": "b_striatum", "type": "MODULATES"},
-        {"id": "r11", "source": "p_td", "target": "eq_td", "type": "USES_EQUATION"},
+        {"id": "r1", "source": "p_delta_rule", "target": "v_prediction_error", "type": "USES_EQUATION", "properties": {"note": "central variable"}},
+        {"id": "r2", "source": "a_rescorla", "target": "p_delta_rule", "type": "AUTHORED", "properties": {"year": 1972}},
+        {"id": "r3", "source": "a_wagner", "target": "p_delta_rule", "type": "AUTHORED", "properties": {"year": 1972}},
+        {"id": "r4", "source": "p_delta_rule", "target": "eq_delta", "type": "USES_EQUATION", "properties": {}},
+        {"id": "r5", "source": "f_delta_1", "target": "p_delta_rule", "type": "DERIVES_FROM", "properties": {"confidence": 0.92}},
+        {"id": "r6", "source": "p_td", "target": "p_delta_rule", "type": "EXTENDS", "properties": {"generalisation": "temporal credit"}},
+        {"id": "r7", "source": "p_q", "target": "p_td", "type": "EXTENDS", "properties": {"control": "off-policy"}},
+        {"id": "r8", "source": "a_sutton", "target": "p_td", "type": "AUTHORED", "properties": {"year": 1988}},
+        {"id": "r9", "source": "p_td", "target": "v_value", "type": "USES_EQUATION", "properties": {}},
+        {"id": "r10", "source": "v_reward", "target": "b_striatum", "type": "MODULATES", "properties": {"pathway": "dopaminergic"}},
+        {"id": "r11", "source": "p_td", "target": "eq_td", "type": "USES_EQUATION", "properties": {}},
     ],
 }
 
@@ -100,11 +205,19 @@ async def kg_snapshot() -> dict:
             revealed_rels.update(chunk)
 
     nodes = [
-        {**n, "run_ids": [run_id] if n["id"] in revealed_nodes else []}
+        {
+            **n,
+            "run_ids": [run_id] if n["id"] in revealed_nodes else [],
+            "properties": n.get("properties", {}),
+        }
         for n in _SYNTHETIC_KG["nodes"]
     ]
     relations = [
-        {**r, "run_id": run_id if r["id"] in revealed_rels else None}
+        {
+            **r,
+            "run_id": run_id if r["id"] in revealed_rels else None,
+            "properties": r.get("properties", {}),
+        }
         for r in _SYNTHETIC_KG["relations"]
     ]
     return {"nodes": nodes, "relations": relations}

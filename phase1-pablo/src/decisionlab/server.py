@@ -285,6 +285,7 @@ async def kg_snapshot() -> dict:
             "label": label,
             "display": str(display)[:60],
             "run_ids": props.get("run_ids", []),
+            "properties": props,
         })
 
     relations = []
@@ -296,6 +297,7 @@ async def kg_snapshot() -> dict:
             "target": r["target"],
             "type": r["type"],
             "run_id": props.get("run_id"),
+            "properties": props,
         })
 
     return {"nodes": nodes, "relations": relations}
