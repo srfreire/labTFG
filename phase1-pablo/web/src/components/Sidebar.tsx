@@ -64,8 +64,7 @@ function MemoryAgentDot({
             width: MEMORY_DOT,
             height: MEMORY_DOT,
             background: MEMORY_STATUS_COLORS[status],
-            opacity: show ? 1 : 0.3,
-            transition: "opacity 200ms, background 200ms",
+            transition: "background 200ms",
             ...(isWorking
               ? { boxShadow: `0 0 6px ${MEMORY_STATUS_COLORS.working}` }
               : {}),
