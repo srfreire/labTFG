@@ -12,16 +12,31 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
 from decisionlab.router import EmitFn, PipelineState, Router, Stage
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="DecisionLab")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Boot shared infra once at app startup; tear down at shutdown."""
+    del app
+    import shared
+
+    await shared.init()
+    try:
+        yield
+    finally:
+        await shared.shutdown()
+
+
+app = FastAPI(title="DecisionLab", lifespan=lifespan)
 
 
 # ---------------------------------------------------------------------------
@@ -40,6 +55,7 @@ class ConnectionManager:
         self.edges: list[dict] = []
         self.current_stage: str | None = None
         self.pending_review: dict | None = None
+        self.run_id: str | None = None
 
     async def connect(self, ws: WebSocket) -> None:
         """Accept *ws*, closing any previously connected client."""
@@ -71,6 +87,8 @@ class ConnectionManager:
         elif msg_type == "graph_clear":
             self.nodes.clear()
             self.edges.clear()
+        elif msg_type == "run_start":
+            self.run_id = msg.get("run_id")
         elif msg_type == "pipeline_done":
             self.pending_review = None
 
@@ -86,6 +104,7 @@ class ConnectionManager:
         self.edges.clear()
         self.current_stage = None
         self.pending_review = None
+        self.run_id = None
 
 
 manager = ConnectionManager()
@@ -102,6 +121,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
     # Reconnection: re-emit pending state so the frontend can catch up
     if manager.pipeline_task and not manager.pipeline_task.done():
+        if manager.run_id:
+            await ws.send_json({"type": "run_start", "run_id": manager.run_id})
         if manager.pending_review:
             await ws.send_json(manager.pending_review)
         else:
@@ -162,12 +183,12 @@ async def run_pipeline(
     from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
     from shared.models import Run
 
-    await shared.init()
     try:
         client = AsyncAnthropic()
         search = DuckDuckGoAdapter()
 
         run_id = str(uuid.uuid4())
+        await emit({"type": "run_start", "run_id": run_id})
         async with shared.db.get_session() as session:
             db_run = Run(
                 id=uuid.UUID(run_id),
@@ -222,4 +243,59 @@ async def run_pipeline(
     finally:
         from decisionlab.runtime.usage import log_summary as log_usage_summary
         log_usage_summary()
-        await shared.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# KG snapshot endpoint — full graph (active relations only)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/kg/snapshot")
+async def kg_snapshot() -> dict:
+    """Return all nodes and active (non-superseded) relations.
+
+    Frontend uses ``run_ids`` / ``run_id`` to distinguish nodes/edges created
+    during the current run.
+    """
+    import shared
+
+    if shared.kg is None:
+        raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
+
+    nodes_raw = await shared.kg.query(
+        "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
+        "properties(n) AS props"
+    )
+    rels_raw = await shared.kg.query(
+        "MATCH (a)-[r]->(b) WHERE r.valid_to IS NULL "
+        "RETURN elementId(r) AS id, elementId(a) AS source, "
+        "elementId(b) AS target, type(r) AS type, properties(r) AS props"
+    )
+
+    nodes = []
+    for n in nodes_raw:
+        props = n["props"] or {}
+        label = n["labels"][0] if n["labels"] else "Node"
+        # Display label: prefer 'name', fall back to the natural key value.
+        display = props.get("name") or props.get("slug") or props.get("id") \
+            or props.get("latex") or props.get("doi") \
+            or props.get("formulation_id") or label
+        nodes.append({
+            "id": n["id"],
+            "label": label,
+            "display": str(display)[:60],
+            "run_ids": props.get("run_ids", []),
+        })
+
+    relations = []
+    for r in rels_raw:
+        props = r["props"] or {}
+        relations.append({
+            "id": r["id"],
+            "source": r["source"],
+            "target": r["target"],
+            "type": r["type"],
+            "run_id": props.get("run_id"),
+        })
+
+    return {"nodes": nodes, "relations": relations}

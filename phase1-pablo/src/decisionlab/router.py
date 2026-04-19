@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -200,6 +201,9 @@ class Router:
         self.emit = emit  # None → CLI mode; set → web mode
         self._web_mode = emit is not None
         self.memory_agent: MemoryAgent | None = self._init_memory_agent()
+        # Tracks fire-and-forget Memory Agent ticks so they don't get GC'd
+        # mid-flight; each task removes itself via done_callback.
+        self._background_tasks: set[asyncio.Task] = set()
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -406,15 +410,8 @@ class Router:
             )
             await handler()
 
-            # Memory Agent post-hook: run after successful work stages
-            stage_advanced = self.state.stage != current_stage
-            if (
-                stage_advanced
-                and current_stage in _MEMORY_STAGES
-                and self.memory_agent is not None
-            ):
-                await self._run_memory_agent(current_stage)
-
+            # Emit stage-done BEFORE kicking off the Memory Agent so the UI can
+            # show the review stage and the memory tick running in parallel.
             await self._emit(
                 {
                     "type": "stage_change",
@@ -424,6 +421,20 @@ class Router:
             )
             await self.state.save()
             await self._update_run(status=self.state.stage.value)
+
+            # Memory Agent post-hook: fires concurrently with the following
+            # review stage. The frontend disables "Continue" until the agent
+            # emits ``status=done``, so the user can't advance past a review
+            # before the memory tick finishes.
+            stage_advanced = self.state.stage != current_stage
+            if (
+                stage_advanced
+                and current_stage in _MEMORY_STAGES
+                and self.memory_agent is not None
+            ):
+                task = asyncio.create_task(self._run_memory_agent(current_stage))
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
 
         # Finalize run: consolidation + s3_report_key
         if self.state.stage == Stage.DONE:

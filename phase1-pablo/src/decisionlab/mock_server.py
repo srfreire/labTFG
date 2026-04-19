@@ -27,6 +27,88 @@ SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "examples" / "sampl
 
 app = FastAPI(title="DecisionLab Mock")
 
+
+# Synthetic knowledge-graph snapshot state — grows as the mock pipeline runs
+_kg_state: dict = {"run_id": None, "new_count": 0}
+
+# Pre-canned graph — a bigger backbone the "Memory Agent" reveals chunk by chunk
+_SYNTHETIC_KG: dict = {
+    "nodes": [
+        # New-run candidates — surfaced incrementally as memory_agent ticks
+        {"id": "p_delta_rule", "label": "Paradigm", "display": "Delta Rule"},
+        {"id": "v_prediction_error", "label": "Variable", "display": "prediction_error"},
+        {"id": "a_rescorla", "label": "Author", "display": "Rescorla"},
+        {"id": "a_wagner", "label": "Author", "display": "Wagner"},
+        {"id": "eq_delta", "label": "Equation", "display": "dV = alpha (lambda - V)"},
+        {"id": "f_delta_1", "label": "Formulation", "display": "DeltaRule-v1"},
+        # Existing backbone
+        {"id": "p_td", "label": "Paradigm", "display": "TD Learning"},
+        {"id": "p_q", "label": "Paradigm", "display": "Q-Learning"},
+        {"id": "v_reward", "label": "Variable", "display": "reward"},
+        {"id": "v_value", "label": "Variable", "display": "value"},
+        {"id": "a_sutton", "label": "Author", "display": "Sutton"},
+        {"id": "eq_td", "label": "Equation", "display": "V <- V + alpha * delta"},
+        {"id": "b_striatum", "label": "BrainRegion", "display": "Striatum"},
+    ],
+    "relations": [
+        {"id": "r1", "source": "p_delta_rule", "target": "v_prediction_error", "type": "USES_EQUATION"},
+        {"id": "r2", "source": "a_rescorla", "target": "p_delta_rule", "type": "AUTHORED"},
+        {"id": "r3", "source": "a_wagner", "target": "p_delta_rule", "type": "AUTHORED"},
+        {"id": "r4", "source": "p_delta_rule", "target": "eq_delta", "type": "USES_EQUATION"},
+        {"id": "r5", "source": "f_delta_1", "target": "p_delta_rule", "type": "DERIVES_FROM"},
+        {"id": "r6", "source": "p_td", "target": "p_delta_rule", "type": "EXTENDS"},
+        {"id": "r7", "source": "p_q", "target": "p_td", "type": "EXTENDS"},
+        {"id": "r8", "source": "a_sutton", "target": "p_td", "type": "AUTHORED"},
+        {"id": "r9", "source": "p_td", "target": "v_value", "type": "USES_EQUATION"},
+        {"id": "r10", "source": "v_reward", "target": "b_striatum", "type": "MODULATES"},
+        {"id": "r11", "source": "p_td", "target": "eq_td", "type": "USES_EQUATION"},
+    ],
+}
+
+# Node IDs that the memory agent "reveals" in order, one chunk per stage.
+_NEW_NODE_SEQUENCE: list[list[str]] = [
+    ["p_delta_rule", "a_rescorla", "a_wagner"],   # RESEARCH
+    ["v_prediction_error", "eq_delta"],            # FORMALIZE
+    ["f_delta_1"],                                  # REASON
+    [],                                             # BUILD — no new nodes, strengthens existing
+]
+
+# Relations tagged to current run (same length as _NEW_NODE_SEQUENCE).
+_NEW_REL_SEQUENCE: list[list[str]] = [
+    ["r2", "r3"],
+    ["r1", "r4"],
+    ["r5"],
+    [],
+]
+
+
+@app.get("/api/kg/snapshot")
+async def kg_snapshot() -> dict:
+    """Return a synthetic snapshot of the KG.
+
+    The number of ``new`` nodes/edges (tagged with the current ``run_id``) grows
+    as the mock pipeline ticks off stages — so the frontend delta view can
+    visualise memory-agent population.
+    """
+    run_id = _kg_state.get("run_id")
+    revealed_nodes: set[str] = set()
+    revealed_rels: set[str] = set()
+    if run_id is not None:
+        for chunk in _NEW_NODE_SEQUENCE[: _kg_state["new_count"]]:
+            revealed_nodes.update(chunk)
+        for chunk in _NEW_REL_SEQUENCE[: _kg_state["new_count"]]:
+            revealed_rels.update(chunk)
+
+    nodes = [
+        {**n, "run_ids": [run_id] if n["id"] in revealed_nodes else []}
+        for n in _SYNTHETIC_KG["nodes"]
+    ]
+    relations = [
+        {**r, "run_id": run_id if r["id"] in revealed_rels else None}
+        for r in _SYNTHETIC_KG["relations"]
+    ]
+    return {"nodes": nodes, "relations": relations}
+
 # ---------------------------------------------------------------------------
 # Realistic search data
 # ---------------------------------------------------------------------------
@@ -454,6 +536,22 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
       - Reason: sequential (one spec at a time), reads formulation + env_spec
       - Build: sequential with test-fix loop (write model, write test, run tests)
     """
+    import uuid
+
+    run_id = str(uuid.uuid4())
+    _kg_state["run_id"] = run_id
+    _kg_state["new_count"] = 0
+    await emit({"type": "run_start", "run_id": run_id})
+    await emit({"type": "agents", "agents": [
+        {"name": "memory_agent", "color": "#22d3ee"},
+    ]})
+
+    async def tick_memory() -> None:
+        """Simulate the memory agent chunk-processing one stage's output."""
+        await emit({"type": "agent_status", "agent": "memory_agent", "status": "working"})
+        await asyncio.sleep(0.8)
+        _kg_state["new_count"] += 1
+        await emit({"type": "agent_status", "agent": "memory_agent", "status": "done"})
 
     all_slugs = _paradigm_slugs_from_dir("deep")
     if not all_slugs:
@@ -500,6 +598,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
 
     await emit({"type": "node_update", "id": "researcher", "status": "done"})
     await emit({"type": "stage_change", "stage": "research", "status": "done"})
+    asyncio.create_task(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_RESEARCH
@@ -538,6 +637,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
     await asyncio.gather(*tasks)
 
     await emit({"type": "stage_change", "stage": "formalize", "status": "done"})
+    asyncio.create_task(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_FORMALIZE
@@ -665,6 +765,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
 
     await emit({"type": "node_update", "id": "reasoner", "status": "done"})
     await emit({"type": "stage_change", "stage": "reason", "status": "done"})
+    asyncio.create_task(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_REASON
@@ -835,6 +936,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         await emit({"type": "node_update", "id": builder_id, "status": "done"})
 
     await emit({"type": "stage_change", "stage": "build", "status": "done"})
+    asyncio.create_task(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_BUILD
