@@ -209,6 +209,11 @@ export default function Graph({
         toastPlacement="top-left"
         toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
         showDetailPanel={false}
+        // Demo has no replay → Agrex's embedded timeline doesn't mount, so
+        // the floating StatsBar would otherwise render. Turn it off.
+        // Live/replay: the embedded timeline owns stats (`timelineProps.showStats`),
+        // and Agrex's own gate hides the floating bar when the timeline is up.
+        showStats={!demo}
         fitOnUpdate={!demo}
         animateEdges
         keyboardShortcuts={!demo}
