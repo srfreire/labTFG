@@ -817,6 +817,7 @@ export default function App() {
           onExit={replay.mode === "replay" ? exitReplay : undefined}
           onCollapsedChange={setTimelineCollapsed}
           jumpMarkerKind="stage"
+          showStats
         />
       )}
     </div>

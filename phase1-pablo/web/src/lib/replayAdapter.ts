@@ -1,11 +1,17 @@
-import type { AgrexEvent, AgrexMarker, EventReducer } from "@ppazosp/agrex";
+import {
+  defaultStepBoundaries,
+  type AgrexEvent,
+  type AgrexMarker,
+  type EventReducer,
+} from "@ppazosp/agrex";
 import type { Stage } from "../types";
 
 // labTFG's event shapes are richer than agrex's canonical set:
 // - edges arrive without an `id` (source/target pair is the key)
 // - `graph_clear` and `state_sync` are mutation events agrex doesn't know about
-// - nodes carry `parent_id` / `kind`, not `parentId` / `type`
-// These reducers bridge the two so the agrex store mirrors the live graph.
+// Built-in `node_add` / `node_update` / `node_remove` / `clear` reducers from
+// agrex are reused via `composeReducers` (applied automatically by
+// `useAgrexReplay`), so we only override what differs.
 
 function edgeWithId(edge: unknown): { id: string; source: string; target: string } & Record<string, unknown> {
   const e = edge as { source: string; target: string } & Record<string, unknown>;
@@ -101,24 +107,17 @@ function isAllApproved(approved: unknown): boolean | null {
   return null;
 }
 
-// Step boundaries: advance one visible graph delta per step. The agrex default
-// only counts mutation events; this version also includes `stage_change` and
-// `graph_clear` so scrubbing a decision-lab run lines up with pipeline phases.
-const VISIBLE_TYPES = new Set([
-  "node_add",
-  "node_update",
-  "edge_add",
-  "stage_change",
-  "graph_clear",
-  "state_sync",
-]);
+// Step boundaries: advance one visible graph delta per step. Start from the
+// agrex defaults (node/edge mutations + `clear`) and add labTFG-specific
+// events so scrubbing a decision-lab run lines up with pipeline phases.
+const EXTRA_BOUNDARY_TYPES = new Set(["stage_change", "graph_clear", "state_sync"]);
 
 export function labStepBoundaries(events: AgrexEvent[]): number[] {
-  const out: number[] = [];
+  const boundaries = new Set<number>(defaultStepBoundaries(events));
   for (let i = 0; i < events.length; i++) {
-    if (VISIBLE_TYPES.has(events[i].type)) out.push(i + 1);
+    if (EXTRA_BOUNDARY_TYPES.has(events[i].type)) boundaries.add(i + 1);
   }
-  return out;
+  return [...boundaries].sort((a, b) => a - b);
 }
 
 /**
