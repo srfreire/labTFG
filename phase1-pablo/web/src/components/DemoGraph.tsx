@@ -161,10 +161,11 @@ export default function DemoGraph({ onComplete }: { onComplete?: () => void }) {
   }, [currentStep, allDone]);
 
   return (
-    // Demo graph is decorative — swallow pointer events so it can't be
-    // panned, zoomed, dragged, or clicked. Agrex delegates to ReactFlow,
-    // which doesn't expose individual interaction toggles to consumers.
-    <div className="w-full h-full pointer-events-none select-none">
+    // Demo graph is decorative. `pointer-events: none` alone isn't enough
+    // because ReactFlow sets `pointer-events: all` on its node/handle
+    // elements (nested override wins). `inert` disables the whole subtree
+    // — no hover, click, focus, or keyboard — regardless of child CSS.
+    <div className="w-full h-full select-none" inert>
       <Graph nodes={nodes} edges={edges} demo />
     </div>
   );
