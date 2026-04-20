@@ -329,16 +329,14 @@ input, button, textarea, select {
 }
 
 /* Match the chrome Agrex uses on its timeline / legend / detail / toast
- * panels, so the sidebar and KG panel read as part of the same surface
- * system. Mirrors agrex's `panelChrome`:
- *   background: color-mix(in srgb, #0a0a0a 80%, transparent)
- *   backdrop-filter: blur(16px)
- *   border: 1px solid rgba(255,255,255,0.15)
- *   border-radius: 16px
- * --color-surface (#090909) is close enough to agrex's --agrex-bg
- * (#0a0a0a) that using the app token keeps a single source of truth. */
+ * panels so the sidebar and KG panel read as part of the same surface
+ * system. Mixed against --color-bg (#000) — same base agrex uses
+ * (THEME.background in Graph.tsx is set to '#000', so --agrex-bg
+ * resolves to the same black). Mixing against --color-surface made our
+ * panels a hair lighter than agrex's; matching the base eliminates the
+ * drift. */
 .panel-chrome {
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.15);

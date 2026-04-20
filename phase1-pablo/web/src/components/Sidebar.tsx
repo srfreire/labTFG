@@ -274,7 +274,7 @@ export default function Sidebar({
         // Inline the agrex panel-chrome colours (background + border) so
         // the toggle tab blends with the sidebar instead of using the
         // app's 0.1 border token.
-        background: 'color-mix(in srgb, var(--color-surface) 80%, transparent)',
+        background: 'color-mix(in srgb, var(--color-bg) 80%, transparent)',
         borderColor: 'rgba(255,255,255,0.15)',
         transition: 'left 250ms cubic-bezier(0.23, 1, 0.32, 1)',
       }}
