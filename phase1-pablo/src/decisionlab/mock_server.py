@@ -18,7 +18,7 @@ import json
 import logging
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -422,6 +422,98 @@ def _read_file_full(path: Path) -> str:
 # without a database or S3. One entry per run_id.
 _run_records: dict[str, dict] = {}
 _run_events: dict[str, list[dict]] = {}
+
+
+def _seed_past_run() -> None:
+    """Populate one completed run at module load so the landing page has
+    something in its Past Runs list on a fresh mock boot."""
+    run_id = "seed-survival-001"
+    started_at = (
+        datetime.now(timezone.utc) - timedelta(days=2)
+    ).isoformat().replace("+00:00", "Z")
+
+    raw: list[dict] = [
+        {"type": "run_start", "run_id": run_id},
+        {"type": "stage_change", "stage": "research", "status": "running"},
+        {
+            "type": "node_add",
+            "node": {
+                "id": "researcher",
+                "kind": "agent",
+                "label": "Researcher",
+                "status": "running",
+            },
+        },
+        {
+            "type": "node_add",
+            "node": {
+                "id": "ws-1",
+                "kind": "tool",
+                "label": "web_search",
+                "parent_id": "researcher",
+                "status": "done",
+                "meta": {
+                    "toolType": "web_search",
+                    "query": "optimal foraging under uncertainty",
+                },
+            },
+        },
+        {
+            "type": "edge_add",
+            "edge": {
+                "source": "researcher",
+                "target": "ws-1",
+                "edge_kind": "spawn",
+            },
+        },
+        {
+            "type": "node_add",
+            "node": {
+                "id": "para-foraging",
+                "kind": "output",
+                "label": "foraging.md",
+                "parent_id": "researcher",
+                "status": "done",
+                "meta": {
+                    "stage": "research",
+                    "path": "foraging.md",
+                    "content": (
+                        "# Optimal Foraging Theory\n\n"
+                        "Agents choose patches to maximize long-run energy "
+                        "intake net of travel and handling costs.\n"
+                    ),
+                },
+            },
+        },
+        {
+            "type": "edge_add",
+            "edge": {
+                "source": "researcher",
+                "target": "para-foraging",
+                "edge_kind": "write",
+            },
+        },
+        {"type": "node_update", "id": "researcher", "status": "done"},
+        {"type": "stage_change", "stage": "research", "status": "done"},
+        {"type": "pipeline_done"},
+    ]
+
+    base_ts = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp() * 1000)
+    events = [
+        {"seq": i, "ts": base_ts + i * 200, **ev}
+        for i, ev in enumerate(raw, start=1)
+    ]
+    _run_events[run_id] = events
+    _run_records[run_id] = {
+        "run_id": run_id,
+        "problem": "Survival decision-making under uncertainty",
+        "status": "done",
+        "started_at": started_at,
+        "artifact_count": 1,
+    }
+
+
+_seed_past_run()
 
 
 class MockConnectionManager:

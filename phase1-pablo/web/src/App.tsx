@@ -565,7 +565,7 @@ export default function App() {
                 <DemoGraph onComplete={handleDemoComplete} />
               </div>
 
-              <PastRunsList onSelect={handleSelectPastRun} />
+              <PastRunsList onSelect={handleSelectPastRun} active={demoComplete} />
 
               {/* Landing overlay — fades in over graph after demo */}
               <div
