@@ -263,6 +263,7 @@ export default function Graph({
       toastPlacement="top-left"
       toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
       showDetailPanel={false}
+      showStats={!demo}
       fitOnUpdate={!demo}
       animateEdges
       keyboardShortcuts={!demo}
