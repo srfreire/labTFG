@@ -226,6 +226,11 @@ export default function Graph({
           onCollapsedChange: timelineCollapsedChange,
           onExit: onExitReplay,
           showStats: true,
+          // App-scoped persistKey so previous runs under the package
+          // default (`agrex.timeline.collapsed`) don't carry over a stale
+          // "1" and open the timeline collapsed on fresh visits. New key
+          // starts missing → Agrex defaults to expanded.
+          persistKey: 'decisionlab.agrex.timeline.collapsed',
         }}
       />
     </UIStateContext.Provider>

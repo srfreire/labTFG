@@ -319,3 +319,11 @@ input, button, textarea, select {
     @apply text-text;
   }
 }
+
+/* Stop dynamic numbers from retriggering layout as digits change width.
+ * Agrex's replay stats row + elapsed-time readout update every frame during
+ * playback; proportional digits cause the neighbouring controls to shift.
+ * Applying tabular-nums on the agrex root cascades to every child. */
+.agrex {
+  font-variant-numeric: tabular-nums;
+}
