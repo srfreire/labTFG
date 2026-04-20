@@ -136,7 +136,7 @@ export default function Sidebar({
   return (
     <>
     <aside
-      className="fixed left-4 top-4 w-[160px] z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden"
+      className="panel-chrome fixed left-4 top-4 w-[160px] z-30 flex flex-col overflow-hidden"
       style={{
         bottom: 212,
         transform: collapsed ? 'translateX(calc(-100% - 20px))' : 'translateX(0)',
@@ -268,9 +268,14 @@ export default function Sidebar({
     {/* Toggle tab */}
     <button
       onClick={() => setCollapsed((v) => !v)}
-      className="fixed z-30 top-1/2 -translate-y-1/2 w-5 h-10 rounded-r-md bg-surface/80 backdrop-blur-xl border border-l-0 border-border flex items-center justify-center cursor-pointer text-text-dim hover:text-text transition-[left] duration-250"
+      className="fixed z-30 top-1/2 -translate-y-1/2 w-5 h-10 rounded-r-md backdrop-blur-[16px] border border-l-0 flex items-center justify-center cursor-pointer text-text-dim hover:text-text"
       style={{
         left: collapsed ? 0 : 176,
+        // Inline the agrex panel-chrome colours (background + border) so
+        // the toggle tab blends with the sidebar instead of using the
+        // app's 0.1 border token.
+        background: 'color-mix(in srgb, var(--color-surface) 80%, transparent)',
+        borderColor: 'rgba(255,255,255,0.15)',
         transition: 'left 250ms cubic-bezier(0.23, 1, 0.32, 1)',
       }}
     >

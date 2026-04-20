@@ -327,3 +327,20 @@ input, button, textarea, select {
 .agrex {
   font-variant-numeric: tabular-nums;
 }
+
+/* Match the chrome Agrex uses on its timeline / legend / detail / toast
+ * panels, so the sidebar and KG panel read as part of the same surface
+ * system. Mirrors agrex's `panelChrome`:
+ *   background: color-mix(in srgb, #0a0a0a 80%, transparent)
+ *   backdrop-filter: blur(16px)
+ *   border: 1px solid rgba(255,255,255,0.15)
+ *   border-radius: 16px
+ * --color-surface (#090909) is close enough to agrex's --agrex-bg
+ * (#0a0a0a) that using the app token keeps a single source of truth. */
+.panel-chrome {
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+}

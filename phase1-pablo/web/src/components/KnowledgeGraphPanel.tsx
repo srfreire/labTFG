@@ -399,7 +399,7 @@ export default function KnowledgeGraphPanel({
       {/* Collapsed panel — sits directly below the Sidebar, matching its width */}
       <div
         onClick={() => setExpanded(true)}
-        className="fixed left-4 bottom-4 w-[160px] h-[180px] z-30 rounded-2xl bg-surface/80 backdrop-blur-xl border border-border shadow-xl shadow-black/20 flex flex-col overflow-hidden cursor-pointer hover:border-border-strong transition-[border-color] duration-200"
+        className="panel-chrome fixed left-4 bottom-4 w-[160px] h-[180px] z-30 flex flex-col overflow-hidden cursor-pointer transition-[border-color] duration-200"
       >
         {/* Header */}
         <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between shrink-0">
