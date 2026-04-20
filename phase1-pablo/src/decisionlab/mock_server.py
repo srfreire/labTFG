@@ -424,6 +424,25 @@ _run_records: dict[str, dict] = {}
 _run_events: dict[str, list[dict]] = {}
 
 
+# Node kinds that contribute to the replay stats bar (nodes / running / done /
+# errors / time / tokens / cost). Static nodes (output, file, search) are
+# artefacts, not billable work — exclude them.
+_STATS_KINDS = {"agent", "sub_agent", "tool"}
+
+
+def _synthetic_stats_for_kind(kind: str) -> tuple[int, float]:
+    """Rough token/cost sample for the mock. Agents burn the most (multi-turn
+    reasoning), sub-agents and tools much less. Cost uses a rough midpoint
+    between Claude Sonnet input ($3/MTok) and output ($15/MTok) pricing."""
+    if kind == "agent":
+        tokens = random.randint(5000, 12000)
+    elif kind == "sub_agent":
+        tokens = random.randint(2000, 6000)
+    else:  # tool
+        tokens = random.randint(200, 1500)
+    return tokens, tokens * 8e-6
+
+
 def _seed_past_run() -> None:
     """Populate one completed run at module load so the landing page has
     something in its Past Runs list on a fresh mock boot."""
@@ -431,6 +450,11 @@ def _seed_past_run() -> None:
     started_at = (
         datetime.now(timezone.utc) - timedelta(days=2)
     ).isoformat().replace("+00:00", "Z")
+
+    base_ts = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp() * 1000)
+    t_start = base_ts
+    t_tool = base_ts + 2_400
+    t_done = base_ts + 4_800
 
     raw: list[dict] = [
         {"type": "run_start", "run_id": run_id},
@@ -442,6 +466,7 @@ def _seed_past_run() -> None:
                 "kind": "agent",
                 "label": "Researcher",
                 "status": "running",
+                "metadata": {"startedAt": t_start},
             },
         },
         {
@@ -455,6 +480,12 @@ def _seed_past_run() -> None:
                 "meta": {
                     "toolType": "web_search",
                     "query": "optimal foraging under uncertainty",
+                },
+                "metadata": {
+                    "startedAt": t_tool,
+                    "endedAt": t_tool + 800,
+                    "tokens": 940,
+                    "cost": 940 * 8e-6,
                 },
             },
         },
@@ -493,12 +524,20 @@ def _seed_past_run() -> None:
                 "edge_kind": "write",
             },
         },
-        {"type": "node_update", "id": "researcher", "status": "done"},
+        {
+            "type": "node_update",
+            "id": "researcher",
+            "status": "done",
+            "metadata": {
+                "endedAt": t_done,
+                "tokens": 7_850,
+                "cost": 7_850 * 8e-6,
+            },
+        },
         {"type": "stage_change", "stage": "research", "status": "done"},
         {"type": "pipeline_done"},
     ]
 
-    base_ts = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp() * 1000)
     events = [
         {"seq": i, "ts": base_ts + i * 200, **ev}
         for i, ev in enumerate(raw, start=1)
@@ -567,13 +606,39 @@ class MockConnectionManager:
                     }
 
             if msg_type == "node_add":
-                self.nodes.append(msg["node"])
+                node = msg["node"]
+                # Stamp startedAt on billable nodes so the replay StatsBar
+                # (nodes / running / done / time / tokens / cost) can compute
+                # wall time. Sits on `metadata` (the field agrex reads),
+                # parallel to the existing labTFG `meta` field.
+                if node.get("kind") in _STATS_KINDS:
+                    md = dict(node.get("metadata") or {})
+                    md.setdefault("startedAt", int(time.time() * 1000))
+                    node["metadata"] = md
+                self.nodes.append(node)
             elif msg_type == "edge_add":
                 self.edges.append(msg["edge"])
             elif msg_type == "node_update":
                 for n in self.nodes:
                     if n["id"] == msg["id"]:
                         n["status"] = msg["status"]
+                        # When a billable node completes, enrich the outgoing
+                        # update with endedAt + synthetic tokens/cost and
+                        # mirror them onto our in-memory node so state_sync
+                        # keeps replays consistent. agrex's store.updateNode
+                        # merges the incoming `metadata` with the existing
+                        # one, so we don't need to include previous fields.
+                        kind = n.get("kind")
+                        if msg.get("status") == "done" and kind in _STATS_KINDS:
+                            tokens, cost = _synthetic_stats_for_kind(kind)
+                            md = dict(msg.get("metadata") or {})
+                            md.setdefault("endedAt", int(time.time() * 1000))
+                            md.setdefault("tokens", tokens)
+                            md.setdefault("cost", cost)
+                            msg["metadata"] = md
+                            merged = dict(n.get("metadata") or {})
+                            merged.update(md)
+                            n["metadata"] = merged
                         break
             elif msg_type == "stage_change":
                 self.current_stage = msg.get("stage")

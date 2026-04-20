@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Stage, StageStatus, STAGE_CONFIG, AgentState, MEMORY_AGENT_STAGES } from "../types";
+import { THEME } from "./Graph";
+
 interface SidebarProps {
   connected: boolean;
   stages: Record<Stage, StageStatus>;
@@ -11,11 +13,14 @@ interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
+// Pull sidebar status colors from the agrex theme so graph nodes and
+// pipeline dots share one palette (running = amber, done = green, error
+// = red, pending = the same faint border tint agrex uses on idle nodes).
 const STATUS_COLORS: Record<StageStatus, string> = {
-  pending: "rgba(255,255,255,0.15)",
-  running: "#fbbf24",
-  done: "#4ade80",
-  error: "#ef4444",
+  pending: THEME.nodeBorder,
+  running: THEME.statusRunning,
+  done: THEME.statusDone,
+  error: THEME.statusError,
 };
 
 const MAIN_DOT = 10;
@@ -24,9 +29,9 @@ const LINE_LEFT = 40; // center X for dots and lines
 const MEMORY_DOT = 6;
 
 const MEMORY_STATUS_COLORS: Record<AgentState["status"], string> = {
-  idle: "rgba(255,255,255,0.15)",
-  working: "#fbbf24",
-  done: "#4ade80",
+  idle: THEME.nodeBorder,
+  working: THEME.statusRunning,
+  done: THEME.statusDone,
 };
 
 function MemoryAgentDot({
@@ -147,7 +152,7 @@ export default function Sidebar({
           <span className="text-[13px] text-text-muted">Pipeline</span>
           <span
             className="w-2 h-2 rounded-full inline-block shrink-0"
-            style={{ background: connected ? "#4ade80" : "#ef4444" }}
+            style={{ background: connected ? THEME.statusDone : THEME.statusError }}
           />
         </div>
       </div>
