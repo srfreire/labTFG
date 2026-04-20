@@ -321,6 +321,13 @@ export default function App() {
     stepBoundaries: labStepBoundaries,
   });
 
+  // Gate replay event ingestion on having seen `run_start` in this session.
+  // The mock server re-emits stale `review_request` / `state_sync` on
+  // reconnect from unfinished previous-run state — without this guard, those
+  // messages would bump `replay.events.length` on a fresh page load and
+  // kick us out of the idle/landing state into a phantom run.
+  const liveRunActiveRef = useRef(false);
+
   const {
     connected,
     stages,
@@ -336,16 +343,20 @@ export default function App() {
     cancelPipeline,
     clearError,
   } = useWebSocket((msg) => {
-    // A fresh run resets the replay buffer so scrubbing a new pipeline
-    // doesn't show leftover events from the previous one. Order matters:
-    // reset → setMode('live') → appendLive, because `appendLive` is a no-op
-    // in 'replay' mode.
     if (msg.type === "run_start") {
+      // Fresh run: clear the replay buffer and open the live gate. Order
+      // matters: reset → setMode('live') → appendLive, because `appendLive`
+      // is a no-op in 'replay' mode.
       replay.reset();
       replay.setMode("live");
+      liveRunActiveRef.current = true;
     }
+    if (!liveRunActiveRef.current) return;
     replay.appendLive({ ts: Date.now(), ...msg } as AgrexEvent);
-    if (msg.type === "pipeline_done") replay.setMode("live-finished");
+    if (msg.type === "pipeline_done") {
+      replay.setMode("live-finished");
+      liveRunActiveRef.current = false;
+    }
   });
 
   const memoryAgent = agents.find((a) => a.name === "memory_agent");
@@ -359,6 +370,7 @@ export default function App() {
   );
   const exitReplay = useCallback(() => {
     replay.reset();
+    liveRunActiveRef.current = false;
   }, [replay]);
 
   const [selectedNode, setSelectedNode] = useState<AgrexNode | null>(null);

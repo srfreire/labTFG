@@ -1454,19 +1454,17 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
-    await manager.connect(ws)
-
-    # Reconnection: re-emit pending state
+    # Cancel any stale pipeline task on a fresh WS connect. The mock has no
+    # session/auth, so there's no way to tell a "reconnect from the same
+    # client" apart from "new browser tab after abandoning a run" — and
+    # leaking a pending_review across fresh tabs breaks the landing screen.
+    # Real deployments with session tracking would resume instead.
     if manager.pipeline_task and not manager.pipeline_task.done():
-        if manager.pending_review:
-            await ws.send_json(manager.pending_review)
-        else:
-            await ws.send_json({
-                "type": "state_sync",
-                "nodes": manager.nodes,
-                "edges": manager.edges,
-                "stage": manager.current_stage,
-            })
+        manager.pipeline_task.cancel()
+        manager.pipeline_task = None
+        manager.pending_review = None
+
+    await manager.connect(ws)
 
     try:
         while True:
