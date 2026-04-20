@@ -263,7 +263,12 @@ export default function Graph({
       toastPlacement="top-left"
       toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
       showDetailPanel={false}
-      showStats={!demo}
+      // Stats live on the sibling <AgrexTimeline> (App.tsx) via its own
+      // `showStats` prop. Agrex's internal StatsBar gate (`!timelineVisible`)
+      // only accounts for the EMBEDDED timeline — when <AgrexTimeline> is
+      // a sibling instead of being mounted via Agrex's `replay` prop, Agrex
+      // keeps rendering its floating bar, so we'd get two stats surfaces.
+      showStats={false}
       fitOnUpdate={!demo}
       animateEdges
       keyboardShortcuts={!demo}
