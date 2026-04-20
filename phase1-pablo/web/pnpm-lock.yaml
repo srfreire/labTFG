@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@ppazosp/agrex':
-        specifier: ^0.4.2
-        version: 0.4.2(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^0.5.1
+        version: 0.5.1(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/d3-force':
         specifier: ^3.0.10
         version: 3.0.10
@@ -430,8 +430,8 @@ packages:
     peerDependencies:
       three: '>= 0.159.0'
 
-  '@ppazosp/agrex@0.4.2':
-    resolution: {integrity: sha512-MIdfqyQUDknzduqcvkRBRMA8eYfXQYmsBxI9U1iDe4woUFx93Z21VQ4SW1P5/AKZ1bMdtsCjh29OxXHNoGyAOg==}
+  '@ppazosp/agrex@0.5.1':
+    resolution: {integrity: sha512-WSozNjIC0K/3ZccyGXbXKi8SOGc0LPpriivjCa7lb0YoVq3pnSzWp4MmoaJWp9N+tG/yyfjdYL8ZBlRl7eNtMw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@dagrejs/dagre': ^3.0.0
@@ -2468,7 +2468,7 @@ snapshots:
       promise-worker-transferable: 1.0.4
       three: 0.180.0
 
-  '@ppazosp/agrex@0.4.2(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@ppazosp/agrex@0.5.1(@xyflow/react@12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(d3-force@3.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@xyflow/react': 12.10.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4

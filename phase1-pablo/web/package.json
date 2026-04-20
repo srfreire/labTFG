@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ppazosp/agrex": "^0.4.2",
+    "@ppazosp/agrex": "^0.5.1",
     "@types/d3-force": "^3.0.10",
     "@xyflow/react": "^12.6.0",
     "d3-force": "^3.0.0",
