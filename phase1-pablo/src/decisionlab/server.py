@@ -45,6 +45,20 @@ app = FastAPI(title="DecisionLab", lifespan=lifespan)
 # ---------------------------------------------------------------------------
 
 
+def _is_spawn_for(msg: dict, buffered_node_add: dict) -> bool:
+    """True if `msg` is an `edge_add` whose spawn target is the buffered
+    node_add. Missing `edge_kind` is treated as spawn — it matches the
+    frontend's long-standing parent_id derivation in Graph.tsx."""
+    if msg.get("type") != "edge_add":
+        return False
+    edge = msg.get("edge")
+    if not isinstance(edge, dict):
+        return False
+    if edge.get("edge_kind") not in (None, "spawn"):
+        return False
+    return edge.get("target") == (buffered_node_add.get("node") or {}).get("id")
+
+
 class ConnectionManager:
     """Manages the single WebSocket connection and tracks graph state for
     reconnection, and persists the event stream for replay."""
@@ -63,6 +77,15 @@ class ConnectionManager:
         self._seq: int = 0
         self._logger = None  # type: ignore[assignment]
         self._store = None  # type: ignore[assignment]
+
+        # -- parent_id merge buffer --
+        # Holds the most recent node_add until we know whether the next event
+        # is a spawn edge targeting it. If so, we fold parent_id onto the
+        # node_add payload and drop the redundant spawn edge; otherwise we
+        # flush the node_add as-is. Lets the frontend build AgrexNode shape
+        # directly in its reducers (no render-time parent_id derivation) and
+        # use `<Agrex replay={...}>` to render from `replay.instance` cleanly.
+        self._pending_node_add: dict | None = None
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -111,6 +134,36 @@ class ConnectionManager:
         next emit), which preserves NDJSON ordering. Most emits only hit the
         in-memory batch buffer so the hot path stays cheap.
         """
+        # Buffer node_add for one event so we can fold a following spawn
+        # edge into its parent_id. See `_pending_node_add` docstring.
+        if self._pending_node_add is not None:
+            buffered = self._pending_node_add
+            if _is_spawn_for(msg, buffered):
+                buffered["node"].setdefault("parent_id", msg["edge"]["source"])
+                self._pending_node_add = None
+                await self._emit_raw(buffered)
+                return  # spawn edge absorbed into parent_id
+            self._pending_node_add = None
+            await self._emit_raw(buffered)
+
+        if msg.get("type") == "node_add":
+            node = msg.get("node") or {}
+            if not node.get("parent_id"):
+                # Hold briefly; the next emit either patches parent_id or
+                # flushes this node_add as a root.
+                self._pending_node_add = msg
+                return
+
+        await self._emit_raw(msg)
+
+    async def flush_pending_node_add(self) -> None:
+        """Flush any buffered node_add (e.g. at run teardown)."""
+        if self._pending_node_add is not None:
+            buffered = self._pending_node_add
+            self._pending_node_add = None
+            await self._emit_raw(buffered)
+
+    async def _emit_raw(self, msg: dict) -> None:
         msg_type = msg.get("type")
 
         # Start a new logger when a new run_start arrives.
@@ -167,6 +220,7 @@ class ConnectionManager:
 
     async def cancel_and_flush(self) -> None:
         """Call when a run is cancelled; persists the partial log."""
+        await self.flush_pending_node_add()
         await self._flush_log()
 
     async def handle_review_response(self, data: dict) -> None:

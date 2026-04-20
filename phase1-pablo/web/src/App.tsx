@@ -9,15 +9,15 @@ import {
 import { useWebSocket } from "./hooks/useWebSocket";
 import { Play } from "lucide-react";
 import Sidebar from "./components/Sidebar";
-import Graph, { THEME } from "./components/Graph";
+import Graph from "./components/Graph";
 import DemoGraph from "./components/DemoGraph";
 import KnowledgeGraphPanel from "./components/KnowledgeGraphPanel";
 import { EnvSpecUpload } from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
-import { Stage, type GraphNode, type GraphEdge } from "./types";
+import { Stage } from "./types";
 import PastRunsList from "./components/PastRunsList";
-import { useAgrexReplay, AgrexTimeline, type AgrexEvent } from "@ppazosp/agrex";
+import { useAgrexReplay, type AgrexEvent, type AgrexNode } from "@ppazosp/agrex";
 import {
   extractLabMarkers,
   fetchRunEvents,
@@ -38,18 +38,29 @@ function getFileExt(name: string): string {
 /*  Node detail panel                                                  */
 /* ------------------------------------------------------------------ */
 
+function nodeMetadata(node: AgrexNode): Record<string, unknown> {
+  return (node.metadata ?? {}) as Record<string, unknown>;
+}
+
+function nodeDisplayLabel(node: AgrexNode): string {
+  const meta = nodeMetadata(node);
+  return typeof meta.displayLabel === "string" ? meta.displayLabel : node.label;
+}
+
 function NodeDetail({
   node,
   onClose,
 }: {
-  node: GraphNode;
+  node: AgrexNode;
   onClose: () => void;
 }) {
-  const meta = node.meta;
+  const meta = nodeMetadata(node);
+  const kind = node.type;
+  const displayLabel = nodeDisplayLabel(node);
 
   let content: React.ReactNode = null;
 
-  switch (node.kind) {
+  switch (kind) {
     case "agent":
     case "sub_agent":
       if (meta.output) {
@@ -124,10 +135,10 @@ function NodeDetail({
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
         <div className="flex items-center gap-2">
           <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
-            {node.kind}
+            {kind}
           </span>
           <span className="text-[14px] text-white font-medium">
-            {node.label}
+            {displayLabel}
           </span>
         </div>
         <button
@@ -158,7 +169,7 @@ function OutputReviewModal({
   onDisapprove,
   onClose,
 }: {
-  outputs: GraphNode[];
+  outputs: AgrexNode[];
   index: number;
   approvals: Record<string, boolean>;
   mode: "single" | "sequence";
@@ -170,8 +181,9 @@ function OutputReviewModal({
   if (outputs.length === 0) return null;
 
   const node = outputs[index];
-  const content = String(node.meta?.content || "No content available.");
-  const path = String(node.meta?.path || node.label || "");
+  const meta = nodeMetadata(node);
+  const content = String(meta.content || "No content available.");
+  const path = String(meta.path || nodeDisplayLabel(node) || "");
   const ext = getFileExt(path);
   const approval: boolean | undefined =
     node.id in approvals ? approvals[node.id] : undefined;
@@ -215,7 +227,7 @@ function OutputReviewModal({
                 </span>
               )}
             </div>
-            <div className="text-[15px] text-text mt-1">{node.label}</div>
+            <div className="text-[15px] text-text mt-1">{nodeDisplayLabel(node)}</div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -311,8 +323,6 @@ export default function App() {
 
   const {
     connected,
-    nodes,
-    edges,
     stages,
     currentStage,
     reviewRequest,
@@ -351,7 +361,7 @@ export default function App() {
     replay.reset();
   }, [replay]);
 
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<AgrexNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -370,15 +380,20 @@ export default function App() {
   const reviewActive = reviewRequest !== null;
   const [reviewHintDismissed, setReviewHintDismissed] = useState(false);
 
-  /* Collect done output nodes for the stage currently under review */
+  /* Collect done output nodes for the stage currently under review. Source
+   * of truth is `replay.instance.nodes` — AgrexNode[] driven by the reducer,
+   * consistent whether the run is live, scrubbed, or a loaded past run. */
+  const replayNodes = replay.instance.nodes;
   const stageOutputs = useMemo(() => {
-    const allDone = nodes.filter(
-      (n) => n.kind === "output" && n.status === "done",
+    const allDone = replayNodes.filter(
+      (n) => n.type === "output" && n.status === "done",
     );
     if (!reviewRequest) return allDone;
     const target = reviewRequest.stage.replace(/^review_/, "");
-    return allDone.filter((n) => n.meta?.stage === target);
-  }, [nodes, reviewRequest]);
+    return allDone.filter(
+      (n) => (n.metadata as Record<string, unknown> | undefined)?.stage === target,
+    );
+  }, [replayNodes, reviewRequest]);
 
   /* Reset review state when review stage changes */
   const reviewStage = reviewRequest?.stage ?? null;
@@ -400,8 +415,8 @@ export default function App() {
 
   /* ── Node click ── */
   const handleNodeClick = useCallback(
-    (node: GraphNode) => {
-      if (reviewActive && node.kind === "output" && node.status === "done") {
+    (node: AgrexNode) => {
+      if (reviewActive && node.type === "output" && node.status === "done") {
         setDismissedOutputs((prev) => new Set([...prev, node.id]));
         const idx = stageOutputs.findIndex((n) => n.id === node.id);
         if (idx >= 0) {
@@ -498,22 +513,11 @@ export default function App() {
     setRouterPrompt("");
   }, [routerPrompt, sendRouterPrompt]);
 
-  // The replay hook keeps its internal store in sync with `events[0..cursor]`,
-  // so in live mode (cursor pinned to the tail) it matches the useWebSocket
-  // state, and in replay/scrubbed views it reflects the past position. Always
-  // read from it once a run has started; fall back to useWebSocket state when
-  // idle (before any events exist).
-  const displayNodes =
-    replay.events.length > 0
-      ? (replay.instance.nodes as unknown as GraphNode[])
-      : nodes;
-  const displayEdges =
-    replay.events.length > 0
-      ? (replay.instance.edges as unknown as GraphEdge[])
-      : edges;
-
+  // Agrex renders directly from `replay.instance` when we hand it `replay`;
+  // no separate "display" array. For idle-detection we just check whether
+  // the replay has any events yet.
   const hasGraph =
-    nodes.length > 0 ||
+    replay.events.length > 0 ||
     replay.mode === "replay" ||
     replay.mode === "live-finished";
   const showIdle = !hasGraph && !isRunning && replay.mode === "idle";
@@ -644,17 +648,21 @@ export default function App() {
             </div>
           ) : (
             <>
-              {/* Graph */}
+              {/* Graph — Agrex renders from `replay.instance` and mounts
+                  its own timeline at the bottom. UI overlays go through
+                  Graph's context. */}
               <div className="flex-1 min-w-0 h-full">
                 <Graph
-                  nodes={displayNodes}
-                  edges={displayEdges}
+                  replay={replay}
                   onNodeClick={handleNodeClick}
-                  reviewActive={reviewActive}
-                  currentStage={currentStage}
-                  dismissedOutputIds={dismissedOutputs}
-                  outputApprovals={outputApprovals}
+                  uiState={{
+                    currentStage,
+                    dismissedOutputIds: dismissedOutputs,
+                    outputApprovals,
+                  }}
                   sidebarCollapsed={sidebarCollapsed}
+                  timelineCollapsedChange={setTimelineCollapsed}
+                  onExitReplay={replay.mode === "replay" ? exitReplay : undefined}
                 />
               </div>
 
@@ -810,16 +818,6 @@ export default function App() {
         />
       )}
 
-      {replay.mode !== "idle" && (
-        <AgrexTimeline
-          replay={replay}
-          theme={THEME}
-          onExit={replay.mode === "replay" ? exitReplay : undefined}
-          onCollapsedChange={setTimelineCollapsed}
-          jumpMarkerKind="stage"
-          showStats
-        />
-      )}
     </div>
   );
 }

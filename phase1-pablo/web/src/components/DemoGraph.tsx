@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Graph from "./Graph";
 import type { GraphNode, GraphEdge } from "../types";
+import { toAgrexNode, toAgrexEdge } from "../lib/replayAdapter";
+import type { AgrexEdge } from "@ppazosp/agrex";
 
 /* ── Mock data: each wave = nodes that appear simultaneously ──── */
 
@@ -148,7 +150,7 @@ export default function DemoGraph({ onComplete }: { onComplete?: () => void }) {
     });
 
     const nodeIds = new Set(nodes.map((nd) => nd.id));
-    const edges: GraphEdge[] = visible
+    const rawEdges: GraphEdge[] = visible
       .filter(
         (item) =>
           item.edge &&
@@ -157,7 +159,30 @@ export default function DemoGraph({ onComplete }: { onComplete?: () => void }) {
       )
       .map((item) => item.edge!);
 
-    return { nodes, edges };
+    // Translate GraphNode/GraphEdge → AgrexNode/AgrexEdge (the canonical
+    // shape Agrex renders from). Pull parent_id out of the wave definition:
+    // each "spawn" edge in the demo describes the child's parent.
+    const parentByTarget = new Map<string, string>();
+    for (const edge of rawEdges) {
+      if ((!edge.edge_kind || edge.edge_kind === "spawn") && !parentByTarget.has(edge.target)) {
+        parentByTarget.set(edge.target, edge.source);
+      }
+    }
+    const agrexNodes = nodes.map((nd) =>
+      toAgrexNode({
+        id: nd.id,
+        kind: nd.kind,
+        label: nd.label,
+        parent_id: nd.parent_id ?? parentByTarget.get(nd.id),
+        status: nd.status,
+        meta: nd.meta,
+      }),
+    );
+    const agrexEdges = rawEdges
+      .map((edge) => toAgrexEdge(edge))
+      .filter((e): e is AgrexEdge => e !== null);
+
+    return { nodes: agrexNodes, edges: agrexEdges };
   }, [currentStep, allDone]);
 
   return (

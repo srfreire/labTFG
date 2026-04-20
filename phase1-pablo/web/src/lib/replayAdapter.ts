@@ -1,36 +1,89 @@
 import {
   defaultStepBoundaries,
+  type AgrexEdge,
   type AgrexEvent,
   type AgrexMarker,
+  type AgrexNode,
   type EventReducer,
 } from "@ppazosp/agrex";
 import type { Stage } from "../types";
 
-// labTFG's event shapes are richer than agrex's canonical set:
-// - edges arrive without an `id` (source/target pair is the key)
-// - `graph_clear` and `state_sync` are mutation events agrex doesn't know about
-// Built-in `node_add` / `node_update` / `node_remove` / `clear` reducers from
-// agrex are reused via `composeReducers` (applied automatically by
-// `useAgrexReplay`), so we only override what differs.
+// The backend emits its own GraphNode / GraphEdge shape (`kind`, `parent_id`,
+// `meta`). Agrex renders from AgrexNode shape (`type`, `parentId`,
+// `metadata`) and derives parent-child edges from `parentId`. Translating in
+// the reducers keeps `replay.instance` in Agrex's canonical shape, so we can
+// hand the whole `replay` to `<Agrex>` and let it render + embed the timeline
+// with no app-side transformation layer.
 
-function edgeWithId(edge: unknown): { id: string; source: string; target: string } & Record<string, unknown> {
-  const e = edge as { source: string; target: string } & Record<string, unknown>;
-  return { id: `${e.source}-${e.target}`, ...e };
+interface BackendNode {
+  id: string;
+  kind: string;
+  label: string;
+  parent_id?: string;
+  status?: AgrexNode["status"];
+  meta?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+interface BackendEdge {
+  source: string;
+  target: string;
+  edge_kind?: "spawn" | "read" | "write" | "layout";
+}
+
+export function toAgrexNode(n: BackendNode): AgrexNode {
+  // Agrex resolves tool icons via `toolIcons[node.label]`. labTFG's tool
+  // nodes carry a filename/query as their descriptive label, so we promote
+  // `meta.toolType` to the Agrex label and keep the original in metadata
+  // under `displayLabel` for renderers/tooltips.
+  const toolType = n.kind === "tool" ? (n.meta as Record<string, unknown> | undefined)?.toolType : undefined;
+  const label = typeof toolType === "string" ? toolType : n.label;
+  return {
+    id: n.id,
+    type: n.kind,
+    label,
+    parentId: n.parent_id,
+    status: n.status,
+    metadata: {
+      ...(n.meta ?? {}),
+      ...(n.metadata ?? {}),
+      displayLabel: n.label,
+    },
+  };
+}
+
+export function toAgrexEdge(e: BackendEdge): AgrexEdge | null {
+  // Spawn edges are implicit — Agrex derives parent→child relations from
+  // `parentId`. `layout` edges are invisible positioning hints in labTFG and
+  // not something Agrex understands. Drop both.
+  if (!e.edge_kind || e.edge_kind === "spawn" || e.edge_kind === "layout") return null;
+  return {
+    id: `${e.source}-${e.target}`,
+    source: e.source,
+    target: e.target,
+    type: e.edge_kind,
+  };
 }
 
 export const labReducers: Record<string, EventReducer> = {
+  node_add(store, ev) {
+    const node = ev.node as BackendNode | undefined;
+    if (node) store.addNode(toAgrexNode(node));
+  },
   edge_add(store, ev) {
-    if (ev.edge) store.addEdge(edgeWithId(ev.edge));
+    const edge = ev.edge as BackendEdge | undefined;
+    const mapped = edge ? toAgrexEdge(edge) : null;
+    if (mapped) store.addEdge(mapped);
   },
   graph_clear(store) {
     store.clear();
   },
   state_sync(store, ev) {
-    const nodes = (ev.nodes as Record<string, unknown>[]) ?? [];
-    const edges = ((ev.edges as Record<string, unknown>[]) ?? []).map(edgeWithId);
-    // AgrexNode vs labTFG GraphNode: labTFG's custom Graph component renders
-    // the stored objects directly, so field-name translation isn't needed.
-    store.loadJSON({ nodes: nodes as never, edges });
+    const nodes = ((ev.nodes as BackendNode[] | undefined) ?? []).map(toAgrexNode);
+    const edges = ((ev.edges as BackendEdge[] | undefined) ?? [])
+      .map(toAgrexEdge)
+      .filter((e): e is AgrexEdge => e !== null);
+    store.loadJSON({ nodes, edges });
   },
 };
 
@@ -123,16 +176,13 @@ export function labStepBoundaries(events: AgrexEvent[]): number[] {
 /**
  * Fetches and parses an NDJSON run log from the backend.
  *
- * Also rewrites `node_add` events so the spawned node carries `parent_id`
- * inline. The backend emits `node_add` first, then a separate spawn
- * `edge_add` — that order works for burst reduction (all events applied
- * atomically, labTFG's Graph builds its parent map from the full edge list)
- * but NOT for incremental reduction: at the moment `node_add` is applied,
- * the spawn edge hasn't arrived yet, so the node carries no parent and the
- * layout drops it as a root. Its position locks before the edge catches up.
- * Scanning the log once at fetch time and baking `parent_id` onto each
- * sub-node eliminates the ordering hazard for all downstream replay paths
- * (load-then-scrub, play-from-start, step-through).
+ * Also rewrites legacy `node_add` events so the spawned node carries
+ * `parent_id` inline — older persisted runs relied on a following spawn
+ * `edge_add` to establish the parent relationship, which worked for burst
+ * reduction but broke incremental replay (the node_add applied first, then
+ * the layout locked its position as a root before the edge arrived). New
+ * runs from the current backend already emit `parent_id` inline, so this
+ * pass is a no-op for them.
  */
 export async function fetchRunEvents(runId: string): Promise<AgrexEvent[]> {
   const resp = await fetch(`/api/runs/${runId}/events`);
@@ -146,16 +196,23 @@ export async function fetchRunEvents(runId: string): Promise<AgrexEvent[]> {
 }
 
 /**
- * Given a full event log, return a copy where each `node_add` whose target
- * later appears as the target of a `spawn` edge_add carries `parent_id` on
- * its node payload. Non-matching node_add events pass through unchanged.
+ * Legacy-log compatibility: given a full event log, return a copy where
+ * each `node_add` whose target later appears as the target of a spawn
+ * `edge_add` carries `parent_id` on its node payload. No-op for logs where
+ * the backend already emits `parent_id` inline.
  */
 export function injectSpawnParents(events: AgrexEvent[]): AgrexEvent[] {
   const spawnParent = new Map<string, string>(); // target node id → source node id
   for (const ev of events) {
     if (ev.type === "edge_add") {
       const edge = ev.edge as { source?: string; target?: string; edge_kind?: string } | undefined;
-      if (edge && edge.edge_kind === "spawn" && edge.source && edge.target && !spawnParent.has(edge.target)) {
+      if (
+        edge &&
+        (edge.edge_kind === "spawn" || edge.edge_kind === undefined) &&
+        edge.source &&
+        edge.target &&
+        !spawnParent.has(edge.target)
+      ) {
         spawnParent.set(edge.target, edge.source);
       }
     }

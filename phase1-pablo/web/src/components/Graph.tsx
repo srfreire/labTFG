@@ -1,14 +1,37 @@
-import { useMemo, useCallback, useRef } from 'react';
-import { Agrex, type AgrexNodeProps } from '@ppazosp/agrex';
-import type { AgrexNode, AgrexEdge } from '@ppazosp/agrex';
+import { createContext, useContext, useMemo } from 'react';
+import {
+  Agrex,
+  type AgrexHandle,
+  type AgrexNode,
+  type AgrexNodeProps,
+  type AgrexEdge,
+  type UseAgrexReplay,
+} from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
 import { Globe, Eye, Pencil, FlaskConical, Database } from 'lucide-react';
-import { type GraphNode, type GraphEdge } from '../types';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
-/* ── Custom renderers for node types agrex doesn't have ───── */
+/* ── UI overlay state ─────────────────────────────────────────────
+ * Renderers need app-side state (review stage, output approvals,
+ * dismissal) that isn't part of the event stream. Previously we
+ * baked it into each AgrexNode's metadata at render time via a
+ * transformation layer. With the reducer now owning the
+ * GraphNode→AgrexNode translation and Agrex rendering straight from
+ * `replay.instance`, we instead read it from a context the
+ * renderers consume.
+ */
+export interface GraphUIState {
+  currentStage?: string | null;
+  dismissedOutputIds?: Set<string>;
+  outputApprovals?: Record<string, boolean>;
+}
+
+const UIStateContext = createContext<GraphUIState>({});
+const useUIState = () => useContext(UIStateContext);
+
+/* ── Custom renderers for node types agrex doesn't have ──────── */
 
 function SearchRenderer({ status, theme }: AgrexNodeProps) {
   const borderColor =
@@ -33,22 +56,27 @@ function SearchRenderer({ status, theme }: AgrexNodeProps) {
 }
 
 function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
-  const meta = node.metadata || {};
-  const approval = meta.approval as boolean | undefined;
+  const { currentStage, dismissedOutputIds, outputApprovals } = useUIState();
+  const approval = outputApprovals?.[node.id];
   const rejected = approval === false;
   const decided = approval !== undefined;
+  const dismissed = dismissedOutputIds?.has(node.id) ?? false;
   const glow =
     status === 'done' &&
-    !meta.dismissed &&
+    !dismissed &&
     !decided &&
-    typeof meta.currentStage === 'string' &&
-    meta.currentStage.startsWith('review_');
+    typeof currentStage === 'string' &&
+    currentStage.startsWith('review_');
 
   const borderColor =
     status === 'done' ? theme.statusDone
     : status === 'running' ? theme.statusRunning
     : status === 'error' ? theme.statusError
     : theme.nodeBorder;
+
+  // Descriptive filename lives in metadata.displayLabel (the renderer-
+  // facing name) since node.label is used for toolIcons lookup.
+  const descriptive = (node.metadata?.displayLabel as string | undefined) ?? node.label;
 
   const S = 48;
   const H = Math.round((S * 2) / Math.sqrt(3));
@@ -82,7 +110,7 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
         style={{ cursor: status === 'done' ? 'pointer' : 'default' }}
       >
         <NodeHandles />
-        <FileTypeLogo label={node.label} size={22} />
+        <FileTypeLogo label={descriptive} size={22} />
       </div>
     </div>
   );
@@ -121,157 +149,80 @@ export const THEME = {
   fontMono: 'var(--font-mono)',
 };
 
-/* ── Props (same interface as before — nothing else needs to change) ── */
+/* ── Props ─────────────────────────────────────────────────────── */
 
 interface GraphProps {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  onNodeClick?: (node: GraphNode) => void;
-  reviewActive?: boolean;
-  currentStage?: string | null;
-  dismissedOutputIds?: Set<string>;
-  outputApprovals?: Record<string, boolean>;
+  /** Replay-driven mode: pass the hook instance to get an embedded timeline. */
+  replay?: UseAgrexReplay;
+  /** Static mode: AgrexNode[] passed directly (used by DemoGraph). */
+  nodes?: AgrexNode[];
+  edges?: AgrexEdge[];
+  onNodeClick?: (node: AgrexNode) => void;
+  uiState?: GraphUIState;
   demo?: boolean;
   sidebarCollapsed?: boolean;
+  timelineCollapsedChange?: (collapsed: boolean) => void;
+  onExitReplay?: () => void;
+  agrexRef?: React.Ref<AgrexHandle>;
 }
 
-/* ── Component ── */
+/* ── Component ─────────────────────────────────────────────────── */
 
 export default function Graph({
+  replay,
   nodes,
   edges,
   onNodeClick,
-  currentStage,
-  dismissedOutputIds,
-  outputApprovals,
+  uiState,
   demo,
   sidebarCollapsed,
+  timelineCollapsedChange,
+  onExitReplay,
+  agrexRef,
 }: GraphProps) {
-  const nodeMapRef = useRef(new Map<string, GraphNode>());
-  const prevAgrexNodesRef = useRef(new Map<string, AgrexNode>());
-  const prevAgrexEdgesRef = useRef(new Map<string, AgrexEdge>());
-
-  const { agrexNodes, agrexEdges } = useMemo(() => {
-    // Derive parentId from spawn edges for nodes without parent_id
-    const parentMap = new Map<string, string>();
-    for (const e of edges) {
-      if (!e.edge_kind || e.edge_kind === 'spawn') {
-        if (!parentMap.has(e.target)) parentMap.set(e.target, e.source);
-      }
-    }
-
-    const map = new Map<string, GraphNode>();
-    const prevNodes = prevAgrexNodesRef.current;
-    const nextNodes = new Map<string, AgrexNode>();
-
-    const agrexNodes: AgrexNode[] = nodes.map((n) => {
-      map.set(n.id, n);
-      const parentId = n.parent_id || parentMap.get(n.id);
-      const dismissed = dismissedOutputIds?.has(n.id) ?? false;
-      const approval = outputApprovals?.[n.id];
-      const prev = prevNodes.get(n.id);
-      const prevMeta = prev?.metadata as Record<string, unknown> | undefined;
-
-      // Agrex resolves tool icons via `toolIcons[node.label]`. Tool nodes in this
-      // project use a filename/query as their human-readable label, so without
-      // this mapping every tool node would fall back to the Wrench icon. Use
-      // meta.toolType (e.g. "read_file", "retrieve_knowledge") as the Agrex
-      // label; the descriptive label is preserved in metadata.displayLabel for
-      // renderers and tooltips that want it.
-      const toolType = (n.kind === 'tool' ? (n.meta?.toolType as string | undefined) : undefined);
-      const agrexLabel = toolType ?? n.label;
-
-      // Reuse the previous AgrexNode reference if nothing observable changed
-      if (
-        prev &&
-        prev.type === n.kind &&
-        prev.label === agrexLabel &&
-        prev.parentId === parentId &&
-        prev.status === n.status &&
-        prevMeta?.__raw === n.meta &&
-        prevMeta?.currentStage === (currentStage ?? undefined) &&
-        prevMeta?.dismissed === dismissed &&
-        prevMeta?.approval === approval
-      ) {
-        nextNodes.set(n.id, prev);
-        return prev;
-      }
-
-      const node: AgrexNode = {
-        id: n.id,
-        type: n.kind,
-        label: agrexLabel,
-        parentId,
-        status: n.status,
-        metadata: {
-          ...n.meta,
-          __raw: n.meta,
-          displayLabel: n.label,
-          currentStage: currentStage ?? undefined,
-          dismissed,
-          approval,
-        },
-      };
-      nextNodes.set(n.id, node);
-      return node;
-    });
-    nodeMapRef.current = map;
-    prevAgrexNodesRef.current = nextNodes;
-
-    // Only non-spawn, non-layout edges (spawn edges auto-derived from parentId)
-    const prevEdges = prevAgrexEdgesRef.current;
-    const nextEdges = new Map<string, AgrexEdge>();
-    const agrexEdges: AgrexEdge[] = edges
-      .filter((e) => e.edge_kind === 'read' || e.edge_kind === 'write')
-      .map((e) => {
-        const id = `${e.source}-${e.target}`;
-        const prev = prevEdges.get(id);
-        if (prev && prev.source === e.source && prev.target === e.target && prev.type === e.edge_kind) {
-          nextEdges.set(id, prev);
-          return prev;
-        }
-        const edge: AgrexEdge = { id, source: e.source, target: e.target, type: e.edge_kind! };
-        nextEdges.set(id, edge);
-        return edge;
-      });
-    prevAgrexEdgesRef.current = nextEdges;
-
-    return { agrexNodes, agrexEdges };
-  }, [nodes, edges, currentStage, dismissedOutputIds, outputApprovals]);
-
-  const handleNodeClick = useCallback(
-    (agrexNode: AgrexNode) => {
-      if (!onNodeClick) return;
-      const original = nodeMapRef.current.get(agrexNode.id);
-      if (original) onNodeClick(original);
-    },
-    [onNodeClick],
+  // Freeze the context value when the pieces don't change so renderers
+  // only re-evaluate when the overlay actually shifts.
+  const ctx = useMemo<GraphUIState>(
+    () => ({
+      currentStage: uiState?.currentStage,
+      dismissedOutputIds: uiState?.dismissedOutputIds,
+      outputApprovals: uiState?.outputApprovals,
+    }),
+    [uiState?.currentStage, uiState?.dismissedOutputIds, uiState?.outputApprovals],
   );
 
   return (
-    <Agrex
-      nodes={agrexNodes}
-      edges={agrexEdges}
-      onNodeClick={onNodeClick ? handleNodeClick : undefined}
-      nodeRenderers={NODE_RENDERERS}
-      toolIcons={TOOL_ICONS}
-      theme={THEME}
-      className="w-full h-full"
-      showControls={!demo}
-      showLegend={!demo}
-      showToasts={!demo}
-      toastPlacement="top-left"
-      toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
-      showDetailPanel={false}
-      // Stats live on the sibling <AgrexTimeline> (App.tsx) via its own
-      // `showStats` prop. Agrex's internal StatsBar gate (`!timelineVisible`)
-      // only accounts for the EMBEDDED timeline — when <AgrexTimeline> is
-      // a sibling instead of being mounted via Agrex's `replay` prop, Agrex
-      // keeps rendering its floating bar, so we'd get two stats surfaces.
-      showStats={false}
-      fitOnUpdate={!demo}
-      animateEdges
-      keyboardShortcuts={!demo}
-    />
+    <UIStateContext.Provider value={ctx}>
+      <Agrex
+        ref={agrexRef}
+        replay={replay}
+        nodes={nodes}
+        edges={edges}
+        onNodeClick={onNodeClick}
+        nodeRenderers={NODE_RENDERERS}
+        toolIcons={TOOL_ICONS}
+        theme={THEME}
+        className="w-full h-full"
+        showControls={!demo}
+        showLegend={!demo}
+        showToasts={!demo}
+        toastPlacement="top-left"
+        toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
+        showDetailPanel={false}
+        fitOnUpdate={!demo}
+        animateEdges
+        keyboardShortcuts={!demo}
+        // Embedded timeline — rendered only when `replay` is provided and
+        // `replay.mode !== "idle"`. Stats live inside the timeline panel, so
+        // the floating StatsBar auto-hides (gated by `!timelineVisible`).
+        showTimeline={!demo}
+        timelineProps={{
+          jumpMarkerKind: 'stage',
+          onCollapsedChange: timelineCollapsedChange,
+          onExit: onExitReplay,
+          showStats: true,
+        }}
+      />
+    </UIStateContext.Provider>
   );
 }

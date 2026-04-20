@@ -555,6 +555,20 @@ def _seed_past_run() -> None:
 _seed_past_run()
 
 
+def _is_spawn_for(msg: dict, buffered_node_add: dict) -> bool:
+    """True if `msg` is a spawn edge_add targeting the buffered node_add.
+    Missing `edge_kind` is treated as spawn (matches the frontend's legacy
+    parent_id derivation)."""
+    if msg.get("type") != "edge_add":
+        return False
+    edge = msg.get("edge")
+    if not isinstance(edge, dict):
+        return False
+    if edge.get("edge_kind") not in (None, "spawn"):
+        return False
+    return edge.get("target") == (buffered_node_add.get("node") or {}).get("id")
+
+
 class MockConnectionManager:
     def __init__(self) -> None:
         self.ws: WebSocket | None = None
@@ -566,6 +580,10 @@ class MockConnectionManager:
         self._emit_lock = asyncio.Lock()
         self._seq: int = 0
         self._run_id: str | None = None
+        # Hold one node_add while we wait to see whether the next event is a
+        # spawn edge to the same node. If so, we fold parent_id onto the
+        # node_add payload and drop the redundant edge.
+        self._pending_node_add: dict | None = None
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -586,84 +604,116 @@ class MockConnectionManager:
     async def emit(self, msg: dict) -> None:
         """Thread-safe emit — serializes concurrent sends from parallel tasks."""
         async with self._emit_lock:
-            msg_type = msg.get("type")
-
-            # Start a new run log on run_start
-            if msg_type == "run_start":
-                run_id = msg.get("run_id")
-                if run_id:
-                    self._run_id = run_id
-                    self._seq = 0
-                    _run_events[run_id] = []
-                    _run_records[run_id] = {
-                        "run_id": run_id,
-                        "problem": _current_problem.get("value", "mock run"),
-                        "status": "running",
-                        "started_at": datetime.now(timezone.utc)
-                        .isoformat()
-                        .replace("+00:00", "Z"),
-                        "artifact_count": None,
-                    }
-
-            if msg_type == "node_add":
-                node = msg["node"]
-                # Stamp startedAt on billable nodes so the replay StatsBar
-                # (nodes / running / done / time / tokens / cost) can compute
-                # wall time. Sits on `metadata` (the field agrex reads),
-                # parallel to the existing labTFG `meta` field.
-                if node.get("kind") in _STATS_KINDS:
-                    md = dict(node.get("metadata") or {})
-                    md.setdefault("startedAt", int(time.time() * 1000))
-                    node["metadata"] = md
-                self.nodes.append(node)
-            elif msg_type == "edge_add":
-                self.edges.append(msg["edge"])
-            elif msg_type == "node_update":
-                for n in self.nodes:
-                    if n["id"] == msg["id"]:
-                        n["status"] = msg["status"]
-                        # When a billable node completes, enrich the outgoing
-                        # update with endedAt + synthetic tokens/cost and
-                        # mirror them onto our in-memory node so state_sync
-                        # keeps replays consistent. agrex's store.updateNode
-                        # merges the incoming `metadata` with the existing
-                        # one, so we don't need to include previous fields.
-                        kind = n.get("kind")
-                        if msg.get("status") == "done" and kind in _STATS_KINDS:
-                            tokens, cost = _synthetic_stats_for_kind(kind)
-                            md = dict(msg.get("metadata") or {})
-                            md.setdefault("endedAt", int(time.time() * 1000))
-                            md.setdefault("tokens", tokens)
-                            md.setdefault("cost", cost)
-                            msg["metadata"] = md
-                            merged = dict(n.get("metadata") or {})
-                            merged.update(md)
-                            n["metadata"] = merged
-                        break
-            elif msg_type == "stage_change":
-                self.current_stage = msg.get("stage")
-            elif msg_type == "review_request":
-                self.pending_review = msg
-            elif msg_type == "graph_clear":
-                self.nodes.clear()
-                self.edges.clear()
-            elif msg_type == "pipeline_done":
-                self.pending_review = None
-                if self._run_id and self._run_id in _run_records:
-                    rec = _run_records[self._run_id]
-                    rec["status"] = "done"
-                    # Count "output" nodes as the mock's artifact-count proxy
-                    rec["artifact_count"] = sum(
-                        1 for n in self.nodes if n.get("kind") == "output"
+            # Fold a following spawn edge into the previous node_add's
+            # parent_id so the frontend never needs late-edge parent_id
+            # derivation. See `_pending_node_add` docstring.
+            if self._pending_node_add is not None:
+                buffered = self._pending_node_add
+                if _is_spawn_for(msg, buffered):
+                    buffered["node"].setdefault(
+                        "parent_id", msg["edge"]["source"]
                     )
+                    self._pending_node_add = None
+                    await self._emit_raw(buffered)
+                    return  # spawn edge absorbed into parent_id
+                self._pending_node_add = None
+                await self._emit_raw(buffered)
 
-            self._record_event(msg)
+            if msg.get("type") == "node_add":
+                node = msg.get("node") or {}
+                if not node.get("parent_id"):
+                    self._pending_node_add = msg
+                    return
 
-            if self.ws is not None:
-                try:
-                    await self.ws.send_json(msg)
-                except Exception:
-                    pass
+            await self._emit_raw(msg)
+
+    async def _flush_pending_node_add_locked(self) -> None:
+        """Flush any buffered node_add. Caller must hold `_emit_lock`."""
+        if self._pending_node_add is not None:
+            buffered = self._pending_node_add
+            self._pending_node_add = None
+            await self._emit_raw(buffered)
+
+    async def _emit_raw(self, msg: dict) -> None:
+        """Apply bookkeeping, persist, send. Caller must hold `_emit_lock`."""
+        msg_type = msg.get("type")
+
+        # Start a new run log on run_start
+        if msg_type == "run_start":
+            run_id = msg.get("run_id")
+            if run_id:
+                self._run_id = run_id
+                self._seq = 0
+                _run_events[run_id] = []
+                _run_records[run_id] = {
+                    "run_id": run_id,
+                    "problem": _current_problem.get("value", "mock run"),
+                    "status": "running",
+                    "started_at": datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "artifact_count": None,
+                }
+
+        if msg_type == "node_add":
+            node = msg["node"]
+            # Stamp startedAt on billable nodes so the replay StatsBar
+            # (nodes / running / done / time / tokens / cost) can compute
+            # wall time. Sits on `metadata` (the field agrex reads),
+            # parallel to the existing labTFG `meta` field.
+            if node.get("kind") in _STATS_KINDS:
+                md = dict(node.get("metadata") or {})
+                md.setdefault("startedAt", int(time.time() * 1000))
+                node["metadata"] = md
+            self.nodes.append(node)
+        elif msg_type == "edge_add":
+            self.edges.append(msg["edge"])
+        elif msg_type == "node_update":
+            for n in self.nodes:
+                if n["id"] == msg["id"]:
+                    n["status"] = msg["status"]
+                    # When a billable node completes, enrich the outgoing
+                    # update with endedAt + synthetic tokens/cost and
+                    # mirror them onto our in-memory node so state_sync
+                    # keeps replays consistent. agrex's store.updateNode
+                    # merges the incoming `metadata` with the existing
+                    # one, so we don't need to include previous fields.
+                    kind = n.get("kind")
+                    if msg.get("status") == "done" and kind in _STATS_KINDS:
+                        tokens, cost = _synthetic_stats_for_kind(kind)
+                        md = dict(msg.get("metadata") or {})
+                        md.setdefault("endedAt", int(time.time() * 1000))
+                        md.setdefault("tokens", tokens)
+                        md.setdefault("cost", cost)
+                        msg["metadata"] = md
+                        merged = dict(n.get("metadata") or {})
+                        merged.update(md)
+                        n["metadata"] = merged
+                    break
+        elif msg_type == "stage_change":
+            self.current_stage = msg.get("stage")
+        elif msg_type == "review_request":
+            self.pending_review = msg
+        elif msg_type == "graph_clear":
+            self.nodes.clear()
+            self.edges.clear()
+        elif msg_type == "pipeline_done":
+            self.pending_review = None
+            if self._run_id and self._run_id in _run_records:
+                rec = _run_records[self._run_id]
+                rec["status"] = "done"
+                # Count "output" nodes as the mock's artifact-count proxy
+                rec["artifact_count"] = sum(
+                    1 for n in self.nodes if n.get("kind") == "output"
+                )
+
+        self._record_event(msg)
+
+        if self.ws is not None:
+            try:
+                await self.ws.send_json(msg)
+            except Exception:
+                pass
 
     async def cancel_and_mark(self) -> None:
         if self._run_id and self._run_id in _run_records:
