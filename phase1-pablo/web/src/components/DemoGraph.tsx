@@ -161,7 +161,10 @@ export default function DemoGraph({ onComplete }: { onComplete?: () => void }) {
   }, [currentStep, allDone]);
 
   return (
-    <div className="w-full h-full">
+    // Demo graph is decorative — swallow pointer events so it can't be
+    // panned, zoomed, dragged, or clicked. Agrex delegates to ReactFlow,
+    // which doesn't expose individual interaction toggles to consumers.
+    <div className="w-full h-full pointer-events-none select-none">
       <Graph nodes={nodes} edges={edges} demo />
     </div>
   );
