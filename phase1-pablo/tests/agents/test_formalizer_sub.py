@@ -94,5 +94,6 @@ async def test_formalizer_sub_uses_opus_model(make_text_block, make_response):
     agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
     await agent.run("homeostatic")
 
+    from decisionlab.config import SETTINGS
     call_kwargs = client.messages.create.call_args
-    assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+    assert call_kwargs.kwargs["model"] == SETTINGS.formalizer.model

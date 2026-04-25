@@ -165,5 +165,6 @@ async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_res
     )
     await agent.run("pi_controller", "reasoner/homeostatic/pi_controller.json")
 
+    from decisionlab.config import SETTINGS
     call_kwargs = client.messages.create.call_args
-    assert call_kwargs.kwargs["model"] == "claude-sonnet-4-6"
+    assert call_kwargs.kwargs["model"] == SETTINGS.builder.model

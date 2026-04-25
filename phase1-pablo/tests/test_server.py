@@ -58,6 +58,9 @@ async def test_emit_node_add_appends_to_nodes(manager, fake_ws):
     await manager.connect(fake_ws)
     msg = {"type": "node_add", "node": {"id": "n1", "label": "Researcher"}}
     await manager.emit(msg)
+    # Root node_add events are buffered for one tick so a following spawn edge
+    # can be folded into parent_id. Flush to commit it.
+    await manager.flush_pending_node_add()
     assert manager.nodes == [{"id": "n1", "label": "Researcher"}]
     fake_ws.send_json.assert_awaited_once_with(msg)
 
@@ -127,6 +130,7 @@ async def test_emit_swallows_send_failure(manager, fake_ws):
 async def test_emit_with_no_ws_only_tracks_state(manager):
     """emit() doesn't crash when there's no WS attached."""
     await manager.emit({"type": "node_add", "node": {"id": "n1"}})
+    await manager.flush_pending_node_add()
     assert manager.nodes == [{"id": "n1"}]
 
 

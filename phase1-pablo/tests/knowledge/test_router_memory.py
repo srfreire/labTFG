@@ -63,7 +63,14 @@ def _mock_shared():
     mock = MagicMock()
     session = AsyncMock()
     session.commit = AsyncMock()
-    session.execute = AsyncMock()
+    # `await session.execute(...)` must return an object whose .scalars().all()
+    # is a sync no-op — otherwise AsyncMock auto-creates async children and
+    # consolidation's `_cluster_run_memories` blows up with
+    # "coroutine has no attribute .all".
+    exec_result = MagicMock()
+    exec_result.scalars.return_value.all.return_value = []
+    exec_result.all.return_value = []
+    session.execute = AsyncMock(return_value=exec_result)
 
     @asynccontextmanager
     async def _ctx():

@@ -504,13 +504,15 @@ async def test_empty_extraction_returns_zero_counts():
 
 
 @pytest.mark.asyncio
-async def test_node_with_missing_natural_key_reports_error():
-    """Node whose natural_key is not in properties reports an error."""
+async def test_node_with_missing_natural_key_falls_back_to_other_property():
+    """When the declared natural_key is absent, the writer should fall back to
+    a known identifier property (slug/id/doi/url/name/title) instead of
+    silently dropping the node — see the #4 fallback in kg_writer."""
     kg = FakeKnowledgeGraph()
     extraction = ExtractionResult(
         nodes=[
             NodeSpec(label="Paradigm", properties={"name": "Test"}, natural_key="slug"),
-            # "slug" is not in properties — should error
+            # "slug" is missing → fall back to "name"
         ],
         relations=[],
         facts=[],
@@ -520,9 +522,53 @@ async def test_node_with_missing_natural_key_reports_error():
 
     result = await populate_kg(extraction, kg)
 
+    assert result.nodes_created == 1
+    assert result.errors == []
+
+
+@pytest.mark.asyncio
+async def test_node_with_no_usable_key_synthesizes_one():
+    """When neither the declared natural_key nor any fallback property is
+    present but properties exist, the writer should synthesize a stable id."""
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={"foo": "bar", "baz": 42},
+                natural_key="slug",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-syn",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 1
+    assert result.errors == []
+
+
+@pytest.mark.asyncio
+async def test_node_with_no_properties_at_all_reports_error():
+    """A node with no properties has nothing to hash — still an error."""
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(label="Paradigm", properties={}, natural_key="slug"),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-empty",
+    )
+
+    result = await populate_kg(extraction, kg)
+
     assert result.nodes_created == 0
     assert len(result.errors) == 1
-    assert "natural_key" in result.errors[0].lower() or "slug" in result.errors[0]
 
 
 @pytest.mark.asyncio

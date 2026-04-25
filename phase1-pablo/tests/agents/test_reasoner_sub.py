@@ -98,8 +98,9 @@ async def test_reasoner_sub_uses_opus_model(make_text_block, make_response):
     )
     await agent.run("homeostatic")
 
+    from decisionlab.config import SETTINGS
     call_kwargs = client.messages.create.call_args
-    assert call_kwargs.kwargs["model"] == "claude-opus-4-6"
+    assert call_kwargs.kwargs["model"] == SETTINGS.reasoner.model
 
 
 # ---- P5-003: Slug-based path tests ----
