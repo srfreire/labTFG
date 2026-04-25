@@ -21,7 +21,13 @@ import type {
 interface Props {
   runId: string | null;
   memoryAgent: AgentState | undefined;
+  /** Drives the enter animation — set false to fade the collapsed card in
+   * later (matches the PastRunsList `active` flag on the landing band). */
+  active?: boolean;
 }
+
+const ENTER_EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+const ENTER_DELAY_MS = 350;
 
 const NEW_NODE_FILL = "#22d3ee";
 const OLD_NODE_FILL = "rgba(255,255,255,0.35)";
@@ -295,6 +301,7 @@ function NodeStatsPanel({
 export default function KnowledgeGraphPanel({
   runId,
   memoryAgent,
+  active = true,
 }: Props) {
   const [snapshot, setSnapshot] = useState<KGSnapshot | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -404,7 +411,13 @@ export default function KnowledgeGraphPanel({
       {/* Collapsed panel — sits directly below the Sidebar, matching its width */}
       <div
         onClick={() => setExpanded(true)}
-        className="panel-chrome fixed left-4 bottom-4 w-[220px] h-[180px] z-30 flex flex-col overflow-hidden cursor-pointer transition-[border-color] duration-200"
+        className="panel-chrome fixed left-4 bottom-4 w-[220px] h-[180px] z-30 flex flex-col overflow-hidden cursor-pointer transition-[border-color] duration-200 motion-reduce:transform-none"
+        style={{
+          opacity: active ? 1 : 0,
+          transform: active ? "translateY(0)" : "translateY(8px)",
+          transition: `opacity 500ms ${ENTER_EASE_OUT} ${ENTER_DELAY_MS}ms, transform 500ms ${ENTER_EASE_OUT} ${ENTER_DELAY_MS}ms, border-color 200ms`,
+          willChange: "opacity, transform",
+        }}
       >
         {/* Header */}
         <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between shrink-0">

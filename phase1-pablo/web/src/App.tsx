@@ -586,7 +586,11 @@ export default function App() {
 
               <PastRunsList onSelect={handleSelectPastRun} active={demoComplete} />
 
-              <KnowledgeGraphPanel runId={null} memoryAgent={undefined} />
+              <KnowledgeGraphPanel
+                runId={null}
+                memoryAgent={undefined}
+                active={demoComplete}
+              />
 
               {/* Landing overlay — fades in over graph after demo */}
               <div
