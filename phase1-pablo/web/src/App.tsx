@@ -758,17 +758,9 @@ export default function App() {
                           )}
                           <button
                             onClick={handleContinue}
-                            disabled={memoryAgent?.status === "working"}
-                            title={
-                              memoryAgent?.status === "working"
-                                ? "Memory agent still running — wait for it to finish"
-                                : undefined
-                            }
-                            className="text-[12px] uppercase tracking-[1px] px-6 py-2 bg-white text-black rounded-lg font-medium cursor-pointer disabled:cursor-not-allowed disabled:bg-text-ghost disabled:text-text-dim"
+                            className="text-[12px] uppercase tracking-[1px] px-6 py-2 bg-white text-black rounded-lg font-medium cursor-pointer"
                           >
-                            {memoryAgent?.status === "working"
-                              ? "Memory…"
-                              : "Continue →"}
+                            Continue →
                           </button>
                         </div>
                       </div>

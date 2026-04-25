@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
@@ -39,23 +38,50 @@ EmitFn = Callable[[dict], Awaitable[None]]
 
 class Stage(str, Enum):
     RESEARCH = "research"
+    MEMORY_RESEARCH = "memory_research"
     REVIEW_RESEARCH = "review_research"
     FORMALIZE = "formalize"
+    MEMORY_FORMALIZE = "memory_formalize"
     REVIEW_FORMALIZE = "review_formalize"
     GET_ENV_SPEC = "get_env_spec"
     REASON = "reason"
+    MEMORY_REASON = "memory_reason"
     REVIEW_REASON = "review_reason"
     BUILD = "build"
+    MEMORY_BUILD = "memory_build"
     REVIEW_BUILD = "review_build"
     DONE = "done"
 
 
-# Stages after which the Memory Agent should run
-_MEMORY_STAGES = {
+# Mapping work stage → Memory Agent stage name (used in MemoryAgent.run()).
+_MEMORY_AGENT_STAGE_NAMES = {
     Stage.RESEARCH: "researcher",
     Stage.FORMALIZE: "formalizer",
     Stage.REASON: "reasoner",
     Stage.BUILD: "builder",
+}
+
+# Mapping work stage → its dedicated MEMORY_X stage. Each work handler
+# advances to MEMORY_X when memory infra is available; the loop then runs
+# the matching _memory_<stage> handler which awaits the Memory Agent
+# synchronously before yielding to the REVIEW_X stage.
+_MEMORY_STAGE_OF = {
+    Stage.RESEARCH: Stage.MEMORY_RESEARCH,
+    Stage.FORMALIZE: Stage.MEMORY_FORMALIZE,
+    Stage.REASON: Stage.MEMORY_REASON,
+    Stage.BUILD: Stage.MEMORY_BUILD,
+}
+
+# Mapping MEMORY_X → the work stage it follows (used by _memory_<stage>
+# handlers to look up the right output text and agent name).
+_WORK_STAGE_OF_MEMORY = {v: k for k, v in _MEMORY_STAGE_OF.items()}
+
+# Mapping MEMORY_X → the REVIEW_X it transitions into when finished.
+_REVIEW_AFTER_MEMORY = {
+    Stage.MEMORY_RESEARCH: Stage.REVIEW_RESEARCH,
+    Stage.MEMORY_FORMALIZE: Stage.REVIEW_FORMALIZE,
+    Stage.MEMORY_REASON: Stage.REVIEW_REASON,
+    Stage.MEMORY_BUILD: Stage.REVIEW_BUILD,
 }
 
 
@@ -252,9 +278,6 @@ class Router:
         self.emit = emit  # None → CLI mode; set → web mode
         self._web_mode = emit is not None
         self.memory_agent: MemoryAgent | None = self._init_memory_agent()
-        # Tracks fire-and-forget Memory Agent ticks so they don't get GC'd
-        # mid-flight; each task removes itself via done_callback.
-        self._background_tasks: set[asyncio.Task] = set()
         # Per-stage output cache populated by work-stage handlers when they
         # have the text in-memory (e.g. Researcher's return value). Falls back
         # to S3 reads in `_collect_stage_output` for stages whose agents don't
@@ -350,19 +373,53 @@ class Router:
 
     # -- memory agent ---------------------------------------------------------
 
-    async def _run_memory_agent(self, stage: Stage) -> None:
-        """Run the Memory Agent after a successful work stage. Never blocks pipeline."""
-        stage_name = _MEMORY_STAGES[stage]
+    def _next_after_work(self, work_stage: Stage) -> Stage:
+        """Stage to transition to after a work handler succeeds. Goes through
+        the MEMORY_X interstitial when memory infra is up; otherwise straight
+        to REVIEW_X (memory tick is a no-op in degraded mode)."""
+        memory_stage = _MEMORY_STAGE_OF[work_stage]
+        if self.memory_agent is None:
+            return _REVIEW_AFTER_MEMORY[memory_stage]
+        return memory_stage
+
+    async def _run_memory_stage(self, memory_stage: Stage) -> None:
+        """Body of every _memory_<stage> handler. Awaits the Memory Agent
+        synchronously, then advances to the matching REVIEW_X. Failures are
+        logged and surfaced via the Memory Agent's own emit hooks; the
+        pipeline never blocks on a failure."""
+        work_stage = _WORK_STAGE_OF_MEMORY[memory_stage]
+        review_stage = _REVIEW_AFTER_MEMORY[memory_stage]
+        agent_name = _MEMORY_AGENT_STAGE_NAMES[work_stage]
+
+        if self.memory_agent is None:
+            self.state.stage = review_stage
+            return
+
         try:
-            output = await self._collect_stage_output(stage)
+            output = await self._collect_stage_output(work_stage)
             result = await self.memory_agent.run(
-                stage_name, output, self.state.run_id, emit=self.emit
+                agent_name, output, self.state.run_id, emit=self.emit
             )
-            logger.info("Memory Agent [%s] completed: %s", stage_name, result)
+            logger.info("Memory Agent [%s] completed: %s", agent_name, result)
         except Exception:
             logger.exception(
-                "Memory Agent failed for stage=%s — continuing pipeline", stage_name
+                "Memory Agent failed for stage=%s — continuing pipeline",
+                agent_name,
             )
+
+        self.state.stage = review_stage
+
+    async def _memory_research(self) -> None:
+        await self._run_memory_stage(Stage.MEMORY_RESEARCH)
+
+    async def _memory_formalize(self) -> None:
+        await self._run_memory_stage(Stage.MEMORY_FORMALIZE)
+
+    async def _memory_reason(self) -> None:
+        await self._run_memory_stage(Stage.MEMORY_REASON)
+
+    async def _memory_build(self) -> None:
+        await self._run_memory_stage(Stage.MEMORY_BUILD)
 
     async def _run_consolidation(self) -> None:
         """Run post-run consolidation. Never blocks pipeline."""
@@ -456,13 +513,17 @@ class Router:
     async def run(self) -> None:
         handlers = {
             Stage.RESEARCH: self._do_research,
+            Stage.MEMORY_RESEARCH: self._memory_research,
             Stage.REVIEW_RESEARCH: self._review_research,
             Stage.FORMALIZE: self._do_formalize,
+            Stage.MEMORY_FORMALIZE: self._memory_formalize,
             Stage.REVIEW_FORMALIZE: self._review_formalize,
             Stage.GET_ENV_SPEC: self._get_env_spec,
             Stage.REASON: self._do_reason,
+            Stage.MEMORY_REASON: self._memory_reason,
             Stage.REVIEW_REASON: self._review_reason,
             Stage.BUILD: self._do_build,
+            Stage.MEMORY_BUILD: self._memory_build,
             Stage.REVIEW_BUILD: self._review_build,
         }
 
@@ -480,9 +541,6 @@ class Router:
                 }
             )
             await handler()
-
-            # Emit stage-done BEFORE kicking off the Memory Agent so the UI can
-            # show the review stage and the memory tick running in parallel.
             await self._emit(
                 {
                     "type": "stage_change",
@@ -492,27 +550,6 @@ class Router:
             )
             await self.state.save()
             await self._update_run(status=self.state.stage.value)
-
-            # Memory Agent post-hook: fires concurrently with the following
-            # review stage. The frontend disables "Continue" until the agent
-            # emits ``status=done``, so the user can't advance past a review
-            # before the memory tick finishes.
-            stage_advanced = self.state.stage != current_stage
-            if (
-                stage_advanced
-                and current_stage in _MEMORY_STAGES
-                and self.memory_agent is not None
-            ):
-                task = asyncio.create_task(self._run_memory_agent(current_stage))
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
-
-        # Drain any in-flight Memory Agent ticks before claiming the run is
-        # done. This makes "pipeline complete" mean "memories written or at
-        # least attempted", not just "memories scheduled" — and gives the
-        # following consolidation step a stable view of the run's memories.
-        if self._background_tasks:
-            await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
         # Finalize run: consolidation + s3_report_key
         if self.state.stage == Stage.DONE:
@@ -557,7 +594,7 @@ class Router:
         # Cache the in-memory text so the Memory Agent doesn't round-trip S3.
         self._stage_outputs[Stage.RESEARCH] = report.summary
         await self._emit({"type": "node_update", "id": "researcher", "status": "done"})
-        self.state.stage = Stage.REVIEW_RESEARCH
+        self.state.stage = self._next_after_work(Stage.RESEARCH)
 
     async def _review_research(self) -> None:
         from decisionlab.agents.deep_researcher import DeepResearcher
@@ -639,7 +676,7 @@ class Router:
             )
             return
         await self._emit({"type": "node_update", "id": "formalizer", "status": "done"})
-        self.state.stage = Stage.REVIEW_FORMALIZE
+        self.state.stage = self._next_after_work(Stage.FORMALIZE)
 
     async def _review_formalize(self) -> None:
         if self._web_mode:
@@ -735,7 +772,7 @@ class Router:
             )
             return
         await self._emit({"type": "node_update", "id": "reasoner", "status": "done"})
-        self.state.stage = Stage.REVIEW_REASON
+        self.state.stage = self._next_after_work(Stage.REASON)
 
     async def _review_reason(self) -> None:
         from decisionlab.agents.reasoner import Reasoner
@@ -868,7 +905,7 @@ class Router:
             )
             return
         await self._emit({"type": "node_update", "id": "builder", "status": "done"})
-        self.state.stage = Stage.REVIEW_BUILD
+        self.state.stage = self._next_after_work(Stage.BUILD)
 
     async def _review_build(self) -> None:
         import shared

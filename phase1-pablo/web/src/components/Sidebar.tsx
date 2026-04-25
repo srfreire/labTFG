@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Stage, StageStatus, STAGE_CONFIG, AgentState, MEMORY_AGENT_STAGES } from "../types";
+import { Stage, StageStatus, STAGE_CONFIG, AgentState, MEMORY_AGENT_STAGES, MEMORY_STAGE_OF } from "../types";
 import { THEME } from "./Graph";
 
 interface SidebarProps {
@@ -119,23 +119,19 @@ export default function Sidebar({
   const memoryAgent = agents.find((a) => a.name === "memory_agent");
   const [collapsed, setCollapsed] = useState(false);
 
-  // Ordered list of main stages that have a memory interstitial.
-  const memoryStagesInOrder = items
-    .filter((it) => MEMORY_AGENT_STAGES.has(it.stage))
-    .map((it) => it.stage);
-
-  // Memory tick for stage `s`:
-  //   pending → s not done yet
-  //   done    → a later memory stage has started (pipeline moved past this memory)
-  //   else    → follow the global memory-agent status (s is the latest done one)
+  // Memory tick status for work stage `s`: read directly from the dedicated
+  // MEMORY_X stage's status (filled in by stage_change events from the
+  // backend, same source of truth as every other dot).
+  const STATUS_TO_AGENT: Record<StageStatus, AgentState["status"]> = {
+    pending: "idle",
+    running: "working",
+    done: "done",
+    error: "failed",
+  };
   function memoryStatusFor(s: Stage): AgentState["status"] {
-    if (stages[s] !== "done") return "idle";
-    const idx = memoryStagesInOrder.indexOf(s);
-    for (let i = idx + 1; i < memoryStagesInOrder.length; i++) {
-      const later = stages[memoryStagesInOrder[i]];
-      if (later === "running" || later === "done") return "done";
-    }
-    return memoryAgent?.status ?? "idle";
+    const memStage = MEMORY_STAGE_OF[s];
+    if (!memStage) return "idle";
+    return STATUS_TO_AGENT[stages[memStage]];
   }
 
   useEffect(() => {

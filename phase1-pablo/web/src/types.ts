@@ -9,13 +9,17 @@ export interface AgentState {
 // Pipeline stages (mirrors backend Stage enum)
 export enum Stage {
   RESEARCH = "research",
+  MEMORY_RESEARCH = "memory_research",
   REVIEW_RESEARCH = "review_research",
   FORMALIZE = "formalize",
+  MEMORY_FORMALIZE = "memory_formalize",
   REVIEW_FORMALIZE = "review_formalize",
   GET_ENV_SPEC = "get_env_spec",
   REASON = "reason",
+  MEMORY_REASON = "memory_reason",
   REVIEW_REASON = "review_reason",
   BUILD = "build",
+  MEMORY_BUILD = "memory_build",
   REVIEW_BUILD = "review_build",
   DONE = "done",
 }
@@ -175,6 +179,17 @@ export const MEMORY_AGENT_STAGES = new Set<Stage>([
   Stage.REASON,
   Stage.BUILD,
 ]);
+
+// Mapping work stage → its dedicated MEMORY_X stage (mirrors the backend
+// _MEMORY_STAGE_OF dict). Used by the sidebar to read memory-tick status
+// directly from `stages[MEMORY_X]` instead of inferring it from a separate
+// agent_status side-channel.
+export const MEMORY_STAGE_OF: Partial<Record<Stage, Stage>> = {
+  [Stage.RESEARCH]: Stage.MEMORY_RESEARCH,
+  [Stage.FORMALIZE]: Stage.MEMORY_FORMALIZE,
+  [Stage.REASON]: Stage.MEMORY_REASON,
+  [Stage.BUILD]: Stage.MEMORY_BUILD,
+};
 
 // Agent color mapping
 export const AGENT_COLORS: Record<string, string> = {
