@@ -1,8 +1,9 @@
 // Agent state (for the pipeline agent panel / sidebar interstitials)
 export interface AgentState {
   name: string;
-  status: "idle" | "working" | "done";
+  status: "idle" | "working" | "done" | "failed";
   color: string;
+  error?: string;
 }
 
 // Pipeline stages (mirrors backend Stage enum)
@@ -66,7 +67,12 @@ export type ServerMessage =
   | { type: "error"; message: string }
   | { type: "state_sync"; nodes: GraphNode[]; edges: GraphEdge[]; stage: Stage }
   | { type: "agents"; agents: Array<{ name: string; color: string }> }
-  | { type: "agent_status"; agent: string; status: "idle" | "working" | "done" }
+  | {
+      type: "agent_status";
+      agent: string;
+      status: "idle" | "working" | "done" | "failed";
+      error?: string;
+    }
   | { type: "agent_tool"; agent: string; tool: string }
   | { type: "run_start"; run_id: string }
   | { type: "review_decision"; stage: Stage; approved: Record<string, boolean> | unknown };

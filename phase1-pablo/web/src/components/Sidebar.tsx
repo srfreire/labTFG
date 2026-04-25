@@ -32,18 +32,22 @@ const MEMORY_STATUS_COLORS: Record<AgentState["status"], string> = {
   idle: THEME.nodeBorder,
   working: THEME.statusRunning,
   done: THEME.statusDone,
+  failed: THEME.statusError,
 };
 
 function MemoryAgentDot({
   status,
   parentDone,
+  error,
 }: {
   status: AgentState["status"];
   parentDone: boolean;
+  error?: string;
 }) {
   const isWorking = status === "working";
   const isDone = status === "done";
-  const show = parentDone || isWorking || isDone;
+  const isFailed = status === "failed";
+  const show = parentDone || isWorking || isDone || isFailed;
   const lineColor = show
     ? "rgba(255,255,255,0.12)"
     : "rgba(255,255,255,0.08)";
@@ -62,6 +66,7 @@ function MemoryAgentDot({
       <div
         className="flex items-center gap-3.5 pr-5 shrink-0"
         style={{ paddingLeft: LINE_LEFT - MEMORY_DOT / 2 + 0.5 }}
+        title={isFailed ? `Memory write failed: ${error ?? "unknown error"}` : undefined}
       >
         <div
           className={`rounded-full shrink-0${isWorking ? " animate-pulse-dot" : ""}`}
@@ -72,7 +77,9 @@ function MemoryAgentDot({
             transition: "background 200ms",
             ...(isWorking
               ? { boxShadow: `0 0 6px ${MEMORY_STATUS_COLORS.working}` }
-              : {}),
+              : isFailed
+                ? { boxShadow: `0 0 6px ${MEMORY_STATUS_COLORS.failed}` }
+                : {}),
           }}
         />
         <span
@@ -80,16 +87,18 @@ function MemoryAgentDot({
             fontSize: 8,
             textTransform: "uppercase",
             letterSpacing: 0.5,
-            color: isWorking
-              ? "#fff"
-              : isDone
-                ? "rgba(255,255,255,0.5)"
-                : "rgba(255,255,255,0.25)",
-            fontWeight: isWorking ? 600 : 400,
+            color: isFailed
+              ? MEMORY_STATUS_COLORS.failed
+              : isWorking
+                ? "#fff"
+                : isDone
+                  ? "rgba(255,255,255,0.5)"
+                  : "rgba(255,255,255,0.25)",
+            fontWeight: isWorking || isFailed ? 600 : 400,
             transition: "color 200ms",
           }}
         >
-          MEMORY
+          {isFailed ? "MEMORY · FAILED" : "MEMORY"}
         </span>
       </div>
     </>
@@ -236,6 +245,7 @@ export default function Sidebar({
                 <MemoryAgentDot
                   status={memoryStatusFor(stage)}
                   parentDone={isDone}
+                  error={memoryAgent?.error}
                 />
               )}
 

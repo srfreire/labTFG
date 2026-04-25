@@ -168,7 +168,9 @@ function handleServerMessage(
       return {
         ...state,
         agents: state.agents.map((a) =>
-          a.name === msg.agent ? { ...a, status: msg.status } : a,
+          a.name === msg.agent
+            ? { ...a, status: msg.status, error: msg.error }
+            : a,
         ),
       };
 
