@@ -363,6 +363,11 @@ export default function KnowledgeGraphPanel({
   const deltaCount = delta.nodes.length;
   const totalCount = full.nodes.length;
 
+  // On the idle landing page (no current run) show the whole graph in the
+  // collapsed card; during a run, keep the delta-only view.
+  const collapsedView = runId === null ? full : delta;
+  const collapsedCount = collapsedView.nodes.length;
+
   /* Selected node + its neighborhood — used for the right-side panel. */
   const selectedNode = useMemo(() => {
     if (!selectedId) return null;
@@ -399,7 +404,7 @@ export default function KnowledgeGraphPanel({
       {/* Collapsed panel — sits directly below the Sidebar, matching its width */}
       <div
         onClick={() => setExpanded(true)}
-        className="panel-chrome fixed left-4 bottom-4 w-[160px] h-[180px] z-30 flex flex-col overflow-hidden cursor-pointer transition-[border-color] duration-200"
+        className="panel-chrome fixed left-4 bottom-4 w-[220px] h-[180px] z-30 flex flex-col overflow-hidden cursor-pointer transition-[border-color] duration-200"
       >
         {/* Header */}
         <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between shrink-0">
@@ -420,24 +425,24 @@ export default function KnowledgeGraphPanel({
             </span>
           </div>
           <span className="text-[10px] text-text-faint">
-            +{deltaCount}
+            {runId === null ? collapsedCount : `+${deltaCount}`}
           </span>
         </div>
 
-        {/* Graph body — delta only */}
+        {/* Graph body — full graph on idle, delta during a run */}
         <div className="flex-1 relative min-h-0">
-          {deltaCount === 0 ? (
+          {collapsedCount === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center text-[11px] text-text-faint px-4 text-center">
               {runId
                 ? "No new nodes yet"
-                : "Run a pipeline to populate"}
+                : "Knowledge graph is empty"}
             </div>
           ) : (
             <div className="absolute inset-0">
               <GraphCanvas
                 ref={collapsedRef}
-                nodes={delta.nodes}
-                edges={delta.edges}
+                nodes={collapsedView.nodes}
+                edges={collapsedView.edges}
                 theme={blackTheme}
                 labelType="none"
                 layoutType="forceDirected2d"

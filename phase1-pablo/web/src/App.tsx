@@ -583,6 +583,8 @@ export default function App() {
 
               <PastRunsList onSelect={handleSelectPastRun} active={demoComplete} />
 
+              <KnowledgeGraphPanel runId={null} memoryAgent={undefined} />
+
               {/* Landing overlay — fades in over graph after demo */}
               <div
                 className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none transition-opacity duration-700"
@@ -623,9 +625,10 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* Input */}
+                  {/* Input — fills the gap between the two corner cards;
+                       textarea is the only thing that resizes with the window. */}
                   <div
-                    className="px-6 pb-5 transition-all duration-500 delay-[400ms]"
+                    className="pb-5 pl-[252px] pr-[252px] transition-all duration-500 delay-[400ms]"
                     style={{
                       opacity: demoComplete ? 1 : 0,
                       transform: demoComplete
@@ -635,7 +638,7 @@ export default function App() {
                         "cubic-bezier(0.23, 1, 0.32, 1)",
                     }}
                   >
-                    <div className="max-w-3xl mx-auto flex gap-3 items-stretch">
+                    <div className="flex gap-3 items-stretch">
                       <textarea
                         ref={inputRef}
                         value={problemInput}
@@ -644,7 +647,7 @@ export default function App() {
                         placeholder="e.g. survival decision-making"
                         autoFocus
                         rows={3}
-                        className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3.5 px-5 outline-none resize-none rounded-xl"
+                        className="flex-1 min-w-0 bg-transparent border border-text-ghost text-text text-[15px] py-3.5 px-5 outline-none resize-none rounded-xl"
                       />
                       <button
                         onClick={handleRun}
