@@ -17,9 +17,16 @@ from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 
-from decisionlab.router import EmitFn, PipelineState, Router, Stage
+# Load .env at module import — matches the CLI entry point (cli.py:19) and
+# guarantees ANTHROPIC_API_KEY is in os.environ before AsyncAnthropic() is
+# instantiated inside run_pipeline. override=True so an empty-string export
+# in the parent shell doesn't shadow the .env value.
+load_dotenv(override=True)
+
+from decisionlab.router import EmitFn, PipelineState, Router, Stage  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

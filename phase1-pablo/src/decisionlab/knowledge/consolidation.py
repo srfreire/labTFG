@@ -395,8 +395,11 @@ async def _apply_decay_and_sync(
 
     from shared.models import Memory
 
-    # Collect pre-decay confidences for changed memories
-    now = datetime.now(UTC)
+    # Collect pre-decay confidences for changed memories. The DateTime columns
+    # on Memory are TIMESTAMP WITHOUT TIME ZONE (naive), so the cutoff bound
+    # against them must also be naive — asyncpg refuses to compare aware vs
+    # naive in the same query.
+    now = datetime.now(UTC).replace(tzinfo=None)
     cutoff = now - timedelta(days=30)
 
     stmt = select(Memory.id, Memory.confidence).where(
@@ -448,7 +451,10 @@ async def _prune_stale(session: AsyncSession) -> int:
 
     from shared.models import Memory
 
-    now = datetime.now(UTC)
+    # Naive UTC: see comment in `_apply_decay_and_sync`. `now` ends up bound
+    # both against `created_at` (cutoff comparison) and stored in `valid_to`
+    # (soft-delete marker), so it has to match the column timezone-naivete.
+    now = datetime.now(UTC).replace(tzinfo=None)
     age_cutoff = now - timedelta(days=_PRUNE_AGE_DAYS)
 
     stmt = select(Memory.id).where(
