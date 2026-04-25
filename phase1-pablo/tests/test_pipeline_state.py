@@ -7,17 +7,21 @@ class TestStageEnum:
     def test_stage_enum_values(self):
         expected = {
             "RESEARCH": "research",
+            "MEMORY_RESEARCH": "memory_research",
             "REVIEW_RESEARCH": "review_research",
             "FORMALIZE": "formalize",
+            "MEMORY_FORMALIZE": "memory_formalize",
             "REVIEW_FORMALIZE": "review_formalize",
             "GET_ENV_SPEC": "get_env_spec",
             "REASON": "reason",
+            "MEMORY_REASON": "memory_reason",
             "REVIEW_REASON": "review_reason",
             "BUILD": "build",
+            "MEMORY_BUILD": "memory_build",
             "REVIEW_BUILD": "review_build",
             "DONE": "done",
         }
-        assert len(Stage) == 10
+        assert len(Stage) == 14
         for name, value in expected.items():
             assert Stage[name].value == value
 

@@ -71,6 +71,13 @@ def _mock_shared():
     exec_result.scalars.return_value.all.return_value = []
     exec_result.all.return_value = []
     session.execute = AsyncMock(return_value=exec_result)
+    # `session.get(Run, run_uuid)` — used by Router._record_memory_result.
+    # Return a plain object with memory_results=None so
+    # `dict(run.memory_results or {})` short-circuits cleanly to {} instead of
+    # producing an unawaited-AsyncMock RuntimeWarning.
+    fake_run = MagicMock()
+    fake_run.memory_results = None
+    session.get = AsyncMock(return_value=fake_run)
 
     @asynccontextmanager
     async def _ctx():
@@ -132,7 +139,10 @@ async def test_memory_agent_called_after_research():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        router.state.stage = Stage.REVIEW_RESEARCH
+        # Mirrors the real handler — advances to MEMORY_RESEARCH (when memory
+        # infra is available) so the loop dispatches the real _memory_research
+        # handler which awaits memory_agent.run().
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
@@ -172,7 +182,7 @@ async def test_memory_agent_not_called_for_review_stages():
 
 @pytest.mark.asyncio
 async def test_memory_agent_failure_does_not_block_pipeline():
-    """AC5: If MemoryAgent.run() throws via _run_memory_agent, the pipeline continues."""
+    """AC5: If MemoryAgent.run() throws inside _memory_<stage>, the pipeline continues."""
     memory_agent = MagicMock()
     memory_agent.run = AsyncMock(side_effect=RuntimeError("boom"))
     emit = AsyncMock()
@@ -181,7 +191,7 @@ async def test_memory_agent_failure_does_not_block_pipeline():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        router.state.stage = Stage.REVIEW_RESEARCH
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
@@ -205,7 +215,8 @@ async def test_memory_agent_skipped_when_none():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        router.state.stage = Stage.REVIEW_RESEARCH
+        # No memory_agent → _next_after_work returns REVIEW_RESEARCH directly.
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
@@ -237,8 +248,8 @@ async def test_memory_agent_skipped_on_handler_failure():
         call_count += 1
         if call_count == 1:
             return  # don't advance stage — simulates handler failure
-        # 2nd call: succeed → advance to review
-        router.state.stage = Stage.REVIEW_RESEARCH
+        # 2nd call: succeed → advance through the memory interstitial.
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
@@ -269,36 +280,31 @@ async def test_memory_agent_called_for_all_work_stages():
     router.state.selected_formulations = {"test-paradigm": ["f01"]}
     router.state.approved_specs = {"test-paradigm": ["f01"]}
 
-    stage_sequence = [
-        (Stage.RESEARCH, Stage.REVIEW_RESEARCH),
-        (Stage.REVIEW_RESEARCH, Stage.FORMALIZE),
-        (Stage.FORMALIZE, Stage.REVIEW_FORMALIZE),
-        (Stage.REVIEW_FORMALIZE, Stage.GET_ENV_SPEC),
-        (Stage.GET_ENV_SPEC, Stage.REASON),
-        (Stage.REASON, Stage.REVIEW_REASON),
-        (Stage.REVIEW_REASON, Stage.BUILD),
-        (Stage.BUILD, Stage.REVIEW_BUILD),
-        (Stage.REVIEW_BUILD, Stage.DONE),
-    ]
+    # Work-handler mocks advance to MEMORY_X via _next_after_work; the real
+    # _memory_<stage> handlers then await memory_agent.run() and transition to
+    # REVIEW_X. Review mocks set the next work stage. GET_ENV_SPEC has no
+    # memory tick, so it advances directly.
+    def make_work(work_stage: Stage):
+        async def fn():
+            router.state.stage = router._next_after_work(work_stage)
+        return fn
 
-    handler_mocks = {}
-    handler_names = {
-        Stage.RESEARCH: "_do_research",
-        Stage.REVIEW_RESEARCH: "_review_research",
-        Stage.FORMALIZE: "_do_formalize",
-        Stage.REVIEW_FORMALIZE: "_review_formalize",
-        Stage.GET_ENV_SPEC: "_get_env_spec",
-        Stage.REASON: "_do_reason",
-        Stage.REVIEW_REASON: "_review_reason",
-        Stage.BUILD: "_do_build",
-        Stage.REVIEW_BUILD: "_review_build",
+    def make_advance(target: Stage):
+        async def fn():
+            router.state.stage = target
+        return fn
+
+    handler_mocks = {
+        "_do_research": make_work(Stage.RESEARCH),
+        "_review_research": make_advance(Stage.FORMALIZE),
+        "_do_formalize": make_work(Stage.FORMALIZE),
+        "_review_formalize": make_advance(Stage.GET_ENV_SPEC),
+        "_get_env_spec": make_advance(Stage.REASON),
+        "_do_reason": make_work(Stage.REASON),
+        "_review_reason": make_advance(Stage.BUILD),
+        "_do_build": make_work(Stage.BUILD),
+        "_review_build": make_advance(Stage.DONE),
     }
-
-    for from_stage, to_stage in stage_sequence:
-        async def make_handler(target_stage=to_stage):
-            router.state.stage = target_stage
-
-        handler_mocks[handler_names[from_stage]] = make_handler
 
     mock_shared = _mock_shared()
     with patch.dict(sys.modules, {"shared": mock_shared}):
@@ -338,7 +344,7 @@ async def test_router_emits_agents_message_with_memory_agent():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        router.state.stage = Stage.REVIEW_RESEARCH
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
@@ -376,7 +382,7 @@ async def test_router_emits_agents_message_without_memory_agent():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        router.state.stage = Stage.REVIEW_RESEARCH
+        router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE

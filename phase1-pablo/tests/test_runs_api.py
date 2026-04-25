@@ -88,6 +88,8 @@ async def test_runs_list_excludes_running_and_orders_newest_first(seeded_runs):
         "status",
         "started_at",
         "artifact_count",
+        "final_stage",
+        "memory_results",
     }
 
 
