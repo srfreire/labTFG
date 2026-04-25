@@ -1,14 +1,14 @@
 ---
 id: P1-004
 title: Tests — wrapper unit, agent wiring, and sim-memory→sim-recall roundtrip
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: tests
 priority: 3
 blocked_by: [P1-002, P1-003]
 created: 2026-04-17
-updated: 2026-04-17
+updated: 2026-04-25
 ---
 
 # P1-004: Tests — wrapper unit, agent wiring, and sim-memory→sim-recall roundtrip
@@ -62,11 +62,11 @@ Cubrir Phase 1 con tres niveles de test: unit del wrapper con mocks, hook tests 
 
 ## Acceptance Criteria
 
-- [ ] AC1: Unit tests del wrapper pasan sin infra (5+ casos cubriendo flag off, infra off, mock normal, mock raise, params opcionales).
-- [ ] AC2: Orchestrator wiring tests pasan con mocks (flag off/on combos).
-- [ ] AC3: Agent wiring tests pasan para los 3 agentes.
-- [ ] AC4: El integration test recupera lo que sim-memory escribió, probando el loop end-to-end.
-- [ ] AC5: Los 115+27 tests previos siguen verdes (no regresiones).
+- [x] AC1: Unit tests del wrapper pasan sin infra (5+ casos cubriendo flag off, infra off, mock normal, mock raise, params opcionales).
+- [x] AC2: Orchestrator wiring tests pasan con mocks (flag off/on combos).
+- [x] AC3: Agent wiring tests pasan para los 3 agentes.
+- [x] AC4: El integration test recupera lo que sim-memory escribió, probando el loop end-to-end.
+- [x] AC5: Los 115+27 tests previos siguen verdes (no regresiones).
 
 ## Files Likely Affected
 
@@ -81,3 +81,22 @@ Phase spec: `docs/specs/sim-recall/phase-1-context-retrieval.md` (R8)
 General spec: `docs/specs/sim-recall/general.md`
 Heat: `tests`
 Depende de P1-002 AND P1-003 (para poder verificar wiring real).
+
+## Completion Summary
+
+**Commit:** `cbce009` — test[sim-recall]: P1-004 wrapper unit tests and integration roundtrip
+
+### What was built
+- 7 wrapper unit tests (test_retrieve.py): flag-on handler factory args, namespace/as_of/run_id/stage propagation, handler exception path
+- Integration test (test_sim_recall_roundtrip.py): TrackerMemoryWriter write → retrieve_context read roundtrip
+- R2/R3 already covered by P1-002 (test_orchestrator_wiring.py, 7 tests) and P1-003 (test_agent_wiring.py, 10 tests)
+- Total recall test count: 34 unit + 1 integration
+
+### Files created/modified
+- `phase2-juan/tests/recall/test_retrieve.py` — 7 new wrapper unit tests
+- `tests/integration/test_sim_recall_roundtrip.py` — sim-memory→sim-recall roundtrip
+
+### Decisions
+- R2/R3 tests not duplicated — already fully covered by P1-002 and P1-003 test files
+- Integration test uses `dataclasses.replace()` for Settings override (reviewer caught TypeError with dict spread)
+- Integration test requires real infra — marked with `@pytest.mark.integration`, skips without API keys
