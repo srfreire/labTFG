@@ -1,14 +1,14 @@
 ---
 id: P1-003
 title: Agent prompt hooks and conditional tool injection (Architect, Analyst, Reporter)
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: prompts
 priority: 2
 blocked_by: [P1-001]
 created: 2026-04-17
-updated: 2026-04-17
+updated: 2026-04-25
 ---
 
 # P1-003: Agent prompt hooks and conditional tool injection (Architect, Analyst, Reporter)
@@ -64,11 +64,11 @@ Permitir que Architect, Analyst y Reporter inviten a `retrieve_context` en su ra
 
 ## Acceptance Criteria
 
-- [ ] AC1: Con flag OFF, Architect/Analyst/Reporter exponen exactamente la misma lista de tools y prompts que antes (snapshot test).
-- [ ] AC2: Con flag ON, la tool `retrieve_context` aparece en la lista de cada uno de los 3 agentes y el prompt efectivo incluye la sección condicional correspondiente.
-- [ ] AC3: Cada agente llama al mismo handler central (el que define `simlab/recall/agent_tools.py` o el del Orchestrator), no reimplementa.
-- [ ] AC4: La sección del prompt por agente menciona explícitamente la query típica (namespace y topic).
-- [ ] AC5: 115+27 tests siguen verdes.
+- [x] AC1: Con flag OFF, Architect/Analyst/Reporter exponen exactamente la misma lista de tools y prompts que antes (snapshot test).
+- [x] AC2: Con flag ON, la tool `retrieve_context` aparece en la lista de cada uno de los 3 agentes y el prompt efectivo incluye la sección condicional correspondiente.
+- [x] AC3: Cada agente llama al mismo handler central (el que define `simlab/recall/agent_tools.py` o el del Orchestrator), no reimplementa.
+- [x] AC4: La sección del prompt por agente menciona explícitamente la query típica (namespace y topic).
+- [x] AC5: 115+27 tests siguen verdes.
 
 ## Files Likely Affected
 
@@ -84,3 +84,28 @@ Phase spec: `docs/specs/sim-recall/phase-1-context-retrieval.md` (R4, R5, R6)
 General spec: `docs/specs/sim-recall/general.md`
 Heat: `prompts`
 Depende de P1-001 (wrapper + schema). Paralelizable con P1-002.
+
+## Completion Summary
+
+**Commit:** `7eb54a1` — feat[sim-recall]: P1-003 agent prompt hooks and conditional tool injection
+
+### What was built
+- `simlab/recall/agent_tools.py` — shared `build_recall_extras(stage)` returning `(tools, registry, prompt_section)` per agent
+- Per-agent prompt sections: Architect queries paradigms, Analyst cross-checks postulates, Reporter grounds references
+- Architect/Analyst/Reporter gain `extra_tools`, `extra_registry`, `prompt_suffix` on `run()` — zero-cost when flag off
+- Orchestrator pre-builds extras via `_recall_kwargs()` helper, passes to all 3 agent calls
+- 10 tests covering helper API, flag on/off per agent, handler stage prefix
+
+### Files created/modified
+- `phase2-juan/simlab/recall/agent_tools.py` — new shared helper
+- `phase2-juan/simlab/recall/__init__.py` — added `build_recall_extras` export
+- `phase2-juan/simlab/architect.py` — `extra_tools`/`extra_registry`/`prompt_suffix` on `run()`
+- `phase2-juan/simlab/analyst.py` — same
+- `phase2-juan/simlab/reporter.py` — same
+- `phase2-juan/simlab/orchestrator.py` — `_recall` dict + `_recall_kwargs()` + try/except guard
+- `phase2-juan/tests/recall/test_agent_wiring.py` — 10 new tests
+
+### Decisions
+- Used `prompt_suffix` string concat instead of template — simpler, safe default `""`
+- Import wrapped in try/except in orchestrator (reviewer suggestion) — flag ON with broken infra degrades gracefully
+- Handler per-agent uses `stage=f"phase2-{stage}"` so Pablo's CRAG context is agent-specific
