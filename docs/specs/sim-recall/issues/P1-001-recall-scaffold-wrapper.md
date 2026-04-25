@@ -1,14 +1,14 @@
 ---
 id: P1-001
 title: Settings flag, recall module scaffold, and retrieve_context wrapper
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: core
 priority: 1
 blocked_by: []
 created: 2026-04-17
-updated: 2026-04-17
+updated: 2026-04-25
 ---
 
 # P1-001: Settings flag, recall module scaffold, and retrieve_context wrapper
@@ -38,11 +38,11 @@ Crear el paquete `simlab/recall/` con el wrapper `retrieve_context`, el tool sch
 
 ## Acceptance Criteria
 
-- [ ] AC1: `from simlab.recall import retrieve_context, RETRIEVE_CONTEXT_TOOL, build_retriever_from_settings` funciona.
-- [ ] AC2: `retrieve_context(query="test")` con `ENABLE_KNOWLEDGE_READ=False` (default) retorna el string "0 results" inmediatamente, sin llamar a `decisionlab.*` ni tocar `shared.*`.
-- [ ] AC3: El tool schema cumple el shape Anthropic (`name`, `description`, `input_schema` con `type`, `properties`, `required`).
-- [ ] AC4: `build_retriever_from_settings` retorna `None` si el flag está OFF o si falta infra; `callable` si todo está listo.
-- [ ] AC5: Los 3 tests del scaffold pasan. No rompe los 115+27 tests existentes.
+- [x] AC1: `from simlab.recall import retrieve_context, RETRIEVE_CONTEXT_TOOL, build_retriever_from_settings` funciona.
+- [x] AC2: `retrieve_context(query="test")` con `ENABLE_KNOWLEDGE_READ=False` (default) retorna el string "0 results" inmediatamente, sin llamar a `decisionlab.*` ni tocar `shared.*`.
+- [x] AC3: El tool schema cumple el shape Anthropic (`name`, `description`, `input_schema` con `type`, `properties`, `required`).
+- [x] AC4: `build_retriever_from_settings` retorna `None` si el flag está OFF o si falta infra; `callable` si todo está listo.
+- [x] AC5: Los 3 tests del scaffold pasan. No rompe los 115+27 tests existentes.
 
 ## Files Likely Affected
 
@@ -58,3 +58,25 @@ Crear el paquete `simlab/recall/` con el wrapper `retrieve_context`, el tool sch
 Phase spec: `docs/specs/sim-recall/phase-1-context-retrieval.md` (R1, R2, R3, R7)
 General spec: `docs/specs/sim-recall/general.md`
 Heat: `core`
+
+## Completion Summary
+
+**Commit:** `2e26ea2` — feat[sim-recall]: P1-001 scaffold recall module with retrieve_context wrapper
+
+### What was built
+- `ENABLE_KNOWLEDGE_READ` flag in shared Settings with permissive bool parsing
+- `simlab/recall/` package exposing `retrieve_context`, `RETRIEVE_CONTEXT_TOOL`, `build_retriever_from_settings`
+- Wrapper delegates to Pablo's `create_retrieve_knowledge` with full graceful degradation (flag off / infra missing / exceptions)
+- 10 scaffold tests covering all 5 acceptance criteria
+
+### Files created/modified
+- `shared/shared/settings.py` — added `ENABLE_KNOWLEDGE_READ: bool = False`
+- `.env.example` — documented new variable
+- `phase2-juan/simlab/recall/__init__.py` — new package, public API exports
+- `phase2-juan/simlab/recall/retrieve.py` — wrapper, tool schema, factory
+- `phase2-juan/tests/recall/__init__.py` — new test package
+- `phase2-juan/tests/recall/test_scaffold.py` — 10 tests
+
+### Decisions
+- `AsyncAnthropic()` reads `ANTHROPIC_API_KEY` from env (reviewer caught initial bug using Voyage key)
+- Infra guard uses `all None` (AND) — intentionally permissive because Pablo's tool has its own internal degradation paths
