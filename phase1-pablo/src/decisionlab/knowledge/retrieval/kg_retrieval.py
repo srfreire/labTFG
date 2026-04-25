@@ -17,7 +17,7 @@ from shared.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "claude-haiku-4-5"
+_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
 _HAIKU_MAX_TOKENS = 512
 _PPR_DECAY = 0.85
 _SIMILARITY_THRESHOLD = 0.75

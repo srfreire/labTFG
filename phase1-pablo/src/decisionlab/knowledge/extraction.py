@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
 _MAX_TOKENS = 8192
 
 _STAGE_PROMPTS: dict[str, tuple[str, str]] = {

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
 _CLUSTER_THRESHOLD = 0.80
 _REFLECTION_SIMILARITY_THRESHOLD = 0.85
 _PRUNE_CONFIDENCE = 0.2

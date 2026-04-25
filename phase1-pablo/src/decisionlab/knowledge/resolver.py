@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
-_SONNET_MODEL = "claude-sonnet-4-5-20250514"
+_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
+_SONNET_MODEL = "anthropic/claude-sonnet-4.6"
 _DUPLICATE_THRESHOLD = 0.85
 
 # Naming follows _STAGE_* convention from indexer.py.

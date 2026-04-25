@@ -20,7 +20,7 @@ from shared.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "claude-haiku-4-5"
+_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
 _HAIKU_MAX_TOKENS = 1024
 
 _EVAL_SYSTEM_PROMPT = """\

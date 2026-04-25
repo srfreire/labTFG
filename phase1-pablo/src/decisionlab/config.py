@@ -4,9 +4,9 @@ Defaults match the previously hardcoded values in each agent. Override any
 knob via env var using the pattern ``DECISIONLAB_<STAGE>_{MODEL,MAX_ITERATIONS,MAX_TOKENS}``.
 
 Example:
-    DECISIONLAB_BUILDER_MODEL=claude-haiku-4-5
+    DECISIONLAB_BUILDER_MODEL=anthropic/claude-haiku-4.5
     DECISIONLAB_BUILDER_MAX_ITERATIONS=10
-    DECISIONLAB_FORMALIZER_MODEL=claude-sonnet-4-6
+    DECISIONLAB_FORMALIZER_MODEL=anthropic/claude-sonnet-4.6
 """
 
 from __future__ import annotations
@@ -58,37 +58,37 @@ class Settings:
         return cls(
             researcher=_load(
                 "RESEARCHER",
-                model="claude-sonnet-4-6",
+                model="anthropic/claude-sonnet-4.6",
                 max_iterations=10,
                 max_tokens=4096,
             ),
             deep_researcher=_load(
                 "DEEP_RESEARCHER",
-                model="claude-sonnet-4-6",
+                model="anthropic/claude-sonnet-4.6",
                 max_iterations=7,
                 max_tokens=16384,
             ),
             deep_researcher_summary=_load(
                 "DEEP_RESEARCHER_SUMMARY",
-                model="claude-haiku-4-5",
+                model="anthropic/claude-haiku-4.5",
                 max_iterations=1,
                 max_tokens=300,
             ),
             formalizer=_load(
                 "FORMALIZER",
-                model="claude-opus-4-6",
+                model="anthropic/claude-opus-4.6",
                 max_iterations=5,
                 max_tokens=16384,
             ),
             reasoner=_load(
                 "REASONER",
-                model="claude-opus-4-6",
+                model="anthropic/claude-opus-4.6",
                 max_iterations=5,
                 max_tokens=16384,
             ),
             builder=_load(
                 "BUILDER",
-                model="claude-sonnet-4-6",
+                model="anthropic/claude-sonnet-4.6",
                 max_iterations=25,
                 max_tokens=16384,
             ),

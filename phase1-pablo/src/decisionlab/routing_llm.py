@@ -13,7 +13,7 @@ from decisionlab.runtime.usage import record as record_usage
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-haiku-4-5"
+_MODEL = "anthropic/claude-haiku-4.5"
 _MAX_TOKENS = 256
 
 CLASSIFIER_SYSTEM_PROMPT = """\
