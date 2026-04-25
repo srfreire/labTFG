@@ -41,6 +41,12 @@ class Run(Base):
     artifact_count: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
+    final_stage: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )
+    memory_results: Mapped[dict | None] = mapped_column(
+        "memory_results", JSONB, nullable=True
+    )
 
     # relationships
     models: Mapped[list[Model]] = relationship(back_populates="run")
