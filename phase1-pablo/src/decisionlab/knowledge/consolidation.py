@@ -43,6 +43,49 @@ _REFLECTION_SIMILARITY_THRESHOLD = 0.85
 _PRUNE_CONFIDENCE = 0.2
 _PRUNE_AGE_DAYS = 90
 
+_REFLECTION_MAX_TOKENS = 4096
+_CONTRADICTION_MAX_TOKENS = 4096
+
+
+async def _call_haiku(
+    client: AsyncAnthropic,
+    *,
+    system: str,
+    user: str,
+    max_tokens: int,
+) -> str:
+    """Single Haiku call. Raises on output truncation so callers can't silently
+    swallow a partial response as a JSON parse error. Streams when ``max_tokens``
+    is large enough to risk the SDK's 10-minute non-streaming guard."""
+    if max_tokens >= 8192:
+        async with client.messages.stream(
+            model=_FAST_MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        ) as stream:
+            response = await stream.get_final_message()
+    else:
+        response = await client.messages.create(
+            model=_FAST_MODEL,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+    record_usage(_FAST_MODEL, getattr(response, "usage", None))
+
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        usage = getattr(response, "usage", None)
+        out_tokens = getattr(usage, "output_tokens", None) if usage else None
+        raise RuntimeError(
+            f"Haiku output truncated at max_tokens={max_tokens} "
+            f"(output_tokens={out_tokens})"
+        )
+
+    if not response.content:
+        return ""
+    return response.content[0].text
+
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -208,17 +251,18 @@ async def _generate_reflections(
         user_msg = REFLECTION_USER.replace("{numbered_facts}", numbered)
 
         try:
-            response = await client.messages.create(
-                model=_FAST_MODEL,
-                max_tokens=1024,
+            raw = await _call_haiku(
+                client,
                 system=REFLECTION_SYSTEM,
-                messages=[{"role": "user", "content": user_msg}],
+                user=user_msg,
+                max_tokens=_REFLECTION_MAX_TOKENS,
             )
-            record_usage(_FAST_MODEL, getattr(response, "usage", None))
-            raw = response.content[0].text if response.content else "[]"
-            insights = json.loads(raw)
-        except Exception:
-            logger.warning("Reflection generation failed for cluster, skipping")
+            insights = json.loads(raw or "[]")
+        except Exception as exc:
+            logger.warning(
+                "Reflection generation failed for cluster (size=%d), skipping: %s",
+                len(cluster), exc,
+            )
             continue
 
         if not isinstance(insights, list):
@@ -366,18 +410,18 @@ async def _is_contradiction(
         "{reflection_b}", text_b
     )
     try:
-        response = await client.messages.create(
-            model=_FAST_MODEL,
-            max_tokens=256,
+        raw = await _call_haiku(
+            client,
             system=CONTRADICTION_CHECK_SYSTEM,
-            messages=[{"role": "user", "content": user_msg}],
+            user=user_msg,
+            max_tokens=_CONTRADICTION_MAX_TOKENS,
         )
-        record_usage(_FAST_MODEL, getattr(response, "usage", None))
-        raw = response.content[0].text if response.content else "{}"
-        parsed = json.loads(raw)
+        parsed = json.loads(raw or "{}")
         return parsed.get("contradicts", False) is True
-    except Exception:
-        logger.warning("Contradiction check failed, assuming no contradiction")
+    except Exception as exc:
+        logger.warning(
+            "Contradiction check failed, assuming no contradiction: %s", exc
+        )
         return False
 
 

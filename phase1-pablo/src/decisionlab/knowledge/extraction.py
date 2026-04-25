@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _FAST_MODEL = SETTINGS.knowledge_fast_model
-_MAX_TOKENS = 8192
+_MAX_TOKENS = 32768
 
 _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
     "researcher": (RESEARCHER_SYSTEM, RESEARCHER_USER),
@@ -45,8 +45,9 @@ async def extract(
     """Extract entities, relations, and facts from a pipeline stage's output.
 
     Dispatches to the appropriate stage-specific prompt, calls Haiku, and parses
-    the structured JSON response. If Haiku returns malformed JSON, retries once.
-    On second failure, returns a partial result with whatever data was parseable.
+    the structured JSON response. Retries once on a JSON parse failure; raises
+    if both attempts produce unparseable output. Output truncation
+    (``stop_reason="max_tokens"``) is also raised — see ``_call_haiku``.
     """
     if stage not in _STAGE_PROMPTS:
         raise ValueError(f"Unknown stage: {stage!r}. Expected one of {list(_STAGE_PROMPTS)}")
@@ -63,8 +64,9 @@ async def extract(
         parsed = _try_parse_json(raw_json)
 
         if parsed is None:
-            logger.warning("Retry also failed for stage %r, returning empty result", stage)
-            return ExtractionResult(nodes=[], relations=[], facts=[], stage=stage, run_id=run_id)
+            raise RuntimeError(
+                f"Haiku returned unparseable JSON for stage {stage!r} on both attempts"
+            )
 
     return _build_result(parsed, stage, run_id)
 
@@ -74,14 +76,29 @@ async def _call_haiku(
     system_prompt: str,
     user_message: str,
 ) -> str:
-    """Make a single Haiku API call and return the text response."""
-    response = await client.messages.create(
+    """Make a single Haiku API call and return the text response.
+
+    Uses the streaming API because the SDK requires streaming for any request
+    whose ``max_tokens`` could exceed the 10-minute non-streaming timeout.
+    """
+    async with client.messages.stream(
         model=_FAST_MODEL,
         max_tokens=_MAX_TOKENS,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
-    )
+    ) as stream:
+        response = await stream.get_final_message()
+
     record_usage(_FAST_MODEL, getattr(response, "usage", None))
+
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        usage = getattr(response, "usage", None)
+        out_tokens = getattr(usage, "output_tokens", None) if usage else None
+        raise RuntimeError(
+            f"Haiku output truncated at max_tokens={_MAX_TOKENS} "
+            f"(output_tokens={out_tokens}); raise _MAX_TOKENS or chunk the input"
+        )
+
     if not response.content:
         logger.warning("Haiku returned empty content list")
         return ""

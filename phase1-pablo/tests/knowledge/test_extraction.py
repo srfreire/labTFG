@@ -1,7 +1,7 @@
 """Tests for knowledge extraction module — covers AC1 through AC6."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,21 +18,45 @@ from decisionlab.knowledge.models import ExtractionResult
 # Helpers: build mock Haiku responses
 # ---------------------------------------------------------------------------
 
-def _make_response(text: str) -> MagicMock:
+def _make_response(text: str, *, stop_reason: str = "end_turn") -> MagicMock:
     """Build a mock Anthropic message response with the given text content."""
     block = MagicMock()
     block.text = text
     resp = MagicMock()
     resp.content = [block]
+    resp.stop_reason = stop_reason
+    resp.usage = None
     return resp
 
 
-def _make_client(responses: list[str]) -> AsyncMock:
-    """Create an AsyncMock client whose messages.create returns the given texts in order."""
-    client = AsyncMock()
-    client.messages.create = AsyncMock(
-        side_effect=[_make_response(t) for t in responses]
-    )
+class _StreamCM:
+    """Async context manager mimicking ``client.messages.stream(...)``."""
+
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def get_final_message(self):
+        return self._response
+
+
+def _make_client(responses: list) -> MagicMock:
+    """Create a client whose messages.stream(...) yields the given responses in order.
+
+    Each ``responses`` entry is either a JSON string (wrapped via ``_make_response``)
+    or an already-built mock response.
+    """
+    queue = [r if not isinstance(r, str) else _make_response(r) for r in responses]
+    iterator = iter(queue)
+
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.stream = MagicMock(side_effect=lambda **_kw: _StreamCM(next(iterator)))
     return client
 
 
@@ -326,22 +350,32 @@ async def test_malformed_json_retries_once_then_succeeds():
 
     assert isinstance(result, ExtractionResult)
     assert len(result.nodes) > 0
-    assert client.messages.create.call_count == 2
+    assert client.messages.stream.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_malformed_json_both_attempts_returns_empty():
-    """AC6: If retry also fails, returns empty ExtractionResult with warning."""
-    client = _make_client(["bad json", "still bad json"])
-    result = await extract("researcher", "report text", "run-1", client)
+async def test_malformed_json_both_attempts_raises():
+    """If both attempts return unparseable JSON, extract() raises RuntimeError.
 
-    assert isinstance(result, ExtractionResult)
-    assert result.nodes == []
-    assert result.relations == []
-    assert result.facts == []
-    assert result.stage == "researcher"
-    assert result.run_id == "run-1"
-    assert client.messages.create.call_count == 2
+    Previously this path silently returned an empty ExtractionResult, which
+    masked truncation/parse failures as "successful" runs in the Memory Agent.
+    """
+    client = _make_client(["bad json", "still bad json"])
+    with pytest.raises(RuntimeError, match="unparseable JSON"):
+        await extract("researcher", "report text", "run-1", client)
+    assert client.messages.stream.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_max_tokens_truncation_raises_immediately():
+    """stop_reason='max_tokens' raises on the first call — retrying with the
+    same prompt would just truncate again, so we fail loud instead of silently."""
+    truncated = _make_response('{"nodes":[{"label":"Para', stop_reason="max_tokens")
+    client = _make_client([truncated])
+    with pytest.raises(RuntimeError, match="truncated at max_tokens"):
+        await extract("researcher", "report text", "run-1", client)
+    # Must NOT retry — same input → same truncation.
+    assert client.messages.stream.call_count == 1
 
 
 # ---------------------------------------------------------------------------
@@ -485,14 +519,15 @@ async def test_empty_content_list_triggers_retry():
     """Empty response.content triggers retry via empty string → parse failure."""
     empty_resp = MagicMock()
     empty_resp.content = []
+    empty_resp.stop_reason = "end_turn"
+    empty_resp.usage = None
     good_resp = _make_response(RESEARCHER_RESPONSE)
 
-    client = AsyncMock()
-    client.messages.create = AsyncMock(side_effect=[empty_resp, good_resp])
+    client = _make_client([empty_resp, good_resp])
 
     result = await extract("researcher", "report text", "run-1", client)
     assert len(result.nodes) > 0
-    assert client.messages.create.call_count == 2
+    assert client.messages.stream.call_count == 2
 
 
 @pytest.mark.asyncio

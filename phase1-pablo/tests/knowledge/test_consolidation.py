@@ -294,6 +294,44 @@ class TestAC2_ReflectionGeneration:
         # Client should not be called for clusters < 3
         client.messages.create.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_reflection_truncation_skips_cluster_and_logs(self, caplog):
+        """Haiku hitting max_tokens must surface as a clear log and skip the
+        cluster — not silently look like a JSON parse error."""
+        from decisionlab.knowledge.consolidation import _generate_reflections
+
+        run_id = uuid.uuid4()
+        clusters = [_make_memories(4, run_id=run_id)]
+
+        truncated = _make_response('[{"insight": "incomp')
+        truncated.stop_reason = "max_tokens"
+        truncated.usage = MagicMock(output_tokens=4096)
+        client = AsyncMock()
+        client.messages.create = AsyncMock(return_value=truncated)
+
+        session = AsyncMock()
+        embedding_service = AsyncMock()
+        vector_store = AsyncMock()
+
+        with patch(
+            f"{_PATCH_BASE}.create_memory", new_callable=AsyncMock
+        ) as mock_create, caplog.at_level("WARNING", logger=_PATCH_BASE):
+            generated, corroborated = await _generate_reflections(
+                session,
+                embedding_service,
+                vector_store,
+                client,
+                clusters,
+                str(run_id),
+            )
+
+        assert generated == 0
+        assert corroborated == 0
+        mock_create.assert_not_called()
+        assert any("truncated at max_tokens" in r.message for r in caplog.records), (
+            "truncation must appear in the warning log, not be masked as a generic skip"
+        )
+
 
 # ---------------------------------------------------------------------------
 # AC3: Similar reflection from past run gets corroborated
@@ -402,6 +440,25 @@ class TestAC3_ReflectionCorroboration:
 
         assert corroborated == 0
         mock_update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_contradiction_check_truncation_logs_and_returns_false(self, caplog):
+        """If the contradiction-check call truncates, the failure surfaces in
+        the log (not as a generic 'check failed') and we conservatively return
+        False so the corroboration path can still run."""
+        from decisionlab.knowledge.consolidation import _is_contradiction
+
+        truncated = _make_response('{"contradicts": tru')
+        truncated.stop_reason = "max_tokens"
+        truncated.usage = MagicMock(output_tokens=4096)
+        client = AsyncMock()
+        client.messages.create = AsyncMock(return_value=truncated)
+
+        with caplog.at_level("WARNING", logger=_PATCH_BASE):
+            result = await _is_contradiction(client, "fact A", "fact B")
+
+        assert result is False
+        assert any("truncated at max_tokens" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------
