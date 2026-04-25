@@ -316,8 +316,29 @@ class Reporter:
         self.client = client
         self.model = model
 
-    async def run(self, prompt: str, tracker_output: str, analyst_output: str, *, run_id: str, experiment_id: str, max_iterations: int = 8, on_tool_call=None, interaction_summary: str | None = None, predictions: dict[str, str] | None = None, charts: list[dict] | None = None) -> str:
+    async def run(
+        self,
+        prompt: str,
+        tracker_output: str,
+        analyst_output: str,
+        *,
+        run_id: str,
+        experiment_id: str,
+        max_iterations: int = 8,
+        on_tool_call=None,
+        interaction_summary: str | None = None,
+        predictions: dict[str, str] | None = None,
+        charts: list[dict] | None = None,
+        extra_tools: list[dict] | None = None,
+        extra_registry: dict | None = None,
+        prompt_suffix: str = "",
+    ) -> str:
         tools, registry = _build_tools(run_id, experiment_id)
+
+        # Knowledge Backbone tools (sim-recall / P1-003)
+        tools += extra_tools or []
+        registry.update(extra_registry or {})
+
         user_message = (
             f"{prompt}\n\n"
             f"## Tracker observation log\n\n{tracker_output}\n\n"
@@ -336,10 +357,11 @@ class Reporter:
                     user_message += f"- **{chart['title']}** → `{filename}`\n"
         if interaction_summary:
             user_message += f"\n\n## Interaction history (user ↔ orchestrator)\n\n{interaction_summary}"
+        system = REPORTER_SYSTEM_PROMPT + prompt_suffix
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
-            system=REPORTER_SYSTEM_PROMPT,
+            system=system,
             tools=tools,
             messages=[{"role": "user", "content": user_message}],
             registry=registry,

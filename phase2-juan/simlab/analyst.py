@@ -239,6 +239,9 @@ class Analyst:
         experiment_id: str | None = None,
         charts_accumulator: list[dict] | None = None,
         critical_events: list[dict] | None = None,
+        extra_tools: list[dict] | None = None,
+        extra_registry: dict | None = None,
+        prompt_suffix: str = "",
     ) -> str:
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
@@ -257,11 +260,16 @@ class Analyst:
             tools += chart_tools
             registry.update(chart_registry)
 
+        # Knowledge Backbone tools (sim-recall / P1-003)
+        tools += extra_tools or []
+        registry.update(extra_registry or {})
+
         user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
+        system = ANALYST_SYSTEM_PROMPT + prompt_suffix
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
-            system=ANALYST_SYSTEM_PROMPT,
+            system=system,
             tools=tools,
             messages=[{"role": "user", "content": user_message}],
             registry=registry,

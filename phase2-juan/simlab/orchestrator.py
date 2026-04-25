@@ -513,10 +513,31 @@ class Orchestrator:
         state = self._state
         client = self.client
 
+        # Pre-build recall extras once — each agent closure captures these.
+        _recall: dict[str, tuple] = {}
+        if settings.ENABLE_KNOWLEDGE_READ:
+            try:
+                from simlab.recall import build_recall_extras
+                for stage in ("architect", "analyst", "reporter"):
+                    _recall[stage] = build_recall_extras(stage)
+            except Exception:
+                logger.warning("Failed to initialise recall extras; running without knowledge tools.")
+
+        def _recall_kwargs(stage: str) -> dict:
+            """Return extra_tools/extra_registry/prompt_suffix kwargs if recall is on."""
+            if stage not in _recall:
+                return {}
+            et, er, ps = _recall[stage]
+            return {"extra_tools": et, "extra_registry": er, "prompt_suffix": ps}
+
         # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
             arch = Architect(client=client)
-            spec_json = await arch.run(params["description"], on_tool_call=self._make_tool_callback("Architect"))
+            spec_json = await arch.run(
+                params["description"],
+                on_tool_call=self._make_tool_callback("Architect"),
+                **_recall_kwargs("architect"),
+            )
             state["spec"] = json.loads(spec_json)
             # Reset downstream state
             state["events"] = None
@@ -801,6 +822,7 @@ class Orchestrator:
                 experiment_id=state.get("experiment_id", ""),
                 charts_accumulator=state["charts"],
                 critical_events=state.get("critical_events"),
+                **_recall_kwargs("analyst"),
             )
             state["analyst_output"] = result
             # Track new charts from this call for the WS response
@@ -840,6 +862,7 @@ class Orchestrator:
                 interaction_summary=self._build_interaction_summary(),
                 predictions=state.get("predictions"),
                 charts=state.get("charts"),
+                **_recall_kwargs("reporter"),
             )
             # Track PDF S3 keys
             if "pdf_paths" not in state:

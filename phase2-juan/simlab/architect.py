@@ -115,14 +115,26 @@ class Architect:
         self.tools = [VALIDATE_SPEC_TOOL]
         self.registry = ARCHITECT_REGISTRY
 
-    async def run(self, prompt: str, *, max_iterations: int = 10, on_tool_call=None) -> str:
+    async def run(
+        self,
+        prompt: str,
+        *,
+        max_iterations: int = 10,
+        on_tool_call=None,
+        extra_tools: list[dict] | None = None,
+        extra_registry: dict | None = None,
+        prompt_suffix: str = "",
+    ) -> str:
+        tools = self.tools + (extra_tools or [])
+        registry = {**self.registry, **(extra_registry or {})}
+        system = ARCHITECT_SYSTEM_PROMPT + prompt_suffix
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
-            system=ARCHITECT_SYSTEM_PROMPT,
-            tools=self.tools,
+            system=system,
+            tools=tools,
             messages=[{"role": "user", "content": prompt}],
-            registry=self.registry,
+            registry=registry,
             max_iterations=max_iterations,
             on_tool_call=on_tool_call,
         )
