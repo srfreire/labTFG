@@ -501,6 +501,8 @@ async def list_runs() -> list[dict]:
             "status": r.status,
             "started_at": r.created_at.isoformat() + "Z",
             "artifact_count": r.artifact_count,
+            "final_stage": r.final_stage,
+            "memory_results": r.memory_results,
         }
         for r in rows
     ]

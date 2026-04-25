@@ -384,9 +384,10 @@ class Router:
 
     async def _run_memory_stage(self, memory_stage: Stage) -> None:
         """Body of every _memory_<stage> handler. Awaits the Memory Agent
-        synchronously, then advances to the matching REVIEW_X. Failures are
-        logged and surfaced via the Memory Agent's own emit hooks; the
-        pipeline never blocks on a failure."""
+        synchronously, persists the per-stage result (or error) on the run
+        row, then advances to the matching REVIEW_X. Failures never block
+        the pipeline — they're recorded for post-hoc inspection via the
+        runs.memory_results JSONB column."""
         work_stage = _WORK_STAGE_OF_MEMORY[memory_stage]
         review_stage = _REVIEW_AFTER_MEMORY[memory_stage]
         agent_name = _MEMORY_AGENT_STAGE_NAMES[work_stage]
@@ -395,19 +396,56 @@ class Router:
             self.state.stage = review_stage
             return
 
+        payload: dict
         try:
             output = await self._collect_stage_output(work_stage)
             result = await self.memory_agent.run(
                 agent_name, output, self.state.run_id, emit=self.emit
             )
             logger.info("Memory Agent [%s] completed: %s", agent_name, result)
-        except Exception:
+            payload = {
+                "status": "failed" if result.failed else "ok",
+                "nodes_created": result.nodes_created,
+                "nodes_merged": result.nodes_merged,
+                "relations_created": result.relations_created,
+                "facts_stored": result.facts_stored,
+                "duplicates_skipped": result.duplicates_skipped,
+                "conflicts_resolved": result.conflicts_resolved,
+                "duration_ms": result.duration_ms,
+            }
+            if result.error:
+                payload["error"] = result.error
+        except Exception as exc:
             logger.exception(
                 "Memory Agent failed for stage=%s — continuing pipeline",
                 agent_name,
             )
+            payload = {"status": "failed", "error": str(exc)}
 
+        await self._record_memory_result(agent_name, payload)
         self.state.stage = review_stage
+
+    async def _record_memory_result(self, agent_name: str, payload: dict) -> None:
+        """Merge a per-stage Memory Agent result into runs.memory_results.
+        Read-modify-write is fine here: the Router is the sole writer for any
+        given run, so there's no concurrent-update race to worry about."""
+        import shared
+        from shared.models import Run
+
+        try:
+            async with shared.db.get_session() as session:
+                run = await session.get(Run, uuid.UUID(self.state.run_id))
+                if run is None:
+                    return
+                merged = dict(run.memory_results or {})
+                merged[agent_name] = payload
+                run.memory_results = merged
+                await session.commit()
+        except Exception:
+            logger.exception(
+                "Failed to persist memory_results for stage=%s — continuing",
+                agent_name,
+            )
 
     async def _memory_research(self) -> None:
         await self._run_memory_stage(Stage.MEMORY_RESEARCH)

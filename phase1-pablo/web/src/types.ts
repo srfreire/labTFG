@@ -215,10 +215,26 @@ export const TOOL_ICONS: Record<string, string> = {
 // `AgrexEvent` and `ReplayMode` now come from `@ppazosp/agrex`. Only the
 // backend-specific `PastRun` descriptor stays here.
 
+export interface MemoryStageResult {
+  status: "ok" | "failed";
+  nodes_created?: number;
+  nodes_merged?: number;
+  relations_created?: number;
+  facts_stored?: number;
+  duplicates_skipped?: number;
+  conflicts_resolved?: number;
+  duration_ms?: number;
+  error?: string;
+}
+
 export interface PastRun {
   run_id: string;
   problem: string;
   status: "done" | "cancelled" | "failed";
   started_at: string;
   artifact_count: number | null;
+  // Set only on partial runs (--until X). NULL means "ran the full pipeline".
+  final_stage: string | null;
+  // Per-stage Memory Agent results, keyed by agent name ("researcher", ...).
+  memory_results: Record<string, MemoryStageResult> | null;
 }
