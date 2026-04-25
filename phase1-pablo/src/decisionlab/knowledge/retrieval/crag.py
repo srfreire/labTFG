@@ -12,6 +12,7 @@ import re
 
 from anthropic import AsyncAnthropic
 
+from decisionlab.config import SETTINGS
 from decisionlab.domain.models import SearchResult
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
@@ -20,8 +21,8 @@ from shared.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
-_HAIKU_MAX_TOKENS = 1024
+_FAST_MODEL = SETTINGS.knowledge_fast_model
+_MAX_TOKENS = 1024
 
 _EVAL_SYSTEM_PROMPT = """\
 You are a relevance evaluator for a scientific knowledge retrieval system.
@@ -65,12 +66,12 @@ async def _classify_results(
         )
 
         response = await client.messages.create(
-            model=_HAIKU_MODEL,
-            max_tokens=_HAIKU_MAX_TOKENS,
+            model=_FAST_MODEL,
+            max_tokens=_MAX_TOKENS,
             system=_EVAL_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
         )
-        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+        record_usage(_FAST_MODEL, getattr(response, "usage", None))
 
         raw = "\n".join(
             b.text for b in response.content if b.type == "text"

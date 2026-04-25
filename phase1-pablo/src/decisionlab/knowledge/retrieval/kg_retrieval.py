@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from anthropic import AsyncAnthropic
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
@@ -17,8 +18,8 @@ from shared.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
-_HAIKU_MAX_TOKENS = 512
+_FAST_MODEL = SETTINGS.knowledge_fast_model
+_MAX_TOKENS = 512
 _PPR_DECAY = 0.85
 _SIMILARITY_THRESHOLD = 0.75
 
@@ -86,12 +87,12 @@ async def _extract_entities(query: str, client: AsyncAnthropic) -> list[dict]:
     """
     for attempt in range(2):
         response = await client.messages.create(
-            model=_HAIKU_MODEL,
-            max_tokens=_HAIKU_MAX_TOKENS,
+            model=_FAST_MODEL,
+            max_tokens=_MAX_TOKENS,
             system=_NER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": query}],
         )
-        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+        record_usage(_FAST_MODEL, getattr(response, "usage", None))
         raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
         fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)
         cleaned = fence_match.group(1).strip() if fence_match else raw

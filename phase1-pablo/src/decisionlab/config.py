@@ -1,12 +1,18 @@
-"""Runtime configuration for agent stages.
+"""Runtime configuration for agent stages and auxiliary model slots.
 
-Defaults match the previously hardcoded values in each agent. Override any
-knob via env var using the pattern ``DECISIONLAB_<STAGE>_{MODEL,MAX_ITERATIONS,MAX_TOKENS}``.
+Pipeline stages override via ``DECISIONLAB_<STAGE>_{MODEL,MAX_ITERATIONS,MAX_TOKENS}``.
+
+Knowledge-layer / feedback model slots are named by *role* (fast vs. heavy),
+not by family — swap any model id (Anthropic, OpenAI, Google via OpenRouter)
+without renaming code.
 
 Example:
     DECISIONLAB_BUILDER_MODEL=anthropic/claude-haiku-4.5
     DECISIONLAB_BUILDER_MAX_ITERATIONS=10
     DECISIONLAB_FORMALIZER_MODEL=anthropic/claude-sonnet-4.6
+    DECISIONLAB_KNOWLEDGE_FAST_MODEL=anthropic/claude-haiku-4.5
+    DECISIONLAB_KNOWLEDGE_HEAVY_MODEL=anthropic/claude-sonnet-4.6
+    DECISIONLAB_FEEDBACK_MODEL=anthropic/claude-haiku-4.5
 """
 
 from __future__ import annotations
@@ -44,6 +50,11 @@ def _load(stage: str, *, model: str, max_iterations: int, max_tokens: int) -> Ag
     )
 
 
+def _env_model(slot: str, default: str) -> str:
+    raw = os.environ.get(f"DECISIONLAB_{slot}_MODEL")
+    return raw if raw else default
+
+
 @dataclass(frozen=True)
 class Settings:
     researcher: AgentConfig
@@ -52,6 +63,10 @@ class Settings:
     formalizer: AgentConfig
     reasoner: AgentConfig
     builder: AgentConfig
+    # Auxiliary model slots — role-named so the family choice stays in env.
+    knowledge_fast_model: str   # extraction, NER, scoring, classification, reflection
+    knowledge_heavy_model: str  # conflict resolution between memories
+    feedback_model: str         # feedback classifier (router re-execution decisions)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -92,6 +107,13 @@ class Settings:
                 max_iterations=25,
                 max_tokens=16384,
             ),
+            knowledge_fast_model=_env_model(
+                "KNOWLEDGE_FAST", "anthropic/claude-haiku-4.5"
+            ),
+            knowledge_heavy_model=_env_model(
+                "KNOWLEDGE_HEAVY", "anthropic/claude-sonnet-4.6"
+            ),
+            feedback_model=_env_model("FEEDBACK", "anthropic/claude-haiku-4.5"),
         )
 
 

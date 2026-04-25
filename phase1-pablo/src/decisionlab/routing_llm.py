@@ -8,12 +8,13 @@ import re
 
 from anthropic import AsyncAnthropic
 
+from decisionlab.config import SETTINGS
 from decisionlab.domain.models import RerunRequest
 from decisionlab.runtime.usage import record as record_usage
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "anthropic/claude-haiku-4.5"
+_MODEL = SETTINGS.feedback_model
 _MAX_TOKENS = 256
 
 CLASSIFIER_SYSTEM_PROMPT = """\

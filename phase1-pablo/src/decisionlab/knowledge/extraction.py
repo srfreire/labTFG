@@ -6,6 +6,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.prompts import (
     BUILDER_SYSTEM,
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
+_FAST_MODEL = SETTINGS.knowledge_fast_model
 _MAX_TOKENS = 8192
 
 _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
@@ -75,12 +76,12 @@ async def _call_haiku(
 ) -> str:
     """Make a single Haiku API call and return the text response."""
     response = await client.messages.create(
-        model=_HAIKU_MODEL,
+        model=_FAST_MODEL,
         max_tokens=_MAX_TOKENS,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
     )
-    record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+    record_usage(_FAST_MODEL, getattr(response, "usage", None))
     if not response.content:
         logger.warning("Haiku returned empty content list")
         return ""

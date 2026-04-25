@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ConsolidationResult
 from decisionlab.knowledge.prompts import (
     CONTRADICTION_CHECK_SYSTEM,
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
+_FAST_MODEL = SETTINGS.knowledge_fast_model
 _CLUSTER_THRESHOLD = 0.80
 _REFLECTION_SIMILARITY_THRESHOLD = 0.85
 _PRUNE_CONFIDENCE = 0.2
@@ -201,12 +202,12 @@ async def _generate_reflections(
 
         try:
             response = await client.messages.create(
-                model=_HAIKU_MODEL,
+                model=_FAST_MODEL,
                 max_tokens=1024,
                 system=REFLECTION_SYSTEM,
                 messages=[{"role": "user", "content": user_msg}],
             )
-            record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+            record_usage(_FAST_MODEL, getattr(response, "usage", None))
             raw = response.content[0].text if response.content else "[]"
             insights = json.loads(raw)
         except Exception:
@@ -338,12 +339,12 @@ async def _is_contradiction(
     )
     try:
         response = await client.messages.create(
-            model=_HAIKU_MODEL,
+            model=_FAST_MODEL,
             max_tokens=256,
             system=CONTRADICTION_CHECK_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
         )
-        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+        record_usage(_FAST_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else "{}"
         parsed = json.loads(raw)
         return parsed.get("contradicts", False) is True

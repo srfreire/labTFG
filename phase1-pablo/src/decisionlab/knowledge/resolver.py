@@ -13,6 +13,7 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, ResolutionResult
 from decisionlab.knowledge.prompts import (
     CONFLICT_CLASSIFICATION_SYSTEM,
@@ -32,8 +33,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_HAIKU_MODEL = "anthropic/claude-haiku-4.5"
-_SONNET_MODEL = "anthropic/claude-sonnet-4.6"
+_FAST_MODEL = SETTINGS.knowledge_fast_model
+_HEAVY_MODEL = SETTINGS.knowledge_heavy_model
 _DUPLICATE_THRESHOLD = 0.85
 
 # Naming follows _STAGE_* convention from indexer.py.
@@ -72,12 +73,12 @@ async def _score_importance(
 
     try:
         response = await client.messages.create(
-            model=_HAIKU_MODEL,
+            model=_FAST_MODEL,
             max_tokens=4096,
             system=IMPORTANCE_SCORING_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
         )
-        record_usage(_HAIKU_MODEL, getattr(response, "usage", None))
+        record_usage(_FAST_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else ""
         scored = json.loads(raw)
         return {
@@ -133,12 +134,12 @@ async def _classify_conflict(
 
     try:
         response = await client.messages.create(
-            model=_SONNET_MODEL,
+            model=_HEAVY_MODEL,
             max_tokens=1024,
             system=CONFLICT_CLASSIFICATION_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
         )
-        record_usage(_SONNET_MODEL, getattr(response, "usage", None))
+        record_usage(_HEAVY_MODEL, getattr(response, "usage", None))
         raw = response.content[0].text if response.content else "{}"
         return json.loads(raw)
     except Exception:
