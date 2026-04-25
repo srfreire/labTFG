@@ -255,6 +255,11 @@ class Router:
         # Tracks fire-and-forget Memory Agent ticks so they don't get GC'd
         # mid-flight; each task removes itself via done_callback.
         self._background_tasks: set[asyncio.Task] = set()
+        # Per-stage output cache populated by work-stage handlers when they
+        # have the text in-memory (e.g. Researcher's return value). Falls back
+        # to S3 reads in `_collect_stage_output` for stages whose agents don't
+        # yet return text directly (formalize/reason/build).
+        self._stage_outputs: dict[Stage, str] = {}
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -382,7 +387,13 @@ class Router:
             logger.exception("Consolidation failed — continuing pipeline")
 
     async def _collect_stage_output(self, stage: Stage) -> str:
-        """Read the stage's output artifacts from S3."""
+        """Return the stage's output text. Prefers the in-memory cache populated
+        by the work handler; falls back to reading from S3 (used for resumed
+        runs and for stages whose handlers don't cache directly yet)."""
+        cached = self._stage_outputs.get(stage)
+        if cached is not None:
+            return cached
+
         import shared
 
         prefix = self.state.research_prefix
@@ -391,10 +402,12 @@ class Router:
         if stage == Stage.RESEARCH:
             key = f"{prefix}/report.md"
             try:
-                return await shared.storage.get_text(key)
+                text = await shared.storage.get_text(key)
             except Exception:
                 logger.warning("Could not read research report from %s", key)
                 return ""
+            self._stage_outputs[stage] = text
+            return text
 
         if stage == Stage.FORMALIZE:
             parts: list[str] = []
@@ -404,7 +417,9 @@ class Router:
                     parts.append(await shared.storage.get_text(key))
                 except Exception:
                     logger.warning("Could not read formulation %s", key)
-            return "\n\n".join(parts)
+            text = "\n\n".join(parts)
+            self._stage_outputs[stage] = text
+            return text
 
         if stage == Stage.REASON:
             parts = []
@@ -415,7 +430,9 @@ class Router:
                         parts.append(await shared.storage.get_text(key))
                     except Exception:
                         logger.warning("Could not read reasoner spec %s", key)
-            return "\n\n".join(parts)
+            text = "\n\n".join(parts)
+            self._stage_outputs[stage] = text
+            return text
 
         if stage == Stage.BUILD:
             parts = []
@@ -428,7 +445,9 @@ class Router:
                         logger.warning("Could not read builder model %s", model_key)
             if self.state.build_results:
                 parts.append(str(self.state.build_results))
-            return "\n\n".join(parts)
+            text = "\n\n".join(parts)
+            self._stage_outputs[stage] = text
+            return text
 
         return ""
 
@@ -527,7 +546,7 @@ class Router:
                 run_id=self.state.run_id,
                 **self._knowledge_tool_kwargs("researcher"),
             )
-            await r.run(self.state.problem)
+            report = await r.run(self.state.problem)
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")
@@ -535,6 +554,8 @@ class Router:
                 {"type": "node_update", "id": "researcher", "status": "error"}
             )
             return  # stay at current stage
+        # Cache the in-memory text so the Memory Agent doesn't round-trip S3.
+        self._stage_outputs[Stage.RESEARCH] = report.summary
         await self._emit({"type": "node_update", "id": "researcher", "status": "done"})
         self.state.stage = Stage.REVIEW_RESEARCH
 
