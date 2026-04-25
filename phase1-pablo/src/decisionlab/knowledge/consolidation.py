@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from shared.embedding import EmbeddingService
+    from shared.knowledge_graph import KnowledgeGraph
     from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ async def consolidate(
     vector_store: VectorStore,
     client: AsyncAnthropic,
     run_id: str,
+    kg: KnowledgeGraph | None = None,
 ) -> ConsolidationResult:
     """Run post-run consolidation pipeline.
 
@@ -62,6 +64,9 @@ async def consolidate(
       2. Generate reflections for clusters of >=3 memories
       3. Apply time decay to all stale memories
       4. Prune memories with low confidence, zero access, and age > 90 days
+
+    When *kg* is provided, generated reflections are also written to the
+    knowledge graph as Reflection nodes so graph-traversal retrievers see them.
     """
     t0 = time.monotonic()
 
@@ -80,6 +85,7 @@ async def consolidate(
         client,
         clusters,
         run_id,
+        kg=kg,
     )
 
     # Step 3: Time decay
@@ -187,6 +193,7 @@ async def _generate_reflections(
     client: AsyncAnthropic,
     clusters: list[list[object]],
     run_id: str,
+    kg: KnowledgeGraph | None = None,
 ) -> tuple[int, int]:
     """Generate reflection memories from clusters of >=3 and detect cross-run patterns."""
     reflections_generated = 0
@@ -255,6 +262,27 @@ async def _generate_reflections(
                     "text_preview": reflection.content[:200],
                 },
             )
+
+            # Mirror the reflection into the KG so graph traversals can reach
+            # cross-run synthesis. Failures are non-fatal — vectors + Postgres
+            # remain the source of truth.
+            if kg is not None:
+                try:
+                    await kg.create_node(
+                        "Reflection",
+                        {
+                            "id": point_id,
+                            "content": reflection.content,
+                            "run_id": run_id,
+                            "source_memory_ids": source_ids,
+                            "created_at": datetime.now(UTC).isoformat(),
+                        },
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to mirror reflection %s to KG", point_id,
+                        exc_info=True,
+                    )
 
             # Cross-run: compare against existing reflections
             corroborated = await _check_cross_run_reflections(

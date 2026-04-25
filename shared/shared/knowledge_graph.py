@@ -23,6 +23,7 @@ _NODE_SCHEMA: dict[str, tuple[str, list[str]]] = {
     "Formulation": ("id", []),
     "Parameter": ("name", []),
     "Model": ("formulation_id", []),
+    "Reflection": ("id", []),
 }
 
 _ALLOWED_LABELS = frozenset(_NODE_SCHEMA)

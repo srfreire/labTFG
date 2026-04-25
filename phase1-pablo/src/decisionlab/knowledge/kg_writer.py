@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 from datetime import datetime, timezone
@@ -18,6 +20,54 @@ _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _TEMPORAL_KEYS = frozenset({
     "valid_from", "valid_to", "run_id", "created_at", "updated_at", "superseded_by",
 })
+
+# Property names tried, in priority order, when the LLM-declared natural_key is
+# missing from `properties`. Covers the common identifier vocabulary.
+_FALLBACK_KEY_NAMES = ("slug", "id", "doi", "url", "name", "title")
+
+
+def _resolve_natural_key(node) -> tuple[str, object] | None:
+    """Pick a usable (key_name, key_value) pair for a node.
+
+    Tries in order:
+      1. The LLM-declared natural_key, if its value is present in properties.
+      2. Any of _FALLBACK_KEY_NAMES present in properties.
+      3. A synthetic key derived from a stable hash of (label, properties).
+
+    For (3) the property is injected into ``node.properties`` so MERGE has
+    something to bind to. Returning None means the node has neither a label
+    nor any property to hash — effectively unrecoverable.
+    """
+    declared = node.natural_key
+    if declared and _SAFE_IDENT.match(declared):
+        val = node.properties.get(declared)
+        if val is not None:
+            return declared, val
+
+    for candidate in _FALLBACK_KEY_NAMES:
+        val = node.properties.get(candidate)
+        if val is not None and _SAFE_IDENT.match(candidate):
+            logger.info(
+                "Node %s: natural_key %r missing — falling back to %r",
+                node.label, declared, candidate,
+            )
+            return candidate, val
+
+    if not node.properties:
+        return None
+
+    blob = json.dumps(
+        {"label": node.label, "props": node.properties},
+        sort_keys=True, ensure_ascii=False, default=str,
+    )
+    synthetic_value = "h_" + hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+    node.properties["_synthetic_id"] = synthetic_value
+    logger.warning(
+        "Node %s: natural_key %r missing and no fallback property — "
+        "synthesized _synthetic_id=%s",
+        node.label, declared, synthetic_value,
+    )
+    return "_synthetic_id", synthetic_value
 
 
 async def populate_kg(
@@ -52,22 +102,16 @@ async def populate_kg(
                 errors.append(f"Node: invalid label '{node.label}'")
                 continue
 
-            key_value = node.properties.get(node.natural_key)
-            if key_value is None:
+            resolved = _resolve_natural_key(node)
+            if resolved is None:
                 errors.append(
-                    f"Node {node.label}: natural_key '{node.natural_key}' "
-                    f"not found in properties"
+                    f"Node {node.label}: no usable natural_key and no properties to hash"
                 )
                 continue
-
-            if not _SAFE_IDENT.match(node.natural_key):
-                errors.append(
-                    f"Node {node.label}: invalid natural_key '{node.natural_key}'"
-                )
-                continue
+            key_name, key_value = resolved
 
             # Record for relation endpoint resolution.
-            node_key_map[(node.label, str(key_value))] = node.natural_key
+            node_key_map[(node.label, str(key_value))] = key_name
 
             # Properties for ON CREATE (includes created_at, run_ids).
             # Strip updated_at to keep the was_created heuristic reliable.
@@ -80,7 +124,7 @@ async def populate_kg(
             update_props = {**node.properties, "updated_at": now}
 
             cypher = (
-                f"MERGE (n:{node.label} {{{node.natural_key}: $key_value}}) "
+                f"MERGE (n:{node.label} {{{key_name}: $key_value}}) "
                 f"ON CREATE SET n += $create_props "
                 f"ON MATCH SET n += $update_props, "
                 f"n.run_ids = coalesce(n.run_ids, []) + $run_id "

@@ -151,7 +151,24 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
         await session.commit()
 
 
-_RECENCY_DECAY = 0.995
+# Recency decay rates per namespace, applied as decay**days_old.
+# Slower decay for foundational knowledge (paradigm/formulation papers age
+# slowly), faster for generated artifacts (code, simulation traces).
+# At 100 days: 0.999→90%, 0.998→82%, 0.997→74%, 0.995→61%, 0.99→37%.
+_RECENCY_DECAY_BY_NAMESPACE: dict[str, float] = {
+    "paradigm": 0.999,
+    "formulation": 0.998,
+    "meta": 0.997,
+    "model": 0.995,
+    "simulation": 0.99,
+}
+_DEFAULT_RECENCY_DECAY = 0.995
+
+
+def _decay_rate_for(namespace: object) -> float:
+    if isinstance(namespace, str):
+        return _RECENCY_DECAY_BY_NAMESPACE.get(namespace, _DEFAULT_RECENCY_DECAY)
+    return _DEFAULT_RECENCY_DECAY
 
 
 def _parse_utc(value: object) -> datetime | None:
@@ -181,7 +198,8 @@ def _apply_recency_weighting(
     """Apply recency and confidence-based score weighting.
 
     For each result:
-        recency_factor = 0.995 ** days_old  (1.0 if no timestamp)
+        decay_rate = _RECENCY_DECAY_BY_NAMESPACE[namespace]  (default 0.995)
+        recency_factor = decay_rate ** days_old  (1.0 if no timestamp)
         confidence_factor = metadata["confidence"]  (1.0 if missing)
         final_score = score * recency_factor * confidence_factor
 
@@ -193,10 +211,11 @@ def _apply_recency_weighting(
     for r in results:
         created_at = _result_created_at(r)
         recency_factor = 1.0
+        decay_rate = _decay_rate_for(r.metadata.get("namespace"))
 
         if created_at is not None:
             days_old = max(0, (now - created_at).days)
-            recency_factor = _RECENCY_DECAY**days_old
+            recency_factor = decay_rate**days_old
 
         confidence_factor = max(0.0, min(1.0, float(r.metadata.get("confidence", 1.0))))
 

@@ -115,7 +115,14 @@ class PipelineState:
 
     @classmethod
     async def load(cls, run_id: str) -> PipelineState:
-        """Load state from S3."""
+        """Load state from S3 and verify referenced artifacts still exist.
+
+        Raises ``FileNotFoundError`` when the state file itself is missing,
+        or ``RuntimeError`` when the state references artifacts (formulation
+        markdown, reasoner specs, builder models) that are not on S3 — which
+        usually means a previous run crashed mid-stage and left the state
+        ahead of the actual outputs.
+        """
         import shared
 
         key = f"research/{run_id}/pipeline_state.json"
@@ -126,7 +133,7 @@ class PipelineState:
             raise FileNotFoundError(f"Pipeline state not found at s3://{key}")
 
         env_path = data.get("env_spec_path")
-        return cls(
+        state = cls(
             stage=Stage(data["stage"]),
             problem=data["problem"],
             reports_dir=Path(data.get("reports_dir", ".")),
@@ -143,6 +150,50 @@ class PipelineState:
                 for r in data.get("pending_reruns", [])
             ],
         )
+
+        missing = await state._missing_artifacts()
+        if missing:
+            preview = ", ".join(missing[:5])
+            extra = f" (and {len(missing) - 5} more)" if len(missing) > 5 else ""
+            raise RuntimeError(
+                f"Cannot resume run {run_id}: state references {len(missing)} "
+                f"missing artifact(s) on S3: {preview}{extra}. "
+                f"The previous run likely crashed mid-stage. Roll the state "
+                f"back to an earlier stage or start a fresh run."
+            )
+
+        return state
+
+    async def _missing_artifacts(self) -> list[str]:
+        """Return S3 keys this state references that don't exist on the bucket.
+
+        Walks the artifacts implied by each filled-in state field. Empty fields
+        are skipped (a state in early RESEARCH has nothing to validate beyond
+        itself). Returns an empty list when state is coherent.
+        """
+        import shared
+
+        candidates: list[str] = []
+        for slug in self.approved_paradigms:
+            candidates.append(f"{self.research_prefix}/formulations/{slug}.md")
+        for paradigm, fids in self.selected_formulations.items():
+            for fid in fids:
+                candidates.append(f"{self.models_prefix}/reasoner/{paradigm}/{fid}.json")
+        for paradigm, fids in self.approved_specs.items():
+            for fid in fids:
+                candidates.append(f"{self.models_prefix}/builder/{paradigm}/{fid}_model.py")
+
+        missing: list[str] = []
+        for key in candidates:
+            try:
+                if not await shared.storage.exists(key):
+                    missing.append(key)
+            except Exception:
+                # Storage unreachable → don't pretend the artifact is missing;
+                # let the caller surface the connection error elsewhere.
+                logger.warning("S3 reachability check failed for %s", key, exc_info=True)
+                return []
+        return missing
 
 
 async def _convert_formulations_to_slugs(
@@ -324,6 +375,7 @@ class Router:
                     vector_store=shared.vectors,
                     client=self.client,
                     run_id=self.state.run_id,
+                    kg=getattr(shared, "kg", None),
                 )
             logger.info("Consolidation completed: %s", result)
         except Exception:
@@ -435,6 +487,13 @@ class Router:
                 task = asyncio.create_task(self._run_memory_agent(current_stage))
                 self._background_tasks.add(task)
                 task.add_done_callback(self._background_tasks.discard)
+
+        # Drain any in-flight Memory Agent ticks before claiming the run is
+        # done. This makes "pipeline complete" mean "memories written or at
+        # least attempted", not just "memories scheduled" — and gives the
+        # following consolidation step a stable view of the run's memories.
+        if self._background_tasks:
+            await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
         # Finalize run: consolidation + s3_report_key
         if self.state.stage == Stage.DONE:

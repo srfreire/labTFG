@@ -108,6 +108,10 @@ class MemoryAgentResult:
     duplicates_skipped: int
     conflicts_resolved: int
     duration_ms: int
+    failed: bool = False
+    """True when an unrecoverable error zeroed this result. ``error`` carries the message."""
+
+    error: str | None = None
 
 
 @dataclass

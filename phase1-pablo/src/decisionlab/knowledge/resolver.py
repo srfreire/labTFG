@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 _FAST_MODEL = SETTINGS.knowledge_fast_model
 _HEAVY_MODEL = SETTINGS.knowledge_heavy_model
 _DUPLICATE_THRESHOLD = 0.85
+# Above this cosine score, with near-equal length, the duplicate is obvious
+# enough to skip the Sonnet classification call. Reserves Sonnet for the
+# genuinely ambiguous 0.85–0.95 band where ENRICHMENT/CONTRADICTION live.
+_OBVIOUS_DUPLICATE_SCORE = 0.95
+_OBVIOUS_DUPLICATE_LEN_RATIO = 0.10
 
 # Naming follows _STAGE_* convention from indexer.py.
 _STAGE_NAMESPACE: dict[str, str] = {
@@ -147,6 +152,23 @@ async def _classify_conflict(
         return {"classification": "UNKNOWN", "reasoning": "classification failed"}
 
 
+def _is_obvious_duplicate(score: float, new_content: str, existing_content: str) -> bool:
+    """True when the cosine score and length ratio make a Sonnet call wasteful.
+
+    Both content strings must be non-empty to compare lengths. The 200-char
+    text_preview cutoff in vector payloads means perfect-match facts longer
+    than 200 chars hit length_ratio≈0 and fall through to Sonnet — that's
+    desirable: long facts deserve real classification.
+    """
+    if score < _OBVIOUS_DUPLICATE_SCORE:
+        return False
+    if not new_content or not existing_content:
+        return False
+    n, e = len(new_content), len(existing_content)
+    length_ratio = abs(n - e) / max(n, e)
+    return length_ratio < _OBVIOUS_DUPLICATE_LEN_RATIO
+
+
 async def resolve_and_store(
     extraction: ExtractionResult,
     embedding_service: EmbeddingService,
@@ -203,20 +225,26 @@ async def resolve_and_store(
             memories_created += 1
             continue
 
-        # Step 3: Conflict classification (Sonnet) -- use best match
+        # Step 3: Conflict classification — fast-path obvious duplicates,
+        # call Sonnet only on genuinely ambiguous matches.
         best = max(candidates, key=lambda c: c["score"])
         best_id = uuid_mod.UUID(best["id"])
-        classification = await _classify_conflict(
-            existing_content=best["payload"].get("text_preview", ""),
-            existing_stage=best["payload"].get("source_stage", "unknown"),
-            existing_timestamp=best["payload"].get("created_at", "unknown"),
-            new_content=fact,
-            new_stage=stage,
-            client=client,
-        )
-        sonnet_calls += 1
+        existing_text = best["payload"].get("text_preview", "")
 
-        label = classification.get("classification", "").upper()
+        if _is_obvious_duplicate(best["score"], fact, existing_text):
+            label = "DUPLICATE"
+            classification = {"classification": "DUPLICATE", "reasoning": "fast-path"}
+        else:
+            classification = await _classify_conflict(
+                existing_content=existing_text,
+                existing_stage=best["payload"].get("source_stage", "unknown"),
+                existing_timestamp=best["payload"].get("created_at", "unknown"),
+                new_content=fact,
+                new_stage=stage,
+                client=client,
+            )
+            sonnet_calls += 1
+            label = classification.get("classification", "").upper()
 
         if label == "DUPLICATE":
             duplicates_skipped += 1

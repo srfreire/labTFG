@@ -77,23 +77,26 @@ class MemoryAgent:
     ) -> MemoryAgentResult:
         """Run the full memory pipeline for one stage's output.
 
-        Never raises — all errors are caught and logged, returning a zeroed
-        result so the pipeline continues uninterrupted.
+        Never raises — all errors are caught and logged. On failure the
+        returned result has ``failed=True`` and the emitted ``agent_status``
+        is ``failed`` (with the error message) so the UI can surface it.
         """
         t0 = time.monotonic()
 
-        async def _emit_status(status: str) -> None:
-            if emit is not None:
-                try:
-                    await emit(
-                        {
-                            "type": "agent_status",
-                            "agent": "memory_agent",
-                            "status": status,
-                        }
-                    )
-                except Exception:
-                    logger.warning("Memory Agent: emit(%s) failed", status)
+        async def _emit_status(status: str, error: str | None = None) -> None:
+            if emit is None:
+                return
+            payload = {
+                "type": "agent_status",
+                "agent": "memory_agent",
+                "status": status,
+            }
+            if error is not None:
+                payload["error"] = error
+            try:
+                await emit(payload)
+            except Exception:
+                logger.warning("Memory Agent: emit(%s) failed", status)
 
         try:
             await _emit_status("working")
@@ -108,10 +111,10 @@ class MemoryAgent:
             # Step 1: Extract entities, relations, facts
             try:
                 extraction = await extract(stage, stage_output, run_id, self._client)
-            except Exception:
+            except Exception as exc:
                 logger.exception("Memory Agent extraction failed for stage=%s", stage)
-                await _emit_status("done")
-                return self._zero_result(t0)
+                await _emit_status("failed", error=f"extraction: {exc}")
+                return self._failed_result(t0, f"extraction: {exc}")
 
             # Step 2: Parallel KG population + embedding/indexing
             kg_result = await self._parallel_write(
@@ -146,10 +149,10 @@ class MemoryAgent:
             )
             return result
 
-        except Exception:
+        except Exception as exc:
             logger.exception("Memory Agent failed for stage=%s", stage)
-            await _emit_status("done")
-            return self._zero_result(t0)
+            await _emit_status("failed", error=str(exc))
+            return self._failed_result(t0, str(exc))
 
     # -- internal helpers ----------------------------------------------------
 
@@ -231,4 +234,18 @@ class MemoryAgent:
             duplicates_skipped=0,
             conflicts_resolved=0,
             duration_ms=int((time.monotonic() - t0) * 1000),
+        )
+
+    @staticmethod
+    def _failed_result(t0: float, error: str) -> MemoryAgentResult:
+        return MemoryAgentResult(
+            nodes_created=0,
+            nodes_merged=0,
+            relations_created=0,
+            facts_stored=0,
+            duplicates_skipped=0,
+            conflicts_resolved=0,
+            duration_ms=int((time.monotonic() - t0) * 1000),
+            failed=True,
+            error=error,
         )
