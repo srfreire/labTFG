@@ -17,6 +17,7 @@ import uuid
 
 import shared
 from shared.models import Experiment as DBExperiment
+from shared.settings import load_settings
 from sqlalchemy import select, update
 
 from simlab.architect import Architect
@@ -390,6 +391,23 @@ proactively suggest next steps:
 The session continues until the user explicitly says goodbye or closes the connection.
 """
 
+_KNOWLEDGE_RETRIEVAL_PROMPT_SECTION = """
+
+## Knowledge Backbone
+
+You have access to **retrieve_context** — a tool that queries the Knowledge Backbone \
+(a graph of scientific facts, papers, postulates, paradigms, and past simulation results).
+
+**When to use it:**
+- When the user asks about scientific concepts, paradigms, authors, papers, or prior simulations
+- Before answering questions that would benefit from grounded, factual knowledge
+- To look up what past experiments have shown about a particular paradigm
+
+Call `retrieve_context` with a natural-language query. You can optionally filter by \
+namespace ("paradigm", "formulation", "model", "simulation", "meta") and set `top_k` \
+for the number of results.
+"""
+
 
 # ---------------------------------------------------------------------------
 # Orchestrator class
@@ -451,15 +469,22 @@ class Orchestrator:
                     entries.append(f"  - Herramientas invocadas: {', '.join(tool_parts)}")
         return "\n".join(entries) if entries else "No interaction history available."
 
+    def _build_system_prompt(self, settings: "Settings") -> str:
+        """Assemble the system prompt, optionally appending knowledge sections."""
+        if settings.ENABLE_KNOWLEDGE_READ:
+            return ORCHESTRATOR_SYSTEM_PROMPT + _KNOWLEDGE_RETRIEVAL_PROMPT_SECTION
+        return ORCHESTRATOR_SYSTEM_PROMPT
+
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
         self._messages.append({"role": "user", "content": user_message})
-        tools, registry = self._build_tools()
+        settings = load_settings()
+        tools, registry = self._build_tools(settings)
 
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
-            system=ORCHESTRATOR_SYSTEM_PROMPT,
+            system=self._build_system_prompt(settings),
             tools=tools,
             messages=self._messages,
             registry=registry,
@@ -481,8 +506,10 @@ class Orchestrator:
             await cb(agent_name, tool_name)
         return _cb
 
-    def _build_tools(self) -> tuple[list[dict], Registry]:
+    def _build_tools(self, settings: "Settings | None" = None) -> tuple[list[dict], Registry]:
         """Build tool implementations as closures over the orchestrator's state."""
+        if settings is None:
+            settings = load_settings()
         state = self._state
         client = self.client
 
@@ -871,4 +898,24 @@ class Orchestrator:
             "generate_report": generate_report,
             "list_experiments": list_experiments_fn,
         }
-        return ALL_TOOLS, registry
+
+        # --- Knowledge Backbone retrieval (sim-recall / P1-002) ---
+        tools = list(ALL_TOOLS)
+        if settings.ENABLE_KNOWLEDGE_READ:
+            from simlab.recall import RETRIEVE_CONTEXT_TOOL, retrieve_context
+
+            async def retrieve_context_handler(params: dict) -> str:
+                query = params.get("query")
+                if not query:
+                    return "## Retrieved Knowledge (0 results)\n\nNo query provided."
+                return await retrieve_context(
+                    query=query,
+                    namespace=params.get("namespace"),
+                    top_k=params.get("top_k", 5),
+                    stage="phase2-orchestrator",
+                )
+
+            tools.append(RETRIEVE_CONTEXT_TOOL)
+            registry["retrieve_context"] = retrieve_context_handler
+
+        return tools, registry
