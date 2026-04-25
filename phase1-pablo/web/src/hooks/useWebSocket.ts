@@ -191,7 +191,7 @@ function handleServerMessage(
 
 interface WebSocketActions {
   send: (msg: ClientMessage) => void;
-  startPipeline: (problem: string) => void;
+  startPipeline: (problem: string, untilStage?: Stage) => void;
   sendReviewResponse: (stage: Stage, data: any) => void;
   sendRouterPrompt: (message: string) => void;
   cancelPipeline: () => void;
@@ -306,9 +306,9 @@ export function useWebSocket(
   }, []);
 
   const startPipeline = useCallback(
-    (problem: string) => {
+    (problem: string, untilStage?: Stage) => {
       dispatch({ type: "START_PIPELINE" });
-      send({ type: "start", problem });
+      send({ type: "start", problem, until_stage: untilStage });
     },
     [send],
   );

@@ -106,7 +106,7 @@ export interface KGSnapshot {
 
 // Frontend -> Backend messages
 export type ClientMessage =
-  | { type: "start"; problem: string }
+  | { type: "start"; problem: string; until_stage?: Stage }
   | { type: "review_response"; stage: Stage.REVIEW_RESEARCH; data: { approved: string[] } }
   | { type: "review_response"; stage: Stage.REVIEW_FORMALIZE; data: { selected: Record<string, number[]> } }
   | { type: "review_response"; stage: Stage.GET_ENV_SPEC; data: { env_spec: Record<string, unknown> } }

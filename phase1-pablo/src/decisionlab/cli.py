@@ -263,11 +263,31 @@ def build(
 def run(
     problem: str = typer.Argument(help="Decision-making problem to investigate"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show debug logs"),
+    until: str | None = typer.Option(
+        None,
+        "--until",
+        help="Stop after this work stage. One of: research, formalize, reason, build. Default: full pipeline.",
+    ),
 ):
     """Run the full pipeline with interactive human feedback."""
     _setup_logging(verbose)
 
     from decisionlab.router import PipelineState, Router, Stage
+
+    stop_after: Stage | None = None
+    if until is not None:
+        valid = {
+            Stage.RESEARCH.value: Stage.RESEARCH,
+            Stage.FORMALIZE.value: Stage.FORMALIZE,
+            Stage.REASON.value: Stage.REASON,
+            Stage.BUILD.value: Stage.BUILD,
+        }
+        if until not in valid:
+            console.print(
+                f"[bold red]--until must be one of: {', '.join(valid)}; got {until!r}[/bold red]"
+            )
+            raise typer.Exit(code=1)
+        stop_after = valid[until]
 
     async def _run():
         import uuid as _uuid
@@ -301,22 +321,9 @@ def run(
                 state=state,
                 search=DuckDuckGoAdapter(),
                 project_root=Path.cwd(),
+                stop_after=stop_after,
             )
             await router.run()
-
-            # Finalize: set s3_report_key
-            async with shared.db.get_session() as session:
-                from sqlalchemy import update
-
-                await session.execute(
-                    update(Run)
-                    .where(Run.id == _uuid.UUID(run_id))
-                    .values(
-                        status="done",
-                        s3_report_key=f"research/{run_id}/report.md",
-                    )
-                )
-                await session.commit()
         finally:
             await shared.shutdown()
 

@@ -375,6 +375,9 @@ export default function App() {
 
   const [selectedNode, setSelectedNode] = useState<AgrexNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
+  // `undefined` = run the full pipeline (default). Otherwise the work stage
+  // after which the pipeline terminates (kept review enabled).
+  const [untilStage, setUntilStage] = useState<Stage | undefined>(undefined);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   /* ── Output review state ── */
@@ -447,9 +450,9 @@ export default function App() {
   const handleRun = useCallback(() => {
     const trimmed = problemInput.trim();
     if (!trimmed) return;
-    startPipeline(trimmed);
+    startPipeline(trimmed, untilStage);
     setProblemInput("");
-  }, [problemInput, startPipeline]);
+  }, [problemInput, startPipeline, untilStage]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -638,6 +641,36 @@ export default function App() {
                         "cubic-bezier(0.23, 1, 0.32, 1)",
                     }}
                   >
+                    {/* Run-until selector */}
+                    <div className="flex items-center gap-1.5 mb-2.5 text-[10px] uppercase tracking-[1.5px]">
+                      <span className="text-text-faint mr-1">Run until</span>
+                      {(
+                        [
+                          { value: Stage.RESEARCH, label: "Research" },
+                          { value: Stage.FORMALIZE, label: "Formalize" },
+                          { value: Stage.REASON, label: "Reason" },
+                          { value: undefined, label: "Full" },
+                        ] as Array<{ value: Stage | undefined; label: string }>
+                      ).map(({ value, label }) => {
+                        const active = untilStage === value;
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setUntilStage(value)}
+                            className={[
+                              "px-2.5 py-1 rounded-md border cursor-pointer transition-colors",
+                              active
+                                ? "bg-white text-black border-white"
+                                : "bg-transparent text-text-muted border-border hover:border-border-strong hover:text-text",
+                            ].join(" ")}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <div className="flex gap-3 items-stretch">
                       <textarea
                         ref={inputRef}

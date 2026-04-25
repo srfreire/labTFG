@@ -269,6 +269,7 @@ class Router:
         search: WebSearchPort,
         project_root: Path,
         emit: EmitFn | None = None,
+        stop_after: Stage | None = None,
     ):
         self.client = client
         self.state = state
@@ -283,6 +284,21 @@ class Router:
         # to S3 reads in `_collect_stage_output` for stages whose agents don't
         # yet return text directly (formalize/reason/build).
         self._stage_outputs: dict[Stage, str] = {}
+        # When set, the loop terminates after the corresponding REVIEW_X stage
+        # completes. Must be one of the work stages (research/formalize/reason
+        # /build); validated by the caller. The trailing review is preserved
+        # so the user can still curate the partial-run output before it's
+        # committed to the KG.
+        if stop_after is not None and stop_after not in _MEMORY_STAGE_OF:
+            raise ValueError(
+                f"stop_after must be a work stage, got {stop_after!r}"
+            )
+        self._stop_after: Stage | None = stop_after
+        self._stop_after_review: Stage | None = (
+            _REVIEW_AFTER_MEMORY[_MEMORY_STAGE_OF[stop_after]]
+            if stop_after is not None
+            else None
+        )
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -586,16 +602,31 @@ class Router:
                     "status": "done",
                 }
             )
+
+            # `--until X` enforcement: when the user just finished reviewing the
+            # stop_after stage, terminate cleanly. Consolidation + finalization
+            # still run via the block below.
+            if (
+                self._stop_after_review is not None
+                and current_stage == self._stop_after_review
+            ):
+                self.state.stage = Stage.DONE
+
             await self.state.save()
             await self._update_run(status=self.state.stage.value)
 
-        # Finalize run: consolidation + s3_report_key
+        # Finalize run: consolidation + s3_report_key. final_stage is set
+        # only on partial runs so `final_stage IS NULL` keeps meaning
+        # "ran the full pipeline".
         if self.state.stage == Stage.DONE:
             if self.memory_agent is not None:
                 await self._run_consolidation()
-            await self._update_run(
-                s3_report_key=f"{self.state.research_prefix}/report.md",
-            )
+            updates: dict = {
+                "s3_report_key": f"{self.state.research_prefix}/report.md",
+            }
+            if self._stop_after is not None:
+                updates["final_stage"] = self._stop_after.value
+            await self._update_run(**updates)
 
     # -- stage handlers ------------------------------------------------------
 

@@ -290,8 +290,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 manager.reset()
 
                 problem: str = data["problem"]
+                until_stage: str | None = data.get("until_stage")
                 manager.pipeline_task = asyncio.create_task(
-                    run_pipeline(problem, manager.emit)
+                    run_pipeline(problem, manager.emit, until_stage=until_stage)
                 )
 
             elif msg_type == "review_response":
@@ -315,8 +316,15 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 async def run_pipeline(
     problem: str,
     emit: EmitFn,
+    until_stage: str | None = None,
 ) -> None:
-    """Run the full pipeline, emitting events via *emit*."""
+    """Run the full pipeline, emitting events via *emit*.
+
+    *until_stage* is the optional --until X equivalent: when set to a work
+    stage value (research/formalize/reason/build), the pipeline terminates
+    after the matching review stage. Invalid values are dropped silently with
+    a warning so a malformed WS payload doesn't crash the runner.
+    """
     import uuid
 
     from anthropic import AsyncAnthropic
@@ -324,6 +332,23 @@ async def run_pipeline(
     import shared
     from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
     from shared.models import Run
+
+    stop_after: Stage | None = None
+    if until_stage is not None:
+        valid = {
+            Stage.RESEARCH.value: Stage.RESEARCH,
+            Stage.FORMALIZE.value: Stage.FORMALIZE,
+            Stage.REASON.value: Stage.REASON,
+            Stage.BUILD.value: Stage.BUILD,
+        }
+        if until_stage in valid:
+            stop_after = valid[until_stage]
+        else:
+            logger.warning(
+                "Ignoring invalid until_stage=%r — must be one of %s",
+                until_stage,
+                ", ".join(valid),
+            )
 
     try:
         client = AsyncAnthropic()
@@ -358,6 +383,7 @@ async def run_pipeline(
             search=search,
             project_root=Path.cwd(),
             emit=emit,
+            stop_after=stop_after,
         )
 
         try:
