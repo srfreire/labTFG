@@ -23,6 +23,7 @@ class Settings:
     VOYAGE_API_KEY: str = ""
     ZEROENTROPY_API_KEY: str = ""
     ENABLE_KNOWLEDGE_WRITE: bool = False
+    ENABLE_KNOWLEDGE_READ: bool = False
 
 
 def _parse_bool(raw: str) -> bool:
