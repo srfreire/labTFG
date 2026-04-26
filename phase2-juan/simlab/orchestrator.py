@@ -106,6 +106,75 @@ async def _write_tracker_memories(writer, tracker_output: str, state: dict) -> N
 
 
 # ---------------------------------------------------------------------------
+# Knowledge pre-fetch (kg-enrichment / P1-001)
+# ---------------------------------------------------------------------------
+
+# Query definitions per stage: (subsection_title, query_template, namespace, top_k)
+_PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
+    "analyst": [
+        ("Postulates", "postulates for {paradigm}", "paradigm", 5),
+        ("Historical simulations", "previous simulation results for {paradigm}", "simulation", 5),
+    ],
+    "reporter": [
+        ("References", "papers and authors for {paradigm}", "meta", 10),
+    ],
+}
+
+
+async def prefetch_knowledge(
+    paradigm: str,
+    stage: str,
+    on_warning=None,
+) -> str:
+    """Pre-fetch KG context for an agent stage. Returns markdown or ``""``."""
+    from shared.settings import load_settings as _load
+    settings = _load()
+    if not settings.ENABLE_KNOWLEDGE_READ:
+        return ""
+    if not paradigm:
+        return ""
+
+    queries = _PREFETCH_QUERIES.get(stage)
+    if not queries:
+        return ""
+
+    from simlab.recall.retrieve import retrieve_context, _EMPTY_RESULT
+    import asyncio
+
+    async def _run_one(title: str, query_tpl: str, ns: str, top_k: int) -> tuple[str, str]:
+        """Run a single retrieve_context call, return (title, result)."""
+        try:
+            result = await retrieve_context(
+                query=query_tpl.format(paradigm=paradigm),
+                namespace=ns,
+                top_k=top_k,
+                stage=f"phase2-{stage}",
+            )
+            if result == _EMPTY_RESULT:
+                return (title, "")
+            return (title, result)
+        except Exception as exc:
+            logger.warning("Knowledge pre-fetch failed for %s: %s", stage, exc)
+            if on_warning:
+                await on_warning(stage, str(exc)[:200])
+            return (title, "")
+
+    results = await asyncio.gather(*[
+        _run_one(title, qt, ns, tk) for title, qt, ns, tk in queries
+    ])
+
+    sections = []
+    for title, content in results:
+        if content:
+            sections.append(f"### {title}\n\n{content}")
+
+    if not sections:
+        return ""
+
+    return "## Knowledge context\n\n" + "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
 # Tool schemas — what the Orchestrator can do (sent to Claude)
 # ---------------------------------------------------------------------------
 

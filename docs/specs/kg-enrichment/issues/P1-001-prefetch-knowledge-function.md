@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Implement prefetch_knowledge function with warning notifications
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: prefetch
@@ -101,3 +101,22 @@ Empty subsections (empty string from retrieve_context) are omitted entirely.
 
 Phase spec: `docs/specs/kg-enrichment/design.md`
 Heat: `prefetch`
+
+## Completion Summary
+
+**Commit:** see git log
+
+### What was built
+- `prefetch_knowledge(paradigm, stage, on_warning)` async function in orchestrator.py
+- Query dispatch table `_PREFETCH_QUERIES` with analyst (paradigm + simulation) and reporter (meta) configs
+- Per-query error isolation with `_run_one` closure inside asyncio.gather
+- Warning callback on failure, logger.warning for all failures
+- Guard clauses for `ENABLE_KNOWLEDGE_READ=False` and empty paradigm
+
+### Files created/modified
+- `phase2-juan/simlab/orchestrator.py` — added `prefetch_knowledge` + `_PREFETCH_QUERIES`
+- `phase2-juan/tests/test_kg_prefetch.py` — 7 unit tests covering all acceptance criteria
+
+### Decisions
+- Kept lazy imports inside `prefetch_knowledge` to avoid circular import issues with simlab.recall
+- Tests patch at `simlab.recall.retrieve.retrieve_context` (source module) rather than orchestrator level
