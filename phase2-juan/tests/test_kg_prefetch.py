@@ -1,13 +1,14 @@
-"""P1-001 — tests for prefetch_knowledge function.
+"""P1-001 / P1-004 — tests for prefetch_knowledge and agent injection.
 
 Mocks retrieve_context so no real KG infrastructure is needed.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from simlab.environment import Action, Event
 from simlab.orchestrator import prefetch_knowledge
 
 
@@ -171,3 +172,150 @@ async def test_prefetch_no_paradigm():
 
     assert result == ""
     mock_rc.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# R2: Agent injection tests (P1-004)
+# ---------------------------------------------------------------------------
+
+_FAKE_EVENT = Event(step=0, agent_id="a1", action=Action(name="move"))
+_KNOWLEDGE_CTX = "## Knowledge context\n\n### Postulates\nSome postulate data"
+
+
+def _mock_response():
+    """Create a minimal mock response from run_agent_loop."""
+    block = MagicMock()
+    block.type = "text"
+    block.text = '{"patterns": [], "comparisons": [], "metrics": {}}'
+    resp = MagicMock()
+    resp.content = [block]
+    return resp
+
+
+@pytest.mark.asyncio
+async def test_analyst_knowledge_context_injected():
+    """Analyst user message includes knowledge context before tracker output."""
+    from simlab.analyst import Analyst
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.analyst.run_agent_loop", side_effect=fake_loop):
+        analyst = Analyst(client=MagicMock())
+        await analyst.run(
+            "Analyze", "tracker data", [_FAKE_EVENT],
+            knowledge_context=_KNOWLEDGE_CTX,
+        )
+
+    msg = captured["messages"][0]["content"]
+    ctx_pos = msg.index("## Knowledge context")
+    tracker_pos = msg.index("## Tracker observation log")
+    assert ctx_pos < tracker_pos
+
+
+@pytest.mark.asyncio
+async def test_analyst_no_knowledge_context():
+    """Analyst without knowledge_context has no such section."""
+    from simlab.analyst import Analyst
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.analyst.run_agent_loop", side_effect=fake_loop):
+        analyst = Analyst(client=MagicMock())
+        await analyst.run("Analyze", "tracker data", [_FAKE_EVENT])
+
+    msg = captured["messages"][0]["content"]
+    assert "## Knowledge context" not in msg
+    assert "## Tracker observation log" in msg
+
+
+@pytest.mark.asyncio
+async def test_reporter_knowledge_context_injected():
+    """Reporter user message includes knowledge context before tracker output."""
+    from simlab.reporter import Reporter
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
+        reporter = Reporter(client=MagicMock())
+        await reporter.run(
+            "Report", "tracker data", "analyst data",
+            run_id="r1", experiment_id="e1",
+            knowledge_context=_KNOWLEDGE_CTX,
+        )
+
+    msg = captured["messages"][0]["content"]
+    ctx_pos = msg.index("## Knowledge context")
+    tracker_pos = msg.index("## Tracker observation log")
+    assert ctx_pos < tracker_pos
+
+
+@pytest.mark.asyncio
+async def test_reporter_no_knowledge_context():
+    """Reporter without knowledge_context has no such section."""
+    from simlab.reporter import Reporter
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
+        reporter = Reporter(client=MagicMock())
+        await reporter.run(
+            "Report", "tracker data", "analyst data",
+            run_id="r1", experiment_id="e1",
+        )
+
+    msg = captured["messages"][0]["content"]
+    assert "## Knowledge context" not in msg
+    assert "## Tracker observation log" in msg
+
+
+# ---------------------------------------------------------------------------
+# R3: Integration roundtrip (P1-004)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_prefetch_roundtrip():
+    """Full flow: prefetch → format → verify structure for agent injection."""
+    mock_rc = AsyncMock(side_effect=[_POSTULATES, _SIMULATION])
+
+    with (
+        patch("simlab.recall.retrieve.retrieve_context", mock_rc),
+        patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
+        patch("shared.settings.load_settings") as mock_settings,
+    ):
+        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
+        knowledge_ctx = await prefetch_knowledge("prospect_theory", "analyst")
+
+    # Simulate what the orchestrator does: inject into analyst user message
+    prompt = "Analyze patterns"
+    tracker_output = "Step 1: agent moved north"
+    parts = [prompt]
+    if knowledge_ctx:
+        parts.append(knowledge_ctx)
+    parts.append(f"## Tracker observation log\n\n{tracker_output}")
+    user_message = "\n\n".join(parts)
+
+    # Verify structure
+    assert user_message.startswith("Analyze patterns")
+    assert "## Knowledge context" in user_message
+    assert "### Postulates" in user_message
+    assert "### Historical simulations" in user_message
+    ctx_pos = user_message.index("## Knowledge context")
+    tracker_pos = user_message.index("## Tracker observation log")
+    assert ctx_pos < tracker_pos

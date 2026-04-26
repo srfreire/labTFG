@@ -1,7 +1,7 @@
 ---
 id: P1-004
 title: Unit and integration tests for KG pre-fetch and agent wiring
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: tests
@@ -65,3 +65,20 @@ All tests mock `retrieve_context` — no real KG needed.
 
 Phase spec: `docs/specs/kg-enrichment/design.md`
 Heat: `tests`
+
+## Completion Summary
+
+**Commit:** see git log
+
+### What was built
+- 7 unit tests for prefetch_knowledge (R1, already done in P1-001)
+- 4 unit tests for agent injection (R2): analyst/reporter with and without knowledge_context
+- 1 integration roundtrip test (R3): prefetch → format → inject into user message
+- Total: 12 tests, all passing
+
+### Files created/modified
+- `phase2-juan/tests/test_kg_prefetch.py` — expanded with R2 agent injection tests and R3 roundtrip
+
+### Decisions
+- Patched `run_agent_loop` in analyst/reporter modules to capture user_message without running LLM
+- Roundtrip test simulates orchestrator injection logic inline rather than testing through full orchestrator (avoids heavy mocking)
