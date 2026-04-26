@@ -599,6 +599,12 @@ class Orchestrator:
             et, er, ps = _recall[stage]
             return {"extra_tools": et, "extra_registry": er, "prompt_suffix": ps}
 
+        # Warning callback for KG pre-fetch (kg-enrichment / P1-002)
+        async def _on_kg_warning(stage: str, message: str):
+            cb = self.on_agent_tool_call
+            if cb:
+                await cb("KnowledgePreFetch", f"⚠ {stage}: {message}")
+
         # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
             arch = Architect(client=client)
@@ -798,6 +804,10 @@ class Orchestrator:
             state["analyst_output"] = None
             state["agent_to_model"] = agent_to_model
             state["seed"] = params.get("seed")
+            # Store paradigm name for KG pre-fetch (kg-enrichment / P1-002)
+            if agent_to_model:
+                first = next(iter(agent_to_model.values()))
+                state["paradigm"] = first.get("paradigm", "")
 
             # Persist simulation results to S3 + Postgres
             if state.get("experiment_id"):
@@ -881,6 +891,10 @@ class Orchestrator:
             # Initialize chart accumulator on first call
             if "charts" not in state:
                 state["charts"] = []
+            # KG pre-fetch (kg-enrichment / P1-002)
+            knowledge_ctx = await prefetch_knowledge(
+                state.get("paradigm", ""), "analyst", on_warning=_on_kg_warning,
+            )
             analyst = Analyst(client=client)
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
             result = await analyst.run(
@@ -891,6 +905,7 @@ class Orchestrator:
                 experiment_id=state.get("experiment_id", ""),
                 charts_accumulator=state["charts"],
                 critical_events=state.get("critical_events"),
+                knowledge_context=knowledge_ctx,
                 **_recall_kwargs("analyst"),
             )
             state["analyst_output"] = result
@@ -918,6 +933,10 @@ class Orchestrator:
                 "anthropic/claude-sonnet-4-5" if quality == "detailed"
                 else "anthropic/claude-haiku-4-5"
             )
+            # KG pre-fetch (kg-enrichment / P1-002)
+            knowledge_ctx = await prefetch_knowledge(
+                state.get("paradigm", ""), "reporter", on_warning=_on_kg_warning,
+            )
             reporter = Reporter(client=client, model=reporter_model)
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
             exp_id = state.get("experiment_id", "")
@@ -931,6 +950,7 @@ class Orchestrator:
                 interaction_summary=self._build_interaction_summary(),
                 predictions=state.get("predictions"),
                 charts=state.get("charts"),
+                knowledge_context=knowledge_ctx,
                 **_recall_kwargs("reporter"),
             )
             # Track PDF S3 keys

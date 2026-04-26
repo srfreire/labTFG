@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Wire prefetch_knowledge into orchestrator analyze_results and generate_report
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: prefetch
@@ -65,3 +65,20 @@ orchestrator's existing callback mechanism (same pattern as
 
 Phase spec: `docs/specs/kg-enrichment/design.md`
 Heat: `prefetch`
+
+## Completion Summary
+
+**Commit:** see git log
+
+### What was built
+- Paradigm name resolution: extracted from `agent_to_model` during `run_simulation`, stored in `state["paradigm"]`
+- `_on_kg_warning` closure in `_build_tools` that surfaces KG warnings via the orchestrator's `on_agent_tool_call` callback
+- Pre-fetch call in `analyze_results` before invoking Analyst, passing result as `knowledge_context`
+- Pre-fetch call in `generate_report` before invoking Reporter, passing result as `knowledge_context`
+
+### Files created/modified
+- `phase2-juan/simlab/orchestrator.py` — modified `run_simulation` (paradigm extraction), `_build_tools` (warning callback), `analyze_results` and `generate_report` closures (prefetch wiring)
+
+### Decisions
+- Paradigm resolved from first model in `agent_to_model` dict — simple and sufficient since all models in a run typically share the same paradigm
+- Warning callback reuses `on_agent_tool_call` with agent name "KnowledgePreFetch" to integrate with existing frontend panel
