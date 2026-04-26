@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Extend prefetch_knowledge for architect and wire into create_environment
-status: todo
+status: done
 kind: strike
 phase: 2
 heat: wiring

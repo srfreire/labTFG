@@ -124,16 +124,21 @@ class Architect:
         extra_tools: list[dict] | None = None,
         extra_registry: dict | None = None,
         prompt_suffix: str = "",
+        knowledge_context: str = "",
     ) -> str:
         tools = self.tools + (extra_tools or [])
         registry = {**self.registry, **(extra_registry or {})}
         system = ARCHITECT_SYSTEM_PROMPT + prompt_suffix
+        parts = [prompt]
+        if knowledge_context:
+            parts.append(knowledge_context)
+        user_content = "\n\n".join(parts)
         response = await run_agent_loop(
             client=self.client,
             model=self.model,
             system=system,
             tools=tools,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": user_content}],
             registry=registry,
             max_iterations=max_iterations,
             on_tool_call=on_tool_call,

@@ -111,6 +111,10 @@ async def _write_tracker_memories(writer, tracker_output: str, state: dict) -> N
 
 # Query definitions per stage: (subsection_title, query_template, namespace, top_k)
 _PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
+    "architect": [
+        ("Paradigm facts", "postulates and key properties for {paradigm}", "paradigm", 5),
+        ("Previous environments", "environment specifications for {paradigm}", "simulation", 5),
+    ],
     "analyst": [
         ("Postulates", "postulates for {paradigm}", "paradigm", 5),
         ("Historical simulations", "previous simulation results for {paradigm}", "simulation", 5),
@@ -607,10 +611,15 @@ class Orchestrator:
 
         # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
+            # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
+            knowledge_ctx = await prefetch_knowledge(
+                params["description"], "architect", on_warning=_on_kg_warning,
+            )
             arch = Architect(client=client)
             spec_json = await arch.run(
                 params["description"],
                 on_tool_call=self._make_tool_callback("Architect"),
+                knowledge_context=knowledge_ctx,
                 **_recall_kwargs("architect"),
             )
             state["spec"] = json.loads(spec_json)

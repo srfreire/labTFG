@@ -1,7 +1,7 @@
 ---
 id: P2-002
 title: Tests for architect pre-fetch and injection
-status: todo
+status: done
 kind: strike
 phase: 2
 heat: tests

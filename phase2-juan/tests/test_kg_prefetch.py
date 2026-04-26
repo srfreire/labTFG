@@ -175,6 +175,76 @@ async def test_prefetch_no_paradigm():
 
 
 # ---------------------------------------------------------------------------
+# Architect stage (P2-002)
+# ---------------------------------------------------------------------------
+
+_PARADIGM_FACTS = "## Retrieved Knowledge (2 results)\n\n### Result 1\nProspect theory facts..."
+_PREV_ENVS = "## Retrieved Knowledge (1 results)\n\n### Result 1\nGrid 10x10 with resources..."
+
+
+@pytest.mark.asyncio
+async def test_prefetch_architect():
+    """Architect stage: 2 parallel queries (paradigm + simulation)."""
+    mock_rc = AsyncMock(side_effect=[_PARADIGM_FACTS, _PREV_ENVS])
+
+    with (
+        patch("simlab.recall.retrieve.retrieve_context", mock_rc),
+        patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
+        patch("shared.settings.load_settings") as mock_settings,
+    ):
+        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
+        result = await prefetch_knowledge("prospect theory with 5 agents", "architect")
+
+    assert mock_rc.call_count == 2
+    assert "## Knowledge context" in result
+    assert "### Paradigm facts" in result
+    assert "### Previous environments" in result
+
+
+@pytest.mark.asyncio
+async def test_architect_knowledge_context_injected():
+    """Architect user message includes knowledge context after prompt."""
+    from simlab.architect import Architect
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.architect.run_agent_loop", side_effect=fake_loop):
+        arch = Architect(client=MagicMock())
+        await arch.run("design an environment", knowledge_context=_KNOWLEDGE_CTX)
+
+    msg = captured["messages"][0]["content"]
+    assert "design an environment" in msg
+    assert "## Knowledge context" in msg
+    prompt_pos = msg.index("design an environment")
+    ctx_pos = msg.index("## Knowledge context")
+    assert prompt_pos < ctx_pos
+
+
+@pytest.mark.asyncio
+async def test_architect_no_knowledge_context():
+    """Architect without knowledge_context — message is just the prompt."""
+    from simlab.architect import Architect
+
+    captured = {}
+
+    async def fake_loop(**kwargs):
+        captured["messages"] = kwargs["messages"]
+        return _mock_response()
+
+    with patch("simlab.architect.run_agent_loop", side_effect=fake_loop):
+        arch = Architect(client=MagicMock())
+        await arch.run("design an environment")
+
+    msg = captured["messages"][0]["content"]
+    assert msg == "design an environment"
+    assert "## Knowledge context" not in msg
+
+
+# ---------------------------------------------------------------------------
 # R2: Agent injection tests (P1-004)
 # ---------------------------------------------------------------------------
 
