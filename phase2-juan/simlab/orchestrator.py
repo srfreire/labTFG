@@ -129,11 +129,11 @@ async def prefetch_knowledge(
     paradigm: str,
     stage: str,
     on_warning=None,
+    *,
+    enabled: bool = True,
 ) -> str:
     """Pre-fetch KG context for an agent stage. Returns markdown or ``""``."""
-    from shared.settings import load_settings as _load
-    settings = _load()
-    if not settings.ENABLE_KNOWLEDGE_READ:
+    if not enabled:
         return ""
     if not paradigm:
         return ""
@@ -613,7 +613,8 @@ class Orchestrator:
         async def create_environment(params: dict) -> str:
             # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
             knowledge_ctx = await prefetch_knowledge(
-                params["description"], "architect", on_warning=_on_kg_warning,
+                params["description"], "architect",
+                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             arch = Architect(client=client)
             spec_json = await arch.run(
@@ -902,7 +903,8 @@ class Orchestrator:
                 state["charts"] = []
             # KG pre-fetch (kg-enrichment / P1-002)
             knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""), "analyst", on_warning=_on_kg_warning,
+                state.get("paradigm", ""), "analyst",
+                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             analyst = Analyst(client=client)
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
@@ -944,7 +946,8 @@ class Orchestrator:
             )
             # KG pre-fetch (kg-enrichment / P1-002)
             knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""), "reporter", on_warning=_on_kg_warning,
+                state.get("paradigm", ""), "reporter",
+                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             reporter = Reporter(client=client, model=reporter_model)
             focus = params.get("focus", "Genera un informe completo de la simulacion.")

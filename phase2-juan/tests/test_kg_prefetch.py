@@ -35,9 +35,7 @@ async def test_prefetch_analyst_parallel():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect_theory", "analyst")
 
     assert mock_rc.call_count == 2
@@ -56,9 +54,7 @@ async def test_prefetch_analyst_omits_empty_subsection():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect_theory", "analyst")
 
     assert "### Postulates" in result
@@ -78,9 +74,7 @@ async def test_prefetch_reporter():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect_theory", "reporter")
 
     mock_rc.assert_called_once()
@@ -105,9 +99,7 @@ async def test_prefetch_partial_failure():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect_theory", "analyst", on_warning=on_warning)
 
     on_warning.assert_called_once()
@@ -126,9 +118,7 @@ async def test_prefetch_total_failure():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect_theory", "analyst", on_warning=on_warning)
 
     assert result == ""
@@ -142,16 +132,14 @@ async def test_prefetch_total_failure():
 
 @pytest.mark.asyncio
 async def test_prefetch_disabled():
-    """ENABLE_KNOWLEDGE_READ=False -> '' without calling retrieve_context."""
+    """enabled=False -> '' without calling retrieve_context."""
     mock_rc = AsyncMock()
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = False
-        result = await prefetch_knowledge("prospect_theory", "analyst")
+        result = await prefetch_knowledge("prospect_theory", "analyst", enabled=False)
 
     assert result == ""
     mock_rc.assert_not_called()
@@ -165,9 +153,7 @@ async def test_prefetch_no_paradigm():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("", "analyst")
 
     assert result == ""
@@ -190,9 +176,7 @@ async def test_prefetch_architect():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         result = await prefetch_knowledge("prospect theory with 5 agents", "architect")
 
     assert mock_rc.call_count == 2
@@ -367,9 +351,7 @@ async def test_prefetch_roundtrip():
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
-        patch("shared.settings.load_settings") as mock_settings,
     ):
-        mock_settings.return_value.ENABLE_KNOWLEDGE_READ = True
         knowledge_ctx = await prefetch_knowledge("prospect_theory", "analyst")
 
     # Simulate what the orchestrator does: inject into analyst user message
