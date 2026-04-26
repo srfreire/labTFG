@@ -9,3 +9,8 @@
   - Dependencies: none
   - Issues: P1-001, P1-002, P1-003, P1-004
   - Heats: prefetch (P1-001→P1-002), agents (P1-003), tests (P1-004)
+
+- [ ] **Phase 2: Architect Pre-fetch** — Extend prefetch_knowledge for architect stage, wire into create_environment, test
+  - Dependencies: Phase 1
+  - Issues: P2-001, P2-002
+  - Heats: wiring (P2-001), tests (P2-002)
