@@ -123,18 +123,35 @@ class TestAC2_ContradictionPenalty:
             "merged_content": None,
         })
 
-        # Build mock client
+        # Build mock client. Importance scoring runs through messages.stream
+        # (max_tokens=16384 trips the streaming threshold); conflict
+        # classification runs through messages.create (max_tokens=4096).
         def _resp(text):
             block = MagicMock()
             block.text = text
             resp = MagicMock()
             resp.content = [block]
+            resp.stop_reason = "end_turn"
+            resp.usage = None
             return resp
 
-        client = AsyncMock()
-        client.messages.create = AsyncMock(
-            side_effect=[_resp(importance_resp_text), _resp(conflict_resp_text)],
-        )
+        class _StreamCM:
+            def __init__(self, response):
+                self._response = response
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *_exc):
+                return False
+            async def get_final_message(self):
+                return self._response
+
+        importance_resp = _resp(importance_resp_text)
+        conflict_resp = _resp(conflict_resp_text)
+
+        client = MagicMock()
+        client.messages = MagicMock()
+        client.messages.stream = MagicMock(return_value=_StreamCM(importance_resp))
+        client.messages.create = AsyncMock(return_value=conflict_resp)
 
         emb = AsyncMock()
         emb.embed_query = AsyncMock(return_value=[0.1] * 1024)

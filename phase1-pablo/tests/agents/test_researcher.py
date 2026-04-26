@@ -67,15 +67,15 @@ def _make_response(stop_reason: str, content: list):
 
 
 @pytest.mark.asyncio
-async def test_researcher_run_returns_research_report():
+async def test_researcher_run_returns_research_report(streaming_client):
     text_block = _make_text_block(
         "# Decision-making paradigms: food\n\n## 1. Homeostatic\nDesc\n**Key authors**: X\n**Key concepts**: Y"
     )
 
     response = _make_response("end_turn", [text_block])
 
-    client = AsyncMock()
-    client.messages.create.return_value = response
+    # Researcher runs at max_tokens=32k → streaming path in run_agent_loop.
+    client = streaming_client(response)
 
     r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake behavior")
@@ -85,7 +85,7 @@ async def test_researcher_run_returns_research_report():
 
 
 @pytest.mark.asyncio
-async def test_researcher_accumulates_deep_reports():
+async def test_researcher_accumulates_deep_reports(streaming_client):
     """Verify that launch_deep_research calls produce deep_reports in the result."""
     tool_block = _make_tool_use_block(
         "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
@@ -95,14 +95,18 @@ async def test_researcher_accumulates_deep_reports():
     summary_block = _make_text_block("# Paradigms\n\n## 1. Homeostatic\nDesc")
     final_response = _make_response("end_turn", [summary_block])
 
-    client = AsyncMock()
-    # Responses: Researcher call 1, DeepResearcher loop, DeepResearcher summary, Researcher call 2
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
     deep_loop_response = _make_response("end_turn", [deep_text])
     deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
-    client.messages.create.side_effect = [tool_response, deep_loop_response, deep_summary_response, final_response]
+
+    # Both Researcher's own loop and DeepResearcher's loop run at 32k → stream.
+    # The DeepResearcher summary call (300 tokens) still uses create.
+    #   stream: [tool_response, deep_loop_response, final_response]
+    #   create: [deep_summary_response]
+    client = streaming_client([tool_response, deep_loop_response, final_response])
+    client.messages.create.side_effect = [deep_summary_response]
 
     r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake")
@@ -111,7 +115,7 @@ async def test_researcher_accumulates_deep_reports():
 
 
 @pytest.mark.asyncio
-async def test_researcher_populates_paradigms_from_deep_reports():
+async def test_researcher_populates_paradigms_from_deep_reports(streaming_client):
     """Paradigms should be populated with slugs consistent with deep report filenames."""
     tool_block = _make_tool_use_block(
         "t1", "launch_deep_research", {"paradigm": "Homeostatic regulation"}
@@ -121,15 +125,14 @@ async def test_researcher_populates_paradigms_from_deep_reports():
     summary_block = _make_text_block("# Paradigms\n\n## 1. Homeostatic\nDesc")
     final_response = _make_response("end_turn", [summary_block])
 
-    client = AsyncMock()
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
     deep_loop_response = _make_response("end_turn", [deep_text])
     deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
-    client.messages.create.side_effect = [
-        tool_response, deep_loop_response, deep_summary_response, final_response,
-    ]
+
+    client = streaming_client([tool_response, deep_loop_response, final_response])
+    client.messages.create.side_effect = [deep_summary_response]
 
     with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock), \
          patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock):
@@ -143,13 +146,12 @@ async def test_researcher_populates_paradigms_from_deep_reports():
 
 
 @pytest.mark.asyncio
-async def test_researcher_clears_deep_reports_between_runs():
+async def test_researcher_clears_deep_reports_between_runs(streaming_client):
     """Verify that deep_reports from a previous run don't leak into a new run."""
     text_block = _make_text_block("# Summary")
     response = _make_response("end_turn", [text_block])
 
-    client = AsyncMock()
-    client.messages.create.return_value = response
+    client = streaming_client(response)
 
     r = Researcher(client=client, search=MockWebSearch())
 
@@ -160,12 +162,11 @@ async def test_researcher_clears_deep_reports_between_runs():
 
 
 @pytest.mark.asyncio
-async def test_researcher_saves_summary_to_s3():
+async def test_researcher_saves_summary_to_s3(streaming_client):
     text_block = _make_text_block("# Final summary")
     response = _make_response("end_turn", [text_block])
 
-    client = AsyncMock()
-    client.messages.create.return_value = response
+    client = streaming_client(response)
 
     with patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock) as mock_save:
         r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")

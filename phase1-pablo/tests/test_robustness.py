@@ -49,16 +49,49 @@ def _response(stop_reason: str, content: list) -> MagicMock:
     return resp
 
 
-def _mock_client(*responses) -> AsyncMock:
-    """Create an AsyncMock client with the given LLM responses.
+class _StreamCM:
+    """Async context manager wrapping a single ``Message``-shaped response."""
 
-    Single response: sets return_value.  Multiple: sets side_effect.
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def get_final_message(self):
+        return self._response
+
+
+def _mock_client(*responses) -> MagicMock:
+    """Create a client mock that wires both ``messages.create`` and
+    ``messages.stream`` against a shared queue. Whichever path the agent
+    loop picks (based on max_tokens) consumes the next response.
+
+    Researcher (32k) goes through stream; Formalizer/Reasoner/Builder (16k)
+    and DeepResearcher (16k) go through create. The shared queue lets a
+    single test cover Researcher → DeepResearcher chains where calls
+    interleave between paths.
     """
-    client = AsyncMock()
-    if len(responses) == 1:
-        client.messages.create.return_value = responses[0]
+    queue = list(responses)
+    if len(queue) == 1:
+        # Single response → return it on every call. Matches the pre-streaming
+        # ``client.messages.create.return_value = X`` behaviour the
+        # max-iterations robustness tests rely on.
+        single = queue[0]
+        get_response = lambda **_kw: single
+        get_stream = lambda **_kw: _StreamCM(single)
     else:
-        client.messages.create.side_effect = list(responses)
+        iterator = iter(queue)
+        get_response = lambda **_kw: next(iterator)
+        get_stream = lambda **_kw: _StreamCM(next(iterator))
+
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.create = AsyncMock(side_effect=get_response)
+    client.messages.stream = MagicMock(side_effect=get_stream)
     return client
 
 

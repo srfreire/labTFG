@@ -218,8 +218,10 @@ class ConnectionManager:
         if self.ws is not None:
             try:
                 await self.ws.send_json(msg)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "WS send_json failed for type=%r: %s", msg_type, exc
+                )
 
         # -- flush on terminal events --
         if msg_type in ("pipeline_done", "error", "graph_clear"):

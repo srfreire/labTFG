@@ -35,6 +35,56 @@ logger = logging.getLogger(__name__)
 
 _FAST_MODEL = SETTINGS.knowledge_fast_model
 _HEAVY_MODEL = SETTINGS.knowledge_heavy_model
+
+_IMPORTANCE_MAX_TOKENS = 16384
+_CLASSIFY_MAX_TOKENS = 4096
+
+
+async def _call_llm_json(
+    client: AsyncAnthropic,
+    *,
+    model: str,
+    system: str,
+    user: str,
+    max_tokens: int,
+) -> str:
+    """Single LLM call shared by importance scoring and conflict classification.
+
+    Raises ``RuntimeError`` on ``stop_reason='max_tokens'`` so the caller's
+    ``except`` doesn't masquerade a silent truncation as a successful but
+    empty/garbage response. Streams when ``max_tokens >= 8192`` to stay
+    inside the SDK's non-streaming timeout guard.
+    """
+    if max_tokens >= 8192:
+        async with client.messages.stream(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        ) as stream:
+            response = await stream.get_final_message()
+    else:
+        response = await client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+    record_usage(model, getattr(response, "usage", None))
+
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        usage = getattr(response, "usage", None)
+        out_tokens = getattr(usage, "output_tokens", None) if usage else None
+        raise RuntimeError(
+            f"{model} output truncated at max_tokens={max_tokens} "
+            f"(output_tokens={out_tokens})"
+        )
+
+    if not response.content:
+        return ""
+    return response.content[0].text
+
+
 _DUPLICATE_THRESHOLD = 0.85
 # Above this cosine score, with near-equal length, the duplicate is obvious
 # enough to skip the Sonnet classification call. Reserves Sonnet for the
@@ -77,14 +127,13 @@ async def _score_importance(
     user_message = IMPORTANCE_SCORING_USER.replace("{facts_json}", facts_json)
 
     try:
-        response = await client.messages.create(
+        raw = await _call_llm_json(
+            client,
             model=_FAST_MODEL,
-            max_tokens=4096,
             system=IMPORTANCE_SCORING_SYSTEM,
-            messages=[{"role": "user", "content": user_message}],
+            user=user_message,
+            max_tokens=_IMPORTANCE_MAX_TOKENS,
         )
-        record_usage(_FAST_MODEL, getattr(response, "usage", None))
-        raw = response.content[0].text if response.content else ""
         scored = json.loads(raw)
         return {
             entry["fact"]: float(entry["importance"])
@@ -138,15 +187,14 @@ async def _classify_conflict(
     )
 
     try:
-        response = await client.messages.create(
+        raw = await _call_llm_json(
+            client,
             model=_HEAVY_MODEL,
-            max_tokens=1024,
             system=CONFLICT_CLASSIFICATION_SYSTEM,
-            messages=[{"role": "user", "content": user_message}],
+            user=user_message,
+            max_tokens=_CLASSIFY_MAX_TOKENS,
         )
-        record_usage(_HEAVY_MODEL, getattr(response, "usage", None))
-        raw = response.content[0].text if response.content else "{}"
-        return json.loads(raw)
+        return json.loads(raw or "{}")
     except Exception:
         logger.warning("Conflict classification failed — treating as new fact", exc_info=True)
         return {"classification": "UNKNOWN", "reasoning": "classification failed"}

@@ -27,6 +27,45 @@ def _make_response(stop_reason: str, content: list):
     return resp
 
 
+class _StreamCM:
+    """Async context manager mimicking ``client.messages.stream(...)``."""
+
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def get_final_message(self):
+        return self._response
+
+
+def _client_with(responses):
+    """Build a client whose ``messages.stream(...)`` returns the given responses
+    in order. ``responses`` is a single response or a list."""
+    if not isinstance(responses, list):
+        responses = [responses]
+    iterator = iter(responses)
+
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.stream = MagicMock(
+        side_effect=lambda **_kw: _StreamCM(next(iterator))
+    )
+    return client
+
+
+def _client_with_exception(exc):
+    """Build a client whose ``messages.stream(...)`` raises on entry."""
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.stream = MagicMock(side_effect=exc)
+    return client
+
+
 @pytest.mark.asyncio
 async def test_loop_returns_immediately_on_end_turn():
     client = AsyncMock()
@@ -87,8 +126,31 @@ async def test_loop_respects_max_iterations():
 
 
 @pytest.mark.asyncio
-async def test_loop_returns_on_max_tokens_stop_reason():
+async def test_loop_raises_on_max_tokens_stop_reason():
+    """max_tokens means the response was truncated mid-emit. Returning it
+    as-is silently corrupts downstream stages (e.g. Researcher → report.md
+    → memory extraction). Raise loud instead."""
     response = _make_response("max_tokens", [_make_text_block("truncated...")])
+    response.usage = MagicMock(output_tokens=4096)
+
+    client = AsyncMock()
+    client.messages.create.return_value = response
+
+    with pytest.raises(RuntimeError, match="hit max_tokens"):
+        await run_agent_loop(
+            client=client, model="claude-sonnet-4-6", system="sys",
+            tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+            max_tokens=4096,
+        )
+
+    assert client.messages.create.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_loop_warns_and_returns_on_other_unexpected_stop_reasons():
+    """Non-max_tokens unexpected reasons (e.g. refusal, content_filter) are
+    not truncations — keep the lenient 'warn + return' fallback for those."""
+    response = _make_response("refusal", [_make_text_block("...")])
 
     client = AsyncMock()
     client.messages.create.return_value = response
@@ -98,7 +160,7 @@ async def test_loop_returns_on_max_tokens_stop_reason():
         tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
     )
 
-    assert result.stop_reason == "max_tokens"
+    assert result.stop_reason == "refusal"
     assert client.messages.create.call_count == 1
 
 
@@ -128,6 +190,40 @@ async def test_loop_propagates_api_exceptions():
             client=client, model="claude-sonnet-4-6", system="sys",
             tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
         )
+
+
+@pytest.mark.asyncio
+async def test_loop_streams_when_max_tokens_exceeds_threshold():
+    """At Researcher's 32k budget the SDK's non-streaming guard would refuse
+    the call, so the loop has to switch to ``messages.stream``."""
+    response = _make_response("end_turn", [_make_text_block("done")])
+    client = _client_with(response)
+
+    result = await run_agent_loop(
+        client=client, model="claude-sonnet-4-6", system="sys",
+        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        max_tokens=32768,
+    )
+
+    assert result.stop_reason == "end_turn"
+    assert client.messages.stream.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_loop_uses_create_below_streaming_threshold():
+    """Below the streaming threshold, the loop uses ``messages.create`` so
+    existing low-budget tests (default 4096) keep working."""
+    response = _make_response("end_turn", [_make_text_block("done")])
+    client = AsyncMock()
+    client.messages.create.return_value = response
+
+    await run_agent_loop(
+        client=client, model="claude-sonnet-4-6", system="sys",
+        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        max_tokens=16384,
+    )
+
+    assert client.messages.create.call_count == 1
 
 
 @pytest.mark.asyncio

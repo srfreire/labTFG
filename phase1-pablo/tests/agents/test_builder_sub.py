@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from decisionlab.agents.builder_sub import (
     BuilderSubAgent,
@@ -102,8 +102,11 @@ async def test_builder_sub_run_returns_content(
     )
     resp5 = make_response("end_turn", [final_text])
 
+    # Builder runs at 32k → streaming path in run_agent_loop.
+    from tests.agents.conftest import StreamCM
+    queue = iter([resp1, resp2, resp3, resp4, resp5])
     client = AsyncMock()
-    client.messages.create.side_effect = [resp1, resp2, resp3, resp4, resp5]
+    client.messages.stream = MagicMock(side_effect=lambda **_kw: StreamCM(next(queue)))
 
     agent = BuilderSubAgent(
         client=client,
@@ -151,12 +154,11 @@ def test_system_prompt_lists_validation_checks():
 
 
 @pytest.mark.asyncio
-async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_response):
+async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_response, streaming_client):
     final_text = make_text_block("# Output")
     resp = make_response("end_turn", [final_text])
 
-    client = AsyncMock()
-    client.messages.create.return_value = resp
+    client = streaming_client(resp)
 
     agent = BuilderSubAgent(
         client=client,
@@ -166,5 +168,6 @@ async def test_builder_sub_uses_sonnet_model(tmp_path, make_text_block, make_res
     await agent.run("pi_controller", "reasoner/homeostatic/pi_controller.json")
 
     from decisionlab.config import SETTINGS
-    call_kwargs = client.messages.create.call_args
+    # Builder is at 32k → uses messages.stream
+    call_kwargs = client.messages.stream.call_args
     assert call_kwargs.kwargs["model"] == SETTINGS.builder.model

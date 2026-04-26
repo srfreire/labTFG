@@ -73,6 +73,14 @@ async def _classify_results(
         )
         record_usage(_FAST_MODEL, getattr(response, "usage", None))
 
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            usage = getattr(response, "usage", None)
+            out_tokens = getattr(usage, "output_tokens", None) if usage else None
+            raise RuntimeError(
+                f"CRAG evaluator output truncated at max_tokens={_MAX_TOKENS} "
+                f"(output_tokens={out_tokens})"
+            )
+
         raw = "\n".join(
             b.text for b in response.content if b.type == "text"
         ).strip()

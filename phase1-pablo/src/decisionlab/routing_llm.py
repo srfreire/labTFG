@@ -93,6 +93,14 @@ async def classify_feedback(
         )
         record_usage(_MODEL, getattr(response, "usage", None))
 
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            usage = getattr(response, "usage", None)
+            out_tokens = getattr(usage, "output_tokens", None) if usage else None
+            raise RuntimeError(
+                f"classify_feedback: Haiku output truncated at max_tokens={_MAX_TOKENS} "
+                f"(output_tokens={out_tokens})"
+            )
+
         raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
         # Strip markdown code fences if present (```json ... ```)
         fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)

@@ -72,8 +72,11 @@ async def test_formalizer_sub_run_returns_content(
     mock_storage.get_text = AsyncMock(side_effect=fake_get_text)
     mock_storage.put_text = AsyncMock(side_effect=fake_put_text)
 
+    # Formalizer runs at 32k → streaming path in run_agent_loop.
+    from tests.agents.conftest import StreamCM
+    queue = iter([resp1, resp2, resp3])
     client = AsyncMock()
-    client.messages.create.side_effect = [resp1, resp2, resp3]
+    client.messages.stream = MagicMock(side_effect=lambda **_kw: StreamCM(next(queue)))
 
     with patch("shared.storage", mock_storage):
         agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
@@ -84,16 +87,16 @@ async def test_formalizer_sub_run_returns_content(
 
 
 @pytest.mark.asyncio
-async def test_formalizer_sub_uses_opus_model(make_text_block, make_response):
+async def test_formalizer_sub_uses_opus_model(make_text_block, make_response, streaming_client):
     final_text = make_text_block("# Output")
     resp = make_response("end_turn", [final_text])
 
-    client = AsyncMock()
-    client.messages.create.return_value = resp
+    client = streaming_client(resp)
 
     agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
     await agent.run("homeostatic")
 
     from decisionlab.config import SETTINGS
-    call_kwargs = client.messages.create.call_args
+    # Formalizer is at 32k → uses messages.stream
+    call_kwargs = client.messages.stream.call_args
     assert call_kwargs.kwargs["model"] == SETTINGS.formalizer.model
