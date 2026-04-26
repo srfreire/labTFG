@@ -242,6 +242,7 @@ class Analyst:
         extra_tools: list[dict] | None = None,
         extra_registry: dict | None = None,
         prompt_suffix: str = "",
+        knowledge_context: str = "",
     ) -> str:
         if not events:
             return '{"patterns": [], "comparisons": [], "metrics": {}}'
@@ -264,7 +265,11 @@ class Analyst:
         tools += extra_tools or []
         registry.update(extra_registry or {})
 
-        user_message = f"{prompt}\n\n## Tracker observation log\n\n{tracker_output}"
+        parts = [prompt]
+        if knowledge_context:
+            parts.append(knowledge_context)
+        parts.append(f"## Tracker observation log\n\n{tracker_output}")
+        user_message = "\n\n".join(parts)
         system = ANALYST_SYSTEM_PROMPT + prompt_suffix
         response = await run_agent_loop(
             client=self.client,

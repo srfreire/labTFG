@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Add knowledge_context parameter to Analyst and Reporter run()
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: agents
@@ -68,3 +68,13 @@ identical to today. No existing callers need to change.
 
 Phase spec: `docs/specs/kg-enrichment/design.md`
 Heat: `agents`
+
+## Completion Summary
+
+Added `knowledge_context: str = ""` keyword parameter to both `Analyst.run()` and `Reporter.run()`.
+
+When non-empty, the knowledge context is injected between the user prompt and the `## Tracker observation log` section using a `parts` list joined by `"\n\n"`. When empty (default), the resulting user message is functionally identical to the previous behavior.
+
+Files changed:
+- `phase2-juan/simlab/analyst.py` — new param + parts-based message construction
+- `phase2-juan/simlab/reporter.py` — new param + parts-based message construction

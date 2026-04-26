@@ -332,6 +332,7 @@ class Reporter:
         extra_tools: list[dict] | None = None,
         extra_registry: dict | None = None,
         prompt_suffix: str = "",
+        knowledge_context: str = "",
     ) -> str:
         tools, registry = _build_tools(run_id, experiment_id)
 
@@ -339,11 +340,12 @@ class Reporter:
         tools += extra_tools or []
         registry.update(extra_registry or {})
 
-        user_message = (
-            f"{prompt}\n\n"
-            f"## Tracker observation log\n\n{tracker_output}\n\n"
-            f"## Analyst findings\n\n{analyst_output}"
-        )
+        parts = [prompt]
+        if knowledge_context:
+            parts.append(knowledge_context)
+        parts.append(f"## Tracker observation log\n\n{tracker_output}")
+        parts.append(f"## Analyst findings\n\n{analyst_output}")
+        user_message = "\n\n".join(parts)
         if predictions:
             user_message += "\n\n## Pre-simulation predictions (from Phase 1 deep research)\n\n"
             for paradigm, preds in predictions.items():
