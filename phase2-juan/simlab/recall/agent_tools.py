@@ -38,11 +38,10 @@ particular postulate detail, a specific past experiment), call \
 
 ## References grounding
 
-Before writing the "References" LaTeX section, call \
-`retrieve_context(query="papers and authors for paradigm <name>", top_k=10)` \
-and use the returned Paper nodes (title, year, DOI, citation_count) to build \
-real citations. Fall back to generic references only if the retrieval returns \
-zero results.
+A "## Knowledge context" section with paper references and formulations is \
+pre-injected in your input. Use it for citations and equations. If you need \
+additional references or formulations not covered by the pre-fetch (e.g., a \
+related paradigm), call `retrieve_context` with a targeted query.
 """,
 }
 

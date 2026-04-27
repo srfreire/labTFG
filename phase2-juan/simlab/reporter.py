@@ -335,6 +335,28 @@ What do the results tell us about the decision-making paradigms? What improvemen
 - NEVER use \\textbf{} or \\textit{} inside section/subsection titles
 - Avoid nested formatting commands — keep it simple
 - If a character causes issues, remove it rather than trying to escape it
+
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it \
+as follows:
+
+### References (meta)
+Use the returned Paper nodes to build real citations in the report body. \
+Format: \\textit{Title} (Author, Year). If a DOI is available, include it in \
+the References section at the end. Do NOT fabricate citations — use only what \
+was returned. If zero results were returned, fall back to generic references \
+from read_research files.
+
+### Formulations
+Include the relevant equations in the "Modelo de Decisión" section using LaTeX \
+math environments (\\begin{equation} or \\begin{align}). Reference them by \
+number when discussing model behavior in the Análisis section. This gives the \
+report mathematical grounding from the Knowledge Graph's validated formulation \
+nodes, complementing what read_research provides.
+
+If knowledge context is empty or absent, proceed with read_research as the sole \
+source — do not mention knowledge context absence in the report.
 """
 
 
