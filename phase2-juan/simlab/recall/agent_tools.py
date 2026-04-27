@@ -28,10 +28,11 @@ observed ranges) to propose an environment that is scientifically grounded.
 
 ## Postulate cross-check
 
-After identifying behavioural patterns, call \
-`retrieve_context(query="postulates for paradigm <name>", namespace="paradigm")` \
-and verify whether observations match known postulates. Cite the Postulate \
-ID (P1, P2, ...) when reporting a match or mismatch.
+A "## Knowledge context" section with postulates, formulations, and historical \
+data is pre-injected in your input. Use it as your primary reference for \
+cross-checking. If you need deeper or more specific knowledge (e.g., a \
+particular postulate detail, a specific past experiment), call \
+`retrieve_context` with a targeted query.
 """,
     "reporter": """
 

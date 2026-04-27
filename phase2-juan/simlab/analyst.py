@@ -215,6 +215,32 @@ Only include this section if you actually queried past experiments. Do NOT fabri
 - Use 3-5 metrics per agent maximum — only the most informative
 - Metric names must be short and readable: "pasos vivo", "recursos comidos", "acciones totales"
 - Round floats to 2 decimals maximum
+
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it \
+as follows:
+
+### Postulates
+Cross-check each observed pattern against the listed postulates. For each \
+pattern in your output, state which postulate it confirms, refutes, or is \
+unrelated to. Use the postulate identifier (e.g. "P1", "Postulado 2") in the \
+evidence field. Example: "Confirma P2 (regulación homeostática): el agente \
+redujo su tasa de alimentación al alcanzar energía estable."
+
+### Formulations
+Compare the mathematical predictions (utility functions, discount rates, \
+update rules) against empirical behavior. If the model predicts U(r) = sqrt(r) \
+but agents show linear reward sensitivity, flag the deviation with specific \
+values. Reference the equation name or number when available.
+
+### Historical simulations
+Compare key metrics (survival rate, resource efficiency, strategy distribution) \
+with previous runs. Note if the current result is consistent with or diverges \
+from historical trends.
+
+If knowledge context is empty or absent, proceed normally — do not mention its \
+absence.
 """
 
 
