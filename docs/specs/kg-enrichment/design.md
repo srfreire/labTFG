@@ -340,4 +340,90 @@ No new test files — all changes fit existing test structure.
 - Changes to Analyst JSON output schema (no new `citations` field, etc.)
 - Mandatory LaTeX `\bibliography{}` — Reporter uses inline `\textit` citations
 - Changes to prefetch_knowledge Python logic (only its config dict changes)
-- Architect prompt changes (covered in Phase 2)
+- Architect prompt changes (covered in Phase 4)
+
+---
+
+# Phase 4: Prompt-level KG enrichment for Architect
+
+## Overview
+
+Same pattern as Phase 3 but for the Architect agent. Add `formulation` query
+and system prompt instructions so the Architect uses KG knowledge to design
+scientifically grounded environments.
+
+## 1. New prefetch query
+
+Add formulation to `_PREFETCH_QUERIES["architect"]`:
+
+```python
+"architect": [
+    ("Paradigm facts", "postulates and key properties for {paradigm}", "paradigm", 5),
+    ("Previous environments", "environment specifications for {paradigm}", "simulation", 5),
+    ("Formulations", "mathematical formulations for {paradigm}", "formulation", 3),  # NEW
+],
+```
+
+## 2. Architect system prompt additions
+
+Append after the examples in `ARCHITECT_SYSTEM_PROMPT`:
+
+```
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it
+to generate a more scientifically grounded environment:
+
+### Paradigm facts
+Use postulates and key properties to choose appropriate resources, actions, and
+grid dimensions. E.g., if the paradigm postulates homeostatic regulation with
+multiple drives, include multiple resource types with varying palatability.
+
+### Previous environments
+Reuse grid dimensions, resource types, and action sets that worked in previous
+simulations of the same paradigm. Adjust counts or properties as needed for the
+current request, but maintain consistency with proven configurations.
+
+### Formulations
+Use the mathematical model to dimension rewards and resource properties. E.g.,
+if the model uses logarithmic utility, provide a wide reward range; if it uses
+binary signals, keep rewards at 0/1.
+
+If knowledge context is empty or absent, generate the spec from scratch based
+solely on the user description.
+```
+
+## 3. Sim-recall suffix update
+
+Replace `_PROMPT_SECTIONS["architect"]`:
+
+```
+## Knowledge Backbone access
+
+A "## Knowledge context" section with paradigm facts, previous environment specs,
+and formulations is pre-injected in your input. Use it as your primary reference
+for designing scientifically grounded environments. If you need additional detail
+(e.g., a specific postulate or a related paradigm), call `retrieve_context` with
+a targeted query.
+```
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `phase2-juan/simlab/orchestrator.py` | 1 line in `_PREFETCH_QUERIES["architect"]` |
+| `phase2-juan/simlab/architect.py` | ~15 lines appended to system prompt |
+| `phase2-juan/simlab/recall/agent_tools.py` | ~5 lines in `_PROMPT_SECTIONS["architect"]` |
+| `phase2-juan/tests/test_kg_prefetch.py` | Update `test_prefetch_architect` (2→3 queries) |
+
+## Testing
+
+| Test | Change |
+|------|--------|
+| `test_prefetch_architect` | Assert 3 queries (was 2), verify "Formulations" subsection |
+
+## Out of scope (Phase 4)
+
+- New tools for Architect
+- Changes to validate_spec logic
+- Changes to prefetch_knowledge Python logic

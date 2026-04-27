@@ -19,3 +19,8 @@
   - Dependencies: Phase 1
   - Issues: P3-001, P3-002, P3-003, P3-004
   - Heats: queries (P3-001), prompts (P3-002, P3-003), tests (P3-004)
+
+- [x] **Phase 4: Architect prompt-level KG enrichment** — Add formulation query, improve Architect prompt to use knowledge context
+  - Dependencies: Phase 2
+  - Issues: P4-001, P4-002, P4-003
+  - Heats: queries (P4-001), prompts (P4-002), tests (P4-003)
