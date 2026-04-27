@@ -18,11 +18,11 @@ _PROMPT_SECTIONS: dict[str, str] = {
 
 ## Knowledge Backbone access
 
-If the user describes a scientific paradigm (e.g. "homeostatic regulation", \
-"hedonic control", "reinforcement learning with drive reduction"), call \
-`retrieve_context(query="<paradigm name + key concepts>", namespace="paradigm")` \
-BEFORE generating the spec. Use the returned facts (variables, postulates, \
-observed ranges) to propose an environment that is scientifically grounded.
+A "## Knowledge context" section with paradigm facts, previous environment specs, \
+and formulations is pre-injected in your input. Use it as your primary reference \
+for designing scientifically grounded environments. If you need additional detail \
+(e.g., a specific postulate or a related paradigm), call `retrieve_context` with \
+a targeted query.
 """,
     "analyst": """
 

@@ -179,8 +179,8 @@ _PREV_ENVS = (
 
 @pytest.mark.asyncio
 async def test_prefetch_architect():
-    """Architect stage: 2 parallel queries (paradigm + simulation)."""
-    mock_rc = AsyncMock(side_effect=[_PARADIGM_FACTS, _PREV_ENVS])
+    """Architect stage: 3 parallel queries (paradigm + simulation + formulation)."""
+    mock_rc = AsyncMock(side_effect=[_PARADIGM_FACTS, _PREV_ENVS, _FORMULATIONS])
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
@@ -188,10 +188,11 @@ async def test_prefetch_architect():
     ):
         result = await prefetch_knowledge("prospect theory with 5 agents", "architect")
 
-    assert mock_rc.call_count == 2
+    assert mock_rc.call_count == 3
     assert "## Knowledge context" in result
     assert "### Paradigm facts" in result
     assert "### Previous environments" in result
+    assert "### Formulations" in result
 
 
 @pytest.mark.asyncio

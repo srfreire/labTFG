@@ -65,6 +65,29 @@ Output:
 Input: "20x20, food (palatability 0.1-1.0, 5 units) and water (3 units, no regen), move + eat + drink + rest"
 Output:
 {"grid": {"width": 20, "height": 20}, "actions": [{"name": "move_up", "effect": {"type": "MoveEffect", "dx": 0, "dy": -1}}, {"name": "move_down", "effect": {"type": "MoveEffect", "dx": 0, "dy": 1}}, {"name": "move_left", "effect": {"type": "MoveEffect", "dx": -1, "dy": 0}}, {"name": "move_right", "effect": {"type": "MoveEffect", "dx": 1, "dy": 0}}, {"name": "eat", "effect": {"type": "ConsumeEffect", "resource_type": "food", "reward": 1.0}}, {"name": "drink", "effect": {"type": "ConsumeEffect", "resource_type": "water", "reward": 1.0}}, {"name": "rest", "effect": {"type": "NoopEffect"}}], "resources": [{"type": "food", "properties": {"palatability": [0.1, 1.0]}, "count": 5, "regenerate": true}, {"type": "water", "properties": {}, "count": 3, "regenerate": false}]}
+
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it \
+to generate a more scientifically grounded environment:
+
+### Paradigm facts
+Use postulates and key properties to choose appropriate resources, actions, and \
+grid dimensions. E.g., if the paradigm postulates homeostatic regulation with \
+multiple drives, include multiple resource types with varying palatability.
+
+### Previous environments
+Reuse grid dimensions, resource types, and action sets that worked in previous \
+simulations of the same paradigm. Adjust counts or properties as needed for the \
+current request, but maintain consistency with proven configurations.
+
+### Formulations
+Use the mathematical model to dimension rewards and resource properties. E.g., \
+if the model uses logarithmic utility, provide a wide reward range; if it uses \
+binary signals, keep rewards at 0/1.
+
+If knowledge context is empty or absent, generate the spec from scratch based \
+solely on the user description.
 """
 
 

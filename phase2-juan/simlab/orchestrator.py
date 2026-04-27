@@ -129,6 +129,12 @@ _PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
             "simulation",
             5,
         ),
+        (
+            "Formulations",
+            "mathematical formulations for {paradigm}",
+            "formulation",
+            3,
+        ),
     ],
     "analyst": [
         ("Postulates", "postulates for {paradigm}", "paradigm", 5),
