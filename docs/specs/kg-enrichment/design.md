@@ -177,8 +177,167 @@ Frontend shows this as a toast/badge in the agent status panel.
 |------|----------|
 | `test_prefetch_roundtrip` | Write data to KG, then verify `prefetch_knowledge` retrieves and formats it correctly |
 
-## Out of scope
+## Out of scope (Phases 1–2)
 
 - Changing the Analyst output JSON schema
-- Adding pre-fetch to Tracker or Architect (future work)
+- Adding pre-fetch to Tracker or Architect (future work — Architect added in Phase 2)
 - Mandatory `retrieve_context` calls enforced in code (agents keep optional ad-hoc usage)
+
+---
+
+# Phase 3: Prompt-level KG enrichment for Analyst & Reporter
+
+## Overview
+
+With the pre-fetch infrastructure (Phases 1–2) in place, this phase focuses on
+making Analyst and Reporter *actually use* the injected knowledge effectively.
+Two changes:
+
+1. **Expand prefetch queries** — add `formulation` namespace for both agents.
+2. **Improve system prompts** — explicit instructions on what to do with each
+   knowledge section (postulate cross-checking, equation inclusion, citation
+   formatting).
+
+No new tools, no output schema changes, no Python logic changes beyond the
+query config dict and prompt strings.
+
+## 1. New prefetch queries
+
+Current → proposed `_PREFETCH_QUERIES` in `orchestrator.py`:
+
+```python
+"analyst": [
+    ("Postulates", "postulates for {paradigm}", "paradigm", 5),
+    ("Historical simulations", "previous simulation results for {paradigm}", "simulation", 5),
+    ("Formulations", "mathematical formulations and equations for {paradigm}", "formulation", 3),  # NEW
+],
+"reporter": [
+    ("References", "papers and authors for {paradigm}", "meta", 10),
+    ("Formulations", "mathematical formulations for {paradigm}", "formulation", 3),  # NEW
+],
+```
+
+### Rationale
+
+| Namespace     | Analyst | Reporter | Reason |
+|---------------|---------|----------|--------|
+| `paradigm`    | ✅ (existing) | ❌ | Reporter inherits postulate refs via analyst_output |
+| `simulation`  | ✅ (existing) | ❌ | Reporter inherits historical context via analyst_output |
+| `formulation` | ✅ **NEW** | ✅ **NEW** | Analyst: compare theoretical predictions vs observed behavior. Reporter: include real equations in LaTeX |
+| `meta`        | ❌ | ✅ (existing) | Only Reporter needs papers/DOIs for references |
+
+## 2. Analyst system prompt additions
+
+Append after the existing "## Rules" section in `ANALYST_SYSTEM_PROMPT`:
+
+```
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it as
+follows:
+
+### Postulates
+Cross-check each observed pattern against the listed postulates. For each
+pattern in your output, state which postulate it confirms, refutes, or is
+unrelated to. Use the postulate identifier (e.g., "P1", "Postulado 2") in the
+evidence field. Example: "Confirma P2 (regulación homeostática): el agente
+redujo su tasa de alimentación al alcanzar energía estable."
+
+### Formulations
+Compare the mathematical predictions (utility functions, discount rates,
+update rules) against empirical behavior. If the model predicts
+U(r) = √r but agents show linear reward sensitivity, flag the deviation
+with specific values. Reference the equation name or number when available.
+
+### Historical simulations
+Compare key metrics (survival rate, resource efficiency, strategy
+distribution) with previous runs. Note if the current result is consistent
+with or diverges from historical trends.
+
+If knowledge context is empty or absent, proceed normally — do not mention its
+absence.
+```
+
+## 3. Reporter system prompt additions
+
+Append after the existing "## LaTeX rules" section in `REPORTER_SYSTEM_PROMPT`:
+
+```
+## Knowledge context usage
+
+When a "## Knowledge context" section is present in the user message, use it as
+follows:
+
+### References (meta)
+Use the returned Paper nodes to build real citations in the report body.
+Format: \textit{Title} (Author, Year). If a DOI is available, include it in
+the References section. Do NOT fabricate citations — use only what was returned.
+If zero results were returned, fall back to generic references from
+read_research files.
+
+### Formulations
+Include the relevant equations in the "Modelo de Decisión" section using LaTeX
+math environments (\begin{equation} or \begin{align}). Reference them by number
+(\ref{eq:...}) when discussing model behavior in other sections. This gives the
+report mathematical grounding beyond what read_research provides, since these
+equations come from the Knowledge Graph's validated formulation nodes.
+
+If knowledge context is empty or absent, proceed with read_research as the sole
+source — do not mention knowledge context absence in the report.
+```
+
+## 4. Sim-recall prompt suffix adjustments
+
+Update `_PROMPT_SECTIONS` in `recall/agent_tools.py` to reflect that pre-fetch
+already provides baseline context:
+
+**analyst:**
+```
+## Postulate cross-check
+
+A "## Knowledge context" section with postulates, formulations, and historical
+data is pre-injected in your input. Use it as your primary reference for
+cross-checking. If you need deeper or more specific knowledge (e.g., a
+particular postulate detail, a specific past experiment), call
+`retrieve_context` with a targeted query.
+```
+
+**reporter:**
+```
+## References grounding
+
+A "## Knowledge context" section with paper references and formulations is
+pre-injected in your input. Use it for citations and equations. If you need
+additional references or formulations not covered by the pre-fetch (e.g., a
+related paradigm), call `retrieve_context` with a targeted query.
+```
+
+## Files to modify
+
+| File | Change |
+|------|--------|
+| `phase2-juan/simlab/orchestrator.py` | Add 2 entries to `_PREFETCH_QUERIES` dict (analyst + reporter formulation queries) |
+| `phase2-juan/simlab/analyst.py` | Append ~20 lines to `ANALYST_SYSTEM_PROMPT` (knowledge context usage section) |
+| `phase2-juan/simlab/reporter.py` | Append ~20 lines to `REPORTER_SYSTEM_PROMPT` (knowledge context usage section) |
+| `phase2-juan/simlab/recall/agent_tools.py` | Update `_PROMPT_SECTIONS["analyst"]` and `_PROMPT_SECTIONS["reporter"]` (~10 lines each) |
+| `tests/test_kg_prefetch.py` | Update query count assertions for analyst (2→3) and reporter (1→2) |
+
+## Testing
+
+| Test | Change |
+|------|--------|
+| `test_prefetch_analyst_parallel` | Assert 3 queries (was 2): paradigm + simulation + formulation |
+| `test_prefetch_reporter` | Assert 2 queries (was 1): meta + formulation |
+| `test_prefetch_partial_failure` | Adapt for 3-query analyst (2 succeed, 1 fails) |
+| `test_analyst_knowledge_context_injected` | Verify formulations subsection present |
+| `test_reporter_knowledge_context_injected` | Verify formulations subsection present |
+
+No new test files — all changes fit existing test structure.
+
+## Out of scope (Phase 3)
+
+- New tools for Analyst or Reporter
+- Changes to Analyst JSON output schema (no new `citations` field, etc.)
+- Mandatory LaTeX `\bibliography{}` — Reporter uses inline `\textit` citations
+- Changes to prefetch_knowledge Python logic (only its config dict changes)
+- Architect prompt changes (covered in Phase 2)

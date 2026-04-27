@@ -14,3 +14,8 @@
   - Dependencies: Phase 1
   - Issues: P2-001, P2-002
   - Heats: wiring (P2-001), tests (P2-002)
+
+- [x] **Phase 3: Prompt-level KG enrichment** — Add formulation queries, improve Analyst/Reporter prompts to use knowledge context
+  - Dependencies: Phase 1
+  - Issues: P3-001, P3-002, P3-003, P3-004
+  - Heats: queries (P3-001), prompts (P3-002, P3-003), tests (P3-004)
