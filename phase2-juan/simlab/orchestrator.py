@@ -356,6 +356,25 @@ READ_PREDICTIONS_TOOL = {
     },
 }
 
+QUERY_EXPERIMENTS_TOOL = {
+    "name": "query_experiments",
+    "description": (
+        "Query the experiment database using natural language. "
+        "Answers questions about past experiments, models, results, patterns, "
+        "and cross-experiment comparisons."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "Natural language question about experiments",
+            },
+        },
+        "required": ["question"],
+    },
+}
+
 ALL_TOOLS = [
     CREATE_ENVIRONMENT_TOOL,
     RUN_SIMULATION_TOOL,
@@ -365,6 +384,7 @@ ALL_TOOLS = [
     ANALYZE_RESULTS_TOOL,
     GENERATE_REPORT_TOOL,
     LIST_EXPERIMENTS_TOOL,
+    QUERY_EXPERIMENTS_TOOL,
 ]
 
 
@@ -387,6 +407,9 @@ Can be called MULTIPLE TIMES with different focus to explore different aspects i
 5. **generate_report** — the Reporter creates a PDF with everything (including all charts)
 6. **list_experiments** — shows past experiments with status and models used. Offer this when the user asks about history or wants to repeat/compare experiments.
 7. **read_predictions** — reads scientific predictions from Phase 1 deep research for a paradigm
+8. **query_experiments** — queries the experiment database with natural language. \
+Use when the user asks about past experiments, comparisons between runs, \
+historical results, or anything that requires searching experiment data.
 
 ## How to respond
 
@@ -1162,6 +1185,11 @@ class Orchestrator:
                 default=str,
             )
 
+        # --- query_experiments: NL query over the experiment database ---
+        async def query_experiments(params: dict) -> str:
+            from simlab.nlsql import query_experiments as _query
+            return await _query(params["question"])
+
         registry: Registry = {
             "create_environment": create_environment,
             "list_available_models": list_available_models,
@@ -1171,6 +1199,7 @@ class Orchestrator:
             "analyze_results": analyze_results,
             "generate_report": generate_report,
             "list_experiments": list_experiments_fn,
+            "query_experiments": query_experiments,
         }
 
         # --- Knowledge Backbone retrieval (sim-recall / P1-002) ---
