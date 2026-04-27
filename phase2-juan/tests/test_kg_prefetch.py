@@ -19,6 +19,7 @@ _EMPTY = "## Retrieved Knowledge (0 results)\n\nNo results found."
 _POSTULATES = "## Retrieved Knowledge (2 results)\n\n### Result 1\nPostulate P1: ..."
 _SIMULATION = "## Retrieved Knowledge (1 results)\n\n### Result 1\nPrevious sim ..."
 _PAPERS = "## Retrieved Knowledge (3 results)\n\n### Result 1\nSmith et al. 2024 ..."
+_FORMULATIONS = "## Retrieved Knowledge (2 results)\n\n### Result 1\nU(x) = x^0.88 for gains..."
 
 
 # ---------------------------------------------------------------------------
@@ -28,8 +29,8 @@ _PAPERS = "## Retrieved Knowledge (3 results)\n\n### Result 1\nSmith et al. 2024
 
 @pytest.mark.asyncio
 async def test_prefetch_analyst_parallel():
-    """Analyst stage: 2 parallel queries (paradigm + simulation)."""
-    mock_rc = AsyncMock(side_effect=[_POSTULATES, _SIMULATION])
+    """Analyst stage: 3 parallel queries (paradigm + simulation + formulation)."""
+    mock_rc = AsyncMock(side_effect=[_POSTULATES, _SIMULATION, _FORMULATIONS])
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
@@ -37,10 +38,11 @@ async def test_prefetch_analyst_parallel():
     ):
         result = await prefetch_knowledge("prospect_theory", "analyst")
 
-    assert mock_rc.call_count == 2
+    assert mock_rc.call_count == 3
     assert "## Knowledge context" in result
     assert "### Postulates" in result
     assert "### Historical simulations" in result
+    assert "### Formulations" in result
     assert _POSTULATES in result
     assert _SIMULATION in result
 
@@ -48,7 +50,7 @@ async def test_prefetch_analyst_parallel():
 @pytest.mark.asyncio
 async def test_prefetch_analyst_omits_empty_subsection():
     """If one query returns empty, its subsection is omitted."""
-    mock_rc = AsyncMock(side_effect=[_POSTULATES, _EMPTY])
+    mock_rc = AsyncMock(side_effect=[_POSTULATES, _EMPTY, _FORMULATIONS])
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
@@ -58,6 +60,7 @@ async def test_prefetch_analyst_omits_empty_subsection():
 
     assert "### Postulates" in result
     assert "### Historical simulations" not in result
+    assert "### Formulations" in result
 
 
 # ---------------------------------------------------------------------------
@@ -67,8 +70,8 @@ async def test_prefetch_analyst_omits_empty_subsection():
 
 @pytest.mark.asyncio
 async def test_prefetch_reporter():
-    """Reporter stage: 1 query (meta, top_k=10)."""
-    mock_rc = AsyncMock(return_value=_PAPERS)
+    """Reporter stage: 2 queries (meta + formulation)."""
+    mock_rc = AsyncMock(side_effect=[_PAPERS, _FORMULATIONS])
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
@@ -76,12 +79,10 @@ async def test_prefetch_reporter():
     ):
         result = await prefetch_knowledge("prospect_theory", "reporter")
 
-    mock_rc.assert_called_once()
-    call_kwargs = mock_rc.call_args.kwargs
-    assert call_kwargs["namespace"] == "meta"
-    assert call_kwargs["top_k"] == 10
+    assert mock_rc.call_count == 2
     assert "## Knowledge context" in result
     assert "### References" in result
+    assert "### Formulations" in result
 
 
 # ---------------------------------------------------------------------------
@@ -91,8 +92,8 @@ async def test_prefetch_reporter():
 
 @pytest.mark.asyncio
 async def test_prefetch_partial_failure():
-    """One query fails, other succeeds — return successful + emit warning."""
-    mock_rc = AsyncMock(side_effect=[RuntimeError("connection refused"), _SIMULATION])
+    """One query fails, others succeed — return successful + emit warning."""
+    mock_rc = AsyncMock(side_effect=[RuntimeError("connection refused"), _SIMULATION, _FORMULATIONS])
     on_warning = AsyncMock()
 
     with (
@@ -107,13 +108,14 @@ async def test_prefetch_partial_failure():
     assert on_warning.call_args[0][0] == "analyst"
     assert "connection refused" in on_warning.call_args[0][1]
     assert "### Historical simulations" in result
+    assert "### Formulations" in result
     assert "### Postulates" not in result
 
 
 @pytest.mark.asyncio
 async def test_prefetch_total_failure():
     """All queries fail — return '' + emit warnings."""
-    mock_rc = AsyncMock(side_effect=[RuntimeError("fail1"), RuntimeError("fail2")])
+    mock_rc = AsyncMock(side_effect=[RuntimeError("fail1"), RuntimeError("fail2"), RuntimeError("fail3")])
     on_warning = AsyncMock()
 
     with (
@@ -125,7 +127,7 @@ async def test_prefetch_total_failure():
         )
 
     assert result == ""
-    assert on_warning.call_count == 2
+    assert on_warning.call_count == 3
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +363,7 @@ async def test_reporter_no_knowledge_context():
 @pytest.mark.asyncio
 async def test_prefetch_roundtrip():
     """Full flow: prefetch → format → verify structure for agent injection."""
-    mock_rc = AsyncMock(side_effect=[_POSTULATES, _SIMULATION])
+    mock_rc = AsyncMock(side_effect=[_POSTULATES, _SIMULATION, _FORMULATIONS])
 
     with (
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
@@ -383,6 +385,7 @@ async def test_prefetch_roundtrip():
     assert "## Knowledge context" in user_message
     assert "### Postulates" in user_message
     assert "### Historical simulations" in user_message
+    assert "### Formulations" in user_message
     ctx_pos = user_message.index("## Knowledge context")
     tracker_pos = user_message.index("## Tracker observation log")
     assert ctx_pos < tracker_pos
