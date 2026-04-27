@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Wire query_experiments tool into orchestrator
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: wiring

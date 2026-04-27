@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Implement nlsql plan, execute, fetch, and synthesize pipeline
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: foundation

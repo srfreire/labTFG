@@ -1,7 +1,7 @@
 ---
 id: P1-004
 title: Unit and integration tests for NLSQL module
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: tests

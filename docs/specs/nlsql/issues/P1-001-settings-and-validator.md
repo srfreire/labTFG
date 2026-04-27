@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Add NLSQL settings and implement SQL validator
-status: todo
+status: done
 kind: strike
 phase: 1
 heat: foundation
