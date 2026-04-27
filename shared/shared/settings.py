@@ -23,6 +23,8 @@ class Settings:
     ZEROENTROPY_API_KEY: str = ""
     ENABLE_KNOWLEDGE_WRITE: bool = False
     ENABLE_KNOWLEDGE_READ: bool = False
+    NLSQL_MAX_S3_FETCH: int = 3
+    NLSQL_MODEL: str = "anthropic/claude-haiku-4-5"
 
 
 def _parse_bool(raw: str) -> bool:
@@ -46,6 +48,8 @@ def load_settings() -> Settings:
             continue
         if f.type is bool or f.type == "bool":
             overrides[f.name] = _parse_bool(val)
+        elif f.type is int or f.type == "int":
+            overrides[f.name] = int(val)
         else:
             overrides[f.name] = val
     return Settings(**overrides)
