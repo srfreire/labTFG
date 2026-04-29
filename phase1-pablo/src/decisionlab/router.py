@@ -722,17 +722,8 @@ class Router:
         from decisionlab.agents.researcher import Researcher
 
         self.console.print("[bold]Running Researcher...[/bold]")
-        await self._emit(
-            {
-                "type": "node_add",
-                "node": {
-                    "id": "researcher",
-                    "kind": "agent",
-                    "label": "Researcher",
-                    "status": "running",
-                },
-            }
-        )
+        self._tracer.agent("researcher", "Researcher")
+        await self._send_event(self._tracer.events()[-1])
         try:
             r = Researcher(
                 client=self.client,
@@ -744,13 +735,13 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")
-            await self._emit(
-                {"type": "node_update", "id": "researcher", "status": "error"}
-            )
+            self._tracer.error("researcher", error=exc)
+            await self._send_event(self._tracer.events()[-1])
             return  # stay at current stage
         # Cache the in-memory text so the Memory Agent doesn't round-trip S3.
         self._stage_outputs[Stage.RESEARCH] = report.summary
-        await self._emit({"type": "node_update", "id": "researcher", "status": "done"})
+        self._tracer.done("researcher")
+        await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.RESEARCH)
 
     async def _review_research(self) -> None:
