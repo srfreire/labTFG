@@ -8,6 +8,18 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "agrex"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c1/d4/d162416e7a8b4d106569c3c79debb876e576ac68ff959a686f0d5e2c3330/agrex-0.7.0.tar.gz", hash = "sha256:8382887994d2fc5e3c0ad0d91cbb4f4b67b1b54ed9a807a0fbcd4540390d8e12", size = 50799, upload-time = "2026-04-29T16:13:25.833Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/ce/d85605231af4ca21fd2a4a44ba24854f8edcc003fdb551969a9e96af72c9/agrex-0.7.0-py3-none-any.whl", hash = "sha256:46c130b68266673ab07ed7dc2c5163d91ab9099e5cc21ecc929a6c2053b24565", size = 11906, upload-time = "2026-04-29T16:13:24.296Z" },
+]
+
+[[package]]
 name = "aioboto3"
 version = "15.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -440,6 +452,7 @@ name = "decisionlab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "agrex" },
     { name = "anthropic" },
     { name = "ddgs" },
     { name = "fastapi" },
@@ -461,6 +474,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agrex", specifier = ">=0.7.0,<0.8.0" },
     { name = "anthropic", specifier = ">=0.52.0" },
     { name = "ddgs", specifier = ">=9.11.2" },
     { name = "fastapi", specifier = ">=0.115.0" },
