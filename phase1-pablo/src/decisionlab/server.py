@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
@@ -52,25 +51,13 @@ app = FastAPI(title="DecisionLab", lifespan=lifespan)
 # ---------------------------------------------------------------------------
 
 
-def _is_spawn_for(msg: dict, buffered_node_add: dict) -> bool:
-    """True if `msg` is an `edge_add` whose spawn target is the buffered
-    node_add. Missing `edge_kind` is treated as spawn — it matches the
-    frontend's long-standing parent_id derivation in Graph.tsx."""
-    if msg.get("type") != "edge_add":
-        return False
-    edge = msg.get("edge")
-    if not isinstance(edge, dict):
-        return False
-    if edge.get("edge_kind") not in (None, "spawn"):
-        return False
-    return edge.get("target") == (buffered_node_add.get("node") or {}).get("id")
-
-
 class ConnectionManager:
     """Manages the single WebSocket connection and tracks graph state for
-    reconnection, and persists the event stream for replay."""
+    reconnection. Live event stream is canonical agrex; persistence happens
+    in `Router._tracer` (trace.jsonl), not here."""
 
     def __init__(self, storage=None) -> None:
+        del storage  # legacy parameter kept for API compatibility
         self.ws: WebSocket | None = None
         self.pipeline_task: asyncio.Task | None = None  # type: ignore[type-arg]
         self.nodes: list[dict] = []
@@ -78,21 +65,6 @@ class ConnectionManager:
         self.current_stage: str | None = None
         self.pending_review: dict | None = None
         self.run_id: str | None = None
-
-        # -- event log --
-        self._storage = storage  # None → resolved lazily via `shared.storage`
-        self._seq: int = 0
-        self._logger = None  # type: ignore[assignment]
-        self._store = None  # type: ignore[assignment]
-
-        # -- parent_id merge buffer --
-        # Holds the most recent node_add until we know whether the next event
-        # is a spawn edge targeting it. If so, we fold parent_id onto the
-        # node_add payload and drop the redundant spawn edge; otherwise we
-        # flush the node_add as-is. Lets the frontend build AgrexNode shape
-        # directly in its reducers (no render-time parent_id derivation) and
-        # use `<Agrex replay={...}>` to render from `replay.instance` cleanly.
-        self._pending_node_add: dict | None = None
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -103,87 +75,14 @@ class ConnectionManager:
         await ws.accept()
         self.ws = ws
 
-    def _resolve_storage(self):
-        if self._storage is not None:
-            return self._storage
-        try:
-            import shared
-
-            return getattr(shared, "storage", None)
-        except Exception:
-            return None
-
-    def _ensure_logger(self, run_id: str) -> None:
-        """Create a fresh logger + store pair for *run_id*."""
-        from decisionlab.runtime.event_logger import EventLogger
-        from decisionlab.runtime.event_store import S3EventStore
-
-        storage = self._resolve_storage()
-        if storage is None:
-            self._logger = None
-            self._store = None
-            return
-        self._store = S3EventStore(storage, run_id=run_id)
-        self._logger = EventLogger(on_flush=self._store.append)
-
-    async def _flush_log(self) -> None:
-        if self._logger is not None:
-            try:
-                await self._logger.flush()
-            except Exception as exc:
-                logger.warning("event log flush failed: %s", exc)
-
     async def emit(self, msg: dict) -> None:
-        """Send *msg* to the WS client, track state for reconnection, and
-        persist a stamped copy to the event log.
-
-        Persistence is synchronous (the S3 PUT on batch boundaries blocks the
-        next emit), which preserves NDJSON ordering. Most emits only hit the
-        in-memory batch buffer so the hot path stays cheap.
-        """
-        # Buffer node_add for one event so we can fold a following spawn
-        # edge into its parent_id. See `_pending_node_add` docstring.
-        if self._pending_node_add is not None:
-            buffered = self._pending_node_add
-            if _is_spawn_for(msg, buffered):
-                buffered["node"].setdefault("parent_id", msg["edge"]["source"])
-                self._pending_node_add = None
-                await self._emit_raw(buffered)
-                return  # spawn edge absorbed into parent_id
-            self._pending_node_add = None
-            await self._emit_raw(buffered)
-
-        if msg.get("type") == "node_add":
-            node = msg.get("node") or {}
-            if not node.get("parent_id"):
-                # Hold briefly; the next emit either patches parent_id or
-                # flushes this node_add as a root.
-                self._pending_node_add = msg
-                return
-
+        """Send *msg* to the WS client and update reconnection state."""
         await self._emit_raw(msg)
-
-    async def flush_pending_node_add(self) -> None:
-        """Flush any buffered node_add (e.g. at run teardown)."""
-        if self._pending_node_add is not None:
-            buffered = self._pending_node_add
-            self._pending_node_add = None
-            await self._emit_raw(buffered)
 
     async def _emit_raw(self, msg: dict) -> None:
         msg_type = msg.get("type")
 
-        # Start a new logger when a new run_start arrives.
-        if msg_type == "run_start":
-            run_id = msg.get("run_id")
-            if run_id:
-                await self._flush_log()
-                self._seq = 0
-                self._ensure_logger(run_id)
-            else:
-                logger.warning("run_start missing run_id; skipping event log init")
-
-        # -- state bookkeeping --
+        # -- state bookkeeping for reconnection --
         if msg_type == "node_add":
             self.nodes.append(msg["node"])
         elif msg_type == "edge_add":
@@ -193,8 +92,8 @@ class ConnectionManager:
                 if n["id"] == msg["id"]:
                     n["status"] = msg["status"]
                     break
-        elif msg_type == "stage_change":
-            self.current_stage = msg.get("stage")
+        elif msg_type == "stage":
+            self.current_stage = msg.get("label")
         elif msg_type == "review_request":
             self.pending_review = msg
         elif msg_type == "graph_clear":
@@ -205,51 +104,22 @@ class ConnectionManager:
         elif msg_type == "pipeline_done":
             self.pending_review = None
 
-        # -- stamp + persist --
-        if self._logger is not None:
-            self._seq += 1
-            stamped = {"seq": self._seq, "ts": int(time.time() * 1000), **msg}
-            try:
-                await self._logger.add(stamped)
-            except Exception as exc:
-                logger.warning("event log append failed: %s", exc)
-
-        # -- send over WS (unstamped) --
+        # -- send over WS --
         if self.ws is not None:
             try:
                 await self.ws.send_json(msg)
             except Exception as exc:
-                logger.warning(
-                    "WS send_json failed for type=%r: %s", msg_type, exc
-                )
-
-        # -- flush on terminal events --
-        if msg_type in ("pipeline_done", "error", "graph_clear"):
-            await self._flush_log()
-
-    async def cancel_and_flush(self) -> None:
-        """Call when a run is cancelled; persists the partial log."""
-        await self.flush_pending_node_add()
-        await self._flush_log()
+                logger.warning("WS send_json failed for type=%r: %s", msg_type, exc)
 
     async def handle_review_response(self, data: dict) -> None:
-        """Record the user's review decision in the event stream and dispatch
-        it to the waiting pipeline."""
+        """Dispatch the user's review decision to the waiting pipeline.
+
+        The decision is reflected in subsequent graph deltas (node updates,
+        re-run subgraphs), so no separate `review_decision` event is emitted.
+        """
         from decisionlab.web_feedback import handle_review_response as _dispatch
 
-        stage = data["stage"]
-        payload = data["data"]
-        # Extract the approved map (varies by stage shape). Keep the raw
-        # payload when no approved map is present so replays still see it.
-        approved = payload.get("approved") if isinstance(payload, dict) else None
-        await self.emit(
-            {
-                "type": "review_decision",
-                "stage": stage,
-                "approved": approved if approved is not None else payload,
-            }
-        )
-        _dispatch(stage, payload)
+        _dispatch(data["stage"], data["data"])
 
     def reset(self) -> None:
         self.nodes.clear()
@@ -310,7 +180,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             elif msg_type == "cancel":
                 if manager.pipeline_task and not manager.pipeline_task.done():
                     manager.pipeline_task.cancel()
-                    await manager.cancel_and_flush()
                     manager.reset()
 
     except WebSocketDisconnect:
@@ -419,7 +288,9 @@ async def run_pipeline(
                     from sqlalchemy import update
 
                     await session.execute(
-                        update(Run).where(Run.id == uuid.UUID(run_id)).values(status="cancelled")
+                        update(Run)
+                        .where(Run.id == uuid.UUID(run_id))
+                        .values(status="cancelled")
                     )
                     await session.commit()
             except Exception:
@@ -432,7 +303,9 @@ async def run_pipeline(
                     from sqlalchemy import update
 
                     await session.execute(
-                        update(Run).where(Run.id == uuid.UUID(run_id)).values(status="failed")
+                        update(Run)
+                        .where(Run.id == uuid.UUID(run_id))
+                        .values(status="failed")
                     )
                     await session.commit()
             except Exception:
