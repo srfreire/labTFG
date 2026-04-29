@@ -1252,6 +1252,10 @@ async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
         {
             "type": "agents",
             "agents": [
+                {"name": "researcher", "color": "#4a9eff"},
+                {"name": "formalizer", "color": "#9b59b6"},
+                {"name": "reasoner", "color": "#ff6b4a"},
+                {"name": "builder", "color": "#fbbf24"},
                 {"name": "memory_agent", "color": "#22d3ee"},
             ],
         }
