@@ -437,9 +437,7 @@ async def get_run_trace(run_id: str):
         raise HTTPException(status_code=404, detail="Trace not found") from None
 
     async with shared.db.get_session() as session:
-        result = await session.execute(
-            select(Run.status).where(Run.id == run_uuid)
-        )
+        result = await session.execute(select(Run.status).where(Run.id == run_uuid))
         row = result.first()
     if row is not None and row[0] == "running":
         raise HTTPException(status_code=409, detail="Run still in progress")
