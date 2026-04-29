@@ -87,6 +87,23 @@ _REVIEW_AFTER_MEMORY = {
     Stage.MEMORY_BUILD: Stage.REVIEW_BUILD,
 }
 
+# Work stages that emit a `tracer.stage(...)` timeline event (memory and
+# review sub-stages are intentionally excluded — they'd be timeline noise).
+_TIMELINE_WORK_STAGES = {
+    Stage.RESEARCH,
+    Stage.FORMALIZE,
+    Stage.REASON,
+    Stage.BUILD,
+}
+
+# Review stages that emit a yellow `tracer.marker(...)` at the prompt.
+_REVIEW_STAGES = {
+    Stage.REVIEW_RESEARCH,
+    Stage.REVIEW_FORMALIZE,
+    Stage.REVIEW_REASON,
+    Stage.REVIEW_BUILD,
+}
+
 
 # ---------------------------------------------------------------------------
 # PipelineState
@@ -672,21 +689,18 @@ class Router:
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
-            await self._send_event(
-                {
-                    "type": "stage_change",
-                    "stage": current_stage.value,
-                    "status": "running",
-                }
-            )
+
+            if current_stage in _TIMELINE_WORK_STAGES:
+                self._tracer.stage(current_stage.value)
+                await self._send_event(self._tracer.events()[-1])
+            elif current_stage in _REVIEW_STAGES:
+                # Drop the "review_" prefix so the marker kind reads
+                # "review_research" not "review_review_research".
+                stage_name = current_stage.value.removeprefix("review_")
+                self._tracer.marker(f"review_{stage_name}", color="#fbbf24")
+                await self._send_event(self._tracer.events()[-1])
+
             await handler()
-            await self._send_event(
-                {
-                    "type": "stage_change",
-                    "stage": current_stage.value,
-                    "status": "done",
-                }
-            )
 
             # `--until X` enforcement: when the user just finished reviewing the
             # stop_after stage, terminate cleanly. Consolidation + finalization
