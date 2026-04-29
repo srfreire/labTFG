@@ -434,7 +434,7 @@ async def get_run_trace(run_id: str):
     try:
         run_uuid = uuid.UUID(run_id)
     except ValueError:
-        raise HTTPException(status_code=404, detail="Trace not found")
+        raise HTTPException(status_code=404, detail="Trace not found") from None
 
     async with shared.db.get_session() as session:
         result = await session.execute(
