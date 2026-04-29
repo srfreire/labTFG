@@ -94,20 +94,20 @@ async def test_runs_list_excludes_running_and_orders_newest_first(seeded_runs):
 
 
 @pytest.mark.asyncio
-async def test_events_endpoint_returns_ndjson(seeded_runs):
+async def test_trace_endpoint_returns_ndjson(seeded_runs):
     import shared
     from decisionlab.server import app
 
     run_id = seeded_runs[0]  # the 'done' run
-    # Seed an event log for this run
+    # Seed a trace for this run
     await shared.storage.put_text(
-        f"research/{run_id}/events.jsonl",
+        f"research/{run_id}/trace.jsonl",
         '{"seq":1,"type":"run_start"}\n{"seq":2,"type":"pipeline_done"}\n',
         content_type="application/x-ndjson",
     )
     try:
         with TestClient(app) as client:
-            resp = client.get(f"/api/runs/{run_id}/events")
+            resp = client.get(f"/api/runs/{run_id}/trace")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/x-ndjson")
         lines = resp.text.strip().split("\n")
@@ -116,24 +116,24 @@ async def test_events_endpoint_returns_ndjson(seeded_runs):
         # TestClient's lifespan tears shared down; re-init for cleanup.
         if shared.storage is None:
             await shared.init()
-        await shared.storage.delete(f"research/{run_id}/events.jsonl")
+        await shared.storage.delete(f"research/{run_id}/trace.jsonl")
 
 
 @pytest.mark.asyncio
-async def test_events_endpoint_returns_404_when_missing(seeded_runs):
+async def test_trace_endpoint_returns_404_when_missing(seeded_runs):
     from decisionlab.server import app
 
-    run_id = seeded_runs[0]  # 'done' but no event log seeded
+    run_id = seeded_runs[0]  # 'done' but no trace seeded
     with TestClient(app) as client:
-        resp = client.get(f"/api/runs/{run_id}/events")
+        resp = client.get(f"/api/runs/{run_id}/trace")
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_events_endpoint_returns_409_while_running(seeded_runs):
+async def test_trace_endpoint_returns_409_while_running(seeded_runs):
     from decisionlab.server import app
 
     run_id = seeded_runs[3]  # the 'running' one
     with TestClient(app) as client:
-        resp = client.get(f"/api/runs/{run_id}/events")
+        resp = client.get(f"/api/runs/{run_id}/trace")
     assert resp.status_code == 409

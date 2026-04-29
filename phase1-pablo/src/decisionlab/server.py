@@ -416,12 +416,12 @@ async def list_runs() -> list[dict]:
     ]
 
 
-@app.get("/api/runs/{run_id}/events")
-async def get_run_events(run_id: str):
-    """Stream the recorded WS event stream for a run (NDJSON).
+@app.get("/api/runs/{run_id}/trace")
+async def get_run_trace(run_id: str):
+    """Stream the agrex trace.jsonl for a run.
 
     Returns 409 if the run is still in progress (live observation should use
-    the WS), 404 if no event log exists.
+    the WS), 404 if no trace exists (e.g. pre-trace runs).
     """
     import uuid
 
@@ -439,8 +439,8 @@ async def get_run_events(run_id: str):
     if row is not None and row[0] == "running":
         raise HTTPException(status_code=409, detail="Run still in progress")
 
-    key = f"research/{run_id}/events.jsonl"
+    key = f"research/{run_id}/trace.jsonl"
     if not await shared.storage.exists(key):
-        raise HTTPException(status_code=404, detail="Event log not found")
+        raise HTTPException(status_code=404, detail="Trace not found")
     body = await shared.storage.get_text(key)
     return PlainTextResponse(body, media_type="application/x-ndjson")

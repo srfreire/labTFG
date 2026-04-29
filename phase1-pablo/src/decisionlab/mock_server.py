@@ -1523,15 +1523,15 @@ async def list_runs() -> list[dict]:
     return terminal
 
 
-@app.get("/api/runs/{run_id}/events")
-async def get_run_events(run_id: str):
-    """Stream the recorded event stream for a run (NDJSON)."""
+@app.get("/api/runs/{run_id}/trace")
+async def get_run_trace(run_id: str):
+    """Stream the recorded trace for a run (NDJSON)."""
     rec = _run_records.get(run_id)
     if rec and rec["status"] == "running":
         raise HTTPException(status_code=409, detail="Run still in progress")
     events = _run_events.get(run_id)
     if not events:
-        raise HTTPException(status_code=404, detail="Event log not found")
+        raise HTTPException(status_code=404, detail="Trace not found")
     body = "".join(json.dumps(e, separators=(",", ":")) + "\n" for e in events)
     return PlainTextResponse(body, media_type="application/x-ndjson")
 
