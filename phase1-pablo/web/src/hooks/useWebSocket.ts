@@ -121,15 +121,11 @@ function handleServerMessage(
             stages[s] = "done";
           }
         }
-        // Close any memory_* lingering from a stage two-or-more steps back
-        // (defensive — normally it was closed when its review marker fired).
-        const memOfPrev = MEMORY_STAGE_OF[prev];
+        // Defensive sweep: close any memory_* still flagged "running" — in
+        // normal flow the matching review marker closed it already, but if
+        // not, bury it now rather than leaving an orphaned dot.
         for (const s of Object.values(Stage) as Stage[]) {
-          if (
-            s.startsWith("memory_") &&
-            s !== memOfPrev &&
-            stages[s] === "running"
-          ) {
+          if (s.startsWith("memory_") && stages[s] === "running") {
             stages[s] = "done";
           }
         }
@@ -140,17 +136,18 @@ function handleServerMessage(
         ) {
           stages[Stage.GET_ENV_SPEC] = "done";
         }
-        // Light up the just-finished work stage's MEMORY_X — the backend
-        // runs the Memory Agent synchronously between work and review, so
-        // we trigger it here and close it on the matching review marker.
-        if (memOfPrev) stages[memOfPrev] = "running";
       }
 
       stages[newStage] = "running";
-      // Defensive reset: if a re-run loops back into a previously-touched
-      // work stage, clear its sub-stage statuses so dots don't lie.
+      // Light up the NEW work stage's MEMORY_X up front — the backend runs
+      // the Memory Agent synchronously after this work stage finishes (and
+      // before the review prompt). We trigger the dot now so the user sees
+      // "memory will run when this stage's work completes"; the matching
+      // `marker:review_X` arm closes it.
       const memOfNew = MEMORY_STAGE_OF[newStage];
-      if (memOfNew) stages[memOfNew] = "pending";
+      if (memOfNew) stages[memOfNew] = "running";
+      // Defensive reset: if a re-run loops back into a previously-touched
+      // work stage, clear its review sub-stage so the dot doesn't lie.
       const reviewOfNew = `review_${newStage}` as Stage;
       if (stages[reviewOfNew] !== undefined) stages[reviewOfNew] = "pending";
 
