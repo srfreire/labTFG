@@ -368,9 +368,6 @@ class Router:
         if self.emit is not None:
             await self.emit(msg)
 
-    # Deprecated alias — removed in Task 6 once all callsites migrate to _send_event.
-    _emit = _send_event
-
     def _init_trace(self, run_id: str) -> None:
         """Open a per-run trace file and create an agrex.Tracer streaming to it.
 
@@ -449,7 +446,7 @@ class Router:
         ]
         if self.memory_agent is not None:
             agents.append({"name": "memory_agent", "color": "#22d3ee"})
-        await self._emit({"type": "agents", "agents": agents})
+        await self._send_event({"type": "agents", "agents": agents})
 
     # -- DB helpers -----------------------------------------------------------
 
@@ -675,7 +672,7 @@ class Router:
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
-            await self._emit(
+            await self._send_event(
                 {
                     "type": "stage_change",
                     "stage": current_stage.value,
@@ -683,7 +680,7 @@ class Router:
                 }
             )
             await handler()
-            await self._emit(
+            await self._send_event(
                 {
                     "type": "stage_change",
                     "stage": current_stage.value,
