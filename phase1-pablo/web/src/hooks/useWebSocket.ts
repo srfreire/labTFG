@@ -145,8 +145,14 @@ function handleServerMessage(
     case "graph_clear":
       return { ...state, nodes: [], edges: [] };
 
-    case "pipeline_done":
-      return { ...state, isRunning: false, currentStage: null };
+    case "pipeline_done": {
+      // Mark the final stage "done" — no successor `stage` event will fire,
+      // so the synthesis in case "stage" can't catch this transition.
+      const stages = state.currentStage
+        ? { ...state.stages, [state.currentStage]: "done" as const }
+        : state.stages;
+      return { ...state, isRunning: false, stages, currentStage: null };
+    }
 
     case "error":
       return { ...state, error: msg.message };
