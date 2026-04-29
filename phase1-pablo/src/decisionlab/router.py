@@ -993,20 +993,8 @@ class Router:
 
         n_specs = sum(len(fs) for fs in self.state.approved_specs.values())
         self.console.print(f"[bold]Running Builder for {n_specs} spec(s)...[/bold]")
-        await self._emit(
-            {
-                "type": "node_add",
-                "node": {
-                    "id": "builder",
-                    "kind": "agent",
-                    "label": "Builder",
-                    "status": "running",
-                },
-            }
-        )
-        await self._emit(
-            {"type": "edge_add", "edge": {"source": "reasoner", "target": "builder"}}
-        )
+        self._tracer.agent("builder", "Builder", parent="reasoner")
+        await self._send_event(self._tracer.events()[-1])
         try:
             b = Builder(
                 client=self.client,
@@ -1021,11 +1009,11 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
-            await self._emit(
-                {"type": "node_update", "id": "builder", "status": "error"}
-            )
+            self._tracer.error("builder", error=exc)
+            await self._send_event(self._tracer.events()[-1])
             return
-        await self._emit({"type": "node_update", "id": "builder", "status": "done"})
+        self._tracer.done("builder")
+        await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.BUILD)
 
     async def _review_build(self) -> None:
