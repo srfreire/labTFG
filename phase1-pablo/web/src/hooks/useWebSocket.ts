@@ -2,8 +2,6 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   Stage,
   StageStatus,
-  GraphNode,
-  GraphEdge,
   ServerMessage,
   ClientMessage,
   AgentState,
@@ -13,10 +11,11 @@ import {
 /*  State                                                              */
 /* ------------------------------------------------------------------ */
 
+// Note: graph nodes/edges are NOT held here — they live on `replay.instance`
+// (driven by the agrex replay buffer in App.tsx). This reducer tracks only
+// pipeline-stage progress and connection metadata.
 interface WebSocketState {
   connected: boolean;
-  nodes: GraphNode[];
-  edges: GraphEdge[];
   stages: Record<Stage, StageStatus>;
   currentStage: Stage | null;
   reviewRequest: { stage: Stage; data: any } | null;
@@ -36,8 +35,6 @@ function initStages(): Record<Stage, StageStatus> {
 
 const INITIAL_STATE: WebSocketState = {
   connected: false,
-  nodes: [],
-  edges: [],
   stages: initStages(),
   currentStage: null,
   reviewRequest: null,
@@ -71,8 +68,6 @@ function reducer(state: WebSocketState, action: Action): WebSocketState {
       return {
         ...state,
         isRunning: true,
-        nodes: [],
-        edges: [],
         stages: initStages(),
         currentStage: null,
         reviewRequest: null,
@@ -118,19 +113,9 @@ function handleServerMessage(
       return { ...state, stages, currentStage: newStage };
     }
 
-    case "node_add":
-      return { ...state, nodes: [...state.nodes, msg.node] };
-
-    case "edge_add":
-      return { ...state, edges: [...state.edges, msg.edge] };
-
-    case "node_update":
-      return {
-        ...state,
-        nodes: state.nodes.map((n) =>
-          n.id === msg.id ? { ...n, status: msg.status } : n,
-        ),
-      };
+    // Graph deltas (node_add / edge_add / node_update / graph_clear) flow
+    // through to the agrex replay buffer in App.tsx — this hook no longer
+    // mirrors them in its own state.
 
     case "review_request":
       return {
@@ -141,9 +126,6 @@ function handleServerMessage(
     case "rerun":
       // Rerun is informational; graph_clear handles visual reset
       return state;
-
-    case "graph_clear":
-      return { ...state, nodes: [], edges: [] };
 
     case "pipeline_done": {
       // Mark the final stage "done" — no successor `stage` event will fire,
@@ -158,10 +140,10 @@ function handleServerMessage(
       return { ...state, error: msg.message };
 
     case "state_sync":
+      // Reconnection snapshot: graph is restored via the replay buffer in
+      // App.tsx; we only need the current stage marker here.
       return {
         ...state,
-        nodes: msg.nodes,
-        edges: msg.edges,
         currentStage: msg.stage,
       };
 
