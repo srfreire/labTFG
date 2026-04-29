@@ -873,20 +873,8 @@ class Router:
             f"[bold]Running Reasoner for {n_formulations} formulation(s) "
             f"across {len(selected)} paradigm(s)...[/bold]"
         )
-        await self._emit(
-            {
-                "type": "node_add",
-                "node": {
-                    "id": "reasoner",
-                    "kind": "agent",
-                    "label": "Reasoner",
-                    "status": "running",
-                },
-            }
-        )
-        await self._emit(
-            {"type": "edge_add", "edge": {"source": "formalizer", "target": "reasoner"}}
-        )
+        self._tracer.agent("reasoner", "Reasoner", parent="formalizer")
+        await self._send_event(self._tracer.events()[-1])
         try:
             r = Reasoner(
                 client=self.client,
@@ -900,11 +888,11 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
-            await self._emit(
-                {"type": "node_update", "id": "reasoner", "status": "error"}
-            )
+            self._tracer.error("reasoner", error=exc)
+            await self._send_event(self._tracer.events()[-1])
             return
-        await self._emit({"type": "node_update", "id": "reasoner", "status": "done"})
+        self._tracer.done("reasoner")
+        await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.REASON)
 
     async def _review_reason(self) -> None:
