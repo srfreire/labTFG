@@ -128,9 +128,7 @@ async def test_stop_after_research_terminates_after_review(shared_init):
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(
-                router, "_review_research", side_effect=mock_review_research
-            ),
+            patch.object(router, "_review_research", side_effect=mock_review_research),
             patch.object(router, "_do_formalize", side_effect=mock_formalize),
             patch.object(router, "_run_consolidation", AsyncMock()),
         ):
@@ -166,9 +164,7 @@ async def test_partial_run_persists_final_stage_and_memory_results(shared_init):
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(
-                router, "_review_research", side_effect=mock_review_research
-            ),
+            patch.object(router, "_review_research", side_effect=mock_review_research),
             patch.object(router, "_run_consolidation", AsyncMock()),
         ):
             await router.run()
@@ -207,9 +203,7 @@ async def test_memory_failure_persists_error_and_keeps_run_alive(shared_init):
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(
-                router, "_review_research", side_effect=mock_review_research
-            ),
+            patch.object(router, "_review_research", side_effect=mock_review_research),
             patch.object(router, "_run_consolidation", AsyncMock()),
         ):
             await router.run()
@@ -248,9 +242,7 @@ async def test_partial_run_uploads_agrex_trace_artifact(shared_init):
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(
-                router, "_review_research", side_effect=mock_review_research
-            ),
+            patch.object(router, "_review_research", side_effect=mock_review_research),
             patch.object(router, "_run_consolidation", AsyncMock()),
         ):
             await router.run()
@@ -260,8 +252,7 @@ async def test_partial_run_uploads_agrex_trace_artifact(shared_init):
         content = await shared_init.storage.get_text(trace_key)
         events = parse_trace(content)
         assert any(
-            e["type"] == "node_add" and e["node"]["id"] == "researcher"
-            for e in events
+            e["type"] == "node_add" and e["node"]["id"] == "researcher" for e in events
         )
         assert any(
             e["type"] == "node_update"
@@ -276,8 +267,7 @@ async def test_partial_run_uploads_agrex_trace_artifact(shared_init):
         )
         # Task 1: REVIEW_RESEARCH transition emits a yellow review marker.
         assert any(
-            e["type"] == "marker" and e.get("kind") == "review_research"
-            for e in events
+            e["type"] == "marker" and e.get("kind") == "review_research" for e in events
         )
     finally:
         await _delete_run(shared_init, run_id)
