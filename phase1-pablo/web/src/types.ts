@@ -56,7 +56,8 @@ export interface GraphEdge {
 
 // Backend -> Frontend messages
 export type ServerMessage =
-  | { type: "stage_change"; stage: Stage; status: StageStatus }
+  | { type: "stage"; ts: number; label: string; color?: string }
+  | { type: "marker"; ts: number; kind: string; label?: string; color?: string }
   | { type: "node_add"; node: GraphNode }
   | { type: "edge_add"; edge: GraphEdge }
   | { type: "node_update"; id: string; status: "running" | "done" | "error" }
@@ -78,8 +79,7 @@ export type ServerMessage =
       error?: string;
     }
   | { type: "agent_tool"; agent: string; tool: string }
-  | { type: "run_start"; run_id: string }
-  | { type: "review_decision"; stage: Stage; approved: Record<string, boolean> | unknown };
+  | { type: "run_start"; run_id: string };
 
 // Knowledge Graph snapshot (from /api/kg/snapshot)
 export interface KGNode {

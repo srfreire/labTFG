@@ -20,7 +20,7 @@ import PastRunsList from "./components/PastRunsList";
 import { useAgrexReplay, type AgrexEvent, type AgrexNode } from "@ppazosp/agrex";
 import {
   extractLabMarkers,
-  fetchRunEvents,
+  fetchRunTrace,
   labReducers,
   labStepBoundaries,
 } from "./lib/replayAdapter";
@@ -364,7 +364,7 @@ export default function App() {
   const handleSelectPastRun = useCallback(
     async (runIdSel: string) => {
       if (isRunning) return;
-      await replay.load(fetchRunEvents(runIdSel));
+      await replay.load(fetchRunTrace(runIdSel));
     },
     [isRunning, replay],
   );

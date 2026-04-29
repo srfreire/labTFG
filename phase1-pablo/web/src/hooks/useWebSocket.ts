@@ -106,12 +106,17 @@ function handleServerMessage(
   msg: ServerMessage,
 ): WebSocketState {
   switch (msg.type) {
-    case "stage_change":
-      return {
-        ...state,
-        stages: { ...state.stages, [msg.stage]: msg.status },
-        currentStage: msg.status === "running" ? msg.stage : state.currentStage,
-      };
+    case "stage": {
+      const newStage = msg.label as Stage;
+      const stages = { ...state.stages, [newStage]: "running" as const };
+      // The previous "running" stage transitions to "done" when a new
+      // stage starts. Memory and review sub-stages don't emit `stage`,
+      // so the previous timeline marker is always a work stage.
+      if (state.currentStage && state.currentStage !== newStage) {
+        stages[state.currentStage] = "done";
+      }
+      return { ...state, stages, currentStage: newStage };
+    }
 
     case "node_add":
       return { ...state, nodes: [...state.nodes, msg.node] };
