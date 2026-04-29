@@ -5,6 +5,7 @@ import {
   ServerMessage,
   ClientMessage,
   AgentState,
+  MEMORY_STAGE_OF,
 } from "../types";
 
 /* ------------------------------------------------------------------ */
@@ -102,37 +103,110 @@ function handleServerMessage(
 ): WebSocketState {
   switch (msg.type) {
     case "stage": {
+      // A new work stage begins. We synthesize the lifecycle of the previous
+      // stage's sub-stages (memory_*, review_*, get_env_spec) here because
+      // backend events for those no longer travel on the wire — only the
+      // four work stages emit `stage`, and reviews emit `marker`.
       const newStage = msg.label as Stage;
-      const stages = { ...state.stages, [newStage]: "running" as const };
-      // The previous "running" stage transitions to "done" when a new
-      // stage starts. Memory and review sub-stages don't emit `stage`,
-      // so the previous timeline marker is always a work stage.
-      if (state.currentStage && state.currentStage !== newStage) {
-        stages[state.currentStage] = "done";
+      const stages = { ...state.stages };
+      const prev = state.currentStage;
+
+      if (prev && prev !== newStage) {
+        // Close the previous work stage.
+        stages[prev] = "done";
+        // Close any review_* still flagged "running" — entering a new work
+        // stage means the prior review prompt was answered.
+        for (const s of Object.values(Stage) as Stage[]) {
+          if (s.startsWith("review_") && stages[s] === "running") {
+            stages[s] = "done";
+          }
+        }
+        // Close any memory_* lingering from a stage two-or-more steps back
+        // (defensive — normally it was closed when its review marker fired).
+        const memOfPrev = MEMORY_STAGE_OF[prev];
+        for (const s of Object.values(Stage) as Stage[]) {
+          if (
+            s.startsWith("memory_") &&
+            s !== memOfPrev &&
+            stages[s] === "running"
+          ) {
+            stages[s] = "done";
+          }
+        }
+        // Close GET_ENV_SPEC if we're now entering REASON.
+        if (
+          newStage === Stage.REASON &&
+          stages[Stage.GET_ENV_SPEC] === "running"
+        ) {
+          stages[Stage.GET_ENV_SPEC] = "done";
+        }
+        // Light up the just-finished work stage's MEMORY_X — the backend
+        // runs the Memory Agent synchronously between work and review, so
+        // we trigger it here and close it on the matching review marker.
+        if (memOfPrev) stages[memOfPrev] = "running";
       }
+
+      stages[newStage] = "running";
+      // Defensive reset: if a re-run loops back into a previously-touched
+      // work stage, clear its sub-stage statuses so dots don't lie.
+      const memOfNew = MEMORY_STAGE_OF[newStage];
+      if (memOfNew) stages[memOfNew] = "pending";
+      const reviewOfNew = `review_${newStage}` as Stage;
+      if (stages[reviewOfNew] !== undefined) stages[reviewOfNew] = "pending";
+
       return { ...state, stages, currentStage: newStage };
+    }
+
+    case "marker": {
+      // Review markers light up the matching REVIEW_X stage and close the
+      // memory stage that ran synchronously just before the prompt.
+      if (typeof msg.kind === "string" && msg.kind.startsWith("review_")) {
+        const reviewStage = msg.kind as Stage;
+        const stages = { ...state.stages };
+        const work = msg.kind.slice("review_".length) as Stage;
+        const memStage = MEMORY_STAGE_OF[work];
+        if (memStage && stages[memStage] === "running") {
+          stages[memStage] = "done";
+        }
+        stages[reviewStage] = "running";
+        return { ...state, stages };
+      }
+      return state;
     }
 
     // Graph deltas (node_add / edge_add / node_update / graph_clear) flow
     // through to the agrex replay buffer in App.tsx — this hook no longer
     // mirrors them in its own state.
 
-    case "review_request":
+    case "review_request": {
+      // GET_ENV_SPEC has no marker counterpart, so we light its sidebar dot
+      // here (the backend emits a `review_request` for it). Other review
+      // stages already have their dot lit by the `marker` arm above.
+      const stages =
+        msg.stage === Stage.GET_ENV_SPEC
+          ? { ...state.stages, [Stage.GET_ENV_SPEC]: "running" as const }
+          : state.stages;
       return {
         ...state,
+        stages,
         reviewRequest: { stage: msg.stage, data: msg.data },
       };
+    }
 
     case "rerun":
       // Rerun is informational; graph_clear handles visual reset
       return state;
 
     case "pipeline_done": {
-      // Mark the final stage "done" — no successor `stage` event will fire,
-      // so the synthesis in case "stage" can't catch this transition.
-      const stages = state.currentStage
-        ? { ...state.stages, [state.currentStage]: "done" as const }
-        : state.stages;
+      // Final sweep — close any stage still flagged "running" (the final
+      // work stage, plus any lingering memory/review/get_env_spec dots that
+      // synthesis may have left open).
+      const stages = { ...state.stages };
+      for (const s of Object.keys(stages) as Stage[]) {
+        if (stages[s] === "running") {
+          stages[s] = "done";
+        }
+      }
       return { ...state, isRunning: false, stages, currentStage: null };
     }
 
