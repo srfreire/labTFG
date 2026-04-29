@@ -5,12 +5,15 @@ from __future__ import annotations
 import json
 import logging
 import re
+import tempfile
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import TYPE_CHECKING
 
+import agrex
 from anthropic import AsyncAnthropic
 from rich.console import Console
 
@@ -204,10 +207,14 @@ class PipelineState:
             candidates.append(f"{self.research_prefix}/formulations/{slug}.md")
         for paradigm, fids in self.selected_formulations.items():
             for fid in fids:
-                candidates.append(f"{self.models_prefix}/reasoner/{paradigm}/{fid}.json")
+                candidates.append(
+                    f"{self.models_prefix}/reasoner/{paradigm}/{fid}.json"
+                )
         for paradigm, fids in self.approved_specs.items():
             for fid in fids:
-                candidates.append(f"{self.models_prefix}/builder/{paradigm}/{fid}_model.py")
+                candidates.append(
+                    f"{self.models_prefix}/builder/{paradigm}/{fid}_model.py"
+                )
 
         missing: list[str] = []
         for key in candidates:
@@ -217,7 +224,9 @@ class PipelineState:
             except Exception:
                 # Storage unreachable → don't pretend the artifact is missing;
                 # let the caller surface the connection error elsewhere.
-                logger.warning("S3 reachability check failed for %s", key, exc_info=True)
+                logger.warning(
+                    "S3 reachability check failed for %s", key, exc_info=True
+                )
                 return []
         return missing
 
@@ -290,15 +299,15 @@ class Router:
         # so the user can still curate the partial-run output before it's
         # committed to the KG.
         if stop_after is not None and stop_after not in _MEMORY_STAGE_OF:
-            raise ValueError(
-                f"stop_after must be a work stage, got {stop_after!r}"
-            )
+            raise ValueError(f"stop_after must be a work stage, got {stop_after!r}")
         self._stop_after: Stage | None = stop_after
         self._stop_after_review: Stage | None = (
             _REVIEW_AFTER_MEMORY[_MEMORY_STAGE_OF[stop_after]]
             if stop_after is not None
             else None
         )
+        self._tracer: agrex.Tracer | None = None
+        self._trace_local_path: Path | None = None
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -354,10 +363,81 @@ class Router:
             logger.debug("Knowledge infrastructure unavailable — Memory Agent disabled")
             return None
 
-    async def _emit(self, msg: dict) -> None:
-        """Send an event to the frontend (no-op in CLI mode)."""
+    async def _send_event(self, msg: dict) -> None:
+        """Forward an event to the frontend (no-op in CLI mode)."""
         if self.emit is not None:
             await self.emit(msg)
+
+    # Deprecated alias — removed in Task 6 once all callsites migrate to _send_event.
+    _emit = _send_event
+
+    def _init_trace(self, run_id: str) -> None:
+        """Open a per-run trace file and create an agrex.Tracer streaming to it.
+
+        The local file is uploaded to s3://research/{run_id}/trace.jsonl in
+        _finalize_trace. Idempotent: a second call replaces any prior tracer.
+        """
+        if self._tracer is not None:
+            try:
+                self._tracer.close()
+            except Exception:
+                logger.warning(
+                    "Prior tracer close failed during _init_trace", exc_info=True
+                )
+        if self._trace_local_path is not None:
+            try:
+                self._trace_local_path.unlink(missing_ok=True)
+            except Exception:
+                logger.warning(
+                    "Prior trace local cleanup failed: %s",
+                    self._trace_local_path,
+                    exc_info=True,
+                )
+
+        fd, path = tempfile.mkstemp(prefix=f"agrex-{run_id}-", suffix=".jsonl")
+        self._trace_local_path = Path(path)
+        # File handle ownership transfers to the Tracer (closed by tracer.close()).
+        file_handle = open(fd, "w", encoding="utf-8")  # noqa: SIM115
+        self._tracer = agrex.create_tracer(out=file_handle)
+        logger.debug("Trace recording started: %s", self._trace_local_path)
+
+    async def _finalize_trace(self, run_id: str) -> None:
+        """Close the tracer and upload the trace file to S3.
+
+        Safe to call multiple times. Failures are logged but never raised
+        so a trace upload failure cannot abort run finalization.
+        """
+        if self._tracer is None:
+            return
+        try:
+            self._tracer.close()
+        except Exception:
+            logger.warning("Tracer close failed", exc_info=True)
+
+        local_path = self._trace_local_path
+        try:
+            if local_path is not None and local_path.exists():
+                content = local_path.read_text(encoding="utf-8")
+                import shared
+
+                if shared.storage is not None:
+                    key = f"research/{run_id}/trace.jsonl"
+                    await shared.storage.put_text(key, content)
+                    logger.debug(
+                        "Trace uploaded to s3://%s (%d bytes)", key, len(content)
+                    )
+        except Exception:
+            logger.warning("Trace S3 upload failed for run %s", run_id, exc_info=True)
+        finally:
+            if local_path is not None:
+                try:
+                    local_path.unlink(missing_ok=True)
+                except Exception:
+                    logger.warning(
+                        "Trace local cleanup failed: %s", local_path, exc_info=True
+                    )
+            self._tracer = None
+            self._trace_local_path = None
 
     async def _emit_agents(self) -> None:
         """Emit the list of pipeline agents so the frontend can build its panel."""
@@ -375,9 +455,10 @@ class Router:
 
     async def _update_run(self, **values) -> None:
         """Update the Run row in Postgres with the given column values."""
+        from sqlalchemy import update
+
         import shared
         from shared.models import Run
-        from sqlalchemy import update
 
         async with shared.db.get_session() as session:
             await session.execute(
@@ -581,6 +662,13 @@ class Router:
             Stage.REVIEW_BUILD: self._review_build,
         }
 
+        self._init_trace(self.state.run_id)
+        try:
+            await self._run_loop(handlers)
+        finally:
+            await self._finalize_trace(self.state.run_id)
+
+    async def _run_loop(self, handlers: dict) -> None:
         # Emit agent list so the frontend knows which agents are available
         await self._emit_agents()
 
@@ -1135,9 +1223,10 @@ class Router:
 
     async def _register_approved_models(self) -> None:
         """Insert or update Model rows in Postgres for each approved build."""
+        from sqlalchemy import select
+
         import shared
         from shared.models import Model
-        from sqlalchemy import select
 
         run_uuid = uuid.UUID(self.state.run_id)
 
