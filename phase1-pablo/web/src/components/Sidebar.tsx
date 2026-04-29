@@ -120,8 +120,8 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
 
   // Memory tick status for work stage `s`: read directly from the dedicated
-  // MEMORY_X stage's status (filled in by stage_change events from the
-  // backend, same source of truth as every other dot).
+  // MEMORY_X stage's status (synthesized in `useWebSocket` from work-stage
+  // transitions and review markers, same source of truth as every other dot).
   const STATUS_TO_AGENT: Record<StageStatus, AgentState["status"]> = {
     pending: "idle",
     running: "working",
