@@ -431,9 +431,14 @@ async def get_run_trace(run_id: str):
     import shared
     from shared.models import Run
 
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Trace not found")
+
     async with shared.db.get_session() as session:
         result = await session.execute(
-            select(Run.status).where(Run.id == uuid.UUID(run_id))
+            select(Run.status).where(Run.id == run_uuid)
         )
         row = result.first()
     if row is not None and row[0] == "running":
