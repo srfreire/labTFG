@@ -791,23 +791,8 @@ class Router:
         from decisionlab.agents.formalizer import Formalizer
 
         self.console.print("[bold]Running Formalizer...[/bold]")
-        await self._emit(
-            {
-                "type": "node_add",
-                "node": {
-                    "id": "formalizer",
-                    "kind": "agent",
-                    "label": "Formalizer",
-                    "status": "running",
-                },
-            }
-        )
-        await self._emit(
-            {
-                "type": "edge_add",
-                "edge": {"source": "researcher", "target": "formalizer"},
-            }
-        )
+        self._tracer.agent("formalizer", "Formalizer", parent="researcher")
+        await self._send_event(self._tracer.events()[-1])
         try:
             f = Formalizer(
                 client=self.client,
@@ -819,11 +804,11 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Formalizer failed: {exc}[/bold red]")
             logger.exception("Formalizer failed")
-            await self._emit(
-                {"type": "node_update", "id": "formalizer", "status": "error"}
-            )
+            self._tracer.error("formalizer", error=exc)
+            await self._send_event(self._tracer.events()[-1])
             return
-        await self._emit({"type": "node_update", "id": "formalizer", "status": "done"})
+        self._tracer.done("formalizer")
+        await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.FORMALIZE)
 
     async def _review_formalize(self) -> None:
