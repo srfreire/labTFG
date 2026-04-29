@@ -270,6 +270,15 @@ async def test_partial_run_uploads_agrex_trace_artifact(shared_init):
             for e in events
         )
         assert all("ts" in e for e in events)
+        # Task 1: research stage emits a `tracer.stage(...)` event into the trace.
+        assert any(
+            e["type"] == "stage" and e.get("label") == "research" for e in events
+        )
+        # Task 1: REVIEW_RESEARCH transition emits a yellow review marker.
+        assert any(
+            e["type"] == "marker" and e.get("kind") == "review_research"
+            for e in events
+        )
     finally:
         await _delete_run(shared_init, run_id)
         with contextlib.suppress(Exception):

@@ -1,11 +1,13 @@
 # Trace recording
 
-Every pipeline run produces an `agrex` JSONL trace at `s3://<bucket>/research/{run_id}/trace.jsonl`, recorded by `agrex.Tracer` in `Router._tracer`. The trace contains every graph-delta event (node_add, node_update, edge_add) the router emitted, in the canonical agrex format readable by https://agrex.ppazosp.dev. WS-extension events (`agents`, `stage_change`) are NOT in the trace — they're UI control messages, not graph deltas, so they go through `Router._send_event` directly.
+Every pipeline run produces an `agrex` JSONL trace at `s3://<bucket>/research/{run_id}/trace.jsonl`, recorded by `agrex.Tracer` in `Router._tracer`. The trace contains every graph-delta event (node_add, node_update, edge_add) the router emitted, in the canonical agrex format readable by https://agrex.ppazosp.dev.
 
-To replay a finished run:
+The trace also carries pipeline-level annotations:
 
-1. Download the trace from S3 (`research/{run_id}/trace.jsonl`).
-2. Drop the `.jsonl` file on https://agrex.ppazosp.dev to scrub through it.
+- `stage` events for each work stage (research / formalize / reason / build), emitted from `Router._run_loop` via `tracer.stage(...)`. They appear as stage markers on the agrex timeline.
+- `marker` events with `kind: "review_<stage>"` for each human-review prompt, emitted from `Router._run_loop` via `tracer.marker(...)` with `color: "#fbbf24"`. They appear as yellow markers on the timeline.
+
+Replay in the in-app viewer fetches `GET /api/runs/{run_id}/trace`. Drop the file on https://agrex.ppazosp.dev for the external viewer.
 
 The Python tracer API (`agrex>=0.7.0`) mirrors the TypeScript sibling `@ppazosp/agrex/trace` used by the web frontend.
 
