@@ -724,7 +724,7 @@ class TestRouterConsolidation:
         import inspect
         from decisionlab.router import Router
 
-        source = inspect.getsource(Router.run)
+        source = inspect.getsource(Router.run) + inspect.getsource(Router._run_loop)
         assert "_run_consolidation" in source
 
     def test_run_consolidation_method_exists(self):

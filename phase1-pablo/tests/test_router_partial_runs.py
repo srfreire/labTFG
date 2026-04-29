@@ -8,6 +8,7 @@ Memory Agent results in runs.memory_results.
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -222,6 +223,57 @@ async def test_memory_failure_persists_error_and_keeps_run_alive(shared_init):
         assert "boom" in researcher["error"]
     finally:
         await _delete_run(shared_init, run_id)
+
+
+@pytest.mark.asyncio
+async def test_partial_run_uploads_agrex_trace_artifact(shared_init):
+    """After `--until research`, research/{run_id}/trace.jsonl is in S3 and
+    contains the events the stage handler emitted via Router._tracer."""
+    from agrex import parse_trace
+
+    run_id = uuid.uuid4()
+    await _seed_run(shared_init, run_id, "trace-artifact-check")
+    try:
+        memory_agent = MagicMock()
+        memory_agent.run = AsyncMock(return_value=_make_memory_result())
+        router = _make_router_with_real_db(memory_agent, str(run_id))
+
+        async def mock_research():
+            router._tracer.agent("researcher", "Researcher")
+            router._tracer.done("researcher")
+            router.state.stage = router._next_after_work(Stage.RESEARCH)
+
+        async def mock_review_research():
+            router.state.stage = Stage.FORMALIZE
+
+        with (
+            patch.object(router, "_do_research", side_effect=mock_research),
+            patch.object(
+                router, "_review_research", side_effect=mock_review_research
+            ),
+            patch.object(router, "_run_consolidation", AsyncMock()),
+        ):
+            await router.run()
+
+        trace_key = f"research/{run_id}/trace.jsonl"
+        assert await shared_init.storage.exists(trace_key)
+        content = await shared_init.storage.get_text(trace_key)
+        events = parse_trace(content)
+        assert any(
+            e["type"] == "node_add" and e["node"]["id"] == "researcher"
+            for e in events
+        )
+        assert any(
+            e["type"] == "node_update"
+            and e["id"] == "researcher"
+            and e["status"] == "done"
+            for e in events
+        )
+        assert all("ts" in e for e in events)
+    finally:
+        await _delete_run(shared_init, run_id)
+        with contextlib.suppress(Exception):
+            await shared_init.storage.delete(f"research/{run_id}/trace.jsonl")
 
 
 def test_invalid_stop_after_raises():
