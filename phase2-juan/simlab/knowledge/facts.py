@@ -6,6 +6,7 @@ obtain the list of facts to embed and persist.
 See docs/specs/sim-memory/phase-1-core-writer.md (R4) for the authoritative
 rules.
 """
+
 from __future__ import annotations
 
 import logging
@@ -57,9 +58,7 @@ _TRAJECTORY_IMPORTANCE: float = 6
 # ---------------------------------------------------------------------------
 
 
-def _base_metadata(
-    context: SimulationContext, model_info: ModelInfo
-) -> dict[str, Any]:
+def _base_metadata(context: SimulationContext, model_info: ModelInfo) -> dict[str, Any]:
     """Metadata fields that every fact emitted for this (context, model) shares."""
     return {
         "phase2_experiment_id": context.phase2_experiment_id,
@@ -91,9 +90,7 @@ def _distinct_models(context: SimulationContext) -> list[ModelInfo]:
 # ---------------------------------------------------------------------------
 
 
-def build_summary_fact(
-    tracker: dict, context: SimulationContext
-) -> FactSpec | None:
+def build_summary_fact(tracker: dict, context: SimulationContext) -> FactSpec | None:
     """Produce one summary fact (or None if there is no non-empty summary)."""
     summary_text = str(tracker.get("summary", "")).strip()
     if not summary_text:
@@ -115,7 +112,7 @@ def build_summary_fact(
     text = (
         f"Model {representative.class_name} "
         f"({representative.paradigm}/{representative.formulation}) "
-        f"in {context.environment}: \"{summary_text}\""
+        f'in {context.environment}: "{summary_text}"'
     )
 
     return FactSpec(
@@ -138,9 +135,7 @@ def _format_top_actions(actions: dict[str, int], n: int = 3) -> str:
     return ", ".join(f"{name}({count})" for name, count in top)
 
 
-def build_trajectory_facts(
-    tracker: dict, context: SimulationContext
-) -> list[FactSpec]:
+def build_trajectory_facts(tracker: dict, context: SimulationContext) -> list[FactSpec]:
     """One fact per agent in `trajectories`, skipping agents without ModelInfo."""
     trajectories = tracker.get("trajectories", {}) or {}
     facts: list[FactSpec] = []
@@ -190,7 +185,11 @@ def _episode_step_fragment(episode: dict) -> tuple[str, dict[str, Any]]:
     if "step" in episode and episode["step"] is not None:
         step = episode["step"]
         return f"step={step}", {"step": step}
-    if "steps" in episode and isinstance(episode["steps"], list) and len(episode["steps"]) == 2:
+    if (
+        "steps" in episode
+        and isinstance(episode["steps"], list)
+        and len(episode["steps"]) == 2
+    ):
         start, end = episode["steps"]
         return f"steps={start}..{end}", {"step_start": start, "step_end": end}
     return "step=?", {}

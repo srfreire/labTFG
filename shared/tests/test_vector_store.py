@@ -1,7 +1,9 @@
 """Integration tests for VectorStore (requires Qdrant on localhost:6333)."""
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import uuid
 
 import pytest
@@ -10,7 +12,15 @@ import pytest_asyncio
 from shared.settings import Settings
 from shared.vector_store import VectorStore
 
-MANAGED_COLLECTIONS = ["artifacts_dense", "memories_dense", "artifacts_sparse", "memories_sparse"]
+pytestmark = pytest.mark.integration
+
+
+MANAGED_COLLECTIONS = [
+    "artifacts_dense",
+    "memories_dense",
+    "artifacts_sparse",
+    "memories_sparse",
+]
 
 
 @pytest_asyncio.fixture
@@ -21,10 +31,8 @@ async def vs():
     # Wipe managed collections so tests start from a clean state
     client = svc._c()
     for name in MANAGED_COLLECTIONS:
-        try:
+        with contextlib.suppress(Exception):
             await client.delete_collection(name)
-        except Exception:
-            pass
     yield svc
     await svc.close()
 
@@ -51,7 +59,12 @@ async def test_init_collections_creates_all_four(vs: VectorStore):
     await vs.init_collections()
     client = vs._c()
     names = {c.name for c in (await client.get_collections()).collections}
-    for expected in ("artifacts_dense", "memories_dense", "artifacts_sparse", "memories_sparse"):
+    for expected in (
+        "artifacts_dense",
+        "memories_dense",
+        "artifacts_sparse",
+        "memories_sparse",
+    ):
         assert expected in names, f"{expected} not created"
 
 
@@ -124,10 +137,16 @@ async def test_sparse_bm25_idf_ranks_rare_terms_higher(vs: VectorStore):
     common_id = str(uuid.uuid4())
     rare_id = str(uuid.uuid4())
     await vs.upsert_sparse(
-        coll, common_id, "the cat the dog the bird the fish the tree the house", _payload()
+        coll,
+        common_id,
+        "the cat the dog the bird the fish the tree the house",
+        _payload(),
     )
     await vs.upsert_sparse(
-        coll, rare_id, "serotonergic raphe nuclei modulate cortical arousal pathways", _payload()
+        coll,
+        rare_id,
+        "serotonergic raphe nuclei modulate cortical arousal pathways",
+        _payload(),
     )
 
     # Query mixing one rare word with common words — rare doc should win
@@ -152,12 +171,16 @@ async def test_filter_by_namespace(vs: VectorStore):
         ids.append((pid, ns))
         await vs.upsert_dense(coll, pid, vector, _payload(namespace=ns))
 
-    results = await vs.search_dense(coll, vector, limit=10, filters={"namespace": "paradigm"})
+    results = await vs.search_dense(
+        coll, vector, limit=10, filters={"namespace": "paradigm"}
+    )
     result_ids = {r.id for r in results}
     paradigm_id = ids[0][0]
     assert paradigm_id in result_ids
     for pid, ns in ids[1:]:
-        assert pid not in result_ids, f"Point with namespace={ns} should be filtered out"
+        assert pid not in result_ids, (
+            f"Point with namespace={ns} should be filtered out"
+        )
 
 
 # -- AC5: filter by confidence threshold ---------------------------------------

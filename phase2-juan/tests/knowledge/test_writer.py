@@ -1,14 +1,12 @@
 """P1-004 — unit tests for TrackerMemoryWriter with mocked infra."""
+
 from __future__ import annotations
 
 import json
-import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from simlab.knowledge import ModelInfo, SimulationContext, TrackerMemoryWriter
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -81,9 +79,24 @@ def _tracker_single_model():
             },
         },
         "episodes": [
-            {"agent": "agent_0", "type": "foraging_success", "step": 30, "description": "ate"},
-            {"agent": "agent_0", "type": "exploration", "step": 50, "description": "scouted"},
-            {"agent": "agent_1", "type": "starvation", "step": 120, "description": "ran out of energy"},
+            {
+                "agent": "agent_0",
+                "type": "foraging_success",
+                "step": 30,
+                "description": "ate",
+            },
+            {
+                "agent": "agent_0",
+                "type": "exploration",
+                "step": 50,
+                "description": "scouted",
+            },
+            {
+                "agent": "agent_1",
+                "type": "starvation",
+                "step": 120,
+                "description": "ran out of energy",
+            },
         ],
     }
 
@@ -138,20 +151,32 @@ async def test_happy_path_single_model_two_agents():
 async def test_comparison_run_tags_correct_paradigm_per_fact():
     m1 = _model(model_id="m-1", class_name="A", formulation="f-a")
     m2 = _model(model_id="m-2", class_name="B", formulation="f-b")
-    ctx = _context(agent_to_model={
-        "agent_0": m1, "agent_1": m1,
-        "agent_2": m2, "agent_3": m2,
-    })
+    ctx = _context(
+        agent_to_model={
+            "agent_0": m1,
+            "agent_1": m1,
+            "agent_2": m2,
+            "agent_3": m2,
+        }
+    )
     tracker = {
         "summary": "Comparison between A and B.",
         "trajectories": {
-            "agent_0": {"steps_survived": 50, "resources_consumed": 1, "actions": {"x": 1}},
-            "agent_2": {"steps_survived": 40, "resources_consumed": 2, "actions": {"y": 1}},
+            "agent_0": {
+                "steps_survived": 50,
+                "resources_consumed": 1,
+                "actions": {"x": 1},
+            },
+            "agent_2": {
+                "steps_survived": 40,
+                "resources_consumed": 2,
+                "actions": {"y": 1},
+            },
         },
         "episodes": [],
     }
     # 3 facts: 1 summary + 2 trajectories
-    writer, m = _make_writer(embed_return=[[0.1]] * 3)
+    writer, _m = _make_writer(embed_return=[[0.1]] * 3)
 
     with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
         result = await writer.write(json.dumps(tracker), ctx)
@@ -188,7 +213,11 @@ async def test_invalid_json_short_circuits(bad_input):
         result = await writer.write(bad_input, ctx)
 
     assert result.skipped_reason == "invalid_json"
-    assert (result.summaries_written, result.trajectories_written, result.episodes_written) == (0, 0, 0)
+    assert (
+        result.summaries_written,
+        result.trajectories_written,
+        result.episodes_written,
+    ) == (0, 0, 0)
     m["emb"].embed_texts.assert_not_awaited()
     m["vec"].upsert_dense.assert_not_awaited()
     m["vec"].upsert_sparse.assert_not_awaited()
@@ -215,13 +244,18 @@ async def test_empty_tracker_returns_no_relevant_content():
 
 async def test_all_routine_episodes_returns_no_relevant_content():
     """A tracker with only filtered episodes still reports filtered count."""
-    writer, m = _make_writer()
+    writer, _m = _make_writer()
     ctx = _context(agent_to_model={"agent_0": _model()})
     tracker = {
         "summary": "",
         "trajectories": {},
         "episodes": [
-            {"agent": "agent_0", "type": "foraging_success", "step": 1, "description": "x"},
+            {
+                "agent": "agent_0",
+                "type": "foraging_success",
+                "step": 1,
+                "description": "x",
+            },
             {"agent": "agent_0", "type": "exploration", "step": 2, "description": "y"},
         ],
     }
@@ -260,7 +294,10 @@ async def test_qdrant_dense_failure_does_not_abort_batch():
 
     # Writer did not abort — result reflects all 4 facts as written (PG rows kept).
     assert result.skipped_reason is None
-    assert result.summaries_written + result.trajectories_written + result.episodes_written == 4
+    assert (
+        result.summaries_written + result.trajectories_written + result.episodes_written
+        == 4
+    )
 
     # All 4 create_memory + 4 dense attempts + 4 sparse upserts executed.
     assert cm.await_count == 4
@@ -290,7 +327,11 @@ async def test_voyage_failure_returns_error_skipped_reason():
     assert result.skipped_reason is not None
     assert result.skipped_reason.startswith("error:")
     assert "voyage exploded" in result.skipped_reason
-    assert (result.summaries_written, result.trajectories_written, result.episodes_written) == (0, 0, 0)
+    assert (
+        result.summaries_written,
+        result.trajectories_written,
+        result.episodes_written,
+    ) == (0, 0, 0)
 
     cm.assert_not_awaited()
     m["vec"].upsert_dense.assert_not_awaited()
@@ -310,7 +351,12 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
         "trajectories": {},
         "episodes": [
             {"agent": "agent_0", "type": "starvation", "step": 10, "description": "a"},
-            {"agent": "ghost_agent", "type": "starvation", "step": 20, "description": "b"},
+            {
+                "agent": "ghost_agent",
+                "type": "starvation",
+                "step": 20,
+                "description": "b",
+            },
         ],
     }
     # Only 1 fact survives (ghost skipped pre-embedding).
@@ -344,10 +390,14 @@ async def test_empty_sparse_vector_skips_sparse_upsert():
     }
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with patch("simlab.knowledge.writer._load_tokenizer",
-               return_value=lambda _text: ([], [])):
-        with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()):
-            result = await writer.write(json.dumps(tracker), ctx)
+    with (
+        patch(
+            "simlab.knowledge.writer._load_tokenizer",
+            return_value=lambda _text: ([], []),
+        ),
+        patch("simlab.knowledge.writer.create_memory", new=AsyncMock()),
+    ):
+        result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1
     m["vec"].upsert_dense.assert_awaited_once()

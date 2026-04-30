@@ -1,11 +1,9 @@
 """P1-001 scaffold tests — verify public surface + factory error path."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
-from shared.settings import Settings
 from simlab.knowledge import (
     ModelInfo,
     SimulationContext,
@@ -13,6 +11,8 @@ from simlab.knowledge import (
     WriteResult,
     build_writer_from_settings,
 )
+
+from shared.settings import Settings
 
 
 def test_data_classes_instantiate_with_expected_fields():
@@ -85,13 +85,20 @@ async def test_build_writer_returns_none_without_zeroentropy_key(caplog):
     with caplog.at_level("WARNING"):
         result = await build_writer_from_settings(settings)
     assert result is None
-    assert any("ZeroEntropy" in r.message or "Voyage" in r.message for r in caplog.records)
+    assert any(
+        "ZeroEntropy" in r.message or "Voyage" in r.message for r in caplog.records
+    )
 
 
 async def test_build_writer_returns_none_if_postgres_fails(caplog):
     settings = Settings(VOYAGE_API_KEY="v-key", ZEROENTROPY_API_KEY="z-key")
-    with patch("shared.database.DatabaseService.connect", new=AsyncMock(side_effect=RuntimeError("boom"))):
-        with caplog.at_level("WARNING"):
-            result = await build_writer_from_settings(settings)
+    with (
+        patch(
+            "shared.database.DatabaseService.connect",
+            new=AsyncMock(side_effect=RuntimeError("boom")),
+        ),
+        caplog.at_level("WARNING"),
+    ):
+        result = await build_writer_from_settings(settings)
     assert result is None
     assert any("Postgres" in r.message for r in caplog.records)

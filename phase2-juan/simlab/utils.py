@@ -4,6 +4,7 @@ Shared utilities for extracting and cleaning LLM outputs.
 LLMs often return JSON wrapped in markdown fences or with extra text.
 These helpers extract the actual content reliably.
 """
+
 from __future__ import annotations
 
 import re

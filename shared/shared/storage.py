@@ -1,4 +1,5 @@
 """Async S3 client wrapping aioboto3 for MinIO object storage."""
+
 from __future__ import annotations
 
 import aioboto3

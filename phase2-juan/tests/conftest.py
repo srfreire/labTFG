@@ -1,4 +1,5 @@
 """Shared test configuration — loads .env for integration tests."""
+
 from pathlib import Path
 
 from dotenv import load_dotenv

@@ -5,17 +5,17 @@ patch the `Tracker` class so no LLM is called, and patch
 `shared.sim_memory_writer` to assert the writer is invoked (or not) as
 specified. No real infra required.
 """
+
 from __future__ import annotations
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-import shared
 from simlab.knowledge import WriteResult
 from simlab.orchestrator import Orchestrator
 
+import shared
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -32,15 +32,26 @@ def _reset_writer_singleton():
 
 
 def _tracker_json() -> str:
-    return json.dumps({
-        "summary": "Mock tracker output for testing.",
-        "trajectories": {
-            "f-a_0": {"steps_survived": 10, "resources_consumed": 1, "actions": {"x": 5}},
-        },
-        "episodes": [
-            {"agent": "f-a_0", "type": "starvation", "step": 10, "description": "done"},
-        ],
-    })
+    return json.dumps(
+        {
+            "summary": "Mock tracker output for testing.",
+            "trajectories": {
+                "f-a_0": {
+                    "steps_survived": 10,
+                    "resources_consumed": 1,
+                    "actions": {"x": 5},
+                },
+            },
+            "episodes": [
+                {
+                    "agent": "f-a_0",
+                    "type": "starvation",
+                    "step": 10,
+                    "description": "done",
+                },
+            ],
+        }
+    )
 
 
 def _prepopulated_state(experiment_id: str | None = None) -> dict:
@@ -89,10 +100,16 @@ async def _run_observe(state: dict) -> tuple[str, object]:
 
 async def test_observe_simulation_invokes_writer_when_set():
     writer = MagicMock()
-    writer.write = AsyncMock(return_value=WriteResult(
-        summaries_written=1, trajectories_written=1, episodes_written=1,
-        episodes_filtered=0, duration_ms=3, skipped_reason=None,
-    ))
+    writer.write = AsyncMock(
+        return_value=WriteResult(
+            summaries_written=1,
+            trajectories_written=1,
+            episodes_written=1,
+            episodes_filtered=0,
+            duration_ms=3,
+            skipped_reason=None,
+        )
+    )
     shared.sim_memory_writer = writer
 
     result, _ = await _run_observe(_prepopulated_state(experiment_id=None))

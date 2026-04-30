@@ -1,4 +1,5 @@
 """Experiment Store — SQLite persistence for the simulation lab."""
+
 from __future__ import annotations
 
 import json
@@ -18,11 +19,21 @@ def _find_repo_root() -> Path:
 
 _db_path: Path = _find_repo_root() / "data" / "labtfg.db"
 
-_EXPERIMENT_COLUMNS = frozenset({
-    "description", "status", "spec_json", "models_used",
-    "steps", "seed", "events_json", "replay_json",
-    "tracker_json", "analyst_json", "pdf_path",
-})
+_EXPERIMENT_COLUMNS = frozenset(
+    {
+        "description",
+        "status",
+        "spec_json",
+        "models_used",
+        "steps",
+        "seed",
+        "events_json",
+        "replay_json",
+        "tracker_json",
+        "analyst_json",
+        "pdf_path",
+    }
+)
 
 # Status constants
 CREATED = "created"
@@ -82,6 +93,7 @@ def init_db() -> None:
 # Models (prepared for Phase 1)
 # ---------------------------------------------------------------------------
 
+
 def register_model(
     formulation_id: str,
     class_name: str,
@@ -96,8 +108,14 @@ def register_model(
         """INSERT OR REPLACE INTO models
            (formulation_id, class_name, paradigm, description, file_path, metadata_json)
            VALUES (?, ?, ?, ?, ?, ?)""",
-        (formulation_id, class_name, paradigm, description, file_path,
-         json.dumps(metadata) if metadata else None),
+        (
+            formulation_id,
+            class_name,
+            paradigm,
+            description,
+            file_path,
+            json.dumps(metadata) if metadata else None,
+        ),
     )
     conn.commit()
 
@@ -112,13 +130,16 @@ def list_models() -> list[dict]:
 def get_model(formulation_id: str) -> dict | None:
     """Return a single model by ID, or None if not found."""
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM models WHERE formulation_id = ?", (formulation_id,)).fetchone()
+    row = conn.execute(
+        "SELECT * FROM models WHERE formulation_id = ?", (formulation_id,)
+    ).fetchone()
     return dict(row) if row else None
 
 
 # ---------------------------------------------------------------------------
 # Experiments (Phase 2)
 # ---------------------------------------------------------------------------
+
 
 def create_experiment(description: str) -> str:
     """Create a new experiment. Returns the UUID."""
@@ -152,7 +173,9 @@ def update_experiment(experiment_id: str, **kwargs: object) -> None:
 def get_experiment(experiment_id: str) -> dict | None:
     """Return a single experiment by ID, or None if not found."""
     conn = _get_conn()
-    row = conn.execute("SELECT * FROM experiments WHERE id = ?", (experiment_id,)).fetchone()
+    row = conn.execute(
+        "SELECT * FROM experiments WHERE id = ?", (experiment_id,)
+    ).fetchone()
     return dict(row) if row else None
 
 

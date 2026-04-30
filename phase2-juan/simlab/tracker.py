@@ -7,6 +7,7 @@ Flow:
   3. Identifies significant episodes (behavior changes, resource events)
   4. Returns a structured JSON log with summaries, trajectories, and episodes
 """
+
 from __future__ import annotations
 
 import json
@@ -92,18 +93,30 @@ You have 7 tools to explore simulation data:
 # Tracker class
 # ---------------------------------------------------------------------------
 
-class Tracker:
 
+class Tracker:
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
 
-    async def run(self, prompt: str, events: list[Event], *, max_iterations: int = 15, on_tool_call=None, critical_events: list[dict] | None = None) -> str:
+    async def run(
+        self,
+        prompt: str,
+        events: list[Event],
+        *,
+        max_iterations: int = 15,
+        on_tool_call=None,
+        critical_events: list[dict] | None = None,
+    ) -> str:
 
         if not events:
-            return json.dumps({"summary": "No events to observe.", "trajectories": {}, "episodes": []})
+            return json.dumps(
+                {"summary": "No events to observe.", "trajectories": {}, "episodes": []}
+            )
 
-        tools, registry = build_simulation_tools(events, critical_events=critical_events)
+        tools, registry = build_simulation_tools(
+            events, critical_events=critical_events
+        )
         response = await run_agent_loop(
             client=self.client,
             model=self.model,

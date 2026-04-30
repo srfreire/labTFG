@@ -1,14 +1,24 @@
 """Tests for shared.store — Experiment Store persistence."""
+
 import sqlite3
 
 import pytest
+
 from shared.store import (
-    init_db, _db_path, _conn,
-    register_model, list_models, get_model,
-    create_experiment, update_experiment, get_experiment, list_experiments,
-    CREATED, SIMULATED, TRACKED, ANALYZED, REPORTED,
+    ANALYZED,
+    CREATED,
+    REPORTED,
+    SIMULATED,
+    TRACKED,
+    create_experiment,
+    get_experiment,
+    get_model,
+    init_db,
+    list_experiments,
+    list_models,
+    register_model,
+    update_experiment,
 )
-import shared.store as store_mod
 
 
 @pytest.fixture(autouse=True)
@@ -22,9 +32,15 @@ def db(tmp_path, monkeypatch):
 
 # --- Init ---
 
+
 def test_init_db_creates_tables(db):
     conn = sqlite3.connect(db)
-    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    tables = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
     conn.close()
     assert "models" in tables
     assert "experiments" in tables
@@ -35,6 +51,7 @@ def test_init_db_is_idempotent():
 
 
 # --- Model CRUD ---
+
 
 def test_register_and_get_model():
     register_model(
@@ -71,6 +88,7 @@ def test_get_model_not_found():
 
 
 # --- Experiment CRUD ---
+
 
 def test_create_and_get_experiment():
     exp_id = create_experiment(description="test experiment")
@@ -120,6 +138,7 @@ def test_get_experiment_not_found():
 
 
 # --- Status constants ---
+
 
 def test_status_constants():
     assert CREATED == "created"

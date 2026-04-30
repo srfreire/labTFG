@@ -8,6 +8,7 @@ Flow:
   4. Compiles to PDF using tectonic
   5. Returns the path to the generated PDF
 """
+
 from __future__ import annotations
 
 import json
@@ -15,22 +16,22 @@ import re
 import subprocess
 from pathlib import Path
 
-from simlab.loop import run_agent_loop, Registry
+from simlab.loop import Registry, run_agent_loop
 from simlab.utils import extract_text
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fix_markdown_in_latex(content: str) -> str:
     """Convert Markdown remnants to valid LaTeX"""
     # **bold** → \textbf{bold}
-    content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
+    content = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", content)
     # *italic* → \textit{italic}
-    content = re.sub(r'\*(.+?)\*', r'\\textit{\1}', content)
+    content = re.sub(r"\*(.+?)\*", r"\\textit{\1}", content)
     # `code` → \texttt{code}
-    content = re.sub(r'`([^`]+)`', r'\\texttt{\1}', content)
+    content = re.sub(r"`([^`]+)`", r"\\texttt{\1}", content)
     return content
 
 
@@ -57,7 +58,10 @@ READ_RESEARCH_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Relative path within the reports directory"},
+            "path": {
+                "type": "string",
+                "description": "Relative path within the reports directory",
+            },
         },
         "required": ["path"],
     },
@@ -83,7 +87,7 @@ COMPILE_REPORT_TOOL = {
             "filename": {
                 "type": "string",
                 "description": "PDF filename without extension (e.g. 'analisis_drive_reduction'). "
-                               "Use lowercase, underscores, no spaces. Should describe the report content.",
+                "Use lowercase, underscores, no spaces. Should describe the report content.",
             },
         },
         "required": ["content", "filename"],
@@ -94,6 +98,7 @@ COMPILE_REPORT_TOOL = {
 # ---------------------------------------------------------------------------
 # Tool factory
 # ---------------------------------------------------------------------------
+
 
 def _build_tools(
     run_id: str,
@@ -115,18 +120,23 @@ def _build_tools(
 
     async def compile_report(params: dict) -> str:
         """Compile LaTeX content into a PDF using tectonic."""
-        import shared
         import shutil
         import tempfile
+
+        import shared
         from shared.artifacts import register_artifact
 
         content = _fix_markdown_in_latex(params["content"])
         # Sanitize filename: lowercase, underscores only, no path traversal
         raw_name = params.get("filename", "report") or "report"
-        safe_name = re.sub(r'[^a-z0-9_]', '_', raw_name.lower().strip()).strip('_') or "report"
+        safe_name = (
+            re.sub(r"[^a-z0-9_]", "_", raw_name.lower().strip()).strip("_") or "report"
+        )
 
         if not _TEMPLATE_PATH.exists():
-            return json.dumps({"success": False, "errors": ["LaTeX template not found"]})
+            return json.dumps(
+                {"success": False, "errors": ["LaTeX template not found"]}
+            )
 
         # Insert content into the template
         template = _TEMPLATE_PATH.read_text()
@@ -155,12 +165,20 @@ def _build_tools(
                 cwd=tmp,
             )
             if result.returncode != 0:
-                error_lines = [l for l in result.stderr.split("\n") if "error" in l.lower()]
+                error_lines = [
+                    line
+                    for line in result.stderr.split("\n")
+                    if "error" in line.lower()
+                ]
                 shutil.rmtree(tmp, ignore_errors=True)
-                return json.dumps({
-                    "success": False,
-                    "errors": error_lines[:10] if error_lines else [result.stderr[-500:]],
-                })
+                return json.dumps(
+                    {
+                        "success": False,
+                        "errors": error_lines[:10]
+                        if error_lines
+                        else [result.stderr[-500:]],
+                    }
+                )
 
             # Upload tex and pdf to S3
             tex_key = f"experiments/{experiment_id}/report.tex"
@@ -169,14 +187,28 @@ def _build_tools(
             pdf_bytes = pdf_path.read_bytes()
             await shared.storage.put(tex_key, tex_bytes, "text/x-tex")
             await shared.storage.put(pdf_key, pdf_bytes, "application/pdf")
-            await register_artifact(tex_key, "tex", len(tex_bytes), experiment_id=experiment_id, content_type="text/x-tex")
-            await register_artifact(pdf_key, "pdf", len(pdf_bytes), experiment_id=experiment_id, content_type="application/pdf")
+            await register_artifact(
+                tex_key,
+                "tex",
+                len(tex_bytes),
+                experiment_id=experiment_id,
+                content_type="text/x-tex",
+            )
+            await register_artifact(
+                pdf_key,
+                "pdf",
+                len(pdf_bytes),
+                experiment_id=experiment_id,
+                content_type="application/pdf",
+            )
 
             shutil.rmtree(tmp, ignore_errors=True)
             return json.dumps({"success": True, "pdf_path": pdf_key})
         except FileNotFoundError:
             shutil.rmtree(tmp, ignore_errors=True)
-            return json.dumps({"success": False, "errors": ["'tectonic' not installed"]})
+            return json.dumps(
+                {"success": False, "errors": ["'tectonic' not installed"]}
+            )
         except subprocess.TimeoutExpired:
             shutil.rmtree(tmp, ignore_errors=True)
             return json.dumps({"success": False, "errors": ["Compilation timed out"]})
@@ -310,8 +342,8 @@ What do the results tell us about the decision-making paradigms? What improvemen
 # Reporter class
 # ---------------------------------------------------------------------------
 
-class Reporter:
 
+class Reporter:
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
@@ -347,7 +379,9 @@ class Reporter:
         parts.append(f"## Analyst findings\n\n{analyst_output}")
         user_message = "\n\n".join(parts)
         if predictions:
-            user_message += "\n\n## Pre-simulation predictions (from Phase 1 deep research)\n\n"
+            user_message += (
+                "\n\n## Pre-simulation predictions (from Phase 1 deep research)\n\n"
+            )
             for paradigm, preds in predictions.items():
                 user_message += f"### {paradigm}\n\n{preds}\n\n"
         if charts:

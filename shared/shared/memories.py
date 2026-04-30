@@ -52,7 +52,8 @@ async def touch_memory(session: AsyncSession, memory_id: uuid.UUID) -> None:
             last_accessed_at=func.now(),
             access_count=Memory.access_count + 1,
             confidence=func.least(
-                _CONFIDENCE_CAP, Memory.confidence + 0.02,
+                _CONFIDENCE_CAP,
+                Memory.confidence + 0.02,
             ),
         )
     )
@@ -107,7 +108,8 @@ async def update_confidence(
     if delta:
         raw = Memory.confidence + delta
         values["confidence"] = func.least(
-            _CONFIDENCE_CAP, func.greatest(_CONFIDENCE_FLOOR, raw),
+            _CONFIDENCE_CAP,
+            func.greatest(_CONFIDENCE_FLOOR, raw),
         )
     stmt = update(Memory).where(Memory.id == memory_id).values(**values)
     await session.execute(stmt)
@@ -156,9 +158,7 @@ async def apply_time_decay(session: AsyncSession) -> int:
 
         new_confidence = max(_CONFIDENCE_FLOOR, mem.confidence * _DECAY_RATE**periods)
         stmt = (
-            update(Memory)
-            .where(Memory.id == mem.id)
-            .values(confidence=new_confidence)
+            update(Memory).where(Memory.id == mem.id).values(confidence=new_confidence)
         )
         await session.execute(stmt)
         count += 1
@@ -230,9 +230,7 @@ async def get_supersession_chain(
         if current_id in seen:
             break
         seen.add(current_id)
-        result = await session.execute(
-            select(Memory).where(Memory.id == current_id)
-        )
+        result = await session.execute(select(Memory).where(Memory.id == current_id))
         mem = result.scalar_one_or_none()
         if mem is None:
             break

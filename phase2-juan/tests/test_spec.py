@@ -1,20 +1,29 @@
 # tests/test_spec.py
-from simlab.spec import validate_spec_dict, spec_to_environment
-from simlab.environment import MoveEffect, ConsumeEffect, NoopEffect
+from simlab.environment import ConsumeEffect, MoveEffect, NoopEffect
+from simlab.spec import spec_to_environment, validate_spec_dict
 
 VALID_SPEC = {
     "grid": {"width": 10, "height": 10},
     "actions": [
         {"name": "move_up", "effect": {"type": "MoveEffect", "dx": 0, "dy": -1}},
-        {"name": "eat", "effect": {"type": "ConsumeEffect", "resource_type": "food", "reward": 1.0}},
+        {
+            "name": "eat",
+            "effect": {"type": "ConsumeEffect", "resource_type": "food", "reward": 1.0},
+        },
     ],
     "resources": [
-        {"type": "food", "properties": {"palatability": [0.1, 1.0]}, "count": 5, "regenerate": True},
+        {
+            "type": "food",
+            "properties": {"palatability": [0.1, 1.0]},
+            "count": 5,
+            "regenerate": True,
+        },
     ],
 }
 
 
 # --- Task 1: Happy path ---
+
 
 def test_valid_spec_returns_no_errors():
     errors = validate_spec_dict(VALID_SPEC)
@@ -22,6 +31,7 @@ def test_valid_spec_returns_no_errors():
 
 
 # --- Task 2: Error cases ---
+
 
 def test_missing_top_level_keys():
     errors = validate_spec_dict({})
@@ -84,7 +94,14 @@ def test_consume_references_missing_resource():
     spec = {
         "grid": {"width": 10, "height": 10},
         "actions": [
-            {"name": "drink", "effect": {"type": "ConsumeEffect", "resource_type": "water", "reward": 1.0}},
+            {
+                "name": "drink",
+                "effect": {
+                    "type": "ConsumeEffect",
+                    "resource_type": "water",
+                    "reward": 1.0,
+                },
+            },
         ],
         "resources": [],
     }
@@ -93,6 +110,7 @@ def test_consume_references_missing_resource():
 
 
 # --- Task 3: Conversion ---
+
 
 def test_spec_to_environment_creates_correct_grid():
     env = spec_to_environment(VALID_SPEC, seed=42)

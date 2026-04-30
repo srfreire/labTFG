@@ -8,6 +8,9 @@ import pytest
 
 from shared import store
 
+pytestmark = pytest.mark.integration
+
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -60,7 +63,7 @@ def test_register_model_with_metadata_persists_json():
     row = store.get_model("f-meta")
     assert row is not None
     assert row["metadata_json"] is not None
-    assert "\"k\": \"v\"" in row["metadata_json"]
+    assert '"k": "v"' in row["metadata_json"]
 
 
 def test_get_model_missing_returns_none():

@@ -17,6 +17,9 @@ from shared.memories import apply_time_decay, create_memory
 from shared.models import Base, Memory
 from shared.settings import load_settings
 
+pytestmark = pytest.mark.integration
+
+
 DSN = load_settings().POSTGRES_DSN
 
 
@@ -69,9 +72,7 @@ async def _seed_memory(session, days_since_access: int | None, **kwargs):
 
 async def _get_confidence(session, mem_id) -> float:
     session.expire_all()
-    result = await session.execute(
-        select(Memory.confidence).where(Memory.id == mem_id)
-    )
+    result = await session.execute(select(Memory.confidence).where(Memory.id == mem_id))
     return result.scalar_one()
 
 
@@ -118,7 +119,10 @@ async def test_apply_decay_skips_invalidated(session):
 async def test_apply_decay_one_period(session):
     """Memory accessed 30+ days ago decays once: confidence *= 0.95."""
     mem_id = await _seed_memory(
-        session, days_since_access=35, content="30d", confidence=0.8,
+        session,
+        days_since_access=35,
+        content="30d",
+        confidence=0.8,
     )
 
     decayed = await apply_time_decay(session)
@@ -133,7 +137,10 @@ async def test_apply_decay_one_period(session):
 async def test_apply_decay_multiple_periods(session):
     """Memory accessed 90+ days ago decays 3 times: 0.95^3."""
     mem_id = await _seed_memory(
-        session, days_since_access=95, content="90d", confidence=0.8,
+        session,
+        days_since_access=95,
+        content="90d",
+        confidence=0.8,
     )
 
     decayed = await apply_time_decay(session)
@@ -148,7 +155,10 @@ async def test_apply_decay_multiple_periods(session):
 async def test_apply_decay_floors_at_0_1(session):
     """Confidence is clamped to floor 0.1 even after extreme decay."""
     mem_id = await _seed_memory(
-        session, days_since_access=365 * 5, content="ancient", confidence=0.15,
+        session,
+        days_since_access=365 * 5,
+        content="ancient",
+        confidence=0.15,
     )
 
     await apply_time_decay(session)

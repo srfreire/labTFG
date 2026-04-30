@@ -1,4 +1,5 @@
 """Alembic env.py — async migrations for labtfg."""
+
 import asyncio
 import os
 

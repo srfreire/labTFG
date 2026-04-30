@@ -4,12 +4,14 @@ Verifies that _build_tools() conditionally includes the retrieve_context
 tool and handler based on ENABLE_KNOWLEDGE_READ, and that the system
 prompt is extended when the flag is on.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from simlab.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT, Orchestrator
+
 from shared.settings import Settings
-from simlab.orchestrator import Orchestrator, ORCHESTRATOR_SYSTEM_PROMPT
 
 _FLAG_OFF = Settings()
 _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
@@ -72,15 +74,19 @@ async def test_flag_on_tool_schema_correct():
 
 async def test_handler_calls_retrieve_context_correctly():
     """The handler maps params dict to retrieve_context kwargs."""
-    mock_retrieve = AsyncMock(return_value="## Retrieved Knowledge (1 results)\n\nSome fact.")
+    mock_retrieve = AsyncMock(
+        return_value="## Retrieved Knowledge (1 results)\n\nSome fact."
+    )
 
     with patch("simlab.recall.retrieve_context", mock_retrieve):
         _, registry = _make_orchestrator()._build_tools(_FLAG_ON)
-        result = await registry["retrieve_context"]({
-            "query": "homeostatic models",
-            "namespace": "paradigm",
-            "top_k": 3,
-        })
+        result = await registry["retrieve_context"](
+            {
+                "query": "homeostatic models",
+                "namespace": "paradigm",
+                "top_k": 3,
+            }
+        )
 
     mock_retrieve.assert_awaited_once_with(
         query="homeostatic models",

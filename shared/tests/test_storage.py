@@ -1,4 +1,5 @@
 """Integration tests for StorageService (requires MinIO on localhost:9000)."""
+
 from __future__ import annotations
 
 import uuid
@@ -8,6 +9,9 @@ import pytest_asyncio
 
 from shared.settings import Settings
 from shared.storage import StorageService
+
+pytestmark = pytest.mark.integration
+
 
 PREFIX = f"_test/{uuid.uuid4().hex}/"
 

@@ -10,6 +10,7 @@ Charts are generated as:
   1. JSON specs → sent to frontend for interactive recharts rendering
   2. matplotlib PNGs → included in LaTeX PDF reports
 """
+
 from __future__ import annotations
 
 import json
@@ -18,10 +19,10 @@ from collections import defaultdict
 from simlab.environment import Event
 from simlab.loop import Registry
 
-
 # ---------------------------------------------------------------------------
 # Data extraction from events
 # ---------------------------------------------------------------------------
+
 
 def _get_agents(events: list[Event], agent_ids: list[str] | None) -> list[str]:
     all_agents = sorted(set(e.agent_id for e in events))
@@ -30,25 +31,32 @@ def _get_agents(events: list[Event], agent_ids: list[str] | None) -> list[str]:
     return all_agents
 
 
-def _filter_step_range(events: list[Event], step_range: list[int] | None) -> list[Event]:
+def _filter_step_range(
+    events: list[Event], step_range: list[int] | None
+) -> list[Event]:
     if not step_range or len(step_range) != 2:
         return events
     start, end = step_range
     return [e for e in events if start <= e.step <= end]
 
 
-def _extract_reward_over_time(events: list[Event], agents: list[str], **_) -> list[dict]:
+def _extract_reward_over_time(
+    events: list[Event], agents: list[str], **_
+) -> list[dict]:
     series = []
     for agent_id in agents:
         data = [
             {"x": e.step, "y": e.outcome.get("reward", 0)}
-            for e in events if e.agent_id == agent_id
+            for e in events
+            if e.agent_id == agent_id
         ]
         series.append({"name": agent_id, "data": data})
     return series
 
 
-def _extract_cumulative_reward(events: list[Event], agents: list[str], **_) -> list[dict]:
+def _extract_cumulative_reward(
+    events: list[Event], agents: list[str], **_
+) -> list[dict]:
     series = []
     for agent_id in agents:
         cumulative = 0
@@ -62,7 +70,9 @@ def _extract_cumulative_reward(events: list[Event], agents: list[str], **_) -> l
     return series
 
 
-def _extract_action_distribution(events: list[Event], agents: list[str], **_) -> list[dict]:
+def _extract_action_distribution(
+    events: list[Event], agents: list[str], **_
+) -> list[dict]:
     series = []
     for agent_id in agents:
         counts: dict[str, int] = defaultdict(int)
@@ -74,7 +84,9 @@ def _extract_action_distribution(events: list[Event], agents: list[str], **_) ->
     return series
 
 
-def _extract_state_evolution(events: list[Event], agents: list[str], state_key: str = "energy", **_) -> list[dict]:
+def _extract_state_evolution(
+    events: list[Event], agents: list[str], state_key: str = "energy", **_
+) -> list[dict]:
     series = []
     for agent_id in agents:
         data = []
@@ -96,7 +108,11 @@ def _extract_q_table(events: list[Event], agents: list[str], **_) -> list[dict]:
         if not agent_events:
             continue
         model_state = agent_events[-1].outcome.get("model_state", {})
-        q_values = model_state.get("q_values") or model_state.get("Q") or model_state.get("q_table")
+        q_values = (
+            model_state.get("q_values")
+            or model_state.get("Q")
+            or model_state.get("q_table")
+        )
         if q_values and isinstance(q_values, dict):
             data = []
             for k, v in q_values.items():
@@ -106,12 +122,16 @@ def _extract_q_table(events: list[Event], agents: list[str], **_) -> list[dict]:
                     # Nested dict: (state, action) -> value
                     for sub_k, sub_v in v.items():
                         if isinstance(sub_v, (int, float)):
-                            data.append({"x": f"{k}:{sub_k}", "y": round(float(sub_v), 4)})
+                            data.append(
+                                {"x": f"{k}:{sub_k}", "y": round(float(sub_v), 4)}
+                            )
             series.append({"name": agent_id, "data": data})
     return series
 
 
-def _extract_action_scores_evolution(events: list[Event], agents: list[str], **_) -> list[dict]:
+def _extract_action_scores_evolution(
+    events: list[Event], agents: list[str], **_
+) -> list[dict]:
     """For models with Q-tables: plot Q-value per action over time from pre_state."""
     series = []
     for agent_id in agents:
@@ -119,7 +139,11 @@ def _extract_action_scores_evolution(events: list[Event], agents: list[str], **_
         for e in events:
             if e.agent_id != agent_id:
                 continue
-            q = e.pre_state.get("q_values") or e.pre_state.get("Q") or e.pre_state.get("q_table")
+            q = (
+                e.pre_state.get("q_values")
+                or e.pre_state.get("Q")
+                or e.pre_state.get("q_table")
+            )
             if not isinstance(q, dict):
                 continue
             for action_name, val in q.items():
@@ -128,11 +152,15 @@ def _extract_action_scores_evolution(events: list[Event], agents: list[str], **_
                         {"x": e.step, "y": round(float(val), 4)}
                     )
         for action_name in sorted(action_data):
-            series.append({"name": f"{agent_id}:{action_name}", "data": action_data[action_name]})
+            series.append(
+                {"name": f"{agent_id}:{action_name}", "data": action_data[action_name]}
+            )
     return series
 
 
-def _extract_pre_post_state_delta(events: list[Event], agents: list[str], state_key: str = "energy", **_) -> list[dict]:
+def _extract_pre_post_state_delta(
+    events: list[Event], agents: list[str], state_key: str = "energy", **_
+) -> list[dict]:
     """Plot the delta (post - pre) for any scalar state key over time."""
     series = []
     for agent_id in agents:
@@ -183,6 +211,7 @@ def _generate_chart_image(spec: dict) -> bytes | None:
     """Generate a matplotlib PNG and return the raw bytes (or None on failure)."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except ImportError:
@@ -198,7 +227,13 @@ def _generate_chart_image(spec: dict) -> bytes | None:
         for i, s in enumerate(series):
             xs = [d["x"] for d in s["data"]]
             ys = [d["y"] for d in s["data"]]
-            ax.plot(xs, ys, label=s["name"], color=_MPL_COLORS[i % len(_MPL_COLORS)], linewidth=1.4)
+            ax.plot(
+                xs,
+                ys,
+                label=s["name"],
+                color=_MPL_COLORS[i % len(_MPL_COLORS)],
+                linewidth=1.4,
+            )
         if len(series) > 1:
             ax.legend(fontsize=9, framealpha=0.9)
 
@@ -207,14 +242,20 @@ def _generate_chart_image(spec: dict) -> bytes | None:
             plt.close(fig)
             return None
         import numpy as np
+
         categories = sorted(set(d["x"] for s in series for d in s["data"]))
         x = np.arange(len(categories))
         width = 0.8 / max(len(series), 1)
         for i, s in enumerate(series):
             values = {d["x"]: d["y"] for d in s["data"]}
             heights = [values.get(c, 0) for c in categories]
-            ax.bar(x + i * width - 0.4 + width / 2, heights, width,
-                   label=s["name"], color=_MPL_COLORS[i % len(_MPL_COLORS)])
+            ax.bar(
+                x + i * width - 0.4 + width / 2,
+                heights,
+                width,
+                label=s["name"],
+                color=_MPL_COLORS[i % len(_MPL_COLORS)],
+            )
         ax.set_xticks(x)
         ax.set_xticklabels(categories, rotation=30, ha="right", fontsize=8)
         if len(series) > 1:
@@ -224,8 +265,13 @@ def _generate_chart_image(spec: dict) -> bytes | None:
         for i, s in enumerate(series):
             labels = [d["x"] for d in s["data"]]
             vals = [d["y"] for d in s["data"]]
-            ax.barh(labels, vals, label=s["name"],
-                    color=_MPL_COLORS[i % len(_MPL_COLORS)], alpha=0.8)
+            ax.barh(
+                labels,
+                vals,
+                label=s["name"],
+                color=_MPL_COLORS[i % len(_MPL_COLORS)],
+                alpha=0.8,
+            )
         if len(series) > 1:
             ax.legend(fontsize=9)
 
@@ -266,9 +312,15 @@ CREATE_CHART_TOOL = {
             },
             "metric": {
                 "type": "string",
-                "enum": ["reward_over_time", "cumulative_reward", "action_distribution",
-                         "state_evolution", "q_table", "action_scores_evolution",
-                         "pre_post_state_delta"],
+                "enum": [
+                    "reward_over_time",
+                    "cumulative_reward",
+                    "action_distribution",
+                    "state_evolution",
+                    "q_table",
+                    "action_scores_evolution",
+                    "pre_post_state_delta",
+                ],
                 "description": (
                     "reward_over_time: per-step reward; "
                     "cumulative_reward: accumulated reward; "
@@ -281,16 +333,18 @@ CREATE_CHART_TOOL = {
             },
             "title": {"type": "string", "description": "Chart title in Spanish"},
             "agent_ids": {
-                "type": "array", "items": {"type": "string"},
+                "type": "array",
+                "items": {"type": "string"},
                 "description": "Agents to include (omit for all)",
             },
             "state_key": {
                 "type": "string",
                 "description": "For state_evolution: key from model state (e.g. 'energy', 'drive', 'error'). "
-                               "Call list_state_keys first to see what's available.",
+                "Call list_state_keys first to see what's available.",
             },
             "step_range": {
-                "type": "array", "items": {"type": "integer"},
+                "type": "array",
+                "items": {"type": "integer"},
                 "description": "[start, end] step filter (optional)",
             },
         },
@@ -315,6 +369,7 @@ LIST_STATE_KEYS_TOOL = {
 # ---------------------------------------------------------------------------
 # Tool builder
 # ---------------------------------------------------------------------------
+
 
 def build_chart_tools(
     events: list[Event],
@@ -358,11 +413,15 @@ def build_chart_tools(
                 available = set()
                 for e in filtered:
                     ms = e.outcome.get("model_state", {})
-                    available.update(k for k, v in ms.items() if isinstance(v, (int, float)))
-                return json.dumps({
-                    "error": f"No data for state_key '{state_key}'",
-                    "available_keys": sorted(available),
-                })
+                    available.update(
+                        k for k, v in ms.items() if isinstance(v, (int, float))
+                    )
+                return json.dumps(
+                    {
+                        "error": f"No data for state_key '{state_key}'",
+                        "available_keys": sorted(available),
+                    }
+                )
             return json.dumps({"error": f"No data found for metric '{metric}'"})
 
         # Assign frontend colors
@@ -394,17 +453,25 @@ def build_chart_tools(
             await shared.storage.put(s3_key, png_bytes, "image/png")
             spec["image_path"] = s3_key
 
-            await register_artifact(s3_key, "chart", len(png_bytes), experiment_id=experiment_id, content_type="image/png")
+            await register_artifact(
+                s3_key,
+                "chart",
+                len(png_bytes),
+                experiment_id=experiment_id,
+                content_type="image/png",
+            )
 
         charts_accumulator.append(spec)
 
-        return json.dumps({
-            "success": True,
-            "chart_id": chart_id,
-            "title": title,
-            "data_points": sum(len(s["data"]) for s in series),
-            "agents_included": [s["name"] for s in series],
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "chart_id": chart_id,
+                "title": title,
+                "data_points": sum(len(s["data"]) for s in series),
+                "agents_included": [s["name"] for s in series],
+            }
+        )
 
     async def list_state_keys(params: dict) -> str:
         # Single pass to find last event per agent

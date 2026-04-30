@@ -3,12 +3,14 @@
 Verifies that build_recall_extras produces correct per-agent extras and
 that each agent's run() accepts extra_tools/extra_registry/prompt_suffix.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from shared.settings import Settings
 from simlab.recall.agent_tools import build_recall_extras
+
+from shared.settings import Settings
 
 _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
 _FLAG_OFF = Settings()
@@ -43,7 +45,7 @@ def test_build_recall_extras_different_prompts_per_stage():
 
 def test_build_recall_extras_unknown_stage_empty_prompt():
     """Unknown stage returns empty prompt section but valid tools."""
-    tools, registry, prompt = build_recall_extras("unknown")
+    tools, _registry, prompt = build_recall_extras("unknown")
     assert len(tools) == 1
     assert prompt == ""
 
@@ -55,7 +57,10 @@ async def test_handler_uses_stage_prefix():
         _, registry, _ = build_recall_extras("analyst")
         await registry["retrieve_context"]({"query": "test"})
     mock_rc.assert_awaited_once_with(
-        query="test", namespace=None, top_k=5, stage="phase2-analyst",
+        query="test",
+        namespace=None,
+        top_k=5,
+        stage="phase2-analyst",
     )
 
 
@@ -66,7 +71,9 @@ async def test_handler_uses_stage_prefix():
 
 async def test_flag_off_architect_no_retrieve_context():
     """With flag off, Architect has no retrieve_context tool."""
-    assert "retrieve_context" not in [t["name"] for t in _get_architect_tools(_FLAG_OFF)]
+    assert "retrieve_context" not in [
+        t["name"] for t in _get_architect_tools(_FLAG_OFF)
+    ]
 
 
 async def test_flag_off_analyst_no_retrieve_context():
@@ -114,6 +121,7 @@ def _get_architect_tools(settings):
     tools = [VALIDATE_SPEC_TOOL]
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
+
         et, _, _ = build_recall_extras("architect")
         tools += et
     return tools
@@ -121,12 +129,14 @@ def _get_architect_tools(settings):
 
 def _get_analyst_tools(settings):
     """Build the tool list the Analyst would get."""
-    from simlab.tools import build_simulation_tools, build_cross_experiment_tools
+    from simlab.tools import build_cross_experiment_tools, build_simulation_tools
+
     tools, _ = build_simulation_tools([], critical_events=None)
     db_tools, _ = build_cross_experiment_tools()
     tools += db_tools
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
+
         et, _, _ = build_recall_extras("analyst")
         tools += et
     return tools
@@ -135,9 +145,11 @@ def _get_analyst_tools(settings):
 def _get_reporter_tools(settings):
     """Build the tool list the Reporter would get."""
     from simlab.reporter import _build_tools as reporter_build_tools
+
     tools, _ = reporter_build_tools("run-1", "exp-1")
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
+
         et, _, _ = build_recall_extras("reporter")
         tools += et
     return tools

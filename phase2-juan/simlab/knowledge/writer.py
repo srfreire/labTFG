@@ -7,6 +7,7 @@ operations share the same UUID per fact to keep the three stores joinable.
 
 See docs/specs/sim-memory/phase-1-core-writer.md for the full specification.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from shared.embedding import EmbeddingService
     from shared.settings import Settings
     from shared.vector_store import VectorStore
-
     from simlab.knowledge.facts import FactSpec
 
 
@@ -109,14 +109,14 @@ def _zero_result(
 
 
 class _Counters:
-    __slots__ = ("summaries", "trajectories", "episodes")
+    __slots__ = ("episodes", "summaries", "trajectories")
 
     def __init__(self) -> None:
         self.summaries = 0
         self.trajectories = 0
         self.episodes = 0
 
-    def count(self, fact: "FactSpec") -> None:
+    def count(self, fact: FactSpec) -> None:
         if fact.memory_type == "episodic":
             self.episodes += 1
         elif "agent_id" in fact.metadata:
@@ -131,12 +131,12 @@ class _Counters:
 
 def _load_tokenizer():
     """Resolve the shared sparse tokenizer, isolated so tests can patch it."""
-    from shared.tokenizer import tokenize_to_sparse  # noqa: PLC0415
+    from shared.tokenizer import tokenize_to_sparse
 
     return tokenize_to_sparse
 
 
-def _build_payload(memory_id: uuid.UUID, fact: "FactSpec") -> dict[str, Any]:
+def _build_payload(memory_id: uuid.UUID, fact: FactSpec) -> dict[str, Any]:
     return {
         "memory_id": str(memory_id),
         "namespace": _NAMESPACE,
@@ -170,7 +170,7 @@ async def _safe_upsert(
 
 
 async def _upsert_vectors(
-    vector_store: "VectorStore",
+    vector_store: VectorStore,
     memory_id: uuid.UUID,
     dense: list[float],
     sparse: tuple[list[int], list[float]],
@@ -235,7 +235,7 @@ class TrackerMemoryWriter:
             return await self._write(tracker_output, context, t0)
         except CancelledError:
             raise
-        except BaseException as exc:  # noqa: BLE001 — deliberate catch-all
+        except BaseException as exc:
             logger.exception("TrackerMemoryWriter.write failed unexpectedly")
             return _zero_result(
                 t0,
@@ -304,9 +304,7 @@ class TrackerMemoryWriter:
                     metadata_=dict(fact.metadata),
                 )
 
-                await _upsert_vectors(
-                    self._vectors, memory_id, dense, sparse, payload
-                )
+                await _upsert_vectors(self._vectors, memory_id, dense, sparse, payload)
 
                 counters.count(fact)
 

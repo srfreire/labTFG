@@ -24,6 +24,8 @@ from shared.memories import (
 from shared.models import Base, Memory, Run
 from shared.settings import load_settings
 
+pytestmark = pytest.mark.integration
+
 DSN = load_settings().POSTGRES_DSN
 
 

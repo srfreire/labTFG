@@ -8,8 +8,8 @@ An environment spec is a JSON dict that describes a simulation:
 
 This module validates specs and converts them into Environment objects.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 # ---------------------------------------------------------------------------
 # Validation constants
@@ -27,6 +27,7 @@ REQUIRED_EFFECT_FIELDS: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 # Spec validation
 # ---------------------------------------------------------------------------
+
 
 def validate_spec_dict(spec: dict) -> list[str]:
     """Validate an environment spec dict.
@@ -72,11 +73,15 @@ def validate_spec_dict(spec: dict) -> list[str]:
             continue
         etype = effect.get("type")
         if etype not in VALID_EFFECT_TYPES:
-            errors.append(f"actions[{i}].effect.type '{etype}' is not valid. Must be one of {VALID_EFFECT_TYPES}")
+            errors.append(
+                f"actions[{i}].effect.type '{etype}' is not valid. Must be one of {VALID_EFFECT_TYPES}"
+            )
             continue
         for field in REQUIRED_EFFECT_FIELDS[etype]:
             if field not in effect:
-                errors.append(f"actions[{i}].effect missing required field '{field}' for {etype}")
+                errors.append(
+                    f"actions[{i}].effect missing required field '{field}' for {etype}"
+                )
 
     # 4. Resources — must be a list, unique types
     resources = spec["resources"]
@@ -107,7 +112,9 @@ def validate_spec_dict(spec: dict) -> list[str]:
         if effect.get("type") == "ConsumeEffect":
             rt = effect.get("resource_type")
             if rt not in resource_types:
-                errors.append(f"actions[{i}] ConsumeEffect references resource_type '{rt}' which is not defined in resources")
+                errors.append(
+                    f"actions[{i}] ConsumeEffect references resource_type '{rt}' which is not defined in resources"
+                )
 
     return errors
 
@@ -116,9 +123,14 @@ def validate_spec_dict(spec: dict) -> list[str]:
 # Spec → Environment conversion
 # ---------------------------------------------------------------------------
 
-from simlab.environment import (
-    Environment, ActionRule, ResourceRule,
-    MoveEffect, ConsumeEffect, NoopEffect, Effect,
+from simlab.environment import (  # noqa: E402  — local import keeps this module's section ordering readable
+    ActionRule,
+    ConsumeEffect,
+    Effect,
+    Environment,
+    MoveEffect,
+    NoopEffect,
+    ResourceRule,
 )
 
 _EFFECT_TYPES: dict[str, type] = {
@@ -147,7 +159,9 @@ def _convert_ranges(properties: dict) -> dict:
     for k, v in properties.items():
         if isinstance(v, list):
             if len(v) != 2:
-                raise ValueError(f"Property range '{k}' must be [min, max], got {len(v)} elements")
+                raise ValueError(
+                    f"Property range '{k}' must be [min, max], got {len(v)} elements"
+                )
             result[k] = tuple(v)
         else:
             result[k] = v

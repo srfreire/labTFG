@@ -8,6 +8,7 @@ closures over a list of Events, so each agent gets its own read-only view.
 The Analyst also gets cross-experiment tools that query the DB for
 historical comparison and aggregated analysis.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,10 +22,10 @@ from shared.models import Experiment as DBExperiment
 from simlab.environment import Event
 from simlab.loop import Registry
 
-
 # ---------------------------------------------------------------------------
 # Helpers — data conversion and summarization
 # ---------------------------------------------------------------------------
+
 
 def _make_serializable(obj):
     """Recursively convert non-serializable types (tuple keys, etc.) for JSON."""
@@ -64,7 +65,9 @@ def _summarize_events(events: list[Event]) -> dict:
         "total_events": len(events),
         "total_steps": max(e.step for e in events) + 1 if events else 0,
         "agents": agents,
-        "events_per_agent": {a: sum(1 for e in events if e.agent_id == a) for a in agents},
+        "events_per_agent": {
+            a: sum(1 for e in events if e.agent_id == a) for a in agents
+        },
         "action_counts": _count_actions(events),
     }
 
@@ -88,7 +91,10 @@ GET_AGENT_TRAJECTORY_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "agent_id": {"type": "string", "description": "The agent ID (e.g. 'agent_0')"},
+            "agent_id": {
+                "type": "string",
+                "description": "The agent ID (e.g. 'agent_0')",
+            },
         },
         "required": ["agent_id"],
     },
@@ -123,9 +129,18 @@ GET_EVENT_WINDOW_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "center_step": {"type": "integer", "description": "The step to center the window on"},
-            "radius": {"type": "integer", "description": "Number of steps before and after (default 10)"},
-            "agent_id": {"type": "string", "description": "Filter to a specific agent (optional)"},
+            "center_step": {
+                "type": "integer",
+                "description": "The step to center the window on",
+            },
+            "radius": {
+                "type": "integer",
+                "description": "Number of steps before and after (default 10)",
+            },
+            "agent_id": {
+                "type": "string",
+                "description": "Filter to a specific agent (optional)",
+            },
         },
         "required": ["center_step"],
     },
@@ -175,7 +190,10 @@ COMPARE_DECISION_TRACES_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "step": {"type": "integer", "description": "The simulation step to compare"},
+            "step": {
+                "type": "integer",
+                "description": "The simulation step to compare",
+            },
             "agent_ids": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -238,29 +256,35 @@ def build_simulation_tools(
         end = center + radius
 
         window_events = [
-            e for e in events
+            e
+            for e in events
             if start <= e.step <= end
             and (not agent_filter or e.agent_id == agent_filter)
         ]
         # Find any critical events in this window
         window_critical = [
-            ce for ce in _critical
+            ce
+            for ce in _critical
             if start <= ce["step"] <= end
             and (not agent_filter or ce["agent_id"] == agent_filter)
         ]
-        return json.dumps({
-            "center_step": center,
-            "range": [start, end],
-            "events": [_event_to_dict(e) for e in window_events],
-            "critical_events_in_window": window_critical,
-        })
+        return json.dumps(
+            {
+                "center_step": center,
+                "range": [start, end],
+                "events": [_event_to_dict(e) for e in window_events],
+                "critical_events_in_window": window_critical,
+            }
+        )
 
     async def list_critical_events_fn(params: dict) -> str:
         """Return all detected critical events."""
-        return json.dumps({
-            "total": len(_critical),
-            "events": _critical,
-        })
+        return json.dumps(
+            {
+                "total": len(_critical),
+                "events": _critical,
+            }
+        )
 
     async def get_decision_trace(params: dict) -> str:
         """Return the full decision trace for one agent at one step."""
@@ -272,14 +296,20 @@ def build_simulation_tools(
                 trace = {
                     "step": e.step,
                     "agent_id": e.agent_id,
-                    "perception": _make_serializable(e.perception) if e.perception else None,
-                    "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+                    "perception": _make_serializable(e.perception)
+                    if e.perception
+                    else None,
+                    "pre_state": _make_serializable(e.pre_state)
+                    if e.pre_state
+                    else None,
                     "available_actions": e.available_actions or None,
                     "action_chosen": {"name": e.action.name, "params": e.action.params},
                     "outcome": {
                         "reward": e.outcome.get("reward"),
                         "action_result": e.outcome.get("action_result"),
-                        "post_state": _make_serializable(e.outcome.get("model_state", {})),
+                        "post_state": _make_serializable(
+                            e.outcome.get("model_state", {})
+                        ),
                     },
                 }
                 return json.dumps(trace)
@@ -296,24 +326,36 @@ def build_simulation_tools(
             return json.dumps({"error": f"No events at step {step}"})
         traces = []
         for e in step_events:
-            traces.append({
-                "agent_id": e.agent_id,
-                "perception": _make_serializable(e.perception) if e.perception else None,
-                "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
-                "available_actions": e.available_actions or None,
-                "action_chosen": {"name": e.action.name, "params": e.action.params},
-                "outcome": {
-                    "reward": e.outcome.get("reward"),
-                    "action_result": e.outcome.get("action_result"),
-                    "post_state": _make_serializable(e.outcome.get("model_state", {})),
-                },
-            })
+            traces.append(
+                {
+                    "agent_id": e.agent_id,
+                    "perception": _make_serializable(e.perception)
+                    if e.perception
+                    else None,
+                    "pre_state": _make_serializable(e.pre_state)
+                    if e.pre_state
+                    else None,
+                    "available_actions": e.available_actions or None,
+                    "action_chosen": {"name": e.action.name, "params": e.action.params},
+                    "outcome": {
+                        "reward": e.outcome.get("reward"),
+                        "action_result": e.outcome.get("action_result"),
+                        "post_state": _make_serializable(
+                            e.outcome.get("model_state", {})
+                        ),
+                    },
+                }
+            )
         return json.dumps({"step": step, "traces": traces})
 
     schemas = [
-        GET_SIMULATION_EVENTS_TOOL, GET_AGENT_TRAJECTORY_TOOL,
-        GET_AGENT_STATE_TOOL, GET_EVENT_WINDOW_TOOL, LIST_CRITICAL_EVENTS_TOOL,
-        GET_DECISION_TRACE_TOOL, COMPARE_DECISION_TRACES_TOOL,
+        GET_SIMULATION_EVENTS_TOOL,
+        GET_AGENT_TRAJECTORY_TOOL,
+        GET_AGENT_STATE_TOOL,
+        GET_EVENT_WINDOW_TOOL,
+        LIST_CRITICAL_EVENTS_TOOL,
+        GET_DECISION_TRACE_TOOL,
+        COMPARE_DECISION_TRACES_TOOL,
     ]
     registry: Registry = {
         "get_simulation_events": get_simulation_events,
@@ -334,11 +376,14 @@ def build_simulation_tools(
 LIST_PAST_EXPERIMENTS_TOOL = {
     "name": "list_past_experiments",
     "description": "List past experiments from the database. Returns id, status, description, models used, steps, and timestamps. "
-                   "Use to find experiments for cross-experiment comparison.",
+    "Use to find experiments for cross-experiment comparison.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "limit": {"type": "integer", "description": "Max experiments to return (default 10)"},
+            "limit": {
+                "type": "integer",
+                "description": "Max experiments to return (default 10)",
+            },
         },
     },
 }
@@ -346,11 +391,14 @@ LIST_PAST_EXPERIMENTS_TOOL = {
 GET_EXPERIMENT_ANALYSIS_TOOL = {
     "name": "get_experiment_analysis",
     "description": "Get the Tracker and Analyst results from a past experiment by ID. "
-                   "Returns tracker_json and analyst_json so you can compare with the current experiment.",
+    "Returns tracker_json and analyst_json so you can compare with the current experiment.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "experiment_id": {"type": "string", "description": "UUID of the past experiment"},
+            "experiment_id": {
+                "type": "string",
+                "description": "UUID of the past experiment",
+            },
         },
         "required": ["experiment_id"],
     },
@@ -369,14 +417,20 @@ def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
                 .limit(limit)
             )
             experiments = result.scalars().all()
-        return json.dumps([{
-            "id": str(e.id),
-            "status": e.status,
-            "description": e.description,
-            "models_used": e.models_used,
-            "steps": e.steps,
-            "created_at": str(e.created_at),
-        } for e in experiments], default=str)
+        return json.dumps(
+            [
+                {
+                    "id": str(e.id),
+                    "status": e.status,
+                    "description": e.description,
+                    "models_used": e.models_used,
+                    "steps": e.steps,
+                    "created_at": str(e.created_at),
+                }
+                for e in experiments
+            ],
+            default=str,
+        )
 
     async def get_experiment_analysis_fn(params: dict) -> str:
         exp_id = params["experiment_id"]
@@ -394,15 +448,18 @@ def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
             tracker_data = await shared.storage.get_text(exp.s3_tracker_key)
         if exp.s3_analyst_key:
             analyst_data = await shared.storage.get_text(exp.s3_analyst_key)
-        return json.dumps({
-            "id": str(exp.id),
-            "status": exp.status,
-            "description": exp.description,
-            "models_used": exp.models_used,
-            "steps": exp.steps,
-            "tracker_json": tracker_data,
-            "analyst_json": analyst_data,
-        }, default=str)
+        return json.dumps(
+            {
+                "id": str(exp.id),
+                "status": exp.status,
+                "description": exp.description,
+                "models_used": exp.models_used,
+                "steps": exp.steps,
+                "tracker_json": tracker_data,
+                "analyst_json": analyst_data,
+            },
+            default=str,
+        )
 
     schemas = [LIST_PAST_EXPERIMENTS_TOOL, GET_EXPERIMENT_ANALYSIS_TOOL]
     registry: Registry = {

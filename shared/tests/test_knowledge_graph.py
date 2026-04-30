@@ -11,6 +11,8 @@ import pytest_asyncio
 from shared.knowledge_graph import KnowledgeGraph
 from shared.settings import load_settings
 
+pytestmark = pytest.mark.integration
+
 
 @pytest_asyncio.fixture
 async def kg():
@@ -112,7 +114,7 @@ async def test_uniqueness_constraint_rejects_duplicate_doi(kg: KnowledgeGraph):
             "year": 2024,
         },
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017  — driver raises a generic error type here
         await kg.create_node(
             "Paper",
             {
@@ -135,7 +137,7 @@ async def test_uniqueness_constraint_rejects_duplicate_paradigm_slug(
             "name": "Homeostatic Regulation",
         },
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017  — driver raises a generic error type here
         await kg.create_node(
             "Paradigm",
             {

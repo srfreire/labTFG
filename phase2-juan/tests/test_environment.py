@@ -1,10 +1,10 @@
 """Tests for the generic environment."""
+
 from __future__ import annotations
 
 import json
 
 import pytest
-
 from simlab.environment import (
     Action,
     ActionRule,
@@ -19,37 +19,60 @@ from simlab.environment import (
     ResourceRule,
 )
 
-
 # --- Dummy models ---
 
+
 class _AlwaysStay:
-    def decide(self, perception: dict) -> Action: return Action("stay")
-    def update(self, action, reward, new_perception): pass
-    def get_state(self) -> dict: return {"dummy": True}
+    def decide(self, perception: dict) -> Action:
+        return Action("stay")
+
+    def update(self, action, reward, new_perception):
+        pass
+
+    def get_state(self) -> dict:
+        return {"dummy": True}
 
 
 class _AlwaysRight:
-    def decide(self, perception: dict) -> Action: return Action("right")
-    def update(self, action, reward, new_perception): pass
-    def get_state(self) -> dict: return {"direction": "right"}
+    def decide(self, perception: dict) -> Action:
+        return Action("right")
+
+    def update(self, action, reward, new_perception):
+        pass
+
+    def get_state(self) -> dict:
+        return {"direction": "right"}
 
 
 class _AlwaysEat:
-    def decide(self, perception: dict) -> Action: return Action("eat")
-    def update(self, action, reward, new_perception): pass
-    def get_state(self) -> dict: return {}
+    def decide(self, perception: dict) -> Action:
+        return Action("eat")
+
+    def update(self, action, reward, new_perception):
+        pass
+
+    def get_state(self) -> dict:
+        return {}
 
 
 class _LearningModel:
     """A model whose state changes on update, so pre != post."""
+
     def __init__(self):
         self.counter = 0
-    def decide(self, perception: dict) -> Action: return Action("stay")
-    def update(self, action, reward, new_perception): self.counter += 1
-    def get_state(self) -> dict: return {"counter": self.counter}
+
+    def decide(self, perception: dict) -> Action:
+        return Action("stay")
+
+    def update(self, action, reward, new_perception):
+        self.counter += 1
+
+    def get_state(self) -> dict:
+        return {"counter": self.counter}
 
 
 # --- Helpers ---
+
 
 def _basic_actions():
     return [
@@ -61,11 +84,20 @@ def _basic_actions():
         ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
     ]
 
+
 def _food_rule():
-    return [ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=2, regenerate=True)]
+    return [
+        ResourceRule(
+            type="food",
+            properties={"palatability": (0.1, 1.0)},
+            count=2,
+            regenerate=True,
+        )
+    ]
 
 
 # --- Environment init ---
+
 
 def test_environment_init():
     env = Environment(10, 10, actions=_basic_actions(), resources=[])
@@ -87,9 +119,12 @@ def test_add_agent():
 
 # --- Movement ---
 
+
 def test_agent_moves_on_action():
     env = Environment(5, 5, actions=_basic_actions(), resources=[])
-    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysRight()))
+    env.add_agent(
+        Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysRight())
+    )
     env.step()
     state = env.get_state()
     assert state["agents"][0]["x"] == 1 and state["agents"][0]["y"] == 0
@@ -100,9 +135,14 @@ def test_agent_clamps_at_wall():
     env = Environment(5, 5, actions=actions, resources=[])
 
     class _AlwaysLeft:
-        def decide(self, perception): return Action("left")
-        def update(self, action, reward, new_perception): pass
-        def get_state(self): return {}
+        def decide(self, perception):
+            return Action("left")
+
+        def update(self, action, reward, new_perception):
+            pass
+
+        def get_state(self):
+            return {}
 
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysLeft()))
     env.step()
@@ -113,9 +153,14 @@ def test_unknown_action_returns_zero_reward():
     env = Environment(5, 5, actions=[], resources=[])
 
     class _BadAction:
-        def decide(self, perception): return Action("fly")
-        def update(self, action, reward, new_perception): pass
-        def get_state(self): return {}
+        def decide(self, perception):
+            return Action("fly")
+
+        def update(self, action, reward, new_perception):
+            pass
+
+        def get_state(self):
+            return {}
 
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_BadAction()))
     events = env.step()
@@ -127,9 +172,14 @@ def test_move_reward_propagates():
     env = Environment(5, 5, actions=actions, resources=[])
 
     class _AlwaysWalk:
-        def decide(self, perception): return Action("walk")
-        def update(self, action, reward, new_perception): pass
-        def get_state(self): return {}
+        def decide(self, perception):
+            return Action("walk")
+
+        def update(self, action, reward, new_perception):
+            pass
+
+        def get_state(self):
+            return {}
 
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysWalk()))
     events = env.step()
@@ -138,10 +188,17 @@ def test_move_reward_propagates():
 
 # --- Resource consumption ---
 
+
 def test_consume_resource():
     actions = [ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0))]
     env = Environment(5, 5, actions=actions, resources=[], seed=42)
-    env.add_resource(Resource(id="f1", position=Position(0, 0), properties={"type": "food", "palatability": 0.5}))
+    env.add_resource(
+        Resource(
+            id="f1",
+            position=Position(0, 0),
+            properties={"type": "food", "palatability": 0.5},
+        )
+    )
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysEat()))
     events = env.step()
     assert events[0].outcome["action_result"]["consumed"] is True
@@ -158,10 +215,18 @@ def test_consume_nothing_returns_zero():
 
 
 def test_resource_regenerates():
-    food_rule = ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=0, regenerate=True)
+    food_rule = ResourceRule(
+        type="food", properties={"palatability": (0.1, 1.0)}, count=0, regenerate=True
+    )
     actions = [ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0))]
     env = Environment(5, 5, actions=actions, resources=[food_rule], seed=42)
-    env.add_resource(Resource(id="f1", position=Position(0, 0), properties={"type": "food", "palatability": 0.5}))
+    env.add_resource(
+        Resource(
+            id="f1",
+            position=Position(0, 0),
+            properties={"type": "food", "palatability": 0.5},
+        )
+    )
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysEat()))
     env.step()
     assert len(env.get_state()["resources"]) == 1
@@ -171,7 +236,9 @@ def test_consume_no_regenerate():
     food_rule = ResourceRule(type="food", properties={}, count=0, regenerate=False)
     actions = [ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0))]
     env = Environment(5, 5, actions=actions, resources=[food_rule], seed=42)
-    env.add_resource(Resource(id="f1", position=Position(0, 0), properties={"type": "food"}))
+    env.add_resource(
+        Resource(id="f1", position=Position(0, 0), properties={"type": "food"})
+    )
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysEat()))
     env.step()
     assert len(env.get_state()["resources"]) == 0
@@ -180,7 +247,9 @@ def test_consume_no_regenerate():
 def test_consume_wrong_type():
     actions = [ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0))]
     env = Environment(5, 5, actions=actions, resources=[])
-    env.add_resource(Resource(id="w1", position=Position(0, 0), properties={"type": "water"}))
+    env.add_resource(
+        Resource(id="w1", position=Position(0, 0), properties={"type": "water"})
+    )
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysEat()))
     events = env.step()
     assert events[0].outcome["action_result"]["consumed"] is False
@@ -191,9 +260,14 @@ def test_noop_action():
     env = Environment(5, 5, actions=actions, resources=[])
 
     class _AlwaysRest:
-        def decide(self, perception): return Action("rest")
-        def update(self, action, reward, new_perception): pass
-        def get_state(self): return {}
+        def decide(self, perception):
+            return Action("rest")
+
+        def update(self, action, reward, new_perception):
+            pass
+
+        def get_state(self):
+            return {}
 
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysRest()))
     events = env.step()
@@ -202,13 +276,24 @@ def test_noop_action():
 
 # --- Perception ---
 
+
 def test_perception_keys():
-    food_rule = ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=1)
+    food_rule = ResourceRule(
+        type="food", properties={"palatability": (0.1, 1.0)}, count=1
+    )
     env = Environment(5, 5, actions=_basic_actions(), resources=[food_rule], seed=42)
     agent = Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay())
     env.add_agent(agent)
     perception = env._build_perception(agent)
-    assert set(perception.keys()) == {"x", "y", "grid_width", "grid_height", "step", "resources", "last_action_result"}
+    assert set(perception.keys()) == {
+        "x",
+        "y",
+        "grid_width",
+        "grid_height",
+        "step",
+        "resources",
+        "last_action_result",
+    }
 
 
 def test_perception_resources_grouped_by_type():
@@ -223,6 +308,7 @@ def test_perception_resources_grouped_by_type():
 
 
 # --- Step and run ---
+
 
 def test_step_returns_events_with_outcome():
     env = Environment(5, 5, actions=_basic_actions(), resources=[])
@@ -245,7 +331,11 @@ def test_run_n_steps():
 
 def test_is_finished():
     env = Environment(5, 5, actions=[], resources=[])
-    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay(), alive=False))
+    env.add_agent(
+        Agent(
+            id="a1", position=Position(0, 0), decision_model=_AlwaysStay(), alive=False
+        )
+    )
     assert env.is_finished()
     env.add_agent(Agent(id="a2", position=Position(0, 0), decision_model=_AlwaysStay()))
     assert not env.is_finished()
@@ -253,12 +343,15 @@ def test_is_finished():
 
 # --- get_spec ---
 
+
 def test_get_spec():
     actions = [
         ActionRule("move_up", MoveEffect(dx=0, dy=-1)),
         ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
     ]
-    resources = [ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=5)]
+    resources = [
+        ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=5)
+    ]
     env = Environment(5, 5, actions=actions, resources=resources)
     spec = env.get_spec()
     assert set(spec["available_actions"]) == {"move_up", "eat"}
@@ -268,20 +361,35 @@ def test_get_spec():
 
 # --- Determinism and serialization ---
 
+
 def test_seed_determinism():
     def run_sim(seed):
-        food_rule = ResourceRule(type="food", properties={"palatability": (0.1, 1.0)}, count=0, regenerate=True)
+        food_rule = ResourceRule(
+            type="food",
+            properties={"palatability": (0.1, 1.0)},
+            count=0,
+            regenerate=True,
+        )
         actions = [
             ActionRule("right", MoveEffect(dx=1, dy=0)),
             ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
         ]
         env = Environment(5, 5, actions=actions, resources=[food_rule], seed=seed)
-        env.add_resource(Resource(id="f1", position=Position(1, 0), properties={"type": "food", "palatability": 0.5}))
-        env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysRight()))
+        env.add_resource(
+            Resource(
+                id="f1",
+                position=Position(1, 0),
+                properties={"type": "food", "palatability": 0.5},
+            )
+        )
+        env.add_agent(
+            Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysRight())
+        )
         return env.run(10)
+
     events_a = run_sim(42)
     events_b = run_sim(42)
-    for a, b in zip(events_a, events_b):
+    for a, b in zip(events_a, events_b, strict=False):
         assert a.outcome == b.outcome
 
 
@@ -294,8 +402,12 @@ def test_get_state_is_serializable():
 
 # --- Validation ---
 
+
 def test_duplicate_action_names_raises():
-    actions = [ActionRule("move", MoveEffect(dx=1, dy=0)), ActionRule("move", MoveEffect(dx=-1, dy=0))]
+    actions = [
+        ActionRule("move", MoveEffect(dx=1, dy=0)),
+        ActionRule("move", MoveEffect(dx=-1, dy=0)),
+    ]
     with pytest.raises(ValueError, match="Duplicate action names"):
         Environment(5, 5, actions=actions, resources=[])
 
@@ -307,6 +419,7 @@ def test_duplicate_resource_types_raises():
 
 
 # --- Decision traces ---
+
 
 def test_step_populates_decision_trace_fields():
     """Events from step() include perception, pre_state, and available_actions."""
@@ -325,7 +438,9 @@ def test_step_populates_decision_trace_fields():
 def test_pre_state_captures_before_update():
     """pre_state reflects model state BEFORE update; outcome.model_state reflects AFTER."""
     env = Environment(5, 5, actions=[ActionRule("stay", NoopEffect())], resources=[])
-    env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_LearningModel()))
+    env.add_agent(
+        Agent(id="a1", position=Position(0, 0), decision_model=_LearningModel())
+    )
     events = env.step()
     e = events[0]
     assert e.pre_state["counter"] == 0

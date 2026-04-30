@@ -3,15 +3,16 @@
 This test lives in phase2-juan (not shared) because it requires `simlab` to be
 importable. Shared's test suite covers the failure/short-circuit paths.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
 
 import pytest
+from simlab.knowledge import TrackerMemoryWriter
 
 import shared
 from shared.settings import Settings
-from simlab.knowledge import TrackerMemoryWriter
 
 
 @pytest.fixture(autouse=True)
@@ -30,7 +31,9 @@ def test_flag_on_with_infra_creates_tracker_memory_writer(monkeypatch):
     monkeypatch.setattr(shared, "db", fake_db, raising=False)
 
     settings = Settings(
-        VOYAGE_API_KEY="v", ZEROENTROPY_API_KEY="z", ENABLE_KNOWLEDGE_WRITE=True,
+        VOYAGE_API_KEY="v",
+        ZEROENTROPY_API_KEY="z",
+        ENABLE_KNOWLEDGE_WRITE=True,
     )
     shared._init_sim_memory_writer(settings)
 

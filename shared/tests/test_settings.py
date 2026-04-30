@@ -1,4 +1,5 @@
 """Tests for shared.settings module."""
+
 from shared.settings import Settings, load_settings
 
 _SETTINGS_ENV_VARS = (
@@ -60,7 +61,7 @@ def test_frozen():
     s = load_settings()
     try:
         s.MINIO_BUCKET = "other"  # type: ignore[misc]
-        assert False, "Should have raised FrozenInstanceError"
+        raise AssertionError("Should have raised FrozenInstanceError")
     except AttributeError:
         pass
 
@@ -70,7 +71,7 @@ def test_frozen():
 # ---------------------------------------------------------------------------
 
 
-import pytest
+import pytest  # noqa: E402  — kept beside the section it parametrizes
 
 
 def test_enable_knowledge_write_default_false():
@@ -78,14 +79,18 @@ def test_enable_knowledge_write_default_false():
     assert s.ENABLE_KNOWLEDGE_WRITE is False
 
 
-@pytest.mark.parametrize("raw", ["1", "true", "TRUE", "True", "yes", "YES", "on", " on "])
+@pytest.mark.parametrize(
+    "raw", ["1", "true", "TRUE", "True", "yes", "YES", "on", " on "]
+)
 def test_enable_knowledge_write_truthy_strings(monkeypatch, raw):
     monkeypatch.setenv("ENABLE_KNOWLEDGE_WRITE", raw)
     s = load_settings()
     assert s.ENABLE_KNOWLEDGE_WRITE is True
 
 
-@pytest.mark.parametrize("raw", ["0", "false", "FALSE", "no", "off", "", "xyz", "None", "2"])
+@pytest.mark.parametrize(
+    "raw", ["0", "false", "FALSE", "no", "off", "", "xyz", "None", "2"]
+)
 def test_enable_knowledge_write_falsy_strings(monkeypatch, raw):
     monkeypatch.setenv("ENABLE_KNOWLEDGE_WRITE", raw)
     s = load_settings()

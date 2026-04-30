@@ -2,6 +2,7 @@
 
 See docs/specs/sim-memory/ for the full design.
 """
+
 from simlab.knowledge.writer import (
     ModelInfo,
     SimulationContext,

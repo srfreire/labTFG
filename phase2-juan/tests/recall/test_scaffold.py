@@ -1,18 +1,19 @@
 """P1-001 scaffold tests — verify public surface, flag-off behaviour, tool schema."""
+
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
-
-import shared
-from shared.settings import Settings
 from simlab.recall import (
     RETRIEVE_CONTEXT_TOOL,
     build_retriever_from_settings,
     retrieve_context,
 )
+
+import shared
+from shared.settings import Settings
 
 _EMPTY = "## Retrieved Knowledge (0 results)\n\nNo results found."
 

@@ -9,29 +9,34 @@ The Orchestrator is the main entry point. It:
 
 Pipeline: create_environment → run_simulation → observe_simulation → analyze_results → generate_report
 """
+
 from __future__ import annotations
 
 import json
+import logging
 import random
 import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import select, update
 
 import shared
 from shared.models import Experiment as DBExperiment
 from shared.settings import load_settings
-from sqlalchemy import select, update
 
-from simlab.architect import Architect
-from simlab.tracker import Tracker
+if TYPE_CHECKING:
+    from shared.settings import Settings
 from simlab.analyst import Analyst
-from simlab.reporter import Reporter
-from simlab.critical_events import detect_critical_events, critical_events_to_json
-from simlab.tools import _make_serializable
+from simlab.architect import Architect
+from simlab.critical_events import critical_events_to_json, detect_critical_events
 from simlab.environment import Agent, Position
-from simlab.loop import run_agent_loop, Registry
+from simlab.loop import Registry, run_agent_loop
+from simlab.model_loader import discover_models
+from simlab.model_loader import load_model as _load_model
+from simlab.reporter import Reporter
 from simlab.spec import spec_to_environment
-from simlab.model_loader import discover_models, load_model as _load_model
-
-import logging
+from simlab.tools import _make_serializable
+from simlab.tracker import Tracker
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +117,27 @@ async def _write_tracker_memories(writer, tracker_output: str, state: dict) -> N
 # Query definitions per stage: (subsection_title, query_template, namespace, top_k)
 _PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
     "architect": [
-        ("Paradigm facts", "postulates and key properties for {paradigm}", "paradigm", 5),
-        ("Previous environments", "environment specifications for {paradigm}", "simulation", 5),
+        (
+            "Paradigm facts",
+            "postulates and key properties for {paradigm}",
+            "paradigm",
+            5,
+        ),
+        (
+            "Previous environments",
+            "environment specifications for {paradigm}",
+            "simulation",
+            5,
+        ),
     ],
     "analyst": [
         ("Postulates", "postulates for {paradigm}", "paradigm", 5),
-        ("Historical simulations", "previous simulation results for {paradigm}", "simulation", 5),
+        (
+            "Historical simulations",
+            "previous simulation results for {paradigm}",
+            "simulation",
+            5,
+        ),
     ],
     "reporter": [
         ("References", "papers and authors for {paradigm}", "meta", 10),
@@ -142,10 +162,13 @@ async def prefetch_knowledge(
     if not queries:
         return ""
 
-    from simlab.recall.retrieve import retrieve_context, _EMPTY_RESULT
     import asyncio
 
-    async def _run_one(title: str, query_tpl: str, ns: str, top_k: int) -> tuple[str, str]:
+    from simlab.recall.retrieve import _EMPTY_RESULT, retrieve_context
+
+    async def _run_one(
+        title: str, query_tpl: str, ns: str, top_k: int
+    ) -> tuple[str, str]:
         """Run a single retrieve_context call, return (title, result)."""
         try:
             result = await retrieve_context(
@@ -163,9 +186,9 @@ async def prefetch_knowledge(
                 await on_warning(stage, str(exc)[:200])
             return (title, "")
 
-    results = await asyncio.gather(*[
-        _run_one(title, qt, ns, tk) for title, qt, ns, tk in queries
-    ])
+    results = await asyncio.gather(
+        *[_run_one(title, qt, ns, tk) for title, qt, ns, tk in queries]
+    )
 
     sections = []
     for title, content in results:
@@ -188,7 +211,10 @@ CREATE_ENVIRONMENT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "description": {"type": "string", "description": "Description of the environment to create"},
+            "description": {
+                "type": "string",
+                "description": "Description of the environment to create",
+            },
         },
         "required": ["description"],
     },
@@ -197,14 +223,27 @@ CREATE_ENVIRONMENT_TOOL = {
 RUN_SIMULATION_TOOL = {
     "name": "run_simulation",
     "description": "Run a simulation with the current environment spec. Requires create_environment first. "
-                   "Pass model_ids to run one or more models in the SAME environment for fair comparison.",
+    "Pass model_ids to run one or more models in the SAME environment for fair comparison.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "num_agents": {"type": "integer", "description": "Number of agents PER MODEL to place in the simulation (default 1)"},
-            "steps": {"type": "integer", "description": "Number of simulation steps to run"},
-            "seed": {"type": "integer", "description": "Random seed for reproducibility (optional)"},
-            "model_ids": {"type": "array", "items": {"type": "string"}, "description": "List of model keys (paradigm/formulation) to run. Each gets num_agents agents. Pass a single-element array for one model."},
+            "num_agents": {
+                "type": "integer",
+                "description": "Number of agents PER MODEL to place in the simulation (default 1)",
+            },
+            "steps": {
+                "type": "integer",
+                "description": "Number of simulation steps to run",
+            },
+            "seed": {
+                "type": "integer",
+                "description": "Random seed for reproducibility (optional)",
+            },
+            "model_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of model keys (paradigm/formulation) to run. Each gets num_agents agents. Pass a single-element array for one model.",
+            },
         },
         "required": ["steps"],
     },
@@ -216,7 +255,10 @@ OBSERVE_SIMULATION_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "focus": {"type": "string", "description": "What to focus on when observing (optional)"},
+            "focus": {
+                "type": "string",
+                "description": "What to focus on when observing (optional)",
+            },
         },
     },
 }
@@ -227,7 +269,10 @@ ANALYZE_RESULTS_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "focus": {"type": "string", "description": "What to focus on in the analysis (optional)"},
+            "focus": {
+                "type": "string",
+                "description": "What to focus on in the analysis (optional)",
+            },
         },
     },
 }
@@ -235,17 +280,17 @@ ANALYZE_RESULTS_TOOL = {
 GENERATE_REPORT_TOOL = {
     "name": "generate_report",
     "description": "Generate a PDF report. Can be called MULTIPLE TIMES for different reports "
-                   "(e.g. one per agent, one comparative). Each call produces a separate PDF with "
-                   "a unique name. Requires analyze_results first. "
-                   "Use the focus parameter to specify EXACTLY what to include or exclude.",
+    "(e.g. one per agent, one comparative). Each call produces a separate PDF with "
+    "a unique name. Requires analyze_results first. "
+    "Use the focus parameter to specify EXACTLY what to include or exclude.",
     "input_schema": {
         "type": "object",
         "properties": {
             "focus": {
                 "type": "string",
                 "description": "Detailed instructions for the Reporter: what agents to cover, "
-                               "which charts/metrics to include, what sections to skip, "
-                               "what tone or emphasis to use. Be specific.",
+                "which charts/metrics to include, what sections to skip, "
+                "what tone or emphasis to use. Be specific.",
             },
             "quality": {
                 "type": "string",
@@ -268,11 +313,14 @@ LIST_AVAILABLE_MODELS_TOOL = {
 LIST_EXPERIMENTS_TOOL = {
     "name": "list_experiments",
     "description": "List past experiments with their status, description, and models used. "
-                   "Use when the user asks about history or wants to repeat/compare experiments.",
+    "Use when the user asks about history or wants to repeat/compare experiments.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "limit": {"type": "integer", "description": "Maximum number of experiments to return (default 10)"},
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of experiments to return (default 10)",
+            },
         },
     },
 }
@@ -280,9 +328,9 @@ LIST_EXPERIMENTS_TOOL = {
 READ_PREDICTIONS_TOOL = {
     "name": "read_predictions",
     "description": "Read the scientific predictions for a decision-making paradigm from Phase 1 deep research. "
-                   "Call this AFTER the user chooses a model and BEFORE running the simulation. "
-                   "The paradigm slug is the paradigm field from the model listing "
-                   "(e.g. 'homeostatic-regulation').",
+    "Call this AFTER the user chooses a model and BEFORE running the simulation. "
+    "The paradigm slug is the paradigm field from the model listing "
+    "(e.g. 'homeostatic-regulation').",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -486,6 +534,7 @@ for the number of results.
 # Orchestrator class
 # ---------------------------------------------------------------------------
 
+
 class Orchestrator:
     """Conversational orchestrator that coordinates the 4 simulation agents.
 
@@ -539,10 +588,12 @@ class Orchestrator:
                         summary += "…"
                     entries.append(f"- **Orquestador**: {summary}")
                 if tool_parts:
-                    entries.append(f"  - Herramientas invocadas: {', '.join(tool_parts)}")
+                    entries.append(
+                        f"  - Herramientas invocadas: {', '.join(tool_parts)}"
+                    )
         return "\n".join(entries) if entries else "No interaction history available."
 
-    def _build_system_prompt(self, settings: "Settings") -> str:
+    def _build_system_prompt(self, settings: Settings) -> str:
         """Assemble the system prompt, optionally appending knowledge sections."""
         if settings.ENABLE_KNOWLEDGE_READ:
             return ORCHESTRATOR_SYSTEM_PROMPT + _KNOWLEDGE_RETRIEVAL_PROMPT_SECTION
@@ -575,11 +626,15 @@ class Orchestrator:
         cb = self.on_agent_tool_call
         if not cb:
             return None
+
         async def _cb(tool_name: str):
             await cb(agent_name, tool_name)
+
         return _cb
 
-    def _build_tools(self, settings: "Settings | None" = None) -> tuple[list[dict], Registry]:
+    def _build_tools(
+        self, settings: Settings | None = None
+    ) -> tuple[list[dict], Registry]:
         """Build tool implementations as closures over the orchestrator's state."""
         if settings is None:
             settings = load_settings()
@@ -591,10 +646,13 @@ class Orchestrator:
         if settings.ENABLE_KNOWLEDGE_READ:
             try:
                 from simlab.recall import build_recall_extras
+
                 for stage in ("architect", "analyst", "reporter"):
                     _recall[stage] = build_recall_extras(stage)
             except Exception:
-                logger.warning("Failed to initialise recall extras; running without knowledge tools.")
+                logger.warning(
+                    "Failed to initialise recall extras; running without knowledge tools."
+                )
 
         def _recall_kwargs(stage: str) -> dict:
             """Return extra_tools/extra_registry/prompt_suffix kwargs if recall is on."""
@@ -613,8 +671,10 @@ class Orchestrator:
         async def create_environment(params: dict) -> str:
             # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
             knowledge_ctx = await prefetch_knowledge(
-                params["description"], "architect",
-                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
+                params["description"],
+                "architect",
+                on_warning=_on_kg_warning,
+                enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             arch = Architect(client=client)
             spec_json = await arch.run(
@@ -651,28 +711,33 @@ class Orchestrator:
             if self._discovered_models is None:
                 self._discovered_models = await discover_models()
             if not self._discovered_models:
-                return json.dumps({"models": [], "note": "No models registered in database"})
+                return json.dumps(
+                    {"models": [], "note": "No models registered in database"}
+                )
             # Store run_id from first model for read_predictions / generate_report
             for m in self._discovered_models.values():
                 if m.run_id and not state.get("run_id"):
                     state["run_id"] = m.run_id
                     break
-            return json.dumps({
-                "models": [
-                    {
-                        "key": key,
-                        "paradigm": m.paradigm,
-                        "formulation": m.formulation,
-                        "class_name": m.class_name,
-                        "description": m.description,
-                    }
-                    for key, m in self._discovered_models.items()
-                ]
-            })
+            return json.dumps(
+                {
+                    "models": [
+                        {
+                            "key": key,
+                            "paradigm": m.paradigm,
+                            "formulation": m.formulation,
+                            "class_name": m.class_name,
+                            "description": m.description,
+                        }
+                        for key, m in self._discovered_models.items()
+                    ]
+                }
+            )
 
         # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
             import re as _re
+
             from shared.models import Model as DBModel
 
             slug = params["paradigm_slug"]
@@ -682,7 +747,9 @@ class Orchestrator:
             if not run_id:
                 async with shared.db.get_session() as session:
                     result = await session.execute(
-                        select(DBModel).where(DBModel.paradigm.ilike(f"%{slug}%")).limit(1)
+                        select(DBModel)
+                        .where(DBModel.paradigm.ilike(f"%{slug}%"))
+                        .limit(1)
                     )
                     model = result.scalar_one_or_none()
                     if model and model.run_id:
@@ -690,7 +757,11 @@ class Orchestrator:
                         state["run_id"] = run_id
 
             if not run_id:
-                return json.dumps({"error": f"No run_id found for paradigm '{slug}'. Models may not be registered yet."})
+                return json.dumps(
+                    {
+                        "error": f"No run_id found for paradigm '{slug}'. Models may not be registered yet."
+                    }
+                )
 
             key = f"research/{run_id}/deep/{slug}.md"
             try:
@@ -698,12 +769,22 @@ class Orchestrator:
             except Exception:
                 # Try listing available deep research files for this run
                 available_keys = await shared.storage.list(f"research/{run_id}/deep/")
-                available = [k.split("/")[-1].removesuffix(".md") for k in available_keys]
-                return json.dumps({"error": f"No deep research file for '{slug}'. Available: {available}"})
+                available = [
+                    k.split("/")[-1].removesuffix(".md") for k in available_keys
+                ]
+                return json.dumps(
+                    {
+                        "error": f"No deep research file for '{slug}'. Available: {available}"
+                    }
+                )
 
-            match = _re.search(r'## Predictions\s*\n(.*?)(?=\n## |\Z)', content, _re.DOTALL)
+            match = _re.search(
+                r"## Predictions\s*\n(.*?)(?=\n## |\Z)", content, _re.DOTALL
+            )
             if not match:
-                return json.dumps({"error": f"No '## Predictions' section found in {slug}.md"})
+                return json.dumps(
+                    {"error": f"No '## Predictions' section found in {slug}.md"}
+                )
             predictions = match.group(1).strip()
             if not state.get("predictions"):
                 state["predictions"] = {}
@@ -713,7 +794,11 @@ class Orchestrator:
         # --- run_simulation: creates agents, runs the simulation loop ---
         async def run_simulation(params: dict) -> str:
             if not state.get("spec"):
-                return json.dumps({"error": "No environment created yet. Call create_environment first."})
+                return json.dumps(
+                    {
+                        "error": "No environment created yet. Call create_environment first."
+                    }
+                )
 
             env = spec_to_environment(state["spec"], seed=params.get("seed"))
             num_agents = params.get("num_agents", 1)
@@ -737,13 +822,22 @@ class Orchestrator:
                 for mid in model_ids:
                     info = available.get(mid)
                     if not info:
-                        return json.dumps({"error": f"Model '{mid}' not found. Call list_available_models to see available models."})
+                        return json.dumps(
+                            {
+                                "error": f"Model '{mid}' not found. Call list_available_models to see available models."
+                            }
+                        )
                     label = info.formulation
                     for i in range(num_agents):
                         model = await _load_model(info, seed=rng.randint(0, 2**32))
-                        pos = Position(rng.randint(0, env.width - 1), rng.randint(0, env.height - 1))
+                        pos = Position(
+                            rng.randint(0, env.width - 1),
+                            rng.randint(0, env.height - 1),
+                        )
                         agent_id = f"{label}_{i}" if num_agents > 1 else label
-                        env.add_agent(Agent(id=agent_id, position=pos, decision_model=model))
+                        env.add_agent(
+                            Agent(id=agent_id, position=pos, decision_model=model)
+                        )
                         agent_to_model[agent_id] = {
                             "model_id": info.id,
                             "class_name": info.class_name,
@@ -753,7 +847,11 @@ class Orchestrator:
                         }
                     models_used.append(mid)
             else:
-                return json.dumps({"error": "No model_ids provided. Call list_available_models first and pass the chosen model IDs."})
+                return json.dumps(
+                    {
+                        "error": "No model_ids provided. Call list_available_models first and pass the chosen model IDs."
+                    }
+                )
 
             # Run step-by-step, capturing replay frames for the web UI
             all_events = []
@@ -764,18 +862,24 @@ class Orchestrator:
                 env_state = env.get_state()
                 step_events = env.step()
                 all_events.extend(step_events)
-                replay_frames.append({
-                    "step": env_state["step"],
-                    "agents": env_state["agents"],
-                    "resources": [
-                        {"type": r.get("type", "unknown"), "x": r["x"], "y": r["y"]}
-                        for r in env_state["resources"]
-                    ],
-                    "actions": [
-                        {"agent_id": e.agent_id, "action": e.action.name, "reward": e.outcome.get("reward", 0)}
-                        for e in step_events
-                    ],
-                })
+                replay_frames.append(
+                    {
+                        "step": env_state["step"],
+                        "agents": env_state["agents"],
+                        "resources": [
+                            {"type": r.get("type", "unknown"), "x": r["x"], "y": r["y"]}
+                            for r in env_state["resources"]
+                        ],
+                        "actions": [
+                            {
+                                "agent_id": e.agent_id,
+                                "action": e.action.name,
+                                "reward": e.outcome.get("reward", 0),
+                            }
+                            for e in step_events
+                        ],
+                    }
+                )
 
             # Detect critical events (rule-based, no LLM)
             critical = detect_critical_events(all_events)
@@ -787,8 +891,12 @@ class Orchestrator:
                 trace = {
                     "agent_id": e.agent_id,
                     "step": e.step,
-                    "perception": _make_serializable(e.perception) if e.perception else None,
-                    "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+                    "perception": _make_serializable(e.perception)
+                    if e.perception
+                    else None,
+                    "pre_state": _make_serializable(e.pre_state)
+                    if e.pre_state
+                    else None,
                     "post_state": _make_serializable(e.outcome.get("model_state", {})),
                     "available_actions": e.available_actions or None,
                     "action_chosen": {"name": e.action.name, "params": e.action.params},
@@ -822,15 +930,22 @@ class Orchestrator:
             # Persist simulation results to S3 + Postgres
             if state.get("experiment_id"):
                 exp_id = state["experiment_id"]
-                events_stripped = json.dumps([
-                    {
-                        "step": e.step,
-                        "agent_id": e.agent_id,
-                        "action": {"name": e.action.name, "params": e.action.params},
-                        "outcome": {k: v for k, v in e.outcome.items() if k != "model_state"},
-                    }
-                    for e in all_events
-                ])
+                events_stripped = json.dumps(
+                    [
+                        {
+                            "step": e.step,
+                            "agent_id": e.agent_id,
+                            "action": {
+                                "name": e.action.name,
+                                "params": e.action.params,
+                            },
+                            "outcome": {
+                                k: v for k, v in e.outcome.items() if k != "model_state"
+                            },
+                        }
+                        for e in all_events
+                    ]
+                )
                 events_key = f"experiments/{exp_id}/events.json"
                 replay_key = f"experiments/{exp_id}/replay.json"
                 await shared.storage.put_text(events_key, events_stripped)
@@ -850,22 +965,27 @@ class Orchestrator:
                     )
                     await session.commit()
 
-            return json.dumps({
-                "agents": len(env._agents),
-                "steps": steps,
-                "total_events": len(all_events),
-                "agents_alive": sum(1 for a in env._agents if a.alive),
-                "models": models_used,
-            })
+            return json.dumps(
+                {
+                    "agents": len(env._agents),
+                    "steps": steps,
+                    "total_events": len(all_events),
+                    "agents_alive": sum(1 for a in env._agents if a.alive),
+                    "models": models_used,
+                }
+            )
 
         # --- observe_simulation: calls the Tracker ---
         async def observe_simulation(params: dict) -> str:
             if not state.get("events"):
-                return json.dumps({"error": "No simulation data. Call run_simulation first."})
+                return json.dumps(
+                    {"error": "No simulation data. Call run_simulation first."}
+                )
             tracker = Tracker(client=client)
             focus = params.get("focus", "Observa la simulacion y reporta que paso.")
             result = await tracker.run(
-                focus, state["events"],
+                focus,
+                state["events"],
                 on_tool_call=self._make_tool_callback("Tracker"),
                 critical_events=state.get("critical_events"),
             )
@@ -897,14 +1017,18 @@ class Orchestrator:
         # --- analyze_results: calls the Analyst (can be called multiple times) ---
         async def analyze_results(params: dict) -> str:
             if not state.get("tracker_output"):
-                return json.dumps({"error": "No observations yet. Call observe_simulation first."})
+                return json.dumps(
+                    {"error": "No observations yet. Call observe_simulation first."}
+                )
             # Initialize chart accumulator on first call
             if "charts" not in state:
                 state["charts"] = []
             # KG pre-fetch (kg-enrichment / P1-002)
             knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""), "analyst",
-                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
+                state.get("paradigm", ""),
+                "analyst",
+                on_warning=_on_kg_warning,
+                enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             analyst = Analyst(client=client)
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
@@ -938,16 +1062,21 @@ class Orchestrator:
         # --- generate_report: calls the Reporter (can be called multiple times) ---
         async def generate_report(params: dict) -> str:
             if not state.get("analyst_output"):
-                return json.dumps({"error": "No analysis yet. Call analyze_results first."})
+                return json.dumps(
+                    {"error": "No analysis yet. Call analyze_results first."}
+                )
             quality = params.get("quality", "standard")
             reporter_model = (
-                "anthropic/claude-sonnet-4-5" if quality == "detailed"
+                "anthropic/claude-sonnet-4-5"
+                if quality == "detailed"
                 else "anthropic/claude-haiku-4-5"
             )
             # KG pre-fetch (kg-enrichment / P1-002)
             knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""), "reporter",
-                on_warning=_on_kg_warning, enabled=settings.ENABLE_KNOWLEDGE_READ,
+                state.get("paradigm", ""),
+                "reporter",
+                on_warning=_on_kg_warning,
+                enabled=settings.ENABLE_KNOWLEDGE_READ,
             )
             reporter = Reporter(client=client, model=reporter_model)
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
@@ -970,7 +1099,9 @@ class Orchestrator:
                 state["pdf_paths"] = []
             # Extract pdf_path (S3 key) from reporter result if present
             try:
-                result_data = json.loads(result) if result.strip().startswith("{") else None
+                result_data = (
+                    json.loads(result) if result.strip().startswith("{") else None
+                )
             except (json.JSONDecodeError, AttributeError):
                 result_data = None
             if result_data and result_data.get("pdf_path"):
@@ -1003,14 +1134,20 @@ class Orchestrator:
                     .limit(limit)
                 )
                 experiments = result.scalars().all()
-            return json.dumps([{
-                "id": str(e.id),
-                "description": e.description,
-                "status": e.status,
-                "models_used": e.models_used,
-                "steps": e.steps,
-                "created_at": str(e.created_at),
-            } for e in experiments], default=str)
+            return json.dumps(
+                [
+                    {
+                        "id": str(e.id),
+                        "description": e.description,
+                        "status": e.status,
+                        "models_used": e.models_used,
+                        "steps": e.steps,
+                        "created_at": str(e.created_at),
+                    }
+                    for e in experiments
+                ],
+                default=str,
+            )
 
         registry: Registry = {
             "create_environment": create_environment,

@@ -8,6 +8,7 @@ The server creates an Orchestrator per connection and streams back:
   - Tracker and Analyst results
   - Replay data for the simulation grid animation
 """
+
 from __future__ import annotations
 
 import json
@@ -29,9 +30,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import shared
+
     await shared.init()
     yield
     await shared.shutdown()
+
 
 app = FastAPI(title="DecisionLab API", lifespan=lifespan)
 
@@ -50,9 +53,9 @@ app.add_middleware(
 # Single source of truth for agent names, colors, and which state key indicates "done"
 AGENTS = [
     {"name": "Architect", "color": "#4ade80", "state_key": "spec"},
-    {"name": "Tracker",   "color": "#fbbf24", "state_key": "tracker_output"},
-    {"name": "Analyst",   "color": "#a78bfa", "state_key": "analyst_output"},
-    {"name": "Reporter",  "color": "#f472b6", "state_key": "pdf_path"},
+    {"name": "Tracker", "color": "#fbbf24", "state_key": "tracker_output"},
+    {"name": "Analyst", "color": "#a78bfa", "state_key": "analyst_output"},
+    {"name": "Reporter", "color": "#f472b6", "state_key": "pdf_path"},
 ]
 
 # Colors for simulation agents (assigned round-robin by index)
@@ -72,7 +75,9 @@ def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
     return [
         {
             "name": a["name"],
-            "status": "done" if orch_state and orch_state.get(a["state_key"]) else "idle",
+            "status": "done"
+            if orch_state and orch_state.get(a["state_key"])
+            else "idle",
             "color": a["color"],
         }
         for a in AGENTS
@@ -82,6 +87,7 @@ def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/health")
 async def health():
@@ -97,16 +103,21 @@ async def websocket_chat(ws: WebSocket):
     orch = Orchestrator(client=client)
 
     # Send initial agent states + color palette to the UI
-    await ws.send_json({
-        "type": "agents",
-        "agents": _build_agent_states(),
-        "pipeline": [],
-        "simColors": SIM_AGENT_COLORS,
-    })
+    await ws.send_json(
+        {
+            "type": "agents",
+            "agents": _build_agent_states(),
+            "pipeline": [],
+            "simColors": SIM_AGENT_COLORS,
+        }
+    )
 
     # Wire up internal tool call notifications
     async def _on_agent_tool(agent_name: str, tool_name: str):
-        await ws.send_json({"type": "agent_tool", "agent": agent_name, "tool": tool_name})
+        await ws.send_json(
+            {"type": "agent_tool", "agent": agent_name, "tool": tool_name}
+        )
+
     orch.on_agent_tool_call = _on_agent_tool
 
     # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
@@ -118,29 +129,38 @@ async def websocket_chat(ws: WebSocket):
         state = orch._state
         if tool_name == "create_environment" and state.get("spec"):
             spec = state["spec"]
-            resources = ", ".join(f"{r['type']} ×{r['count']}" for r in spec["resources"])
-            await ws.send_json({
-                "type": "message",
-                "from": "orchestrator",
-                "text": f"El **Architect** ha diseñado el entorno de simulación: un grid {spec['grid']['width']}×{spec['grid']['height']} con {resources}. Ahora voy a buscar los modelos disponibles y lanzar la simulación.",
-                "card": {
-                    "title": "Environment Spec",
-                    "data": {
-                        "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
-                        "Acciones posibles": ", ".join(a["name"] if isinstance(a, dict) else str(a) for a in spec["actions"]),
-                        "Recursos": resources,
+            resources = ", ".join(
+                f"{r['type']} ×{r['count']}" for r in spec["resources"]
+            )
+            await ws.send_json(
+                {
+                    "type": "message",
+                    "from": "orchestrator",
+                    "text": f"El **Architect** ha diseñado el entorno de simulación: un grid {spec['grid']['width']}×{spec['grid']['height']} con {resources}. Ahora voy a buscar los modelos disponibles y lanzar la simulación.",
+                    "card": {
+                        "title": "Environment Spec",
+                        "data": {
+                            "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
+                            "Acciones posibles": ", ".join(
+                                a["name"] if isinstance(a, dict) else str(a)
+                                for a in spec["actions"]
+                            ),
+                            "Recursos": resources,
+                        },
                     },
-                },
-            })
+                }
+            )
         elif tool_name == "run_simulation" and state.get("replay"):
             replay = state["replay"]
             n_agents = len(replay["frames"][0]["agents"]) if replay["frames"] else 0
-            await ws.send_json({
-                "type": "message",
-                "from": "orchestrator",
-                "text": f"Simulación completada: **{n_agents} agentes** durante **{replay['total_steps']} pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.",
-                "replay": replay,
-            })
+            await ws.send_json(
+                {
+                    "type": "message",
+                    "from": "orchestrator",
+                    "text": f"Simulación completada: **{n_agents} agentes** durante **{replay['total_steps']} pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.",
+                    "replay": replay,
+                }
+            )
         elif tool_name == "observe_simulation" and state.get("tracker_output"):
             try:
                 tracker = json.loads(state["tracker_output"])
@@ -153,14 +173,20 @@ async def websocket_chat(ws: WebSocket):
                         for ep in episodes[:5]:
                             agent_name = ep.get("agent", "")
                             desc = ep.get("description", ep.get("type", ""))
-                            ep_lines.append(f"- **{agent_name}**: {desc}" if agent_name else f"- {desc}")
+                            ep_lines.append(
+                                f"- **{agent_name}**: {desc}"
+                                if agent_name
+                                else f"- {desc}"
+                            )
                         ep_summary = "\n\nEpisodios detectados:\n" + "\n".join(ep_lines)
-                    await ws.send_json({
-                        "type": "message",
-                        "from": "orchestrator",
-                        "text": f"El **Tracker** ha registrado las trayectorias de **{n_traj} agentes**.{ep_summary}\n\nAhora el Analyst va a buscar patrones.",
-                        "tracker": tracker,
-                    })
+                    await ws.send_json(
+                        {
+                            "type": "message",
+                            "from": "orchestrator",
+                            "text": f"El **Tracker** ha registrado las trayectorias de **{n_traj} agentes**.{ep_summary}\n\nAhora el Analyst va a buscar patrones.",
+                            "tracker": tracker,
+                        }
+                    )
             except (json.JSONDecodeError, TypeError):
                 pass
         elif tool_name == "analyze_results" and state.get("analyst_output"):
@@ -171,7 +197,9 @@ async def websocket_chat(ws: WebSocket):
                     n_comp = len(analyst.get("comparisons", []))
                     # Include any new charts from this analysis call
                     charts = state.get("_last_charts") or []
-                    chart_text = f" y generado **{len(charts)} gráficas**" if charts else ""
+                    chart_text = (
+                        f" y generado **{len(charts)} gráficas**" if charts else ""
+                    )
                     msg: dict = {
                         "type": "message",
                         "from": "orchestrator",
@@ -186,18 +214,22 @@ async def websocket_chat(ws: WebSocket):
         elif tool_name == "generate_report" and state.get("pdf_paths"):
             paths = state["pdf_paths"]
             if len(paths) == 1:
-                await ws.send_json({
-                    "type": "message",
-                    "from": "orchestrator",
-                    "text": f"El **Reporter** ha generado el informe PDF: `{paths[0]}`.",
-                })
+                await ws.send_json(
+                    {
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": f"El **Reporter** ha generado el informe PDF: `{paths[0]}`.",
+                    }
+                )
             else:
                 pdf_list = "\n".join(f"- `{p}`" for p in paths)
-                await ws.send_json({
-                    "type": "message",
-                    "from": "orchestrator",
-                    "text": f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}",
-                })
+                await ws.send_json(
+                    {
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}",
+                    }
+                )
 
     def patched_build():
         tools, registry = original_build()
@@ -205,16 +237,24 @@ async def websocket_chat(ws: WebSocket):
         for tool_name, fn in registry.items():
             agent_name = TOOL_AGENT_MAP.get(tool_name)
             if agent_name:
+
                 async def _wrapper(params, _tool=tool_name, _agent=agent_name, _fn=fn):
-                    await ws.send_json({"type": "agent_status", "agent": _agent, "status": "working"})
+                    await ws.send_json(
+                        {"type": "agent_status", "agent": _agent, "status": "working"}
+                    )
                     try:
                         result = await _fn(params)
                     except Exception:
-                        await ws.send_json({"type": "agent_status", "agent": _agent, "status": "idle"})
+                        await ws.send_json(
+                            {"type": "agent_status", "agent": _agent, "status": "idle"}
+                        )
                         raise
-                    await ws.send_json({"type": "agent_status", "agent": _agent, "status": "done"})
+                    await ws.send_json(
+                        {"type": "agent_status", "agent": _agent, "status": "done"}
+                    )
                     await _send_intermediate_card(_tool)
                     return result
+
                 wrapped[tool_name] = _wrapper
             else:
                 # run_simulation is not in TOOL_AGENT_MAP but we still want the card
@@ -222,6 +262,7 @@ async def websocket_chat(ws: WebSocket):
                     result = await _fn(params)
                     await _send_intermediate_card(_tool)
                     return result
+
                 wrapped[tool_name] = _sim_wrapper
         return tools, wrapped
 
@@ -246,20 +287,30 @@ async def websocket_chat(ws: WebSocket):
                 # Send updated agent states
                 agents_state = _build_agent_states(state)
                 pipeline = []
-                for key, step in [("spec", "arch"), ("events", "sim"), ("tracker_output", "track"), ("analyst_output", "anal"), ("pdf_path", "repo")]:
+                for key, step in [
+                    ("spec", "arch"),
+                    ("events", "sim"),
+                    ("tracker_output", "track"),
+                    ("analyst_output", "anal"),
+                    ("pdf_path", "repo"),
+                ]:
                     if state.get(key):
                         pipeline.append({"step": step, "status": "done"})
 
-                await ws.send_json({"type": "agents", "agents": agents_state, "pipeline": pipeline})
+                await ws.send_json(
+                    {"type": "agents", "agents": agents_state, "pipeline": pipeline}
+                )
 
                 # Send the orchestrator's final text response
                 # Data cards were already sent in streaming via _send_intermediate_card
                 if response.strip():
-                    await ws.send_json({
-                        "type": "message",
-                        "from": "orchestrator",
-                        "text": response,
-                    })
+                    await ws.send_json(
+                        {
+                            "type": "message",
+                            "from": "orchestrator",
+                            "text": response,
+                        }
+                    )
 
             except Exception as e:
                 logger.error("Orchestrator error: %s", e, exc_info=True)

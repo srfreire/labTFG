@@ -4,6 +4,7 @@ Dynamic loader for Phase 1 Builder decision models.
 Phase 1 generates *_model.py files that contain decision model classes.
 This module discovers models from Postgres and loads them on-demand from S3.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -23,15 +24,17 @@ logger = logging.getLogger(__name__)
 # Model metadata
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ModelInfo:
     """Metadata about a discovered decision model."""
-    id: str                 # UUID primary key
-    paradigm: str           # e.g. "homeostatic-regulation"
-    formulation: str        # e.g. "drive-reduction-rl"
-    class_name: str         # e.g. "DriveReductionRLModel"
-    description: str        # from the module docstring
-    s3_model_key: str       # S3 key for the model source file
+
+    id: str  # UUID primary key
+    paradigm: str  # e.g. "homeostatic-regulation"
+    formulation: str  # e.g. "drive-reduction-rl"
+    class_name: str  # e.g. "DriveReductionRLModel"
+    description: str  # from the module docstring
+    s3_model_key: str  # S3 key for the model source file
     run_id: str | None = None  # UUID of the Phase 1 run that produced this model
 
 
@@ -48,6 +51,7 @@ def _has_decision_model_interface(cls: type) -> bool:
 # Discovery -- query Postgres for registered models
 # ---------------------------------------------------------------------------
 
+
 async def discover_models() -> dict[str, ModelInfo]:
     """Discover models from the Postgres models table.
 
@@ -55,9 +59,10 @@ async def discover_models() -> dict[str, ModelInfo]:
     When multiple runs produce the same paradigm/formulation, the last row
     encountered wins (non-deterministic order).
     """
+    from sqlalchemy import select
+
     import shared
     from shared.models import Model as DBModel
-    from sqlalchemy import select
 
     models: dict[str, ModelInfo] = {}
     async with shared.db.get_session() as session:
@@ -68,7 +73,9 @@ async def discover_models() -> dict[str, ModelInfo]:
             if key in models:
                 logger.warning(
                     "Duplicate model key %s (run_id=%s overwrites run_id=%s)",
-                    key, row.run_id, models[key].run_id,
+                    key,
+                    row.run_id,
+                    models[key].run_id,
                 )
             models[key] = ModelInfo(
                 id=str(row.id),
@@ -86,7 +93,10 @@ async def discover_models() -> dict[str, ModelInfo]:
 # Instantiation -- download from S3, load via importlib
 # ---------------------------------------------------------------------------
 
-async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs) -> object:
+
+async def load_model(
+    model_info: ModelInfo, *, seed: int | None = None, **kwargs
+) -> object:
     """Download a model from S3 and instantiate it.
 
     The model source is written to a temp directory and loaded as a module.
@@ -100,7 +110,9 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
     tmp_path = Path(tmp_dir) / f"{model_info.formulation}_model.py"
     tmp_path.write_bytes(model_bytes)
 
-    module_name = f"_builder_{model_info.paradigm}_{model_info.formulation}_{id(object())}"
+    module_name = (
+        f"_builder_{model_info.paradigm}_{model_info.formulation}_{id(object())}"
+    )
     spec = importlib.util.spec_from_file_location(module_name, tmp_path)
     if spec is None or spec.loader is None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -113,7 +125,7 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
         mod.random = random.Random(seed)
 
     model_class: type | None = None
-    for name, obj in inspect.getmembers(mod, inspect.isclass):
+    for _name, obj in inspect.getmembers(mod, inspect.isclass):
         if obj.__module__ == module_name and _has_decision_model_interface(obj):
             model_class = obj
             break
@@ -122,7 +134,7 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
 
     # Don't clean up tmp_dir yet -- the class object references the file
     # Store for later cleanup
-    if not hasattr(load_model, '_tmp_dirs'):
+    if not hasattr(load_model, "_tmp_dirs"):
         load_model._tmp_dirs = []
     load_model._tmp_dirs.append(tmp_dir)
 
@@ -132,11 +144,13 @@ async def load_model(model_info: ModelInfo, *, seed: int | None = None, **kwargs
     try:
         return model_class(**kwargs)
     except TypeError as e:
-        raise ValueError(f"Failed to instantiate {model_info.paradigm}/{model_info.formulation}: {e}") from e
+        raise ValueError(
+            f"Failed to instantiate {model_info.paradigm}/{model_info.formulation}: {e}"
+        ) from e
 
 
 def cleanup_temp_models() -> None:
     """Clean up temp dirs created by load_model."""
-    for d in getattr(load_model, '_tmp_dirs', []):
+    for d in getattr(load_model, "_tmp_dirs", []):
         shutil.rmtree(d, ignore_errors=True)
     load_model._tmp_dirs = []

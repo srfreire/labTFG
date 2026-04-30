@@ -2,15 +2,14 @@
 
 Mocks retrieve_context so no real KG infrastructure is needed.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from simlab.environment import Action, Event
 from simlab.orchestrator import prefetch_knowledge
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -100,7 +99,9 @@ async def test_prefetch_partial_failure():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "analyst", on_warning=on_warning)
+        result = await prefetch_knowledge(
+            "prospect_theory", "analyst", on_warning=on_warning
+        )
 
     on_warning.assert_called_once()
     assert on_warning.call_args[0][0] == "analyst"
@@ -119,7 +120,9 @@ async def test_prefetch_total_failure():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "analyst", on_warning=on_warning)
+        result = await prefetch_knowledge(
+            "prospect_theory", "analyst", on_warning=on_warning
+        )
 
     assert result == ""
     assert on_warning.call_count == 2
@@ -164,8 +167,12 @@ async def test_prefetch_no_paradigm():
 # Architect stage (P2-002)
 # ---------------------------------------------------------------------------
 
-_PARADIGM_FACTS = "## Retrieved Knowledge (2 results)\n\n### Result 1\nProspect theory facts..."
-_PREV_ENVS = "## Retrieved Knowledge (1 results)\n\n### Result 1\nGrid 10x10 with resources..."
+_PARADIGM_FACTS = (
+    "## Retrieved Knowledge (2 results)\n\n### Result 1\nProspect theory facts..."
+)
+_PREV_ENVS = (
+    "## Retrieved Knowledge (1 results)\n\n### Result 1\nGrid 10x10 with resources..."
+)
 
 
 @pytest.mark.asyncio
@@ -260,7 +267,9 @@ async def test_analyst_knowledge_context_injected():
     with patch("simlab.analyst.run_agent_loop", side_effect=fake_loop):
         analyst = Analyst(client=MagicMock())
         await analyst.run(
-            "Analyze", "tracker data", [_FAKE_EVENT],
+            "Analyze",
+            "tracker data",
+            [_FAKE_EVENT],
             knowledge_context=_KNOWLEDGE_CTX,
         )
 
@@ -304,8 +313,11 @@ async def test_reporter_knowledge_context_injected():
     with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
         reporter = Reporter(client=MagicMock())
         await reporter.run(
-            "Report", "tracker data", "analyst data",
-            run_id="r1", experiment_id="e1",
+            "Report",
+            "tracker data",
+            "analyst data",
+            run_id="r1",
+            experiment_id="e1",
             knowledge_context=_KNOWLEDGE_CTX,
         )
 
@@ -329,8 +341,11 @@ async def test_reporter_no_knowledge_context():
     with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
         reporter = Reporter(client=MagicMock())
         await reporter.run(
-            "Report", "tracker data", "analyst data",
-            run_id="r1", experiment_id="e1",
+            "Report",
+            "tracker data",
+            "analyst data",
+            run_id="r1",
+            experiment_id="e1",
         )
 
     msg = captured["messages"][0]["content"]

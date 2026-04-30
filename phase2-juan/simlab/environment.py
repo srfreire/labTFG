@@ -11,16 +11,17 @@ This module defines all the core types and the simulation loop:
 
 The Environment is pure Python — no LLM, no external dependencies.
 """
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-
 # ---------------------------------------------------------------------------
 # Data types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Position:
@@ -56,20 +57,24 @@ class Resource:
 # Effect types — what happens when an action is executed
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MoveEffect:
     dx: int
     dy: int
     reward: float = 0.0
 
+
 @dataclass
 class ConsumeEffect:
     resource_type: str
     reward: float
 
+
 @dataclass
 class NoopEffect:
     reward: float = 0.0
+
 
 Effect = MoveEffect | ConsumeEffect | NoopEffect
 
@@ -78,15 +83,19 @@ Effect = MoveEffect | ConsumeEffect | NoopEffect
 # Configuration — how the environment is set up
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ActionRule:
     """Maps an action name to its effect."""
+
     name: str
     effect: Effect
+
 
 @dataclass
 class ResourceRule:
     """Defines a type of resource and how it spawns."""
+
     type: str
     properties: dict = field(default_factory=dict)
     count: int = 0
@@ -96,6 +105,7 @@ class ResourceRule:
 # ---------------------------------------------------------------------------
 # DecisionModel protocol — Phase 1 models implement this interface
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class DecisionModel(Protocol):
@@ -108,6 +118,7 @@ class DecisionModel(Protocol):
 # Agent — wraps a decision model with position and alive state
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Agent:
     id: str
@@ -119,6 +130,7 @@ class Agent:
 # ---------------------------------------------------------------------------
 # Environment — the 2D grid simulation
 # ---------------------------------------------------------------------------
+
 
 class Environment:
     """A 2D grid world where agents make decisions and interact with resources.
@@ -181,11 +193,16 @@ class Environment:
                 properties[key] = self._rng.uniform(value[0], value[1])
             else:
                 properties[key] = value
-        self._resources.append(Resource(
-            id=f"{rule.type}_{self._resource_counter}",
-            position=Position(self._rng.randint(0, self.width - 1), self._rng.randint(0, self.height - 1)),
-            properties=properties,
-        ))
+        self._resources.append(
+            Resource(
+                id=f"{rule.type}_{self._resource_counter}",
+                position=Position(
+                    self._rng.randint(0, self.width - 1),
+                    self._rng.randint(0, self.height - 1),
+                ),
+                properties=properties,
+            )
+        )
 
     # --- Public API ---
 
@@ -218,7 +235,11 @@ class Environment:
         return {
             "available_actions": list(self._action_registry.keys()),
             "resource_types": {
-                rtype: {"properties": rule.properties, "count": rule.count, "regenerate": rule.regenerate}
+                rtype: {
+                    "properties": rule.properties,
+                    "count": rule.count,
+                    "regenerate": rule.regenerate,
+                }
                 for rtype, rule in self._resource_rules.items()
             },
             "grid": {"width": self.width, "height": self.height},
@@ -228,7 +249,9 @@ class Environment:
 
     def _get_all_resource_types(self) -> set[str]:
         """Get all resource types (both currently placed and defined in rules)."""
-        placed = {r.properties.get("type") for r in self._resources if "type" in r.properties}
+        placed = {
+            r.properties.get("type") for r in self._resources if "type" in r.properties
+        }
         defined = set(self._resource_rules)
         return placed | defined
 
@@ -288,15 +311,19 @@ class Environment:
     def _find_resource_at(self, resource_type: str, x: int, y: int) -> int | None:
         """Find the index of a resource of the given type at position (x, y)."""
         for i, r in enumerate(self._resources):
-            if (r.properties.get("type") == resource_type
-                    and r.position.x == x
-                    and r.position.y == y):
+            if (
+                r.properties.get("type") == resource_type
+                and r.position.x == x
+                and r.position.y == y
+            ):
                 return i
         return None
 
     def _apply_consume(self, agent: Agent, effect: ConsumeEffect) -> tuple[float, dict]:
         """Try to consume a resource at the agent's current position."""
-        idx = self._find_resource_at(effect.resource_type, agent.position.x, agent.position.y)
+        idx = self._find_resource_at(
+            effect.resource_type, agent.position.x, agent.position.y
+        )
 
         if idx is None:
             return 0.0, {"consumed": False}

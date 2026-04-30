@@ -1,4 +1,5 @@
 """Async database service using SQLAlchemy 2.0."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -22,12 +23,8 @@ class DatabaseService:
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
 
     async def connect(self) -> None:
-        self._engine = create_async_engine(
-            self._dsn, pool_size=5, max_overflow=10
-        )
-        self._session_factory = async_sessionmaker(
-            self._engine, expire_on_commit=False
-        )
+        self._engine = create_async_engine(self._dsn, pool_size=5, max_overflow=10)
+        self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
         # Verify connectivity
         async with self._engine.begin() as conn:
             await conn.execute(text("SELECT 1"))

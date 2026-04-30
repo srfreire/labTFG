@@ -1,4 +1,5 @@
 """Integration tests for EmbeddingService (requires VOYAGE_API_KEY)."""
+
 from __future__ import annotations
 
 import os
@@ -7,6 +8,8 @@ import pytest
 import pytest_asyncio
 
 from shared.embedding import EmbeddingService
+
+pytestmark = pytest.mark.integration
 
 
 @pytest_asyncio.fixture

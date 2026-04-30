@@ -7,12 +7,13 @@ Flow:
   3. Finds behavioral patterns, compares agents, computes metrics
   4. Returns a structured JSON report with patterns, comparisons, and metrics
 """
+
 from __future__ import annotations
 
+from simlab.charts import build_chart_tools
 from simlab.environment import Event
 from simlab.loop import run_agent_loop
-from simlab.charts import build_chart_tools
-from simlab.tools import build_simulation_tools, build_cross_experiment_tools
+from simlab.tools import build_cross_experiment_tools, build_simulation_tools
 from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
@@ -221,8 +222,8 @@ Only include this section if you actually queried past experiments. Do NOT fabri
 # Analyst class
 # ---------------------------------------------------------------------------
 
-class Analyst:
 
+class Analyst:
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model
@@ -250,14 +251,18 @@ class Analyst:
         # Use external accumulator if provided, otherwise use instance list
         self.charts = charts_accumulator if charts_accumulator is not None else []
 
-        tools, registry = build_simulation_tools(events, critical_events=critical_events)
+        tools, registry = build_simulation_tools(
+            events, critical_events=critical_events
+        )
         db_tools, db_registry = build_cross_experiment_tools()
         tools += db_tools
         registry.update(db_registry)
 
         # Add chart tools if experiment_id is available
         if experiment_id:
-            chart_tools, chart_registry = build_chart_tools(events, experiment_id, self.charts)
+            chart_tools, chart_registry = build_chart_tools(
+                events, experiment_id, self.charts
+            )
             tools += chart_tools
             registry.update(chart_registry)
 

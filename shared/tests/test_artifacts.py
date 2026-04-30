@@ -18,6 +18,9 @@ from shared.database import DatabaseService
 from shared.models import Artifact, Base, Experiment, Run
 from shared.settings import Settings, load_settings
 
+pytestmark = pytest.mark.integration
+
+
 DSN = load_settings().POSTGRES_DSN
 
 

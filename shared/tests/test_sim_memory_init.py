@@ -5,6 +5,7 @@ The happy-path test (flag on + real TrackerMemoryWriter) lives in
 in that package's environment. Here we cover the failure/short-circuit paths
 that don't require the `simlab` import to succeed.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -13,6 +14,8 @@ import pytest
 
 import shared
 from shared.settings import Settings
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(autouse=True)
@@ -47,15 +50,22 @@ def test_flag_off_leaves_writer_none(monkeypatch):
 )
 def test_flag_on_without_infra_logs_warning_and_skips(monkeypatch, caplog, missing):
     monkeypatch.setattr(
-        shared, "vectors", None if missing == "vectors" else SimpleNamespace(),
+        shared,
+        "vectors",
+        None if missing == "vectors" else SimpleNamespace(),
         raising=False,
     )
     monkeypatch.setattr(
-        shared, "embeddings", None if missing == "embeddings" else SimpleNamespace(),
+        shared,
+        "embeddings",
+        None if missing == "embeddings" else SimpleNamespace(),
         raising=False,
     )
     monkeypatch.setattr(
-        shared, "db", None if missing == "db" else SimpleNamespace(), raising=False,
+        shared,
+        "db",
+        None if missing == "db" else SimpleNamespace(),
+        raising=False,
     )
 
     with caplog.at_level("WARNING", logger="shared"):

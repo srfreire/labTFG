@@ -26,7 +26,9 @@ class EmbeddingService:
     """Voyage AI embeddings + ZeroEntropy reranking."""
 
     def __init__(self, voyage_api_key: str, zeroentropy_api_key: str) -> None:
-        self._embed_client = voyageai.AsyncClient(api_key=voyage_api_key, max_retries=MAX_RETRIES)
+        self._embed_client = voyageai.AsyncClient(
+            api_key=voyage_api_key, max_retries=MAX_RETRIES
+        )
         self._rerank_client = ZeroEntropy(api_key=zeroentropy_api_key)
 
     async def embed_texts(
@@ -40,7 +42,9 @@ class EmbeddingService:
         batches = [texts[i : i + BATCH_SIZE] for i in range(0, len(texts), BATCH_SIZE)]
         results = await asyncio.gather(
             *(
-                self._embed_client.embed(batch, model=DOC_EMBED_MODEL, input_type="document")
+                self._embed_client.embed(
+                    batch, model=DOC_EMBED_MODEL, input_type="document"
+                )
                 for batch in batches
             )
         )

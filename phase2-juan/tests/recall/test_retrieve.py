@@ -5,15 +5,16 @@ with a mocked ``create_retrieve_knowledge`` handler, verify parameter
 propagation (namespace, as_of, stage, run_id), and confirm the handler
 output is returned verbatim.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from simlab.recall.retrieve import _EMPTY_RESULT, retrieve_context
 
 import shared
 from shared.settings import Settings
-from simlab.recall.retrieve import _EMPTY_RESULT, retrieve_context
 
 _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
 _FACTORY_PATH = "decisionlab.knowledge.retrieval.tool.create_retrieve_knowledge"
@@ -46,7 +47,9 @@ async def test_flag_on_calls_create_retrieve_knowledge_with_correct_args():
     shared.embeddings = MagicMock()
     shared.kg = MagicMock()
 
-    fake_handler = AsyncMock(return_value="## Retrieved Knowledge (2 results)\n\nFact A\nFact B")
+    fake_handler = AsyncMock(
+        return_value="## Retrieved Knowledge (2 results)\n\nFact A\nFact B"
+    )
     mock_factory = MagicMock(return_value=fake_handler)
 
     with (

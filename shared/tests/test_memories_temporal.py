@@ -23,6 +23,8 @@ from shared.memories import (
 from shared.models import Base
 from shared.settings import load_settings
 
+pytestmark = pytest.mark.integration
+
 DSN = load_settings().POSTGRES_DSN
 
 
@@ -71,21 +73,30 @@ class TestGetMemoriesAtTime:
         future = now + timedelta(days=10)
 
         # Memory valid from past, no expiry (currently valid)
-        await create_memory(session, **_mem_kwargs(
-            content="valid-at-past",
-            valid_from=past,
-        ))
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="valid-at-past",
+                valid_from=past,
+            ),
+        )
         # Memory valid from future (not yet valid at past)
-        await create_memory(session, **_mem_kwargs(
-            content="future-only",
-            valid_from=future,
-        ))
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="future-only",
+                valid_from=future,
+            ),
+        )
         # Memory expired before query time
-        await create_memory(session, **_mem_kwargs(
-            content="expired",
-            valid_from=past - timedelta(days=20),
-            valid_to=past - timedelta(days=5),
-        ))
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="expired",
+                valid_from=past - timedelta(days=20),
+                valid_to=past - timedelta(days=5),
+            ),
+        )
         await session.commit()
 
         # Query at "past" — should only see the first one
@@ -101,10 +112,13 @@ class TestGetMemoriesAtTime:
         now = datetime.now()
         past = now - timedelta(days=5)
 
-        await create_memory(session, **_mem_kwargs(
-            content="no-expiry",
-            valid_from=past,
-        ))
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="no-expiry",
+                valid_from=past,
+            ),
+        )
         await session.commit()
 
         results = await get_memories_at_time(session, as_of=now)
@@ -117,16 +131,22 @@ class TestGetMemoriesAtTime:
         now = datetime.now()
         past = now - timedelta(days=5)
 
-        await create_memory(session, **_mem_kwargs(
-            content="paradigm-fact",
-            namespace="paradigm",
-            valid_from=past,
-        ))
-        await create_memory(session, **_mem_kwargs(
-            content="model-fact",
-            namespace="model",
-            valid_from=past,
-        ))
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="paradigm-fact",
+                namespace="paradigm",
+                valid_from=past,
+            ),
+        )
+        await create_memory(
+            session,
+            **_mem_kwargs(
+                content="model-fact",
+                namespace="model",
+                valid_from=past,
+            ),
+        )
         await session.commit()
 
         results = await get_memories_at_time(session, as_of=now, namespace="paradigm")
@@ -144,9 +164,12 @@ class TestGetMemoryHistory:
     async def test_returns_supersession_chain_for_content(self, session):
         """After 3 versions of a fact, get_memory_history returns all 3."""
         # Create v1
-        v1 = await create_memory(session, **_mem_kwargs(
-            content="parameter value is 50",
-        ))
+        v1 = await create_memory(
+            session,
+            **_mem_kwargs(
+                content="parameter value is 50",
+            ),
+        )
         await session.commit()
 
         # Supersede v1 → v2
@@ -156,7 +179,7 @@ class TestGetMemoryHistory:
         await session.commit()
 
         # Supersede v2 → v3
-        v3 = await supersede_memory(session, v2.id, "parameter value is 65", **kwargs)
+        await supersede_memory(session, v2.id, "parameter value is 65", **kwargs)
         await session.commit()
 
         # Search for the full history of "parameter value"

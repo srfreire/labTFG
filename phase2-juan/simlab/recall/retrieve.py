@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import shared
 from shared.settings import Settings, load_settings
@@ -113,9 +114,7 @@ async def build_retriever_from_settings(
         return None
 
     if shared.vectors is None and shared.embeddings is None and shared.kg is None:
-        logger.warning(
-            "ENABLE_KNOWLEDGE_READ=true but knowledge infra unavailable"
-        )
+        logger.warning("ENABLE_KNOWLEDGE_READ=true but knowledge infra unavailable")
         return None
 
     return retrieve_context

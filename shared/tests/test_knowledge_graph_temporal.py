@@ -13,6 +13,9 @@ import pytest
 
 from shared.knowledge_graph import KnowledgeGraph
 
+pytestmark = pytest.mark.integration
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

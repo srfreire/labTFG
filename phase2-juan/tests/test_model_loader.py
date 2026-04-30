@@ -1,19 +1,19 @@
 """Tests for model discovery and loading with UUID/slug schema."""
+
 from __future__ import annotations
 
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from simlab.model_loader import ModelInfo, discover_models, load_model
-
 
 # ---------------------------------------------------------------------------
 # Fixtures — fake DB rows matching the new Model schema
 # ---------------------------------------------------------------------------
 
 _SENTINEL = object()
+
 
 def _make_db_row(
     *,
@@ -54,8 +54,11 @@ def _mock_session_with_rows(rows: list) -> tuple[AsyncMock, MagicMock]:
 # discover_models tests
 # ---------------------------------------------------------------------------
 
+
 async def test_discover_returns_dict_keyed_by_paradigm_formulation():
-    row = _make_db_row(paradigm="homeostatic-regulation", formulation="drive-reduction-rl")
+    row = _make_db_row(
+        paradigm="homeostatic-regulation", formulation="drive-reduction-rl"
+    )
     _, mock_db = _mock_session_with_rows([row])
 
     with patch("shared.db", mock_db):
@@ -100,7 +103,7 @@ async def test_discover_models_null_description():
     with patch("shared.db", mock_db):
         models = await discover_models()
 
-    info = list(models.values())[0]
+    info = next(iter(models.values()))
     assert info.description == ""
 
 
@@ -111,13 +114,14 @@ async def test_discover_models_null_run_id():
     with patch("shared.db", mock_db):
         models = await discover_models()
 
-    info = list(models.values())[0]
+    info = next(iter(models.values()))
     assert info.run_id is None
 
 
 # ---------------------------------------------------------------------------
 # ModelInfo tests
 # ---------------------------------------------------------------------------
+
 
 def test_model_info_has_required_fields():
     info = ModelInfo(
@@ -138,8 +142,12 @@ def test_model_info_has_required_fields():
 
 def test_model_info_run_id_defaults_to_none():
     info = ModelInfo(
-        id="abc", paradigm="p", formulation="f",
-        class_name="C", description="", s3_model_key="k",
+        id="abc",
+        paradigm="p",
+        formulation="f",
+        class_name="C",
+        description="",
+        s3_model_key="k",
     )
     assert info.run_id is None
 
@@ -147,6 +155,7 @@ def test_model_info_run_id_defaults_to_none():
 # ---------------------------------------------------------------------------
 # load_model tests
 # ---------------------------------------------------------------------------
+
 
 def _make_model_info(**overrides) -> ModelInfo:
     """Build a ModelInfo with sensible defaults, overridable per-test."""
@@ -200,8 +209,15 @@ async def test_load_model_returns_decision_model():
 
 async def test_load_model_with_seed():
     info = _make_model_info()
-    perception = {"x": 0, "y": 0, "grid_width": 8, "grid_height": 8,
-                  "step": 0, "resources": {}, "last_action_result": {}}
+    perception = {
+        "x": 0,
+        "y": 0,
+        "grid_width": 8,
+        "grid_height": 8,
+        "step": 0,
+        "resources": {},
+        "last_action_result": {},
+    }
 
     with patch("shared.storage") as mock_storage:
         mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
@@ -226,7 +242,7 @@ async def test_load_model_no_model_class_raises():
 
 
 async def test_load_model_bad_kwargs_raises():
-    source_no_kwargs = '''\
+    source_no_kwargs = """\
 class StrictModel:
     def __init__(self):
         pass
@@ -236,8 +252,10 @@ class StrictModel:
         pass
     def get_state(self):
         return {}
-'''
-    info = _make_model_info(paradigm="strict", formulation="no-kwargs", class_name="StrictModel")
+"""
+    info = _make_model_info(
+        paradigm="strict", formulation="no-kwargs", class_name="StrictModel"
+    )
 
     with patch("shared.storage") as mock_storage:
         mock_storage.get = AsyncMock(return_value=source_no_kwargs.encode())

@@ -1,27 +1,28 @@
 """P1-002 — tests for pure fact generation helpers."""
+
 from __future__ import annotations
 
-import json
-
 import pytest
-
 from simlab.knowledge import ModelInfo, SimulationContext
 from simlab.knowledge.facts import (
-    FactSpec,
     build_all_facts,
     build_episode_facts,
     build_summary_fact,
     build_trajectory_facts,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-def _model(class_name="HomeostaticDriveReductionRL", paradigm="homeostatic-regulation",
-           formulation="drive-reduction-rl", model_id="m-1", phase1_run_id="r-1"):
+def _model(
+    class_name="HomeostaticDriveReductionRL",
+    paradigm="homeostatic-regulation",
+    formulation="drive-reduction-rl",
+    model_id="m-1",
+    phase1_run_id="r-1",
+):
     return ModelInfo(
         model_id=model_id,
         class_name=class_name,
@@ -64,9 +65,24 @@ def test_single_model_full_pipeline():
             },
         },
         "episodes": [
-            {"agent": "agent_0", "type": "foraging_success", "step": 30, "description": "ate a resource"},
-            {"agent": "agent_0", "type": "exploration", "steps": [10, 40], "description": "scouted"},
-            {"agent": "agent_1", "type": "starvation", "step": 120, "description": "ran out of energy"},
+            {
+                "agent": "agent_0",
+                "type": "foraging_success",
+                "step": 30,
+                "description": "ate a resource",
+            },
+            {
+                "agent": "agent_0",
+                "type": "exploration",
+                "steps": [10, 40],
+                "description": "scouted",
+            },
+            {
+                "agent": "agent_1",
+                "type": "starvation",
+                "step": 120,
+                "description": "ran out of energy",
+            },
         ],
     }
 
@@ -104,7 +120,9 @@ def test_single_model_full_pipeline():
     assert "move_east(80)" in traj0.text
     assert "move_west(60)" in traj0.text
     assert "wait(55)" in traj0.text
-    assert "consume" not in traj0.text.split("top actions:")[1]  # consume had 5, excluded
+    assert (
+        "consume" not in traj0.text.split("top actions:")[1]
+    )  # consume had 5, excluded
 
     # Episode
     assert episode.memory_type == "episodic"
@@ -123,23 +141,53 @@ def test_single_model_full_pipeline():
 
 
 def test_comparison_run_tags_each_fact_with_correct_model():
-    m1 = _model(class_name="DriveReductionRL", paradigm="homeostatic-regulation",
-                formulation="drive-reduction-rl", model_id="m-1")
-    m2 = _model(class_name="PINegativeFeedback", paradigm="homeostatic-regulation",
-                formulation="pi-negative-feedback", model_id="m-2")
-    context = _context(agent_to_model={
-        "agent_0": m1, "agent_1": m1,
-        "agent_2": m2, "agent_3": m2,
-    })
+    m1 = _model(
+        class_name="DriveReductionRL",
+        paradigm="homeostatic-regulation",
+        formulation="drive-reduction-rl",
+        model_id="m-1",
+    )
+    m2 = _model(
+        class_name="PINegativeFeedback",
+        paradigm="homeostatic-regulation",
+        formulation="pi-negative-feedback",
+        model_id="m-2",
+    )
+    context = _context(
+        agent_to_model={
+            "agent_0": m1,
+            "agent_1": m1,
+            "agent_2": m2,
+            "agent_3": m2,
+        }
+    )
     tracker = {
         "summary": "Comparison run between two controllers.",
         "trajectories": {
-            "agent_0": {"steps_survived": 200, "resources_consumed": 4, "actions": {"move_east": 50}},
-            "agent_2": {"steps_survived": 180, "resources_consumed": 3, "actions": {"move_west": 45}},
+            "agent_0": {
+                "steps_survived": 200,
+                "resources_consumed": 4,
+                "actions": {"move_east": 50},
+            },
+            "agent_2": {
+                "steps_survived": 180,
+                "resources_consumed": 3,
+                "actions": {"move_west": 45},
+            },
         },
         "episodes": [
-            {"agent": "agent_0", "type": "state_change", "step": 90, "description": "energy spike"},
-            {"agent": "agent_2", "type": "foraging_failure", "step": 150, "description": "missed resource"},
+            {
+                "agent": "agent_0",
+                "type": "state_change",
+                "step": 90,
+                "description": "energy spike",
+            },
+            {
+                "agent": "agent_2",
+                "type": "foraging_failure",
+                "step": 150,
+                "description": "missed resource",
+            },
         ],
     }
 
@@ -149,7 +197,10 @@ def test_comparison_run_tags_each_fact_with_correct_model():
 
     summary = facts[0]
     assert "models_compared" in summary.metadata
-    assert set(summary.metadata["models_compared"]) == {"DriveReductionRL", "PINegativeFeedback"}
+    assert set(summary.metadata["models_compared"]) == {
+        "DriveReductionRL",
+        "PINegativeFeedback",
+    }
 
     traj_by_agent = {f.metadata["agent_id"]: f for f in facts[1:3]}
     assert traj_by_agent["agent_0"].metadata["formulation"] == "drive-reduction-rl"
@@ -172,7 +223,9 @@ def test_routine_episodes_are_filtered(ep_type):
     tracker = {
         "summary": "",
         "trajectories": {},
-        "episodes": [{"agent": "agent_0", "type": ep_type, "step": 10, "description": "x"}],
+        "episodes": [
+            {"agent": "agent_0", "type": ep_type, "step": 10, "description": "x"}
+        ],
     }
     facts, filtered = build_episode_facts(tracker, context)
     assert facts == []
@@ -181,7 +234,12 @@ def test_routine_episodes_are_filtered(ep_type):
 
 @pytest.mark.parametrize(
     "ep_type,expected_importance",
-    [("starvation", 9), ("state_change", 8), ("foraging_failure", 7), ("weird_behavior", 6)],
+    [
+        ("starvation", 9),
+        ("state_change", 8),
+        ("foraging_failure", 7),
+        ("weird_behavior", 6),
+    ],
 )
 def test_episode_importance_by_type(ep_type, expected_importance):
     model = _model()
@@ -189,7 +247,9 @@ def test_episode_importance_by_type(ep_type, expected_importance):
     tracker = {
         "summary": "",
         "trajectories": {},
-        "episodes": [{"agent": "agent_0", "type": ep_type, "step": 5, "description": "x"}],
+        "episodes": [
+            {"agent": "agent_0", "type": ep_type, "step": 5, "description": "x"}
+        ],
     }
     facts, filtered = build_episode_facts(tracker, context)
     assert filtered == 0
@@ -208,10 +268,14 @@ def test_episode_with_step_range():
     tracker = {
         "summary": "",
         "trajectories": {},
-        "episodes": [{
-            "agent": "agent_0", "type": "state_change",
-            "steps": [100, 120], "description": "gradual depletion",
-        }],
+        "episodes": [
+            {
+                "agent": "agent_0",
+                "type": "state_change",
+                "steps": [100, 120],
+                "description": "gradual depletion",
+            }
+        ],
     }
     facts, _ = build_episode_facts(tracker, context)
     assert len(facts) == 1
@@ -234,7 +298,11 @@ def test_unknown_agent_in_trajectory_is_skipped(caplog):
         "summary": "",
         "trajectories": {
             "agent_0": {"steps_survived": 10, "resources_consumed": 0, "actions": {}},
-            "ghost_agent": {"steps_survived": 5, "resources_consumed": 0, "actions": {}},
+            "ghost_agent": {
+                "steps_survived": 5,
+                "resources_consumed": 0,
+                "actions": {},
+            },
         },
         "episodes": [],
     }
@@ -321,10 +389,14 @@ def test_unknown_episode_type_preserved_with_default_importance():
     tracker = {
         "summary": "",
         "trajectories": {},
-        "episodes": [{
-            "agent": "agent_0", "type": "sudden_cooperation",
-            "step": 77, "description": "agents converged",
-        }],
+        "episodes": [
+            {
+                "agent": "agent_0",
+                "type": "sudden_cooperation",
+                "step": 77,
+                "description": "agents converged",
+            }
+        ],
     }
     facts, filtered = build_episode_facts(tracker, context)
     assert filtered == 0

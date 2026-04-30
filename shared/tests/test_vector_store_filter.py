@@ -36,9 +36,7 @@ def test_build_filter_range():
 
 def test_build_filter_combines_multiple():
     """Multiple keys produce one condition each."""
-    f = _build_filter(
-        {"namespace": "paradigm", "confidence": {"gte": 0.5, "lte": 1.0}}
-    )
+    f = _build_filter({"namespace": "paradigm", "confidence": {"gte": 0.5, "lte": 1.0}})
     assert f.must is not None
     assert len(f.must) == 2
     keys = {c.key for c in f.must}

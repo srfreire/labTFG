@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, fields
 
-
 _BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
 
 

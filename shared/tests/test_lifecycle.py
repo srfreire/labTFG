@@ -1,4 +1,5 @@
 """Tests for shared.init() / shutdown() lifecycle."""
+
 import uuid
 
 import pytest
@@ -6,6 +7,8 @@ import pytest
 import shared
 from shared.database import DatabaseService
 from shared.storage import StorageService
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
@@ -52,6 +55,7 @@ async def test_db_works_after_init():
     try:
         async with shared.db.get_session() as session:
             from sqlalchemy import text
+
             row = await session.execute(text("SELECT 1 AS ok"))
             assert row.scalar() == 1
     finally:
@@ -74,6 +78,7 @@ async def test_shutdown_cleans_up():
 async def test_store_backward_compat():
     """Old store.py functions still work independently."""
     from shared.store import create_experiment, get_experiment, init_db
+
     init_db()
     exp_id = create_experiment("lifecycle backward compat test")
     exp = get_experiment(exp_id)

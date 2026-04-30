@@ -16,6 +16,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from shared.models import Artifact, Base, Experiment, Memory, Model, Run
 from shared.settings import load_settings
 
+pytestmark = pytest.mark.integration
+
+
 DSN = load_settings().POSTGRES_DSN
 
 
@@ -72,13 +75,19 @@ async def test_model_unique_constraint_enforced(session):
 async def test_artifact_s3_key_unique(session):
     """Artifact.s3_key has a unique constraint."""
     a1 = Artifact(
-        s3_key="artifacts/dup.txt", artifact_type="x", size_bytes=1, content_type="text/plain",
+        s3_key="artifacts/dup.txt",
+        artifact_type="x",
+        size_bytes=1,
+        content_type="text/plain",
     )
     session.add(a1)
     await session.commit()
 
     a2 = Artifact(
-        s3_key="artifacts/dup.txt", artifact_type="x", size_bytes=2, content_type="text/plain",
+        s3_key="artifacts/dup.txt",
+        artifact_type="x",
+        size_bytes=2,
+        content_type="text/plain",
     )
     session.add(a2)
     with pytest.raises(IntegrityError):
@@ -184,6 +193,7 @@ async def test_memory_self_supersession(session):
 async def test_memory_indexes_present(engine):
     """All declared indexes exist on the memories table."""
     async with engine.begin() as conn:
+
         def _list_indexes(sync_conn) -> set[str]:
             insp = inspect(sync_conn)
             return {idx["name"] for idx in insp.get_indexes("memories")}
@@ -222,9 +232,7 @@ async def test_model_metadata_field_uses_metadata_column(session):
     mod_id = mod.id
 
     session.expire_all()
-    result = await session.execute(
-        select(Model.metadata_).where(Model.id == mod_id)
-    )
+    result = await session.execute(select(Model.metadata_).where(Model.id == mod_id))
     assert result.scalar_one() == {"k": [1, 2, 3], "nested": {"a": True}}
 
 

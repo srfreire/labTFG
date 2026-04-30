@@ -8,14 +8,14 @@ Flow:
   4. Fixes errors if needed and re-validates
   5. Returns the validated JSON spec
 """
+
 from __future__ import annotations
 
 import json
 
-from simlab.loop import run_agent_loop, Registry
+from simlab.loop import Registry, run_agent_loop
 from simlab.spec import validate_spec_dict
 from simlab.utils import extract_text
-
 
 # ---------------------------------------------------------------------------
 # System prompt — tells Claude how to generate environment specs
@@ -107,8 +107,8 @@ ARCHITECT_REGISTRY: Registry = {
 # Architect class
 # ---------------------------------------------------------------------------
 
+
 class Architect:
-    
     def __init__(self, *, client, model: str = DEFAULT_MODEL):
         self.client = client
         self.model = model

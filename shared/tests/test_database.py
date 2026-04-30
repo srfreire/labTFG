@@ -2,6 +2,7 @@
 
 Requires docker-compose Postgres running on localhost:5432.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -13,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from shared.database import DatabaseService
 from shared.models import Artifact, Base, Experiment, Model, Run
 from shared.settings import Settings, load_settings
+
+pytestmark = pytest.mark.integration
+
 
 DSN = load_settings().POSTGRES_DSN
 
@@ -92,9 +96,7 @@ async def test_insert_model_with_fk_to_run(session: AsyncSession):
 
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(Model).where(Model.id == model.id)
-    )
+    result = await session.execute(select(Model).where(Model.id == model.id))
     fetched = result.scalar_one()
     assert fetched.run_id == run.id
     assert fetched.class_name == "TestModel"
@@ -153,9 +155,7 @@ async def test_insert_artifact_with_fks(session: AsyncSession):
 
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(Artifact).where(Artifact.id == artifact.id)
-    )
+    result = await session.execute(select(Artifact).where(Artifact.id == artifact.id))
     fetched = result.scalar_one()
     assert fetched.run_id == run.id
     assert fetched.experiment_id == experiment.id
@@ -185,9 +185,7 @@ async def test_jsonb_round_trip(session: AsyncSession):
 
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(Experiment).where(Experiment.id == exp_id)
-    )
+    result = await session.execute(select(Experiment).where(Experiment.id == exp_id))
     fetched = result.scalar_one()
     assert fetched.spec == nested
     assert fetched.spec["level1"]["level2"][2]["level3"] is True
