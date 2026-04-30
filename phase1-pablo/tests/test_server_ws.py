@@ -210,3 +210,112 @@ def test_reconnect_during_review_returns_snapshot_then_prompt(monkeypatch):
     state_sync = frames[1]
     assert any(n["id"] == "n1" for n in state_sync["nodes"])
     assert state_sync["stage"] == "research"
+
+
+# ---------------------------------------------------------------------------
+# Bug #3 — receive loop must survive malformed input
+# ---------------------------------------------------------------------------
+
+
+def test_malformed_json_does_not_kill_endpoint(monkeypatch):
+    """A frame that isn't valid JSON used to crash the receive loop because
+    only WebSocketDisconnect was caught. The endpoint should survive and
+    keep responding to subsequent valid messages.
+    """
+
+    async def fake_pipeline(problem: str, emit, until_stage: Any = None) -> None:
+        del problem, until_stage
+        await emit({"type": "node_add", "node": {"id": "after-bad-json"}})
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(server_mod, "run_pipeline", fake_pipeline)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as ws:
+        ws.send_text("definitely not json {")
+        err = ws.receive_json()
+        assert err["type"] == "error"
+
+        # Endpoint still alive — a valid `start` should drive the pipeline.
+        ws.send_json({"type": "start", "problem": "post-malformed"})
+        f = ws.receive_json()
+        assert f["type"] == "node_add"
+        assert f["node"]["id"] == "after-bad-json"
+
+
+def test_start_without_problem_returns_error_frame():
+    """`start` requires `problem`. Without it the old code would KeyError
+    and kill the endpoint. The new code should reply with an error frame
+    and keep the connection open.
+    """
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "start"})  # no `problem` field
+        err = ws.receive_json()
+        assert err["type"] == "error"
+
+        # Survival check — sending another bad frame should also produce
+        # an error, not a disconnect.
+        ws.send_json({"type": "start"})
+        err2 = ws.receive_json()
+        assert err2["type"] == "error"
+
+
+# ---------------------------------------------------------------------------
+# Bug #4 — `start` while a pipeline is running must await the prior cancel
+# ---------------------------------------------------------------------------
+
+
+def test_double_start_cancels_first_pipeline_cleanly(monkeypatch):
+    """When a second `start` arrives, the first pipeline_task must be
+    cancelled AND awaited before the new task is created — otherwise the
+    old task's tail (closing emits, trace flush) overlaps with the new
+    task's first events on the same manager.
+    """
+
+    cancelled = threading.Event()
+
+    async def fake_pipeline_1(problem: str, emit, until_stage: Any = None) -> None:
+        del problem, until_stage
+        try:
+            await emit({"type": "node_add", "node": {"id": "from-pipe-1"}})
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            # Simulate slow finalization (state.save() in the real pipeline).
+            # Without cancel-await, pipe-2's first frame races this and the
+            # cancelled event is not yet set when the test reads it.
+            await asyncio.sleep(0.1)
+            cancelled.set()
+            raise
+
+    async def fake_pipeline_2(problem: str, emit, until_stage: Any = None) -> None:
+        del problem, until_stage
+        await emit({"type": "node_add", "node": {"id": "from-pipe-2"}})
+        await asyncio.sleep(60)
+
+    pipelines = [fake_pipeline_1, fake_pipeline_2]
+    call_count = [0]
+
+    async def picker(problem: str, emit, until_stage: Any = None) -> None:
+        idx = call_count[0]
+        call_count[0] += 1
+        await pipelines[idx](problem, emit, until_stage=until_stage)
+
+    monkeypatch.setattr(server_mod, "run_pipeline", picker)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "start", "problem": "first"})
+        f1 = ws.receive_json()
+        assert f1["node"]["id"] == "from-pipe-1"
+
+        task1 = manager.pipeline_task
+        assert task1 is not None and not task1.done()
+
+        ws.send_json({"type": "start", "problem": "second"})
+        f2 = ws.receive_json()
+        assert f2["node"]["id"] == "from-pipe-2"
+
+    # By the time the second pipeline emits its first frame, the first
+    # task must already be done (i.e. its cancellation was awaited).
+    assert task1.done(), "first pipeline_task must be done before pipe-2 emits"
+    assert manager.pipeline_task is not task1
+    assert cancelled.is_set(), "fake_pipeline_1 must have observed CancelledError"

@@ -146,6 +146,32 @@ manager = ConnectionManager()
 # ---------------------------------------------------------------------------
 
 
+async def _cancel_running_pipeline() -> None:
+    """Cancel ``manager.pipeline_task`` and wait for it to wind down.
+
+    Used by both the ``start`` and ``cancel`` arms of the WS receive loop
+    (and by the lifespan shutdown in PR 3). Without the await, the new
+    task's first emits race the old task's cancellation tail (closing
+    ``pipeline_done``, ``state.save()``, trace flush) on the same
+    ``ConnectionManager``.
+
+    Suppresses ``CancelledError`` / ``TimeoutError`` so the caller can
+    proceed; logs anything else the task raised during unwind.
+    """
+    task = manager.pipeline_task
+    if task is None or task.done():
+        return
+    task.cancel()
+    try:
+        # ``shield`` lets the task finish unwinding even if the caller is
+        # itself cancelled (e.g. WS disconnects mid-cancel).
+        await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
+    except (TimeoutError, asyncio.CancelledError):
+        pass
+    except Exception:
+        logger.exception("Pipeline task raised during cancellation")
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await manager.connect(ws)
@@ -172,30 +198,60 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
     try:
         while True:
-            data = await ws.receive_json()
-            msg_type = data.get("type")
+            try:
+                data = await ws.receive_json()
+            except WebSocketDisconnect:
+                raise
+            except Exception as exc:
+                # Malformed JSON, decoding error, anything that isn't a clean
+                # disconnect — keep the connection alive and inform the client.
+                logger.warning("WS receive failed: %s", exc)
+                try:
+                    await manager.emit(
+                        {"type": "error", "message": f"invalid frame: {exc}"}
+                    )
+                except Exception:
+                    logger.debug("Failed to send error frame after bad receive")
+                continue
 
-            if msg_type == "start":
-                # Cancel any running pipeline
-                if manager.pipeline_task and not manager.pipeline_task.done():
-                    manager.pipeline_task.cancel()
-                manager.reset()
+            msg_type = data.get("type") if isinstance(data, dict) else None
 
-                problem: str = data["problem"]
-                until_stage: str | None = data.get("until_stage")
-                manager.pipeline_task = asyncio.create_task(
-                    run_pipeline(problem, manager.emit, until_stage=until_stage)
-                )
-
-            elif msg_type == "review_response":
-                await manager.handle_review_response(data)
-
-            elif msg_type == "cancel":
-                if manager.pipeline_task and not manager.pipeline_task.done():
-                    manager.pipeline_task.cancel()
+            try:
+                if msg_type == "start":
+                    problem = data.get("problem")
+                    if not isinstance(problem, str) or not problem.strip():
+                        await manager.emit(
+                            {
+                                "type": "error",
+                                "message": "start requires a non-empty 'problem' field",
+                            }
+                        )
+                        continue
+                    await _cancel_running_pipeline()
                     manager.reset()
+                    until_stage: str | None = data.get("until_stage")
+                    manager.pipeline_task = asyncio.create_task(
+                        run_pipeline(problem, manager.emit, until_stage=until_stage)
+                    )
+
+                elif msg_type == "review_response":
+                    await manager.handle_review_response(data)
+
+                elif msg_type == "cancel":
+                    await _cancel_running_pipeline()
+                    manager.reset()
+            except WebSocketDisconnect:
+                raise
+            except Exception as exc:
+                logger.exception("Error handling WS message type=%r", msg_type)
+                try:
+                    await manager.emit({"type": "error", "message": str(exc)})
+                except Exception:
+                    logger.debug("Failed to send error frame after handler error")
 
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.ws = None
 
 
