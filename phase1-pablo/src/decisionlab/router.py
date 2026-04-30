@@ -9,16 +9,14 @@ import tempfile
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import agrex
-from anthropic import AsyncAnthropic
 from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
-from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
     create_retrieve_knowledge,
@@ -27,7 +25,10 @@ from decisionlab.parsing import FORMULATION_HEADER_RE
 from decisionlab.tools.reports import slugify
 
 if TYPE_CHECKING:
+    from anthropic import AsyncAnthropic
+
     from decisionlab.agents.memory_agent import MemoryAgent
+    from decisionlab.domain.ports import WebSearchPort
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ EmitFn = Callable[[dict], Awaitable[None]]
 # ---------------------------------------------------------------------------
 
 
-class Stage(str, Enum):
+class Stage(StrEnum):
     RESEARCH = "research"
     MEMORY_RESEARCH = "memory_research"
     REVIEW_RESEARCH = "review_research"
@@ -176,7 +177,7 @@ class PipelineState:
             raw = await shared.storage.get_text(key)
             data = json.loads(raw)
         except Exception:
-            raise FileNotFoundError(f"Pipeline state not found at s3://{key}")
+            raise FileNotFoundError(f"Pipeline state not found at s3://{key}") from None
 
         env_path = data.get("env_spec_path")
         state = cls(
@@ -367,9 +368,9 @@ class Router:
 
             if shared.db is None:
                 return None
-            from decisionlab.agents.memory_agent import MemoryAgent as MA
+            from decisionlab.agents.memory_agent import MemoryAgent
 
-            return MA(
+            return MemoryAgent(
                 client=self.client,
                 kg=getattr(shared, "kg", None),
                 vector_store=getattr(shared, "vectors", None),
@@ -1035,7 +1036,7 @@ class Router:
                 from decisionlab.web_feedback import review_build
 
                 assert self.emit is not None
-                approved, rejections, reasoner_reruns = await review_build(
+                _approved, rejections, reasoner_reruns = await review_build(
                     self.state.reports_dir,
                     self.state.build_results,
                     self.emit,
@@ -1043,7 +1044,7 @@ class Router:
             else:
                 from decisionlab.feedback import review_build
 
-                approved, rejections, reasoner_reruns = await review_build(
+                _approved, rejections, reasoner_reruns = await review_build(
                     self.state.reports_dir,
                     self.state.build_results,
                 )
