@@ -15,6 +15,28 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (formatter handles it)
+    # Spanish-language project — accents and em-dashes in strings/docstrings/comments are intentional.
+    "RUF001", # ambiguous unicode in string
+    "RUF002", # ambiguous unicode in docstring
+    "RUF003", # ambiguous unicode in comment
+    # Type-checking import block is stylistic; keeping imports flat is fine here.
+    "TC001",  # move app import into TYPE_CHECKING block
+    "TC002",  # move third-party import into TYPE_CHECKING block
+    "TC003",  # move stdlib import into TYPE_CHECKING block
+    # Math-flavored code uses single-letter / mixed-case symbols intentionally.
+    "N801",   # class name should use CapWords (some classes mirror math symbols)
+    "N802",   # function name should be lowercase
+    "N803",   # argument name should be lowercase
+    "N806",   # variable in function should be lowercase
+    # Typer-style CLI uses Option(...) / Argument(...) in argument defaults by design.
+    "B008",   # function call in argument default
+    # Unpacked-but-unused values are common in destructuring assignments here.
+    "RUF059", # unused unpacked variable
+    # Bare assertions / blind raises are fine in tests and quick fail-paths.
+    "B904",   # raise without `from`
+    # Nested `with` blocks are common in tests that compose `patch.dict` with
+    # several `patch.object`s; combining them hurts readability more than it helps.
+    "SIM117",
 ]
 
 [lint.isort]
