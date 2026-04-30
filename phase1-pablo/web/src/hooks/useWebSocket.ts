@@ -55,7 +55,8 @@ type Action =
   | { type: "START_PIPELINE" }
   | { type: "CANCEL_PIPELINE" }
   | { type: "CLEAR_REVIEW" }
-  | { type: "CLEAR_ERROR" };
+  | { type: "CLEAR_ERROR" }
+  | { type: "SET_ERROR"; message: string };
 
 function reducer(state: WebSocketState, action: Action): WebSocketState {
   switch (action.type) {
@@ -77,20 +78,34 @@ function reducer(state: WebSocketState, action: Action): WebSocketState {
         runId: null,
       };
 
-    case "CANCEL_PIPELINE":
+    case "CANCEL_PIPELINE": {
+      // Sweep any stage still flagged "running" to "done" so the sidebar
+      // doesn't show a phantom-active dot after cancel. The work happened
+      // (just got interrupted), so "done" is the honest state.
+      const stages = { ...state.stages };
+      for (const s of Object.keys(stages) as Stage[]) {
+        if (stages[s] === "running") {
+          stages[s] = "done";
+        }
+      }
       return {
         ...state,
         isRunning: false,
+        stages,
         currentStage: null,
         reviewRequest: null,
         agents: [],
       };
+    }
 
     case "CLEAR_REVIEW":
       return { ...state, reviewRequest: null };
 
     case "CLEAR_ERROR":
       return { ...state, error: null };
+
+    case "SET_ERROR":
+      return { ...state, error: action.message };
 
     default:
       return state;
@@ -377,7 +392,12 @@ export function useWebSocket(
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
     } else {
-      console.warn("[useWebSocket] Cannot send — socket not open");
+      // Surface this through the regular error channel so the consumer
+      // can show it; the previous silent console.warn lost user clicks.
+      dispatch({
+        type: "SET_ERROR",
+        message: "Cannot send: not connected to the server.",
+      });
     }
   }, []);
 

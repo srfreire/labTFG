@@ -292,3 +292,55 @@ describe("useWebSocket — graph delta passthrough", () => {
     );
   });
 });
+
+/* ------------------------------------------------------------------ */
+/*  cancelPipeline — sweep stages so the sidebar doesn't lie           */
+/* ------------------------------------------------------------------ */
+
+describe("useWebSocket — cancelPipeline", () => {
+  it("sweeps any running stage to done", () => {
+    const { result, send } = setup();
+
+    send({ type: "stage", ts: 0, label: Stage.RESEARCH });
+    expect(result.current.stages[Stage.RESEARCH]).toBe("running");
+    expect(result.current.stages[Stage.MEMORY_RESEARCH]).toBe("running");
+
+    act(() => result.current.cancelPipeline());
+
+    expect(result.current.stages[Stage.RESEARCH]).toBe("done");
+    expect(result.current.stages[Stage.MEMORY_RESEARCH]).toBe("done");
+    expect(result.current.currentStage).toBeNull();
+    expect(result.current.isRunning).toBe(false);
+  });
+
+  it("leaves pending stages untouched", () => {
+    const { result, send } = setup();
+
+    send({ type: "stage", ts: 0, label: Stage.RESEARCH });
+    expect(result.current.stages[Stage.FORMALIZE]).toBe("pending");
+
+    act(() => result.current.cancelPipeline());
+
+    expect(result.current.stages[Stage.FORMALIZE]).toBe("pending");
+    expect(result.current.stages[Stage.BUILD]).toBe("pending");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  send() while not OPEN — surface an error instead of silent warn    */
+/* ------------------------------------------------------------------ */
+
+describe("useWebSocket — send while not connected", () => {
+  it("sets state.error when send fires before the socket opens", () => {
+    const onMessage = vi.fn();
+    const { result } = renderHook(() => useWebSocket(onMessage));
+    // Deliberately do NOT emit open — the mock stays in CONNECTING.
+    expect(result.current.connected).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    act(() => result.current.startPipeline("test problem"));
+
+    expect(result.current.error).toBeTruthy();
+    expect(result.current.error?.toLowerCase()).toContain("connect");
+  });
+});
