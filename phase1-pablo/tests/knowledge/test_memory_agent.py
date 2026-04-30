@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,7 +15,6 @@ from decisionlab.knowledge.models import (
     RelationSpec,
     ResolutionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -120,11 +118,15 @@ _PATCH_BASE = "decisionlab.agents.memory_agent"
 
 
 def _patch_extract(extraction):
-    return patch(f"{_PATCH_BASE}.extract", new_callable=AsyncMock, return_value=extraction)
+    return patch(
+        f"{_PATCH_BASE}.extract", new_callable=AsyncMock, return_value=extraction
+    )
 
 
 def _patch_populate_kg(result):
-    return patch(f"{_PATCH_BASE}.populate_kg", new_callable=AsyncMock, return_value=result)
+    return patch(
+        f"{_PATCH_BASE}.populate_kg", new_callable=AsyncMock, return_value=result
+    )
 
 
 def _patch_index(result):
@@ -174,7 +176,9 @@ async def test_run_calls_all_subsystems(
         _patch_index(idx_result) as m_idx,
         _patch_resolve(res_result) as m_resolve,
     ):
-        result = await agent.run("researcher", "some output text", "run-1", emit=mock_emit)
+        result = await agent.run(
+            "researcher", "some output text", "run-1", emit=mock_emit
+        )
 
     m_extract.assert_awaited_once()
     m_kg.assert_awaited_once()
@@ -224,9 +228,7 @@ async def test_run_emits_status_messages(
 
 
 @pytest.mark.asyncio
-async def test_skips_kg_when_none(
-    mock_client, mock_vectors, mock_embeddings, mock_db
-):
+async def test_skips_kg_when_none(mock_client, mock_vectors, mock_embeddings, mock_db):
     """AC4 partial: KG population skipped when kg=None, but extraction and indexing still run."""
     from decisionlab.agents.memory_agent import MemoryAgent
 
@@ -255,9 +257,7 @@ async def test_skips_kg_when_none(
 
 
 @pytest.mark.asyncio
-async def test_skips_indexing_when_vectors_none(
-    mock_client, mock_kg, mock_db
-):
+async def test_skips_indexing_when_vectors_none(mock_client, mock_kg, mock_db):
     """AC4 partial: Indexing skipped when vector_store or embedding_service is None."""
     from decisionlab.agents.memory_agent import MemoryAgent
 

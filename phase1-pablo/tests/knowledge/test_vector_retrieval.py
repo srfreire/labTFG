@@ -11,15 +11,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from shared.vector_store import ScoredPoint
-
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.vector_retrieval import (
     dense_retrieve,
     sparse_retrieve,
     vector_retrieve,
 )
-
+from shared.vector_store import ScoredPoint
 
 # -- helpers -------------------------------------------------------------------
 
@@ -236,7 +234,7 @@ async def test_vector_retrieve_runs_in_parallel():
     vs.search_sparse = AsyncMock(side_effect=slow_sparse)
     emb = _mock_emb()
 
-    dense_results, sparse_results = await vector_retrieve("test", emb, vs)
+    _dense_results, _sparse_results = await vector_retrieve("test", emb, vs)
 
     # If parallel, all starts should come before all ends
     ends = [e for e in order if e.endswith("_end")]

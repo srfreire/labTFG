@@ -3,26 +3,35 @@
 from __future__ import annotations
 
 from decisionlab.agents.builder_sub import (
-    BUILDER_SUB_SYSTEM_PROMPT,
     _KNOWLEDGE_PROMPT_SECTION as BUILDER_KNOWLEDGE,
+)
+from decisionlab.agents.builder_sub import (
+    BUILDER_SUB_SYSTEM_PROMPT,
+)
+from decisionlab.agents.deep_researcher import (
+    _KNOWLEDGE_PROMPT_SECTION as DEEP_RESEARCHER_KNOWLEDGE,
 )
 from decisionlab.agents.deep_researcher import (
     DEEP_RESEARCHER_SYSTEM_PROMPT,
-    _KNOWLEDGE_PROMPT_SECTION as DEEP_RESEARCHER_KNOWLEDGE,
+)
+from decisionlab.agents.formalizer_sub import (
+    _KNOWLEDGE_PROMPT_SECTION as FORMALIZER_KNOWLEDGE,
 )
 from decisionlab.agents.formalizer_sub import (
     FORMALIZER_SUB_SYSTEM_PROMPT,
-    _KNOWLEDGE_PROMPT_SECTION as FORMALIZER_KNOWLEDGE,
+)
+from decisionlab.agents.reasoner_sub import (
+    _KNOWLEDGE_PROMPT_SECTION as REASONER_KNOWLEDGE,
 )
 from decisionlab.agents.reasoner_sub import (
     REASONER_SUB_SYSTEM_PROMPT,
-    _KNOWLEDGE_PROMPT_SECTION as REASONER_KNOWLEDGE,
+)
+from decisionlab.agents.researcher import (
+    _KNOWLEDGE_PROMPT_SECTION as RESEARCHER_KNOWLEDGE,
 )
 from decisionlab.agents.researcher import (
     RESEARCHER_SYSTEM_PROMPT,
-    _KNOWLEDGE_PROMPT_SECTION as RESEARCHER_KNOWLEDGE,
 )
-
 
 # ── AC1: Knowledge Backbone section present when infra available ──
 

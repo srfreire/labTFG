@@ -6,8 +6,9 @@ import asyncio
 import os
 import shutil
 import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import shared
 
@@ -17,7 +18,10 @@ RUN_TESTS_SCHEMA: dict[str, Any] = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Relative path to the test file (e.g. builder/test_foo.py)"},
+            "path": {
+                "type": "string",
+                "description": "Relative path to the test file (e.g. builder/test_foo.py)",
+            },
         },
         "required": ["path"],
     },
@@ -43,7 +47,7 @@ def create_run_tests(
         try:
             # Download all builder files so imports between them work
             for key in keys:
-                filename = key[len(builder_prefix):]
+                filename = key[len(builder_prefix) :]
                 if not filename:
                     continue
                 data = await shared.storage.get(key)
@@ -54,7 +58,7 @@ def create_run_tests(
             # The test file to run
             test_filename = path
             if test_filename.startswith("builder/"):
-                test_filename = test_filename[len("builder/"):]
+                test_filename = test_filename[len("builder/") :]
             test_file = Path(tmp) / test_filename
             if not test_file.exists():
                 return f"Error: test file '{path}' not found in S3"
@@ -76,7 +80,7 @@ def create_run_tests(
             try:
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
                 return stdout.decode()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.wait()
                 return "Error: pytest timed out after 30 seconds"

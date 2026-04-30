@@ -1,11 +1,14 @@
-from decisionlab.models.protocol import Action, Perception
-from denis.homeostatic import HomeostaticModel
 from denis.hedonic import HedonicModel, HedonicParams
+from denis.homeostatic import HomeostaticModel
 from denis.integrated import IntegratedModel, IntegrationMode
+
+from decisionlab.models.protocol import Action, Perception
 
 
 def _make_perception(**overrides) -> Perception:
-    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
+    defaults = dict(
+        position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0
+    )
     defaults.update(overrides)
     return Perception(**defaults)
 
@@ -13,8 +16,14 @@ def _make_perception(**overrides) -> Perception:
 def test_integration_modes_exist():
     assert IntegrationMode.INDEPENDENT.value == "independent"
     assert IntegrationMode.HEDONIC_TO_HOMEOSTATIC.value == "hedonic_to_homeostatic"
-    assert IntegrationMode.HOMEOSTATIC_TO_HEDONIC_IMMEDIATE.value == "homeostatic_to_hedonic_immediate"
-    assert IntegrationMode.HOMEOSTATIC_TO_HEDONIC_EXPECTED.value == "homeostatic_to_hedonic_expected"
+    assert (
+        IntegrationMode.HOMEOSTATIC_TO_HEDONIC_IMMEDIATE.value
+        == "homeostatic_to_hedonic_immediate"
+    )
+    assert (
+        IntegrationMode.HOMEOSTATIC_TO_HEDONIC_EXPECTED.value
+        == "homeostatic_to_hedonic_expected"
+    )
 
 
 def test_integrated_model_decides():
@@ -55,7 +64,6 @@ def test_hedonic_to_homeostatic_modulates_hunger():
         hedonic=HedonicModel(params=hedonic_params),
         mode=IntegrationMode.HEDONIC_TO_HOMEOSTATIC,
     )
-    import numpy as np
     model.hedonic.q_table[:] = 5.0
 
     p = _make_perception(food_sources=({"x": 2, "y": 2, "palatability": 1.0},))

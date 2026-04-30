@@ -51,18 +51,18 @@ async def _classify_results(
     On failure, returns all-CORRECT evaluations (fail-open).
     """
     fallback = [
-        {"index": i, "classification": "CORRECT", "reasoning": "Default (evaluation failed)"}
+        {
+            "index": i,
+            "classification": "CORRECT",
+            "reasoning": "Default (evaluation failed)",
+        }
         for i in range(len(results))
     ]
 
     try:
-        passages = "\n\n".join(
-            f"[{i}] {r.text}" for i, r in enumerate(results)
-        )
+        passages = "\n\n".join(f"[{i}] {r.text}" for i, r in enumerate(results))
         user_msg = (
-            f"Query: {query}\n"
-            f"Task context: {task_context}\n\n"
-            f"Passages:\n{passages}"
+            f"Query: {query}\nTask context: {task_context}\n\nPassages:\n{passages}"
         )
 
         response = await client.messages.create(
@@ -81,9 +81,7 @@ async def _classify_results(
                 f"(output_tokens={out_tokens})"
             )
 
-        raw = "\n".join(
-            b.text for b in response.content if b.type == "text"
-        ).strip()
+        raw = "\n".join(b.text for b in response.content if b.type == "text").strip()
 
         # Strip markdown fences if present
         fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", raw, re.DOTALL)
@@ -105,18 +103,22 @@ async def _classify_results(
                 valid.append(ev)
 
         if not valid:
-            logger.warning("CRAG: no valid evaluations parsed, falling back to all-CORRECT")
+            logger.warning(
+                "CRAG: no valid evaluations parsed, falling back to all-CORRECT"
+            )
             return fallback
 
         # Fill missing indices with CORRECT
         evaluated_indices = {ev["index"] for ev in valid}
         for i in range(len(results)):
             if i not in evaluated_indices:
-                valid.append({
-                    "index": i,
-                    "classification": "CORRECT",
-                    "reasoning": "Not evaluated (missing from response)",
-                })
+                valid.append(
+                    {
+                        "index": i,
+                        "classification": "CORRECT",
+                        "reasoning": "Not evaluated (missing from response)",
+                    }
+                )
 
         return valid
 
@@ -166,7 +168,9 @@ async def evaluate_results(
 ) -> CRAGResult:
     """Run CRAG evaluation: classify results, route action, fallback if needed."""
     if not results:
-        return CRAGResult(results=[], action="pass_through", evaluations=[], web_results_used=0)
+        return CRAGResult(
+            results=[], action="pass_through", evaluations=[], web_results_used=0
+        )
 
     evaluations = await _classify_results(query, task_context, results, client)
 
@@ -210,7 +214,9 @@ async def evaluate_results(
 
     if n_ambiguous == 0 and n_correct > 0:
         # CORRECT + INCORRECT, no AMBIGUOUS → keep CORRECT only
-        correct_results = [r for i, r in enumerate(results) if i in set(by_class["CORRECT"])]
+        correct_results = [
+            r for i, r in enumerate(results) if i in set(by_class["CORRECT"])
+        ]
         return CRAGResult(
             results=correct_results,
             action="pass_through",

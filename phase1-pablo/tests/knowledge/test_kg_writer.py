@@ -14,7 +14,6 @@ from decisionlab.knowledge.models import (
     RelationSpec,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake in-memory Neo4j — simulates MERGE, relation lookup, supersession
 # ---------------------------------------------------------------------------
@@ -46,7 +45,7 @@ class FakeNeo4jStore:
 
     def __init__(self) -> None:
         self.nodes: dict[str, dict] = {}  # "Label:key_value" -> properties
-        self.relations: list[dict] = []    # list of relation dicts
+        self.relations: list[dict] = []  # list of relation dicts
         self._rel_counter = 0
 
     def _node_key(self, label: str, key_prop: str, key_value) -> str:
@@ -144,14 +143,16 @@ class FakeNeo4jStore:
         rm = re.search(r"CREATE \(a\)-\[r:(\w+)", cypher)
         rel_type = rm.group(1) if rm else "UNKNOWN"
 
-        self.relations.append({
-            "rid": rid,
-            "from_val": from_val,
-            "to_val": to_val,
-            "rel_type": rel_type,
-            "props": props,
-            "valid_to": None,
-        })
+        self.relations.append(
+            {
+                "rid": rid,
+                "from_val": from_val,
+                "to_val": to_val,
+                "rel_type": rel_type,
+                "props": props,
+                "valid_to": None,
+            }
+        )
         return [{"rid": rid}]
 
 
@@ -204,12 +205,20 @@ def _research_extraction(run_id: str = "run-1") -> ExtractionResult:
             ),
             NodeSpec(
                 label="Variable",
-                properties={"name": "energy_level", "type": "state", "range": "[0,100]"},
+                properties={
+                    "name": "energy_level",
+                    "type": "state",
+                    "range": "[0,100]",
+                },
                 natural_key="name",
             ),
             NodeSpec(
                 label="Variable",
-                properties={"name": "ghrelin", "type": "molecular", "range": "positive"},
+                properties={
+                    "name": "ghrelin",
+                    "type": "molecular",
+                    "range": "positive",
+                },
                 natural_key="name",
             ),
             NodeSpec(
@@ -219,7 +228,11 @@ def _research_extraction(run_id: str = "run-1") -> ExtractionResult:
             ),
             NodeSpec(
                 label="Paper",
-                properties={"title": "The Wisdom of the Body", "year": 1932, "doi": "10.1234/twotb"},
+                properties={
+                    "title": "The Wisdom of the Body",
+                    "year": 1932,
+                    "doi": "10.1234/twotb",
+                },
                 natural_key="doi",
             ),
             NodeSpec(
@@ -264,7 +277,10 @@ def _research_extraction(run_id: str = "run-1") -> ExtractionResult:
                 to_label="Postulate",
                 to_key_value="P1",
                 rel_type="SUPPORTS",
-                properties={"confidence": 0.9, "quote": "set points exist in all organisms"},
+                properties={
+                    "confidence": 0.9,
+                    "quote": "set points exist in all organisms",
+                },
             ),
             RelationSpec(
                 from_label="Variable",
@@ -295,7 +311,9 @@ async def test_ac1_creates_all_expected_nodes():
     result = await populate_kg(extraction, kg)
 
     assert isinstance(result, KGWriteResult)
-    assert result.nodes_created == 7  # 1 paradigm + 2 vars + 1 region + 1 paper + 2 postulates
+    assert (
+        result.nodes_created == 7
+    )  # 1 paradigm + 2 vars + 1 region + 1 paper + 2 postulates
     assert result.nodes_merged == 0
     assert result.errors == []
 
@@ -403,7 +421,10 @@ async def test_ac3_modified_relation_supersedes_old():
                 to_label="Postulate",
                 to_key_value="P1",
                 rel_type="SUPPORTS",
-                properties={"confidence": 0.95, "quote": "updated evidence for set points"},
+                properties={
+                    "confidence": 0.95,
+                    "quote": "updated evidence for set points",
+                },
             ),
         ],
         facts=[],
@@ -421,7 +442,8 @@ async def test_ac3_modified_relation_supersedes_old():
 
     # New relation should have the updated confidence
     active = [
-        r for r in kg.store.relations
+        r
+        for r in kg.store.relations
         if r["valid_to"] is None and r["rel_type"] == "SUPPORTS"
     ]
     assert len(active) == 1
@@ -604,7 +626,11 @@ async def test_node_merge_preserves_created_at():
     kg = FakeKnowledgeGraph()
     ext1 = ExtractionResult(
         nodes=[
-            NodeSpec(label="Variable", properties={"name": "dopamine", "type": "molecular"}, natural_key="name"),
+            NodeSpec(
+                label="Variable",
+                properties={"name": "dopamine", "type": "molecular"},
+                natural_key="name",
+            ),
         ],
         relations=[],
         facts=[],
@@ -617,7 +643,11 @@ async def test_node_merge_preserves_created_at():
 
     ext2 = ExtractionResult(
         nodes=[
-            NodeSpec(label="Variable", properties={"name": "dopamine", "type": "neurotransmitter"}, natural_key="name"),
+            NodeSpec(
+                label="Variable",
+                properties={"name": "dopamine", "type": "neurotransmitter"},
+                natural_key="name",
+            ),
         ],
         relations=[],
         facts=[],
@@ -670,7 +700,11 @@ async def test_invalid_rel_type_rejected():
     ext_nodes = ExtractionResult(
         nodes=[
             NodeSpec(label="Paradigm", properties={"slug": "test"}, natural_key="slug"),
-            NodeSpec(label="Postulate", properties={"id": "P1", "statement": "x"}, natural_key="id"),
+            NodeSpec(
+                label="Postulate",
+                properties={"id": "P1", "statement": "x"},
+                natural_key="id",
+            ),
         ],
         relations=[],
         facts=[],
@@ -739,7 +773,11 @@ async def test_node_with_updated_at_in_properties_counts_as_created():
         nodes=[
             NodeSpec(
                 label="Variable",
-                properties={"name": "serotonin", "type": "molecular", "updated_at": "stale"},
+                properties={
+                    "name": "serotonin",
+                    "type": "molecular",
+                    "updated_at": "stale",
+                },
                 natural_key="name",
             ),
         ],

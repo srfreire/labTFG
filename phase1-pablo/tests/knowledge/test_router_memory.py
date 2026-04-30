@@ -287,11 +287,13 @@ async def test_memory_agent_called_for_all_work_stages():
     def make_work(work_stage: Stage):
         async def fn():
             router.state.stage = router._next_after_work(work_stage)
+
         return fn
 
     def make_advance(target: Stage):
         async def fn():
             router.state.stage = target
+
         return fn
 
     handler_mocks = {

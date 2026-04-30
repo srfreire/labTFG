@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Module-level coordination between WS handler and review coroutines
@@ -48,7 +49,7 @@ async def wait_for_review(
 # Helpers (shared with feedback.py logic)
 # ---------------------------------------------------------------------------
 
-from decisionlab.parsing import (
+from decisionlab.parsing import (  # noqa: E402  — kept here next to its consumers
     filter_formulations_md,
     parse_formulation_headers,
 )
@@ -86,16 +87,22 @@ async def review_research(
         title = slug.replace("-", " ").title()
         # Extract summary (first ~200 chars of content, trimmed to sentence)
         summary = content[:200].rsplit(".", 1)[0] + "." if content else ""
-        paradigms_data.append({
-            "slug": slug,
-            "title": title,
-            "summary": summary,
-            "content": content,
-        })
+        paradigms_data.append(
+            {
+                "slug": slug,
+                "title": title,
+                "summary": summary,
+                "content": content,
+            }
+        )
 
-    response = await wait_for_review("review_research", emit, {
-        "paradigms": paradigms_data,
-    })
+    response = await wait_for_review(
+        "review_research",
+        emit,
+        {
+            "paradigms": paradigms_data,
+        },
+    )
 
     approved: list[str] = response.get("approved", [])
     additional: str | None = response.get("additional") or None
@@ -133,15 +140,21 @@ async def review_formalize(
             {"id": num, "name": name, "content": text[start:end]}
             for num, name, start, end in headers
         ]
-        paradigms_data.append({
-            "slug": slug,
-            "content": text,
-            "formulations": formulations,
-        })
+        paradigms_data.append(
+            {
+                "slug": slug,
+                "content": text,
+                "formulations": formulations,
+            }
+        )
 
-    response = await wait_for_review("review_formalize", emit, {
-        "paradigms": paradigms_data,
-    })
+    response = await wait_for_review(
+        "review_formalize",
+        emit,
+        {
+            "paradigms": paradigms_data,
+        },
+    )
 
     # response shape: {"selected": {"slug": [1, 3], ...}}
     selections: dict[str, list[int]] = response.get("selected", {})
@@ -175,9 +188,13 @@ async def get_env_spec(
     """
     import tempfile
 
-    response = await wait_for_review("get_env_spec", emit, {
-        "message": "Please provide the environment specification (env_spec.json).",
-    })
+    response = await wait_for_review(
+        "get_env_spec",
+        emit,
+        {
+            "message": "Please provide the environment specification (env_spec.json).",
+        },
+    )
 
     if "path" in response:
         path = Path(response["path"]).expanduser().resolve()
@@ -229,30 +246,38 @@ async def review_reason(
             paradigm = data.get("paradigm", "unknown")
 
             if data.get("status") == "invalid":
-                specs_data.append({
-                    "id": spec_id,
-                    "spec_id": spec_id,
-                    "paradigm": paradigm,
-                    "name": spec_id,
-                    "status": "invalid",
-                    "problems": data.get("problems", []),
-                    "full_spec": data,
-                })
+                specs_data.append(
+                    {
+                        "id": spec_id,
+                        "spec_id": spec_id,
+                        "paradigm": paradigm,
+                        "name": spec_id,
+                        "status": "invalid",
+                        "problems": data.get("problems", []),
+                        "full_spec": data,
+                    }
+                )
             else:
-                specs_data.append({
-                    "id": spec_id,
-                    "spec_id": spec_id,
-                    "paradigm": paradigm,
-                    "name": data.get("name", spec_file.stem),
-                    "description": data.get("description", ""),
-                    "variables": data.get("variables", []),
-                    "env_mapping": data.get("env_mapping", {}),
-                    "full_spec": data,
-                })
+                specs_data.append(
+                    {
+                        "id": spec_id,
+                        "spec_id": spec_id,
+                        "paradigm": paradigm,
+                        "name": data.get("name", spec_file.stem),
+                        "description": data.get("description", ""),
+                        "variables": data.get("variables", []),
+                        "env_mapping": data.get("env_mapping", {}),
+                        "full_spec": data,
+                    }
+                )
 
-    response = await wait_for_review("review_reason", emit, {
-        "specs": specs_data,
-    })
+    response = await wait_for_review(
+        "review_reason",
+        emit,
+        {
+            "specs": specs_data,
+        },
+    )
 
     # response shape: {"decisions": {"spec_id": {"approved": bool, "feedback": "...", "rerun_formalizer": bool}}}
     decisions = response.get("decisions", {})
@@ -304,30 +329,40 @@ async def review_build(
                 continue
             fid = data.get("formulation_id", vfile.stem)
             paradigm = data.get("paradigm", "unknown")
-            models_data.append({
-                "slug": fid,
-                "paradigm": paradigm,
-                "status": "invalid",
-                "problems": data.get("problems", []),
-                "code": "",
-                "test_results": "",
-                "passed": False,
-            })
+            models_data.append(
+                {
+                    "slug": fid,
+                    "paradigm": paradigm,
+                    "status": "invalid",
+                    "problems": data.get("problems", []),
+                    "code": "",
+                    "test_results": "",
+                    "passed": False,
+                }
+            )
 
     # Add valid builds
     for slug, content in build_results.items():
         lower = content.lower()
-        has_issues = any(w in lower for w in ("error", "fail", "traceback", "exception"))
-        models_data.append({
-            "slug": slug,
-            "code": content,
-            "test_results": content,
-            "passed": not has_issues,
-        })
+        has_issues = any(
+            w in lower for w in ("error", "fail", "traceback", "exception")
+        )
+        models_data.append(
+            {
+                "slug": slug,
+                "code": content,
+                "test_results": content,
+                "passed": not has_issues,
+            }
+        )
 
-    response = await wait_for_review("review_build", emit, {
-        "models": models_data,
-    })
+    response = await wait_for_review(
+        "review_build",
+        emit,
+        {
+            "models": models_data,
+        },
+    )
 
     # response shape: {"decisions": {"slug": {"approved": bool, "feedback": "...", "rerun_reasoner": bool}}}
     decisions = response.get("decisions", {})

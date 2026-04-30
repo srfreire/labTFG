@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 import shared
 from shared.artifacts import register_artifact as _register_artifact
@@ -20,7 +21,10 @@ READ_REPORT_SCHEMA: dict[str, Any] = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "paradigm": {"type": "string", "description": "Paradigm name (as used in launch_deep_research)"},
+            "paradigm": {
+                "type": "string",
+                "description": "Paradigm name (as used in launch_deep_research)",
+            },
         },
         "required": ["paradigm"],
     },
@@ -43,6 +47,7 @@ def create_read_report(run_id: str) -> Callable[[dict], Awaitable[str]]:
             return await shared.storage.get_text(key)
         except Exception:
             return f"No report found for paradigm '{params['paradigm']}'. It may not have been researched yet."
+
     return read_report
 
 
@@ -71,7 +76,8 @@ async def save_summary_report(run_id: str, summary: str) -> str:
 
 _DEEP_TITLE_RE = re.compile(r"^#\s+(.+?)(?:\s+—\s+Deep Research)?\s*$", re.MULTILINE)
 _TREE_MAP_SECTION_RE = re.compile(
-    r"\n## Research Tree Map\n.*?(?=\n##|\Z)", re.DOTALL,
+    r"\n## Research Tree Map\n.*?(?=\n##|\Z)",
+    re.DOTALL,
 )
 
 

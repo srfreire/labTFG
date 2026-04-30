@@ -22,7 +22,6 @@ from decisionlab.knowledge.retrieval.kg_retrieval import (
 )
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -41,9 +40,7 @@ def _make_haiku_response(json_str: str) -> MagicMock:
 def _mock_client(json_str: str) -> AsyncMock:
     """Return a mock AsyncAnthropic whose messages.create returns json_str."""
     client = AsyncMock()
-    client.messages.create = AsyncMock(
-        return_value=_make_haiku_response(json_str)
-    )
+    client.messages.create = AsyncMock(return_value=_make_haiku_response(json_str))
     return client
 
 
@@ -129,9 +126,7 @@ class TestLinkEntities:
     @pytest.mark.asyncio
     async def test_exact_match(self):
         kg = AsyncMock()
-        kg.query = AsyncMock(
-            return_value=[{"id": "4:abc", "name": "ghrelin"}]
-        )
+        kg.query = AsyncMock(return_value=[{"id": "4:abc", "name": "ghrelin"}])
         embedding = AsyncMock()
 
         entities = [{"name": "ghrelin", "type": "variable"}]
@@ -250,8 +245,9 @@ class TestLinkEntities:
 
 
 # Need to import the threshold constant for fuzzy tests
-from decisionlab.knowledge.retrieval.kg_retrieval import _SIMILARITY_THRESHOLD
-
+from decisionlab.knowledge.retrieval.kg_retrieval import (  # noqa: E402
+    _SIMILARITY_THRESHOLD,
+)
 
 # ---------------------------------------------------------------------------
 # Step 3: PPR traversal
@@ -537,9 +533,7 @@ class TestKgRetrieve:
         )
         embedding = AsyncMock()
 
-        results = await kg_retrieve(
-            "ghrelin hunger signaling", kg, embedding, client
-        )
+        results = await kg_retrieve("ghrelin hunger signaling", kg, embedding, client)
 
         assert len(results) > 0
         assert all(isinstance(r, RetrievalResult) for r in results)
@@ -595,9 +589,7 @@ class TestKgRetrieve:
         )
         embedding = AsyncMock()
 
-        results = await kg_retrieve(
-            "dopamine", kg, embedding, client, limit=20
-        )
+        results = await kg_retrieve("dopamine", kg, embedding, client, limit=20)
 
         texts = " ".join(r.text for r in results)
         assert "VTA" in texts

@@ -141,7 +141,9 @@ async def _score_importance(
             if isinstance(entry, dict) and "fact" in entry and "importance" in entry
         }
     except Exception:
-        logger.warning("Importance scoring failed — defaulting all facts to 5.0", exc_info=True)
+        logger.warning(
+            "Importance scoring failed — defaulting all facts to 5.0", exc_info=True
+        )
         return {fact: 5.0 for fact in facts}
 
 
@@ -158,7 +160,9 @@ async def _find_duplicates(
     """
     vector = await embedding_service.embed_query(fact)
     results = await vector_store.search_dense(
-        "memories_dense", vector, limit=5,
+        "memories_dense",
+        vector,
+        limit=5,
     )
 
     return [
@@ -178,8 +182,7 @@ async def _classify_conflict(
 ) -> dict:
     """Call Sonnet to classify the relationship between an existing memory and a new fact."""
     user_message = (
-        CONFLICT_CLASSIFICATION_USER
-        .replace("{existing_stage}", existing_stage)
+        CONFLICT_CLASSIFICATION_USER.replace("{existing_stage}", existing_stage)
         .replace("{existing_timestamp}", existing_timestamp)
         .replace("{existing_content}", existing_content)
         .replace("{new_stage}", new_stage)
@@ -196,11 +199,15 @@ async def _classify_conflict(
         )
         return json.loads(raw or "{}")
     except Exception:
-        logger.warning("Conflict classification failed — treating as new fact", exc_info=True)
+        logger.warning(
+            "Conflict classification failed — treating as new fact", exc_info=True
+        )
         return {"classification": "UNKNOWN", "reasoning": "classification failed"}
 
 
-def _is_obvious_duplicate(score: float, new_content: str, existing_content: str) -> bool:
+def _is_obvious_duplicate(
+    score: float, new_content: str, existing_content: str
+) -> bool:
     """True when the cosine score and length ratio make a Sonnet call wasteful.
 
     Both content strings must be non-empty to compare lengths. The 200-char
@@ -256,7 +263,10 @@ async def resolve_and_store(
 
         # Step 2: Duplicate detection
         candidates = await _find_duplicates(
-            fact, run_id, embedding_service, vector_store,
+            fact,
+            run_id,
+            embedding_service,
+            vector_store,
         )
 
         if not candidates:
@@ -362,7 +372,9 @@ async def resolve_and_store(
             contradictions += 1
 
         else:
-            logger.warning("Unknown classification '%s' for fact -- storing as new", label)
+            logger.warning(
+                "Unknown classification '%s' for fact -- storing as new", label
+            )
             await create_memory(
                 db_session,
                 content=fact,

@@ -25,6 +25,10 @@ class DuckDuckGoAdapter:
         except Exception as e:
             raise RuntimeError(f"DuckDuckGo search failed: {e}") from e
         return [
-            SearchResult(title=r.get("title", ""), url=r.get("href", ""), snippet=r.get("body", ""))
+            SearchResult(
+                title=r.get("title", ""),
+                url=r.get("href", ""),
+                snippet=r.get("body", ""),
+            )
             for r in raw
         ]

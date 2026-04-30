@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from decisionlab.runtime.loop import run_agent_loop
 
@@ -74,8 +75,12 @@ async def test_loop_returns_immediately_on_end_turn():
     )
 
     response = await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
+        registry={},
     )
 
     assert response.stop_reason == "end_turn"
@@ -96,8 +101,11 @@ async def test_loop_dispatches_tool_and_continues():
         return params["msg"]
 
     response = await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}],
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
         registry={"echo": echo},
     )
 
@@ -119,9 +127,13 @@ async def test_loop_respects_max_iterations():
 
     with pytest.raises(RuntimeError, match="Max iterations"):
         await run_agent_loop(
-            client=client, model="claude-sonnet-4-6", system="sys",
-            tools=[], messages=[{"role": "user", "content": "hi"}],
-            registry={"echo": echo}, max_iterations=3,
+            client=client,
+            model="claude-sonnet-4-6",
+            system="sys",
+            tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            registry={"echo": echo},
+            max_iterations=3,
         )
 
 
@@ -138,8 +150,12 @@ async def test_loop_raises_on_max_tokens_stop_reason():
 
     with pytest.raises(RuntimeError, match="hit max_tokens"):
         await run_agent_loop(
-            client=client, model="claude-sonnet-4-6", system="sys",
-            tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+            client=client,
+            model="claude-sonnet-4-6",
+            system="sys",
+            tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            registry={},
             max_tokens=4096,
         )
 
@@ -156,8 +172,12 @@ async def test_loop_warns_and_returns_on_other_unexpected_stop_reasons():
     client.messages.create.return_value = response
 
     result = await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
+        registry={},
     )
 
     assert result.stop_reason == "refusal"
@@ -172,8 +192,12 @@ async def test_loop_returns_on_tool_use_with_no_tool_blocks():
     client.messages.create.return_value = response
 
     result = await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
+        registry={},
     )
 
     assert result.stop_reason == "tool_use"
@@ -187,8 +211,12 @@ async def test_loop_propagates_api_exceptions():
 
     with pytest.raises(RuntimeError, match="API connection failed"):
         await run_agent_loop(
-            client=client, model="claude-sonnet-4-6", system="sys",
-            tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+            client=client,
+            model="claude-sonnet-4-6",
+            system="sys",
+            tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            registry={},
         )
 
 
@@ -200,8 +228,12 @@ async def test_loop_streams_when_max_tokens_exceeds_threshold():
     client = _client_with(response)
 
     result = await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
+        registry={},
         max_tokens=32768,
     )
 
@@ -218,8 +250,12 @@ async def test_loop_uses_create_below_streaming_threshold():
     client.messages.create.return_value = response
 
     await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "hi"}], registry={},
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "hi"}],
+        registry={},
         max_tokens=16384,
     )
 
@@ -240,8 +276,11 @@ async def test_loop_message_accumulation():
         return params["msg"]
 
     await run_agent_loop(
-        client=client, model="claude-sonnet-4-6", system="sys",
-        tools=[], messages=[{"role": "user", "content": "start"}],
+        client=client,
+        model="claude-sonnet-4-6",
+        system="sys",
+        tools=[],
+        messages=[{"role": "user", "content": "start"}],
         registry={"echo": echo},
     )
 

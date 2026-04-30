@@ -13,8 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from decisionlab.models.protocol import Action, Perception
-from denis.homeostatic import HomeostaticModel
 from denis.hedonic import HedonicModel
+from denis.homeostatic import HomeostaticModel
 
 
 class IntegrationMode(Enum):
@@ -67,7 +67,7 @@ class IntegratedModel:
             if self._hunger_mean > 0:
                 effective_reward = reward * (hunger / self._hunger_mean)
 
-        elif self.mode == IntegrationMode.HOMEOSTATIC_TO_HEDONIC_EXPECTED:
+        elif self.mode == IntegrationMode.HOMEOSTATIC_TO_HEDONIC_EXPECTED:  # noqa: SIM102
             # Case 3.2: Qmax(t) = Qmax(t) * H(t)/Hm
             # Scaling gamma by H/Hm is equivalent to scaling Qmax in the TD target
             if self._hunger_mean > 0:
@@ -86,6 +86,8 @@ class IntegratedModel:
             "homeostatic": self.homeostatic.get_state(),
             "hedonic": {"epsilon": self.hedonic.epsilon},
             "hunger_signal": self.homeostatic.hunger,
-            "hedonic_signal": self.hedonic.hedonic_signal(self._last_position, self._last_food_sources),
+            "hedonic_signal": self.hedonic.hedonic_signal(
+                self._last_position, self._last_food_sources
+            ),
             "mode": self.mode.value,
         }

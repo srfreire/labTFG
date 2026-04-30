@@ -94,6 +94,7 @@ retrieved knowledge to inform your paradigm identification and cross-paradigm in
 analysis.
 """
 
+
 class Researcher:
     def __init__(
         self,

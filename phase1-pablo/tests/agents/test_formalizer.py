@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from decisionlab.agents.formalizer import Formalizer
 from decisionlab.domain.models import FormalizationReport
@@ -51,8 +52,10 @@ async def test_formalizer_run_discovers_paradigms_from_s3():
     mock_storage = MagicMock()
     mock_storage.list = AsyncMock(side_effect=fake_list)
 
-    with patch("decisionlab.agents.formalizer.FormalizerSubAgent") as MockSub, \
-         patch("shared.storage", mock_storage):
+    with (
+        patch("decisionlab.agents.formalizer.FormalizerSubAgent") as MockSub,
+        patch("shared.storage", mock_storage),
+    ):
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance

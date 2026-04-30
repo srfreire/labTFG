@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from decisionlab.domain.ports import WebSearchPort
 
@@ -25,4 +26,5 @@ def create_web_search(adapter: WebSearchPort) -> Callable[[dict], Awaitable[str]
             raise ValueError("web_search requires 'query' parameter")
         results = await adapter.search(params["query"])
         return json.dumps([asdict(r) for r in results], indent=2)
+
     return web_search

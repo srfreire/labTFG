@@ -76,7 +76,9 @@ class TestReviewReasonFormalizerReruns:
         async def mock_review_reason(reports_dir):
             return ["pi-controller", "dual-process"], [], []
 
-        with patch("decisionlab.feedback.review_reason", side_effect=mock_review_reason):
+        with patch(
+            "decisionlab.feedback.review_reason", side_effect=mock_review_reason
+        ):
             await router._review_reason()
 
         assert state.stage == Stage.BUILD

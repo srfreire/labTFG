@@ -9,23 +9,23 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable
-
-import shared
-from shared.embedding import EmbeddingService
-from shared.knowledge_graph import KnowledgeGraph
-from shared.memories import touch_memory
-from shared.vector_store import VectorStore
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from anthropic import AsyncAnthropic
 
+import shared
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.crag import evaluate_results
 from decisionlab.knowledge.retrieval.fusion import fuse_and_rerank
 from decisionlab.knowledge.retrieval.kg_retrieval import kg_retrieve
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
+from shared.embedding import EmbeddingService
+from shared.knowledge_graph import KnowledgeGraph
+from shared.memories import touch_memory
+from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ def _parse_utc(value: object) -> datetime | None:
     try:
         dt = datetime.fromisoformat(str(value))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
     except (ValueError, TypeError):
         return None
@@ -205,7 +205,7 @@ def _apply_recency_weighting(
 
     Returns a new list re-sorted by final_score descending.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     weighted: list[RetrievalResult] = []
 
     for r in results:
@@ -252,7 +252,7 @@ def _apply_temporal_filter(
         return results
 
     if as_of.tzinfo is None:
-        as_of = as_of.replace(tzinfo=timezone.utc)
+        as_of = as_of.replace(tzinfo=UTC)
 
     filtered: list[RetrievalResult] = []
     for r in results:

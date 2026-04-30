@@ -1,10 +1,20 @@
 import pytest
 
-from decisionlab.domain.models import SearchResult, Paradigm, ResearchReport, FormalizationReport, ReasonerReport
+from decisionlab.domain.models import (
+    FormalizationReport,
+    Paradigm,
+    ReasonerReport,
+    ResearchReport,
+    SearchResult,
+)
 
 
 def test_search_result_creation():
-    r = SearchResult(title="Homeostatic regulation", url="https://example.com", snippet="A model of...")
+    r = SearchResult(
+        title="Homeostatic regulation",
+        url="https://example.com",
+        snippet="A model of...",
+    )
     assert r.title == "Homeostatic regulation"
     assert r.url == "https://example.com"
 

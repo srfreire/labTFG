@@ -50,7 +50,9 @@ async def extract(
     (``stop_reason="max_tokens"``) is also raised — see ``_call_haiku``.
     """
     if stage not in _STAGE_PROMPTS:
-        raise ValueError(f"Unknown stage: {stage!r}. Expected one of {list(_STAGE_PROMPTS)}")
+        raise ValueError(
+            f"Unknown stage: {stage!r}. Expected one of {list(_STAGE_PROMPTS)}"
+        )
 
     system_prompt, user_template = _STAGE_PROMPTS[stage]
     user_message = user_template.replace("{text}", output_text)
@@ -112,10 +114,7 @@ def _try_parse_json(text: str) -> dict | None:
         # Strip ```json ... ``` fences
         lines = cleaned.split("\n")
         # Drop first line (```json) and last line (```)
-        if lines[-1].strip() == "```":
-            lines = lines[1:-1]
-        else:
-            lines = lines[1:]
+        lines = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
         cleaned = "\n".join(lines)
 
     try:
@@ -180,7 +179,10 @@ def _fold_legacy_test_results(raw_nodes: list) -> list:
                 logger.warning(
                     "Legacy TestResult conflicts with Model on formulation_id=%r "
                     "property=%r: keeping Model value %r (discarding %r)",
-                    fid_key, prop_key, existing, value,
+                    fid_key,
+                    prop_key,
+                    existing,
+                    value,
                 )
 
     orphans = set(test_props_by_fid) - matched_fids
@@ -204,13 +206,25 @@ def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
         properties = raw.get("properties")
         natural_key = raw.get("natural_key")
         if label and isinstance(properties, dict) and natural_key:
-            nodes.append(NodeSpec(label=str(label), properties=properties, natural_key=str(natural_key)))
+            nodes.append(
+                NodeSpec(
+                    label=str(label),
+                    properties=properties,
+                    natural_key=str(natural_key),
+                )
+            )
 
     relations = []
     for raw in data.get("relations", []):
         if not isinstance(raw, dict):
             continue
-        required = ("from_label", "from_key_value", "to_label", "to_key_value", "rel_type")
+        required = (
+            "from_label",
+            "from_key_value",
+            "to_label",
+            "to_key_value",
+            "rel_type",
+        )
         if all(raw.get(k) for k in required):
             relations.append(
                 RelationSpec(

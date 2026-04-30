@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,7 +11,6 @@ import pytest
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
-    _apply_recency_weighting,
     create_retrieve_knowledge,
 )
 
@@ -42,7 +40,9 @@ def _make_handler(
     return create_retrieve_knowledge(
         kg=MagicMock() if kg is _SENTINEL else kg,
         vector_store=MagicMock() if vector_store is _SENTINEL else vector_store,
-        embedding_service=MagicMock() if embedding_service is _SENTINEL else embedding_service,
+        embedding_service=MagicMock()
+        if embedding_service is _SENTINEL
+        else embedding_service,
         search_adapter=MagicMock() if search_adapter is _SENTINEL else search_adapter,
         client=AsyncMock() if client is _SENTINEL else client,
         run_id=run_id,
@@ -96,7 +96,13 @@ class TestAC1_ToolSchema:
     def test_namespace_enum(self):
         ns = RETRIEVE_KNOWLEDGE_SCHEMA["input_schema"]["properties"]["namespace"]
         assert "enum" in ns
-        assert set(ns["enum"]) == {"paradigm", "formulation", "model", "simulation", "meta"}
+        assert set(ns["enum"]) == {
+            "paradigm",
+            "formulation",
+            "model",
+            "simulation",
+            "meta",
+        }
 
     def test_top_k_property(self):
         tk = RETRIEVE_KNOWLEDGE_SCHEMA["input_schema"]["properties"]["top_k"]
@@ -190,7 +196,10 @@ class TestAC5_GracefulDegradation:
     @pytest.mark.asyncio
     async def test_all_none_returns_graceful_message(self):
         handler = _make_handler(
-            kg=None, vector_store=None, embedding_service=None, search_adapter=None,
+            kg=None,
+            vector_store=None,
+            embedding_service=None,
+            search_adapter=None,
         )
         result = await handler({"query": "anything"})
         assert "not available" in result.lower()
@@ -217,7 +226,10 @@ class TestAC6_TopK:
             _result(f"Result {i}", 0.9 - i * 0.05, "dense") for i in range(10)
         ]
         crag = CRAGResult(
-            results=many_results, action="pass_through", evaluations=[], web_results_used=0,
+            results=many_results,
+            action="pass_through",
+            evaluations=[],
+            web_results_used=0,
         )
 
         with _patch_pipeline(crag_result=crag):
@@ -240,18 +252,29 @@ class TestAC7_MemoryAccessTracking:
     async def test_touch_memory_called_for_memory_results(self):
         mem_id = str(uuid.uuid4())
         memory_results = [
-            _result("A memory passage.", 0.9, "dense", entity_id=mem_id, collection="memories_dense"),
+            _result(
+                "A memory passage.",
+                0.9,
+                "dense",
+                entity_id=mem_id,
+                collection="memories_dense",
+            ),
         ]
         crag = CRAGResult(
-            results=memory_results, action="pass_through", evaluations=[], web_results_used=0,
+            results=memory_results,
+            action="pass_through",
+            evaluations=[],
+            web_results_used=0,
         )
 
         mock_session = AsyncMock()
         mock_db = MagicMock()
-        mock_db.get_session = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_session),
-            __aexit__=AsyncMock(return_value=False),
-        ))
+        mock_db.get_session = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_session),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
 
         with (
             _patch_pipeline(crag_result=crag),
@@ -271,7 +294,10 @@ class TestAC7_MemoryAccessTracking:
         """Web results (no entity_id) should NOT trigger touch_memory."""
         web_result = _result("Web passage.", 0.8, "web", url="https://example.com")
         crag = CRAGResult(
-            results=[web_result], action="web_fallback", evaluations=[], web_results_used=1,
+            results=[web_result],
+            action="web_fallback",
+            evaluations=[],
+            web_results_used=1,
         )
 
         with (
@@ -340,11 +366,17 @@ class TestEdgeCases:
     async def test_web_result_formatted_with_source(self):
         """Web results should show source attribution differently."""
         web_result = _result(
-            "Fresh web info about RL.", 0.85, "web",
-            url="https://arxiv.org/abs/1234", title="RL Survey",
+            "Fresh web info about RL.",
+            0.85,
+            "web",
+            url="https://arxiv.org/abs/1234",
+            title="RL Survey",
         )
         crag = CRAGResult(
-            results=[web_result], action="web_fallback", evaluations=[], web_results_used=1,
+            results=[web_result],
+            action="web_fallback",
+            evaluations=[],
+            web_results_used=1,
         )
 
         with _patch_pipeline(crag_result=crag, fused=[web_result]):

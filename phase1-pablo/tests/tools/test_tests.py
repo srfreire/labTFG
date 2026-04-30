@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from decisionlab.tools.tests import RUN_TESTS_SCHEMA, create_run_tests
 
@@ -64,7 +65,7 @@ async def test_run_tests_timeout(tmp_path, monkeypatch):
     async def fake_wait_for(coro, **_kw):
         # Cancel the coroutine to avoid "was never awaited" warning
         coro.close()
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
 

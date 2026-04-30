@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.extraction import extract
 from decisionlab.knowledge.indexer import index_stage_output
@@ -23,6 +24,7 @@ from decisionlab.knowledge.resolver import resolve_and_store
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
+
     from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
     from shared.knowledge_graph import KnowledgeGraph
@@ -191,7 +193,7 @@ class MemoryAgent:
             )
 
         results = await asyncio.gather(*coros.values(), return_exceptions=True)
-        named = dict(zip(coros, results))
+        named = dict(zip(coros, results, strict=False))
 
         kg_result = _zero_kg()
         if "kg" in named:

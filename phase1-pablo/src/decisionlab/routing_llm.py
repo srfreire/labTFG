@@ -57,7 +57,9 @@ def _build_user_message(
 ) -> str:
     parts: list[str] = []
 
-    parts.append(f"## Paradigms in this run (use EXACTLY one of these as \"paradigm\")\n{', '.join(paradigms)}")
+    parts.append(
+        f'## Paradigms in this run (use EXACTLY one of these as "paradigm")\n{", ".join(paradigms)}'
+    )
 
     if spec_content:
         parts.append(f"## Reasoner spec\n{spec_content}")
@@ -111,7 +113,9 @@ async def classify_feedback(
             target = data["target"]
             _VALID_TARGETS = {"researcher", "formalizer", "reasoner", "builder"}
             if target not in _VALID_TARGETS:
-                raise ValueError(f"Invalid target '{target}', expected one of {_VALID_TARGETS}")
+                raise ValueError(
+                    f"Invalid target '{target}', expected one of {_VALID_TARGETS}"
+                )
             paradigm_value = data["paradigm"]
             if paradigms and paradigm_value not in paradigms:
                 raise ValueError(

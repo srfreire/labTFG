@@ -1,4 +1,13 @@
-from decisionlab.models.protocol import Action, Perception, DecisionModel, UP, DOWN, LEFT, RIGHT, STAY
+from decisionlab.models.protocol import (
+    DOWN,
+    LEFT,
+    RIGHT,
+    STAY,
+    UP,
+    Action,
+    DecisionModel,
+    Perception,
+)
 
 
 def test_action_dataclass():
@@ -43,13 +52,17 @@ def test_decision_model_protocol_enforced():
         def decide(self, perception: Perception) -> Action:
             return STAY
 
-        def update(self, action: Action, reward: float, new_perception: Perception) -> None:
+        def update(
+            self, action: Action, reward: float, new_perception: Perception
+        ) -> None:
             pass
 
         def get_state(self) -> dict:
             return {}
 
     model: DecisionModel = DummyModel()
-    p = Perception(position=(0, 0), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
+    p = Perception(
+        position=(0, 0), grid_size=(5, 5), food_sources=(), ate_food=False, step=0
+    )
     assert model.decide(p) == STAY
     assert model.get_state() == {}

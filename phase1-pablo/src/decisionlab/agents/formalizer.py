@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import shared
-
 from decisionlab.agents.formalizer_sub import FormalizerSubAgent
 from decisionlab.domain.models import FormalizationReport
 
@@ -59,7 +59,7 @@ class Formalizer:
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
         results: dict[str, str] = {}
-        for slug, outcome in zip(paradigm_slugs, outcomes):
+        for slug, outcome in zip(paradigm_slugs, outcomes, strict=False):
             if isinstance(outcome, BaseException):
                 logger.error("FormalizerSubAgent failed for %s: %s", slug, outcome)
             else:

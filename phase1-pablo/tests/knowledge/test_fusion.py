@@ -5,15 +5,12 @@ All external services (Voyage AI via EmbeddingService) are mocked.
 
 from __future__ import annotations
 
-import re
 from unittest.mock import AsyncMock
 
 import pytest
 
-from shared.embedding import RankedResult
-
 from decisionlab.knowledge.retrieval.models import RetrievalResult
-
+from shared.embedding import RankedResult
 
 # -- helpers -------------------------------------------------------------------
 
@@ -24,7 +21,9 @@ def _rr(
     source: str = "kg",
     metadata: dict | None = None,
 ) -> RetrievalResult:
-    return RetrievalResult(text=text, score=score, source=source, metadata=metadata or {})
+    return RetrievalResult(
+        text=text, score=score, source=source, metadata=metadata or {}
+    )
 
 
 def _mock_emb(ranked: list[RankedResult] | None = None) -> AsyncMock:
@@ -188,13 +187,17 @@ class TestAC4_RerankingReorders:
         ]
 
         # Reranker says the 3rd doc (index 2) is most relevant
-        emb = _mock_emb(ranked=[
-            RankedResult(index=2, score=0.95, document="low rrf but very relevant"),
-            RankedResult(index=0, score=0.7, document="high rrf but irrelevant"),
-            RankedResult(index=1, score=0.5, document="medium rrf"),
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=2, score=0.95, document="low rrf but very relevant"),
+                RankedResult(index=0, score=0.7, document="high rrf but irrelevant"),
+                RankedResult(index=1, score=0.5, document="medium rrf"),
+            ]
+        )
 
-        reranked = await rerank_results("test query", results, emb, top_k=3, threshold=0.0)
+        reranked = await rerank_results(
+            "test query", results, emb, top_k=3, threshold=0.0
+        )
 
         # After reranking, "low rrf but very relevant" should be first
         assert reranked[0].text == "low rrf but very relevant"
@@ -205,11 +208,18 @@ class TestAC4_RerankingReorders:
         from decisionlab.knowledge.retrieval.fusion import rerank_results
 
         results = [
-            _rr("doc", score=0.05, source="kg", metadata={"node_id": "n1", "run_id": "r1"}),
+            _rr(
+                "doc",
+                score=0.05,
+                source="kg",
+                metadata={"node_id": "n1", "run_id": "r1"},
+            ),
         ]
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.8, document="doc"),
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.8, document="doc"),
+            ]
+        )
 
         reranked = await rerank_results("q", results, emb, top_k=1, threshold=0.0)
 
@@ -235,11 +245,13 @@ class TestAC5_ThresholdFiltering:
             _rr("marginal", score=0.04),
             _rr("irrelevant", score=0.03),
         ]
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.8, document="relevant"),
-            RankedResult(index=1, score=0.25, document="marginal"),  # below 0.3
-            RankedResult(index=2, score=0.1, document="irrelevant"),  # below 0.3
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.8, document="relevant"),
+                RankedResult(index=1, score=0.25, document="marginal"),  # below 0.3
+                RankedResult(index=2, score=0.1, document="irrelevant"),  # below 0.3
+            ]
+        )
 
         reranked = await rerank_results("q", results, emb, top_k=3, threshold=0.3)
 
@@ -251,9 +263,11 @@ class TestAC5_ThresholdFiltering:
         from decisionlab.knowledge.retrieval.fusion import rerank_results
 
         results = [_rr("bad", score=0.01)]
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.1, document="bad"),
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.1, document="bad"),
+            ]
+        )
 
         reranked = await rerank_results("q", results, emb, top_k=1, threshold=0.3)
 
@@ -343,11 +357,13 @@ class TestAC7_FuseAndRerankE2E:
         from decisionlab.knowledge.retrieval.fusion import fuse_and_rerank
 
         kg = [_rr("only doc", source="kg")]
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.85, document="only doc"),
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.85, document="only doc"),
+            ]
+        )
 
-        results = await fuse_and_rerank("q", kg, [], [], emb)
+        await fuse_and_rerank("q", kg, [], [], emb)
 
         # rerank was called with the RRF output texts
         emb.rerank.assert_awaited_once()
@@ -368,10 +384,12 @@ class TestRerankOOBGuard:
         from decisionlab.knowledge.retrieval.fusion import rerank_results
 
         results = [_rr("only doc", score=0.05)]
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.9, document="only doc"),
-            RankedResult(index=99, score=0.8, document="ghost"),  # OOB
-        ])
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.9, document="only doc"),
+                RankedResult(index=99, score=0.8, document="ghost"),  # OOB
+            ]
+        )
 
         reranked = await rerank_results("q", results, emb, top_k=2, threshold=0.0)
 

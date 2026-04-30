@@ -41,6 +41,7 @@ def _discover_paradigm_slugs(reports_dir: Path) -> list[str]:
 # REVIEW_RESEARCH
 # ---------------------------------------------------------------------------
 
+
 async def review_research(reports_dir: Path) -> tuple[list[str], str | None]:
     """Interactive review of research results.
 
@@ -77,6 +78,7 @@ async def review_research(reports_dir: Path) -> tuple[list[str], str | None]:
 # ---------------------------------------------------------------------------
 # REVIEW_FORMALIZE
 # ---------------------------------------------------------------------------
+
 
 async def review_formalize(
     reports_dir: Path,
@@ -117,7 +119,9 @@ async def review_formalize(
         headers = parse_formulation_headers(text)
 
         if not headers:
-            console.print(f"[yellow]No formulation headers found in {slug}.md, keeping as-is.[/yellow]")
+            console.print(
+                f"[yellow]No formulation headers found in {slug}.md, keeping as-is.[/yellow]"
+            )
             selected_formulations[slug] = []
             continue
 
@@ -132,7 +136,9 @@ async def review_formalize(
 
         console.print(f"\n[bold cyan]{slug}[/bold cyan]")
         kept: list[int] = await _ask(
-            questionary.checkbox(f"Select formulations to keep for '{slug}':", choices=choices),
+            questionary.checkbox(
+                f"Select formulations to keep for '{slug}':", choices=choices
+            ),
         )
 
         selected_formulations[slug] = kept
@@ -141,7 +147,9 @@ async def review_formalize(
         if kept:
             filtered = filter_formulations_md(text, kept)
             await shared.storage.put_text(s3_key, filtered)
-            console.print(f"  [dim]Kept {len(kept)} formulation(s), rewrote {slug}.md[/dim]")
+            console.print(
+                f"  [dim]Kept {len(kept)} formulation(s), rewrote {slug}.md[/dim]"
+            )
         else:
             console.print(f"  [yellow]No formulations selected for {slug}.[/yellow]")
 
@@ -151,6 +159,7 @@ async def review_formalize(
 # ---------------------------------------------------------------------------
 # GET_ENV_SPEC
 # ---------------------------------------------------------------------------
+
 
 async def get_env_spec() -> Path:
     """Prompt user for the path to ``env_spec.json`` and validate it."""
@@ -181,6 +190,7 @@ async def get_env_spec() -> Path:
 # ---------------------------------------------------------------------------
 # REVIEW_REASON
 # ---------------------------------------------------------------------------
+
 
 async def review_reason(
     reports_dir: Path,
@@ -223,7 +233,9 @@ async def review_reason(
             console.print(f"[dim]Paradigm:[/dim] {paradigm}")
             problems = data.get("problems", [])
             for p in problems:
-                console.print(f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}")
+                console.print(
+                    f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}"
+                )
 
             rerun: bool = await _ask(
                 questionary.confirm(
@@ -248,7 +260,9 @@ async def review_reason(
         # Show variables summary if present
         variables = data.get("variables", [])
         if variables:
-            var_names = ", ".join(v.get("name", v.get("symbol", "?")) for v in variables)
+            var_names = ", ".join(
+                v.get("name", v.get("symbol", "?")) for v in variables
+            )
             console.print(f"\n[dim]Variables:[/dim] {var_names}")
 
         # Show actions used if present
@@ -275,6 +289,7 @@ async def review_reason(
 # ---------------------------------------------------------------------------
 # REVIEW_BUILD
 # ---------------------------------------------------------------------------
+
 
 async def review_build(
     reports_dir: Path,
@@ -310,7 +325,9 @@ async def review_build(
             console.print(f"[dim]Paradigm:[/dim] {paradigm}")
             problems = data.get("problems", [])
             for p in problems:
-                console.print(f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}")
+                console.print(
+                    f"  [red]• [{p.get('type', '?')}][/red] {p.get('detail', '')}"
+                )
 
             rerun: bool = await _ask(
                 questionary.confirm(

@@ -42,26 +42,26 @@ def _compass(dx: int, dy: int) -> str:
     mapping = {
         (0, -1): "N",
         (1, -1): "NE",
-        (1,  0): "E",
-        (1,  1): "SE",
-        (0,  1): "S",
-        (-1,  1): "SW",
-        (-1,  0): "W",
+        (1, 0): "E",
+        (1, 1): "SE",
+        (0, 1): "S",
+        (-1, 1): "SW",
+        (-1, 0): "W",
         (-1, -1): "NW",
     }
     return mapping.get((sx, sy), "none")
 
 
-def _discretize(energy: float, food_list: list, pos: tuple,
-                n_bins: int, x_max: float) -> tuple:
+def _discretize(
+    energy: float, food_list: list, pos: tuple, n_bins: int, x_max: float
+) -> tuple:
     """Return (energy_bin, direction_to_nearest_food)."""
     energy_bin = min(int(energy * n_bins / x_max), n_bins - 1)
     if not food_list:
         direction = "none"
     else:
         nearest = min(
-            food_list,
-            key=lambda f: abs(f["x"] - pos[0]) + abs(f["y"] - pos[1])
+            food_list, key=lambda f: abs(f["x"] - pos[0]) + abs(f["y"] - pos[1])
         )
         dx = nearest["x"] - pos[0]
         dy = nearest["y"] - pos[1]
@@ -72,6 +72,7 @@ def _discretize(energy: float, food_list: list, pos: tuple,
 # ---------------------------------------------------------------------------
 # model
 # ---------------------------------------------------------------------------
+
 
 class HomeostaticDriveReductionRL:
     """Drive-reduction Q-learning homeostatic agent."""
@@ -100,11 +101,11 @@ class HomeostaticDriveReductionRL:
         self.n_bins = energy_discretization_bins
 
         # --- variables ---
-        self.x: float = 50.0                          # energy
+        self.x: float = 50.0  # energy
         self.D: float = self.phi * (self.x - self.s) ** 2  # drive
-        self.r: float = 0.0                           # reward
-        self.Q: dict = defaultdict(float)             # Q-table
-        self.z: tuple = (5, "none")                   # discretized state
+        self.r: float = 0.0  # reward
+        self.Q: dict = defaultdict(float)  # Q-table
+        self.z: tuple = (5, "none")  # discretized state
         self.x_prev: float = 50.0
         self.z_prev: tuple = (5, "none")
         self.a_prev: str = "stay"
@@ -120,9 +121,7 @@ class HomeostaticDriveReductionRL:
         """Select an action via softmax over current Q-values."""
         pos = (perception["x"], perception["y"])
         food_list = perception.get("resources", {}).get("food", [])
-        food_at_position = any(
-            f["x"] == pos[0] and f["y"] == pos[1] for f in food_list
-        )
+        food_at_position = any(f["x"] == pos[0] and f["y"] == pos[1] for f in food_list)
 
         z = self.z  # current discretized state (set during last update)
 
@@ -181,11 +180,11 @@ class HomeostaticDriveReductionRL:
 
         # R5 & R6 – TD update (skip on first step)
         if not self._first_update:
-            best_future = max(
-                self.Q.get((self.z, a), 0.0) for a in ALL_ACTIONS
-            )
-            delta = self.r + self.gamma * best_future - self.Q.get(
-                (self.z_prev, self.a_prev), 0.0
+            best_future = max(self.Q.get((self.z, a), 0.0) for a in ALL_ACTIONS)
+            delta = (
+                self.r
+                + self.gamma * best_future
+                - self.Q.get((self.z_prev, self.a_prev), 0.0)
             )
             self.Q[(self.z_prev, self.a_prev)] = (
                 self.Q.get((self.z_prev, self.a_prev), 0.0) + self.alpha * delta

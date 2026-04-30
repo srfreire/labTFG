@@ -5,6 +5,8 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 
+pytestmark = pytest.mark.integration
+
 
 @pytest_asyncio.fixture
 async def seeded_runs():

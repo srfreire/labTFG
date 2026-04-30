@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from decisionlab.models.protocol import Action, Perception, UP, DOWN, LEFT, RIGHT, STAY
+from decisionlab.models.protocol import STAY, Action, Perception
 
 
 def _sigmoid(x: float) -> float:
@@ -38,9 +38,9 @@ class HomeostaticParams:
     c_glycogen: float = 0.5
 
     # Utilization rates
-    alpha_fat: float = 0.01        # K_F from Table 2.1
-    alpha_glycogen: float = 0.05   # K_Gly from Table 2.1
-    beta_activity: float = 0.1     # Activity coefficient
+    alpha_fat: float = 0.01  # K_F from Table 2.1
+    alpha_glycogen: float = 0.05  # K_Gly from Table 2.1
+    beta_activity: float = 0.1  # Activity coefficient
 
     # Hormone production rates
     k_ghrelin: float = 0.05
@@ -90,11 +90,20 @@ class HomeostaticModel:
         # dF/dt = cF * I - alphaF * F
         d_fat = p.c_fat * intake - p.alpha_fat * self.fat
         # dGly/dt = cGly * I - alphaGly * Gly - beta * A(t)
-        d_glycogen = p.c_glycogen * intake - p.alpha_glycogen * self.glycogen - p.beta_activity * activity
+        d_glycogen = (
+            p.c_glycogen * intake
+            - p.alpha_glycogen * self.glycogen
+            - p.beta_activity * activity
+        )
         # dG/dt = kG * (1 - min(1, Gly/Glymax)) - G/tauG
-        d_ghrelin = p.k_ghrelin * (1.0 - min(1.0, self.glycogen / p.glycogen_max)) - self.ghrelin / p.tau_ghrelin
+        d_ghrelin = (
+            p.k_ghrelin * (1.0 - min(1.0, self.glycogen / p.glycogen_max))
+            - self.ghrelin / p.tau_ghrelin
+        )
         # dL/dt = kL * min(1, F/Fmax) - L/tauL
-        d_leptin = p.k_leptin * min(1.0, self.fat / p.fat_max) - self.leptin / p.tau_leptin
+        d_leptin = (
+            p.k_leptin * min(1.0, self.fat / p.fat_max) - self.leptin / p.tau_leptin
+        )
 
         self.fat = max(0.0, self.fat + d_fat * dt)
         self.glycogen = max(0.0, self.glycogen + d_glycogen * dt)
@@ -115,7 +124,10 @@ class HomeostaticModel:
             best_action = STAY
             for action_name, (dx, dy) in _DELTAS.items():
                 nx, ny = ax + dx, ay + dy
-                if 0 <= nx < perception.grid_size[0] and 0 <= ny < perception.grid_size[1]:
+                if (
+                    0 <= nx < perception.grid_size[0]
+                    and 0 <= ny < perception.grid_size[1]
+                ):
                     dist = abs(fx - nx) + abs(fy - ny)
                     if dist < best_dist:
                         best_dist = dist

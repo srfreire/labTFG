@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from decisionlab.agents.reasoner import Reasoner
 from decisionlab.domain.models import ReasonerReport
@@ -60,10 +61,12 @@ async def test_reasoner_run_discovers_paradigms_from_s3():
         patch("decisionlab.agents.reasoner.ReasonerSubAgent") as MockSub,
         patch("decisionlab.agents.reasoner.shared") as mock_shared,
     ):
-        mock_shared.storage.list = AsyncMock(return_value=[
-            "research/run-1/formulations/paradigm-a.md",
-            "research/run-1/formulations/paradigm-b.md",
-        ])
+        mock_shared.storage.list = AsyncMock(
+            return_value=[
+                "research/run-1/formulations/paradigm-a.md",
+                "research/run-1/formulations/paradigm-b.md",
+            ]
+        )
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance

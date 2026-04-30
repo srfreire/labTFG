@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from decisionlab.agents.builder import Builder
 from decisionlab.domain.models import BuilderReport
@@ -66,11 +67,13 @@ async def test_builder_run_discovers_specs_from_s3(tmp_path):
         patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
         patch("decisionlab.agents.builder.shared") as mock_shared,
     ):
-        mock_shared.storage.list = AsyncMock(return_value=[
-            "models/run-1/reasoner/paradigm-a/spec-a.json",
-            "models/run-1/reasoner/paradigm-a/spec-b.json",
-            "models/run-1/reasoner/paradigm-b/spec-c.json",
-        ])
+        mock_shared.storage.list = AsyncMock(
+            return_value=[
+                "models/run-1/reasoner/paradigm-a/spec-a.json",
+                "models/run-1/reasoner/paradigm-a/spec-b.json",
+                "models/run-1/reasoner/paradigm-b/spec-c.json",
+            ]
+        )
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance

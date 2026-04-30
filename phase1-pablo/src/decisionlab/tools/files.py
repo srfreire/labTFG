@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import shared
 from shared.artifacts import register_artifact
@@ -81,7 +82,10 @@ def create_write_file(
         await shared.storage.put_text(key, content)
         if run_id:
             await register_artifact(
-                key, _infer_artifact_type(path), len(content.encode()), run_id=run_id,
+                key,
+                _infer_artifact_type(path),
+                len(content.encode()),
+                run_id=run_id,
             )
         return f"Written {len(content)} chars to {path}"
 

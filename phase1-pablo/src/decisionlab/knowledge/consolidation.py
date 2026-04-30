@@ -261,7 +261,8 @@ async def _generate_reflections(
         except Exception as exc:
             logger.warning(
                 "Reflection generation failed for cluster (size=%d), skipping: %s",
-                len(cluster), exc,
+                len(cluster),
+                exc,
             )
             continue
 
@@ -324,7 +325,8 @@ async def _generate_reflections(
                     )
                 except Exception:
                     logger.warning(
-                        "Failed to mirror reflection %s to KG", point_id,
+                        "Failed to mirror reflection %s to KG",
+                        point_id,
                         exc_info=True,
                     )
 
@@ -419,9 +421,7 @@ async def _is_contradiction(
         parsed = json.loads(raw or "{}")
         return parsed.get("contradicts", False) is True
     except Exception as exc:
-        logger.warning(
-            "Contradiction check failed, assuming no contradiction: %s", exc
-        )
+        logger.warning("Contradiction check failed, assuming no contradiction: %s", exc)
         return False
 
 

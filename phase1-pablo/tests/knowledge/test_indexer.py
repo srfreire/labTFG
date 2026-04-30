@@ -10,7 +10,6 @@ import pytest
 from decisionlab.knowledge.indexer import chunk_stage_output, index_stage_output
 from decisionlab.knowledge.models import ExtractionResult, IndexResult
 
-
 # ---------------------------------------------------------------------------
 # Chunking tests
 # ---------------------------------------------------------------------------
@@ -98,7 +97,9 @@ class TestChunkStageOutput:
 # ---------------------------------------------------------------------------
 
 
-def _make_extraction(*, facts: list[str] | None = None, stage: str = "researcher", run_id: str = "run-1") -> ExtractionResult:
+def _make_extraction(
+    *, facts: list[str] | None = None, stage: str = "researcher", run_id: str = "run-1"
+) -> ExtractionResult:
     return ExtractionResult(
         nodes=[],
         relations=[],
@@ -155,7 +156,10 @@ class TestIndexStageOutput:
         assert vector_store.upsert_sparse.call_count >= 5
         # All dense upserts should go to artifacts_dense
         for call in vector_store.upsert_dense.call_args_list:
-            assert call.kwargs.get("collection", call.args[0] if call.args else None) == "artifacts_dense"
+            assert (
+                call.kwargs.get("collection", call.args[0] if call.args else None)
+                == "artifacts_dense"
+            )
 
     @pytest.mark.asyncio
     async def test_facts_indexed_to_memories(self):
@@ -183,11 +187,13 @@ class TestIndexStageOutput:
         assert result.facts_indexed == 10
         # memories_dense and memories_sparse calls
         memories_dense_calls = [
-            c for c in vector_store.upsert_dense.call_args_list
+            c
+            for c in vector_store.upsert_dense.call_args_list
             if (c.kwargs.get("collection") or c.args[0]) == "memories_dense"
         ]
         memories_sparse_calls = [
-            c for c in vector_store.upsert_sparse.call_args_list
+            c
+            for c in vector_store.upsert_sparse.call_args_list
             if (c.kwargs.get("collection") or c.args[0]) == "memories_sparse"
         ]
         assert len(memories_dense_calls) == 10
@@ -203,12 +209,20 @@ class TestIndexStageOutput:
         store1 = _make_vector_store()
         store2 = _make_vector_store()
 
-        await index_stage_output("researcher", text, extraction, embedding_svc, store1, "run-1")
-        await index_stage_output("researcher", text, extraction, embedding_svc, store2, "run-1")
+        await index_stage_output(
+            "researcher", text, extraction, embedding_svc, store1, "run-1"
+        )
+        await index_stage_output(
+            "researcher", text, extraction, embedding_svc, store2, "run-1"
+        )
 
         # Extract IDs from both runs
-        ids1 = [c.kwargs.get("id") or c.args[1] for c in store1.upsert_dense.call_args_list]
-        ids2 = [c.kwargs.get("id") or c.args[1] for c in store2.upsert_dense.call_args_list]
+        ids1 = [
+            c.kwargs.get("id") or c.args[1] for c in store1.upsert_dense.call_args_list
+        ]
+        ids2 = [
+            c.kwargs.get("id") or c.args[1] for c in store2.upsert_dense.call_args_list
+        ]
         assert ids1 == ids2
 
     @pytest.mark.asyncio
@@ -219,7 +233,9 @@ class TestIndexStageOutput:
         embedding_svc = _make_embedding_service()
         vector_store = _make_vector_store()
 
-        await index_stage_output("researcher", text, extraction, embedding_svc, vector_store, "run-1")
+        await index_stage_output(
+            "researcher", text, extraction, embedding_svc, vector_store, "run-1"
+        )
 
         call = vector_store.upsert_dense.call_args_list[0]
         payload = call.kwargs.get("payload") or call.args[3]
@@ -253,12 +269,16 @@ class TestIndexStageOutput:
             store = _make_vector_store()
             extraction = _make_extraction(stage=stage)
 
-            await index_stage_output(stage, stage_text[stage], extraction, embedding_svc, store, "run-1")
+            await index_stage_output(
+                stage, stage_text[stage], extraction, embedding_svc, store, "run-1"
+            )
 
             if store.upsert_dense.call_count > 0:
                 call = store.upsert_dense.call_args_list[0]
                 payload = call.kwargs.get("payload") or call.args[3]
-                assert payload["namespace"] == expected_ns, f"Stage {stage} should map to namespace {expected_ns}"
+                assert payload["namespace"] == expected_ns, (
+                    f"Stage {stage} should map to namespace {expected_ns}"
+                )
 
     @pytest.mark.asyncio
     async def test_total_chunks_equals_artifacts_plus_facts(self):
@@ -267,7 +287,9 @@ class TestIndexStageOutput:
         embedding_svc = _make_embedding_service()
         vector_store = _make_vector_store()
 
-        result = await index_stage_output("researcher", text, extraction, embedding_svc, vector_store, "run-1")
+        result = await index_stage_output(
+            "researcher", text, extraction, embedding_svc, vector_store, "run-1"
+        )
 
         assert result.total_chunks == result.artifacts_indexed + result.facts_indexed
 
@@ -277,7 +299,9 @@ class TestIndexStageOutput:
         embedding_svc = _make_embedding_service()
         vector_store = _make_vector_store()
 
-        result = await index_stage_output("researcher", "", extraction, embedding_svc, vector_store, "run-1")
+        result = await index_stage_output(
+            "researcher", "", extraction, embedding_svc, vector_store, "run-1"
+        )
 
         assert result.artifacts_indexed == 0
         assert result.facts_indexed == 0
@@ -294,15 +318,24 @@ class TestIndexStageOutput:
             "reasoner": '{"k": "v"}',
             "builder": "class M: pass",
         }
-        expected_confidence = {"researcher": 0.6, "formalizer": 0.7, "reasoner": 0.8, "builder": 0.9}
+        expected_confidence = {
+            "researcher": 0.6,
+            "formalizer": 0.7,
+            "reasoner": 0.8,
+            "builder": 0.9,
+        }
         for stage, conf in expected_confidence.items():
             store = _make_vector_store()
             extraction = _make_extraction(stage=stage)
-            await index_stage_output(stage, stage_text[stage], extraction, embedding_svc, store, "run-1")
+            await index_stage_output(
+                stage, stage_text[stage], extraction, embedding_svc, store, "run-1"
+            )
             if store.upsert_dense.call_count > 0:
                 call = store.upsert_dense.call_args_list[0]
                 payload = call.kwargs.get("payload") or call.args[3]
-                assert payload["confidence"] == conf, f"Stage {stage} should have confidence {conf}"
+                assert payload["confidence"] == conf, (
+                    f"Stage {stage} should have confidence {conf}"
+                )
 
     @pytest.mark.asyncio
     async def test_embed_texts_count_mismatch_raises(self):
@@ -312,14 +345,22 @@ class TestIndexStageOutput:
         vector_store = _make_vector_store()
 
         svc = AsyncMock()
-        svc.embed_texts = AsyncMock(return_value=[[0.1] * 1024])  # only 1 vector for 3 chunks
+        svc.embed_texts = AsyncMock(
+            return_value=[[0.1] * 1024]
+        )  # only 1 vector for 3 chunks
 
-        with pytest.raises(RuntimeError, match="embed_texts returned 1 vectors for 3 texts"):
-            await index_stage_output("researcher", text, extraction, svc, vector_store, "run-1")
+        with pytest.raises(
+            RuntimeError, match="embed_texts returned 1 vectors for 3 texts"
+        ):
+            await index_stage_output(
+                "researcher", text, extraction, svc, vector_store, "run-1"
+            )
 
     def test_formalizer_no_headers_returns_empty(self):
         """Formalizer text without ### Formulation headers produces no chunks."""
-        chunks = chunk_stage_output("formalizer", "# Intro\nNo formulation headers here")
+        chunks = chunk_stage_output(
+            "formalizer", "# Intro\nNo formulation headers here"
+        )
         assert chunks == []
 
     def test_researcher_no_section_headers_returns_empty(self):

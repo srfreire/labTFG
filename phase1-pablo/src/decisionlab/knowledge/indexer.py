@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.models import Chunk, ExtractionResult, IndexResult
@@ -93,14 +93,18 @@ def _chunk_researcher(text: str) -> list[Chunk]:
     for header, body in _iter_header_body_pairs(_SECTION_RE.split(text)):
         prefix = f"{paradigm}\n\n" if paradigm else ""
         chunk_text = f"{prefix}## {header}\n{body}"
-        chunks.append(Chunk(text=chunk_text, chunk_type="artifact", source_section=header))
+        chunks.append(
+            Chunk(text=chunk_text, chunk_type="artifact", source_section=header)
+        )
     return chunks
 
 
 def _chunk_formalizer(text: str) -> list[Chunk]:
     """Split by ### Formulation N: headers."""
     return [
-        Chunk(text=f"### {header}\n{body}", chunk_type="artifact", source_section=header)
+        Chunk(
+            text=f"### {header}\n{body}", chunk_type="artifact", source_section=header
+        )
         for header, body in _iter_header_body_pairs(_FORMULATION_RE.split(text))
     ]
 
@@ -131,7 +135,9 @@ def _chunk_builder(text: str) -> list[Chunk]:
     blocks = _CODE_BLOCK_RE.findall(text)
     if len(blocks) >= 2:
         return [
-            Chunk(text=blocks[0].strip(), chunk_type="artifact", source_section="model"),
+            Chunk(
+                text=blocks[0].strip(), chunk_type="artifact", source_section="model"
+            ),
             Chunk(text=blocks[1].strip(), chunk_type="artifact", source_section="test"),
         ]
     # Single file or no code blocks — entire text is one chunk
@@ -175,7 +181,7 @@ async def index_stage_output(
 
     namespace = _STAGE_NAMESPACE.get(stage, "meta")
     confidence = _STAGE_CONFIDENCE.get(stage, 0.5)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     _COLLECTION_PREFIX = {"artifact": "artifacts", "fact": "memories"}
 

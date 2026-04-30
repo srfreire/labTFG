@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from decisionlab.tools.files import (
     READ_FILE_SCHEMA,
@@ -31,6 +32,7 @@ def s3_store():
 @pytest.fixture
 def mock_storage(s3_store):
     """Patch shared.storage to use in-memory dict."""
+
     async def fake_get_text(key):
         if key not in s3_store:
             raise FileNotFoundError(f"File not found: {key}")

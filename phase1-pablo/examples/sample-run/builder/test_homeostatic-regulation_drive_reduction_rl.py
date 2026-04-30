@@ -4,19 +4,20 @@ Tests for homeostatic-regulation_drive_reduction_rl model.
 
 import importlib.util
 import math
+import os
 import random
 import sys
-import os
 
 # Load model from file with hyphens in its name
 _MODULE_NAME = "homeostatic_regulation_drive_reduction_rl_model"
 _spec = importlib.util.spec_from_file_location(
     _MODULE_NAME,
-    os.path.join(os.path.dirname(__file__),
-                 "homeostatic-regulation_drive_reduction_rl_model.py"),
+    os.path.join(
+        os.path.dirname(__file__), "homeostatic-regulation_drive_reduction_rl_model.py"
+    ),
 )
 _mod = importlib.util.module_from_spec(_spec)
-sys.modules[_MODULE_NAME] = _mod   # register BEFORE exec so @dataclass works
+sys.modules[_MODULE_NAME] = _mod  # register BEFORE exec so @dataclass works
 _spec.loader.exec_module(_mod)
 
 HomeostaticDriveReductionRL = _mod.HomeostaticDriveReductionRL
@@ -27,11 +28,15 @@ Action = _mod.Action
 # helpers
 # ---------------------------------------------------------------------------
 
-def make_perception(x=5, y=5, step=0, food=None, grid_w=10, grid_h=10,
-                    last_action_result=None):
+
+def make_perception(
+    x=5, y=5, step=0, food=None, grid_w=10, grid_h=10, last_action_result=None
+):
     return {
-        "x": x, "y": y,
-        "grid_width": grid_w, "grid_height": grid_h,
+        "x": x,
+        "y": y,
+        "grid_width": grid_w,
+        "grid_height": grid_h,
         "step": step,
         "resources": {"food": food or []},
         "last_action_result": last_action_result or {},
@@ -42,9 +47,10 @@ def make_perception(x=5, y=5, step=0, food=None, grid_w=10, grid_h=10,
 # B1 – Drive increases as energy falls below set point without eating
 # ---------------------------------------------------------------------------
 
+
 def test_B1_drive_increases_without_eating():
     """Run 30 steps with no food → drive increases each step,
-       and D = phi * (x - s)^2 at all times."""
+    and D = phi * (x - s)^2 at all times."""
     random.seed(42)
     model = HomeostaticDriveReductionRL()
 
@@ -55,22 +61,25 @@ def test_B1_drive_increases_without_eating():
         model.update(action, 0.0, perc)
         drives.append(model.D)
         # check algebraic relation R2
-        assert abs(model.D - model.phi * (model.x - model.s) ** 2) < 1e-9, \
+        assert abs(model.D - model.phi * (model.x - model.s) ** 2) < 1e-9, (
             f"D formula mismatch at step {i}"
+        )
 
     # D should be monotonically non-decreasing (energy decays toward 0)
     for i in range(1, len(drives)):
-        assert drives[i] >= drives[i - 1] - 1e-9, \
-            f"Drive did not increase at step {i}: {drives[i-1]} → {drives[i]}"
+        assert drives[i] >= drives[i - 1] - 1e-9, (
+            f"Drive did not increase at step {i}: {drives[i - 1]} → {drives[i]}"
+        )
 
 
 # ---------------------------------------------------------------------------
 # B2 – Eating produces positive reward when energy below set point
 # ---------------------------------------------------------------------------
 
+
 def test_B2_eating_positive_reward_below_setpoint():
     """At x=50, eat food (gaining delta_eat=15 → x after decay=64):
-       r = D(50) - D(64) should be > 0."""
+    r = D(50) - D(64) should be > 0."""
     model = HomeostaticDriveReductionRL()
     model.x = 50.0
     model.x_prev = 50.0
@@ -83,17 +92,19 @@ def test_B2_eating_positive_reward_below_setpoint():
     # x after update = clamp(50 - 1 + 15, 0, 100) = 64
     expected_x = min(max(50.0 - 1.0 + 15.0, 0), 100)  # 64
     expected_r = (50.0 - 80.0) ** 2 - (expected_x - 80.0) ** 2
-    assert abs(model.r - expected_r) < 1e-9, \
+    assert abs(model.r - expected_r) < 1e-9, (
         f"Reward magnitude wrong: expected {expected_r}, got {model.r}"
+    )
 
 
 # ---------------------------------------------------------------------------
 # B3 – Eating produces negative reward when energy overshoots set point
 # ---------------------------------------------------------------------------
 
+
 def test_B3_eating_negative_reward_above_setpoint():
     """At x=78, eat food (delta_eat=15, decay=1 → x=92):
-       r = D_prev - D_curr should be < 0."""
+    r = D_prev - D_curr should be < 0."""
     model = HomeostaticDriveReductionRL()
     model.x = 78.0
     model.x_prev = 78.0
@@ -106,8 +117,9 @@ def test_B3_eating_negative_reward_above_setpoint():
     # x after: clamp(78 - 1 + 15, 0, 100) = 92
     expected_x = min(max(78.0 - 1.0 + 15.0, 0), 100)  # 92
     expected_r = (78.0 - 80.0) ** 2 - (expected_x - 80.0) ** 2
-    assert abs(model.r - expected_r) < 1e-9, \
+    assert abs(model.r - expected_r) < 1e-9, (
         f"Reward magnitude wrong: expected {expected_r}, got {model.r}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -120,13 +132,14 @@ def test_B3_eating_negative_reward_above_setpoint():
 # After many updates Q[state_E, 'move_right'] must exceed Q[state_E, 'move_left'].
 # ---------------------------------------------------------------------------
 
+
 def test_B4_q_values_converge_move_toward_food():
     """After many TD updates, Q[(low_bin,'E'), 'move_right'] > Q[(low_bin,'E'), 'move_left']."""
     random.seed(7)
     model = HomeostaticDriveReductionRL(
         td_learning_rate=0.3,
         discount_factor=0.9,
-        softmax_inv_temperature=0.5,   # high exploration so all actions get updated
+        softmax_inv_temperature=0.5,  # high exploration so all actions get updated
     )
 
     low_bin = 2
@@ -148,8 +161,7 @@ def test_B4_q_values_converge_move_toward_food():
         # After moving right, agent is at (6,5) where food is
         # eat action succeeds → x increases
         perc_eat = make_perception(
-            x=6, y=5, step=step, food=food_east,
-            last_action_result={"consumed": True}
+            x=6, y=5, step=step, food=food_east, last_action_result={"consumed": True}
         )
         model.update(Action(name="eat"), 1.0, perc_eat)
 
@@ -162,15 +174,14 @@ def test_B4_q_values_converge_move_toward_food():
         model._first_update = False
 
         perc_no_eat = make_perception(
-            x=4, y=5, step=step, food=food_east,
-            last_action_result={"consumed": False}
+            x=4, y=5, step=step, food=food_east, last_action_result={"consumed": False}
         )
         model.update(Action(name="stay"), 0.0, perc_no_eat)
 
     key_right = (state_E, "move_right")
-    key_left  = (state_E, "move_left")
+    key_left = (state_E, "move_left")
     q_right = model.Q.get(key_right, 0.0)
-    q_left  = model.Q.get(key_left,  0.0)
+    q_left = model.Q.get(key_left, 0.0)
     assert q_right > q_left, (
         f"Expected Q[move_right]={q_right:.4f} > Q[move_left]={q_left:.4f}"
     )
@@ -179,6 +190,7 @@ def test_B4_q_values_converge_move_toward_food():
 # ---------------------------------------------------------------------------
 # B5 – Agent prefers 'stay' when energy near set point after training
 # ---------------------------------------------------------------------------
+
 
 def test_B5_agent_prefers_stay_near_set_point():
     """Pre-load Q-values to strongly favour 'stay'; confirm it dominates."""
@@ -211,8 +223,10 @@ def test_B5_agent_prefers_stay_near_set_point():
 # B6 – Softmax exploration: entropy decreases as Q-values differentiate
 # ---------------------------------------------------------------------------
 
+
 def test_B6_entropy_decreases_with_learning():
     """Action entropy after 500 training steps ≤ entropy after 10 steps."""
+
     def action_entropy(model, perc, n_samples=2000):
         counts = {}
         for _ in range(n_samples):
@@ -230,14 +244,15 @@ def test_B6_entropy_decreases_with_learning():
         perc = make_perception(x=5, y=5, step=step, food=food)
         a = model_early.decide(perc)
         model_early.update(
-            a, 0.0,
-            make_perception(x=5, y=5, step=step, food=food,
-                            last_action_result={"consumed": False})
+            a,
+            0.0,
+            make_perception(
+                x=5, y=5, step=step, food=food, last_action_result={"consumed": False}
+            ),
         )
     model_early.z = (0, "E")
     entropy_early = action_entropy(
-        model_early,
-        make_perception(x=5, y=5, step=10, food=food)
+        model_early, make_perception(x=5, y=5, step=10, food=food)
     )
 
     # --- late entropy (500 steps with real eat feedback) ---
@@ -248,14 +263,19 @@ def test_B6_entropy_decreases_with_learning():
         a = model_late.decide(perc)
         consumed = a.name == "eat"
         model_late.update(
-            a, 0.0,
-            make_perception(x=5, y=5, step=step, food=food,
-                            last_action_result={"consumed": consumed})
+            a,
+            0.0,
+            make_perception(
+                x=5,
+                y=5,
+                step=step,
+                food=food,
+                last_action_result={"consumed": consumed},
+            ),
         )
     model_late.z = (0, "E")
     entropy_late = action_entropy(
-        model_late,
-        make_perception(x=5, y=5, step=500, food=food)
+        model_late, make_perception(x=5, y=5, step=500, food=food)
     )
 
     assert entropy_late <= entropy_early, (

@@ -12,7 +12,7 @@ Covers all 6 acceptance criteria:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,13 +20,13 @@ import pytest
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _utc_iso(days_ago: int = 0) -> str:
-    dt = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    dt = datetime.now(UTC) - timedelta(days=days_ago)
     return dt.isoformat()
 
 
@@ -99,8 +99,8 @@ class TestAC2_ContradictionPenalty:
     @pytest.mark.asyncio
     async def test_contradiction_logs_episodic_memory(self):
         """CONTRADICTION creates an episodic memory logging the event."""
-        from decisionlab.knowledge.resolver import resolve_and_store
         from decisionlab.knowledge.models import ExtractionResult
+        from decisionlab.knowledge.resolver import resolve_and_store
 
         old_id = str(uuid.uuid4())
         existing_point = MagicMock()
@@ -114,14 +114,19 @@ class TestAC2_ContradictionPenalty:
         }
 
         import json
-        importance_resp_text = json.dumps([
-            {"fact": "setpoint = 70", "importance": 8, "reasoning": "update"},
-        ])
-        conflict_resp_text = json.dumps({
-            "classification": "CONTRADICTION",
-            "reasoning": "Different values",
-            "merged_content": None,
-        })
+
+        importance_resp_text = json.dumps(
+            [
+                {"fact": "setpoint = 70", "importance": 8, "reasoning": "update"},
+            ]
+        )
+        conflict_resp_text = json.dumps(
+            {
+                "classification": "CONTRADICTION",
+                "reasoning": "Different values",
+                "merged_content": None,
+            }
+        )
 
         # Build mock client. Importance scoring runs through messages.stream
         # (max_tokens=16384 trips the streaming threshold); conflict
@@ -138,10 +143,13 @@ class TestAC2_ContradictionPenalty:
         class _StreamCM:
             def __init__(self, response):
                 self._response = response
+
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, *_exc):
                 return False
+
             async def get_final_message(self):
                 return self._response
 
@@ -163,23 +171,37 @@ class TestAC2_ContradictionPenalty:
         session = AsyncMock()
 
         extraction = ExtractionResult(
-            nodes=[], relations=[], facts=["setpoint = 70"],
-            stage="reasoner", run_id="00000000-0000-0000-0000-000000000001",
+            nodes=[],
+            relations=[],
+            facts=["setpoint = 70"],
+            stage="reasoner",
+            run_id="00000000-0000-0000-0000-000000000001",
         )
 
         fake_new_mem = MagicMock()
         fake_new_mem.id = uuid.uuid4()
 
-        with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock) as mock_create, \
-             patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock, return_value=fake_new_mem), \
-             patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock
+            ) as mock_create,
+            patch(
+                "decisionlab.knowledge.resolver.supersede_memory",
+                new_callable=AsyncMock,
+                return_value=fake_new_mem,
+            ),
+            patch(
+                "decisionlab.knowledge.resolver.update_confidence",
+                new_callable=AsyncMock,
+            ),
+        ):
             await resolve_and_store(extraction, emb, vs, session, client)
 
         # An episodic memory should have been created for the contradiction event
         assert mock_create.call_count >= 1
         episodic_calls = [
-            c for c in mock_create.call_args_list
+            c
+            for c in mock_create.call_args_list
             if c.kwargs.get("memory_type") == "episodic"
         ]
         assert len(episodic_calls) == 1
@@ -245,7 +267,7 @@ class TestAC4_TimeDecay:
         mem.id = uuid.uuid4()
         mem.confidence = 1.0
         mem.memory_type = "semantic"
-        mem.last_accessed_at = datetime.now(timezone.utc) - timedelta(days=90)
+        mem.last_accessed_at = datetime.now(UTC) - timedelta(days=90)
         mem.valid_to = None
 
         result_mock = MagicMock()
@@ -292,7 +314,7 @@ class TestAC4_TimeDecay:
         mem.id = uuid.uuid4()
         mem.confidence = 0.15
         mem.memory_type = "semantic"
-        mem.last_accessed_at = datetime.now(timezone.utc) - timedelta(days=365)
+        mem.last_accessed_at = datetime.now(UTC) - timedelta(days=365)
         mem.valid_to = None
 
         result_mock = MagicMock()
@@ -361,7 +383,7 @@ class TestAC5_ConfidenceInRetrieval:
 
         weighted = _apply_recency_weighting(results)
 
-        recency = 0.995 ** 30
+        recency = 0.995**30
         expected = 1.0 * recency * 0.5
         assert weighted[0].score == pytest.approx(expected, rel=1e-3)
 

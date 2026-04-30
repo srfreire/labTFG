@@ -109,7 +109,6 @@ proven mathematical structures.
 """
 
 
-
 class FormalizerSubAgent:
     def __init__(
         self,

@@ -1,7 +1,7 @@
 """Tests for pure helper functions in feedback.py."""
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -167,11 +167,27 @@ def _make_valid_spec(formulation_id: str, paradigm: str) -> dict:
         "paradigm": paradigm,
         "name": f"Valid Spec ({formulation_id})",
         "description": "A valid spec.",
-        "variables": [{"symbol": "X", "name": "x_var", "description": "...", "type": "float", "initial_value": 0.0, "range": [0, 1]}],
+        "variables": [
+            {
+                "symbol": "X",
+                "name": "x_var",
+                "description": "...",
+                "type": "float",
+                "initial_value": 0.0,
+                "range": [0, 1],
+            }
+        ],
         "parameters": [],
         "rules": [],
-        "decision_logic": {"description": "...", "pseudocode": ["return Action('stay')"]},
-        "env_mapping": {"perception_to_variables": {}, "actions_used": ["stay"], "reward_source": "none"},
+        "decision_logic": {
+            "description": "...",
+            "pseudocode": ["return Action('stay')"],
+        },
+        "env_mapping": {
+            "perception_to_variables": {},
+            "actions_used": ["stay"],
+            "reward_source": "none",
+        },
         "expected_behaviors": [],
         "references": [],
     }
@@ -183,8 +199,14 @@ def _make_invalid_spec(formulation_id: str, paradigm: str) -> dict:
         "paradigm": paradigm,
         "status": "invalid",
         "problems": [
-            {"type": "undefined_variable", "detail": "Variable 'Z' used in rule R2 but not defined"},
-            {"type": "unreasonable_default", "detail": "Parameter 'rate' has default 0"},
+            {
+                "type": "undefined_variable",
+                "detail": "Variable 'Z' used in rule R2 but not defined",
+            },
+            {
+                "type": "unreasonable_default",
+                "detail": "Parameter 'rate' has default 0",
+            },
         ],
     }
 
@@ -208,8 +230,8 @@ class TestReviewReasonInvalidSpecs:
         # Mock questionary: approve the valid spec, then choose "rerun formalizer" for invalid
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [
-                True,   # approve valid spec pi-controller
-                True,   # rerun formalizer for invalid dual-process
+                True,  # approve valid spec pi-controller
+                True,  # rerun formalizer for invalid dual-process
             ]
             approved, rejections, formalizer_reruns = await review_reason(tmp_path)
 
@@ -242,7 +264,7 @@ class TestReviewReasonInvalidSpecs:
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True]  # approve
-            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+            approved, _rejections, formalizer_reruns = await review_reason(tmp_path)
 
         assert "pi-controller" in approved
         assert len(formalizer_reruns) == 0
@@ -257,7 +279,7 @@ class TestReviewReasonInvalidSpecs:
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True, True]  # rerun for both
-            approved, rejections, formalizer_reruns = await review_reason(tmp_path)
+            _approved, _rejections, formalizer_reruns = await review_reason(tmp_path)
 
         assert len(formalizer_reruns) == 1
         assert formalizer_reruns == ["homeostatic"]
@@ -275,7 +297,10 @@ def _make_invalid_build(formulation_id: str, paradigm: str) -> dict:
         "status": "invalid",
         "problems": [
             {"type": "ambiguous_logic", "detail": "Step 3 says 'choose wisely'"},
-            {"type": "missing_perception_key", "detail": "'temperature' not in perception"},
+            {
+                "type": "missing_perception_key",
+                "detail": "'temperature' not in perception",
+            },
         ],
     }
 
@@ -297,11 +322,12 @@ class TestReviewBuildInvalidBuilds:
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [
-                True,   # rerun reasoner for invalid pi-controller
-                True,   # approve valid build dual-process
+                True,  # rerun reasoner for invalid pi-controller
+                True,  # approve valid build dual-process
             ]
             approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, build_results,
+                tmp_path,
+                build_results,
             )
 
         assert "dual-process" in approved
@@ -319,7 +345,8 @@ class TestReviewBuildInvalidBuilds:
                 False,  # skip (don't rerun reasoner)
             ]
             approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, {},
+                tmp_path,
+                {},
             )
 
         assert len(approved) == 0
@@ -333,8 +360,9 @@ class TestReviewBuildInvalidBuilds:
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True]  # approve
-            approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, build_results,
+            approved, _rejections, reasoner_reruns = await review_build(
+                tmp_path,
+                build_results,
             )
 
         assert "pi-controller" in approved
@@ -348,8 +376,9 @@ class TestReviewBuildInvalidBuilds:
 
         with patch("decisionlab.feedback._ask") as mock_ask:
             mock_ask.side_effect = [True, True]  # rerun for both
-            approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, {},
+            _approved, _rejections, reasoner_reruns = await review_build(
+                tmp_path,
+                {},
             )
 
         assert len(reasoner_reruns) == 1

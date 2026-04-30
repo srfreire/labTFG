@@ -6,20 +6,26 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime, timezone
-
-from shared.knowledge_graph import KnowledgeGraph
+from datetime import UTC, datetime
 
 from decisionlab.knowledge.models import ExtractionResult, KGWriteResult
+from shared.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # Relation properties that are temporal metadata — excluded from content comparison.
-_TEMPORAL_KEYS = frozenset({
-    "valid_from", "valid_to", "run_id", "created_at", "updated_at", "superseded_by",
-})
+_TEMPORAL_KEYS = frozenset(
+    {
+        "valid_from",
+        "valid_to",
+        "run_id",
+        "created_at",
+        "updated_at",
+        "superseded_by",
+    }
+)
 
 # Property names tried, in priority order, when the LLM-declared natural_key is
 # missing from `properties`. Covers the common identifier vocabulary.
@@ -49,7 +55,9 @@ def _resolve_natural_key(node) -> tuple[str, object] | None:
         if val is not None and _SAFE_IDENT.match(candidate):
             logger.info(
                 "Node %s: natural_key %r missing — falling back to %r",
-                node.label, declared, candidate,
+                node.label,
+                declared,
+                candidate,
             )
             return candidate, val
 
@@ -58,14 +66,18 @@ def _resolve_natural_key(node) -> tuple[str, object] | None:
 
     blob = json.dumps(
         {"label": node.label, "props": node.properties},
-        sort_keys=True, ensure_ascii=False, default=str,
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str,
     )
     synthetic_value = "h_" + hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
     node.properties["_synthetic_id"] = synthetic_value
     logger.warning(
         "Node %s: natural_key %r missing and no fallback property — "
         "synthesized _synthetic_id=%s",
-        node.label, declared, synthetic_value,
+        node.label,
+        declared,
+        synthetic_value,
     )
     return "_synthetic_id", synthetic_value
 
@@ -83,19 +95,23 @@ async def populate_kg(
     Everything runs in a single write transaction.  If the transaction fails,
     a KGWriteResult with zero counts and the error message is returned.
     """
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     run_id = extraction.run_id
 
     # Mutable accumulators shared with the transaction closure.
-    counters = {"nodes_created": 0, "nodes_merged": 0,
-                "relations_created": 0, "relations_superseded": 0}
+    counters = {
+        "nodes_created": 0,
+        "nodes_merged": 0,
+        "relations_created": 0,
+        "relations_superseded": 0,
+    }
     errors: list[str] = []
 
     # Map (label, key_value) → key_property_name built during node processing,
     # so relation lookups use the extraction's natural key, not the schema default.
     node_key_map: dict[tuple[str, str], str] = {}
 
-    async def _work(tx):  # noqa: C901 — complexity justified by single-tx requirement
+    async def _work(tx):
         # ── Nodes ────────────────────────────────────────────────────────
         for node in extraction.nodes:
             if not _SAFE_IDENT.match(node.label):
@@ -130,12 +146,15 @@ async def populate_kg(
                 f"n.run_ids = coalesce(n.run_ids, []) + $run_id "
                 f"RETURN n.updated_at IS NULL AS was_created"
             )
-            result = await tx.run(cypher, {
-                "key_value": key_value,
-                "create_props": create_props,
-                "update_props": update_props,
-                "run_id": run_id,
-            })
+            result = await tx.run(
+                cypher,
+                {
+                    "key_value": key_value,
+                    "create_props": create_props,
+                    "update_props": update_props,
+                    "run_id": run_id,
+                },
+            )
             record = await result.single()
             if record and record["was_created"]:
                 counters["nodes_created"] += 1
@@ -156,10 +175,10 @@ async def populate_kg(
                 continue
 
             # Resolve which property to match each endpoint on.
-            from_key = _resolve_key(rel.from_label, rel.from_key_value,
-                                    node_key_map, kg)
-            to_key = _resolve_key(rel.to_label, rel.to_key_value,
-                                  node_key_map, kg)
+            from_key = _resolve_key(
+                rel.from_label, rel.from_key_value, node_key_map, kg
+            )
+            to_key = _resolve_key(rel.to_label, rel.to_key_value, node_key_map, kg)
             if from_key is None or to_key is None:
                 errors.append(
                     f"Relation {rel.rel_type}: cannot resolve key for "
@@ -176,10 +195,13 @@ async def populate_kg(
                 f"WHERE r.valid_to IS NULL "
                 f"RETURN properties(r) AS props, elementId(r) AS rid"
             )
-            check_result = await tx.run(check_cypher, {
-                "from_val": rel.from_key_value,
-                "to_val": rel.to_key_value,
-            })
+            check_result = await tx.run(
+                check_cypher,
+                {
+                    "from_val": rel.from_key_value,
+                    "to_val": rel.to_key_value,
+                },
+            )
             existing = await check_result.single()
 
             new_props = {
@@ -191,20 +213,19 @@ async def populate_kg(
 
             if existing:
                 old_content = {
-                    k: v for k, v in existing["props"].items()
+                    k: v
+                    for k, v in existing["props"].items()
                     if k not in _TEMPORAL_KEYS
                 }
                 new_content = {
-                    k: v for k, v in rel.properties.items()
-                    if k not in _TEMPORAL_KEYS
+                    k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS
                 }
                 if old_content == new_content:
                     continue  # idempotent — skip
 
                 # Supersede: mark old relation with valid_to.
                 await tx.run(
-                    "MATCH ()-[r]->() WHERE elementId(r) = $rid "
-                    "SET r.valid_to = $now",
+                    "MATCH ()-[r]->() WHERE elementId(r) = $rid SET r.valid_to = $now",
                     {"rid": existing["rid"], "now": now},
                 )
                 counters["relations_superseded"] += 1
@@ -216,11 +237,14 @@ async def populate_kg(
                 f"CREATE (a)-[r:{rel.rel_type} $props]->(b) "
                 f"RETURN elementId(r) AS rid"
             )
-            create_result = await tx.run(create_cypher, {
-                "from_val": rel.from_key_value,
-                "to_val": rel.to_key_value,
-                "props": new_props,
-            })
+            create_result = await tx.run(
+                create_cypher,
+                {
+                    "from_val": rel.from_key_value,
+                    "to_val": rel.to_key_value,
+                    "props": new_props,
+                },
+            )
             record = await create_result.single()
             if record is None:
                 errors.append(

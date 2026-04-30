@@ -10,6 +10,7 @@ detection of the invalid input.  We verify:
 from __future__ import annotations
 
 import json
+from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,10 +22,10 @@ from decisionlab.agents.reasoner_sub import ReasonerSubAgent
 from decisionlab.agents.researcher import Researcher
 from decisionlab.domain.models import ResearchReport
 
-
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
+
 
 def _tool_block(id: str, name: str, input: dict) -> MagicMock:
     block = MagicMock()
@@ -81,12 +82,20 @@ def _mock_client(*responses) -> MagicMock:
         # ``client.messages.create.return_value = X`` behaviour the
         # max-iterations robustness tests rely on.
         single = queue[0]
-        get_response = lambda **_kw: single
-        get_stream = lambda **_kw: _StreamCM(single)
+
+        def get_response(**_kw):
+            return single
+
+        def get_stream(**_kw):
+            return _StreamCM(single)
     else:
         iterator = iter(queue)
-        get_response = lambda **_kw: next(iterator)
-        get_stream = lambda **_kw: _StreamCM(next(iterator))
+
+        def get_response(**_kw):
+            return next(iterator)
+
+        def get_stream(**_kw):
+            return _StreamCM(next(iterator))
 
     client = MagicMock()
     client.messages = MagicMock()
@@ -95,10 +104,14 @@ def _mock_client(*responses) -> MagicMock:
     return client
 
 
-def _assert_invalid_report(s3_store: dict, prefix: str, subdir: str, filename: str, min_problems: int = 1):
+def _assert_invalid_report(
+    s3_store: dict, prefix: str, subdir: str, filename: str, min_problems: int = 1
+):
     """Assert a validation report exists in mock S3 with status 'invalid' and enough problems."""
     key = f"{prefix}/{subdir}/{filename}"
-    assert key in s3_store, f"Expected key {key} in S3 store, got: {list(s3_store.keys())}"
+    assert key in s3_store, (
+        f"Expected key {key} in S3 store, got: {list(s3_store.keys())}"
+    )
     data = json.loads(s3_store[key])
     assert data["status"] == "invalid"
     assert len(data["problems"]) >= min_problems
@@ -144,19 +157,27 @@ class TestResearcherRobustness:
     """Researcher receives nonsensical problem strings."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("absurd_input", [
-        "asdfghjkl",
-        "🎉🎉🎉",
-        "",
-        "x" * 10_000,
-        "../../etc/passwd",
-        "12345 67890 !@#$%",
-    ])
+    @pytest.mark.parametrize(
+        "absurd_input",
+        [
+            "asdfghjkl",
+            "🎉🎉🎉",
+            "",
+            "x" * 10_000,
+            "../../etc/passwd",
+            "12345 67890 !@#$%",
+        ],
+    )
     async def test_does_not_crash_on_absurd_input(self, absurd_input):
         """Researcher.run() must return a ResearchReport without raising."""
-        final = _response("end_turn", [_text_block(
-            "I could not identify any valid decision-making paradigms from this input."
-        )])
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "I could not identify any valid decision-making paradigms from this input."
+                )
+            ],
+        )
         client = _mock_client(final)
 
         r = Researcher(client=client, search=MockWebSearch())
@@ -167,9 +188,14 @@ class TestResearcherRobustness:
     @pytest.mark.asyncio
     async def test_empty_input_returns_empty_paradigms(self):
         """Empty problem -> LLM signals nothing found -> empty paradigms list."""
-        final = _response("end_turn", [_text_block(
-            "No paradigms could be identified from an empty problem description."
-        )])
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "No paradigms could be identified from an empty problem description."
+                )
+            ],
+        )
         client = _mock_client(final)
 
         r = Researcher(client=client, search=MockWebSearch())
@@ -184,9 +210,10 @@ class TestResearcherRobustness:
         """LLM does a web search with gibberish, gets nothing useful, ends."""
         search_call = _tool_block("c1", "web_search", {"query": "asdfghjkl"})
         resp1 = _response("tool_use", [search_call])
-        final = _response("end_turn", [_text_block(
-            "The search returned no relevant decision-making paradigms."
-        )])
+        final = _response(
+            "end_turn",
+            [_text_block("The search returned no relevant decision-making paradigms.")],
+        )
         client = _mock_client(resp1, final)
 
         r = Researcher(client=client, search=MockWebSearch(results=[]))
@@ -206,16 +233,23 @@ class TestResearcherRobustness:
 
         # DeepResearcher sub-agent runs its own loop:
         # - loop response (end_turn with some text)
-        deep_text = _text_block("# asdfghjkl — Deep research\n\nNo coherent literature found.")
+        deep_text = _text_block(
+            "# asdfghjkl — Deep research\n\nNo coherent literature found."
+        )
         deep_loop_resp = _response("end_turn", [deep_text])
         # - summary extraction call
         deep_summary = MagicMock()
         deep_summary.content = [_text_block("No valid paradigm found.")]
 
         # Step 2: Researcher LLM ends
-        final = _response("end_turn", [_text_block(
-            "Deep research for 'asdfghjkl nonsense' found nothing useful."
-        )])
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "Deep research for 'asdfghjkl nonsense' found nothing useful."
+                )
+            ],
+        )
 
         client = _mock_client(resp1, deep_loop_resp, deep_summary, final)
 
@@ -237,27 +271,38 @@ class TestFormalizerSubRobustness:
     @pytest.mark.asyncio
     async def test_incoherent_report_no_crash(self):
         """Deep report is gibberish -> LLM reads it, signals failure, no crash."""
-        s3_store, mock_storage = _make_s3_mock({
-            "research/run-1/deep/gibberish.md": (
-                "asdfghjkl 🎉🎉🎉 qwertyuiop !@#$% lorem ipsum dolor sit amet "
-                "this is not a real research report and contains no paradigm info."
-            ),
-        })
+        _s3_store, mock_storage = _make_s3_mock(
+            {
+                "research/run-1/deep/gibberish.md": (
+                    "asdfghjkl 🎉🎉🎉 qwertyuiop !@#$% lorem ipsum dolor sit amet "
+                    "this is not a real research report and contains no paradigm info."
+                ),
+            }
+        )
 
         read_call = _tool_block("c1", "read_file", {"path": "deep/gibberish.md"})
         resp1 = _response("tool_use", [read_call])
 
-        write_call = _tool_block("c2", "write_file", {
-            "path": "formulations/gibberish.md",
-            "content": "# Unable to formalize\n\nThe deep report contains no "
-                       "coherent paradigm information to produce formulations from.",
-        })
+        write_call = _tool_block(
+            "c2",
+            "write_file",
+            {
+                "path": "formulations/gibberish.md",
+                "content": "# Unable to formalize\n\nThe deep report contains no "
+                "coherent paradigm information to produce formulations from.",
+            },
+        )
         resp2 = _response("tool_use", [write_call])
 
-        final = _response("end_turn", [_text_block(
-            "The deep report for 'gibberish' does not contain valid paradigm "
-            "information. No formulations could be produced."
-        )])
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "The deep report for 'gibberish' does not contain valid paradigm "
+                    "information. No formulations could be produced."
+                )
+            ],
+        )
         client = _mock_client(resp1, resp2, final)
 
         with patch("shared.storage", mock_storage):
@@ -270,13 +315,14 @@ class TestFormalizerSubRobustness:
     @pytest.mark.asyncio
     async def test_missing_deep_report_no_crash(self):
         """Deep report file doesn't exist -> read_file returns error -> no crash."""
-        s3_store, mock_storage = _make_s3_mock()
+        _s3_store, mock_storage = _make_s3_mock()
 
         read_call = _tool_block("c1", "read_file", {"path": "deep/nonexistent.md"})
         resp1 = _response("tool_use", [read_call])
-        final = _response("end_turn", [_text_block(
-            "Could not read the deep report — file not found."
-        )])
+        final = _response(
+            "end_turn",
+            [_text_block("Could not read the deep report — file not found.")],
+        )
         client = _mock_client(resp1, final)
 
         with patch("shared.storage", mock_storage):
@@ -305,7 +351,9 @@ class TestFormalizerSubRobustness:
 class TestReasonerSubRobustness:
     """ReasonerSubAgent receives incoherent formulations and detects problems."""
 
-    _ENV_SPEC = {"actions": ["up", "down", "left", "right", "stay", "eat"]}
+    _ENV_SPEC: ClassVar[dict] = {
+        "actions": ["up", "down", "left", "right", "stay", "eat"]
+    }
 
     def _setup_s3_store(self, slug: str, deep_text: str, form_text: str) -> dict:
         """Create S3 mock store with deep report, formulations, env_spec."""
@@ -318,17 +366,34 @@ class TestReasonerSubRobustness:
     def _read_three_files_responses(self, slug: str):
         """Return the 3 mock responses for reading deep, formulations, env_spec."""
         return [
-            _response("tool_use", [_tool_block("c1", "read_file", {"path": f"deep/{slug}.md"})]),
-            _response("tool_use", [_tool_block("c2", "read_file", {"path": f"formulations/{slug}.md"})]),
-            _response("tool_use", [_tool_block("c3", "read_file", {"path": "env_spec.json"})]),
+            _response(
+                "tool_use",
+                [_tool_block("c1", "read_file", {"path": f"deep/{slug}.md"})],
+            ),
+            _response(
+                "tool_use",
+                [_tool_block("c2", "read_file", {"path": f"formulations/{slug}.md"})],
+            ),
+            _response(
+                "tool_use", [_tool_block("c3", "read_file", {"path": "env_spec.json"})]
+            ),
         ]
 
     def _write_invalid_response(self, report: dict, path: str):
         """Return a mock response for writing a validation report."""
-        return _response("tool_use", [_tool_block("c4", "write_file", {
-            "path": path,
-            "content": json.dumps(report, indent=2),
-        })])
+        return _response(
+            "tool_use",
+            [
+                _tool_block(
+                    "c4",
+                    "write_file",
+                    {
+                        "path": path,
+                        "content": json.dumps(report, indent=2),
+                    },
+                )
+            ],
+        )
 
     @pytest.mark.asyncio
     async def test_detects_nonsense_and_writes_invalid(self):
@@ -350,27 +415,49 @@ class TestReasonerSubRobustness:
             "paradigm": "nonsense",
             "status": "invalid",
             "problems": [
-                {"type": "undefined_variable", "detail": "Variable 'banana' used in equation but not defined"},
-                {"type": "invalid_reference", "detail": "Decision logic uses 'feeling_good' — no such variable exists"},
-                {"type": "other", "detail": "Equation 'X = X + banana * 🎉' is mathematically incoherent"},
+                {
+                    "type": "undefined_variable",
+                    "detail": "Variable 'banana' used in equation but not defined",
+                },
+                {
+                    "type": "invalid_reference",
+                    "detail": "Decision logic uses 'feeling_good' — no such variable exists",
+                },
+                {
+                    "type": "other",
+                    "detail": "Equation 'X = X + banana * 🎉' is mathematically incoherent",
+                },
             ],
         }
 
         reads = self._read_three_files_responses("nonsense")
-        write = self._write_invalid_response(invalid_report, "reasoner/nonsense-F01.json")
-        final = _response("end_turn", [_text_block(
-            "Validation failed for formulation nonsense-F01. "
-            "Multiple incoherences detected — see validation report."
-        )])
+        write = self._write_invalid_response(
+            invalid_report, "reasoner/nonsense-F01.json"
+        )
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "Validation failed for formulation nonsense-F01. "
+                    "Multiple incoherences detected — see validation report."
+                )
+            ],
+        )
         client = _mock_client(*reads, write, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            agent = ReasonerSubAgent(
+                client=client,
+                research_prefix="research/run-1",
+                models_prefix="models/run-1",
+            )
             result = await agent.run("nonsense", formulation_slugs=["nonsense-F01"])
 
         assert isinstance(result, str)
-        _assert_invalid_report(s3_store, "models/run-1", "reasoner", "nonsense-F01.json", min_problems=1)
+        _assert_invalid_report(
+            s3_store, "models/run-1", "reasoner", "nonsense-F01.json", min_problems=1
+        )
 
     @pytest.mark.asyncio
     async def test_empty_formulations_no_crash(self):
@@ -386,20 +473,28 @@ class TestReasonerSubRobustness:
             "paradigm": "empty",
             "status": "invalid",
             "problems": [
-                {"type": "other", "detail": "Formulation file is empty — no variables, equations, or decision logic found"},
+                {
+                    "type": "other",
+                    "detail": "Formulation file is empty — no variables, equations, or decision logic found",
+                },
             ],
         }
 
         reads = self._read_three_files_responses("empty")
         write = self._write_invalid_response(invalid_report, "reasoner/empty-F01.json")
-        final = _response("end_turn", [_text_block(
-            "Formulation file was empty. Wrote invalid report."
-        )])
+        final = _response(
+            "end_turn",
+            [_text_block("Formulation file was empty. Wrote invalid report.")],
+        )
         client = _mock_client(*reads, write, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            agent = ReasonerSubAgent(
+                client=client,
+                research_prefix="research/run-1",
+                models_prefix="models/run-1",
+            )
             result = await agent.run("empty", formulation_slugs=["empty-F01"])
 
         assert isinstance(result, str)
@@ -410,14 +505,18 @@ class TestReasonerSubRobustness:
         """Slug with path traversal chars -> agent handles gracefully."""
         read_deep = _tool_block("c1", "read_file", {"path": "deep/../../etc/passwd.md"})
         resp1 = _response("tool_use", [read_deep])
-        final = _response("end_turn", [_text_block(
-            "Could not process — invalid file paths."
-        )])
+        final = _response(
+            "end_turn", [_text_block("Could not process — invalid file paths.")]
+        )
         client = _mock_client(resp1, final)
 
-        s3_store, mock_storage = _make_s3_mock()
+        _s3_store, mock_storage = _make_s3_mock()
         with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(client=client, research_prefix="research/run-1", models_prefix="models/run-1")
+            agent = ReasonerSubAgent(
+                client=client,
+                research_prefix="research/run-1",
+                models_prefix="models/run-1",
+            )
             result = await agent.run("../../etc/passwd")
 
         assert isinstance(result, str)
@@ -445,11 +544,17 @@ class TestBuilderSubRobustness:
         read_call = _tool_block("c1", "read_file", {"path": spec_path})
         resp1 = _response("tool_use", [read_call])
 
-        val_path = spec_path.replace("reasoner/", "builder/").replace(".json", "_validation.json")
-        write_call = _tool_block("c2", "write_file", {
-            "path": val_path,
-            "content": json.dumps(validation, indent=2),
-        })
+        val_path = spec_path.replace("reasoner/", "builder/").replace(
+            ".json", "_validation.json"
+        )
+        write_call = _tool_block(
+            "c2",
+            "write_file",
+            {
+                "path": val_path,
+                "content": json.dumps(validation, indent=2),
+            },
+        )
         resp2 = _response("tool_use", [write_call])
 
         return resp1, resp2
@@ -459,57 +564,105 @@ class TestBuilderSubRobustness:
         """Spec with nonsensical decision_logic -> LLM writes validation report."""
         s3_store: dict[str, str] = {}
         spec_id = "nonsense-spec"
-        spec_path = self._write_spec_to_s3(s3_store, spec_id, {
-            "formulation_id": spec_id,
-            "paradigm": "nonsense",
-            "name": "Nonsense Model",
-            "description": "asdfghjkl",
-            "variables": [
-                {"symbol": "🎉", "name": "party", "description": "???", "type": "float", "initial_value": 0, "range": [0, 1]},
-            ],
-            "parameters": [],
-            "rules": [
-                {"id": "R1", "description": "???", "type": "???", "pseudocode": "🎉 = 🎉 + banana", "source_postulate": "???"},
-            ],
-            "decision_logic": {
-                "description": "do something",
-                "pseudocode": ["use judgment to decide wisely", "consider context"],
+        spec_path = self._write_spec_to_s3(
+            s3_store,
+            spec_id,
+            {
+                "formulation_id": spec_id,
+                "paradigm": "nonsense",
+                "name": "Nonsense Model",
+                "description": "asdfghjkl",
+                "variables": [
+                    {
+                        "symbol": "🎉",
+                        "name": "party",
+                        "description": "???",
+                        "type": "float",
+                        "initial_value": 0,
+                        "range": [0, 1],
+                    },
+                ],
+                "parameters": [],
+                "rules": [
+                    {
+                        "id": "R1",
+                        "description": "???",
+                        "type": "???",
+                        "pseudocode": "🎉 = 🎉 + banana",
+                        "source_postulate": "???",
+                    },
+                ],
+                "decision_logic": {
+                    "description": "do something",
+                    "pseudocode": ["use judgment to decide wisely", "consider context"],
+                },
+                "env_mapping": {
+                    "perception_to_variables": {
+                        "temperature": "perception.temperature"
+                    },
+                    "actions_used": ["fly", "teleport"],
+                    "reward_source": "magic",
+                },
+                "expected_behaviors": [
+                    {
+                        "id": "B1",
+                        "description": "it works",
+                        "test_pseudocode": "just trust me",
+                    },
+                ],
+                "references": [],
             },
-            "env_mapping": {
-                "perception_to_variables": {"temperature": "perception.temperature"},
-                "actions_used": ["fly", "teleport"],
-                "reward_source": "magic",
-            },
-            "expected_behaviors": [
-                {"id": "B1", "description": "it works", "test_pseudocode": "just trust me"},
-            ],
-            "references": [],
-        })
+        )
 
         validation = {
             "formulation_id": spec_id,
             "paradigm": "nonsense",
             "status": "invalid",
             "problems": [
-                {"type": "ambiguous_logic", "detail": "'use judgment to decide wisely' is not translatable to code"},
-                {"type": "missing_perception_key", "detail": "perception_to_variables maps 'temperature' but perception has no such key"},
-                {"type": "untestable_behavior", "detail": "B1 test_pseudocode 'just trust me' is not automatable"},
-                {"type": "other", "detail": "actions_used includes 'fly' and 'teleport' which don't exist in the environment"},
+                {
+                    "type": "ambiguous_logic",
+                    "detail": "'use judgment to decide wisely' is not translatable to code",
+                },
+                {
+                    "type": "missing_perception_key",
+                    "detail": "perception_to_variables maps 'temperature' but perception has no such key",
+                },
+                {
+                    "type": "untestable_behavior",
+                    "detail": "B1 test_pseudocode 'just trust me' is not automatable",
+                },
+                {
+                    "type": "other",
+                    "detail": "actions_used includes 'fly' and 'teleport' which don't exist in the environment",
+                },
             ],
         }
         resp1, resp2 = self._read_then_write_invalid(spec_path, validation)
-        final = _response("end_turn", [_text_block(
-            "Spec 'nonsense-spec' failed validation. Multiple issues detected."
-        )])
+        final = _response(
+            "end_turn",
+            [
+                _text_block(
+                    "Spec 'nonsense-spec' failed validation. Multiple issues detected."
+                )
+            ],
+        )
         client = _mock_client(resp1, resp2, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            agent = BuilderSubAgent(
+                client=client, models_prefix="models/run-1", project_root=tmp_path
+            )
             result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(s3_store, "models/run-1", "builder", f"{spec_id}_validation.json", min_problems=3)
+        _assert_invalid_report(
+            s3_store,
+            "models/run-1",
+            "builder",
+            f"{spec_id}_validation.json",
+            min_problems=3,
+        )
         # No model/test files should be created for invalid specs
         assert f"models/run-1/builder/{spec_id}_model.py" not in s3_store
         assert f"models/run-1/builder/test_{spec_id}.py" not in s3_store
@@ -526,7 +679,10 @@ class TestBuilderSubRobustness:
             "paradigm": "unknown",
             "status": "invalid",
             "problems": [
-                {"type": "other", "detail": "Spec is empty — no variables, rules, or decision logic found"},
+                {
+                    "type": "other",
+                    "detail": "Spec is empty — no variables, rules, or decision logic found",
+                },
             ],
         }
         resp1, resp2 = self._read_then_write_invalid(spec_path, validation)
@@ -535,11 +691,15 @@ class TestBuilderSubRobustness:
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            agent = BuilderSubAgent(
+                client=client, models_prefix="models/run-1", project_root=tmp_path
+            )
             result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(s3_store, "models/run-1", "builder", f"{spec_id}_validation.json")
+        _assert_invalid_report(
+            s3_store, "models/run-1", "builder", f"{spec_id}_validation.json"
+        )
         assert f"models/run-1/builder/{spec_id}_model.py" not in s3_store
 
     @pytest.mark.asyncio
@@ -562,11 +722,15 @@ class TestBuilderSubRobustness:
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            agent = BuilderSubAgent(
+                client=client, models_prefix="models/run-1", project_root=tmp_path
+            )
             result = await agent.run("broken", spec_path)
 
         assert isinstance(result, str)
-        _assert_invalid_report(s3_store, "models/run-1", "builder", "broken_validation.json")
+        _assert_invalid_report(
+            s3_store, "models/run-1", "builder", "broken_validation.json"
+        )
         assert "models/run-1/builder/broken_model.py" not in s3_store
 
     @pytest.mark.asyncio
@@ -576,14 +740,16 @@ class TestBuilderSubRobustness:
 
         read_call = _tool_block("c1", "read_file", {"path": "reasoner/ghost.json"})
         resp1 = _response("tool_use", [read_call])
-        final = _response("end_turn", [_text_block(
-            "Could not read spec file — file not found."
-        )])
+        final = _response(
+            "end_turn", [_text_block("Could not read spec file — file not found.")]
+        )
         client = _mock_client(resp1, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
         with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(client=client, models_prefix="models/run-1", project_root=tmp_path)
+            agent = BuilderSubAgent(
+                client=client, models_prefix="models/run-1", project_root=tmp_path
+            )
             result = await agent.run("ghost", "reasoner/ghost.json")
 
         assert isinstance(result, str)
@@ -599,28 +765,45 @@ class TestMaxIterationsRobustness:
     Verify RuntimeError is raised (expected behavior) rather than hanging."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("agent_cls, run_args, read_path", [
-        (FormalizerSubAgent, ("loop",), "deep/loop.md"),
-        (ReasonerSubAgent, ("loop",), "deep/loop.md"),
-        (BuilderSubAgent, ("loop", "reasoner/loop.json"), "reasoner/loop.json"),
-    ], ids=["formalizer", "reasoner", "builder"])
-    async def test_max_iterations_raises(self, tmp_path, agent_cls, run_args, read_path):
+    @pytest.mark.parametrize(
+        "agent_cls, run_args, read_path",
+        [
+            (FormalizerSubAgent, ("loop",), "deep/loop.md"),
+            (ReasonerSubAgent, ("loop",), "deep/loop.md"),
+            (BuilderSubAgent, ("loop", "reasoner/loop.json"), "reasoner/loop.json"),
+        ],
+        ids=["formalizer", "reasoner", "builder"],
+    )
+    async def test_max_iterations_raises(
+        self, tmp_path, agent_cls, run_args, read_path
+    ):
         """Agent stuck in tool loop -> RuntimeError, not a hang."""
-        stuck_resp = _response("tool_use", [
-            _tool_block("c1", "read_file", {"path": read_path}),
-        ])
+        stuck_resp = _response(
+            "tool_use",
+            [
+                _tool_block("c1", "read_file", {"path": read_path}),
+            ],
+        )
         client = _mock_client(stuck_resp)
 
         if agent_cls is FormalizerSubAgent:
             kwargs = {"client": client, "research_prefix": "research/run-1"}
         elif agent_cls is ReasonerSubAgent:
-            kwargs = {"client": client, "research_prefix": "research/run-1", "models_prefix": "models/run-1"}
+            kwargs = {
+                "client": client,
+                "research_prefix": "research/run-1",
+                "models_prefix": "models/run-1",
+            }
         elif agent_cls is BuilderSubAgent:
-            kwargs = {"client": client, "models_prefix": "models/run-1", "project_root": tmp_path}
+            kwargs = {
+                "client": client,
+                "models_prefix": "models/run-1",
+                "project_root": tmp_path,
+            }
         else:
             kwargs = {"client": client}
 
-        s3_store, mock_storage = _make_s3_mock()
+        _s3_store, mock_storage = _make_s3_mock()
         with patch("shared.storage", mock_storage):
             agent = agent_cls(**kwargs)
             with pytest.raises(RuntimeError, match="Max iterations"):

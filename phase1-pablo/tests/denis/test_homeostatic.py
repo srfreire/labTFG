@@ -1,9 +1,12 @@
-from decisionlab.models.protocol import Action, Perception, STAY
 from denis.homeostatic import HomeostaticModel
+
+from decisionlab.models.protocol import STAY, Action, Perception
 
 
 def _make_perception(**overrides) -> Perception:
-    defaults = dict(position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0)
+    defaults = dict(
+        position=(2, 2), grid_size=(5, 5), food_sources=(), ate_food=False, step=0
+    )
     defaults.update(overrides)
     return Perception(**defaults)
 

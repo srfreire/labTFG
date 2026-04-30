@@ -42,7 +42,9 @@ class TestPipelineStateDefaults:
 
     def test_no_ids_field(self, tmp_path):
         state = PipelineState(
-            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+            stage=Stage.RESEARCH,
+            problem="test",
+            reports_dir=tmp_path,
         )
         assert not hasattr(state, "ids")
         assert not hasattr(state, "topic_id")
@@ -83,7 +85,9 @@ class TestApprovedSpecsIsDict:
 
     def test_approved_specs_default_empty_dict(self, tmp_path):
         state = PipelineState(
-            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+            stage=Stage.RESEARCH,
+            problem="test",
+            reports_dir=tmp_path,
         )
         assert state.approved_specs == {}
         assert isinstance(state.approved_specs, dict)
@@ -92,14 +96,18 @@ class TestApprovedSpecsIsDict:
 class TestS3PrefixHelpers:
     def test_research_prefix(self, tmp_path):
         state = PipelineState(
-            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+            stage=Stage.RESEARCH,
+            problem="test",
+            reports_dir=tmp_path,
             run_id="abc-123",
         )
         assert state.research_prefix == "research/abc-123"
 
     def test_models_prefix(self, tmp_path):
         state = PipelineState(
-            stage=Stage.RESEARCH, problem="test", reports_dir=tmp_path,
+            stage=Stage.RESEARCH,
+            problem="test",
+            reports_dir=tmp_path,
             run_id="abc-123",
         )
         assert state.models_prefix == "models/abc-123"

@@ -35,6 +35,7 @@ def streaming_client():
     Pass a single response (used as ``return_value`` — repeats forever, matches
     the pre-streaming default) or a list (consumed in order).
     """
+
     def _make(responses):
         if not isinstance(responses, list):
             single = responses
@@ -54,6 +55,7 @@ def streaming_client():
             side_effect=lambda **_kw: StreamCM(next(iterator))
         )
         return client
+
     return _make
 
 

@@ -1,8 +1,12 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from decisionlab.agents.deep_researcher import DeepResearcher, DEEP_RESEARCHER_SYSTEM_PROMPT
+import pytest
+
 from decisionlab.adapters.mock import MockWebSearch
+from decisionlab.agents.deep_researcher import (
+    DEEP_RESEARCHER_SYSTEM_PROMPT,
+    DeepResearcher,
+)
 
 
 def test_system_prompt_exists():
@@ -53,6 +57,7 @@ async def test_deep_researcher_run_returns_summary():
     # Loop runs at 32k → stream; summary at 300 tokens → create.
     # streaming_client wires both paths against a shared queue.
     from tests.agents.conftest import StreamCM
+
     client = AsyncMock()
     client.messages.stream = MagicMock(
         side_effect=lambda **_kw: StreamCM(loop_response)
@@ -85,6 +90,7 @@ async def test_deep_researcher_saves_report_to_s3():
     summary_response.content = [summary_block]
 
     from tests.agents.conftest import StreamCM
+
     client = AsyncMock()
     client.messages.stream = MagicMock(
         side_effect=lambda **_kw: StreamCM(loop_response)
@@ -93,9 +99,15 @@ async def test_deep_researcher_saves_report_to_s3():
 
     dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
 
-    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock) as mock_save:
+    with patch(
+        "decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock
+    ) as mock_save:
         await dr.run("Homeostatic regulation")
-        mock_save.assert_called_once_with("run-1", "Homeostatic regulation", "# Homeostatic — Deep research\n\nFull content.")
+        mock_save.assert_called_once_with(
+            "run-1",
+            "Homeostatic regulation",
+            "# Homeostatic — Deep research\n\nFull content.",
+        )
 
 
 @pytest.mark.asyncio
@@ -110,6 +122,7 @@ async def test_deep_researcher_empty_report_returns_early():
     loop_response.content = [text_block]
 
     from tests.agents.conftest import StreamCM
+
     client = AsyncMock()
     client.messages.stream = MagicMock(
         side_effect=lambda **_kw: StreamCM(loop_response)
@@ -134,6 +147,7 @@ async def test_deep_researcher_empty_report_no_s3_save():
     loop_response.content = [text_block]
 
     from tests.agents.conftest import StreamCM
+
     client = AsyncMock()
     client.messages.stream = MagicMock(
         side_effect=lambda **_kw: StreamCM(loop_response)
@@ -141,7 +155,9 @@ async def test_deep_researcher_empty_report_no_s3_save():
 
     dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
 
-    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock) as mock_save:
+    with patch(
+        "decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock
+    ) as mock_save:
         await dr.run("Empty paradigm")
         mock_save.assert_not_called()
 
@@ -159,6 +175,7 @@ async def test_deep_researcher_summary_fallback_on_api_error():
 
     # Loop streams (32k) → loop_response; summary creates (300) → API error.
     from tests.agents.conftest import StreamCM
+
     client = AsyncMock()
     client.messages.stream = MagicMock(
         side_effect=lambda **_kw: StreamCM(loop_response)

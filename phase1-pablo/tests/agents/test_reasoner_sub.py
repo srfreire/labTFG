@@ -1,11 +1,11 @@
 import json
-
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from decisionlab.agents.reasoner_sub import (
-    ReasonerSubAgent,
     REASONER_SUB_SYSTEM_PROMPT,
+    ReasonerSubAgent,
 )
 
 
@@ -28,7 +28,9 @@ def test_reasoner_sub_has_correct_tools():
 
 @pytest.mark.asyncio
 async def test_reasoner_sub_run_returns_content(
-    make_tool_use_block, make_text_block, make_response,
+    make_tool_use_block,
+    make_text_block,
+    make_response,
 ):
     # Step 1: LLM calls read_file for deep report
     read_deep = make_tool_use_block(
@@ -43,9 +45,7 @@ async def test_reasoner_sub_run_returns_content(
     resp2 = make_response("tool_use", [read_form])
 
     # Step 3: LLM calls read_file for env_spec
-    read_env = make_tool_use_block(
-        "call_3", "read_file", {"path": "env_spec.json"}
-    )
+    read_env = make_tool_use_block("call_3", "read_file", {"path": "env_spec.json"})
     resp3 = make_response("tool_use", [read_env])
 
     # Step 4: LLM calls write_file with JSON spec (nested path)
@@ -65,9 +65,7 @@ async def test_reasoner_sub_run_returns_content(
     resp4 = make_response("tool_use", [write_call])
 
     # Step 5: LLM produces final text
-    final_text = make_text_block(
-        "Produced JSON spec for pi_controller."
-    )
+    final_text = make_text_block("Produced JSON spec for pi_controller.")
     resp5 = make_response("end_turn", [final_text])
 
     client = AsyncMock()
@@ -99,6 +97,7 @@ async def test_reasoner_sub_uses_opus_model(make_text_block, make_response):
     await agent.run("homeostatic")
 
     from decisionlab.config import SETTINGS
+
     call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == SETTINGS.reasoner.model
 
@@ -108,7 +107,8 @@ async def test_reasoner_sub_uses_opus_model(make_text_block, make_response):
 
 @pytest.mark.asyncio
 async def test_reasoner_sub_includes_formulation_slugs_in_message(
-    make_text_block, make_response,
+    make_text_block,
+    make_response,
 ):
     """When formulation_slugs are passed, they appear in the user message."""
     final_text = make_text_block("Done")
@@ -135,7 +135,9 @@ async def test_reasoner_sub_includes_formulation_slugs_in_message(
 
 def test_system_prompt_uses_paradigm_slug_paths():
     """System prompt should instruct writing to reasoner/{paradigm_slug}/{formulation_slug}.json."""
-    assert "reasoner/{paradigm_slug}/{formulation_slug}.json" in REASONER_SUB_SYSTEM_PROMPT
+    assert (
+        "reasoner/{paradigm_slug}/{formulation_slug}.json" in REASONER_SUB_SYSTEM_PROMPT
+    )
 
 
 def test_system_prompt_does_not_reference_formulation_ids():

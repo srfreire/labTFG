@@ -182,7 +182,6 @@ mathematical structure is similar.
 """
 
 
-
 class BuilderSubAgent:
     def __init__(
         self,

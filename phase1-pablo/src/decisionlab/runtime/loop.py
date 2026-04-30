@@ -30,7 +30,9 @@ async def run_agent_loop(
     use_stream = max_tokens >= 24000
 
     for iteration in range(max_iterations):
-        logger.info("Loop iteration %d/%d — calling %s", iteration + 1, max_iterations, model)
+        logger.info(
+            "Loop iteration %d/%d — calling %s", iteration + 1, max_iterations, model
+        )
         if use_stream:
             async with client.messages.stream(
                 model=model,
@@ -53,7 +55,9 @@ async def run_agent_loop(
         record_usage(model, getattr(response, "usage", None))
 
         if response.stop_reason == "end_turn":
-            logger.info("Agent finished (end_turn) after %d iteration(s)", iteration + 1)
+            logger.info(
+                "Agent finished (end_turn) after %d iteration(s)", iteration + 1
+            )
             return response
 
         if response.stop_reason == "max_tokens":
@@ -67,13 +71,17 @@ async def run_agent_loop(
         if response.stop_reason != "tool_use":
             logger.warning(
                 "Unexpected stop_reason '%s' on iteration %d, returning response as-is",
-                response.stop_reason, iteration + 1,
+                response.stop_reason,
+                iteration + 1,
             )
             return response
 
         tool_calls = [b for b in response.content if b.type == "tool_use"]
         if not tool_calls:
-            logger.warning("stop_reason='tool_use' but no tool_use blocks on iteration %d", iteration + 1)
+            logger.warning(
+                "stop_reason='tool_use' but no tool_use blocks on iteration %d",
+                iteration + 1,
+            )
             return response
 
         messages.append({"role": "assistant", "content": response.content})

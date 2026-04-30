@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
@@ -74,7 +74,7 @@ def _make_client(responses: list[str]) -> AsyncMock:
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _days_ago(n: int) -> datetime:
@@ -247,7 +247,7 @@ class TestAC2_ReflectionGeneration:
             new_callable=AsyncMock,
             return_value=reflection,
         ) as mock_create:
-            generated, corroborated = await _generate_reflections(
+            generated, _corroborated = await _generate_reflections(
                 session,
                 embedding_service,
                 vector_store,
@@ -313,9 +313,12 @@ class TestAC2_ReflectionGeneration:
         embedding_service = AsyncMock()
         vector_store = AsyncMock()
 
-        with patch(
-            f"{_PATCH_BASE}.create_memory", new_callable=AsyncMock
-        ) as mock_create, caplog.at_level("WARNING", logger=_PATCH_BASE):
+        with (
+            patch(
+                f"{_PATCH_BASE}.create_memory", new_callable=AsyncMock
+            ) as mock_create,
+            caplog.at_level("WARNING", logger=_PATCH_BASE),
+        ):
             generated, corroborated = await _generate_reflections(
                 session,
                 embedding_service,
@@ -555,8 +558,9 @@ class TestAC6_AccessCountGuard:
 
     def test_prune_query_includes_access_count_check(self):
         """Verify the SQL WHERE clause includes access_count == 0."""
-        from decisionlab.knowledge.consolidation import _prune_stale
         import inspect
+
+        from decisionlab.knowledge.consolidation import _prune_stale
 
         source = inspect.getsource(_prune_stale)
         assert "access_count == 0" in source or "access_count" in source
@@ -609,19 +613,23 @@ class TestAC7_Performance:
         # LLM: one reflection call per cluster that has >=3 members
         client = _make_client(['["Insight from cluster"]' for _ in range(20)])
 
-        with patch(
-            f"{_PATCH_BASE}.apply_time_decay", new_callable=AsyncMock, return_value=0
-        ):
-            with patch(
+        with (
+            patch(
+                f"{_PATCH_BASE}.apply_time_decay",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
                 f"{_PATCH_BASE}._prune_stale", new_callable=AsyncMock, return_value=0
-            ):
-                result = await consolidate(
-                    session,
-                    embedding_service,
-                    vector_store,
-                    client,
-                    str(run_id),
-                )
+            ),
+        ):
+            result = await consolidate(
+                session,
+                embedding_service,
+                vector_store,
+                client,
+                str(run_id),
+            )
 
         assert result.duration_ms < 10_000
 
@@ -681,28 +689,30 @@ class TestConsolidateIntegration:
             ]
         )
 
-        with patch(
-            f"{_PATCH_BASE}.create_memory",
-            new_callable=AsyncMock,
-            return_value=reflection,
-        ):
-            with patch(
+        with (
+            patch(
+                f"{_PATCH_BASE}.create_memory",
+                new_callable=AsyncMock,
+                return_value=reflection,
+            ),
+            patch(
                 f"{_PATCH_BASE}.apply_time_decay",
                 new_callable=AsyncMock,
                 return_value=0,
-            ):
-                with patch(
-                    f"{_PATCH_BASE}._prune_stale",
-                    new_callable=AsyncMock,
-                    return_value=0,
-                ):
-                    result = await consolidate(
-                        session,
-                        embedding_service,
-                        vector_store,
-                        client,
-                        str(run_id),
-                    )
+            ),
+            patch(
+                f"{_PATCH_BASE}._prune_stale",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            result = await consolidate(
+                session,
+                embedding_service,
+                vector_store,
+                client,
+                str(run_id),
+            )
 
         assert result.clusters_found == 3
         assert result.reflections_generated == 3
@@ -722,6 +732,7 @@ class TestRouterConsolidation:
     def test_router_calls_consolidation_after_done(self):
         """Verify the router code references _run_consolidation at Stage.DONE."""
         import inspect
+
         from decisionlab.router import Router
 
         source = inspect.getsource(Router.run) + inspect.getsource(Router._run_loop)

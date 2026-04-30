@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import shared
-
 from decisionlab.agents.reasoner_sub import ReasonerSubAgent
 from decisionlab.domain.models import ReasonerReport
 
@@ -72,7 +72,7 @@ class Reasoner:
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
         results: dict[str, str] = {}
-        for slug, outcome in zip(paradigm_slugs, outcomes):
+        for slug, outcome in zip(paradigm_slugs, outcomes, strict=False):
             if isinstance(outcome, BaseException):
                 logger.error("ReasonerSubAgent failed for %s: %s", slug, outcome)
             else:

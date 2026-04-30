@@ -1,5 +1,5 @@
-from decisionlab.domain.ports import WebSearchPort
 from decisionlab.domain.models import SearchResult
+from decisionlab.domain.ports import WebSearchPort
 
 
 class FakeSearch:

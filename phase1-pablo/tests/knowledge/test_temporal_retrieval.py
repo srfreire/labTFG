@@ -6,9 +6,7 @@ results valid at the given timestamp are returned.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.tool import (
@@ -16,14 +14,13 @@ from decisionlab.knowledge.retrieval.tool import (
     _apply_temporal_filter,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
 def _utc_iso(days_ago: int = 0) -> str:
-    dt = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    dt = datetime.now(UTC) - timedelta(days=days_ago)
     return dt.isoformat()
 
 
@@ -52,7 +49,7 @@ class TestAsOfSchemaParameter:
 class TestTemporalFilter:
     def test_filters_out_results_created_after_as_of(self):
         """Results with created_at after as_of are excluded."""
-        as_of = datetime.now(timezone.utc) - timedelta(days=5)
+        as_of = datetime.now(UTC) - timedelta(days=5)
         results = [
             _result("old", 0.9, "dense", created_at=_utc_iso(10)),  # before as_of
             _result("new", 0.95, "dense", created_at=_utc_iso(1)),  # after as_of
@@ -65,7 +62,7 @@ class TestTemporalFilter:
 
     def test_includes_results_created_at_exactly_as_of(self):
         """Results created exactly at as_of are included."""
-        as_of = datetime.now(timezone.utc)
+        as_of = datetime.now(UTC)
         results = [
             _result("exact", 0.9, "dense", created_at=as_of.isoformat()),
         ]
@@ -76,7 +73,7 @@ class TestTemporalFilter:
 
     def test_excludes_expired_results(self):
         """Results with valid_to before as_of are excluded."""
-        as_of = datetime.now(timezone.utc) - timedelta(days=2)
+        as_of = datetime.now(UTC) - timedelta(days=2)
         results = [
             _result(
                 "expired",
@@ -93,7 +90,7 @@ class TestTemporalFilter:
 
     def test_includes_results_with_null_valid_to(self):
         """Results without valid_to (currently valid) are included."""
-        as_of = datetime.now(timezone.utc)
+        as_of = datetime.now(UTC)
         results = [
             _result("current", 0.9, "dense", created_at=_utc_iso(5)),
         ]
@@ -104,7 +101,7 @@ class TestTemporalFilter:
 
     def test_no_timestamp_results_excluded(self):
         """Results without any timestamp are excluded when as_of is set."""
-        as_of = datetime.now(timezone.utc)
+        as_of = datetime.now(UTC)
         results = [
             _result("no-ts", 0.9, "web"),
         ]
@@ -115,9 +112,11 @@ class TestTemporalFilter:
 
     def test_unparseable_valid_to_excludes_result(self):
         """Results with present but unparseable valid_to are excluded."""
-        as_of = datetime.now(timezone.utc)
+        as_of = datetime.now(UTC)
         results = [
-            _result("corrupt", 0.9, "dense", created_at=_utc_iso(5), valid_to="not-a-date"),
+            _result(
+                "corrupt", 0.9, "dense", created_at=_utc_iso(5), valid_to="not-a-date"
+            ),
         ]
 
         filtered = _apply_temporal_filter(results, as_of)

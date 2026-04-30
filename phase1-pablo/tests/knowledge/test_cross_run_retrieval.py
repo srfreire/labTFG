@@ -6,7 +6,7 @@ vector results, and cross-run retrieval filtering.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -19,7 +19,6 @@ from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
 from decisionlab.knowledge.retrieval.vector_retrieval import _to_results
 from shared.vector_store import ScoredPoint
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -27,7 +26,7 @@ from shared.vector_store import ScoredPoint
 
 def _utc_iso(days_ago: int = 0) -> str:
     """Return an ISO8601 UTC timestamp for N days ago."""
-    dt = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    dt = datetime.now(UTC) - timedelta(days=days_ago)
     return dt.isoformat()
 
 
@@ -124,7 +123,7 @@ class TestAC2_RecencyWeighting:
 
         # 0.85 * 1.0 = 0.85 vs 0.95 * 0.16 = 0.152 — new wins
         assert weighted[0].score > weighted[1].score
-        assert "New lower score" == weighted[0].text
+        assert weighted[0].text == "New lower score"
 
 
 # ---------------------------------------------------------------------------

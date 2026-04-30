@@ -200,6 +200,7 @@ class TestStartupDegradation:
     async def test_degradation_warning_logged(self, caplog):
         """WARNING logged listing unavailable services."""
         import logging
+
         import shared
 
         settings = _make_settings(VOYAGE_API_KEY="")

@@ -95,9 +95,7 @@ def test_reason_errors_when_env_spec_missing(tmp_path: Path):
 
 
 def test_build_errors_when_reasoner_missing(tmp_path: Path):
-    result = runner.invoke(
-        cli.app, ["build", "--reports-dir", str(tmp_path)]
-    )
+    result = runner.invoke(cli.app, ["build", "--reports-dir", str(tmp_path)])
     assert result.exit_code == 1
     assert "reasoner/" in result.stdout
 
@@ -159,6 +157,7 @@ def test_run_async_handles_connection_error():
 
 def test_run_async_handles_runtime_error():
     """_run_async catches RuntimeError and exits 1."""
+
     async def _boom():
         raise RuntimeError("bad state")
 
@@ -171,9 +170,8 @@ def test_run_async_handles_runtime_error():
 
 def test_run_async_returns_value_on_success():
     """_run_async returns the coroutine's value on the happy path."""
+
     async def _ok():
         return 42
 
     assert cli._run_async(_ok()) == 42
-
-

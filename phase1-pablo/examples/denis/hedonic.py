@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from decisionlab.models.protocol import Action, Perception, UP, DOWN, LEFT, RIGHT, STAY
+from decisionlab.models.protocol import DOWN, LEFT, RIGHT, STAY, UP, Action, Perception
 
 _ACTIONS = [UP, DOWN, LEFT, RIGHT, STAY]
 _ACTION_TO_IDX = {a.name: i for i, a in enumerate(_ACTIONS)}
@@ -32,12 +32,12 @@ _DELTAS: dict[str, tuple[int, int]] = {
 @dataclass
 class HedonicParams:
     grid_size: tuple[int, int] = (5, 5)
-    learning_rate: float = 0.1       # alpha
-    discount_factor: float = 0.9     # gamma
+    learning_rate: float = 0.1  # alpha
+    discount_factor: float = 0.9  # gamma
     epsilon: float = 1.0
     epsilon_decay: float = 0.9995
     epsilon_min: float = 0.01
-    n_palatability_levels: int = 2   # discretized
+    n_palatability_levels: int = 2  # discretized
     use_food_in_state: bool = True
 
 
@@ -53,27 +53,46 @@ class HedonicModel:
     def __post_init__(self) -> None:
         self.epsilon = self.params.epsilon
         gw, gh = self.params.grid_size
-        n_pal = self.params.n_palatability_levels if self.params.use_food_in_state else 1
+        n_pal = (
+            self.params.n_palatability_levels if self.params.use_food_in_state else 1
+        )
         food_flag = 2 if self.params.use_food_in_state else 1  # food present/absent
         n_states = gw * gh * food_flag * n_pal
         n_actions = len(_ACTIONS)
         self.q_table = np.zeros((n_states, n_actions), dtype=np.float64)
 
-    def _state_index(self, position: tuple[int, int], food_sources: list[dict] | None = None) -> int:
-        gw, gh = self.params.grid_size
+    def _state_index(
+        self, position: tuple[int, int], food_sources: list[dict] | None = None
+    ) -> int:
+        _gw, gh = self.params.grid_size
         x, y = position
 
         if self.params.use_food_in_state:
-            food_here = food_sources and any(f["x"] == x and f["y"] == y for f in food_sources)
+            food_here = food_sources and any(
+                f["x"] == x and f["y"] == y for f in food_sources
+            )
             food_flag = 1 if food_here else 0
-            pals = [f["palatability"] for f in food_sources if f["x"] == x and f["y"] == y] if food_sources else []
-            pal_level = min(int(max(pals) * self.params.n_palatability_levels), self.params.n_palatability_levels - 1) if pals else 0
+            pals = (
+                [f["palatability"] for f in food_sources if f["x"] == x and f["y"] == y]
+                if food_sources
+                else []
+            )
+            pal_level = (
+                min(
+                    int(max(pals) * self.params.n_palatability_levels),
+                    self.params.n_palatability_levels - 1,
+                )
+                if pals
+                else 0
+            )
             n_pal = self.params.n_palatability_levels
             return ((x * gh + y) * 2 + food_flag) * n_pal + pal_level
         else:
             return x * gh + y
 
-    def _reverse_position(self, action: Action, new_position: tuple[int, int]) -> tuple[int, int]:
+    def _reverse_position(
+        self, action: Action, new_position: tuple[int, int]
+    ) -> tuple[int, int]:
         """Infer previous position by reversing the action delta."""
         dx, dy = _DELTAS[action.name]
         return (new_position[0] - dx, new_position[1] - dy)
@@ -100,19 +119,27 @@ class HedonicModel:
             self._last_state_idx = self._state_index(prev_pos)
 
         action_idx = _ACTION_TO_IDX[action.name]
-        new_state_idx = self._state_index(new_perception.position, new_perception.food_sources)
+        new_state_idx = self._state_index(
+            new_perception.position, new_perception.food_sources
+        )
 
         # Q(s,a) <- Q(s,a) + alpha * [R + gamma * max_a' Q(s',a') - Q(s,a)]
         old_q = self.q_table[self._last_state_idx, action_idx]
         max_future_q = np.max(self.q_table[new_state_idx])
         td_target = reward + self.params.discount_factor * max_future_q
-        self.q_table[self._last_state_idx, action_idx] = old_q + self.params.learning_rate * (td_target - old_q)
+        self.q_table[self._last_state_idx, action_idx] = (
+            old_q + self.params.learning_rate * (td_target - old_q)
+        )
 
         # Decay epsilon
-        self.epsilon = max(self.params.epsilon_min, self.epsilon * self.params.epsilon_decay)
+        self.epsilon = max(
+            self.params.epsilon_min, self.epsilon * self.params.epsilon_decay
+        )
         self._last_state_idx = None
 
-    def hedonic_signal(self, position: tuple[int, int], food_sources: list[dict] | None = None) -> float:
+    def hedonic_signal(
+        self, position: tuple[int, int], food_sources: list[dict] | None = None
+    ) -> float:
         """W(t) = max_a Q(state, a) for current position."""
         state_idx = self._state_index(position, food_sources)
         return float(np.max(self.q_table[state_idx]))

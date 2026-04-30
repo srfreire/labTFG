@@ -1,9 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from decisionlab.agents.formalizer_sub import (
-    FormalizerSubAgent,
     FORMALIZER_SUB_SYSTEM_PROMPT,
+    FormalizerSubAgent,
 )
 
 
@@ -30,7 +31,9 @@ def test_formalizer_sub_has_correct_tools():
 
 @pytest.mark.asyncio
 async def test_formalizer_sub_run_returns_content(
-    make_tool_use_block, make_text_block, make_response,
+    make_tool_use_block,
+    make_text_block,
+    make_response,
 ):
     # Step 1: LLM calls read_file
     read_call = make_tool_use_block(
@@ -74,6 +77,7 @@ async def test_formalizer_sub_run_returns_content(
 
     # Formalizer runs at 32k → streaming path in run_agent_loop.
     from tests.agents.conftest import StreamCM
+
     queue = iter([resp1, resp2, resp3])
     client = AsyncMock()
     client.messages.stream = MagicMock(side_effect=lambda **_kw: StreamCM(next(queue)))
@@ -87,7 +91,9 @@ async def test_formalizer_sub_run_returns_content(
 
 
 @pytest.mark.asyncio
-async def test_formalizer_sub_uses_opus_model(make_text_block, make_response, streaming_client):
+async def test_formalizer_sub_uses_opus_model(
+    make_text_block, make_response, streaming_client
+):
     final_text = make_text_block("# Output")
     resp = make_response("end_turn", [final_text])
 
@@ -97,6 +103,7 @@ async def test_formalizer_sub_uses_opus_model(make_text_block, make_response, st
     await agent.run("homeostatic")
 
     from decisionlab.config import SETTINGS
+
     # Formalizer is at 32k → uses messages.stream
     call_kwargs = client.messages.stream.call_args
     assert call_kwargs.kwargs["model"] == SETTINGS.formalizer.model

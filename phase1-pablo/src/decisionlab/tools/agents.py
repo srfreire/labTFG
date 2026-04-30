@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 LAUNCH_DEEP_RESEARCH_SCHEMA: dict[str, Any] = {
     "name": "launch_deep_research",
@@ -21,9 +22,12 @@ LAUNCH_DEEP_RESEARCH_SCHEMA: dict[str, Any] = {
 SubAgentFactory = Callable[[str], Awaitable[str]]
 
 
-def create_launch_deep_research(factory: SubAgentFactory) -> Callable[[dict], Awaitable[str]]:
+def create_launch_deep_research(
+    factory: SubAgentFactory,
+) -> Callable[[dict], Awaitable[str]]:
     async def launch_deep_research(params: dict) -> str:
         if "paradigm" not in params:
             raise ValueError("launch_deep_research requires 'paradigm' parameter")
         return await factory(params["paradigm"])
+
     return launch_deep_research

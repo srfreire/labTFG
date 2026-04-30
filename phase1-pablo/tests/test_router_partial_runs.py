@@ -19,6 +19,8 @@ import pytest_asyncio
 from decisionlab.knowledge.models import MemoryAgentResult
 from decisionlab.router import PipelineState, Router, Stage
 
+pytestmark = pytest.mark.integration
+
 
 @pytest_asyncio.fixture
 async def shared_init():

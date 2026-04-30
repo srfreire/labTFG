@@ -25,7 +25,9 @@ async def test_missing_query_raises():
 
 
 def _mock_response(json_data, status_code=200):
-    return httpx.Response(status_code, json=json_data, request=httpx.Request("GET", "https://example.com"))
+    return httpx.Response(
+        status_code, json=json_data, request=httpx.Request("GET", "https://example.com")
+    )
 
 
 @pytest.mark.asyncio
@@ -105,7 +107,10 @@ async def test_default_limit_is_5():
         await fn({"query": "test"})
 
     call_kwargs = mock_client.get.call_args
-    assert "limit=5" in str(call_kwargs) or call_kwargs[1].get("params", {}).get("limit") == 5
+    assert (
+        "limit=5" in str(call_kwargs)
+        or call_kwargs[1].get("params", {}).get("limit") == 5
+    )
 
 
 @pytest.mark.asyncio
@@ -128,10 +133,20 @@ async def test_429_retries_once():
     rate_limit_resp = _mock_response({}, status_code=429)
     rate_limit_resp.headers["Retry-After"] = "0.1"
 
-    success_payload = {"total": 1, "data": [
-        {"paperId": "x", "title": "Retry Paper", "authors": [], "year": 2020,
-         "abstract": "Retried.", "externalIds": {}, "citationCount": 1},
-    ]}
+    success_payload = {
+        "total": 1,
+        "data": [
+            {
+                "paperId": "x",
+                "title": "Retry Paper",
+                "authors": [],
+                "year": 2020,
+                "abstract": "Retried.",
+                "externalIds": {},
+                "citationCount": 1,
+            },
+        ],
+    }
     ok_resp = _mock_response(success_payload)
 
     mock_client = AsyncMock()
@@ -151,7 +166,8 @@ async def test_429_retries_once():
 async def test_malformed_json_returns_error():
     """Non-JSON 200 response returns a readable error."""
     resp = httpx.Response(
-        200, content=b"<html>Error</html>",
+        200,
+        content=b"<html>Error</html>",
         headers={"content-type": "text/html"},
         request=httpx.Request("GET", "https://example.com"),
     )

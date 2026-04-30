@@ -8,8 +8,8 @@ from decisionlab.router import PipelineState, Stage
 from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
     create_read_report,
-    slugify,
     generate_tree_map,
+    slugify,
 )
 
 
@@ -68,10 +68,12 @@ class TestGenerateTreeMap:
     @pytest.mark.asyncio
     async def test_single_paradigm_no_formulations(self, tmp_path):
         state = _make_state(tmp_path, {"homeostatic-regulation": []})
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report\n\nSome content.",
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
-        })
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report\n\nSome content.",
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -81,13 +83,18 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_paradigm_with_formulations(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "homeostatic-regulation": ["pi-controller", "dual-process-model"],
-        })
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report\n\nSome content.",
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "homeostatic-regulation": ["pi-controller", "dual-process-model"],
+            },
+        )
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report\n\nSome content.",
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -98,15 +105,20 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_multiple_paradigms_with_formulations(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "hedonic-reward": ["temporal-difference"],
-            "homeostatic-regulation": ["pi-controller"],
-        })
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report\n\nSome content.",
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
-            "research/test-run/deep/hedonic-reward.md": "# Hedonic Reward — Deep Research\n",
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "hedonic-reward": ["temporal-difference"],
+                "homeostatic-regulation": ["pi-controller"],
+            },
+        )
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report\n\nSome content.",
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+                "research/test-run/deep/hedonic-reward.md": "# Hedonic Reward — Deep Research\n",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -120,13 +132,18 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_tree_map_inserted_into_report(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "homeostatic-regulation": ["pi-controller"],
-        })
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report\n\nSome content.",
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "homeostatic-regulation": ["pi-controller"],
+            },
+        )
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report\n\nSome content.",
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -140,22 +157,27 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_tree_uses_correct_characters(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "paradigm-a": ["f1"],
-            "paradigm-b": ["f1"],
-        })
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report",
-            "research/test-run/deep/paradigm-a.md": "# Paradigm A — Deep Research\n",
-            "research/test-run/deep/paradigm-b.md": "# Paradigm B — Deep Research\n",
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "paradigm-a": ["f1"],
+                "paradigm-b": ["f1"],
+            },
+        )
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report",
+                "research/test-run/deep/paradigm-a.md": "# Paradigm A — Deep Research\n",
+                "research/test-run/deep/paradigm-b.md": "# Paradigm B — Deep Research\n",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
             tree = await generate_tree_map(state)
 
         lines = tree.strip().split("\n")
-        paradigm_lines = [l for l in lines if "Paradigm" in l]
+        paradigm_lines = [line for line in lines if "Paradigm" in line]
         assert "├──" in paradigm_lines[0]
         assert "└──" in paradigm_lines[1]
 
@@ -163,15 +185,19 @@ class TestGenerateTreeMap:
     async def test_paradigm_name_fallback_to_slug(self, tmp_path):
         """If deep report doesn't exist, fall back to slug."""
         state = _make_state(tmp_path, {"unknown-paradigm": []})
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report",
-        })
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report",
+            }
+        )
         # get_text raises for missing deep report
         original_get = storage.get_text.side_effect
+
         async def get_text_with_missing(key):
             if "deep/unknown-paradigm" in key:
                 raise FileNotFoundError
             return original_get(key)
+
         storage.get_text = AsyncMock(side_effect=get_text_with_missing)
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
@@ -183,9 +209,11 @@ class TestGenerateTreeMap:
     @pytest.mark.asyncio
     async def test_empty_selected_formulations(self, tmp_path):
         state = _make_state(tmp_path, {})
-        storage = _mock_storage({
-            "research/test-run/report.md": "# Report",
-        })
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": "# Report",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -196,12 +224,17 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_no_report_file_creates_one(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "homeostatic-regulation": ["pi-controller"],
-        })
-        storage = _mock_storage({
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "homeostatic-regulation": ["pi-controller"],
+            },
+        )
+        storage = _mock_storage(
+            {
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage
@@ -214,18 +247,23 @@ class TestGenerateTreeMap:
 
     @pytest.mark.asyncio
     async def test_replacement_preserves_following_sections(self, tmp_path):
-        state = _make_state(tmp_path, {
-            "homeostatic-regulation": ["pi-controller"],
-        })
+        state = _make_state(
+            tmp_path,
+            {
+                "homeostatic-regulation": ["pi-controller"],
+            },
+        )
         existing = (
             "# Report\n\nContent."
             "\n## Research Tree Map\n\n```\nold tree\n```\n"
             "\n## References\n\nSome refs.\n"
         )
-        storage = _mock_storage({
-            "research/test-run/report.md": existing,
-            "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
-        })
+        storage = _mock_storage(
+            {
+                "research/test-run/report.md": existing,
+                "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
+            }
+        )
 
         with patch("decisionlab.tools.reports.shared") as mock_shared:
             mock_shared.storage = storage

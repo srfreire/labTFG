@@ -11,11 +11,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from shared.embedding import RankedResult
-
 from decisionlab.domain.models import SearchResult
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
-
+from shared.embedding import RankedResult
 
 # -- helpers -------------------------------------------------------------------
 
@@ -26,7 +24,9 @@ def _rr(
     source: str = "fused",
     metadata: dict | None = None,
 ) -> RetrievalResult:
-    return RetrievalResult(text=text, score=score, source=source, metadata=metadata or {})
+    return RetrievalResult(
+        text=text, score=score, source=source, metadata=metadata or {}
+    )
 
 
 def _haiku_response(evaluations: list[dict]) -> AsyncMock:
@@ -41,7 +41,9 @@ def _haiku_response(evaluations: list[dict]) -> AsyncMock:
     return client
 
 
-def _mock_emb(ranked: list[RankedResult] | None = None, vector: list[float] | None = None) -> AsyncMock:
+def _mock_emb(
+    ranked: list[RankedResult] | None = None, vector: list[float] | None = None
+) -> AsyncMock:
     """Build a mock EmbeddingService with preset rerank and embed_query."""
     emb = AsyncMock()
     emb.rerank = AsyncMock(return_value=ranked or [])
@@ -70,9 +72,15 @@ class TestAC1_CorrectClassification:
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("Ghrelin modulates hunger via hypothalamic circuits")]
-        client = _haiku_response([
-            {"index": 0, "classification": "CORRECT", "reasoning": "Directly relevant"},
-        ])
+        client = _haiku_response(
+            [
+                {
+                    "index": 0,
+                    "classification": "CORRECT",
+                    "reasoning": "Directly relevant",
+                },
+            ]
+        )
 
         crag = await evaluate_results(
             query="ghrelin hunger signaling",
@@ -98,9 +106,15 @@ class TestAC2_IncorrectClassification:
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("Ghrelin modulates hunger via hypothalamic circuits")]
-        client = _haiku_response([
-            {"index": 0, "classification": "INCORRECT", "reasoning": "Domain mismatch"},
-        ])
+        client = _haiku_response(
+            [
+                {
+                    "index": 0,
+                    "classification": "INCORRECT",
+                    "reasoning": "Domain mismatch",
+                },
+            ]
+        )
 
         crag = await evaluate_results(
             query="ghrelin hunger signaling",
@@ -123,9 +137,15 @@ class TestAC3_AmbiguousClassification:
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("Reward-based paradigm using dopamine pathways")]
-        client = _haiku_response([
-            {"index": 0, "classification": "AMBIGUOUS", "reasoning": "Same paradigm, different aspect"},
-        ])
+        client = _haiku_response(
+            [
+                {
+                    "index": 0,
+                    "classification": "AMBIGUOUS",
+                    "reasoning": "Same paradigm, different aspect",
+                },
+            ]
+        )
 
         crag = await evaluate_results(
             query="reward learning formulation",
@@ -153,17 +173,27 @@ class TestAC4_WebFallback:
             _rr("irrelevant doc 1"),
             _rr("irrelevant doc 2"),
         ]
-        client = _haiku_response([
-            {"index": 0, "classification": "INCORRECT", "reasoning": "Not useful"},
-            {"index": 1, "classification": "INCORRECT", "reasoning": "Not useful"},
-        ])
+        client = _haiku_response(
+            [
+                {"index": 0, "classification": "INCORRECT", "reasoning": "Not useful"},
+                {"index": 1, "classification": "INCORRECT", "reasoning": "Not useful"},
+            ]
+        )
 
-        search = _mock_search([
-            SearchResult(title="Web result", url="https://example.com", snippet="Fresh web content"),
-        ])
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.85, document="Fresh web content"),
-        ])
+        search = _mock_search(
+            [
+                SearchResult(
+                    title="Web result",
+                    url="https://example.com",
+                    snippet="Fresh web content",
+                ),
+            ]
+        )
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.85, document="Fresh web content"),
+            ]
+        )
 
         crag = await evaluate_results(
             query="Q-learning convergence",
@@ -196,20 +226,30 @@ class TestAC5_Supplemented:
             _rr("ambiguous doc", score=0.7),
             _rr("incorrect doc", score=0.5),
         ]
-        client = _haiku_response([
-            {"index": 0, "classification": "CORRECT", "reasoning": "Good"},
-            {"index": 1, "classification": "AMBIGUOUS", "reasoning": "Partial"},
-            {"index": 2, "classification": "INCORRECT", "reasoning": "Bad"},
-        ])
+        client = _haiku_response(
+            [
+                {"index": 0, "classification": "CORRECT", "reasoning": "Good"},
+                {"index": 1, "classification": "AMBIGUOUS", "reasoning": "Partial"},
+                {"index": 2, "classification": "INCORRECT", "reasoning": "Bad"},
+            ]
+        )
 
-        search = _mock_search([
-            SearchResult(title="Supplement", url="https://example.com", snippet="Supplementary web content"),
-        ])
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.9, document="correct doc"),
-            RankedResult(index=1, score=0.8, document="Supplementary web content"),
-            RankedResult(index=2, score=0.6, document="ambiguous doc"),
-        ])
+        search = _mock_search(
+            [
+                SearchResult(
+                    title="Supplement",
+                    url="https://example.com",
+                    snippet="Supplementary web content",
+                ),
+            ]
+        )
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.9, document="correct doc"),
+                RankedResult(index=1, score=0.8, document="Supplementary web content"),
+                RankedResult(index=2, score=0.6, document="ambiguous doc"),
+            ]
+        )
 
         crag = await evaluate_results(
             query="reward paradigm",
@@ -223,7 +263,7 @@ class TestAC5_Supplemented:
         assert crag.action == "supplemented"
         assert crag.web_results_used > 0
         # Contains both stored and web results
-        sources = {r.source for r in crag.results}
+        {r.source for r in crag.results}
         assert len(crag.results) >= 2
 
 
@@ -243,10 +283,12 @@ class TestAC6_PassThrough:
             _rr("good doc 1"),
             _rr("good doc 2"),
         ]
-        client = _haiku_response([
-            {"index": 0, "classification": "CORRECT", "reasoning": "Relevant"},
-            {"index": 1, "classification": "CORRECT", "reasoning": "Relevant"},
-        ])
+        client = _haiku_response(
+            [
+                {"index": 0, "classification": "CORRECT", "reasoning": "Relevant"},
+                {"index": 1, "classification": "CORRECT", "reasoning": "Relevant"},
+            ]
+        )
 
         search = _mock_search()
 
@@ -277,12 +319,20 @@ class TestAC7_UsesDuckDuckGo:
     async def test_web_fallback_calls_search_adapter(self):
         from decisionlab.knowledge.retrieval.crag import web_fallback
 
-        search = _mock_search([
-            SearchResult(title="DDG Result", url="https://example.com", snippet="DDG snippet content"),
-        ])
-        emb = _mock_emb(ranked=[
-            RankedResult(index=0, score=0.8, document="DDG snippet content"),
-        ])
+        search = _mock_search(
+            [
+                SearchResult(
+                    title="DDG Result",
+                    url="https://example.com",
+                    snippet="DDG snippet content",
+                ),
+            ]
+        )
+        emb = _mock_emb(
+            ranked=[
+                RankedResult(index=0, score=0.8, document="DDG snippet content"),
+            ]
+        )
 
         results = await web_fallback(
             query="Q-learning convergence",
@@ -389,10 +439,12 @@ class TestMixedCorrectIncorrect:
             _rr("good doc"),
             _rr("bad doc"),
         ]
-        client = _haiku_response([
-            {"index": 0, "classification": "CORRECT", "reasoning": "Good"},
-            {"index": 1, "classification": "INCORRECT", "reasoning": "Bad"},
-        ])
+        client = _haiku_response(
+            [
+                {"index": 0, "classification": "CORRECT", "reasoning": "Good"},
+                {"index": 1, "classification": "INCORRECT", "reasoning": "Bad"},
+            ]
+        )
 
         crag = await evaluate_results(
             query="test",
@@ -415,9 +467,11 @@ class TestOOBHaikuIndex:
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("only doc")]
-        client = _haiku_response([
-            {"index": 99, "classification": "INCORRECT", "reasoning": "Ghost"},
-        ])
+        client = _haiku_response(
+            [
+                {"index": 99, "classification": "INCORRECT", "reasoning": "Ghost"},
+            ]
+        )
 
         crag = await evaluate_results(
             query="test",

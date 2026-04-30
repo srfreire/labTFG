@@ -22,6 +22,7 @@ class Action:
 # helpers
 # ---------------------------------------------------------------------------
 
+
 def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
@@ -29,6 +30,7 @@ def _clamp(value: float, lo: float, hi: float) -> float:
 # ---------------------------------------------------------------------------
 # model
 # ---------------------------------------------------------------------------
+
 
 class HomeostaticPINegativeFeedback:
     """PI negative-feedback homeostatic controller agent."""
@@ -53,17 +55,20 @@ class HomeostaticPINegativeFeedback:
         self.c_I_max = integral_windup_cap
 
         # --- variables (initial values from spec) ---
-        self.A: float = 50.0          # energy
+        self.A: float = 50.0  # energy
         self.e: float = self.s - self.A  # error = 30.0
         self.c_P: float = self.k_P * self.e  # 15.0
-        self.c_I: float = 0.0         # integral control
+        self.c_I: float = 0.0  # integral control
         self.c: float = self.c_P + self.c_I  # total control = 15.0
 
         # --- action scores (for decision trace visualization) ---
         self._q_values: dict[str, float] = {
-            "move_up": 0.0, "move_down": 0.0,
-            "move_left": 0.0, "move_right": 0.0,
-            "stay": 0.0, "eat": 0.0,
+            "move_up": 0.0,
+            "move_down": 0.0,
+            "move_left": 0.0,
+            "move_right": 0.0,
+            "stay": 0.0,
+            "eat": 0.0,
         }
 
     # ------------------------------------------------------------------
@@ -93,19 +98,17 @@ class HomeostaticPINegativeFeedback:
         # R7 – move utility: pick best adjacent cell
         if food_positions:
             moves = [
-                ("move_up",    0, -1),
-                ("move_down",  0,  1),
-                ("move_left", -1,  0),
-                ("move_right", 1,  0),
+                ("move_up", 0, -1),
+                ("move_down", 0, 1),
+                ("move_left", -1, 0),
+                ("move_right", 1, 0),
             ]
             best_action = None
             best_utility = float("-inf")
             for action_name, dx, dy in moves:
                 px = _clamp(pos[0] + dx, 0, grid_w - 1)
                 py = _clamp(pos[1] + dy, 0, grid_h - 1)
-                min_dist = min(
-                    abs(px - fx) + abs(py - fy) for fx, fy in food_positions
-                )
+                min_dist = min(abs(px - fx) + abs(py - fy) for fx, fy in food_positions)
                 U_move = self.c * (1.0 / (1 + min_dist))
                 if U_move > best_utility:
                     best_utility = U_move
@@ -152,8 +155,12 @@ class HomeostaticPINegativeFeedback:
         scores: dict[str, float] = {}
         scores["stay"] = 0.0 if self.e > 0 else abs(self.c)
         scores["eat"] = self.c if (self.e > 0 and pos in food_positions) else 0.0
-        for name, dx, dy in [("move_up", 0, -1), ("move_down", 0, 1),
-                              ("move_left", -1, 0), ("move_right", 1, 0)]:
+        for name, dx, dy in [
+            ("move_up", 0, -1),
+            ("move_down", 0, 1),
+            ("move_left", -1, 0),
+            ("move_right", 1, 0),
+        ]:
             if self.e > 0 and food_positions:
                 px = _clamp(pos[0] + dx, 0, grid_w - 1)
                 py = _clamp(pos[1] + dy, 0, grid_h - 1)

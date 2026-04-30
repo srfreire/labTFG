@@ -42,7 +42,9 @@ def _env(stage: str, field: str, default: str | int) -> str | int:
     return raw
 
 
-def _load(stage: str, *, model: str, max_iterations: int, max_tokens: int) -> AgentConfig:
+def _load(
+    stage: str, *, model: str, max_iterations: int, max_tokens: int
+) -> AgentConfig:
     return AgentConfig(
         model=str(_env(stage, "MODEL", model)),
         max_iterations=int(_env(stage, "MAX_ITERATIONS", max_iterations)),
@@ -64,9 +66,9 @@ class Settings:
     reasoner: AgentConfig
     builder: AgentConfig
     # Auxiliary model slots — role-named so the family choice stays in env.
-    knowledge_fast_model: str   # extraction, NER, scoring, classification, reflection
+    knowledge_fast_model: str  # extraction, NER, scoring, classification, reflection
     knowledge_heavy_model: str  # conflict resolution between memories
-    feedback_model: str         # feedback classifier (router re-execution decisions)
+    feedback_model: str  # feedback classifier (router re-execution decisions)
 
     @classmethod
     def from_env(cls) -> Settings:

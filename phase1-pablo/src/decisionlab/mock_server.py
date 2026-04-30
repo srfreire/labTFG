@@ -499,7 +499,7 @@ FORMALIZE_SEARCH_DATA: dict[str, list[dict]] = {
             "query": "reinforcement learning homeostatic drive reduction MDP Keramati",
             "results": [
                 "Keramati & Gutkin (2011) RL theory for homeostatic regulation — NeurIPS",
-                "Yin (2025) Homeostasis–RL integration",  # noqa: RUF001
+                "Yin (2025) Homeostasis–RL integration",
             ],
         },
     ],

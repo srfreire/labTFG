@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import re
 
-from shared.embedding import EmbeddingService
-
 from decisionlab.knowledge.retrieval.models import RetrievalResult
+from shared.embedding import EmbeddingService
 
 
 def _normalize_text(text: str) -> str:
@@ -121,7 +120,11 @@ async def fuse_and_rerank(
     rerank_threshold: float = 0.3,
 ) -> list[RetrievalResult]:
     """Fuse 3 retrieval channels via RRF, then rerank with Voyage AI."""
-    fused = rrf_fuse([kg_results, dense_results, sparse_results], k=rrf_k, top_n=rrf_top_n)
+    fused = rrf_fuse(
+        [kg_results, dense_results, sparse_results], k=rrf_k, top_n=rrf_top_n
+    )
     if not fused:
         return []
-    return await rerank_results(query, fused, embedding_service, rerank_top_k, rerank_threshold)
+    return await rerank_results(
+        query, fused, embedding_service, rerank_top_k, rerank_threshold
+    )

@@ -1,4 +1,8 @@
 """Integration tests — our models running inside Juan's Environment."""
+
+from denis.hedonic import HedonicModel, HedonicParams
+from denis.homeostatic import HomeostaticModel
+from denis.integrated import IntegratedModel, IntegrationMode
 from simlab.environment import (
     ActionRule,
     Agent,
@@ -11,9 +15,6 @@ from simlab.environment import (
     ResourceRule,
     homeostatic_perception_mapper,
 )
-from denis.homeostatic import HomeostaticModel
-from denis.hedonic import HedonicModel, HedonicParams
-from denis.integrated import IntegratedModel, IntegrationMode
 
 
 def _make_env(seed=42):
@@ -26,7 +27,12 @@ def _make_env(seed=42):
         ActionRule("eat", ConsumeEffect(resource_type="food", reward=1.0)),
     ]
     resources = [
-        ResourceRule(type="food", properties={"palatability": (0.3, 0.9)}, count=2, regenerate=True),
+        ResourceRule(
+            type="food",
+            properties={"palatability": (0.3, 0.9)},
+            count=2,
+            regenerate=True,
+        ),
     ]
     return Environment(5, 5, actions=actions, resources=resources, seed=seed)
 
@@ -71,16 +77,20 @@ def test_integrated_runs_in_environment():
 
 def test_multiple_agents_different_models():
     env = _make_env()
-    env.add_agent(Agent(
-        id="homeo",
-        position=Position(0, 0),
-        decision_model=_adapter(HomeostaticModel()),
-    ))
-    env.add_agent(Agent(
-        id="hedonic",
-        position=Position(4, 4),
-        decision_model=_adapter(HedonicModel(HedonicParams(grid_size=(5, 5)))),
-    ))
+    env.add_agent(
+        Agent(
+            id="homeo",
+            position=Position(0, 0),
+            decision_model=_adapter(HomeostaticModel()),
+        )
+    )
+    env.add_agent(
+        Agent(
+            id="hedonic",
+            position=Position(4, 4),
+            decision_model=_adapter(HedonicModel(HedonicParams(grid_size=(5, 5)))),
+        )
+    )
     events = env.run(30)
     assert len(events) == 60  # 2 agents x 30 steps
     agent_ids = {e.agent_id for e in events}

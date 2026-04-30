@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from decisionlab.agents.researcher import Researcher, RESEARCHER_SYSTEM_PROMPT
+import pytest
+
 from decisionlab.adapters.mock import MockWebSearch
+from decisionlab.agents.researcher import RESEARCHER_SYSTEM_PROMPT, Researcher
 from decisionlab.domain.models import ResearchReport
 
 
@@ -97,7 +98,9 @@ async def test_researcher_accumulates_deep_reports(streaming_client):
 
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
     deep_loop_response = _make_response("end_turn", [deep_text])
-    deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
+    deep_summary_text = _make_text_block(
+        "**Paradigm**: Homeostatic\n**Key authors**: X"
+    )
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
 
@@ -127,15 +130,24 @@ async def test_researcher_populates_paradigms_from_deep_reports(streaming_client
 
     deep_text = _make_text_block("# Homeostatic — Deep research\n\nContent.")
     deep_loop_response = _make_response("end_turn", [deep_text])
-    deep_summary_text = _make_text_block("**Paradigm**: Homeostatic\n**Key authors**: X")
+    deep_summary_text = _make_text_block(
+        "**Paradigm**: Homeostatic\n**Key authors**: X"
+    )
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
 
     client = streaming_client([tool_response, deep_loop_response, final_response])
     client.messages.create.side_effect = [deep_summary_response]
 
-    with patch("decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock), \
-         patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock):
+    with (
+        patch(
+            "decisionlab.agents.deep_researcher.save_deep_report",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock
+        ),
+    ):
         r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
         report = await r.run("food intake")
 
@@ -168,7 +180,9 @@ async def test_researcher_saves_summary_to_s3(streaming_client):
 
     client = streaming_client(response)
 
-    with patch("decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock) as mock_save:
+    with patch(
+        "decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock
+    ) as mock_save:
         r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
         await r.run("test problem")
         mock_save.assert_called_once_with("run-1", "# Final summary")

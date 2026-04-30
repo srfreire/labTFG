@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import shared
-
 from decisionlab.agents.builder_sub import BuilderSubAgent
 from decisionlab.domain.models import BuilderReport
 
@@ -82,7 +82,7 @@ class Builder:
         # Dispatch one BuilderSubAgent per spec
         labels: list[str] = []
         tasks: list = []
-        for paradigm, formulation, spec_path in spec_files:
+        for _paradigm, formulation, spec_path in spec_files:
             labels.append(formulation)
             tasks.append(
                 BuilderSubAgent(
@@ -98,7 +98,7 @@ class Builder:
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
         results: dict[str, str] = {}
-        for label, outcome in zip(labels, outcomes):
+        for label, outcome in zip(labels, outcomes, strict=False):
             if isinstance(outcome, BaseException):
                 logger.error("BuilderSubAgent failed for %s: %s", label, outcome)
             else:

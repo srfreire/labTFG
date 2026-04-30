@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import httpx
 
@@ -53,7 +54,9 @@ def create_search_papers() -> Callable[[dict], Awaitable[str]]:
                 await asyncio.sleep(_RATE_LIMIT_INTERVAL - elapsed)
             last_request_time = time.monotonic()
 
-    async def _do_request(client: httpx.AsyncClient, query: str, limit: int) -> httpx.Response:
+    async def _do_request(
+        client: httpx.AsyncClient, query: str, limit: int
+    ) -> httpx.Response:
         await _rate_limited_wait()
         resp = await client.get(
             _API_BASE,
@@ -75,8 +78,15 @@ def create_search_papers() -> Callable[[dict], Awaitable[str]]:
                     resp = await _do_request(client, query, limit)
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code == 429:
-                        retry_after = float(exc.response.headers.get("Retry-After", _RATE_LIMIT_INTERVAL))
-                        logger.warning("Semantic Scholar rate-limited; retrying after %.1fs", retry_after)
+                        retry_after = float(
+                            exc.response.headers.get(
+                                "Retry-After", _RATE_LIMIT_INTERVAL
+                            )
+                        )
+                        logger.warning(
+                            "Semantic Scholar rate-limited; retrying after %.1fs",
+                            retry_after,
+                        )
                         await asyncio.sleep(retry_after)
                         resp = await _do_request(client, query, limit)
                     else:

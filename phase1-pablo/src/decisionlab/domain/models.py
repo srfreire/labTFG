@@ -41,6 +41,6 @@ class BuilderReport:
 
 @dataclass
 class RerunRequest:
-    target: str    # "researcher" | "formalizer" | "reasoner" | "builder"
+    target: str  # "researcher" | "formalizer" | "reasoner" | "builder"
     paradigm: str  # paradigm slug
     feedback: str  # user's feedback text

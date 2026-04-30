@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 
 FORMULATION_HEADER_RE = re.compile(
-    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$", re.MULTILINE,
+    r"^##\s+Formulation\s+(\d+)\s*:\s*(.+)$",
+    re.MULTILINE,
 )
 
 

@@ -17,8 +17,15 @@ def _make_valid_spec(formulation_id: str, paradigm: str) -> dict:
         "variables": [],
         "parameters": [],
         "rules": [],
-        "decision_logic": {"description": "...", "pseudocode": ["return Action('stay')"]},
-        "env_mapping": {"perception_to_variables": {}, "actions_used": ["stay"], "reward_source": "none"},
+        "decision_logic": {
+            "description": "...",
+            "pseudocode": ["return Action('stay')"],
+        },
+        "env_mapping": {
+            "perception_to_variables": {},
+            "actions_used": ["stay"],
+            "reward_source": "none",
+        },
         "expected_behaviors": [],
         "references": [],
     }
@@ -58,7 +65,8 @@ class TestWebReviewReasonInvalidSpecs:
                 },
             }
             approved, rejections, formalizer_reruns = await review_reason(
-                tmp_path, emit,
+                tmp_path,
+                emit,
             )
 
         # Verify the data sent to frontend includes invalid status
@@ -91,7 +99,8 @@ class TestWebReviewReasonInvalidSpecs:
                 },
             }
             approved, rejections, formalizer_reruns = await review_reason(
-                tmp_path, emit,
+                tmp_path,
+                emit,
             )
 
         assert "pi-controller" in approved
@@ -110,8 +119,9 @@ class TestWebReviewReasonInvalidSpecs:
             mock_wait.return_value = {
                 "decisions": {"pi-controller": {"approved": True}},
             }
-            approved, rejections, formalizer_reruns = await review_reason(
-                tmp_path, emit,
+            approved, _rejections, formalizer_reruns = await review_reason(
+                tmp_path,
+                emit,
             )
 
         assert "pi-controller" in approved
@@ -158,7 +168,9 @@ class TestWebReviewBuildInvalidBuilds:
                 },
             }
             approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, build_results, emit,
+                tmp_path,
+                build_results,
+                emit,
             )
 
         # Verify the data sent to frontend includes invalid builds
@@ -189,7 +201,9 @@ class TestWebReviewBuildInvalidBuilds:
                 },
             }
             approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, build_results, emit,
+                tmp_path,
+                build_results,
+                emit,
             )
 
         assert "pi-controller" in approved
@@ -206,8 +220,10 @@ class TestWebReviewBuildInvalidBuilds:
             mock_wait.return_value = {
                 "decisions": {"pi-controller": {"approved": True}},
             }
-            approved, rejections, reasoner_reruns = await review_build(
-                tmp_path, build_results, emit,
+            approved, _rejections, reasoner_reruns = await review_build(
+                tmp_path,
+                build_results,
+                emit,
             )
 
         assert "pi-controller" in approved

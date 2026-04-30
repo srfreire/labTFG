@@ -1,7 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock
 
-from decisionlab.tools.agents import LAUNCH_DEEP_RESEARCH_SCHEMA, create_launch_deep_research
+import pytest
+
+from decisionlab.tools.agents import (
+    LAUNCH_DEEP_RESEARCH_SCHEMA,
+    create_launch_deep_research,
+)
 
 
 def test_schema_has_required_fields():
@@ -11,7 +15,9 @@ def test_schema_has_required_fields():
 
 @pytest.mark.asyncio
 async def test_launch_deep_research_calls_sub_agent():
-    sub_agent_factory = AsyncMock(return_value="# Homeostatic — Deep research\n\nContent here.")
+    sub_agent_factory = AsyncMock(
+        return_value="# Homeostatic — Deep research\n\nContent here."
+    )
     fn = create_launch_deep_research(sub_agent_factory)
     result = await fn({"paradigm": "Homeostatic regulation of food intake"})
     assert "Homeostatic" in result

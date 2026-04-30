@@ -63,7 +63,9 @@ class TestClassifyFeedback:
             _make_text_response("still garbage"),
         ]
 
-        with pytest.raises(ValueError, match="could not parse Haiku response after 2 attempts"):
+        with pytest.raises(
+            ValueError, match="could not parse Haiku response after 2 attempts"
+        ):
             await classify_feedback(
                 client=client,
                 feedback="something is wrong",

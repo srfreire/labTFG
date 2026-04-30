@@ -11,10 +11,9 @@ import asyncio
 import logging
 from dataclasses import replace
 
+from decisionlab.knowledge.retrieval.models import RetrievalResult
 from shared.embedding import EmbeddingService
 from shared.vector_store import ScoredPoint, VectorStore
-
-from decisionlab.knowledge.retrieval.models import RetrievalResult
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,7 @@ async def dense_retrieve(
     batches = await asyncio.gather(*coros)
 
     results: list[RetrievalResult] = []
-    for coll, points in zip(_DENSE_COLLECTIONS, batches):
+    for coll, points in zip(_DENSE_COLLECTIONS, batches, strict=False):
         results.extend(_to_results(points, "dense", coll, exclude_run_id))
 
     results.sort(key=lambda r: r.score, reverse=True)
@@ -122,7 +121,7 @@ async def sparse_retrieve(
     batches = await asyncio.gather(*coros)
 
     results: list[RetrievalResult] = []
-    for coll, points in zip(_SPARSE_COLLECTIONS, batches):
+    for coll, points in zip(_SPARSE_COLLECTIONS, batches, strict=False):
         results.extend(_to_results(points, "sparse", coll, exclude_run_id))
 
     if not results:

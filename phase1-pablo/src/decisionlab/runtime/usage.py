@@ -111,7 +111,9 @@ def log_summary(console: Console | None = None) -> None:
         table.add_column("Calls", justify="right", footer=str(totals_calls))
         table.add_column("Input", justify="right", footer=f"{totals_in:,}")
         table.add_column("Output", justify="right", footer=f"{totals_out:,}")
-        table.add_column("Cache (create)", justify="right", footer=f"{totals_cache_c:,}")
+        table.add_column(
+            "Cache (create)", justify="right", footer=f"{totals_cache_c:,}"
+        )
         table.add_column("Cache (read)", justify="right", footer=f"{totals_cache_r:,}")
         for model, t in sorted(data.items()):
             table.add_row(
@@ -127,10 +129,17 @@ def log_summary(console: Console | None = None) -> None:
 
     logger.info(
         "Token usage — calls=%d input=%d output=%d cache_create=%d cache_read=%d",
-        totals_calls, totals_in, totals_out, totals_cache_c, totals_cache_r,
+        totals_calls,
+        totals_in,
+        totals_out,
+        totals_cache_c,
+        totals_cache_r,
     )
     for model, t in sorted(data.items()):
         logger.info(
             "  %s — calls=%d input=%d output=%d",
-            model, t["calls"], t["input_tokens"], t["output_tokens"],
+            model,
+            t["calls"],
+            t["input_tokens"],
+            t["output_tokens"],
         )

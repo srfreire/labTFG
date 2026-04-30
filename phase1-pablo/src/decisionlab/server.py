@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import date
 from pathlib import Path
 
@@ -82,10 +82,8 @@ class ConnectionManager:
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
-            try:
+            with suppress(Exception):
                 await self.ws.close()
-            except Exception:
-                pass
         await ws.accept()
         self.ws = ws
 

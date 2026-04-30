@@ -6,22 +6,17 @@ Covers acceptance criteria AC1 through AC7 for issue P2-004.
 import json
 import uuid
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from decisionlab.knowledge.models import ExtractionResult, ResolutionResult
 from decisionlab.knowledge.resolver import (
-    _DUPLICATE_THRESHOLD,
-    _STAGE_CONFIDENCE,
-    _STAGE_MEMORY_TYPE,
-    _STAGE_NAMESPACE,
     _classify_conflict,
     _find_duplicates,
     _score_importance,
     resolve_and_store,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,7 +102,11 @@ def _make_extraction(
     run_id: str = _DEFAULT_RUN_ID,
 ) -> ExtractionResult:
     return ExtractionResult(
-        nodes=[], relations=[], facts=facts, stage=stage, run_id=run_id,
+        nodes=[],
+        relations=[],
+        facts=facts,
+        stage=stage,
+        run_id=run_id,
     )
 
 
@@ -141,18 +140,20 @@ def _mock_db_session() -> AsyncMock:
 @pytest.mark.asyncio
 async def test_importance_scoring_high_for_meaningful_fact():
     """AC1: 'ghrelin modulates hunger via hypothalamic signaling' scores >= 7."""
-    scored_response = json.dumps([
-        {
-            "fact": "ghrelin modulates hunger via hypothalamic signaling",
-            "importance": 8,
-            "reasoning": "Core mechanism linking a specific hormone to behavior",
-        },
-        {
-            "fact": "the grid has resources",
-            "importance": 3,
-            "reasoning": "Trivial implementation detail about grid layout",
-        },
-    ])
+    scored_response = json.dumps(
+        [
+            {
+                "fact": "ghrelin modulates hunger via hypothalamic signaling",
+                "importance": 8,
+                "reasoning": "Core mechanism linking a specific hormone to behavior",
+            },
+            {
+                "fact": "the grid has resources",
+                "importance": 3,
+                "reasoning": "Trivial implementation detail about grid layout",
+            },
+        ]
+    )
     client = _make_client([scored_response])
 
     facts = [
@@ -168,9 +169,11 @@ async def test_importance_scoring_high_for_meaningful_fact():
 @pytest.mark.asyncio
 async def test_importance_scoring_calls_haiku():
     """Importance scoring should call the Haiku model."""
-    scored_response = json.dumps([
-        {"fact": "test fact", "importance": 5, "reasoning": "average"},
-    ])
+    scored_response = json.dumps(
+        [
+            {"fact": "test fact", "importance": 5, "reasoning": "average"},
+        ]
+    )
     client = _make_client([scored_response])
 
     await _score_importance(["test fact"], client)
@@ -210,15 +213,19 @@ async def test_duplicate_fact_triggers_sonnet_and_skips():
     )
 
     # Haiku importance response
-    importance_resp = json.dumps([
-        {"fact": "ghrelin modulates hunger", "importance": 8, "reasoning": "core"},
-    ])
+    importance_resp = json.dumps(
+        [
+            {"fact": "ghrelin modulates hunger", "importance": 8, "reasoning": "core"},
+        ]
+    )
     # Sonnet conflict response
-    conflict_resp = json.dumps({
-        "classification": "DUPLICATE",
-        "reasoning": "Same information about ghrelin and hunger",
-        "merged_content": None,
-    })
+    conflict_resp = json.dumps(
+        {
+            "classification": "DUPLICATE",
+            "reasoning": "Same information about ghrelin and hunger",
+            "merged_content": None,
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -227,10 +234,17 @@ async def test_duplicate_fact_triggers_sonnet_and_skips():
 
     extraction = _make_extraction(["ghrelin modulates hunger"])
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock) as mock_update:
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.duplicates_skipped == 1
@@ -259,15 +273,23 @@ async def test_enrichment_supersedes_old_memory():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "learning rate = 0.1, sourced from Keramati 2011", "importance": 7, "reasoning": "specific"},
-    ])
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "learning rate = 0.1, sourced from Keramati 2011",
+                "importance": 7,
+                "reasoning": "specific",
+            },
+        ]
+    )
     merged_text = "learning rate = 0.1 (sourced from Keramati 2011)"
-    conflict_resp = json.dumps({
-        "classification": "ENRICHMENT",
-        "reasoning": "New fact adds source citation to existing parameter value",
-        "merged_content": merged_text,
-    })
+    conflict_resp = json.dumps(
+        {
+            "classification": "ENRICHMENT",
+            "reasoning": "New fact adds source citation to existing parameter value",
+            "merged_content": merged_text,
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -282,10 +304,17 @@ async def test_enrichment_supersedes_old_memory():
     fake_new_mem = MagicMock()
     fake_new_mem.id = uuid.uuid4()
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock, return_value=fake_new_mem) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory",
+            new_callable=AsyncMock,
+            return_value=fake_new_mem,
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.enrichments == 1
@@ -321,14 +350,22 @@ async def test_contradiction_supersedes_old_increments_counter():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "setpoint = 70 based on updated data", "importance": 8, "reasoning": "parameter update"},
-    ])
-    conflict_resp = json.dumps({
-        "classification": "CONTRADICTION",
-        "reasoning": "Different setpoint values — new is based on updated data",
-        "merged_content": None,
-    })
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "setpoint = 70 based on updated data",
+                "importance": 8,
+                "reasoning": "parameter update",
+            },
+        ]
+    )
+    conflict_resp = json.dumps(
+        {
+            "classification": "CONTRADICTION",
+            "reasoning": "Different setpoint values — new is based on updated data",
+            "merged_content": None,
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -343,10 +380,17 @@ async def test_contradiction_supersedes_old_increments_counter():
     fake_new_mem = MagicMock()
     fake_new_mem.id = uuid.uuid4()
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock, return_value=fake_new_mem) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock) as mock_update:
-
+    with (
+        patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory",
+            new_callable=AsyncMock,
+            return_value=fake_new_mem,
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ) as mock_update,
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.contradictions == 1
@@ -354,7 +398,10 @@ async def test_contradiction_supersedes_old_increments_counter():
 
     # Old memory superseded
     mock_supersede.assert_called_once()
-    assert mock_supersede.call_args.kwargs["new_content"] == "setpoint = 70 based on updated data"
+    assert (
+        mock_supersede.call_args.kwargs["new_content"]
+        == "setpoint = 70 based on updated data"
+    )
 
     # Contradiction counter incremented BEFORE supersede (on live row)
     mock_update.assert_called_once_with(session, uuid.UUID(old_id), contradict=True)
@@ -371,10 +418,20 @@ async def test_contradiction_supersedes_old_increments_counter():
 @pytest.mark.asyncio
 async def test_new_facts_stored_with_correct_metadata():
     """AC5: Facts with no duplicates stored with correct namespace, memory_type, importance, confidence."""
-    importance_resp = json.dumps([
-        {"fact": "dopamine mediates wanting", "importance": 9, "reasoning": "core mechanism"},
-        {"fact": "nucleus accumbens processes reward", "importance": 8, "reasoning": "brain region function"},
-    ])
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "dopamine mediates wanting",
+                "importance": 9,
+                "reasoning": "core mechanism",
+            },
+            {
+                "fact": "nucleus accumbens processes reward",
+                "importance": 8,
+                "reasoning": "brain region function",
+            },
+        ]
+    )
     client = _make_client([importance_resp])
 
     emb = _mock_embedding_service()
@@ -388,10 +445,19 @@ async def test_new_facts_stored_with_correct_metadata():
 
     fake_mems = [MagicMock(id=uuid.uuid4()), MagicMock(id=uuid.uuid4())]
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, side_effect=fake_mems) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            side_effect=fake_mems,
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.memories_created == 2
@@ -413,9 +479,15 @@ async def test_new_facts_stored_with_correct_metadata():
 @pytest.mark.asyncio
 async def test_builder_stage_uses_correct_defaults():
     """AC5: Builder stage → namespace='model', memory_type='procedural', confidence=0.9."""
-    importance_resp = json.dumps([
-        {"fact": "uses Q-learning with softmax", "importance": 6, "reasoning": "code pattern"},
-    ])
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "uses Q-learning with softmax",
+                "importance": 6,
+                "reasoning": "code pattern",
+            },
+        ]
+    )
     client = _make_client([importance_resp])
 
     emb = _mock_embedding_service()
@@ -429,10 +501,19 @@ async def test_builder_stage_uses_correct_defaults():
 
     fake_mem = MagicMock(id=uuid.uuid4())
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, return_value=fake_mem) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            return_value=fake_mem,
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.memories_created == 1
@@ -450,11 +531,13 @@ async def test_builder_stage_uses_correct_defaults():
 @pytest.mark.asyncio
 async def test_sonnet_not_called_without_duplicates():
     """AC6: sonnet_calls == 0 when no duplicates found."""
-    importance_resp = json.dumps([
-        {"fact": "fact one", "importance": 5, "reasoning": "avg"},
-        {"fact": "fact two", "importance": 5, "reasoning": "avg"},
-        {"fact": "fact three", "importance": 5, "reasoning": "avg"},
-    ])
+    importance_resp = json.dumps(
+        [
+            {"fact": "fact one", "importance": 5, "reasoning": "avg"},
+            {"fact": "fact two", "importance": 5, "reasoning": "avg"},
+            {"fact": "fact three", "importance": 5, "reasoning": "avg"},
+        ]
+    )
     client = _make_client([importance_resp])
 
     emb = _mock_embedding_service()
@@ -463,10 +546,19 @@ async def test_sonnet_not_called_without_duplicates():
 
     extraction = _make_extraction(["fact one", "fact two", "fact three"])
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, return_value=MagicMock(id=uuid.uuid4())), \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            return_value=MagicMock(id=uuid.uuid4()),
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.sonnet_calls == 0
@@ -490,15 +582,23 @@ async def test_sonnet_called_only_for_facts_with_duplicates():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "energy drives behavior", "importance": 7, "reasoning": "important"},
-        {"fact": "completely new insight", "importance": 6, "reasoning": "novel"},
-    ])
-    conflict_resp = json.dumps({
-        "classification": "DUPLICATE",
-        "reasoning": "Same fact",
-        "merged_content": None,
-    })
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "energy drives behavior",
+                "importance": 7,
+                "reasoning": "important",
+            },
+            {"fact": "completely new insight", "importance": 6, "reasoning": "novel"},
+        ]
+    )
+    conflict_resp = json.dumps(
+        {
+            "classification": "DUPLICATE",
+            "reasoning": "Same fact",
+            "merged_content": None,
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -508,7 +608,7 @@ async def test_sonnet_called_only_for_facts_with_duplicates():
     vs.search_dense = AsyncMock(
         side_effect=[
             [existing_point],  # first fact — match
-            [],                # second fact — no match
+            [],  # second fact — no match
         ],
     )
     vs.upsert_dense = AsyncMock()
@@ -518,10 +618,19 @@ async def test_sonnet_called_only_for_facts_with_duplicates():
         ["energy drives behavior", "completely new insight"],
     )
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, return_value=MagicMock(id=uuid.uuid4())), \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            return_value=MagicMock(id=uuid.uuid4()),
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.sonnet_calls == 1
@@ -549,10 +658,19 @@ async def test_haiku_failure_defaults_importance_to_5():
         stage="researcher",
     )
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, return_value=MagicMock(id=uuid.uuid4())) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            return_value=MagicMock(id=uuid.uuid4()),
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.memories_created == 2
@@ -591,9 +709,7 @@ async def test_importance_scoring_truncation_logs_and_defaults_to_5(caplog):
         scores = await _score_importance(["fact a", "fact b"], client)
 
     assert scores == {"fact a": 5.0, "fact b": 5.0}
-    assert any(
-        "Importance scoring failed" in r.message for r in caplog.records
-    )
+    assert any("Importance scoring failed" in r.message for r in caplog.records)
     # Truncation has to surface in the traceback the warning attaches via
     # exc_info — otherwise the failure looks like a generic JSON error.
     truncation_logged = any(
@@ -655,14 +771,22 @@ async def test_corroboration_updates_confidence():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "leptin signals satiety", "importance": 7, "reasoning": "hormone function"},
-    ])
-    conflict_resp = json.dumps({
-        "classification": "CORROBORATION",
-        "reasoning": "Independent confirmation from different source",
-        "merged_content": None,
-    })
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "leptin signals satiety",
+                "importance": 7,
+                "reasoning": "hormone function",
+            },
+        ]
+    )
+    conflict_resp = json.dumps(
+        {
+            "classification": "CORROBORATION",
+            "reasoning": "Independent confirmation from different source",
+            "merged_content": None,
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -670,10 +794,17 @@ async def test_corroboration_updates_confidence():
     session = _mock_db_session()
     extraction = _make_extraction(["leptin signals satiety"])
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock) as mock_update:
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ) as mock_update,
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.corroborations == 1
@@ -704,7 +835,10 @@ async def test_below_threshold_excluded_from_duplicates():
     low_score_point = FakeScoredPoint(
         id=str(uuid.uuid4()),
         score=0.80,
-        payload={"run_id": "00000000-0000-0000-0000-000000000099", "text_preview": "somewhat related"},
+        payload={
+            "run_id": "00000000-0000-0000-0000-000000000099",
+            "text_preview": "somewhat related",
+        },
     )
     emb = _mock_embedding_service()
     vs = _mock_vector_store([low_score_point])
@@ -732,7 +866,7 @@ async def test_resolution_result_dataclass():
 @pytest.mark.asyncio
 async def test_empty_extraction_returns_zero_result():
     """Extraction with no facts returns zero counts."""
-    importance_resp = json.dumps([])
+    json.dumps([])
     client = _make_client([])  # no calls needed
 
     emb = _mock_embedding_service()
@@ -741,10 +875,15 @@ async def test_empty_extraction_returns_zero_result():
 
     extraction = _make_extraction([], stage="researcher")
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.memories_created == 0
@@ -755,11 +894,13 @@ async def test_empty_extraction_returns_zero_result():
 @pytest.mark.asyncio
 async def test_classify_conflict_calls_sonnet():
     """_classify_conflict calls the Sonnet model."""
-    conflict_resp = json.dumps({
-        "classification": "DUPLICATE",
-        "reasoning": "same",
-        "merged_content": None,
-    })
+    conflict_resp = json.dumps(
+        {
+            "classification": "DUPLICATE",
+            "reasoning": "same",
+            "merged_content": None,
+        }
+    )
     client = _make_client([conflict_resp])
 
     result = await _classify_conflict(
@@ -795,23 +936,36 @@ async def test_sonnet_failure_stores_fact_as_new():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "a related fact", "importance": 6, "reasoning": "ok"},
-    ])
-    client = _make_client([
-        importance_resp,                       # Haiku succeeds (via stream)
-        RuntimeError("Sonnet API error"),      # Sonnet fails (via create)
-    ])
+    importance_resp = json.dumps(
+        [
+            {"fact": "a related fact", "importance": 6, "reasoning": "ok"},
+        ]
+    )
+    client = _make_client(
+        [
+            importance_resp,  # Haiku succeeds (via stream)
+            RuntimeError("Sonnet API error"),  # Sonnet fails (via create)
+        ]
+    )
 
     emb = _mock_embedding_service()
     vs = _mock_vector_store([existing_point])
     session = _mock_db_session()
     extraction = _make_extraction(["a related fact"])
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock, return_value=MagicMock(id=uuid.uuid4())) as mock_create, \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch(
+            "decisionlab.knowledge.resolver.create_memory",
+            new_callable=AsyncMock,
+            return_value=MagicMock(id=uuid.uuid4()),
+        ) as mock_create,
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     # Sonnet was attempted but failed — fact stored as new via UNKNOWN fallback
@@ -839,14 +993,22 @@ async def test_enrichment_null_merged_content_uses_fact():
         },
     )
 
-    importance_resp = json.dumps([
-        {"fact": "a new detail about the parameter", "importance": 7, "reasoning": "detail"},
-    ])
-    conflict_resp = json.dumps({
-        "classification": "ENRICHMENT",
-        "reasoning": "adds detail",
-        "merged_content": None,  # null — should fall back to fact text
-    })
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "a new detail about the parameter",
+                "importance": 7,
+                "reasoning": "detail",
+            },
+        ]
+    )
+    conflict_resp = json.dumps(
+        {
+            "classification": "ENRICHMENT",
+            "reasoning": "adds detail",
+            "merged_content": None,  # null — should fall back to fact text
+        }
+    )
     client = _make_client([importance_resp, conflict_resp])
 
     emb = _mock_embedding_service()
@@ -860,12 +1022,22 @@ async def test_enrichment_null_merged_content_uses_fact():
     fake_new_mem = MagicMock()
     fake_new_mem.id = uuid.uuid4()
 
-    with patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock), \
-         patch("decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock, return_value=fake_new_mem) as mock_supersede, \
-         patch("decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock):
-
+    with (
+        patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory",
+            new_callable=AsyncMock,
+            return_value=fake_new_mem,
+        ) as mock_supersede,
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
         result = await resolve_and_store(extraction, emb, vs, session, client)
 
     assert result.enrichments == 1
     # merged_content was null, so the new fact text should be used
-    assert mock_supersede.call_args.kwargs["new_content"] == "a new detail about the parameter"
+    assert (
+        mock_supersede.call_args.kwargs["new_content"]
+        == "a new detail about the parameter"
+    )
