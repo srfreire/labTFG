@@ -137,3 +137,16 @@ async def test_trace_endpoint_returns_409_while_running(seeded_runs):
     with TestClient(app) as client:
         resp = client.get(f"/api/runs/{run_id}/trace")
     assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_trace_endpoint_returns_404_on_malformed_uuid(seeded_runs):
+    """A non-UUID run_id raises ValueError on uuid.UUID() and is mapped to 404
+    before any DB/storage lookup happens (see decisionlab.server.get_run_trace).
+    """
+    from decisionlab.server import app
+
+    with TestClient(app) as client:
+        resp = client.get("/api/runs/not-a-valid-uuid/trace")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Trace not found"
