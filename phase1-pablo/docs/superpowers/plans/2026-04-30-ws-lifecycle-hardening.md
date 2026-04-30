@@ -1,4 +1,13 @@
-# WS Lifecycle Hardening (phase1-pablo, local-only)
+# WS Lifecycle Hardening (phase1-pablo, local-only) — ✅ DONE 2026-04-30
+
+**Status:** All 4 PRs landed on `main`. Final commit range `9d535df..ce5a0e0` (plan + 4 fixes). 20 server pytest cases + 37 frontend vitest cases green.
+
+| PR | Commit | What landed |
+|---|---|---|
+| 1 | `e5533a6` | `_send_lock` + reconnect snapshot always sends `state_sync` before `pending_review` |
+| 2 | `4255ee2` | Per-iter receive-loop hardening + `_cancel_running_pipeline` helper |
+| 3 | `5e47563` | Lifespan teardown cancels + awaits `pipeline_task` before `shared.shutdown` |
+| 4 | `ce5a0e0` | Frontend `CANCEL_PIPELINE` sweeps stages; `send` while disconnected surfaces an error |
 
 **Goal:** Fix real bugs in the single-client WebSocket lifecycle in `phase1-pablo`. Local-only — no auth, no heartbeat, no origin checks. Cross-PR work; each PR below is self-contained.
 
