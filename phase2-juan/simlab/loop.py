@@ -86,6 +86,7 @@ async def run_agent_loop(
             tools=tools,
             messages=messages,
             max_tokens=max_tokens,
+            cache_control={"type": "ephemeral"},
         )
 
         # Step 2: Claude is done → return
