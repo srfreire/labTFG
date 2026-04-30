@@ -62,7 +62,8 @@ async def test_pipeline_state_default_values(shared_initialized, tmp_path):
 
 @pytest.mark.asyncio
 async def test_pipeline_state_load_returns_path_for_reports_dir(
-    shared_initialized, tmp_path,
+    shared_initialized,
+    tmp_path,
 ):
     """reports_dir is not persisted by save(); loaded value defaults to Path('.')."""
     run_id = str(uuid.uuid4())

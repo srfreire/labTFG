@@ -20,27 +20,32 @@ import os
 import uuid
 
 import pytest
-from sqlalchemy import delete, select
-
-from shared.embedding import EmbeddingService
-from shared.models import Memory
 from simlab.knowledge import (
     ModelInfo,
     SimulationContext,
     TrackerMemoryWriter,
 )
+from sqlalchemy import delete, select
+
+from shared.embedding import EmbeddingService
+from shared.models import Memory
 
 pytestmark = pytest.mark.e2e
 
 
 def _skip_if_no_keys() -> None:
-    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get("ZEROENTROPY_API_KEY"):
+    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get(
+        "ZEROENTROPY_API_KEY"
+    ):
         pytest.skip("VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for e2e tests")
 
 
 @pytest.mark.asyncio
 async def test_tracker_write_is_retrievable_by_paradigm_filter(
-    settings, db_service, vector_store, session,
+    settings,
+    db_service,
+    vector_store,
+    session,
 ):
     """After writing, a dense-search filtered by paradigm should surface our memories."""
     _skip_if_no_keys()
@@ -72,28 +77,35 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
         seed=7,
         agent_to_model={"agent_0": model},
     )
-    tracker_json = json.dumps({
-        "summary": f"E2E agent explored under paradigm {paradigm_slug} and starved.",
-        "trajectories": {
-            "agent_0": {
-                "steps_survived": 60,
-                "resources_consumed": 3,
-                "actions": {"move_east": 25, "consume": 3},
+    tracker_json = json.dumps(
+        {
+            "summary": f"E2E agent explored under paradigm {paradigm_slug} and starved.",
+            "trajectories": {
+                "agent_0": {
+                    "steps_survived": 60,
+                    "resources_consumed": 3,
+                    "actions": {"move_east": 25, "consume": 3},
+                },
             },
-        },
-        "episodes": [
-            {
-                "agent": "agent_0",
-                "type": "starvation",
-                "step": 60,
-                "description": "Agent exhausted resources mid-exploration.",
-            },
-        ],
-    })
+            "episodes": [
+                {
+                    "agent": "agent_0",
+                    "type": "starvation",
+                    "step": 60,
+                    "description": "Agent exhausted resources mid-exploration.",
+                },
+            ],
+        }
+    )
 
     write_result = await writer.write(tracker_json, context)
     assert write_result.skipped_reason is None
-    assert write_result.summaries_written + write_result.trajectories_written + write_result.episodes_written == 3
+    assert (
+        write_result.summaries_written
+        + write_result.trajectories_written
+        + write_result.episodes_written
+        == 3
+    )
 
     rows: list[Memory] = []
     try:
@@ -125,6 +137,7 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
 
         # Sparse contract: BM25 on model class_name should also match.
         from shared.tokenizer import tokenize_to_sparse
+
         sp_indices, sp_values = tokenize_to_sparse("E2EModel starvation")
         sparse_hits = await vector_store.search_sparse(
             "memories_sparse",

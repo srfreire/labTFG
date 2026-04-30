@@ -128,7 +128,12 @@ async def vector_store(settings: Settings) -> AsyncIterator[VectorStore]:
 
     client = vs._c()
     # Wipe managed collections so tests start from a clean state
-    for name in ("artifacts_dense", "memories_dense", "artifacts_sparse", "memories_sparse"):
+    for name in (
+        "artifacts_dense",
+        "memories_dense",
+        "artifacts_sparse",
+        "memories_sparse",
+    ):
         with contextlib.suppress(Exception):
             await client.delete_collection(name)
     await vs.init_collections()

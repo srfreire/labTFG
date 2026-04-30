@@ -18,7 +18,10 @@ from decisionlab import cli
 if TYPE_CHECKING:
     from pathlib import Path
 
-runner = CliRunner()
+# Force a wide terminal width so rich-rendered help output never wraps option
+# names off-screen — keeps the substring assertions below stable across local
+# TTYs and CI's 80-column default.
+runner = CliRunner(env={"COLUMNS": "200"})
 
 
 def test_app_exposes_expected_commands():

@@ -33,7 +33,9 @@ Decisions driven by anticipated pleasure (palatability of food).
 
 
 @pytest.mark.asyncio
-async def test_real_extract_researcher_returns_well_shaped_result(real_anthropic_client):
+async def test_real_extract_researcher_returns_well_shaped_result(
+    real_anthropic_client,
+):
     """Researcher-stage extraction should populate at least one paradigm node."""
     run_id = str(uuid.uuid4())
     result = await extract(
@@ -70,9 +72,7 @@ async def test_real_extract_researcher_finds_paradigm(real_anthropic_client):
         pytest.skip("Haiku did not classify any node as Paradigm — non-deterministic")
     # natural_key holds the *property name* used for dedup (e.g. "slug");
     # the actual paradigm identifier lives in properties[natural_key].
-    flat = " ".join(
-        str(v) for p in paradigms for v in p.properties.values()
-    ).lower()
+    flat = " ".join(str(v) for p in paradigms for v in p.properties.values()).lower()
     assert "homeostatic" in flat or "hedonic" in flat
 
 

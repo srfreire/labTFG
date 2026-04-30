@@ -131,7 +131,10 @@ async def test_full_memory_lifecycle_against_real_infra(
 
     # Supersede v1 → v2
     v2 = await supersede_memory(
-        session, v1_id, "alpha = 0.05", **base_kwargs,
+        session,
+        v1_id,
+        "alpha = 0.05",
+        **base_kwargs,
     )
     await session.commit()
     v2_id = v2.id
@@ -147,7 +150,9 @@ async def test_full_memory_lifecycle_against_real_infra(
     assert v1_refreshed.valid_to is not None  # supersession set valid_to
 
     history = await get_memories_at_time(
-        session, as_of=v1_refreshed.valid_from, namespace="paradigm",
+        session,
+        as_of=v1_refreshed.valid_from,
+        namespace="paradigm",
     )
     assert any(m.id == v1_id for m in history)
 
@@ -186,7 +191,7 @@ async def test_memory_agent_runs_end_to_end_with_real_infra(
         kg=kg_service,
         vector_store=vector_store,
         embedding_service=None,  # disable embedding (no Voyage credits)
-        db=db_service,           # but resolution is skipped without embeddings
+        db=db_service,  # but resolution is skipped without embeddings
     )
 
     result = await agent.run(

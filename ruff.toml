@@ -1,4 +1,8 @@
 line-length = 88
+extend-exclude = [
+    # Vendored research scripts from Denis Yamunaque's TFM — kept verbatim for reference.
+    "docs/",
+]
 
 [lint]
 select = [

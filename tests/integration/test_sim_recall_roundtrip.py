@@ -7,6 +7,7 @@ retrieve_context (sim-recall) reads them back.
 Runs with ``pytest -m integration``; requires docker-compose services
 healthy and Voyage/ZeroEntropy keys set.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,25 +16,33 @@ import uuid
 from unittest.mock import patch
 
 import pytest
+from simlab.knowledge import ModelInfo, SimulationContext, TrackerMemoryWriter
+from simlab.recall.retrieve import retrieve_context
 from sqlalchemy import delete
 
 import shared
 from shared.embedding import EmbeddingService
 from shared.models import Memory
-from simlab.knowledge import ModelInfo, SimulationContext, TrackerMemoryWriter
-from simlab.recall.retrieve import retrieve_context
 
 pytestmark = pytest.mark.integration
 
 
 def _skip_if_no_keys() -> None:
-    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get("ZEROENTROPY_API_KEY"):
-        pytest.skip("VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for integration tests")
+    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get(
+        "ZEROENTROPY_API_KEY"
+    ):
+        pytest.skip(
+            "VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for integration tests"
+        )
 
 
 @pytest.mark.asyncio
 async def test_write_then_retrieve_roundtrip(
-    settings, db_service, vector_store, session, kg_service,
+    settings,
+    db_service,
+    vector_store,
+    session,
+    kg_service,
 ):
     """Write memories via TrackerMemoryWriter, then read back via retrieve_context."""
     _skip_if_no_keys()
@@ -69,21 +78,38 @@ async def test_write_then_retrieve_roundtrip(
         seed=42,
         agent_to_model={"agent_0": model},
     )
-    tracker_json = json.dumps({
-        "summary": f"Agent survived 50 steps under {paradigm_slug} paradigm. Resources stable.",
-        "trajectories": {
-            "agent_0": {
-                "steps_survived": 50,
-                "resources_consumed": 12,
-                "actions": {"move_up": 20, "move_right": 15, "consume": 15},
+    tracker_json = json.dumps(
+        {
+            "summary": f"Agent survived 50 steps under {paradigm_slug} paradigm. Resources stable.",
+            "trajectories": {
+                "agent_0": {
+                    "steps_survived": 50,
+                    "resources_consumed": 12,
+                    "actions": {"move_up": 20, "move_right": 15, "consume": 15},
+                },
             },
-        },
-        "episodes": [
-            {"agent": "agent_0", "type": "resource_found", "step": 10, "description": "Found resource at (3,2)"},
-            {"agent": "agent_0", "type": "resource_found", "step": 25, "description": "Found resource at (4,3)"},
-            {"agent": "agent_0", "type": "resource_found", "step": 40, "description": "Found resource at (2,4)"},
-        ],
-    })
+            "episodes": [
+                {
+                    "agent": "agent_0",
+                    "type": "resource_found",
+                    "step": 10,
+                    "description": "Found resource at (3,2)",
+                },
+                {
+                    "agent": "agent_0",
+                    "type": "resource_found",
+                    "step": 25,
+                    "description": "Found resource at (4,3)",
+                },
+                {
+                    "agent": "agent_0",
+                    "type": "resource_found",
+                    "step": 40,
+                    "description": "Found resource at (2,4)",
+                },
+            ],
+        }
+    )
 
     result = await writer.write(tracker_json, context)
     assert result.skipped_reason is None, f"Writer skipped: {result.skipped_reason}"
@@ -91,6 +117,7 @@ async def test_write_then_retrieve_roundtrip(
 
     # -- Step 2: Read via sim-recall (flag forced ON via env override) --
     from dataclasses import replace
+
     flag_on = replace(settings, ENABLE_KNOWLEDGE_READ=True)
 
     try:
@@ -107,5 +134,7 @@ async def test_write_then_retrieve_roundtrip(
         assert paradigm_slug in retrieved, f"Paradigm slug not found in: {retrieved}"
 
     finally:
-        await session.execute(delete(Memory).where(Memory.content.contains(paradigm_slug)))
+        await session.execute(
+            delete(Memory).where(Memory.content.contains(paradigm_slug))
+        )
         await session.commit()

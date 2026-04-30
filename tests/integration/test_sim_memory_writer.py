@@ -12,27 +12,34 @@ import os
 import uuid
 
 import pytest
-from sqlalchemy import delete, select
-
-from shared.embedding import EmbeddingService
-from shared.models import Memory
 from simlab.knowledge import (
     ModelInfo,
     SimulationContext,
     TrackerMemoryWriter,
 )
+from sqlalchemy import delete, select
+
+from shared.embedding import EmbeddingService
+from shared.models import Memory
 
 pytestmark = pytest.mark.integration
 
 
 def _skip_if_no_keys() -> None:
-    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get("ZEROENTROPY_API_KEY"):
-        pytest.skip("VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for integration tests")
+    if not os.environ.get("VOYAGE_API_KEY") or not os.environ.get(
+        "ZEROENTROPY_API_KEY"
+    ):
+        pytest.skip(
+            "VOYAGE_API_KEY and ZEROENTROPY_API_KEY required for integration tests"
+        )
 
 
 @pytest.mark.asyncio
 async def test_writer_round_trip_postgres_and_qdrant(
-    settings, db_service, vector_store, session,
+    settings,
+    db_service,
+    vector_store,
+    session,
 ):
     """Write memories for a fake simulation and verify both stores + cleanup."""
     _skip_if_no_keys()
@@ -106,9 +113,7 @@ async def test_writer_round_trip_postgres_and_qdrant(
         assert by_type == {"semantic": 2, "episodic": 1}
 
         # Qdrant check — our UUIDs are retrievable via dense search.
-        query_vec = await embeddings.embed_query(
-            "agent starvation in integration grid"
-        )
+        query_vec = await embeddings.embed_query("agent starvation in integration grid")
         hits = await vector_store.search_dense(
             "memories_dense",
             query_vec,

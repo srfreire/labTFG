@@ -61,7 +61,9 @@ async def test_real_loop_no_tools_just_text(real_anthropic_client):
         model="claude-haiku-4-5",
         system="Reply briefly.",
         tools=[],
-        messages=[{"role": "user", "content": "Say the single word 'pong' and nothing else."}],
+        messages=[
+            {"role": "user", "content": "Say the single word 'pong' and nothing else."}
+        ],
         registry={},
         max_iterations=2,
     )

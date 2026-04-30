@@ -138,9 +138,7 @@ async def test_shared_init_exposes_all_services():
 
 
 @pytest.mark.asyncio
-async def test_memory_storage_pairing(
-    storage_service, session, unique_prefix, run_id
-):
+async def test_memory_storage_pairing(storage_service, session, unique_prefix, run_id):
     """A Memory row references an S3-stored extraction artifact."""
     from shared.memories import create_memory
 
