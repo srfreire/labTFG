@@ -18,5 +18,13 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    server: {
+      // Force agrex (and its xyflow dep) through Vite's transformer so CSS
+      // side-effect imports inside their bundled output don't reach Node's
+      // loader, which can't resolve `.css`.
+      deps: {
+        inline: [/@ppazosp\/agrex/, /@xyflow\/react/],
+      },
+    },
   },
 });
