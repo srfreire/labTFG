@@ -156,7 +156,14 @@ function handleServerMessage(
 
     case "marker": {
       // Review markers light up the matching REVIEW_X stage and close the
-      // memory stage that ran synchronously just before the prompt.
+      // memory stage that ran synchronously just before the prompt. We also
+      // promote the review stage to `currentStage` so the Sidebar's "active"
+      // highlight tracks the prompt instead of staying on the prior work stage.
+      //
+      // Only review_<stage> markers map to live UI state. Other marker kinds
+      // (potential future timeline annotations) are intentional no-ops here —
+      // they still appear on the agrex timeline because the trace consumes
+      // them via `extractLabMarkers` in replayAdapter.ts.
       if (typeof msg.kind === "string" && msg.kind.startsWith("review_")) {
         const reviewStage = msg.kind as Stage;
         const stages = { ...state.stages };
@@ -166,7 +173,7 @@ function handleServerMessage(
           stages[memStage] = "done";
         }
         stages[reviewStage] = "running";
-        return { ...state, stages };
+        return { ...state, stages, currentStage: reviewStage };
       }
       return state;
     }
@@ -179,13 +186,18 @@ function handleServerMessage(
       // GET_ENV_SPEC has no marker counterpart, so we light its sidebar dot
       // here (the backend emits a `review_request` for it). Other review
       // stages already have their dot lit by the `marker` arm above.
+      // We also promote GET_ENV_SPEC to `currentStage` so the Sidebar's
+      // "active" highlight tracks the env-spec prompt.
       const stages =
         msg.stage === Stage.GET_ENV_SPEC
           ? { ...state.stages, [Stage.GET_ENV_SPEC]: "running" as const }
           : state.stages;
+      const currentStage =
+        msg.stage === Stage.GET_ENV_SPEC ? Stage.GET_ENV_SPEC : state.currentStage;
       return {
         ...state,
         stages,
+        currentStage,
         reviewRequest: { stage: msg.stage, data: msg.data },
       };
     }
