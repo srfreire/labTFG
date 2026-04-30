@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,7 +40,10 @@ EmitFn = Callable[[dict], Awaitable[None]]
 # ---------------------------------------------------------------------------
 
 
-class Stage(StrEnum):
+# Inheriting from (str, Enum) instead of StrEnum keeps Pyright's `.value`
+# inference well-typed at downstream callsites (see server.py: stop_after
+# resolution). UP042 prefers StrEnum but breaks `Stage.X.value` typing.
+class Stage(str, Enum):  # noqa: UP042
     RESEARCH = "research"
     MEMORY_RESEARCH = "memory_research"
     REVIEW_RESEARCH = "review_research"
