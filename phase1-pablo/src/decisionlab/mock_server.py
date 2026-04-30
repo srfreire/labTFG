@@ -14,6 +14,7 @@ Start with::
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import random
@@ -24,11 +25,25 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 
+from decisionlab.parsing import parse_formulation_headers
+
 logger = logging.getLogger(__name__)
 
 SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "examples" / "sample-run"
 
 app = FastAPI(title="DecisionLab Mock")
+
+# Strong references for fire-and-forget background tasks. asyncio holds only
+# weak refs to its tasks, so without this set the GC could cancel them mid-run.
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
+
+
+def _schedule(coro) -> asyncio.Task:
+    """Create an asyncio.Task and keep a strong reference until it finishes."""
+    task = asyncio.create_task(coro)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+    return task
 
 
 # Synthetic knowledge-graph snapshot state — grows as the mock pipeline runs
@@ -484,7 +499,7 @@ FORMALIZE_SEARCH_DATA: dict[str, list[dict]] = {
             "query": "reinforcement learning homeostatic drive reduction MDP Keramati",
             "results": [
                 "Keramati & Gutkin (2011) RL theory for homeostatic regulation — NeurIPS",
-                "Yin (2025) Homeostasis–RL integration",
+                "Yin (2025) Homeostasis–RL integration",  # noqa: RUF001
             ],
         },
     ],
@@ -571,8 +586,6 @@ async def wait_for_review(stage: str, emit, review_data: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-from decisionlab.parsing import parse_formulation_headers
 
 
 def _paradigm_slugs_from_dir(subdir: str) -> list[str]:
@@ -766,10 +779,8 @@ class MockConnectionManager:
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self.ws.close()
-            except Exception:
-                pass
         await ws.accept()
         self.ws = ws
 
@@ -858,10 +869,8 @@ class MockConnectionManager:
         self._record_event(msg)
 
         if self.ws is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self.ws.send_json(msg)
-            except Exception:
-                pass
 
     async def cancel_and_mark(self) -> None:
         if self._run_id and self._run_id in _run_records:
@@ -1340,7 +1349,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:
     await asyncio.gather(*tasks)
 
     await emit({"type": "node_update", "id": "researcher", "status": "done"})
-    asyncio.create_task(tick_memory())
+    _schedule(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_RESEARCH
@@ -1385,7 +1394,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:
     ]
     await asyncio.gather(*tasks)
 
-    asyncio.create_task(tick_memory())
+    _schedule(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_FORMALIZE
@@ -1597,7 +1606,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:
             all_reason_file_ids.append(file_id)
 
     await emit({"type": "node_update", "id": "reasoner", "status": "done"})
-    asyncio.create_task(tick_memory())
+    _schedule(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_REASON
@@ -1881,7 +1890,7 @@ async def run_mock_pipeline(emit, problem: str) -> None:
 
         await emit({"type": "node_update", "id": builder_id, "status": "done"})
 
-    asyncio.create_task(tick_memory())
+    _schedule(tick_memory())
 
     # ══════════════════════════════════════════════════════════════════════
     #  REVIEW_BUILD
