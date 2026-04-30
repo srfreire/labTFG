@@ -319,3 +319,54 @@ def test_double_start_cancels_first_pipeline_cleanly(monkeypatch):
     assert task1.done(), "first pipeline_task must be done before pipe-2 emits"
     assert manager.pipeline_task is not task1
     assert cancelled.is_set(), "fake_pipeline_1 must have observed CancelledError"
+
+
+# ---------------------------------------------------------------------------
+# Bug #5 — lifespan teardown must cancel and await pipeline_task
+# ---------------------------------------------------------------------------
+
+
+def test_lifespan_shutdown_cancels_running_pipeline(monkeypatch):
+    """When the FastAPI app shuts down (Ctrl-C, SIGTERM, test-client exit)
+    the lifespan teardown must cancel and await any still-running pipeline
+    BEFORE shared.shutdown() — otherwise the task hangs onto the LLM client,
+    DB session, and trace.jsonl writer until the loop is force-closed.
+
+    Asserts state captured inside the ``shared.shutdown`` hook (which runs
+    immediately after the cancel-await in the lifespan's finally block).
+    Without the fix the captured task would still be pending.
+    """
+
+    cancelled = threading.Event()
+    captured: dict = {}
+
+    async def fake_pipeline(problem: str, emit, until_stage: Any = None) -> None:
+        del problem, until_stage
+        try:
+            await emit({"type": "node_add", "node": {"id": "running"}})
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    async def shutdown_capture():
+        task = manager.pipeline_task
+        captured["task_done"] = task.done() if task is not None else None
+        captured["cancelled"] = cancelled.is_set()
+
+    monkeypatch.setattr(server_mod, "run_pipeline", fake_pipeline)
+    monkeypatch.setattr(shared, "shutdown", shutdown_capture)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "start", "problem": "test"})
+        # Drain the first frame so we know the pipeline really is running
+        # before we let the contexts unwind.
+        ws.receive_json()
+
+    assert captured.get("task_done") is True, (
+        "lifespan must cancel + await pipeline_task before shared.shutdown — "
+        f"captured={captured}"
+    )
+    assert captured.get("cancelled") is True, (
+        "fake_pipeline should have observed CancelledError before shutdown"
+    )

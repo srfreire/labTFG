@@ -32,7 +32,14 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Boot shared infra once at app startup; tear down at shutdown."""
+    """Boot shared infra once at app startup; tear down at shutdown.
+
+    On teardown, cancel any in-flight pipeline_task before shutting down
+    shared infra so the task can finalize (state.save, trace flush) while
+    the LLM client / DB / S3 session are still alive. Without this the
+    task is left dangling until the asyncio loop is force-closed, which
+    can drop the trace.jsonl mid-write and skip the run-status update.
+    """
     del app
     import shared
 
@@ -40,6 +47,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await _cancel_running_pipeline()
         await shared.shutdown()
 
 
