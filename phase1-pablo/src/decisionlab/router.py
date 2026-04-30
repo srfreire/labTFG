@@ -694,10 +694,9 @@ class Router:
                 self._tracer.stage(current_stage.value)
                 await self._send_event(self._tracer.events()[-1])
             elif current_stage in _REVIEW_STAGES:
-                # Drop the "review_" prefix so the marker kind reads
-                # "review_research" not "review_review_research".
-                stage_name = current_stage.value.removeprefix("review_")
-                self._tracer.marker(f"review_{stage_name}", color="#fbbf24")
+                # The review stage's value is already "review_<work>" (e.g. "review_research"),
+                # which is exactly the marker kind we want.
+                self._tracer.marker(current_stage.value, color="#fbbf24")
                 await self._send_event(self._tracer.events()[-1])
 
             await handler()
