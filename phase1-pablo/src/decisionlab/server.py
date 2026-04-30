@@ -65,6 +65,12 @@ class ConnectionManager:
         self.current_stage: str | None = None
         self.pending_review: dict | None = None
         self.run_id: str | None = None
+        # Serializes all sends on self.ws — both pipeline emits (via
+        # _emit_raw) and the reconnect snapshot in websocket_endpoint
+        # contend on this. Starlette's WebSocket is not safe for concurrent
+        # send, and holding the lock around bookkeeping+send keeps a
+        # snapshot read from observing half-applied state.
+        self._send_lock = asyncio.Lock()
 
     async def connect(self, ws: WebSocket) -> None:
         if self.ws is not None:
@@ -82,34 +88,37 @@ class ConnectionManager:
     async def _emit_raw(self, msg: dict) -> None:
         msg_type = msg.get("type")
 
-        # -- state bookkeeping for reconnection --
-        if msg_type == "node_add":
-            self.nodes.append(msg["node"])
-        elif msg_type == "edge_add":
-            self.edges.append(msg["edge"])
-        elif msg_type == "node_update":
-            for n in self.nodes:
-                if n["id"] == msg["id"]:
-                    n["status"] = msg["status"]
-                    break
-        elif msg_type == "stage":
-            self.current_stage = msg.get("label")
-        elif msg_type == "review_request":
-            self.pending_review = msg
-        elif msg_type == "graph_clear":
-            self.nodes.clear()
-            self.edges.clear()
-        elif msg_type == "run_start":
-            self.run_id = msg.get("run_id")
-        elif msg_type == "pipeline_done":
-            self.pending_review = None
+        async with self._send_lock:
+            # State bookkeeping under the same lock as the send so a
+            # concurrent snapshot read in websocket_endpoint never observes
+            # a node tracked-but-not-yet-sent (which would lead to a
+            # duplicate frame after reconnect).
+            if msg_type == "node_add":
+                self.nodes.append(msg["node"])
+            elif msg_type == "edge_add":
+                self.edges.append(msg["edge"])
+            elif msg_type == "node_update":
+                for n in self.nodes:
+                    if n["id"] == msg["id"]:
+                        n["status"] = msg["status"]
+                        break
+            elif msg_type == "stage":
+                self.current_stage = msg.get("label")
+            elif msg_type == "review_request":
+                self.pending_review = msg
+            elif msg_type == "graph_clear":
+                self.nodes.clear()
+                self.edges.clear()
+            elif msg_type == "run_start":
+                self.run_id = msg.get("run_id")
+            elif msg_type == "pipeline_done":
+                self.pending_review = None
 
-        # -- send over WS --
-        if self.ws is not None:
-            try:
-                await self.ws.send_json(msg)
-            except Exception as exc:
-                logger.warning("WS send_json failed for type=%r: %s", msg_type, exc)
+            if self.ws is not None:
+                try:
+                    await self.ws.send_json(msg)
+                except Exception as exc:
+                    logger.warning("WS send_json failed for type=%r: %s", msg_type, exc)
 
     async def handle_review_response(self, data: dict) -> None:
         """Dispatch the user's review decision to the waiting pipeline.
@@ -141,21 +150,25 @@ manager = ConnectionManager()
 async def websocket_endpoint(ws: WebSocket) -> None:
     await manager.connect(ws)
 
-    # Reconnection: re-emit pending state so the frontend can catch up
+    # Reconnection: re-emit pending state so the frontend can catch up.
+    # The snapshot runs under manager._send_lock so an in-flight pipeline
+    # emit can't interleave frames or update bookkeeping mid-snapshot.
     if manager.pipeline_task and not manager.pipeline_task.done():
-        if manager.run_id:
-            await ws.send_json({"type": "run_start", "run_id": manager.run_id})
-        if manager.pending_review:
-            await ws.send_json(manager.pending_review)
-        else:
+        async with manager._send_lock:
+            if manager.run_id:
+                await ws.send_json({"type": "run_start", "run_id": manager.run_id})
+            # Always send the graph snapshot before the review prompt — the
+            # UI needs both to render the prompt against the right context.
             await ws.send_json(
                 {
                     "type": "state_sync",
-                    "nodes": manager.nodes,
-                    "edges": manager.edges,
+                    "nodes": list(manager.nodes),
+                    "edges": list(manager.edges),
                     "stage": manager.current_stage,
                 }
             )
+            if manager.pending_review:
+                await ws.send_json(manager.pending_review)
 
     try:
         while True:
