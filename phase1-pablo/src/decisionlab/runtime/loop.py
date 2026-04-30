@@ -38,6 +38,7 @@ async def run_agent_loop(
                 tools=tools,
                 messages=messages,
                 max_tokens=max_tokens,
+                cache_control={"type": "ephemeral"},
             ) as stream:
                 response = await stream.get_final_message()
         else:
@@ -47,6 +48,7 @@ async def run_agent_loop(
                 tools=tools,
                 messages=messages,
                 max_tokens=max_tokens,
+                cache_control={"type": "ephemeral"},
             )
         record_usage(model, getattr(response, "usage", None))
 
