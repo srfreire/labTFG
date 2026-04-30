@@ -18,7 +18,7 @@ import json
 import logging
 import random
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -656,12 +656,10 @@ def _seed_past_run() -> None:
     something in its Past Runs list on a fresh mock boot."""
     run_id = "seed-survival-001"
     started_at = (
-        (datetime.now(timezone.utc) - timedelta(days=2))
-        .isoformat()
-        .replace("+00:00", "Z")
+        (datetime.now(UTC) - timedelta(days=2)).isoformat().replace("+00:00", "Z")
     )
 
-    base_ts = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp() * 1000)
+    base_ts = int((datetime.now(UTC) - timedelta(days=2)).timestamp() * 1000)
     t_start = base_ts
     t_tool = base_ts + 2_400
     t_done = base_ts + 4_800
@@ -802,9 +800,7 @@ class MockConnectionManager:
                     "run_id": run_id,
                     "problem": _current_problem.get("value", "mock run"),
                     "status": "running",
-                    "started_at": datetime.now(timezone.utc)
-                    .isoformat()
-                    .replace("+00:00", "Z"),
+                    "started_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                     "artifact_count": None,
                 }
 
@@ -1233,7 +1229,7 @@ async def _formalize_paradigm(emit, slug: str, jitter: float) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def run_mock_pipeline(emit, problem: str) -> None:  # noqa: ARG001
+async def run_mock_pipeline(emit, problem: str) -> None:
     """Replay sample data as realistic pipeline events with parallel tool calls.
 
     Key differences from the real pipeline that this mock reproduces:
