@@ -335,6 +335,11 @@ class Router:
         )
         self._tracer: agrex.Tracer | None = None
         self._trace_local_path: Path | None = None
+        # In-memory mirror of `_record_memory_result` payloads, keyed by stage
+        # name ("researcher"/"formalizer"/"reasoner"/"builder"). Lets in-process
+        # callers (e.g. the eval runner) read per-stage memory results without
+        # round-tripping the database.
+        self.memory_results: dict[str, dict] = {}
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -552,6 +557,8 @@ class Router:
         given run, so there's no concurrent-update race to worry about."""
         import shared
         from shared.models import Run
+
+        self.memory_results[agent_name] = payload
 
         try:
             async with shared.db.get_session() as session:
