@@ -21,6 +21,12 @@ load_dotenv()
 app = typer.Typer(name="decisionlab", help="Decision-making paradigm modeling pipeline")
 console = Console()
 
+# Mount eval and kg subcommands.
+from decisionlab.cli_eval import eval_app, kg_app  # noqa: E402
+
+app.add_typer(eval_app, name="eval")
+app.add_typer(kg_app, name="kg")
+
 REPORTS_ROOT = Path("reports")
 
 
