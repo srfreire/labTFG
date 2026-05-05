@@ -1,0 +1,5 @@
+# Per-run artifacts (KG snapshots, generated *_model.py, reports_dir
+# scratch). Suite YAMLs and fixtures are checked in; runs/ and reports/
+# are not.
+runs/
+reports/

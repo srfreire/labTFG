@@ -1,0 +1,10 @@
+How do animals decide which patch to forage in?
+What governs risky decision-making in humans?
+How do drift-diffusion models explain reaction times?
+How do bounded-rational agents satisfice under time pressure?
+What is the free-energy principle and how does it drive action?
+How does dopamine encode reward prediction errors?
+How do social agents resolve cooperation dilemmas?
+What role does habit play in decision-making?
+How do humans choose between exploration and exploitation?
+How does emotion shape economic decision-making?

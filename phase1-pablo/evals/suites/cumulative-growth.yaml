@@ -1,0 +1,35 @@
+# Cumulative-growth suite: 5 related topics in sequence to verify that
+# the KG actually accumulates knowledge (Memory Agent dedup working,
+# cross-paradigm relations forming) rather than treating every run as
+# isolated.
+#
+# Reset before so the deltas reflect this suite's contribution alone.
+name: cumulative-growth
+stages: [research]
+reset_kg_before: true
+topics:
+  - text: "Reinforcement learning in foraging environments"
+    expect:
+      research:
+        - paradigm: reinforcement-learning
+        - min_nodes: { label: Paradigm, n: 1 }
+  - text: "Prospect theory and risky decisions"
+    expect:
+      research:
+        - paradigm: prospect-theory
+        - min_nodes: { label: Paradigm, n: 2 }
+  - text: "Drift-diffusion models of perceptual decisions"
+    expect:
+      research:
+        - min_nodes: { label: Paradigm, n: 3 }
+  - text: "Bounded rationality and satisficing heuristics"
+    expect:
+      research:
+        - min_nodes: { label: Paradigm, n: 4 }
+  - text: "Free-energy principle as a unifying decision framework"
+    expect:
+      research:
+        - min_nodes: { label: Paradigm, n: 5 }
+        - min_nodes: { label: Variable, n: 5 }
+budget:
+  max_usd_total: 10.00

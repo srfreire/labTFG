@@ -1,0 +1,22 @@
+# Full-pipeline suite: drives one topic through every stage —
+# research → formalize → reason → build — and verifies that the
+# generated DecisionModel actually returns an Action when called.
+#
+# Expensive: budget ~$5 per topic. Use sparingly (regression suite).
+name: full-pipeline
+stages: [research, formalize, reason, build]
+env_spec: evals/fixtures/env_spec_grid_10x10.json
+reset_kg_before: false
+topics:
+  - text: "Q-learning agent foraging on a grid"
+    expect:
+      research:
+        - paradigm: reinforcement-learning
+      formalize:
+        - has_formulation: reinforcement-learning
+      build:
+        # spec_id values come from the Reasoner output (formulation slug).
+        # Adjust after the first real run if your formulation slug differs.
+        - module_imports: q-learning
+budget:
+  max_usd_total: 8.00
