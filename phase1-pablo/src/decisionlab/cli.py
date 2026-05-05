@@ -272,6 +272,7 @@ def run(
     """Run the full pipeline with interactive human feedback."""
     _setup_logging(verbose)
 
+    from decisionlab.feedback_port import CLIFeedback
     from decisionlab.router import PipelineState, Router, Stage
 
     stop_after: Stage | None = None
@@ -322,6 +323,7 @@ def run(
                 search=DuckDuckGoAdapter(),
                 project_root=Path.cwd(),
                 stop_after=stop_after,
+                feedback=CLIFeedback(),
             )
             await router.run()
         finally:
@@ -348,6 +350,7 @@ def resume(
         console.print("[bold red]Provide --reports-dir or --run-id[/bold red]")
         raise typer.Exit(code=1)
 
+    from decisionlab.feedback_port import CLIFeedback
     from decisionlab.router import PipelineState, Router, Stage
 
     async def _run():
@@ -372,6 +375,7 @@ def resume(
                 state=state,
                 search=DuckDuckGoAdapter(),
                 project_root=Path.cwd(),
+                feedback=CLIFeedback(),
             )
             await router.run()
 

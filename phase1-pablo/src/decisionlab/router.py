@@ -17,6 +17,7 @@ import agrex
 from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
+from decisionlab.feedback_port import CLIFeedback, FeedbackPort
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
     create_retrieve_knowledge,
@@ -300,14 +301,19 @@ class Router:
         project_root: Path,
         emit: EmitFn | None = None,
         stop_after: Stage | None = None,
+        feedback: FeedbackPort | None = None,
     ):
         self.client = client
         self.state = state
         self.search = search
         self.project_root = project_root
         self.console = Console()
-        self.emit = emit  # None → CLI mode; set → web mode
-        self._web_mode = emit is not None
+        self.emit = emit  # None → no UI mirroring of trace events
+        # Feedback port: defaults to CLIFeedback (questionary). The web server
+        # passes WebFeedback(emit); the eval harness passes AutoApproveFeedback.
+        self.feedback: FeedbackPort = (
+            feedback if feedback is not None else CLIFeedback()
+        )
         self.memory_agent: MemoryAgent | None = self._init_memory_agent()
         # Per-stage output cache populated by work-stage handlers when they
         # have the text in-memory (e.g. Researcher's return value). Falls back
@@ -762,20 +768,9 @@ class Router:
         from decisionlab.agents.deep_researcher import DeepResearcher
 
         while True:
-            if self._web_mode:
-                from decisionlab.web_feedback import review_research
-
-                assert self.emit is not None
-                approved, additional = await review_research(
-                    self.state.reports_dir,
-                    self.emit,
-                )
-            else:
-                from decisionlab.feedback import review_research
-
-                approved, additional = await review_research(
-                    self.state.reports_dir,
-                )
+            approved, additional = await self.feedback.review_research(
+                self.state.reports_dir,
+            )
             if additional:
                 self.console.print(
                     f"[bold]Running DeepResearcher for '{additional}'...[/bold]"
@@ -826,24 +821,11 @@ class Router:
         self.state.stage = self._next_after_work(Stage.FORMALIZE)
 
     async def _review_formalize(self) -> None:
-        if self._web_mode:
-            from decisionlab.web_feedback import review_formalize
-
-            assert self.emit is not None
-            selected = await review_formalize(
-                self.state.reports_dir,
-                self.state.approved_paradigms,
-                self.emit,
-                run_id=self.state.run_id,
-            )
-        else:
-            from decisionlab.feedback import review_formalize
-
-            selected = await review_formalize(
-                self.state.reports_dir,
-                self.state.approved_paradigms,
-                run_id=self.state.run_id,
-            )
+        selected = await self.feedback.review_formalize(
+            self.state.reports_dir,
+            self.state.approved_paradigms,
+            run_id=self.state.run_id,
+        )
         self.state.selected_formulations = await _convert_formulations_to_slugs(
             self.state,
             selected,
@@ -858,15 +840,7 @@ class Router:
         import shared
 
         try:
-            if self._web_mode:
-                from decisionlab.web_feedback import get_env_spec
-
-                assert self.emit is not None
-                src_path = await get_env_spec(self.emit)
-            else:
-                from decisionlab.feedback import get_env_spec
-
-                src_path = await get_env_spec()
+            src_path = await self.feedback.get_env_spec()
             # Upload env_spec to S3
             env_spec_data = src_path.read_text()
             s3_key = f"research/{self.state.run_id}/env_spec.json"
@@ -913,20 +887,9 @@ class Router:
         from decisionlab.agents.reasoner import Reasoner
 
         while True:
-            if self._web_mode:
-                from decisionlab.web_feedback import review_reason
-
-                assert self.emit is not None
-                approved, rejections, formalizer_reruns = await review_reason(
-                    self.state.reports_dir,
-                    self.emit,
-                )
-            else:
-                from decisionlab.feedback import review_reason
-
-                approved, rejections, formalizer_reruns = await review_reason(
-                    self.state.reports_dir,
-                )
+            approved, rejections, formalizer_reruns = await self.feedback.review_reason(
+                self.state.reports_dir,
+            )
             if not rejections and not formalizer_reruns:
                 # Group flat approved list by paradigm using selected_formulations
                 approved_set = set(approved)
@@ -1035,22 +998,10 @@ class Router:
         from decisionlab.agents.builder import Builder
 
         while True:
-            if self._web_mode:
-                from decisionlab.web_feedback import review_build
-
-                assert self.emit is not None
-                _approved, rejections, reasoner_reruns = await review_build(
-                    self.state.reports_dir,
-                    self.state.build_results,
-                    self.emit,
-                )
-            else:
-                from decisionlab.feedback import review_build
-
-                _approved, rejections, reasoner_reruns = await review_build(
-                    self.state.reports_dir,
-                    self.state.build_results,
-                )
+            _approved, rejections, reasoner_reruns = await self.feedback.review_build(
+                self.state.reports_dir,
+                self.state.build_results,
+            )
             if not rejections and not reasoner_reruns:
                 await self._register_approved_models()
                 self.state.stage = Stage.DONE

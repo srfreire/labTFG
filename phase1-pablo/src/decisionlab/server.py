@@ -330,6 +330,8 @@ async def run_pipeline(
             run_id=run_id,
         )
 
+        from decisionlab.feedback_port import WebFeedback
+
         router = Router(
             client=client,
             state=state,
@@ -337,6 +339,7 @@ async def run_pipeline(
             project_root=Path.cwd(),
             emit=emit,
             stop_after=stop_after,
+            feedback=WebFeedback(emit),
         )
 
         try:
