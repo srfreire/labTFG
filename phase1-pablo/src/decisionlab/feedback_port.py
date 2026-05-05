@@ -41,7 +41,12 @@ ReviewBuildResult = tuple[list[str], list[tuple[str, str, str]], list[str]]
 class FeedbackPort(Protocol):
     """How the Router asks for human input at each review stage."""
 
-    async def review_research(self, reports_dir: Path) -> ReviewResearchResult: ...
+    async def review_research(
+        self,
+        reports_dir: Path,
+        *,
+        run_id: str,
+    ) -> ReviewResearchResult: ...
 
     async def review_formalize(
         self,
@@ -70,7 +75,12 @@ class FeedbackPort(Protocol):
 class CLIFeedback:
     """Interactive feedback via questionary prompts. Default for ``decisionlab run``."""
 
-    async def review_research(self, reports_dir: Path) -> ReviewResearchResult:
+    async def review_research(
+        self,
+        reports_dir: Path,
+        *,
+        run_id: str,
+    ) -> ReviewResearchResult:
         from decisionlab import feedback
 
         return await feedback.review_research(reports_dir)
@@ -119,7 +129,12 @@ class WebFeedback:
     def __init__(self, emit: EmitFn) -> None:
         self._emit = emit
 
-    async def review_research(self, reports_dir: Path) -> ReviewResearchResult:
+    async def review_research(
+        self,
+        reports_dir: Path,
+        *,
+        run_id: str,
+    ) -> ReviewResearchResult:
         from decisionlab import web_feedback
 
         return await web_feedback.review_research(reports_dir, self._emit)
@@ -186,16 +201,43 @@ class AutoApproveFeedback:
     def __init__(self, *, env_spec_path: Path | None = None) -> None:
         self._env_spec_path = env_spec_path
 
-    async def review_research(self, reports_dir: Path) -> ReviewResearchResult:
+    async def review_research(
+        self,
+        reports_dir: Path,
+        *,
+        run_id: str,
+    ) -> ReviewResearchResult:
+        """Discover paradigm slugs from S3 (where the real pipeline writes
+        them via ``save_deep_report``) with a local-disk fallback.
+
+        Real pipeline runs persist ``deep/{slug}.md`` to S3 under the run's
+        ``research/{run_id}/`` prefix. The original CLIFeedback inspects the
+        local ``reports_dir/deep/`` instead — that path is empty in
+        production runs but matches sample fixtures and other tests, so we
+        try local first and fall back to S3 only when local has nothing.
+        """
         deep_dir = reports_dir / "deep"
-        if not deep_dir.is_dir():
+        if deep_dir.is_dir():
+            local_slugs = sorted(p.stem for p in deep_dir.glob("*.md"))
+            if local_slugs:
+                return local_slugs, None
+
+        try:
+            import shared
+
+            if shared.storage is None:
+                raise RuntimeError("shared.storage not initialised")
+            keys = await shared.storage.list(f"research/{run_id}/deep/")
+            slugs = sorted(Path(k).stem for k in keys if k.endswith(".md"))
+            return slugs, None
+        except Exception as exc:
             logger.warning(
-                "AutoApproveFeedback.review_research: %s missing — approving 0 paradigms",
+                "AutoApproveFeedback.review_research: S3 listing failed (%s) "
+                "and %s missing — approving 0 paradigms",
+                exc,
                 deep_dir,
             )
             return [], None
-        slugs = sorted(p.stem for p in deep_dir.glob("*.md"))
-        return slugs, None
 
     async def review_formalize(
         self,

@@ -777,6 +777,7 @@ class Router:
         while True:
             approved, additional = await self.feedback.review_research(
                 self.state.reports_dir,
+                run_id=self.state.run_id,
             )
             if additional:
                 self.console.print(

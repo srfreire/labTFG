@@ -75,7 +75,7 @@ class TestCLIFeedbackDelegation:
             "decisionlab.feedback.review_research",
             new=AsyncMock(return_value=(["foo"], None)),
         ) as mock:
-            result = await cli.review_research(tmp_path)
+            result = await cli.review_research(tmp_path, run_id="r1")
         assert result == (["foo"], None)
         mock.assert_awaited_once_with(tmp_path)
 
@@ -133,7 +133,7 @@ class TestWebFeedbackDelegation:
             "decisionlab.web_feedback.review_research",
             new=AsyncMock(return_value=([], None)),
         ) as mock:
-            await web.review_research(tmp_path)
+            await web.review_research(tmp_path, run_id="r1")
         mock.assert_awaited_once_with(tmp_path, emit)
 
     @pytest.mark.asyncio
@@ -177,17 +177,39 @@ class TestWebFeedbackDelegation:
 
 class TestAutoApproveResearch:
     @pytest.mark.asyncio
-    async def test_returns_all_discovered_slugs_sorted(self, tmp_path):
+    async def test_returns_all_discovered_slugs_sorted_from_local(self, tmp_path):
         _make_research_dir(tmp_path, ["beta", "alpha", "gamma"])
         auto = AutoApproveFeedback()
-        approved, additional = await auto.review_research(tmp_path)
+        approved, additional = await auto.review_research(tmp_path, run_id="r1")
         assert approved == ["alpha", "beta", "gamma"]
         assert additional is None
 
     @pytest.mark.asyncio
-    async def test_missing_deep_dir_returns_empty(self, tmp_path):
-        auto = AutoApproveFeedback()
-        approved, additional = await auto.review_research(tmp_path)
+    async def test_falls_back_to_s3_when_local_empty(self, tmp_path):
+        async def fake_list(prefix):
+            assert prefix == "research/run-x/deep/"
+            return [
+                "research/run-x/deep/zeta.md",
+                "research/run-x/deep/alpha.md",
+                "research/run-x/deep/ignored.txt",
+            ]
+
+        storage = type("S", (), {"list": staticmethod(fake_list)})()
+        with patch("shared.storage", storage, create=True):
+            auto = AutoApproveFeedback()
+            approved, additional = await auto.review_research(tmp_path, run_id="run-x")
+        assert approved == ["alpha", "zeta"]
+        assert additional is None
+
+    @pytest.mark.asyncio
+    async def test_missing_deep_dir_and_s3_failure_returns_empty(self, tmp_path):
+        async def fake_list(prefix):
+            raise RuntimeError("S3 unreachable")
+
+        storage = type("S", (), {"list": staticmethod(fake_list)})()
+        with patch("shared.storage", storage, create=True):
+            auto = AutoApproveFeedback()
+            approved, additional = await auto.review_research(tmp_path, run_id="r1")
         assert approved == []
         assert additional is None
 
