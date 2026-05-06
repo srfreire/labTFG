@@ -109,6 +109,17 @@ _REVIEW_STAGES = {
     Stage.REVIEW_BUILD,
 }
 
+# Cap on consecutive iterations of `_run_loop` that observe the same stage
+# without progress. Work-stage handlers `_do_research / _do_formalize /
+# _do_reason / _do_build` (and `_get_env_spec`) catch agent failures and
+# return without advancing `state.stage`, which is fine when a human is
+# driving (Ctrl-C). Non-interactive callers (the eval harness, the web
+# server) have no break-point, so a persistent agent failure (auth error,
+# network outage) would loop forever and burn API quota. Aborting after
+# this many tries is a hard safety floor — overridable per-process via
+# the `DECISIONLAB_MAX_STAGE_RETRIES` env var.
+_MAX_STAGE_RETRIES = 3
+
 
 # ---------------------------------------------------------------------------
 # PipelineState
@@ -703,6 +714,13 @@ class Router:
         # Emit agent list so the frontend knows which agents are available
         await self._emit_agents()
 
+        import os
+
+        max_retries = int(
+            os.environ.get("DECISIONLAB_MAX_STAGE_RETRIES", _MAX_STAGE_RETRIES)
+        )
+        retries_at_stage: dict[Stage, int] = {}
+
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
@@ -717,6 +735,22 @@ class Router:
                 await self._send_event(self._tracer.events()[-1])
 
             await handler()
+
+            # Stuck-stage detection: work-stage handlers swallow agent failures
+            # and return without advancing `state.stage`. Without this, a
+            # persistently-failing agent loops forever in non-interactive runs.
+            if self.state.stage == current_stage:
+                retries_at_stage[current_stage] = (
+                    retries_at_stage.get(current_stage, 0) + 1
+                )
+                if retries_at_stage[current_stage] >= max_retries:
+                    raise RuntimeError(
+                        f"Pipeline stuck at {current_stage.value}: "
+                        f"{max_retries} consecutive failed attempts. Aborting "
+                        f"to prevent infinite loop."
+                    )
+            else:
+                retries_at_stage.clear()
 
             # `--until X` enforcement: when the user just finished reviewing the
             # stop_after stage, terminate cleanly. Consolidation + finalization
