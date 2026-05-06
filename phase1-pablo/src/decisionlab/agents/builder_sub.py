@@ -171,6 +171,19 @@ Putting state updates in `decide()` WILL break the simulation. No exceptions.
 - Implement ALL rules — never skip any.
 """
 
+
+def derive_class_name(spec_id: str) -> str:
+    """Convert a kebab-case ``spec_id`` to the deterministic Python class name.
+
+    Phase E of the research-memory rewrite removes the LLM's freedom to
+    pick a class name; the Builder must use exactly this. Router and
+    ``_register_approved_models`` use the same derivation so the registry
+    row's ``class_name`` field is locked to the spec_id.
+    """
+    parts = [p for p in spec_id.replace("_", "-").split("-") if p]
+    return ("".join(p.capitalize() for p in parts) or "Decision") + "Model"
+
+
 _KNOWLEDGE_PROMPT_SECTION = """
 
 ## Knowledge Backbone
@@ -217,12 +230,18 @@ class BuilderSubAgent:
             spec_id,
             spec_path,
         )
+        expected_class = derive_class_name(spec_id)
         messages = [
             {
                 "role": "user",
                 "content": (
                     f"Implement a Python DecisionModel class for formulation: {spec_id}\n"
-                    f"Read the JSON spec at: {spec_path}\n"
+                    f"Read the JSON spec at: {spec_path}\n\n"
+                    f"REQUIRED: the main DecisionModel class MUST be named exactly "
+                    f"`{expected_class}`. This name is derived from the spec_id and is "
+                    "the only acceptable identifier — Phase E of the research-memory "
+                    "rewrite enforces structural alignment between spec_id, the "
+                    "filename, and the class name.\n\n"
                     "Read the spec, implement the model, write tests, run them, "
                     "and fix any failures."
                 ),

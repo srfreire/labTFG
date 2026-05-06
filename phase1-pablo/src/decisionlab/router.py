@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import tempfile
 import uuid
 from collections.abc import Awaitable, Callable
@@ -1132,29 +1131,56 @@ class Router:
         self,
         selected: dict[str, list[str]],
     ) -> None:
-        """Verify expected reasoner files exist; rename mismatches."""
+        """Verify expected reasoner files exist; rename mismatches; rewrite
+        any ``formulation_id`` field that drifted from the canonical slug.
+
+        Phase E enforces that the spec's ``formulation_id`` always matches
+        the filename slug. The pre-rewrite Reasoner sometimes emitted
+        ``"formulation_id": "Q-Learning_TD"`` while the file was saved as
+        ``q-learning-td.json`` — downstream consumers (Builder, KG writer,
+        memory namespace) ended up with two different identifiers for the
+        same artifact.
+        """
         import shared
 
         prefix = f"{self.state.models_prefix}/reasoner/"
         for paradigm, formulations in selected.items():
             for formulation in formulations:
                 expected = f"{prefix}{paradigm}/{formulation}.json"
-                if await shared.storage.exists(expected):
+                if not await shared.storage.exists(expected):
+                    paradigm_prefix = f"{prefix}{paradigm}/"
+                    keys = await shared.storage.list(paradigm_prefix)
+                    json_keys = [k for k in keys if k.endswith(".json")]
+                    if json_keys:
+                        old_key = json_keys[0]
+                        await shared.storage.rename(old_key, expected)
+                        logger.warning(
+                            "Reasoner file renamed: %s → %s",
+                            old_key,
+                            expected,
+                        )
+                    else:
+                        logger.warning("Reasoner file missing: %s", expected)
+                        continue
+
+                # Re-pin formulation_id to the canonical slug.
+                try:
+                    text = await shared.storage.get_text(expected)
+                    data = json.loads(text)
+                except Exception:
                     continue
-                # Try to find a misnamed file in the paradigm dir
-                paradigm_prefix = f"{prefix}{paradigm}/"
-                keys = await shared.storage.list(paradigm_prefix)
-                json_keys = [k for k in keys if k.endswith(".json")]
-                if json_keys:
-                    old_key = json_keys[0]
-                    await shared.storage.rename(old_key, expected)
-                    logger.warning(
-                        "Reasoner file renamed: %s → %s",
-                        old_key,
-                        expected,
-                    )
-                else:
-                    logger.warning("Reasoner file missing: %s", expected)
+                if not isinstance(data, dict):
+                    continue
+                if data.get("formulation_id") == formulation:
+                    continue
+                logger.warning(
+                    "Reasoner: rewriting formulation_id %r → %r in %s",
+                    data.get("formulation_id"),
+                    formulation,
+                    expected,
+                )
+                data["formulation_id"] = formulation
+                await shared.storage.put_text(expected, json.dumps(data, indent=2))
 
     async def _validate_builder_files(
         self,
@@ -1188,6 +1214,7 @@ class Router:
         from sqlalchemy import select
 
         import shared
+        from decisionlab.agents.builder_sub import derive_class_name
         from shared.models import Model
 
         run_uuid = uuid.UUID(self.state.run_id)
@@ -1204,18 +1231,21 @@ class Router:
                         f"{paradigm}/test_{formulation}.py"
                     )
 
-                    # Read model source to extract class_name
+                    # Phase E: class_name is derived from formulation slug,
+                    # not extracted from source. This locks the registry to
+                    # the same identifier the Builder was instructed to use.
+                    # We still touch S3 to confirm the model file exists —
+                    # registering a row pointing at a missing artifact
+                    # would mislead downstream consumers.
                     try:
-                        source = await shared.storage.get_text(s3_model_key)
+                        await shared.storage.get_text(s3_model_key)
                     except Exception:
                         logger.warning(
                             "Model file not found in S3: %s — skipping registration",
                             s3_model_key,
                         )
                         continue
-
-                    match = re.search(r"class\s+(\w+)", source)
-                    class_name = match.group(1) if match else "Unknown"
+                    class_name = derive_class_name(formulation)
 
                     # Upsert: update if exists (re-run), insert otherwise
                     result = await session.execute(

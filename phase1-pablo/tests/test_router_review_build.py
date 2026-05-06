@@ -289,18 +289,23 @@ class TestModelRegistration:
                 f"models/{TEST_RUN_ID}/builder/homeostatic/"
             )
 
+        # Phase E: class_name is now derived from the formulation slug,
+        # not extracted from the source file. So the regex-friendly source
+        # body has been swapped for a deterministic slug -> class mapping.
         class_names = {m.class_name for m in added_models}
-        assert class_names == {"PIControllerModel", "DualProcessModel"}
+        assert class_names == {"PiControllerModel", "DualProcessModel"}
 
     @pytest.mark.asyncio
-    async def test_class_name_extracted_correctly(self, tmp_path):
-        """class_name is extracted from the first class definition in the file."""
+    async def test_class_name_derived_from_slug(self, tmp_path):
+        """Phase E: class_name is derived from the formulation slug, not from
+        the source file. The Builder is instructed to use exactly that
+        identifier so the registry row stays aligned with the spec_id."""
         state = _make_state(tmp_path)
-        state.approved_specs = {"homeostatic": ["pi-controller"]}
+        state.approved_specs = {"homeostatic": ["homeostatic-pi"]}
         router = _make_router(state)
 
         async def mock_review_build(reports_dir, build_results):
-            return ["pi-controller"], [], []
+            return ["homeostatic-pi"], [], []
 
         mock_db, mock_session = _mock_db_session()
         mock_result = MagicMock()
@@ -315,13 +320,15 @@ class TestModelRegistration:
             patch("shared.storage") as mock_storage,
             patch("shared.db", mock_db),
         ):
+            # Source body deliberately disagrees with the slug — the
+            # registry must still use the derived name.
             mock_storage.get_text = AsyncMock(
-                return_value='import math\n\nclass HomeostaticPIController(DecisionModel):\n    """A PI controller."""\n'
+                return_value='class WildlyDifferentName:\n    """drift"""\n'
             )
             await router._review_build()
 
         assert len(added_models) == 1
-        assert added_models[0].class_name == "HomeostaticPIController"
+        assert added_models[0].class_name == "HomeostaticPiModel"
 
     @pytest.mark.asyncio
     async def test_missing_model_file_skips_registration(self, tmp_path):
@@ -389,7 +396,8 @@ class TestModelRegistration:
         assert state.stage == Stage.DONE
         # No new rows added — existing was updated
         assert len(added_models) == 0
-        assert existing_model.class_name == "NewPIControllerModel"
+        # Phase E: derived from slug, not from source.
+        assert existing_model.class_name == "PiControllerModel"
         assert "pi-controller_model.py" in existing_model.s3_model_key
         assert "test_pi-controller.py" in existing_model.s3_test_key
 
