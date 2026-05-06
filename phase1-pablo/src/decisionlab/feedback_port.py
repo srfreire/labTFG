@@ -66,6 +66,31 @@ class FeedbackPort(Protocol):
         build_results: dict[str, str],
     ) -> ReviewBuildResult: ...
 
+    async def confirm_canonicalize_merge(
+        self,
+        *,
+        candidate: str,
+        target: str,
+        similarity: float,
+        definition: str,
+    ) -> bool:
+        """Approve or reject merging *candidate* into the existing *target*.
+
+        Called by the Canonicalizer (Phase D) when cosine similarity ≥ τ
+        and the LLM verifier said merge=true. Implementations:
+
+          - ``AutoApproveFeedback`` (eval harness): returns ``True`` when
+            similarity is at or above the threshold. Default τ surfaces
+            here for symmetry with the canonicalizer's own threshold.
+          - ``CLIFeedback``: questionary-prompts the user with the two
+            entities, similarity score, and the existing definition.
+          - ``WebFeedback``: emits a ``confirm_canonicalize_merge`` event
+            to the WS client and awaits the response.
+
+        Returning ``False`` keeps the candidate as a fresh KG node.
+        """
+        ...
+
 
 # ---------------------------------------------------------------------------
 # CLIFeedback — questionary prompts
@@ -116,6 +141,32 @@ class CLIFeedback:
         from decisionlab import feedback
 
         return await feedback.review_build(reports_dir, build_results)
+
+    async def confirm_canonicalize_merge(
+        self,
+        *,
+        candidate: str,
+        target: str,
+        similarity: float,
+        definition: str,
+    ) -> bool:
+        # Lazy import keeps decisionlab.feedback (questionary) optional.
+        try:
+            from decisionlab import feedback
+        except ImportError:
+            logger.warning(
+                "CLIFeedback: questionary unavailable — auto-approving merge"
+            )
+            return True
+        confirm = getattr(feedback, "confirm_canonicalize_merge", None)
+        if confirm is None:
+            return True
+        return await confirm(
+            candidate=candidate,
+            target=target,
+            similarity=similarity,
+            definition=definition,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +221,31 @@ class WebFeedback:
         from decisionlab import web_feedback
 
         return await web_feedback.review_build(reports_dir, build_results, self._emit)
+
+    async def confirm_canonicalize_merge(
+        self,
+        *,
+        candidate: str,
+        target: str,
+        similarity: float,
+        definition: str,
+    ) -> bool:
+        try:
+            from decisionlab import web_feedback
+        except ImportError:
+            return True
+        confirm = getattr(web_feedback, "confirm_canonicalize_merge", None)
+        if confirm is None:
+            # Web layer hasn't shipped the prompt yet — auto-approve so
+            # canonicalization doesn't silently disable.
+            return True
+        return await confirm(
+            candidate=candidate,
+            target=target,
+            similarity=similarity,
+            definition=definition,
+            emit=self._emit,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -309,3 +385,21 @@ class AutoApproveFeedback:
         # Router only consults rejections/reasoner_reruns — `approved` is unused.
         # Returning ([], [], []) lets the loop advance straight to DONE.
         return [], [], []
+
+    async def confirm_canonicalize_merge(
+        self,
+        *,
+        candidate: str,
+        target: str,
+        similarity: float,
+        definition: str,
+    ) -> bool:
+        # Eval-harness contract: trust the LLM verifier when similarity is
+        # at or above the canonicalizer's threshold. The canonicalizer
+        # only reaches this method when the cosine score already crossed
+        # τ AND the LLM verifier said merge=true, so a flat ``True`` here
+        # is the safe default. Override the threshold by subclassing if
+        # the eval needs stricter dedup.
+        from decisionlab.canonicalize import DEFAULT_THRESHOLD
+
+        return similarity >= DEFAULT_THRESHOLD
