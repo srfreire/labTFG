@@ -1,0 +1,133 @@
+{
+  "_doc": "Labeled merge / keep-separate pairs for tuning Phase D's cosine threshold τ.",
+  "_usage": "Run `decisionlab.canonicalize._verify_merge` (or directly compute Voyage cosine) over each pair and compare against `should_merge`. Precision and recall on this set inform whether τ=0.85 holds or needs ratcheting (per plan §3, target ≥ 0.9 each at τ=0.85).",
+  "_threshold_default": 0.85,
+  "pairs": [
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Q-learning", "description": "Off-policy temporal-difference reinforcement learning with action-value estimates"},
+      "existing": {"name": "Reinforcement Learning", "description": "Reward-driven learning paradigm where an agent updates a policy from interaction-derived rewards"},
+      "should_merge": true,
+      "rationale": "Q-learning is a child of reinforcement-learning; per Canonicalizer prompt, both should canonicalize to the umbrella RL slug."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "SARSA", "description": "On-policy temporal-difference reinforcement learning"},
+      "existing": {"name": "Reinforcement Learning", "description": "Reward-driven learning paradigm where an agent updates a policy from interaction-derived rewards"},
+      "should_merge": true,
+      "rationale": "Same umbrella as Q-learning."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Reinforcement Learning", "description": "Reward-based policy learning"},
+      "existing": {"name": "Prospect Theory", "description": "Decision-making under risk where losses are weighted more heavily than equivalent gains"},
+      "should_merge": false,
+      "rationale": "Different traditions, different mechanisms (reward maximization vs. risk-weighted utility)."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Loss aversion", "description": "Asymmetric weighting of losses vs. gains in choice"},
+      "existing": {"name": "Prospect Theory", "description": "Decision-making under risk where losses are weighted more heavily than equivalent gains"},
+      "should_merge": true,
+      "rationale": "Loss aversion is a defining feature of prospect theory's value function — same paradigm under a different name."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Drift-diffusion model", "description": "Evidence-accumulation model for two-alternative forced-choice decisions"},
+      "existing": {"name": "Race model", "description": "Independent accumulator decision model where multiple evidence streams race to a threshold"},
+      "should_merge": false,
+      "rationale": "Architecturally distinct: shared latent variable in DDM vs. independent accumulators in race models."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Sequential sampling model", "description": "Decision-making by accumulating noisy evidence over time"},
+      "existing": {"name": "Drift-diffusion model", "description": "Evidence-accumulation model for two-alternative forced-choice decisions"},
+      "should_merge": true,
+      "rationale": "DDM is the prototypical sequential sampling model; same paradigm under a more general name."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Free-energy principle", "description": "Active inference and minimization of variational free energy"},
+      "existing": {"name": "Reinforcement Learning", "description": "Reward-driven learning paradigm where an agent updates a policy from interaction-derived rewards"},
+      "should_merge": false,
+      "rationale": "Different objective functions — RL maximizes reward, FEP minimizes prediction error."
+    },
+    {
+      "label": "Paradigm",
+      "candidate": {"name": "Bounded rationality", "description": "Decision-making under cognitive and time constraints, satisficing rather than optimizing"},
+      "existing": {"name": "Heuristics-and-biases program", "description": "Decision-making via cognitive shortcuts that systematically bias judgments"},
+      "should_merge": true,
+      "rationale": "Heuristics are the operationalization of bounded rationality — same paradigm at different abstraction levels."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "expected_reward", "type": "float", "description": "Average reward expected from taking an action"},
+      "existing": {"name": "expected reward", "type": "float", "description": "Mean reward an agent anticipates"},
+      "should_merge": true,
+      "rationale": "Same concept; underscore vs. space normalisation."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "reward signal", "type": "float", "description": "Scalar reward emitted by the environment after an action"},
+      "existing": {"name": "reward", "type": "float", "description": "Scalar feedback from the environment"},
+      "should_merge": true,
+      "rationale": "\"Reward\" and \"reward signal\" denote the same RL variable; the slight rephrasing is what fragments the registry pre-rewrite."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "discount_factor", "type": "float", "description": "Coefficient γ that downweights future rewards"},
+      "existing": {"name": "learning_rate", "type": "float", "description": "Coefficient α that controls update magnitude"},
+      "should_merge": false,
+      "rationale": "γ and α are distinct hyperparameters with different roles in the Bellman update."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "drift_rate", "type": "float", "description": "Rate at which evidence accumulates toward a decision threshold"},
+      "existing": {"name": "diffusion_coefficient", "type": "float", "description": "Variance of the noise term in evidence accumulation"},
+      "should_merge": false,
+      "rationale": "Drift and diffusion are paired but distinct parameters of the DDM."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "value_function", "type": "function", "description": "v(s): expected return from state s under the current policy"},
+      "existing": {"name": "Q_function", "type": "function", "description": "Q(s,a): expected return from state s after taking action a"},
+      "should_merge": false,
+      "rationale": "V and Q functions are related but distinct — V depends only on state, Q on state-action pair."
+    },
+    {
+      "label": "Variable",
+      "candidate": {"name": "internal_setpoint", "type": "float", "description": "Target reference value for a homeostatic variable"},
+      "existing": {"name": "set_point", "type": "float", "description": "Target reference value an organism regulates toward"},
+      "should_merge": true,
+      "rationale": "Same homeostatic concept; vocabulary variant."
+    },
+    {
+      "label": "Postulate",
+      "candidate": {"id": "P1", "statement": "Agents act to maximize expected discounted reward."},
+      "existing": {"id": "P1", "statement": "Decision-makers select actions that maximize expected utility under risk."},
+      "should_merge": false,
+      "rationale": "Reward and utility are distinct constructs; reward is a one-shot environmental signal, utility includes risk preferences."
+    },
+    {
+      "label": "Postulate",
+      "candidate": {"id": "P2", "statement": "The agent's policy is updated by gradient ascent on expected return."},
+      "existing": {"id": "P2", "statement": "Policy improvement proceeds via gradient ascent on the expected discounted return."},
+      "should_merge": true,
+      "rationale": "Same statement, paraphrased."
+    },
+    {
+      "label": "Postulate",
+      "candidate": {"id": "P3", "statement": "Choice probability is a softmax over action values."},
+      "existing": {"id": "P3", "statement": "Action selection follows the Boltzmann distribution over Q-values."},
+      "should_merge": true,
+      "rationale": "Softmax and Boltzmann are mathematically identical."
+    },
+    {
+      "label": "Postulate",
+      "candidate": {"id": "P4", "statement": "Variations in homeostatic state drive corrective actions."},
+      "existing": {"id": "P4", "statement": "Reward-prediction errors update value estimates via TD learning."},
+      "should_merge": false,
+      "rationale": "Different paradigms (homeostatic regulation vs. RL) addressing different drivers of behavior."
+    }
+  ]
+}

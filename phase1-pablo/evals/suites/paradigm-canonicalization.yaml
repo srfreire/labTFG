@@ -1,0 +1,81 @@
+# Paradigm-canonicalization regression suite — Phase F of the
+# research-memory rewrite (see docs/research-memory-rewrite.md).
+#
+# Pre-condition: the KG has been populated by `cumulative-growth.yaml`.
+# Run that first (or seed at least the canonical Paradigm slugs:
+# reinforcement-learning, prospect-theory, drift-diffusion-model,
+# bounded-rationality, free-energy-principle).
+#
+# What this suite proves:
+#
+# - Phase C (Researcher rewrite): topics that obviously belong to an
+#   existing canonical paradigm trigger `paradigm_reused` rather than
+#   minting a new one (slug retrieval hit rate target ≥ 80%).
+# - Phase D (Canonicalizer): when a topic is phrased to look slightly
+#   different from the canonical, the Canonicalizer still merges it.
+# - Phase A instrumentation: every topic invokes retrieve_knowledge at
+#   least once (tool_called predicate) and at least one paradigm-namespaced
+#   memory is created (min_memories predicate).
+#
+# Cost: research-only stage, 4 topics × ~$1.5 → cap at $7.
+
+name: paradigm-canonicalization
+stages: [research]
+reset_kg_before: false
+
+topics:
+  # ── 1. Direct hit — Q-learning is reinforcement-learning ─────────────
+  - text: "Q-learning agent trades off exploration and exploitation in a
+      foraging grid: how do action-value updates and ε-greedy schedules
+      drive the policy toward optimal patch choice?"
+    expect:
+      research:
+        # Phase A: Researcher must call retrieve_knowledge before searching.
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        # Phase C: the emission must reuse the canonical RL slug.
+        - paradigm: reinforcement-learning
+        # Phase D: the Paradigm node existed before this run started.
+        - paradigm_reused: reinforcement-learning
+        # Memory side-effect: at least one paradigm-namespaced memory survives.
+        - min_memories: { namespace: paradigm, n: 5 }
+
+  # ── 2. Phrasing variant — loss aversion ⇒ prospect-theory ─────────────
+  - text: "Why do people overweight losses relative to gains in financial
+      decisions, and how does the value function curve below the reference
+      point predict observed risk-seeking in the loss domain?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - paradigm: prospect-theory
+        - paradigm_reused: prospect-theory
+
+  # ── 3. Mechanism description — DDM ⇒ drift-diffusion-model ────────────
+  - text: "Speed-accuracy tradeoff in two-alternative forced-choice tasks:
+      how does a noisy evidence-accumulation process to bound a
+      reaction-time distribution and a choice probability?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - paradigm: drift-diffusion-model
+        - paradigm_reused: drift-diffusion-model
+
+  # ── 4. New territory — should NOT canonicalize into anything existing ─
+  # Multi-armed bandit with non-stationary rewards is sufficiently distinct
+  # from raw RL that the model should propose a new paradigm (slug=__NEW__
+  # in Researcher's structured output) and the Canonicalizer should keep
+  # it separate.
+  - text: "Non-stationary multi-armed bandit problem: how should an agent
+      adjust its action-value estimates when reward distributions drift,
+      and what does a sliding-window or discounting rule trade off
+      against exploration?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - succeeded: null
+        # No paradigm_reused assertion — this topic legitimately introduces
+        # a new paradigm. We assert at least 1 paradigm was emitted so
+        # the Researcher didn't no-op the gap.
+        - min_paradigms: 1
+
+budget:
+  max_usd_total: 7.00
