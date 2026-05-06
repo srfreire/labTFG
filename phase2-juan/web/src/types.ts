@@ -5,11 +5,6 @@ export interface AgentState {
   activeTool?: string
 }
 
-export interface PipelineStep {
-  step: string
-  status: 'pending' | 'done'
-}
-
 export interface ChatMessage {
   id: string
   from: 'user' | 'orchestrator' | 'tracker' | 'analyst' | 'reporter'

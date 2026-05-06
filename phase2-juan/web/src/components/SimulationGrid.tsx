@@ -14,7 +14,7 @@ const CRITICAL_COLORS: Record<string, string> = {
   starvation: 'var(--color-accent-red)',
   energy_spike: 'var(--color-accent-amber)',
   strategy_shift: 'var(--color-analyst)',
-  decision_confidence_drop: 'var(--color-accent-cyan, #38bdf8)',
+  decision_confidence_drop: 'var(--color-accent-cyan)',
 }
 
 export function SimulationGrid({ replay }: Props) {

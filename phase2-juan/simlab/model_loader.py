@@ -19,6 +19,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Temp dirs created by load_model — cleaned up via cleanup_temp_models()
+_tmp_dirs: list[str] = []
+
 
 # ---------------------------------------------------------------------------
 # Model metadata
@@ -133,10 +136,7 @@ async def load_model(
     del sys.modules[module_name]
 
     # Don't clean up tmp_dir yet -- the class object references the file
-    # Store for later cleanup
-    if not hasattr(load_model, "_tmp_dirs"):
-        load_model._tmp_dirs = []
-    load_model._tmp_dirs.append(tmp_dir)
+    _tmp_dirs.append(tmp_dir)
 
     if model_class is None:
         raise ValueError(f"No decision model class found in {model_info.s3_model_key}")
@@ -151,6 +151,6 @@ async def load_model(
 
 def cleanup_temp_models() -> None:
     """Clean up temp dirs created by load_model."""
-    for d in getattr(load_model, "_tmp_dirs", []):
+    for d in _tmp_dirs:
         shutil.rmtree(d, ignore_errors=True)
-    load_model._tmp_dirs = []
+    _tmp_dirs.clear()

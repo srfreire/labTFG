@@ -37,6 +37,23 @@ def strip_markdown_fences(text: str) -> str:
     return stripped
 
 
+def get_q_values(state: dict) -> dict | None:
+    """Extract Q-values from a model state dict, trying common key names."""
+    for key in ("q_values", "Q", "q_table"):
+        val = state.get(key)
+        if isinstance(val, dict):
+            return val
+    return None
+
+
+def group_by_agent(events: list) -> dict[str, list]:
+    """Group events by agent_id into a dict."""
+    by_agent: dict[str, list] = {}
+    for e in events:
+        by_agent.setdefault(e.agent_id, []).append(e)
+    return by_agent
+
+
 def extract_text(response: Any) -> str:
     """Extract the text content from a Claude API response.
 

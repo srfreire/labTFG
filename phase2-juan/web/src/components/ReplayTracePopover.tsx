@@ -1,16 +1,5 @@
 import type { DecisionTrace, CriticalEvent } from '../types'
-
-function extractQValues(state: Record<string, unknown> | null): Record<string, number> | null {
-  if (!state) return null
-  for (const key of ['q_values', 'Q', 'q_table']) {
-    const val = state[key]
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      const entries = Object.entries(val as Record<string, unknown>).filter(([, v]) => typeof v === 'number')
-      if (entries.length > 0) return Object.fromEntries(entries) as Record<string, number>
-    }
-  }
-  return null
-}
+import { extractQValues } from '../utils'
 
 interface Props {
   trace: DecisionTrace
@@ -44,7 +33,7 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
         <span className="text-[11px] font-semibold" style={{ color: 'var(--color-accent-green-light)' }}>{trace.agent_id}</span>
         <div className="flex items-center gap-2">
           {criticalEvent && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-accent-cyan, #38bdf8)', background: 'color-mix(in srgb, var(--color-accent-cyan, #38bdf8) 25%, transparent)' }}>
+            <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: 'var(--color-accent-cyan)', background: 'color-mix(in srgb, var(--color-accent-cyan) 25%, transparent)' }}>
               {criticalEvent.type.replace(/_/g, ' ')}
             </span>
           )}
@@ -87,7 +76,7 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
 
       {/* Critical event detail */}
       {criticalEvent?.type === 'decision_confidence_drop' && criticalEvent.data && (
-        <div className="mt-1.5 text-[9px]" style={{ color: 'var(--color-accent-cyan, #38bdf8)' }}>
+        <div className="mt-1.5 text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>
           gap Q-values: {String((criticalEvent as any).data.prev_gap)} → {String((criticalEvent as any).data.new_gap)}
         </div>
       )}

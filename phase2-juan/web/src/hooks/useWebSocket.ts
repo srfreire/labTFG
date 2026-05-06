@@ -1,17 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { AgentState, PipelineStep, ChatMessage, SimAgent } from '../types'
-import { AGENT_COLORS } from '../constants'
+import type { ChatMessage, SimAgent } from '../types'
+import { AGENT_COLORS, INITIAL_AGENTS } from '../constants'
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
-  const [agents, setAgents] = useState<AgentState[]>([
-    { name: 'Orchestrator', status: 'idle', color: '#94a3b8' },
-    { name: 'Architect', status: 'idle', color: '#4ade80' },
-    { name: 'Tracker', status: 'idle', color: '#fbbf24' },
-    { name: 'Analyst', status: 'idle', color: '#a78bfa' },
-    { name: 'Reporter', status: 'idle', color: '#f472b6' },
-  ])
-  const [pipeline, setPipeline] = useState<PipelineStep[]>([])
+  const [agents, setAgents] = useState(INITIAL_AGENTS)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [thinking, setThinking] = useState(false)
   const [simAgents, setSimAgents] = useState<SimAgent[]>([])
@@ -51,7 +44,6 @@ export function useWebSocket() {
               const orch = prev.find(a => a.name === 'Orchestrator') || { name: 'Orchestrator', status: 'idle' as const, color: '#94a3b8' }
               return [orch, ...data.agents]
             })
-            if (data.pipeline) setPipeline(data.pipeline)
             // Backend sends the color palette once on connect
             if (Array.isArray(data.simColors)) simColorsRef.current = data.simColors
             break
@@ -133,5 +125,5 @@ export function useWebSocket() {
     setThinking(true)
   }, [])
 
-  return { connected, agents, pipeline, messages, thinking, simAgents, send }
+  return { connected, agents, messages, thinking, simAgents, send }
 }

@@ -7,7 +7,7 @@ import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
 import { DecisionTraceCard } from './DecisionTraceCard'
-import { FROM_COLORS } from '../constants'
+import { FROM_COLORS, getFromColor } from '../constants'
 
 function getAgentColor(text: string): string | null {
   for (const [name, color] of Object.entries(FROM_COLORS)) {
@@ -63,6 +63,17 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
     ? `Esperando por ${workingAgents.map(a => a.name).join(', ')}...`
     : 'Describe un paradigma de decisión...'
 
+  const inputForm = (
+    <MessageInput
+      input={input}
+      setInput={setInput}
+      onSubmit={handleSubmit}
+      placeholder={placeholder}
+      busy={busy}
+      compact={!isEmpty}
+    />
+  )
+
   // Empty state — centered with prompts
   if (isEmpty) {
     return (
@@ -75,23 +86,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full max-w-xl flex items-stretch gap-3 mb-6">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={placeholder}
-            className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3.5 px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="flex-shrink-0 w-14 flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
-          >
-            <Send size={18} />
-          </button>
-        </form>
+        <div className="w-full max-w-xl mb-6">{inputForm}</div>
 
         <div className="flex flex-wrap justify-center gap-2">
           {EXAMPLE_PROMPTS.map(prompt => (
@@ -109,6 +104,8 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
   }
 
   // Active chat state
+  const orchColor = getFromColor('orchestrator')
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <div ref={scrollRef} className="flex-1 min-h-0 px-8 py-8 overflow-y-auto flex flex-col">
@@ -126,11 +123,11 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
           <div className="flex gap-3 max-w-[80%] mt-5">
             <div className="flex-shrink-0 pt-1">
               <div className="w-7 h-7 rounded-full overflow-hidden">
-                <Facehash name="Orchestrator" size={28} variant="solid" colors={[FROM_COLORS['Orchestrator']]} showInitial={false} />
+                <Facehash name="Orchestrator" size={28} variant="solid" colors={[orchColor]} showInitial={false} />
               </div>
             </div>
             <div>
-              <div className="text-[11px] font-medium mb-1" style={{ color: FROM_COLORS['Orchestrator'] }}>Orchestrator</div>
+              <div className="text-[11px] font-medium mb-1" style={{ color: orchColor }}>Orchestrator</div>
               <div className="px-4 py-3 rounded-2xl rounded-tl-sm text-[15px] typing-dots bg-surface-hover text-text-dim">
                 Pensando<span>.</span><span>.</span><span>.</span>
               </div>
@@ -140,32 +137,45 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
       </div>
 
       <div className="px-8 py-4 border-t border-border-subtle">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-stretch gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={placeholder}
-            disabled={busy}
-            className="flex-1 bg-transparent border border-text-ghost text-text text-[15px] py-3 px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            className="flex-shrink-0 w-12 flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default"
-          >
-            <Send size={16} />
-          </button>
-        </form>
+        <div className="max-w-3xl mx-auto">{inputForm}</div>
       </div>
     </div>
   )
 }
 
+function MessageInput({ input, setInput, onSubmit, placeholder, busy, compact }: {
+  input: string
+  setInput: (v: string) => void
+  onSubmit: (e: React.FormEvent) => void
+  placeholder: string
+  busy: boolean
+  compact: boolean
+}) {
+  return (
+    <form onSubmit={onSubmit} className="flex items-stretch gap-3">
+      <input
+        type="text"
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        placeholder={placeholder}
+        disabled={compact && busy}
+        className={`flex-1 bg-transparent border border-text-ghost text-text text-[15px] ${compact ? 'py-3' : 'py-3.5'} px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed`}
+        autoFocus
+      />
+      <button
+        type="submit"
+        disabled={busy || !input.trim()}
+        className={`flex-shrink-0 ${compact ? 'w-12' : 'w-14'} flex items-center justify-center transition-colors bg-white text-black cursor-pointer hover:bg-white/80 rounded-xl disabled:bg-text-ghost disabled:text-text-dim disabled:cursor-default`}
+      >
+        <Send size={compact ? 16 : 18} />
+      </button>
+    </form>
+  )
+}
+
 function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boolean }) {
   const isUser = msg.from === 'user'
-  const dotColor = FROM_COLORS[msg.from] || '#fff'
+  const dotColor = getFromColor(msg.from)
 
   const bubbleStyle = {
     '--msg-accent': dotColor,

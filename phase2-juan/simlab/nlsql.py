@@ -18,6 +18,7 @@ import sqlparse
 from sqlalchemy import text
 
 import shared
+from simlab.utils import strip_markdown_fences
 from shared.settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -120,10 +121,7 @@ async def _plan(question: str) -> dict | None:
         messages=[{"role": "user", "content": question}],
         system=system,
     )
-    raw = response.content[0].text.strip()
-    # Strip markdown code fences if present
-    raw = re.sub(r'^```(?:json)?\s*', '', raw)
-    raw = re.sub(r'\s*```$', '', raw)
+    raw = strip_markdown_fences(response.content[0].text)
     try:
         return json.loads(raw)
     except json.JSONDecodeError:

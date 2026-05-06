@@ -15,17 +15,14 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import uuid
-from typing import TYPE_CHECKING
 
 from sqlalchemy import select, update
 
 import shared
 from shared.models import Experiment as DBExperiment
-from shared.settings import load_settings
-
-if TYPE_CHECKING:
-    from shared.settings import Settings
+from shared.settings import Settings, load_settings
 from simlab.analyst import Analyst
 from simlab.architect import Architect
 from simlab.critical_events import critical_events_to_json, detect_critical_events
@@ -657,6 +654,17 @@ class Orchestrator:
         self._messages.append({"role": "assistant", "content": response.content})
         return text
 
+    @staticmethod
+    async def _update_experiment(exp_id: str, **kwargs) -> None:
+        """Update an experiment row in Postgres."""
+        async with shared.db.get_session() as session:
+            await session.execute(
+                update(DBExperiment)
+                .where(DBExperiment.id == uuid.UUID(exp_id))
+                .values(**kwargs)
+            )
+            await session.commit()
+
     def _make_tool_callback(self, agent_name: str):
         """Create an on_tool_call callback scoped to an agent name."""
         cb = self.on_agent_tool_call
@@ -772,8 +780,6 @@ class Orchestrator:
 
         # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
-            import re as _re
-
             from shared.models import Model as DBModel
 
             slug = params["paradigm_slug"]
@@ -814,8 +820,8 @@ class Orchestrator:
                     }
                 )
 
-            match = _re.search(
-                r"## Predictions\s*\n(.*?)(?=\n## |\Z)", content, _re.DOTALL
+            match = re.search(
+                r"## Predictions\s*\n(.*?)(?=\n## |\Z)", content, re.DOTALL
             )
             if not match:
                 return json.dumps(
@@ -986,20 +992,15 @@ class Orchestrator:
                 replay_key = f"experiments/{exp_id}/replay.json"
                 await shared.storage.put_text(events_key, events_stripped)
                 await shared.storage.put_text(replay_key, json.dumps(state["replay"]))
-                async with shared.db.get_session() as session:
-                    await session.execute(
-                        update(DBExperiment)
-                        .where(DBExperiment.id == uuid.UUID(exp_id))
-                        .values(
-                            s3_events_key=events_key,
-                            s3_replay_key=replay_key,
-                            models_used=models_used,
-                            steps=steps,
-                            seed=params.get("seed"),
-                            status="simulated",
-                        )
-                    )
-                    await session.commit()
+                await self._update_experiment(
+                    exp_id,
+                    s3_events_key=events_key,
+                    s3_replay_key=replay_key,
+                    models_used=models_used,
+                    steps=steps,
+                    seed=params.get("seed"),
+                    status="simulated",
+                )
 
             return json.dumps(
                 {
@@ -1030,13 +1031,9 @@ class Orchestrator:
                 exp_id = state["experiment_id"]
                 tracker_key = f"experiments/{exp_id}/tracker.json"
                 await shared.storage.put_text(tracker_key, result)
-                async with shared.db.get_session() as session:
-                    await session.execute(
-                        update(DBExperiment)
-                        .where(DBExperiment.id == uuid.UUID(exp_id))
-                        .values(s3_tracker_key=tracker_key, status="tracked")
-                    )
-                    await session.commit()
+                await self._update_experiment(
+                    exp_id, s3_tracker_key=tracker_key, status="tracked"
+                )
 
             # Knowledge-Backbone write (non-fatal — never aborts observe_simulation)
             writer = getattr(shared, "sim_memory_writer", None)
@@ -1086,13 +1083,9 @@ class Orchestrator:
                 exp_id = state["experiment_id"]
                 analyst_key = f"experiments/{exp_id}/analyst.json"
                 await shared.storage.put_text(analyst_key, result)
-                async with shared.db.get_session() as session:
-                    await session.execute(
-                        update(DBExperiment)
-                        .where(DBExperiment.id == uuid.UUID(exp_id))
-                        .values(s3_analyst_key=analyst_key, status="analyzed")
-                    )
-                    await session.commit()
+                await self._update_experiment(
+                    exp_id, s3_analyst_key=analyst_key, status="analyzed"
+                )
             return result
 
         # --- generate_report: calls the Reporter (can be called multiple times) ---
@@ -1147,17 +1140,11 @@ class Orchestrator:
             if state["pdf_paths"]:
                 state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):
-                    exp_id = state["experiment_id"]
-                    async with shared.db.get_session() as session:
-                        await session.execute(
-                            update(DBExperiment)
-                            .where(DBExperiment.id == uuid.UUID(exp_id))
-                            .values(
-                                s3_pdf_key=state["pdf_path"],
-                                status="reported",
-                            )
-                        )
-                        await session.commit()
+                    await self._update_experiment(
+                        state["experiment_id"],
+                        s3_pdf_key=state["pdf_path"],
+                        status="reported",
+                    )
             return result
 
         # --- list_experiments: shows past experiments ---

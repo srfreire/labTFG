@@ -26,7 +26,15 @@ function pivotSeries(spec: ChartSpec, sortNumeric = true): Record<string, number
   return sortNumeric ? data.sort((a, b) => Number(a.x) - Number(b.x)) : data
 }
 
-// Shared dark tooltip style
+// Shared axis and tooltip styles for dark theme
+const AXIS_STROKE = 'rgba(255,255,255,0.3)'
+const AXIS_TICK = { fontSize: 10, fill: 'rgba(255,255,255,0.4)' }
+const GRID_STROKE = 'rgba(255,255,255,0.06)'
+
+function axisLabel(value: string, position: string, extra?: Record<string, unknown>) {
+  return { value, position, fontSize: 10, fill: 'rgba(255,255,255,0.4)', ...extra }
+}
+
 const tooltipStyle = {
   contentStyle: {
     background: 'var(--color-surface-frosted)',
@@ -43,18 +51,9 @@ function LineChartView({ spec }: { spec: ChartSpec }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data}>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-        <XAxis
-          dataKey="x"
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-          label={{ value: spec.x_label, position: 'insideBottom', offset: -5, fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-        />
-        <YAxis
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-          label={{ value: spec.y_label, angle: -90, position: 'insideLeft', fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-        />
+        <CartesianGrid stroke={GRID_STROKE} />
+        <XAxis dataKey="x" stroke={AXIS_STROKE} tick={AXIS_TICK} label={axisLabel(spec.x_label, 'insideBottom', { offset: -5 })} />
+        <YAxis stroke={AXIS_STROKE} tick={AXIS_TICK} label={axisLabel(spec.y_label, 'insideLeft', { angle: -90 })} />
         <Tooltip {...tooltipStyle} cursor={false} />
         {spec.series.length > 1 && (
           <Legend wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }} />
@@ -81,18 +80,9 @@ function BarChartView({ spec }: { spec: ChartSpec }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data}>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-        <XAxis
-          dataKey="x"
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 9, fill: 'rgba(255,255,255,0.4)' }}
-          label={{ value: spec.x_label, position: 'insideBottom', offset: -5, fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-        />
-        <YAxis
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-          label={{ value: spec.y_label, angle: -90, position: 'insideLeft', fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-        />
+        <CartesianGrid stroke={GRID_STROKE} />
+        <XAxis dataKey="x" stroke={AXIS_STROKE} tick={{ ...AXIS_TICK, fontSize: 9 }} label={axisLabel(spec.x_label, 'insideBottom', { offset: -5 })} />
+        <YAxis stroke={AXIS_STROKE} tick={AXIS_TICK} label={axisLabel(spec.y_label, 'insideLeft', { angle: -90 })} />
         <Tooltip {...tooltipStyle} cursor={false} />
         {spec.series.length > 1 && (
           <Legend wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }} />
@@ -117,20 +107,9 @@ function HeatmapView({ spec }: { spec: ChartSpec }) {
   return (
     <ResponsiveContainer width="100%" height={Math.max(200, data.length * 28)}>
       <BarChart data={data} layout="vertical">
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-        <XAxis
-          type="number"
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-          label={{ value: spec.y_label, position: 'insideBottom', offset: -5, fontSize: 10, fill: 'rgba(255,255,255,0.4)' }}
-        />
-        <YAxis
-          type="category"
-          dataKey="x"
-          stroke="rgba(255,255,255,0.3)"
-          tick={{ fontSize: 8, fill: 'rgba(255,255,255,0.4)' }}
-          width={100}
-        />
+        <CartesianGrid stroke={GRID_STROKE} />
+        <XAxis type="number" stroke={AXIS_STROKE} tick={AXIS_TICK} label={axisLabel(spec.y_label, 'insideBottom', { offset: -5 })} />
+        <YAxis type="category" dataKey="x" stroke={AXIS_STROKE} tick={{ ...AXIS_TICK, fontSize: 8 }} width={100} />
         <Tooltip {...tooltipStyle} cursor={false} />
         {spec.series.length > 1 && (
           <Legend wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }} />

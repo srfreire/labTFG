@@ -1,20 +1,9 @@
 import type { DecisionTrace } from '../types'
+import { extractQValues } from '../utils'
 
 function scalarEntries(state: Record<string, unknown> | null): [string, number][] {
   if (!state) return []
   return Object.entries(state).filter(([, v]) => typeof v === 'number') as [string, number][]
-}
-
-function extractQValues(state: Record<string, unknown> | null): Record<string, number> | null {
-  if (!state) return null
-  for (const key of ['q_values', 'Q', 'q_table']) {
-    const val = state[key]
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      const entries = Object.entries(val as Record<string, unknown>).filter(([, v]) => typeof v === 'number')
-      if (entries.length > 0) return Object.fromEntries(entries) as Record<string, number>
-    }
-  }
-  return null
 }
 
 function formatDelta(pre: number, post: number): { text: string; color: string } {
@@ -64,7 +53,7 @@ export function DecisionTraceCard({ trace }: Props) {
           </div>
         </div>
         <div className="rounded-md p-2.5 bg-surface-hover">
-          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: 'var(--color-accent-cyan, #38bdf8)' }}>Post-decisión</div>
+          <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: 'var(--color-accent-cyan)' }}>Post-decisión</div>
           <div className="text-[10px] leading-[1.8]">
             {trace.perception && (
               <div className="text-text">pos <span className="text-text-dim">({String(trace.perception.x ?? '?')}, {String(trace.perception.y ?? '?')})</span></div>

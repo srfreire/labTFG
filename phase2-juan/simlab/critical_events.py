@@ -16,6 +16,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from simlab.environment import Event
+from simlab.utils import get_q_values, group_by_agent
 
 
 @dataclass
@@ -58,12 +59,7 @@ def _detect_energy_events(
 ) -> list[CriticalEvent]:
     """Detect low energy (starvation risk) and energy spikes."""
     result = []
-    # Group by agent, ordered by step
-    by_agent: dict[str, list[Event]] = {}
-    for e in events:
-        by_agent.setdefault(e.agent_id, []).append(e)
-
-    for agent_id, agent_events in by_agent.items():
+    for agent_id, agent_events in group_by_agent(events).items():
         prev_energy = None
         for e in agent_events:
             energy = e.outcome.get("model_state", {}).get("energy")
@@ -105,11 +101,7 @@ def _detect_energy_events(
 def _detect_strategy_shift(events: list[Event], window: int = 5) -> list[CriticalEvent]:
     """Detect when an agent's dominant action changes over a sliding window."""
     result = []
-    by_agent: dict[str, list[Event]] = {}
-    for e in events:
-        by_agent.setdefault(e.agent_id, []).append(e)
-
-    for agent_id, agent_events in by_agent.items():
+    for agent_id, agent_events in group_by_agent(events).items():
         if len(agent_events) < window * 2:
             continue
         for i in range(window, len(agent_events) - window + 1):
@@ -157,18 +149,10 @@ def _detect_decision_confidence_drop(
     action is best — a potential exploration-exploitation crisis.
     """
     result = []
-    by_agent: dict[str, list[Event]] = {}
-    for e in events:
-        by_agent.setdefault(e.agent_id, []).append(e)
-
-    for agent_id, agent_events in by_agent.items():
+    for agent_id, agent_events in group_by_agent(events).items():
         prev_gap = None
         for e in agent_events:
-            q = (
-                e.pre_state.get("q_values")
-                or e.pre_state.get("Q")
-                or e.pre_state.get("q_table")
-            )
+            q = get_q_values(e.pre_state)
             if not isinstance(q, dict):
                 continue
             values = sorted(

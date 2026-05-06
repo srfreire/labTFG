@@ -18,6 +18,7 @@ from collections import defaultdict
 
 from simlab.environment import Event
 from simlab.loop import Registry
+from simlab.utils import get_q_values
 
 # ---------------------------------------------------------------------------
 # Data extraction from events
@@ -108,12 +109,8 @@ def _extract_q_table(events: list[Event], agents: list[str], **_) -> list[dict]:
         if not agent_events:
             continue
         model_state = agent_events[-1].outcome.get("model_state", {})
-        q_values = (
-            model_state.get("q_values")
-            or model_state.get("Q")
-            or model_state.get("q_table")
-        )
-        if q_values and isinstance(q_values, dict):
+        q_values = get_q_values(model_state)
+        if q_values:
             data = []
             for k, v in q_values.items():
                 if isinstance(v, (int, float)):
@@ -139,11 +136,7 @@ def _extract_action_scores_evolution(
         for e in events:
             if e.agent_id != agent_id:
                 continue
-            q = (
-                e.pre_state.get("q_values")
-                or e.pre_state.get("Q")
-                or e.pre_state.get("q_table")
-            )
+            q = get_q_values(e.pre_state)
             if not isinstance(q, dict):
                 continue
             for action_name, val in q.items():

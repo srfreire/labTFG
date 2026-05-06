@@ -21,6 +21,7 @@ import shared
 from shared.models import Experiment as DBExperiment
 from simlab.environment import Event
 from simlab.loop import Registry
+from simlab.utils import group_by_agent
 
 # ---------------------------------------------------------------------------
 # Helpers — data conversion and summarization
@@ -56,6 +57,23 @@ def _event_to_dict(event: Event) -> dict:
 def _count_actions(events: list[Event]) -> dict[str, int]:
     """Count how many times each action was used."""
     return dict(Counter(e.action.name for e in events))
+
+
+def _event_to_trace(e: Event) -> dict:
+    """Convert an Event to a decision-trace dict (perception → action → outcome)."""
+    return {
+        "step": e.step,
+        "agent_id": e.agent_id,
+        "perception": _make_serializable(e.perception) if e.perception else None,
+        "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+        "available_actions": e.available_actions or None,
+        "action_chosen": {"name": e.action.name, "params": e.action.params},
+        "outcome": {
+            "reward": e.outcome.get("reward"),
+            "action_result": e.outcome.get("action_result"),
+            "post_state": _make_serializable(e.outcome.get("model_state", {})),
+        },
+    }
 
 
 def _summarize_events(events: list[Event]) -> dict:
@@ -218,9 +236,7 @@ def build_simulation_tools(
     _critical = critical_events or []
 
     # Index events by agent for fast lookup
-    by_agent: dict[str, list[Event]] = {}
-    for e in events:
-        by_agent.setdefault(e.agent_id, []).append(e)
+    by_agent = group_by_agent(events)
 
     # --- Tool implementations (closures over `events` and `by_agent`) ---
 
@@ -290,29 +306,9 @@ def build_simulation_tools(
         """Return the full decision trace for one agent at one step."""
         agent_id = params["agent_id"]
         step = params["step"]
-        agent_events = by_agent.get(agent_id, [])
-        for e in agent_events:
+        for e in by_agent.get(agent_id, []):
             if e.step == step:
-                trace = {
-                    "step": e.step,
-                    "agent_id": e.agent_id,
-                    "perception": _make_serializable(e.perception)
-                    if e.perception
-                    else None,
-                    "pre_state": _make_serializable(e.pre_state)
-                    if e.pre_state
-                    else None,
-                    "available_actions": e.available_actions or None,
-                    "action_chosen": {"name": e.action.name, "params": e.action.params},
-                    "outcome": {
-                        "reward": e.outcome.get("reward"),
-                        "action_result": e.outcome.get("action_result"),
-                        "post_state": _make_serializable(
-                            e.outcome.get("model_state", {})
-                        ),
-                    },
-                }
-                return json.dumps(trace)
+                return json.dumps(_event_to_trace(e))
         return json.dumps({"error": f"No event for {agent_id} at step {step}"})
 
     async def compare_decision_traces(params: dict) -> str:
@@ -324,29 +320,7 @@ def build_simulation_tools(
             step_events = [e for e in step_events if e.agent_id in agent_filter]
         if not step_events:
             return json.dumps({"error": f"No events at step {step}"})
-        traces = []
-        for e in step_events:
-            traces.append(
-                {
-                    "agent_id": e.agent_id,
-                    "perception": _make_serializable(e.perception)
-                    if e.perception
-                    else None,
-                    "pre_state": _make_serializable(e.pre_state)
-                    if e.pre_state
-                    else None,
-                    "available_actions": e.available_actions or None,
-                    "action_chosen": {"name": e.action.name, "params": e.action.params},
-                    "outcome": {
-                        "reward": e.outcome.get("reward"),
-                        "action_result": e.outcome.get("action_result"),
-                        "post_state": _make_serializable(
-                            e.outcome.get("model_state", {})
-                        ),
-                    },
-                }
-            )
-        return json.dumps({"step": step, "traces": traces})
+        return json.dumps({"step": step, "traces": [_event_to_trace(e) for e in step_events]})
 
     schemas = [
         GET_SIMULATION_EVENTS_TOOL,

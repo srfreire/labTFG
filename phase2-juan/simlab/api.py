@@ -123,113 +123,118 @@ async def websocket_chat(ws: WebSocket):
     # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
     original_build = orch._build_tools
 
-    # Helper to send intermediate data cards as each agent finishes
+    # --- Intermediate card builders (one per pipeline step) ---
+
+    def _env_card(state: dict) -> dict | None:
+        spec = state.get("spec")
+        if not spec:
+            return None
+        resources = ", ".join(f"{r['type']} ×{r['count']}" for r in spec["resources"])
+        return {
+            "type": "message",
+            "from": "orchestrator",
+            "text": f"El **Architect** ha diseñado el entorno de simulación: un grid {spec['grid']['width']}×{spec['grid']['height']} con {resources}. Ahora voy a buscar los modelos disponibles y lanzar la simulación.",
+            "card": {
+                "title": "Environment Spec",
+                "data": {
+                    "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
+                    "Acciones posibles": ", ".join(
+                        a["name"] if isinstance(a, dict) else str(a) for a in spec["actions"]
+                    ),
+                    "Recursos": resources,
+                },
+            },
+        }
+
+    def _sim_card(state: dict) -> dict | None:
+        replay = state.get("replay")
+        if not replay:
+            return None
+        n_agents = len(replay["frames"][0]["agents"]) if replay["frames"] else 0
+        return {
+            "type": "message",
+            "from": "orchestrator",
+            "text": f"Simulación completada: **{n_agents} agentes** durante **{replay['total_steps']} pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.",
+            "replay": replay,
+        }
+
+    def _tracker_card(state: dict) -> dict | None:
+        raw = state.get("tracker_output")
+        if not raw:
+            return None
+        try:
+            tracker = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if "trajectories" not in tracker:
+            return None
+        n_traj = len(tracker["trajectories"])
+        episodes = tracker.get("episodes", [])
+        ep_summary = ""
+        if episodes:
+            ep_lines = [
+                f"- **{ep.get('agent', '')}**: {ep.get('description', ep.get('type', ''))}"
+                if ep.get("agent") else f"- {ep.get('description', ep.get('type', ''))}"
+                for ep in episodes[:5]
+            ]
+            ep_summary = "\n\nEpisodios detectados:\n" + "\n".join(ep_lines)
+        return {
+            "type": "message",
+            "from": "orchestrator",
+            "text": f"El **Tracker** ha registrado las trayectorias de **{n_traj} agentes**.{ep_summary}\n\nAhora el Analyst va a buscar patrones.",
+            "tracker": tracker,
+        }
+
+    def _analyst_card(state: dict) -> dict | None:
+        raw = state.get("analyst_output")
+        if not raw:
+            return None
+        try:
+            analyst = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if "patterns" not in analyst:
+            return None
+        n_pat = len(analyst["patterns"])
+        n_comp = len(analyst.get("comparisons", []))
+        charts = state.get("_last_charts") or []
+        chart_text = f" y generado **{len(charts)} gráficas**" if charts else ""
+        msg: dict = {
+            "type": "message",
+            "from": "orchestrator",
+            "text": f"El **Analyst** ha encontrado **{n_pat} patrones**, realizado **{n_comp} comparaciones**{chart_text}.",
+            "analyst": analyst,
+        }
+        if charts:
+            msg["charts"] = charts
+        return msg
+
+    def _reporter_card(state: dict) -> dict | None:
+        paths = state.get("pdf_paths")
+        if not paths:
+            return None
+        if len(paths) == 1:
+            text = f"El **Reporter** ha generado el informe PDF: `{paths[0]}`."
+        else:
+            pdf_list = "\n".join(f"- `{p}`" for p in paths)
+            text = f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}"
+        return {"type": "message", "from": "orchestrator", "text": text}
+
+    _CARD_BUILDERS = {
+        "create_environment": _env_card,
+        "run_simulation": _sim_card,
+        "observe_simulation": _tracker_card,
+        "analyze_results": _analyst_card,
+        "generate_report": _reporter_card,
+    }
+
     async def _send_intermediate_card(tool_name: str):
         """Send data cards to frontend as each pipeline step completes."""
-        state = orch._state
-        if tool_name == "create_environment" and state.get("spec"):
-            spec = state["spec"]
-            resources = ", ".join(
-                f"{r['type']} ×{r['count']}" for r in spec["resources"]
-            )
-            await ws.send_json(
-                {
-                    "type": "message",
-                    "from": "orchestrator",
-                    "text": f"El **Architect** ha diseñado el entorno de simulación: un grid {spec['grid']['width']}×{spec['grid']['height']} con {resources}. Ahora voy a buscar los modelos disponibles y lanzar la simulación.",
-                    "card": {
-                        "title": "Environment Spec",
-                        "data": {
-                            "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
-                            "Acciones posibles": ", ".join(
-                                a["name"] if isinstance(a, dict) else str(a)
-                                for a in spec["actions"]
-                            ),
-                            "Recursos": resources,
-                        },
-                    },
-                }
-            )
-        elif tool_name == "run_simulation" and state.get("replay"):
-            replay = state["replay"]
-            n_agents = len(replay["frames"][0]["agents"]) if replay["frames"] else 0
-            await ws.send_json(
-                {
-                    "type": "message",
-                    "from": "orchestrator",
-                    "text": f"Simulación completada: **{n_agents} agentes** durante **{replay['total_steps']} pasos**. Puedes explorar el replay paso a paso. Ahora el Tracker va a observar qué pasó.",
-                    "replay": replay,
-                }
-            )
-        elif tool_name == "observe_simulation" and state.get("tracker_output"):
-            try:
-                tracker = json.loads(state["tracker_output"])
-                if "trajectories" in tracker:
-                    n_traj = len(tracker["trajectories"])
-                    episodes = tracker.get("episodes", [])
-                    ep_summary = ""
-                    if episodes:
-                        ep_lines = []
-                        for ep in episodes[:5]:
-                            agent_name = ep.get("agent", "")
-                            desc = ep.get("description", ep.get("type", ""))
-                            ep_lines.append(
-                                f"- **{agent_name}**: {desc}"
-                                if agent_name
-                                else f"- {desc}"
-                            )
-                        ep_summary = "\n\nEpisodios detectados:\n" + "\n".join(ep_lines)
-                    await ws.send_json(
-                        {
-                            "type": "message",
-                            "from": "orchestrator",
-                            "text": f"El **Tracker** ha registrado las trayectorias de **{n_traj} agentes**.{ep_summary}\n\nAhora el Analyst va a buscar patrones.",
-                            "tracker": tracker,
-                        }
-                    )
-            except (json.JSONDecodeError, TypeError):
-                pass
-        elif tool_name == "analyze_results" and state.get("analyst_output"):
-            try:
-                analyst = json.loads(state["analyst_output"])
-                if "patterns" in analyst:
-                    n_pat = len(analyst["patterns"])
-                    n_comp = len(analyst.get("comparisons", []))
-                    # Include any new charts from this analysis call
-                    charts = state.get("_last_charts") or []
-                    chart_text = (
-                        f" y generado **{len(charts)} gráficas**" if charts else ""
-                    )
-                    msg: dict = {
-                        "type": "message",
-                        "from": "orchestrator",
-                        "text": f"El **Analyst** ha encontrado **{n_pat} patrones**, realizado **{n_comp} comparaciones**{chart_text}.",
-                        "analyst": analyst,
-                    }
-                    if charts:
-                        msg["charts"] = charts
-                    await ws.send_json(msg)
-            except (json.JSONDecodeError, TypeError):
-                pass
-        elif tool_name == "generate_report" and state.get("pdf_paths"):
-            paths = state["pdf_paths"]
-            if len(paths) == 1:
-                await ws.send_json(
-                    {
-                        "type": "message",
-                        "from": "orchestrator",
-                        "text": f"El **Reporter** ha generado el informe PDF: `{paths[0]}`.",
-                    }
-                )
-            else:
-                pdf_list = "\n".join(f"- `{p}`" for p in paths)
-                await ws.send_json(
-                    {
-                        "type": "message",
-                        "from": "orchestrator",
-                        "text": f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}",
-                    }
-                )
+        builder = _CARD_BUILDERS.get(tool_name)
+        if builder:
+            msg = builder(orch._state)
+            if msg:
+                await ws.send_json(msg)
 
     def patched_build():
         tools, registry = original_build()
