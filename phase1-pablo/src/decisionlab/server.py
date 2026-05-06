@@ -283,7 +283,7 @@ async def run_pipeline(
     from anthropic import AsyncAnthropic
 
     import shared
-    from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+    from decisionlab.adapters import default_search_chain
     from shared.models import Run
 
     stop_after: Stage | None = None
@@ -305,7 +305,7 @@ async def run_pipeline(
 
     try:
         client = AsyncAnthropic()
-        search = DuckDuckGoAdapter()
+        search = default_search_chain()
 
         run_id = str(uuid.uuid4())
         await emit({"type": "run_start", "run_id": run_id})

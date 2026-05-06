@@ -363,7 +363,15 @@ def _empty_suite_result(spec: SuiteSpec, t0: float, error: str) -> SuiteResult:
     )
 
 
-_KG_ASSERTION_NAMES = frozenset({"min_nodes", "relation_exists"})
+_KG_ASSERTION_NAMES = frozenset(
+    {
+        "min_nodes",
+        "relation_exists",
+        "paradigm_reused",
+        "min_memories",
+        "confidence_above",
+    }
+)
 
 
 def _is_kg_assertion(spec_dict: dict) -> bool:

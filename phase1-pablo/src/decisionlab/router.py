@@ -23,6 +23,7 @@ from decisionlab.knowledge.retrieval.tool import (
     create_retrieve_knowledge,
 )
 from decisionlab.parsing import FORMULATION_HEADER_RE
+from decisionlab.runtime.tool_calls import set_stage as _set_recording_stage
 from decisionlab.tools.reports import slugify
 
 if TYPE_CHECKING:
@@ -724,6 +725,7 @@ class Router:
         while self.state.stage != Stage.DONE:
             current_stage = self.state.stage  # capture before handler
             handler = handlers[current_stage]
+            _set_recording_stage(current_stage)
 
             if current_stage in _TIMELINE_WORK_STAGES:
                 self._tracer.stage(current_stage.value)

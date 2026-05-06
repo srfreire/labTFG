@@ -32,18 +32,34 @@ _TEMPORAL_KEYS = frozenset(
 _FALLBACK_KEY_NAMES = ("slug", "id", "doi", "url", "name", "title")
 
 
-def _resolve_natural_key(node) -> tuple[str, object] | None:
+def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
     """Pick a usable (key_name, key_value) pair for a node.
 
-    Tries in order:
-      1. The LLM-declared natural_key, if its value is present in properties.
-      2. Any of _FALLBACK_KEY_NAMES present in properties.
-      3. A synthetic key derived from a stable hash of (label, properties).
+    Resolution order:
+      1. The schema's unique-key property (e.g. ``Paper.doi``) when present
+         and non-null in properties — overrides any LLM-declared key so the
+         Neo4j uniqueness constraint cannot be violated by accidentally
+         MERGEing on a different field (the cumulative-growth t1 failure).
+      2. The LLM-declared natural_key, if its value is present in properties.
+      3. Any of _FALLBACK_KEY_NAMES present in properties.
+      4. A synthetic key derived from a stable hash of (label, properties).
 
-    For (3) the property is injected into ``node.properties`` so MERGE has
+    For (4) the property is injected into ``node.properties`` so MERGE has
     something to bind to. Returning None means the node has neither a label
     nor any property to hash — effectively unrecoverable.
     """
+    schema_key: str | None = None
+    if kg is not None:
+        try:
+            schema_key = kg.unique_key_for(node.label)
+        except (ValueError, AttributeError):
+            schema_key = None
+
+    if schema_key and _SAFE_IDENT.match(schema_key):
+        val = node.properties.get(schema_key)
+        if val is not None and val != "":
+            return schema_key, val
+
     declared = node.natural_key
     if declared and _SAFE_IDENT.match(declared):
         val = node.properties.get(declared)
@@ -87,18 +103,21 @@ async def populate_kg(
 ) -> KGWriteResult:
     """Write extraction nodes and relations to Neo4j with dedup and provenance.
 
-    Nodes are MERGEd (ON CREATE / ON MATCH) so duplicates are impossible.
-    Relations follow the Zep immutable+supersession pattern: if an existing
-    active relation has different non-temporal properties, it is superseded
-    (valid_to set) and a new one created.
+    Each node and relation is written in its own managed-write transaction,
+    so a single failure (e.g. a ``Paper.doi`` constraint collision) cannot
+    void the rest of the batch. Failed writes are logged into ``errors``
+    and skipped; downstream assertions detect partial writes via
+    ``KGWriteResult.errors``.
 
-    Everything runs in a single write transaction.  If the transaction fails,
-    a KGWriteResult with zero counts and the error message is returned.
+    Nodes are MERGEd (ON CREATE / ON MATCH) so re-running on the same
+    extraction is idempotent. Relations follow the Zep immutable+
+    supersession pattern: if an existing active relation has different
+    non-temporal properties, it is superseded (``valid_to`` set) and a
+    new one created.
     """
     now = datetime.now(UTC).isoformat()
     run_id = extraction.run_id
 
-    # Mutable accumulators shared with the transaction closure.
     counters = {
         "nodes_created": 0,
         "nodes_merged": 0,
@@ -111,32 +130,30 @@ async def populate_kg(
     # so relation lookups use the extraction's natural key, not the schema default.
     node_key_map: dict[tuple[str, str], str] = {}
 
-    async def _work(tx):
-        # ── Nodes ────────────────────────────────────────────────────────
-        for node in extraction.nodes:
-            if not _SAFE_IDENT.match(node.label):
-                errors.append(f"Node: invalid label '{node.label}'")
-                continue
+    # ── Nodes ────────────────────────────────────────────────────────────
+    for node in extraction.nodes:
+        if not _SAFE_IDENT.match(node.label):
+            errors.append(f"Node: invalid label '{node.label}'")
+            continue
 
-            resolved = _resolve_natural_key(node)
-            if resolved is None:
-                errors.append(
-                    f"Node {node.label}: no usable natural_key and no properties to hash"
-                )
-                continue
-            key_name, key_value = resolved
+        resolved = _resolve_natural_key(node, kg)
+        if resolved is None:
+            errors.append(
+                f"Node {node.label}: no usable natural_key and no properties to hash"
+            )
+            continue
+        key_name, key_value = resolved
 
-            # Record for relation endpoint resolution.
-            node_key_map[(node.label, str(key_value))] = key_name
-
-            # Properties for ON CREATE (includes created_at, run_ids).
-            # Strip updated_at to keep the was_created heuristic reliable.
+        # Per-entity transaction: a constraint failure on this node leaves
+        # the rest of the batch untouched. The pre-rewrite version wrapped
+        # every node + relation in a single tx, so a single Paper.doi
+        # collision wiped the whole topic's writes (cumulative-growth t1).
+        async def _node_work(tx, node=node, key_name=key_name, key_value=key_value):
             create_props = {
                 **{k: v for k, v in node.properties.items() if k != "updated_at"},
                 "created_at": now,
                 "run_ids": [run_id],
             }
-            # Properties for ON MATCH (overrides values, preserves created_at).
             update_props = {**node.properties, "updated_at": now}
 
             cypher = (
@@ -155,39 +172,65 @@ async def populate_kg(
                     "run_id": run_id,
                 },
             )
-            record = await result.single()
-            if record and record["was_created"]:
-                counters["nodes_created"] += 1
-            else:
-                counters["nodes_merged"] += 1
+            return await result.single()
 
-        # ── Relations ────────────────────────────────────────────────────
-        for rel in extraction.relations:
-            # Validate all identifiers interpolated into Cypher.
-            if not _SAFE_IDENT.match(rel.from_label):
-                errors.append(f"Relation: invalid from_label '{rel.from_label}'")
-                continue
-            if not _SAFE_IDENT.match(rel.to_label):
-                errors.append(f"Relation: invalid to_label '{rel.to_label}'")
-                continue
-            if not _SAFE_IDENT.match(rel.rel_type):
-                errors.append(f"Relation: invalid rel_type '{rel.rel_type}'")
-                continue
-
-            # Resolve which property to match each endpoint on.
-            from_key = _resolve_key(
-                rel.from_label, rel.from_key_value, node_key_map, kg
+        try:
+            record = await kg.execute_write(_node_work)
+        except Exception as exc:
+            errors.append(
+                f"Node {node.label}.{key_name}={key_value!r} write failed: {exc}"
             )
-            to_key = _resolve_key(rel.to_label, rel.to_key_value, node_key_map, kg)
-            if from_key is None or to_key is None:
-                errors.append(
-                    f"Relation {rel.rel_type}: cannot resolve key for "
-                    f"{rel.from_label}={rel.from_key_value!r} or "
-                    f"{rel.to_label}={rel.to_key_value!r}"
-                )
-                continue
+            logger.warning(
+                "kg_write_skipped node=%s key=%s=%r: %s",
+                node.label,
+                key_name,
+                key_value,
+                exc,
+            )
+            continue
 
-            # Check for existing active relation of the same type.
+        node_key_map[(node.label, str(key_value))] = key_name
+        if record and record["was_created"]:
+            counters["nodes_created"] += 1
+        else:
+            counters["nodes_merged"] += 1
+
+    # ── Relations ────────────────────────────────────────────────────────
+    for rel in extraction.relations:
+        if not _SAFE_IDENT.match(rel.from_label):
+            errors.append(f"Relation: invalid from_label '{rel.from_label}'")
+            continue
+        if not _SAFE_IDENT.match(rel.to_label):
+            errors.append(f"Relation: invalid to_label '{rel.to_label}'")
+            continue
+        if not _SAFE_IDENT.match(rel.rel_type):
+            errors.append(f"Relation: invalid rel_type '{rel.rel_type}'")
+            continue
+
+        from_key = _resolve_key(rel.from_label, rel.from_key_value, node_key_map, kg)
+        to_key = _resolve_key(rel.to_label, rel.to_key_value, node_key_map, kg)
+        if from_key is None or to_key is None:
+            errors.append(
+                f"Relation {rel.rel_type}: cannot resolve key for "
+                f"{rel.from_label}={rel.from_key_value!r} or "
+                f"{rel.to_label}={rel.to_key_value!r}"
+            )
+            continue
+
+        new_props = {
+            **rel.properties,
+            "run_id": run_id,
+            "created_at": now,
+            "valid_from": now,
+        }
+
+        async def _rel_work(
+            tx,
+            rel=rel,
+            from_key=from_key,
+            to_key=to_key,
+            new_props=new_props,
+        ):
             check_cypher = (
                 f"MATCH (a:{rel.from_label} {{{from_key}: $from_val}})"
                 f"-[r:{rel.rel_type}]->"
@@ -204,13 +247,7 @@ async def populate_kg(
             )
             existing = await check_result.single()
 
-            new_props = {
-                **rel.properties,
-                "run_id": run_id,
-                "created_at": now,
-                "valid_from": now,
-            }
-
+            superseded = False
             if existing:
                 old_content = {
                     k: v
@@ -221,16 +258,14 @@ async def populate_kg(
                     k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS
                 }
                 if old_content == new_content:
-                    continue  # idempotent — skip
+                    return ("idempotent", False)
 
-                # Supersede: mark old relation with valid_to.
                 await tx.run(
                     "MATCH ()-[r]->() WHERE elementId(r) = $rid SET r.valid_to = $now",
                     {"rid": existing["rid"], "now": now},
                 )
-                counters["relations_superseded"] += 1
+                superseded = True
 
-            # Create the new relation.
             create_cypher = (
                 f"MATCH (a:{rel.from_label} {{{from_key}: $from_val}}), "
                 f"(b:{rel.to_label} {{{to_key}: $to_val}}) "
@@ -245,24 +280,34 @@ async def populate_kg(
                     "props": new_props,
                 },
             )
-            record = await create_result.single()
-            if record is None:
-                errors.append(
-                    f"Relation {rel.rel_type}: endpoint not found — "
-                    f"{rel.from_label}.{from_key}={rel.from_key_value!r} or "
-                    f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
-                )
-                continue
-            counters["relations_created"] += 1
+            create_record = await create_result.single()
+            if create_record is None:
+                return ("missing_endpoint", superseded)
+            return ("created", superseded)
 
-    try:
-        await kg.execute_write(_work)
-    except Exception as exc:
-        logger.error("populate_kg transaction failed: %s", exc)
-        errors.append(f"Transaction failed: {exc}")
-        # Transaction rolled back — zero out counts.
-        for key in counters:
-            counters[key] = 0
+        try:
+            outcome, superseded = await kg.execute_write(_rel_work)
+        except Exception as exc:
+            errors.append(f"Relation {rel.rel_type}: write failed: {exc}")
+            logger.warning(
+                "kg_write_skipped rel=%s %s→%s: %s",
+                rel.rel_type,
+                rel.from_label,
+                rel.to_label,
+                exc,
+            )
+            continue
+
+        if superseded:
+            counters["relations_superseded"] += 1
+        if outcome == "created":
+            counters["relations_created"] += 1
+        elif outcome == "missing_endpoint":
+            errors.append(
+                f"Relation {rel.rel_type}: endpoint not found — "
+                f"{rel.from_label}.{from_key}={rel.from_key_value!r} or "
+                f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
+            )
 
     return KGWriteResult(**counters, errors=errors)
 

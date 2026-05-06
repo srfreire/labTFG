@@ -15,7 +15,7 @@ import logging
 import time
 import uuid
 from collections.abc import Iterable
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,6 +23,7 @@ from decisionlab.eval.models import PipelineRunResult
 from decisionlab.feedback_port import AutoApproveFeedback
 from decisionlab.router import PipelineState, Router, Stage
 from decisionlab.runtime import usage as usage_module
+from decisionlab.runtime.tool_calls import start_recording as _start_tool_call_recording
 from decisionlab.tools.reports import slugify
 
 if TYPE_CHECKING:
@@ -160,6 +161,9 @@ async def run_pipeline(
     if reset_usage:
         usage_module.reset()
 
+    started_at_iso = datetime.now(UTC).isoformat()
+    tool_call_log = _start_tool_call_recording()
+
     await _create_run_row(rid, topic)
 
     state = PipelineState(
@@ -226,4 +230,6 @@ async def run_pipeline(
         duration_ms=duration_ms,
         failed_at=failed_at,
         error=error,
+        tool_call_log=tuple(tool_call_log),
+        started_at=started_at_iso,
     )

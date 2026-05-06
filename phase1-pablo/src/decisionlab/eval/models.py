@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from decisionlab.router import Stage
+from decisionlab.runtime.tool_calls import ToolCall
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,11 @@ class PipelineRunResult:
     duration_ms: int = 0
     failed_at: Stage | None = None
     error: str | None = None
+    tool_call_log: tuple[ToolCall, ...] = ()
+    # ISO-8601 wall-clock timestamp when the pipeline started — needed by
+    # ``paradigm_reused`` to distinguish "this run minted the node" from
+    # "this run hit an existing node".
+    started_at: str = ""
 
     @property
     def succeeded(self) -> bool:

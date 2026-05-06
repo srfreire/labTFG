@@ -56,9 +56,9 @@ def _client():
 
 
 def _search():
-    from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+    from decisionlab.adapters import default_search_chain
 
-    return DuckDuckGoAdapter()
+    return default_search_chain()
 
 
 async def _with_shared(coro_factory):

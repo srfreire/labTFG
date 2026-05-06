@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.markdown import Markdown
 
-from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
+from decisionlab.adapters import default_search_chain
 from decisionlab.runtime.usage import log_summary as log_usage_summary
 from decisionlab.tools.reports import slugify
 
@@ -101,7 +101,7 @@ def research(
 
     async def _run():
         r = Researcher(
-            client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir
+            client=_client(), search=default_search_chain(), reports_dir=reports_dir
         )
         return await r.run(problem)
 
@@ -123,7 +123,7 @@ def deep_research(
 
     async def _run():
         dr = DeepResearcher(
-            client=_client(), search=DuckDuckGoAdapter(), reports_dir=reports_dir
+            client=_client(), search=default_search_chain(), reports_dir=reports_dir
         )
         return await dr.run(paradigm)
 
@@ -326,7 +326,7 @@ def run(
             router = Router(
                 client=_client(),
                 state=state,
-                search=DuckDuckGoAdapter(),
+                search=default_search_chain(),
                 project_root=Path.cwd(),
                 stop_after=stop_after,
                 feedback=CLIFeedback(),
@@ -379,7 +379,7 @@ def resume(
             router = Router(
                 client=_client(),
                 state=state,
-                search=DuckDuckGoAdapter(),
+                search=default_search_chain(),
                 project_root=Path.cwd(),
                 feedback=CLIFeedback(),
             )
