@@ -193,10 +193,8 @@ Scoring guide:
 - 8-10: Fundamental — core paradigm mechanisms, key findings, validated parameters, \
 novel insights
 
-Output ONLY valid JSON (no markdown fences, no commentary) as a list:
-[
-  {"fact": "<the exact fact text>", "importance": <integer 1-10>, "reasoning": "<brief justification>"}
-]\
+Call the provided tool to return a structured object. Each entry must repeat the \
+exact fact text you scored. Importance values are floats in [1.0, 10.0].\
 """
 
 IMPORTANCE_SCORING_USER = "Rate the importance of each fact for a researcher studying decision-making paradigms:\n\n{facts_json}"

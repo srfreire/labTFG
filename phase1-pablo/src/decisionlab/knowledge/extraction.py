@@ -1,12 +1,19 @@
-"""Core extraction logic: dispatches to stage-specific prompts, calls Haiku, parses JSON."""
+"""Core extraction logic: dispatches to stage-specific prompts, calls Sonnet, parses JSON.
+
+Switched to ``decisionlab.structured.call_structured`` (forced tool-use +
+Pydantic) so a malformed model response now raises
+``StructuredOutputError`` immediately. The pre-rewrite path silently
+retried once and then crashed, which on cumulative-growth t1 voided the
+whole topic without any actionable signal in the trace.
+"""
 
 from __future__ import annotations
 
-import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from decisionlab.config import SETTINGS
+from pydantic import BaseModel, Field
+
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.prompts import (
     BUILDER_SYSTEM,
@@ -18,14 +25,14 @@ from decisionlab.knowledge.prompts import (
     RESEARCHER_SYSTEM,
     RESEARCHER_USER,
 )
-from decisionlab.runtime.usage import record as record_usage
+from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
+from decisionlab.structured import call_structured
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
 
 logger = logging.getLogger(__name__)
 
-_FAST_MODEL = SETTINGS.knowledge_fast_model
 _MAX_TOKENS = 32768
 
 _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
@@ -36,6 +43,33 @@ _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
 }
 
 
+# Pydantic schemas mirror the pre-rewrite prompt JSON shape so the
+# downstream ``_build_result`` parser still sees the same dict structure.
+# ``properties`` is left as ``dict`` (free-form) because each node label
+# carries different keys; the Pydantic root validates only the envelope.
+
+
+class _NodeRaw(BaseModel):
+    label: str
+    properties: dict[str, Any] = Field(default_factory=dict)
+    natural_key: str = ""
+
+
+class _RelationRaw(BaseModel):
+    from_label: str
+    from_key_value: str
+    to_label: str
+    to_key_value: str
+    rel_type: str
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class _Extraction(BaseModel):
+    nodes: list[_NodeRaw] = Field(default_factory=list)
+    relations: list[_RelationRaw] = Field(default_factory=list)
+    facts: list[str] = Field(default_factory=list)
+
+
 async def extract(
     stage: str,
     output_text: str,
@@ -44,10 +78,9 @@ async def extract(
 ) -> ExtractionResult:
     """Extract entities, relations, and facts from a pipeline stage's output.
 
-    Dispatches to the appropriate stage-specific prompt, calls Haiku, and parses
-    the structured JSON response. Retries once on a JSON parse failure; raises
-    if both attempts produce unparseable output. Output truncation
-    (``stop_reason="max_tokens"``) is also raised — see ``_call_haiku``.
+    Uses ``call_structured`` so the model is forced to emit JSON matching
+    ``_Extraction``. Schema violation raises ``StructuredOutputError`` —
+    callers decide whether to skip the stage or surface the failure.
     """
     if stage not in _STAGE_PROMPTS:
         raise ValueError(
@@ -57,74 +90,15 @@ async def extract(
     system_prompt, user_template = _STAGE_PROMPTS[stage]
     user_message = user_template.replace("{text}", output_text)
 
-    raw_json = await _call_haiku(client, system_prompt, user_message)
-    parsed = _try_parse_json(raw_json)
-
-    if parsed is None:
-        logger.warning("Malformed JSON from Haiku for stage %r, retrying once", stage)
-        raw_json = await _call_haiku(client, system_prompt, user_message)
-        parsed = _try_parse_json(raw_json)
-
-        if parsed is None:
-            raise RuntimeError(
-                f"Haiku returned unparseable JSON for stage {stage!r} on both attempts"
-            )
-
-    return _build_result(parsed, stage, run_id)
-
-
-async def _call_haiku(
-    client: AsyncAnthropic,
-    system_prompt: str,
-    user_message: str,
-) -> str:
-    """Make a single Haiku API call and return the text response.
-
-    Uses the streaming API because the SDK requires streaming for any request
-    whose ``max_tokens`` could exceed the 10-minute non-streaming timeout.
-    """
-    async with client.messages.stream(
-        model=_FAST_MODEL,
-        max_tokens=_MAX_TOKENS,
-        system=system_prompt,
+    parsed = await call_structured(
+        client=client,
         messages=[{"role": "user", "content": user_message}],
-    ) as stream:
-        response = await stream.get_final_message()
-
-    record_usage(_FAST_MODEL, getattr(response, "usage", None))
-
-    if getattr(response, "stop_reason", None) == "max_tokens":
-        usage = getattr(response, "usage", None)
-        out_tokens = getattr(usage, "output_tokens", None) if usage else None
-        raise RuntimeError(
-            f"Haiku output truncated at max_tokens={_MAX_TOKENS} "
-            f"(output_tokens={out_tokens}); raise _MAX_TOKENS or chunk the input"
-        )
-
-    if not response.content:
-        logger.warning("Haiku returned empty content list")
-        return ""
-    return response.content[0].text
-
-
-def _try_parse_json(text: str) -> dict | None:
-    """Attempt to parse JSON from the LLM response, stripping markdown fences if present."""
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        # Strip ```json ... ``` fences
-        lines = cleaned.split("\n")
-        # Drop first line (```json) and last line (```)
-        lines = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
-        cleaned = "\n".join(lines)
-
-    try:
-        data = json.loads(cleaned)
-    except json.JSONDecodeError:
-        return None
-
-    if not isinstance(data, dict):
-        return None
-    return data
+        system=system_prompt,
+        schema=_Extraction,
+        max_tokens=_MAX_TOKENS,
+        model=_STRUCTURED_MODEL,
+    )
+    return _build_result(parsed.model_dump(), stage, run_id)
 
 
 _TEST_RESULT_PROPS = ("passed", "failure_reason")

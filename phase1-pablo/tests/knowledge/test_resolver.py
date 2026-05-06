@@ -1,6 +1,10 @@
 """Tests for conflict resolution, importance scoring, and memory persistence.
 
-Covers acceptance criteria AC1 through AC7 for issue P2-004.
+Covers acceptance criteria AC1 through AC7 for issue P2-004. After Phase B
+(research-memory rewrite) both ``_score_importance`` and ``_classify_conflict``
+route through ``decisionlab.structured.call_structured`` (forced tool-use),
+so the mock here builds tool_use responses keyed by the wrapper's
+``emit_<schema>`` tool name.
 """
 
 import json
@@ -23,10 +27,21 @@ from decisionlab.knowledge.resolver import (
 # ---------------------------------------------------------------------------
 
 
-def _make_response(text: str, *, stop_reason: str = "end_turn") -> MagicMock:
-    """Build a mock Anthropic message response."""
+def _wrap_importance(scored: list[dict]) -> dict:
+    """Wrap pre-rewrite ``[{fact, importance, ...}]`` shape in the new
+    ``{scores: [...]}`` envelope expected by ``_ImportanceScores``."""
+    return {"scores": scored}
+
+
+def _make_tool_response(
+    tool_name: str, payload: dict, *, stop_reason: str = "end_turn"
+) -> MagicMock:
+    """Build a structured-output response carrying one tool_use block."""
     block = MagicMock()
-    block.text = text
+    block.type = "tool_use"
+    block.name = tool_name
+    block.input = payload
+
     resp = MagicMock()
     resp.content = [block]
     resp.stop_reason = stop_reason
@@ -34,55 +49,62 @@ def _make_response(text: str, *, stop_reason: str = "end_turn") -> MagicMock:
     return resp
 
 
-class _StreamCM:
-    """Async context manager mimicking ``client.messages.stream(...)``."""
+def _make_client(responses: list) -> MagicMock:
+    """Build a client whose ``messages.create`` yields the given responses.
 
-    def __init__(self, response):
-        self._response = response
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_exc):
-        return False
-
-    async def get_final_message(self):
-        return self._response
-
-
-class _MessagesAPI:
-    """Mimics ``client.messages``: both ``create`` and ``stream`` consume from
-    the same response queue, so callers don't have to care which path the
-    resolver picks. ``call_args`` and ``call_count`` are tracked per attr."""
-
-    def __init__(self, queue: list):
-        self._iter = iter(queue)
-        self.create = AsyncMock(side_effect=self._next_response)
-        self.stream = MagicMock(side_effect=self._next_stream_cm)
-
-    def _next_response(self, **_kw):
-        item = next(self._iter)
-        if isinstance(item, BaseException) or (
-            isinstance(item, type) and issubclass(item, BaseException)
+    Each entry is one of:
+      - a JSON string with shape matching the next call (importance =
+        ``[{fact, importance}, ...]`` or ``{scores: [...]}``; conflict =
+        ``{classification, reasoning, merged_content}``) — wrapped to a
+        tool_use block,
+      - a dict (used directly as tool input),
+      - a pre-built MagicMock,
+      - an exception class or instance (raised on dispatch).
+    """
+    queue: list = []
+    for entry in responses:
+        if isinstance(entry, BaseException) or (
+            isinstance(entry, type) and issubclass(entry, BaseException)
         ):
+            queue.append(entry)
+            continue
+        if isinstance(entry, MagicMock):
+            queue.append(entry)
+            continue
+        if isinstance(entry, str):
+            try:
+                parsed = json.loads(entry)
+            except json.JSONDecodeError:
+                parsed = entry
+        else:
+            parsed = entry
+
+        # Decide which tool name based on the shape of the parsed payload.
+        if isinstance(parsed, list):
+            tool_name = "emit__ImportanceScores"
+            parsed = _wrap_importance(parsed)
+        elif isinstance(parsed, dict) and "scores" in parsed:
+            tool_name = "emit__ImportanceScores"
+        elif isinstance(parsed, dict) and "classification" in parsed:
+            tool_name = "emit__ConflictClassification"
+        else:
+            # Fallback: assume importance.
+            tool_name = "emit__ImportanceScores"
+        queue.append(_make_tool_response(tool_name, parsed))
+
+    iterator = iter(queue)
+
+    async def _create(**_kw):
+        item = next(iterator)
+        if isinstance(item, BaseException):
             raise item
+        if isinstance(item, type) and issubclass(item, BaseException):
+            raise item()
         return item
 
-    def _next_stream_cm(self, **_kw):
-        item = next(self._iter)
-        if isinstance(item, BaseException) or (
-            isinstance(item, type) and issubclass(item, BaseException)
-        ):
-            raise item
-        return _StreamCM(item)
-
-
-def _make_client(responses: list) -> MagicMock:
-    """Wire both ``messages.create`` and ``messages.stream`` against a single
-    response queue; whichever path the resolver picks next consumes the head."""
-    queue = [r if not isinstance(r, str) else _make_response(r) for r in responses]
     client = MagicMock()
-    client.messages = _MessagesAPI(queue)
+    client.messages = MagicMock()
+    client.messages.create = AsyncMock(side_effect=_create)
     return client
 
 
@@ -167,8 +189,9 @@ async def test_importance_scoring_high_for_meaningful_fact():
 
 
 @pytest.mark.asyncio
-async def test_importance_scoring_calls_haiku():
-    """Importance scoring should call the Haiku model."""
+async def test_importance_scoring_uses_structured_sonnet():
+    """Importance scoring runs through call_structured against Sonnet 4.6
+    (forced tool-use) — see Phase B of research-memory-rewrite.md."""
     scored_response = json.dumps(
         [
             {"fact": "test fact", "importance": 5, "reasoning": "average"},
@@ -178,10 +201,12 @@ async def test_importance_scoring_calls_haiku():
 
     await _score_importance(["test fact"], client)
 
-    # _score_importance now streams (max_tokens=16384), so check stream not create
-    client.messages.stream.assert_called_once()
-    call_kwargs = client.messages.stream.call_args.kwargs
-    assert "haiku" in call_kwargs["model"]
+    client.messages.create.assert_called_once()
+    call_kwargs = client.messages.create.call_args.kwargs
+    assert "sonnet" in call_kwargs["model"].lower()
+    # Forced tool-use: a single tool with input_schema, tool_choice locked.
+    assert len(call_kwargs["tools"]) == 1
+    assert call_kwargs["tool_choice"]["type"] == "tool"
 
 
 @pytest.mark.asyncio
@@ -563,9 +588,9 @@ async def test_sonnet_not_called_without_duplicates():
 
     assert result.sonnet_calls == 0
     assert result.memories_created == 3
-    # Only one LLM call — importance scoring (Haiku, now via stream); no Sonnet
-    assert client.messages.stream.call_count == 1
-    assert client.messages.create.call_count == 0
+    # Only one LLM call: importance scoring (Sonnet via call_structured);
+    # no conflict classification because there are no duplicates.
+    assert client.messages.create.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -639,97 +664,50 @@ async def test_sonnet_called_only_for_facts_with_duplicates():
 
 
 # ---------------------------------------------------------------------------
-# AC7: Haiku failure defaults all facts to importance 5.0
+# Phase B: structured-output failures raise loudly (no silent 5.0 default)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_haiku_failure_defaults_importance_to_5():
-    """AC7: If Haiku importance scoring fails, all facts default to 5.0 and processing continues."""
-    # Haiku returns invalid JSON
-    client = _make_client(["THIS IS NOT JSON"])
+async def test_importance_scoring_validation_failure_raises():
+    """A response whose tool input violates ``_ImportanceScores`` schema
+    raises StructuredOutputError. The pre-rewrite path silently defaulted
+    every fact to importance 5.0 on every cumulative-growth topic."""
+    from decisionlab.structured import StructuredOutputError
 
-    emb = _mock_embedding_service()
-    vs = _mock_vector_store([])
-    session = _mock_db_session()
+    bad = _make_tool_response("emit__ImportanceScores", {"not_scores": "wrong shape"})
+    client = _make_client([bad])
 
-    extraction = _make_extraction(
-        ["fact alpha", "fact beta"],
-        stage="researcher",
+    with pytest.raises(StructuredOutputError):
+        await _score_importance(["fact a", "fact b"], client)
+
+
+@pytest.mark.asyncio
+async def test_importance_scoring_truncation_raises():
+    """Sonnet truncation surfaces as StructuredOutputError so the eval
+    trace shows the actual cause rather than "json.loads failed"."""
+    from decisionlab.structured import StructuredOutputError
+
+    truncated = _make_tool_response(
+        "emit__ImportanceScores",
+        {"scores": []},
+        stop_reason="max_tokens",
     )
-
-    with (
-        patch(
-            "decisionlab.knowledge.resolver.create_memory",
-            new_callable=AsyncMock,
-            return_value=MagicMock(id=uuid.uuid4()),
-        ) as mock_create,
-        patch(
-            "decisionlab.knowledge.resolver.supersede_memory", new_callable=AsyncMock
-        ),
-        patch(
-            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
-        ),
-    ):
-        result = await resolve_and_store(extraction, emb, vs, session, client)
-
-    assert result.memories_created == 2
-    assert result.importance_scores == {"fact alpha": 5.0, "fact beta": 5.0}
-
-    # Verify that create_memory was called with importance=5.0
-    for c in mock_create.call_args_list:
-        assert c.kwargs["importance"] == 5.0
-
-
-@pytest.mark.asyncio
-async def test_haiku_exception_defaults_importance_to_5():
-    """AC7: If Haiku call raises exception, all facts default to 5.0."""
-    # Both paths raise — covers create and stream entrypoints in case the
-    # importance budget is later tuned across the streaming threshold.
-    client = MagicMock()
-    client.messages = MagicMock()
-    client.messages.create = AsyncMock(side_effect=RuntimeError("API error"))
-    client.messages.stream = MagicMock(side_effect=RuntimeError("API error"))
-
-    scores = await _score_importance(["fact a", "fact b"], client)
-    assert scores == {"fact a": 5.0, "fact b": 5.0}
-
-
-@pytest.mark.asyncio
-async def test_importance_scoring_truncation_logs_and_defaults_to_5(caplog):
-    """When Haiku hits stop_reason='max_tokens', the underlying
-    ``_call_llm_json`` raises and the broad except in ``_score_importance``
-    defaults importance to 5.0 — but the log message must include the
-    truncation reason rather than only ``Expecting value`` from json.loads."""
-    truncated = _make_response('[{"fact": "fact a", "imp', stop_reason="max_tokens")
     truncated.usage = MagicMock(output_tokens=16384)
     client = _make_client([truncated])
 
-    with caplog.at_level("WARNING", logger="decisionlab.knowledge.resolver"):
-        scores = await _score_importance(["fact a", "fact b"], client)
-
-    assert scores == {"fact a": 5.0, "fact b": 5.0}
-    assert any("Importance scoring failed" in r.message for r in caplog.records)
-    # Truncation has to surface in the traceback the warning attaches via
-    # exc_info — otherwise the failure looks like a generic JSON error.
-    truncation_logged = any(
-        r.exc_info
-        and r.exc_info[1] is not None
-        and "truncated at max_tokens" in str(r.exc_info[1])
-        for r in caplog.records
-    )
-    assert truncation_logged, "max_tokens truncation must be visible in the logs"
+    with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
+        await _score_importance(["fact a", "fact b"], client)
 
 
 @pytest.mark.asyncio
-async def test_classify_conflict_truncation_treats_as_unknown(caplog):
-    """Same fail-loud-but-degrade-gracefully path for the Sonnet conflict
-    classification call."""
-    from decisionlab.knowledge.resolver import _classify_conflict
-
-    truncated = _make_response('{"classification": "ENRIC', stop_reason="max_tokens")
-    truncated.usage = MagicMock(output_tokens=4096)
-    client = _make_client([truncated])
+async def test_classify_conflict_validation_failure_returns_unknown(caplog):
+    """Conflict classification has a tighter blast radius (per-pair, not
+    per-stage) so a schema violation is logged and the caller treats the
+    fact as new — but the failure is no longer silent: it goes to the
+    log at WARNING."""
+    bad = _make_tool_response("emit__ConflictClassification", {"unexpected": "field"})
+    client = _make_client([bad])
 
     with caplog.at_level("WARNING", logger="decisionlab.knowledge.resolver"):
         result = await _classify_conflict(
@@ -742,13 +720,7 @@ async def test_classify_conflict_truncation_treats_as_unknown(caplog):
         )
 
     assert result["classification"] == "UNKNOWN"
-    truncation_logged = any(
-        r.exc_info
-        and r.exc_info[1] is not None
-        and "truncated at max_tokens" in str(r.exc_info[1])
-        for r in caplog.records
-    )
-    assert truncation_logged
+    assert any("Conflict classification failed" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------

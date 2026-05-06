@@ -1,27 +1,50 @@
-"""Tests for knowledge extraction module — covers AC1 through AC6."""
+"""Tests for knowledge extraction module — covers AC1 through AC6.
+
+The pre-rewrite extraction path streamed Haiku JSON and parsed the text.
+After Phase B (research-memory rewrite) extraction routes through
+``decisionlab.structured.call_structured`` which uses forced tool-use, so
+the mock here builds a tool_use response instead of a text block. The
+extracted-entity assertions are unchanged because ``_build_result`` still
+consumes the same dict shape.
+"""
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from decisionlab.knowledge.extraction import (
     _build_result,
     _fold_legacy_test_results,
-    _try_parse_json,
     extract,
 )
 from decisionlab.knowledge.models import ExtractionResult
+from decisionlab.structured import StructuredOutputError
 
 # ---------------------------------------------------------------------------
-# Helpers: build mock Haiku responses
+# Helpers: build mock structured responses
 # ---------------------------------------------------------------------------
 
 
-def _make_response(text: str, *, stop_reason: str = "end_turn") -> MagicMock:
-    """Build a mock Anthropic message response with the given text content."""
+def _make_response(payload, *, stop_reason: str = "end_turn") -> MagicMock:
+    """Build a mock Anthropic response carrying a single tool_use block.
+
+    ``payload`` is the parsed dict the structured wrapper will validate via
+    Pydantic. Pass a JSON string to test the wrapper's defensive JSON parse.
+    """
+    if isinstance(payload, str):
+        try:
+            payload_dict = json.loads(payload)
+        except json.JSONDecodeError:
+            payload_dict = payload  # Wrapper will raise StructuredOutputError
+    else:
+        payload_dict = payload
+
     block = MagicMock()
-    block.text = text
+    block.type = "tool_use"
+    block.name = "emit__Extraction"
+    block.input = payload_dict
+
     resp = MagicMock()
     resp.content = [block]
     resp.stop_reason = stop_reason
@@ -29,36 +52,23 @@ def _make_response(text: str, *, stop_reason: str = "end_turn") -> MagicMock:
     return resp
 
 
-class _StreamCM:
-    """Async context manager mimicking ``client.messages.stream(...)``."""
-
-    def __init__(self, response):
-        self._response = response
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_exc):
-        return False
-
-    async def get_final_message(self):
-        return self._response
-
-
 def _make_client(responses: list) -> MagicMock:
-    """Create a client whose messages.stream(...) yields the given responses in order.
+    """Create a client whose messages.create(...) yields the given responses in order.
 
-    Each ``responses`` entry is either a JSON string (wrapped via ``_make_response``)
-    or an already-built mock response.
+    Each ``responses`` entry is either a JSON string / dict (wrapped via
+    ``_make_response``) or an already-built mock response.
     """
-    queue = [r if not isinstance(r, str) else _make_response(r) for r in responses]
+    queue = [
+        r if not isinstance(r, str | dict) else _make_response(r) for r in responses
+    ]
     iterator = iter(queue)
+
+    async def _create(**_kw):
+        return next(iterator)
 
     client = MagicMock()
     client.messages = MagicMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: _StreamCM(next(iterator))
-    )
+    client.messages.create = AsyncMock(side_effect=_create)
     return client
 
 
@@ -767,44 +777,34 @@ async def test_each_extraction_produces_atomic_facts(stage, response):
 
 
 # ---------------------------------------------------------------------------
-# AC6: Malformed JSON retry
+# Structured-output failure modes (replaces pre-rewrite JSON-retry tests)
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_malformed_json_retries_once_then_succeeds():
-    """AC6: Malformed JSON triggers one retry; second attempt succeeds."""
-    client = _make_client(["not valid json {{{", RESEARCHER_RESPONSE])
-    result = await extract("researcher", "report text", "run-1", client)
-
-    assert isinstance(result, ExtractionResult)
-    assert len(result.nodes) > 0
-    assert client.messages.stream.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_malformed_json_both_attempts_raises():
-    """If both attempts return unparseable JSON, extract() raises RuntimeError.
-
-    Previously this path silently returned an empty ExtractionResult, which
-    masked truncation/parse failures as "successful" runs in the Memory Agent.
-    """
-    client = _make_client(["bad json", "still bad json"])
-    with pytest.raises(RuntimeError, match="unparseable JSON"):
-        await extract("researcher", "report text", "run-1", client)
-    assert client.messages.stream.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_max_tokens_truncation_raises_immediately():
     """stop_reason='max_tokens' raises on the first call — retrying with the
-    same prompt would just truncate again, so we fail loud instead of silently."""
-    truncated = _make_response('{"nodes":[{"label":"Para', stop_reason="max_tokens")
+    same prompt would truncate again, so the wrapper fails loudly."""
+    truncated = _make_response({"nodes": [], "relations": [], "facts": []})
+    truncated.stop_reason = "max_tokens"
     client = _make_client([truncated])
-    with pytest.raises(RuntimeError, match="truncated at max_tokens"):
+    with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
         await extract("researcher", "report text", "run-1", client)
-    # Must NOT retry — same input → same truncation.
-    assert client.messages.stream.call_count == 1
+    assert client.messages.create.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_no_tool_use_block_raises():
+    """A response without a tool_use block (e.g. plain text refusal) raises
+    StructuredOutputError so the failure surfaces in the trace instead of
+    being silently swallowed."""
+    text_only = MagicMock()
+    text_only.content = []
+    text_only.stop_reason = "end_turn"
+    text_only.usage = None
+    client = _make_client([text_only])
+    with pytest.raises(StructuredOutputError, match="no tool_use block"):
+        await extract("researcher", "report text", "run-1", client)
 
 
 # ---------------------------------------------------------------------------
@@ -818,28 +818,6 @@ async def test_extract_unknown_stage_raises_value_error():
     client = _make_client([])
     with pytest.raises(ValueError, match="Unknown stage"):
         await extract("unknown_stage", "text", "run-1", client)
-
-
-@pytest.mark.asyncio
-async def test_extract_handles_markdown_fenced_json():
-    """LLM wrapping response in ```json ... ``` fences is handled gracefully."""
-    fenced = f"```json\n{RESEARCHER_RESPONSE}\n```"
-    client = _make_client([fenced])
-    result = await extract("researcher", "report text", "run-1", client)
-
-    assert len(result.nodes) > 0
-
-
-def test_try_parse_json_with_valid_input():
-    assert _try_parse_json('{"nodes": []}') == {"nodes": []}
-
-
-def test_try_parse_json_with_invalid_input():
-    assert _try_parse_json("not json at all") is None
-
-
-def test_try_parse_json_with_non_dict():
-    assert _try_parse_json("[1, 2, 3]") is None
 
 
 def test_build_result_skips_malformed_nodes():
@@ -1023,22 +1001,6 @@ def test_fold_legacy_multiple_models_each_get_their_own_test_props():
     assert by_fid["fid-a"]["failure_reason"] is None
     assert by_fid["fid-b"]["passed"] is False
     assert by_fid["fid-b"]["failure_reason"] == "x"
-
-
-@pytest.mark.asyncio
-async def test_empty_content_list_triggers_retry():
-    """Empty response.content triggers retry via empty string → parse failure."""
-    empty_resp = MagicMock()
-    empty_resp.content = []
-    empty_resp.stop_reason = "end_turn"
-    empty_resp.usage = None
-    good_resp = _make_response(RESEARCHER_RESPONSE)
-
-    client = _make_client([empty_resp, good_resp])
-
-    result = await extract("researcher", "report text", "run-1", client)
-    assert len(result.nodes) > 0
-    assert client.messages.stream.call_count == 2
 
 
 @pytest.mark.asyncio

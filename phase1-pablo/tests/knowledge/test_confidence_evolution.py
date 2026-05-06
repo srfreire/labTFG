@@ -113,53 +113,49 @@ class TestAC2_ContradictionPenalty:
             "run_id": "00000000-0000-0000-0000-000000000099",
         }
 
-        import json
-
-        importance_resp_text = json.dumps(
-            [
-                {"fact": "setpoint = 70", "importance": 8, "reasoning": "update"},
-            ]
-        )
-        conflict_resp_text = json.dumps(
-            {
-                "classification": "CONTRADICTION",
-                "reasoning": "Different values",
-                "merged_content": None,
-            }
-        )
-
-        # Build mock client. Importance scoring runs through messages.stream
-        # (max_tokens=16384 trips the streaming threshold); conflict
-        # classification runs through messages.create (max_tokens=4096).
-        def _resp(text):
+        # Both importance scoring and conflict classification now route
+        # through call_structured (forced tool-use) — see Phase B of
+        # research-memory-rewrite.md.
+        def _tool_resp(tool_name, payload):
             block = MagicMock()
-            block.text = text
+            block.type = "tool_use"
+            block.name = tool_name
+            block.input = payload
             resp = MagicMock()
             resp.content = [block]
             resp.stop_reason = "end_turn"
             resp.usage = None
             return resp
 
-        class _StreamCM:
-            def __init__(self, response):
-                self._response = response
+        importance_resp = _tool_resp(
+            "emit__ImportanceScores",
+            {
+                "scores": [
+                    {
+                        "fact": "setpoint = 70",
+                        "importance": 8,
+                        "reasoning": "update",
+                    }
+                ]
+            },
+        )
+        conflict_resp = _tool_resp(
+            "emit__ConflictClassification",
+            {
+                "classification": "CONTRADICTION",
+                "reasoning": "Different values",
+                "merged_content": None,
+            },
+        )
 
-            async def __aenter__(self):
-                return self
+        responses = iter([importance_resp, conflict_resp])
 
-            async def __aexit__(self, *_exc):
-                return False
-
-            async def get_final_message(self):
-                return self._response
-
-        importance_resp = _resp(importance_resp_text)
-        conflict_resp = _resp(conflict_resp_text)
+        async def _create(**_kw):
+            return next(responses)
 
         client = MagicMock()
         client.messages = MagicMock()
-        client.messages.stream = MagicMock(return_value=_StreamCM(importance_resp))
-        client.messages.create = AsyncMock(return_value=conflict_resp)
+        client.messages.create = AsyncMock(side_effect=_create)
 
         emb = AsyncMock()
         emb.embed_query = AsyncMock(return_value=[0.1] * 1024)

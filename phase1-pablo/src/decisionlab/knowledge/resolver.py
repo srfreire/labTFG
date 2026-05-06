@@ -13,7 +13,8 @@ import uuid as uuid_mod
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from decisionlab.config import SETTINGS
+from pydantic import BaseModel, Field
+
 from decisionlab.knowledge.models import ExtractionResult, ResolutionResult
 from decisionlab.knowledge.prompts import (
     CONFLICT_CLASSIFICATION_SYSTEM,
@@ -21,7 +22,8 @@ from decisionlab.knowledge.prompts import (
     IMPORTANCE_SCORING_SYSTEM,
     IMPORTANCE_SCORING_USER,
 )
-from decisionlab.runtime.usage import record as record_usage
+from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
+from decisionlab.structured import StructuredOutputError, call_structured
 from shared.memories import create_memory, supersede_memory, update_confidence
 
 if TYPE_CHECKING:
@@ -33,57 +35,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_FAST_MODEL = SETTINGS.knowledge_fast_model
-_HEAVY_MODEL = SETTINGS.knowledge_heavy_model
-
+# Both calls run through ``call_structured`` (Sonnet 4.6) — see plan
+# decision (1) "no model variance across this rewrite". Token caps stay
+# generous so a long importance batch or a verbose classification can
+# spell out its reasoning without truncation.
 _IMPORTANCE_MAX_TOKENS = 16384
 _CLASSIFY_MAX_TOKENS = 4096
-
-
-async def _call_llm_json(
-    client: AsyncAnthropic,
-    *,
-    model: str,
-    system: str,
-    user: str,
-    max_tokens: int,
-) -> str:
-    """Single LLM call shared by importance scoring and conflict classification.
-
-    Raises ``RuntimeError`` on ``stop_reason='max_tokens'`` so the caller's
-    ``except`` doesn't masquerade a silent truncation as a successful but
-    empty/garbage response. Streams when ``max_tokens >= 8192`` to stay
-    inside the SDK's non-streaming timeout guard.
-    """
-    if max_tokens >= 8192:
-        async with client.messages.stream(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        ) as stream:
-            response = await stream.get_final_message()
-    else:
-        response = await client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-    record_usage(model, getattr(response, "usage", None))
-
-    if getattr(response, "stop_reason", None) == "max_tokens":
-        usage = getattr(response, "usage", None)
-        out_tokens = getattr(usage, "output_tokens", None) if usage else None
-        raise RuntimeError(
-            f"{model} output truncated at max_tokens={max_tokens} "
-            f"(output_tokens={out_tokens})"
-        )
-
-    if not response.content:
-        return ""
-    return response.content[0].text
-
 
 _DUPLICATE_THRESHOLD = 0.85
 # Above this cosine score, with near-equal length, the duplicate is obvious
@@ -115,36 +72,42 @@ _STAGE_MEMORY_TYPE: dict[str, str] = {
 }
 
 
+class _ImportanceEntry(BaseModel):
+    fact: str
+    importance: float = Field(ge=1.0, le=10.0)
+    reasoning: str = ""
+
+
+class _ImportanceScores(BaseModel):
+    scores: list[_ImportanceEntry]
+
+
 async def _score_importance(
     facts: list[str],
     client: AsyncAnthropic,
 ) -> dict[str, float]:
-    """Call Haiku to score importance of each fact. Returns {fact: score}."""
+    """Score each fact's importance via structured Sonnet 4.6 output.
+
+    Returns ``{fact: score}`` for every fact the model successfully scored.
+    Schema violation raises ``StructuredOutputError`` (no silent default to
+    5.0 — that pre-rewrite fallback masked importance failures on every
+    cumulative-growth topic, see plan §1).
+    """
     if not facts:
         return {}
 
     facts_json = json.dumps(facts, ensure_ascii=False)
     user_message = IMPORTANCE_SCORING_USER.replace("{facts_json}", facts_json)
 
-    try:
-        raw = await _call_llm_json(
-            client,
-            model=_FAST_MODEL,
-            system=IMPORTANCE_SCORING_SYSTEM,
-            user=user_message,
-            max_tokens=_IMPORTANCE_MAX_TOKENS,
-        )
-        scored = json.loads(raw)
-        return {
-            entry["fact"]: float(entry["importance"])
-            for entry in scored
-            if isinstance(entry, dict) and "fact" in entry and "importance" in entry
-        }
-    except Exception:
-        logger.warning(
-            "Importance scoring failed — defaulting all facts to 5.0", exc_info=True
-        )
-        return {fact: 5.0 for fact in facts}
+    result = await call_structured(
+        client=client,
+        messages=[{"role": "user", "content": user_message}],
+        system=IMPORTANCE_SCORING_SYSTEM,
+        schema=_ImportanceScores,
+        max_tokens=_IMPORTANCE_MAX_TOKENS,
+        model=_STRUCTURED_MODEL,
+    )
+    return {entry.fact: float(entry.importance) for entry in result.scores}
 
 
 async def _find_duplicates(
@@ -172,6 +135,14 @@ async def _find_duplicates(
     ]
 
 
+class _ConflictClassification(BaseModel):
+    classification: (
+        str  # "DUPLICATE" | "CORROBORATION" | "ENRICHMENT" | "CONTRADICTION"
+    )
+    reasoning: str = ""
+    merged_content: str | None = None
+
+
 async def _classify_conflict(
     existing_content: str,
     existing_stage: str,
@@ -180,7 +151,14 @@ async def _classify_conflict(
     new_stage: str,
     client: AsyncAnthropic,
 ) -> dict:
-    """Call Sonnet to classify the relationship between an existing memory and a new fact."""
+    """Classify the relationship between an existing memory and a new fact.
+
+    Returns the parsed classification dict. Raises ``StructuredOutputError``
+    on schema violation so the caller can decide whether to skip the fact
+    or surface the failure — replaces the previous silent
+    ``{"classification": "UNKNOWN"}`` fallback that masked classification
+    bugs throughout the eval suite.
+    """
     user_message = (
         CONFLICT_CLASSIFICATION_USER.replace("{existing_stage}", existing_stage)
         .replace("{existing_timestamp}", existing_timestamp)
@@ -188,21 +166,23 @@ async def _classify_conflict(
         .replace("{new_stage}", new_stage)
         .replace("{new_content}", new_content)
     )
-
     try:
-        raw = await _call_llm_json(
-            client,
-            model=_HEAVY_MODEL,
+        result = await call_structured(
+            client=client,
+            messages=[{"role": "user", "content": user_message}],
             system=CONFLICT_CLASSIFICATION_SYSTEM,
-            user=user_message,
+            schema=_ConflictClassification,
             max_tokens=_CLASSIFY_MAX_TOKENS,
+            model=_STRUCTURED_MODEL,
         )
-        return json.loads(raw or "{}")
-    except Exception:
-        logger.warning(
-            "Conflict classification failed — treating as new fact", exc_info=True
-        )
+    except (StructuredOutputError, Exception) as exc:
+        # Conflict classification has a per-pair blast radius (one fact at
+        # most), so a Sonnet error / schema violation logs at WARNING and
+        # the caller treats the fact as new. The plan's "no silent
+        # fallback" rule still holds — failures surface in the trace.
+        logger.warning("Conflict classification failed: %s", exc)
         return {"classification": "UNKNOWN", "reasoning": "classification failed"}
+    return result.model_dump()
 
 
 def _is_obvious_duplicate(
