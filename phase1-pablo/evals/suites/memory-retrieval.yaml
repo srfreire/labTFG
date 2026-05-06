@@ -1,0 +1,53 @@
+# Memory-retrieval suite: probes the populated KG with three follow-up
+# topics that overlap with paradigms already ingested by
+# `cumulative-growth.yaml`. Each topic asserts that a known canonical
+# paradigm slug surfaces (retrieval hit) and that the Paradigm node
+# count never drops below the post-cumulative-growth baseline (20),
+# i.e. dedup is preserved.
+#
+# Pre-condition: run `cumulative-growth.yaml` first (or have ≥20
+# Paradigm nodes seeded). `reset_kg_before: false` is critical.
+#
+# Cost: ~$1.5/topic research-only × 3 topics → cap at $6.
+
+name: memory-retrieval
+stages: [research]
+reset_kg_before: false
+topics:
+  - text: "Q-learning agent foraging on a grid: how do action-value
+      updates trade off exploration and exploitation?"
+    expect:
+      research:
+        # Direct retrieval target — present in the KG from cumulative-growth.
+        - paradigm: reinforcement-learning
+        # Diversity guard: research should still surface adjacent paradigms.
+        - min_paradigms: 2
+        # Dedup guard: total Paradigm node count must not shrink below
+        # the 20 already in KG.
+        - min_nodes: { label: Paradigm, n: 20 }
+
+  - text: "Loss aversion in human financial decision-making: why do
+      people weight losses more heavily than equivalent gains?"
+    expect:
+      research:
+        - paradigm: prospect-theory
+        - min_paradigms: 2
+        - min_nodes: { label: Paradigm, n: 20 }
+
+  - text: "Speed-accuracy tradeoff in two-alternative forced-choice
+      perceptual decisions: how does evidence accumulation explain
+      reaction time distributions?"
+    expect:
+      research:
+        - paradigm: drift-diffusion-model
+        - min_paradigms: 2
+        - min_nodes: { label: Paradigm, n: 20 }
+        # Graph-integrity check (executed once after the last topic):
+        # postulates must still link to paradigms via BELONGS_TO.
+        - relation_exists:
+            from: Postulate
+            type: BELONGS_TO
+            to: Paradigm
+
+budget:
+  max_usd_total: 6.00
