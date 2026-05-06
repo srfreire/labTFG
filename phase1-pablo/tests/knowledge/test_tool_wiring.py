@@ -199,18 +199,23 @@ async def test_dispatch_retrieve_knowledge_through_registry():
 class TestSystemPromptAugmentation:
     """Verify system prompts are augmented when knowledge tool is present."""
 
-    def test_researcher_prompt_augmented(self):
+    def test_researcher_wires_knowledge_handler(self):
+        """Phase C: the Researcher always uses the candidate-slug contract,
+        but it stores the knowledge handler so it can call retrieve_knowledge
+        directly during ``run`` (not via the agent loop's tools list)."""
         r = Researcher(
             client=_CLIENT,
             search=_SEARCH,
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
-        assert r._has_knowledge is True
+        assert r._knowledge_tool_handler is _MOCK_HANDLER
+        assert "retrieve_knowledge" in r.registry
 
-    def test_researcher_prompt_not_augmented_without_knowledge(self):
+    def test_researcher_no_handler_without_knowledge(self):
         r = Researcher(client=_CLIENT, search=_SEARCH)
-        assert r._has_knowledge is False
+        assert r._knowledge_tool_handler is None
+        assert "retrieve_knowledge" not in r.registry
 
     def test_formalizer_sub_prompt_augmented(self):
         fs = FormalizerSubAgent(

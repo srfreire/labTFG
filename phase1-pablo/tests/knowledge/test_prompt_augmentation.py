@@ -1,4 +1,11 @@
-"""Tests for P4-002: system prompt augmentation with Knowledge Backbone sections."""
+"""Tests for P4-002 + Phase C: system prompt knowledge integration.
+
+The Researcher no longer uses the ``_KNOWLEDGE_PROMPT_SECTION`` augmentation
+pattern — Phase C of research-memory-rewrite.md folds candidate retrieval
+directly into the user message and emits structured output with an
+enum-constrained slug. The other four agents (DeepResearcher, Formalizer,
+Reasoner, Builder) still use the augmentation pattern; their tests remain.
+"""
 
 from __future__ import annotations
 
@@ -26,12 +33,7 @@ from decisionlab.agents.reasoner_sub import (
 from decisionlab.agents.reasoner_sub import (
     REASONER_SUB_SYSTEM_PROMPT,
 )
-from decisionlab.agents.researcher import (
-    _KNOWLEDGE_PROMPT_SECTION as RESEARCHER_KNOWLEDGE,
-)
-from decisionlab.agents.researcher import (
-    RESEARCHER_SYSTEM_PROMPT,
-)
+from decisionlab.agents.researcher import RESEARCHER_SYSTEM_PROMPT
 
 # ── AC1: Knowledge Backbone section present when infra available ──
 
@@ -40,10 +42,12 @@ class TestKnowledgeBackbonePresent:
     """AC1: When knowledge infrastructure is available, each agent's system
     prompt contains the 'Knowledge Backbone' section."""
 
-    def test_researcher_prompt_contains_knowledge_backbone(self):
-        section = RESEARCHER_KNOWLEDGE
-        assert "## Knowledge Backbone" in section
-        assert "retrieve_knowledge" in section
+    def test_researcher_prompt_describes_candidate_contract(self):
+        # Phase C: the Researcher's prompt always describes the candidate-
+        # slug contract; there is no separate augmentation section.
+        prompt = RESEARCHER_SYSTEM_PROMPT.lower()
+        assert "candidate" in prompt
+        assert "slug" in prompt
 
     def test_deep_researcher_prompt_contains_knowledge_backbone(self):
         section = DEEP_RESEARCHER_KNOWLEDGE
@@ -71,10 +75,9 @@ class TestKnowledgeBackbonePresent:
 
 class TestPromptsUnchangedWithoutKnowledge:
     """AC2: When knowledge infrastructure is unavailable, system prompts
-    are unchanged from current behavior (no Knowledge Backbone section)."""
-
-    def test_researcher_base_prompt_has_no_knowledge_section(self):
-        assert "Knowledge Backbone" not in RESEARCHER_SYSTEM_PROMPT
+    are unchanged from current behavior (no Knowledge Backbone section).
+    The Researcher is excluded — its candidate contract is always present
+    after Phase C."""
 
     def test_deep_researcher_base_prompt_has_no_knowledge_section(self):
         assert "Knowledge Backbone" not in DEEP_RESEARCHER_SYSTEM_PROMPT
@@ -89,16 +92,19 @@ class TestPromptsUnchangedWithoutKnowledge:
         assert "Knowledge Backbone" not in BUILDER_SUB_SYSTEM_PROMPT
 
 
-# ── AC3: Researcher prompt instructs early retrieval (before web_search) ──
+# ── AC3: Researcher prompt enforces gap-fill before web search ──
 
 
-class TestResearcherEarlyRetrieval:
-    """AC3: Researcher prompt mentions calling retrieve_knowledge before
-    web searches, encouraging early use."""
+class TestResearcherGapFill:
+    """Phase C: Researcher prompt instructs reusing candidate slugs and only
+    researching genuine gaps via web search."""
 
-    def test_researcher_prompt_mentions_before_searches(self):
-        assert "before" in RESEARCHER_KNOWLEDGE.lower()
-        assert "web search" in RESEARCHER_KNOWLEDGE.lower()
+    def test_researcher_prompt_mentions_reuse_before_search(self):
+        prompt = RESEARCHER_SYSTEM_PROMPT.lower()
+        assert "reuse" in prompt
+        assert "web search" in prompt
+        # Genuine gaps wording from the Phase C system prompt.
+        assert "gap" in prompt
 
 
 # ── AC4: Formalizer prompt references formulation patterns ──
@@ -128,11 +134,9 @@ def _word_count(text: str) -> int:
 
 
 class TestPromptConciseness:
-    """AC5: Prompt additions are concise — under 80 words each."""
-
-    def test_researcher_prompt_under_80_words(self):
-        wc = _word_count(RESEARCHER_KNOWLEDGE)
-        assert wc <= 80, f"Researcher prompt is {wc} words (max 80)"
+    """AC5: Prompt additions are concise — under 80 words each.
+    Researcher excluded: Phase C folds the contract into the system prompt
+    proper, which is intentionally longer than the 80-word augmentation."""
 
     def test_deep_researcher_prompt_under_80_words(self):
         wc = _word_count(DEEP_RESEARCHER_KNOWLEDGE)
@@ -156,11 +160,8 @@ class TestPromptConciseness:
 
 class TestAgentSpecificContent:
     """Each agent's Knowledge Backbone section contains stage-appropriate
-    guidance, not generic boilerplate."""
-
-    def test_researcher_mentions_paradigms(self):
-        text = RESEARCHER_KNOWLEDGE.lower()
-        assert "paradigm" in text
+    guidance, not generic boilerplate. (Researcher uses inline
+    candidate contract — see TestResearcherGapFill above.)"""
 
     def test_deep_researcher_mentions_postulates_or_variables(self):
         text = DEEP_RESEARCHER_KNOWLEDGE.lower()
