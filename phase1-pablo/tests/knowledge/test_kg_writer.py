@@ -830,6 +830,43 @@ async def test_oversized_natural_key_rejected():
 
 
 @pytest.mark.asyncio
+async def test_long_paper_title_allowed():
+    """Paper.title bypasses the slug-length ceiling.
+
+    When DOI is null, the writer falls back to ``title`` per
+    ``_resolve_natural_key`` precedence. Real paper titles routinely exceed
+    80 chars; the length guard must be scoped to slug-like labels so it
+    doesn't reject legitimate Paper writes (8 such false positives observed
+    in the 2026-05-07 big-suites run).
+    """
+    kg = FakeKnowledgeGraph()
+    long_title = (
+        "A very long but entirely legitimate paper title about reinforcement "
+        "learning, drift-diffusion processes, and the intricate dynamics of "
+        "evidence accumulation under uncertainty in two-alternative tasks"
+    )
+    assert len(long_title) > 80
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paper",
+                properties={"title": long_title, "year": 2024},
+                natural_key="title",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-long-title",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 1
+    assert result.errors == []
+
+
+@pytest.mark.asyncio
 async def test_uuid_shaped_value_allowed_on_paper_doi():
     """The UUID guard is scoped to slug-like labels — Paper.doi is exempt.
 

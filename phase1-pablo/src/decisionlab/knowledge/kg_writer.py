@@ -65,16 +65,21 @@ def _validate_natural_key(label: str, key_name: str, key_value: object) -> None:
     """
     if not isinstance(key_value, str):
         return
-    if len(key_value) > _MAX_KEY_VALUE_LEN:
-        raise ValueError(
-            f"{label}.{key_name}={key_value!r}: natural-key value exceeds "
-            f"{_MAX_KEY_VALUE_LEN} characters — refusing to write"
-        )
-    if label in _SLUG_LIKE_LABELS and _UUID_RE.match(key_value):
-        raise ValueError(
-            f"{label}.{key_name}={key_value!r}: natural-key value is shaped "
-            "like a UUID — likely a run_id leak; refusing to write"
-        )
+    # Length and UUID-shape checks are scoped to slug-like labels. Content keys
+    # (Paper.title, Equation.latex) routinely exceed the slug ceiling and must
+    # pass through unmolested; the writer's fallback to title when DOI is null
+    # would otherwise reject every Paper with a long title.
+    if label in _SLUG_LIKE_LABELS:
+        if len(key_value) > _MAX_KEY_VALUE_LEN:
+            raise ValueError(
+                f"{label}.{key_name}={key_value!r}: natural-key value exceeds "
+                f"{_MAX_KEY_VALUE_LEN} characters — refusing to write"
+            )
+        if _UUID_RE.match(key_value):
+            raise ValueError(
+                f"{label}.{key_name}={key_value!r}: natural-key value is shaped "
+                "like a UUID — likely a run_id leak; refusing to write"
+            )
 
 
 def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
