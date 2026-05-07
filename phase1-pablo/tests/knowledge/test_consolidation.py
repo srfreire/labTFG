@@ -65,7 +65,35 @@ def _make_response(text: str) -> MagicMock:
     return resp
 
 
+def _make_tool_use_response(
+    payload: dict,
+    *,
+    tool_name: str = "emit__ReflectionEmission",
+    stop_reason: str = "end_turn",
+) -> MagicMock:
+    """Build a mock Anthropic response carrying a single tool_use block.
+
+    Matches the shape ``call_structured`` consumes (Phase B contract):
+    forced tool-use, validated by Pydantic on the way out.
+    """
+    block = MagicMock()
+    block.type = "tool_use"
+    block.name = tool_name
+    block.input = payload
+
+    resp = MagicMock()
+    resp.content = [block]
+    resp.stop_reason = stop_reason
+    resp.usage = None
+    return resp
+
+
 def _make_client(responses: list[str]) -> AsyncMock:
+    """Client that returns successive text-block responses via messages.create.
+
+    Used by the contradiction-check tests, which still go through ``_call_haiku``
+    + ``json.loads`` (not migrated by the reflection-path Phase B work).
+    """
     client = AsyncMock()
     client.messages.create = AsyncMock(
         side_effect=[_make_response(t) for t in responses],
@@ -220,8 +248,14 @@ class TestAC2_ReflectionGeneration:
         cluster_mems = _make_memories(4, run_id=run_id)
         clusters = [cluster_mems]
 
-        # LLM returns 1 insight, contradiction check not triggered (no similar found)
-        client = _make_client(['["Higher-level insight about the cluster pattern"]'])
+        # call_structured returns a parsed _ReflectionEmission via tool_use.
+        # The cross-run check is bypassed here (vector_store.search_dense=[]).
+        client = AsyncMock()
+        client.messages.create = AsyncMock(
+            return_value=_make_tool_use_response(
+                {"insights": ["Higher-level insight about the cluster pattern"]},
+            ),
+        )
 
         session = AsyncMock()
         # create_memory returns a fake reflection
@@ -296,15 +330,17 @@ class TestAC2_ReflectionGeneration:
 
     @pytest.mark.asyncio
     async def test_reflection_truncation_skips_cluster_and_logs(self, caplog):
-        """Haiku hitting max_tokens must surface as a clear log and skip the
-        cluster — not silently look like a JSON parse error."""
+        """call_structured raising on max_tokens must surface as a clear log
+        and skip the cluster — not silently look like a JSON parse error."""
         from decisionlab.knowledge.consolidation import _generate_reflections
 
         run_id = uuid.uuid4()
         clusters = [_make_memories(4, run_id=run_id)]
 
-        truncated = _make_response('[{"insight": "incomp')
-        truncated.stop_reason = "max_tokens"
+        truncated = _make_tool_use_response(
+            {"insights": []},  # ignored — call_structured raises before validation
+            stop_reason="max_tokens",
+        )
         truncated.usage = MagicMock(output_tokens=4096)
         client = AsyncMock()
         client.messages.create = AsyncMock(return_value=truncated)
@@ -681,12 +717,15 @@ class TestConsolidateIntegration:
             memory_type="reflection",
         )
 
-        client = _make_client(
-            [
-                '["Cluster insight one"]',
-                '["Cluster insight two"]',
-                '["Cluster insight three"]',
-            ]
+        # Reflection generation goes through call_structured (tool_use); each
+        # cluster gets its own _ReflectionEmission response.
+        client = AsyncMock()
+        client.messages.create = AsyncMock(
+            side_effect=[
+                _make_tool_use_response({"insights": ["Cluster insight one"]}),
+                _make_tool_use_response({"insights": ["Cluster insight two"]}),
+                _make_tool_use_response({"insights": ["Cluster insight three"]}),
+            ],
         )
 
         with (

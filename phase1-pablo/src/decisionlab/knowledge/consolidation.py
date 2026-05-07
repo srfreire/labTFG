@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import numpy as np
+from pydantic import BaseModel
 
 from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ConsolidationResult
@@ -25,6 +26,13 @@ from decisionlab.knowledge.prompts import (
     REFLECTION_USER,
 )
 from decisionlab.runtime.usage import record as record_usage
+from decisionlab.structured import (
+    DEFAULT_MODEL as _STRUCTURED_MODEL,
+)
+from decisionlab.structured import (
+    StructuredOutputError,
+    call_structured,
+)
 from shared.memories import apply_time_decay, create_memory, update_confidence
 
 if TYPE_CHECKING:
@@ -45,6 +53,20 @@ _PRUNE_AGE_DAYS = 90
 
 _REFLECTION_MAX_TOKENS = 4096
 _CONTRADICTION_MAX_TOKENS = 4096
+
+
+class _ReflectionEmission(BaseModel):
+    """Structured shape for the reflection generation step.
+
+    The pre-rewrite path asked Haiku to ``Output ONLY valid JSON`` and
+    parsed the response with ``json.loads``. Haiku occasionally returned
+    a leading newline / markdown fence / explanatory prose, and the
+    parse failed with ``Expecting value: line 1 column 1 (char 0)`` —
+    masking the cluster's reflection without surfacing the actual cause.
+    Routing through ``call_structured`` removes the parse layer entirely.
+    """
+
+    insights: list[str]
 
 
 async def _call_haiku(
@@ -251,14 +273,15 @@ async def _generate_reflections(
         user_msg = REFLECTION_USER.replace("{numbered_facts}", numbered)
 
         try:
-            raw = await _call_haiku(
-                client,
+            emission = await call_structured(
+                client=client,
+                messages=[{"role": "user", "content": user_msg}],
                 system=REFLECTION_SYSTEM,
-                user=user_msg,
+                schema=_ReflectionEmission,
                 max_tokens=_REFLECTION_MAX_TOKENS,
+                model=_STRUCTURED_MODEL,
             )
-            insights = json.loads(raw or "[]")
-        except Exception as exc:
+        except StructuredOutputError as exc:
             logger.warning(
                 "Reflection generation failed for cluster (size=%d), skipping: %s",
                 len(cluster),
@@ -266,8 +289,7 @@ async def _generate_reflections(
             )
             continue
 
-        if not isinstance(insights, list):
-            continue
+        insights = emission.insights
 
         source_ids = [str(mem.id) for mem in cluster]
 

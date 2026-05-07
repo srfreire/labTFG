@@ -253,11 +253,9 @@ Guidelines:
 - Insights should be actionable for future research runs
 - Keep each insight to 1-2 sentences
 
-Output ONLY valid JSON (no markdown fences, no commentary):
-[
-  "<insight 1>",
-  "<insight 2 — optional, only if there is a genuinely distinct second pattern>"
-]\
+Call the provided tool to return the structured object. The ``insights`` \
+list contains 1-2 entries — emit a second insight only when there is a \
+genuinely distinct second pattern.\
 """
 
 REFLECTION_USER = """\
