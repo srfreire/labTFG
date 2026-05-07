@@ -33,6 +33,19 @@ class ToolCall:
     stage: str  # Stage.value (or "unknown" before any handler sets it)
     args_hash: str
     succeeded: bool
+    # Optional structured payload. Default ``None`` for ordinary dispatcher
+    # entries (no behaviour change). Used by ``record_loop_cap_reached`` to
+    # carry diagnostic context (topic excerpt + last tool uses + log length)
+    # without growing a sibling ledger or mutating ``PipelineRunResult``'s
+    # JSON contract.
+    details: dict | None = None
+
+
+# Sentinel ``name`` for synthetic ``ToolCall`` entries written by
+# ``record_loop_cap_reached``. Picked to be impossible to collide with a
+# real tool name and to remain inert against the ``tool_called(name)`` eval
+# predicate (which matches by exact name).
+LOOP_CAP_REACHED_NAME = "__loop_cap_reached__"
 
 
 _TOOL_CALLS_VAR: ContextVar[list[ToolCall] | None] = ContextVar(
@@ -86,5 +99,45 @@ def record(name: str, args: object, succeeded: bool) -> None:
             stage=_STAGE_VAR.get(),
             args_hash=args_hash,
             succeeded=succeeded,
+        )
+    )
+
+
+def record_loop_cap_reached(
+    *,
+    topic_excerpt: str,
+    last_tool_uses: list[list[dict]],
+    max_iterations: int,
+) -> None:
+    """Append a synthetic ``ToolCall`` marking the agent loop's max-iteration exit.
+
+    Phase F validation observed 4/12 topics hitting the cap without an
+    ``end_turn`` — well above the < 5% target. The cause isn't obvious
+    from stderr alone (the ``Loop iteration N/7 — calling ...`` log line
+    is too coarse), so we capture *what* the model was still trying to do
+    at the cap as a structured trace event.
+
+    ``tool_call_log_length`` is captured *before* the synthetic entry is
+    appended, so it counts only real dispatcher tool calls preceding the
+    cap. Implemented as a ``ToolCall`` with ``name=LOOP_CAP_REACHED_NAME``
+    so the existing ledger/serialization plumbing carries it for free;
+    the ``tool_called`` eval predicate matches by exact name and so
+    doesn't accidentally count cap-hits as legitimate tool invocations.
+    """
+    log = _TOOL_CALLS_VAR.get()
+    if log is None:
+        return
+    log.append(
+        ToolCall(
+            name=LOOP_CAP_REACHED_NAME,
+            stage=_STAGE_VAR.get(),
+            args_hash="",
+            succeeded=False,
+            details={
+                "topic_excerpt": topic_excerpt,
+                "last_tool_uses": last_tool_uses,
+                "tool_call_log_length": len(log),
+                "max_iterations": max_iterations,
+            },
         )
     )

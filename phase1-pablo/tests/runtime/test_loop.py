@@ -138,6 +138,86 @@ async def test_loop_respects_max_iterations():
 
 
 @pytest.mark.asyncio
+async def test_loop_records_cap_hit_event_into_active_ledger():
+    """When the loop exhausts max_iterations without end_turn, a synthetic
+    ToolCall(name=__loop_cap_reached__) is appended to the active recording
+    session — Phase F observed 4/12 topics hitting the cap and we couldn't
+    see *what* the model was still trying to do without this trace."""
+    from decisionlab.runtime.tool_calls import (
+        LOOP_CAP_REACHED_NAME,
+        start_recording,
+    )
+
+    tool_response = _make_response(
+        "tool_use",
+        [_make_tool_use_block("t1", "search", {"query": "free energy"})],
+    )
+
+    client = AsyncMock()
+    client.messages.create.return_value = tool_response
+
+    async def search(params: dict) -> str:
+        return "result"
+
+    log = start_recording()
+
+    topic = (
+        "Investigate decision-making paradigms under uncertainty in foraging "
+        "agents — focus on quantifiable mechanisms."
+    )
+    with pytest.raises(RuntimeError, match="Max iterations"):
+        await run_agent_loop(
+            client=client,
+            model="claude-sonnet-4-6",
+            system="sys",
+            tools=[],
+            messages=[{"role": "user", "content": topic}],
+            registry={"search": search},
+            max_iterations=3,
+        )
+
+    cap_events = [c for c in log if c.name == LOOP_CAP_REACHED_NAME]
+    assert len(cap_events) == 1, f"expected exactly one cap-hit event in {log!r}"
+    event = cap_events[0]
+    assert event.succeeded is False
+    assert event.details is not None
+    assert event.details["max_iterations"] == 3
+    # Topic excerpt identifies which run blew the cap.
+    assert "decision-making paradigms" in event.details["topic_excerpt"]
+    # Last-2 ring buffer records what the model was still doing at the cap.
+    last_uses = event.details["last_tool_uses"]
+    assert len(last_uses) == 2  # max_iterations=3, deque(maxlen=2)
+    assert last_uses[-1][0]["name"] == "search"
+    # Three real dispatcher calls preceded the synthetic event.
+    assert event.details["tool_call_log_length"] == 3
+
+
+@pytest.mark.asyncio
+async def test_loop_cap_hit_recording_is_no_op_without_active_session():
+    """No recording session active → cap exhaustion still raises but the
+    instrumentation is a silent no-op (interactive CLI never starts a
+    session, so production paths must pay nothing)."""
+    tool_response = _make_response("tool_use", [_make_tool_use_block("t1", "echo", {})])
+    client = AsyncMock()
+    client.messages.create.return_value = tool_response
+
+    async def echo(_p: dict) -> str:
+        return ""
+
+    # No start_recording() call — the ContextVar is None.
+    with pytest.raises(RuntimeError, match="Max iterations"):
+        await run_agent_loop(
+            client=client,
+            model="claude-sonnet-4-6",
+            system="sys",
+            tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            registry={"echo": echo},
+            max_iterations=2,
+        )
+
+
+@pytest.mark.asyncio
 async def test_loop_raises_on_max_tokens_stop_reason():
     """max_tokens means the response was truncated mid-emit. Returning it
     as-is silently corrupts downstream stages (e.g. Researcher → report.md
