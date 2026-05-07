@@ -1,10 +1,15 @@
 """Web-search adapter package — exposes the chained provider used in production.
 
-The default ``SearchProviderChain`` walks
-``Brave → Tavily → DuckDuckGo`` and returns the first non-empty result list.
-Each provider has a 3-attempt cap before failover (within a single ``search``
-call) so a transient HTTP blip on Brave doesn't fall straight through to
-DuckDuckGo. The chain only returns ``[]`` when every provider returned ``[]``.
+The default ``SearchProviderChain`` walks ``Tavily → DuckDuckGo`` and returns
+the first non-empty result list. Each provider has a 3-attempt cap before
+failover (within a single ``search`` call) so a transient HTTP blip on
+Tavily doesn't fall straight through to DuckDuckGo. The chain only returns
+``[]`` when every provider returned ``[]``.
+
+Why Tavily over Google-via-Serper or Brave: Tavily is purpose-built for
+LLM agents and returns extracted prose snippets that the Researcher and
+DeepResearcher prompts can cite directly. The deep-citation backbone is
+Semantic Scholar (in ``tools/papers.py``), not the web search itself.
 """
 
 from __future__ import annotations
@@ -12,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from decisionlab.adapters.brave import BraveAdapter
 from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
 from decisionlab.adapters.tavily import TavilyAdapter
 from decisionlab.domain.models import SearchResult
@@ -75,15 +79,14 @@ class SearchProviderChain:
 
 
 def default_search_chain(*, max_results: int = 10) -> SearchProviderChain:
-    """Construct the production chain: Brave → Tavily → DuckDuckGo.
+    """Construct the production chain: Tavily → DuckDuckGo.
 
-    Providers without API keys still register but return ``[]`` immediately,
-    so the chain naturally skips them. DuckDuckGo is keyless and always
-    serves as the last-resort fallback.
+    Tavily is the primary; without ``TAVILY_API_KEY`` it returns ``[]``
+    immediately and the chain falls through to DuckDuckGo (keyless,
+    last-resort fallback).
     """
     return SearchProviderChain(
         [
-            BraveAdapter(max_results=max_results),
             TavilyAdapter(max_results=max_results),
             DuckDuckGoAdapter(max_results=max_results),
         ]
