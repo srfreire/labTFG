@@ -9,7 +9,7 @@ Tavily doesn't fall straight through to DuckDuckGo. The chain only returns
 Why Tavily over Google-via-Serper or Brave: Tavily is purpose-built for
 LLM agents and returns extracted prose snippets that the Researcher and
 DeepResearcher prompts can cite directly. The deep-citation backbone is
-Semantic Scholar (in ``tools/papers.py``), not the web search itself.
+OpenAlex (in ``tools/papers.py``), not the web search itself.
 """
 
 from __future__ import annotations

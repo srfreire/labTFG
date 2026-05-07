@@ -1,6 +1,6 @@
 """Unit tests for the Corrective RAG evaluator with web search fallback.
 
-All external services (Anthropic Haiku, DuckDuckGo, Semantic Scholar, Voyage AI)
+All external services (Anthropic Haiku, DuckDuckGo, OpenAlex, Voyage AI)
 are mocked — no live infrastructure required.
 """
 

@@ -30,21 +30,43 @@ def _mock_response(json_data, status_code=200):
     )
 
 
+def _openalex_work(
+    *,
+    title: str,
+    authors: list[str],
+    year: int,
+    doi: str,
+    citations: int,
+    abstract: str,
+) -> dict:
+    """Build a single OpenAlex work payload — including the inverted abstract index."""
+    abstract_index: dict[str, list[int]] = {}
+    for i, token in enumerate(abstract.split()):
+        abstract_index.setdefault(token, []).append(i)
+    return {
+        "id": "https://openalex.org/W123",
+        "title": title,
+        "authorships": [{"author": {"display_name": a}} for a in authors],
+        "publication_year": year,
+        "doi": f"https://doi.org/{doi}" if doi else None,
+        "cited_by_count": citations,
+        "abstract_inverted_index": abstract_index,
+    }
+
+
 @pytest.mark.asyncio
 async def test_successful_search():
     payload = {
-        "total": 1,
-        "data": [
-            {
-                "paperId": "abc123",
-                "title": "Prospect Theory",
-                "authors": [{"name": "Kahneman"}, {"name": "Tversky"}],
-                "year": 1979,
-                "abstract": "An analysis of decision under risk.",
-                "externalIds": {"DOI": "10.2307/1914185"},
-                "citationCount": 50000,
-            }
-        ],
+        "results": [
+            _openalex_work(
+                title="Prospect Theory",
+                authors=["Kahneman", "Tversky"],
+                year=1979,
+                doi="10.2307/1914185",
+                citations=50000,
+                abstract="An analysis of decision under risk.",
+            )
+        ]
     }
 
     mock_client = AsyncMock()
@@ -58,7 +80,7 @@ async def test_successful_search():
 
     assert "Prospect Theory" in result
     assert "Kahneman" in result
-    assert "10.2307/1914185" in result
+    assert "10.2307/1914185" in result  # OpenAlex URL prefix stripped
     assert "1979" in result
 
 
@@ -78,7 +100,7 @@ async def test_api_error_returns_message():
 
 @pytest.mark.asyncio
 async def test_empty_results():
-    payload = {"total": 0, "data": []}
+    payload = {"meta": {"count": 0}, "results": []}
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=_mock_response(payload))
@@ -94,8 +116,8 @@ async def test_empty_results():
 
 @pytest.mark.asyncio
 async def test_default_limit_is_5():
-    """Default limit=5 is used when not specified."""
-    payload = {"total": 0, "data": []}
+    """Default limit=5 is forwarded as OpenAlex's per-page parameter."""
+    payload = {"meta": {"count": 0}, "results": []}
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=_mock_response(payload))
@@ -106,11 +128,8 @@ async def test_default_limit_is_5():
         fn = create_search_papers()
         await fn({"query": "test"})
 
-    call_kwargs = mock_client.get.call_args
-    assert (
-        "limit=5" in str(call_kwargs)
-        or call_kwargs[1].get("params", {}).get("limit") == 5
-    )
+    sent_params = mock_client.get.call_args.kwargs["params"]
+    assert sent_params["per-page"] == "5"
 
 
 @pytest.mark.asyncio
@@ -128,38 +147,30 @@ async def test_network_error_returns_message():
 
 
 @pytest.mark.asyncio
-async def test_429_retries_once():
-    """On 429, waits and retries; second attempt succeeds."""
-    rate_limit_resp = _mock_response({}, status_code=429)
-    rate_limit_resp.headers["Retry-After"] = "0.1"
-
-    success_payload = {
-        "total": 1,
-        "data": [
-            {
-                "paperId": "x",
-                "title": "Retry Paper",
-                "authors": [],
-                "year": 2020,
-                "abstract": "Retried.",
-                "externalIds": {},
-                "citationCount": 1,
-            },
-        ],
+async def test_inverted_abstract_is_reconstructed():
+    """OpenAlex's inverted abstract index is reassembled into prose."""
+    payload = {
+        "results": [
+            _openalex_work(
+                title="Reconstruction Test",
+                authors=["A. Author"],
+                year=2024,
+                doi="10.0/test",
+                citations=1,
+                abstract="Hello world this is a test abstract",
+            )
+        ]
     }
-    ok_resp = _mock_response(success_payload)
-
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(side_effect=[rate_limit_resp, ok_resp])
+    mock_client.get = AsyncMock(return_value=_mock_response(payload))
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch("decisionlab.tools.papers.httpx.AsyncClient", return_value=mock_client):
         fn = create_search_papers()
-        result = await fn({"query": "retry test"})
+        result = await fn({"query": "test"})
 
-    assert "Retry Paper" in result
-    assert mock_client.get.call_count == 2
+    assert "Hello world this is a test abstract" in result
 
 
 @pytest.mark.asyncio

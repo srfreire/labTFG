@@ -26,7 +26,7 @@ measurable variables, and causal relationships that can be translated into mathe
 ## Tools
 
 You have two search tools — use BOTH:
-- **search_papers**: Search Semantic Scholar for verified academic papers with DOI, authors, \
+- **search_papers**: Search OpenAlex for verified academic papers with DOI, authors, \
 citations. Use this FIRST for core references and foundational work.
 - **web_search**: Search the web for general context, recent developments, and broader information. \
 Use this to fill gaps after academic search.
