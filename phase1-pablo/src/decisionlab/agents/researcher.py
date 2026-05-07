@@ -85,6 +85,14 @@ consolidated `## References` section at the end.
 ## Constraints
 
 - Maximum 3 web searches total.
+- You may call `retrieve_knowledge` AT MOST 2 TIMES TOTAL across the whole run. \
+Use it ONLY to look up the definition of a CANDIDATE paradigm listed in the user \
+message when the candidate is loosely related to the topic and you need its \
+definition to decide whether to reuse its slug. DO NOT use `retrieve_knowledge` \
+as a free-form search tool — `web_search` is for that.
+- After iteration 5, no more search or retrieval calls (no `web_search`, no \
+`retrieve_knowledge`, no `launch_deep_research`). Iterations 6+ are reserved for \
+synthesis: `read_report`, prose writing, and the final summary.
 - Only cite authors/papers found in results. Never fabricate.
 - Discard paradigms that are purely philosophical or lack quantifiable variables.
 

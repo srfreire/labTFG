@@ -76,7 +76,7 @@ class Settings:
             researcher=_load(
                 "RESEARCHER",
                 model="anthropic/claude-sonnet-4.6",
-                max_iterations=10,
+                max_iterations=14,
                 max_tokens=32768,
             ),
             deep_researcher=_load(
