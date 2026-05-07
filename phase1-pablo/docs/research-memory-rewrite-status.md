@@ -42,20 +42,73 @@ the bottom of this document.
 | Eval blindness (Neo4j-only assertions) | Phase A: `tool_called`, `min_memories`, `confidence_above`, `paradigm_reused` predicates added. Phase F regression suite uses `tool_called` to prove `retrieve_knowledge` fires on every topic. |
 | DuckDuckGo "No results" exhausting the iteration cap | Phase A: `SearchProviderChain([Brave, Tavily, DuckDuckGo])` with 3-attempt retry per provider. |
 
-## Verification metrics — pre vs target
+## Verification metrics — pre vs target vs post
 
-These are the targets from the plan. Filling in the post-rewrite column
-requires actually running Phase F suites against live infra.
+Live-infra runs on 2026-05-07: `smoke` → `cumulative-growth` → `memory-retrieval`
+→ `paradigm-canonicalization`, total cost $18.84.
 
-| Metric | Pre (cumulative-growth + memory-retrieval) | Target (post-rewrite) | Post (run to fill) |
-|---|---:|---:|---:|
-| Slug retrieval hit rate (named slug) | 67% (2/3) | ≥ 80% | _tbd_ |
-| KG nodes per topic on populated KG | 44 | < 30 | _tbd_ |
-| `Importance scoring failed` per topic | 1 | 0 | _tbd_ |
-| Topics with `nodes_created=0` (write voided) | 1/8 | 0 | _tbd_ |
-| Eval predicate coverage | Neo4j only | Neo4j + Qdrant + Postgres + tool-call | **done** |
-| DeepResearcher max-iter exhaustions | observed | tracked + < 5% | _tbd_ |
-| Cross-stage identifier alignment | not checked | 100% (enforced by enum / derivation) | **done** |
+| Metric | Pre | Target | Post | Status |
+|---|---:|---:|---:|---|
+| Slug retrieval hit rate (named slug) | 67% (2/3) | ≥ 80% | 50% (3/6 across mem-retrieval + paradigm-canon) | ❌ regressed |
+| KG nodes per topic on populated KG | 44 | < 30 | ~84 avg (range 40–141) | ❌ worse |
+| `Importance scoring failed` per topic | 1 | 0 | 0 across all 12 topics | ✅ fixed |
+| Topics with `nodes_created=0` (write voided) | 1/8 | 0 | 0/12 | ✅ fixed |
+| Eval predicate coverage | Neo4j only | Neo4j + Qdrant + Postgres + tool-call | tool_call_log serialized to JSON, `tool_called` / `paradigm_reused` / `min_memories` / `confidence_above` all wired | ✅ done |
+| DeepResearcher max-iter exhaustions | observed | tracked + < 5% | 4 hits across 12 topics (33%) | ❌ above target |
+| Cross-stage identifier alignment | not checked | 100% (enforced by enum / derivation) | enforced via Phase E derivation | ✅ done |
+| `tool_called(retrieve_knowledge)` per topic | not measured | ≥ 1 | passes 12/12 (1–12 calls each) | ✅ Phase A working |
+| Canonicalizer merge rate on populated KG | not measured | qualitative | T2 paradigm-canon: 27/40 (68%) merges; T1: 34/40 (85%); T4 (negative control): 17/135 (13%) | ✅ working |
+
+### Headline reading
+
+**The rewrite achieved its silent-failure goals (Phase A/B) but missed its
+slug-fragmentation goals (Phase C).** Phase D is doing real work — the
+canonicalizer correctly merges 60–85% of new entities on populated KG when
+topics overlap with prior knowledge, and stays appropriately low (13%) when
+topics introduce new territory. Phase A instrumentation works in-memory but
+required a JSON-renderer fix (this run) to be visible in reports.
+
+**Phase C (umbrella-slug retrieval) underperformed** because the populated
+KG never accumulates the canonical umbrella slugs (`reinforcement-learning`,
+`prospect-theory`, `bounded-rationality`, `free-energy-principle`) — the
+Researcher consistently emits more specific variants (`q-learning`,
+`td-rl-foraging`, `loss-aversion`, `regret-theory`, `active-inference`).
+The retrieve_knowledge mandate is firing (4–12 calls/topic) but its
+candidate set never contains the umbrella, so the enum-constrained emission
+rules out the umbrella by construction. `prospect-theory` only entered the
+KG via canonicalizer merging variants together across runs (visible as
+`paradigm_reused` PASS in paradigm-canon T2).
+
+### Bugs surfaced and fixed during this validation run
+
+1. **`call_structured` non-streaming timeout**: extraction's `_MAX_TOKENS=32768`
+   tripped Anthropic SDK's 10-minute non-streaming guard, causing every
+   Memory Agent extraction to fail with `ValueError: Streaming is required...`.
+   Fixed by mirroring `runtime/loop.py`'s `max_tokens >= 24000 → stream`
+   pattern in `structured.py`. Without this fix, smoke produced
+   `nodes_created=0` even though the eval suite reported PASS.
+
+2. **`tool_call_log` not serialized to JSON report**: `eval/report.py:render_json`
+   never wrote the `PipelineRunResult.tool_call_log` field, making Phase A
+   instrumentation appear broken when reading from `report.json`. The
+   in-memory list was always populated correctly (the `tool_called`
+   assertion read from it directly), but post-hoc analysis was blind.
+   Fixed by adding `"tool_call_log": [asdict(c) for c in tr.run.tool_call_log]`
+   to the per-topic `run` dict.
+
+### Known issues not addressed by this rewrite
+
+- **Reflection generation still uses non-structured JSON parse** — `Reflection
+  generation failed for cluster (size=N): Expecting value: line 1 column 1
+  (char 0)` warnings recur across every suite. Separate from the Phase B
+  extraction fix; needs `call_structured` migration of the reflection path.
+- **UUID slug bug**: `Paradigm` node `a6744d26-a84e-454a-bc0f-f0fc3b161905`
+  appeared in the KG after cumulative-growth re-run — a UUID being used as
+  a Paradigm.slug somewhere. Not investigated.
+- **DeepResearcher max-iter exhaustion at 33%** is well above the < 5%
+  target. The provider chain (Brave → Tavily → DuckDuckGo) didn't measurably
+  reduce this; the iteration-cap pressure may come from something other
+  than empty search results.
 
 ## Out-of-scope items (deferred from the plan)
 
