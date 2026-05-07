@@ -15,6 +15,27 @@ logger = logging.getLogger(__name__)
 
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+# UUID4 shape: 8-4-4-4-12 hex digits. Used to catch run_id / uuid.uuid4()
+# leaks into identifier-style natural keys (Paradigm.slug being the canonical
+# offender — see research-memory-rewrite-status.md "Known issues").
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+# Hard ceiling on natural-key length. Real slugs/names sit well under this;
+# anything longer is almost certainly a hash, full statement, or LLM blob
+# accidentally promoted to a key.
+_MAX_KEY_VALUE_LEN = 80
+
+# Labels whose natural key is a human-readable identifier (slug, name, id).
+# A UUID-shaped value on these is a leak, not a legitimate identifier.
+# Paper.doi is excluded — DOIs share the dash-pattern surface but are content
+# keys, not slugs, and never collide with the UUID4 shape in practice.
+_SLUG_LIKE_LABELS = frozenset(
+    {"Paradigm", "Variable", "Postulate", "Formulation", "Model", "BrainRegion"}
+)
+
 # Relation properties that are temporal metadata — excluded from content comparison.
 _TEMPORAL_KEYS = frozenset(
     {
@@ -30,6 +51,30 @@ _TEMPORAL_KEYS = frozenset(
 # Property names tried, in priority order, when the LLM-declared natural_key is
 # missing from `properties`. Covers the common identifier vocabulary.
 _FALLBACK_KEY_NAMES = ("slug", "id", "doi", "url", "name", "title")
+
+
+def _validate_natural_key(label: str, key_name: str, key_value: object) -> None:
+    """Raise ValueError when a natural-key value is shaped like a leaked UUID
+    or exceeds the sanity ceiling.
+
+    Catches a class of bugs where a ``run_id`` (UUID4) ends up as
+    ``Paradigm.slug`` because some upstream code treated the run_id as a
+    fallback for a missing slug. We refuse to write rather than silently
+    coerce — the caller's per-node try/except records the error so the
+    failure surfaces in ``KGWriteResult.errors`` instead of the KG.
+    """
+    if not isinstance(key_value, str):
+        return
+    if len(key_value) > _MAX_KEY_VALUE_LEN:
+        raise ValueError(
+            f"{label}.{key_name}={key_value!r}: natural-key value exceeds "
+            f"{_MAX_KEY_VALUE_LEN} characters — refusing to write"
+        )
+    if label in _SLUG_LIKE_LABELS and _UUID_RE.match(key_value):
+        raise ValueError(
+            f"{label}.{key_name}={key_value!r}: natural-key value is shaped "
+            "like a UUID — likely a run_id leak; refusing to write"
+        )
 
 
 def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
@@ -143,6 +188,13 @@ async def populate_kg(
             )
             continue
         key_name, key_value = resolved
+
+        try:
+            _validate_natural_key(node.label, key_name, key_value)
+        except ValueError as exc:
+            errors.append(str(exc))
+            logger.warning("kg_write_skipped: %s", exc)
+            continue
 
         # Per-entity transaction: a constraint failure on this node leaves
         # the rest of the batch untouched. The pre-rewrite version wrapped

@@ -766,6 +766,102 @@ async def test_invalid_from_label_rejected():
 
 
 @pytest.mark.asyncio
+async def test_uuid_shaped_paradigm_slug_rejected():
+    """A UUID4-shaped Paradigm.slug is refused — never reaches Cypher.
+
+    Guards against the ``a6744d26-a84e-454a-bc0f-f0fc3b161905`` leak observed
+    in the cumulative-growth re-run on 2026-05-07 (a run_id ended up as a
+    Paradigm.slug somewhere upstream).
+    """
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={
+                    "slug": "a6744d26-a84e-454a-bc0f-f0fc3b161905",
+                    "name": "Suspect Paradigm",
+                },
+                natural_key="slug",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-uuid",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 0
+    assert len(result.errors) == 1
+    assert "UUID" in result.errors[0]
+    # Nothing made it into the store.
+    assert all(not k.startswith("Paradigm:") for k in kg.store.nodes)
+
+
+@pytest.mark.asyncio
+async def test_oversized_natural_key_rejected():
+    """Natural-key value exceeding the sanity ceiling is refused.
+
+    A 200-char "slug" is almost certainly an LLM blob accidentally promoted
+    to a key (e.g. an entire postulate statement).
+    """
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={"slug": "x" * 200, "name": "Long Slug"},
+                natural_key="slug",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-long",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 0
+    assert len(result.errors) == 1
+    assert "exceeds" in result.errors[0]
+
+
+@pytest.mark.asyncio
+async def test_uuid_shaped_value_allowed_on_paper_doi():
+    """The UUID guard is scoped to slug-like labels — Paper.doi is exempt.
+
+    DOIs share a dash-separated surface but are content keys, not slugs;
+    a DOI happening to look UUID-shaped (vanishingly unlikely in practice
+    but we don't want false positives) still gets through.
+    """
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paper",
+                properties={
+                    "doi": "a6744d26-a84e-454a-bc0f-f0fc3b161905",
+                    "title": "Edge case",
+                },
+                natural_key="doi",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-paper",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 1
+    assert result.errors == []
+
+
+@pytest.mark.asyncio
 async def test_node_with_updated_at_in_properties_counts_as_created():
     """Node whose properties contain 'updated_at' is still correctly counted as created."""
     kg = FakeKnowledgeGraph()
