@@ -91,14 +91,28 @@ async def call_structured[T: BaseModel](
     }
     sys_prompt = system if extra_system is None else f"{system}\n\n{extra_system}"
 
-    response = await client.messages.create(
-        model=model,
-        system=sys_prompt,
-        tools=[tool],
-        tool_choice={"type": "tool", "name": tool_name},
-        messages=messages,
-        max_tokens=max_tokens,
-    )
+    # Mirror runtime.loop's streaming threshold: above ~24k tokens the SDK
+    # rejects non-streaming requests (10-minute estimated-runtime guard).
+    # extraction.py runs at 32k for Researcher outputs and trips this.
+    if max_tokens >= 24000:
+        async with client.messages.stream(
+            model=model,
+            system=sys_prompt,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": tool_name},
+            messages=messages,
+            max_tokens=max_tokens,
+        ) as stream:
+            response = await stream.get_final_message()
+    else:
+        response = await client.messages.create(
+            model=model,
+            system=sys_prompt,
+            tools=[tool],
+            tool_choice={"type": "tool", "name": tool_name},
+            messages=messages,
+            max_tokens=max_tokens,
+        )
     record_usage(model, getattr(response, "usage", None))
 
     if getattr(response, "stop_reason", None) == "max_tokens":

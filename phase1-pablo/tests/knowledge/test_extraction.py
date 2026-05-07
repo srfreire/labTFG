@@ -52,8 +52,27 @@ def _make_response(payload, *, stop_reason: str = "end_turn") -> MagicMock:
     return resp
 
 
+class _StreamCM:
+    """Async context manager mimicking ``client.messages.stream(...)``."""
+
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc):
+        return False
+
+    async def get_final_message(self):
+        return self._response
+
+
 def _make_client(responses: list) -> MagicMock:
-    """Create a client whose messages.create(...) yields the given responses in order.
+    """Create a client wiring both ``messages.create`` and ``messages.stream``
+    against a shared queue. Extraction runs at max_tokens=32768 so it routes
+    through ``messages.stream``; lower-token structured calls would route
+    through ``messages.create``. The shared queue covers either path.
 
     Each ``responses`` entry is either a JSON string / dict (wrapped via
     ``_make_response``) or an already-built mock response.
@@ -66,9 +85,13 @@ def _make_client(responses: list) -> MagicMock:
     async def _create(**_kw):
         return next(iterator)
 
+    def _stream(**_kw):
+        return _StreamCM(next(iterator))
+
     client = MagicMock()
     client.messages = MagicMock()
     client.messages.create = AsyncMock(side_effect=_create)
+    client.messages.stream = MagicMock(side_effect=_stream)
     return client
 
 
@@ -790,7 +813,8 @@ async def test_max_tokens_truncation_raises_immediately():
     client = _make_client([truncated])
     with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
         await extract("researcher", "report text", "run-1", client)
-    assert client.messages.create.call_count == 1
+    # Extraction's _MAX_TOKENS=32768 routes via messages.stream
+    assert client.messages.stream.call_count == 1
 
 
 @pytest.mark.asyncio

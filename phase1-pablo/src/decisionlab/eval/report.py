@@ -120,6 +120,7 @@ def render_json(result: SuiteResult) -> str:
                     "duration_ms": tr.run.duration_ms,
                     "failed_at": (tr.run.failed_at.value if tr.run.failed_at else None),
                     "error": tr.run.error,
+                    "tool_call_log": [asdict(c) for c in tr.run.tool_call_log],
                 },
                 "assertions": {
                     stage: [asdict(o) for o in outs]

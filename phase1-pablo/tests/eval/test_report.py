@@ -10,6 +10,7 @@ from decisionlab.eval.models import PipelineRunResult
 from decisionlab.eval.report import render_json, render_markdown, write_report
 from decisionlab.eval.suite import SuiteResult, SuiteSpec, TopicResult
 from decisionlab.router import Stage
+from decisionlab.runtime.tool_calls import ToolCall
 
 
 def _spec() -> SuiteSpec:
@@ -122,6 +123,44 @@ class TestRenderJson:
         data = json.loads(s)
         assert data["kg"]["before"] is None
         assert data["kg"]["after"] is None
+
+    def test_tool_call_log_serialised_per_topic(self):
+        tr = _topic_result()
+        run = PipelineRunResult(
+            run_id=tr.run.run_id,
+            topic=tr.run.topic,
+            stages_run=tr.run.stages_run,
+            paradigms=tr.run.paradigms,
+            memory_per_stage=tr.run.memory_per_stage,
+            tool_call_log=(
+                ToolCall(
+                    name="retrieve_knowledge",
+                    stage="research",
+                    args_hash="abc",
+                    succeeded=True,
+                ),
+                ToolCall(
+                    name="web_search",
+                    stage="research",
+                    args_hash="def",
+                    succeeded=False,
+                ),
+            ),
+        )
+        result = SuiteResult(
+            suite=_spec(),
+            topic_results=(TopicResult(topic="alpha", run=run, assertions={}),),
+            pre_stats=None,
+            post_stats=None,
+            total_usd=0.0,
+            duration_ms=0,
+            budget_exhausted=False,
+        )
+        data = json.loads(render_json(result))
+        log = data["topics"][0]["run"]["tool_call_log"]
+        assert [c["name"] for c in log] == ["retrieve_knowledge", "web_search"]
+        assert log[0]["succeeded"] is True
+        assert log[1]["succeeded"] is False
 
 
 class TestWriteReport:
