@@ -37,7 +37,7 @@ def test_build_recall_extras_different_prompts_per_stage():
     _, _, analyst_prompt = build_recall_extras("analyst")
     _, _, reporter_prompt = build_recall_extras("reporter")
 
-    assert "BEFORE generating the spec" in arch_prompt
+    assert "Knowledge Backbone" in arch_prompt
     assert "Postulate" in analyst_prompt
     assert "References" in reporter_prompt
     assert arch_prompt != analyst_prompt != reporter_prompt

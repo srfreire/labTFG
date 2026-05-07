@@ -132,6 +132,10 @@ async def test_happy_path_single_model_two_agents():
     assert m["vec"].upsert_dense.await_count == 4
     assert m["vec"].upsert_sparse.await_count == 4
 
+    # Sparse upsert receives raw text (Qdrant BM25 server-side), not indices/values.
+    for call in m["vec"].upsert_sparse.await_args_list:
+        assert isinstance(call.args[2], str), "upsert_sparse should receive text"
+
     # Single commit at the end.
     m["session"].commit.assert_awaited_once()
 
@@ -299,7 +303,7 @@ async def test_qdrant_dense_failure_does_not_abort_batch():
         == 4
     )
 
-    # All 4 create_memory + 4 dense attempts + 4 sparse upserts executed.
+    # All 4 create_memory + 4 dense attempts + 4 sparse (text) upserts executed.
     assert cm.await_count == 4
     assert m["vec"].upsert_dense.await_count == 4
     assert m["vec"].upsert_sparse.await_count == 4
@@ -379,8 +383,8 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
 # ---------------------------------------------------------------------------
 
 
-async def test_empty_sparse_vector_skips_sparse_upsert():
-    """If tokenize_to_sparse returns ([], []), we must not call upsert_sparse."""
+async def test_sparse_upsert_receives_raw_text():
+    """Sparse upsert delegates BM25 tokenization to Qdrant (server-side)."""
     model = _model()
     ctx = _context(agent_to_model={"agent_0": model})
     tracker = {
@@ -390,15 +394,11 @@ async def test_empty_sparse_vector_skips_sparse_upsert():
     }
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with (
-        patch(
-            "simlab.knowledge.writer._load_tokenizer",
-            return_value=lambda _text: ([], []),
-        ),
-        patch("simlab.knowledge.writer.create_memory", new=AsyncMock()),
-    ):
+    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()):
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1
     m["vec"].upsert_dense.assert_awaited_once()
-    m["vec"].upsert_sparse.assert_not_awaited()
+    m["vec"].upsert_sparse.assert_awaited_once()
+    # Text is passed directly — Qdrant handles BM25 server-side.
+    assert isinstance(m["vec"].upsert_sparse.await_args.args[2], str)

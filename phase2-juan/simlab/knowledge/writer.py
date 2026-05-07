@@ -1,7 +1,7 @@
 """TrackerMemoryWriter — persists Phase 2 simulation observations as memories.
 
 Orchestrates the full write pipeline: parse Tracker JSON → build facts →
-embed (Voyage, single batch) → tokenize to sparse → insert into Postgres
+embed (Voyage, single batch) → insert into Postgres
 memories table + upsert to Qdrant memories_dense/memories_sparse. All
 operations share the same UUID per fact to keep the three stores joinable.
 
@@ -129,13 +129,6 @@ class _Counters:
         return self.summaries + self.trajectories + self.episodes
 
 
-def _load_tokenizer():
-    """Resolve the shared sparse tokenizer, isolated so tests can patch it."""
-    from shared.tokenizer import tokenize_to_sparse
-
-    return tokenize_to_sparse
-
-
 def _build_payload(memory_id: uuid.UUID, fact: FactSpec) -> dict[str, Any]:
     return {
         "memory_id": str(memory_id),
@@ -173,29 +166,25 @@ async def _upsert_vectors(
     vector_store: VectorStore,
     memory_id: uuid.UUID,
     dense: list[float],
-    sparse: tuple[list[int], list[float]],
+    text: str,
     payload: dict[str, Any],
 ) -> None:
     """Upsert dense + sparse for one memory in parallel; swallow individual failures."""
     mem_id_str = str(memory_id)
-    indices, values = sparse
     coros = [
         _safe_upsert(
             "dense",
             vector_store.upsert_dense(_COLLECTION_DENSE, mem_id_str, dense, payload),
             memory_id,
         ),
+        _safe_upsert(
+            "sparse",
+            vector_store.upsert_sparse(
+                _COLLECTION_SPARSE, mem_id_str, text, payload
+            ),
+            memory_id,
+        ),
     ]
-    if indices:
-        coros.append(
-            _safe_upsert(
-                "sparse",
-                vector_store.upsert_sparse(
-                    _COLLECTION_SPARSE, mem_id_str, indices, values, payload
-                ),
-                memory_id,
-            )
-        )
     await asyncio.gather(*coros)
 
 
@@ -268,26 +257,13 @@ class TrackerMemoryWriter:
                 skipped_reason="no_relevant_content",
             )
 
-        try:
-            tokenize_to_sparse = _load_tokenizer()
-        except ImportError:
-            logger.warning("TrackerMemoryWriter: sparse tokenizer unavailable")
-            return _zero_result(
-                t0,
-                episodes_filtered=episodes_filtered,
-                skipped_reason="tokenizer_unavailable",
-            )
-
         texts = [f.text for f in facts]
         dense_vectors = await self._embeddings.embed_texts(texts)
-        sparse_vectors = [tokenize_to_sparse(text) for text in texts]
 
         counters = _Counters()
 
         async with self._db.get_session() as session:
-            for fact, dense, sparse in zip(
-                facts, dense_vectors, sparse_vectors, strict=True
-            ):
+            for fact, dense in zip(facts, dense_vectors, strict=True):
                 memory_id = uuid.uuid4()
                 payload = _build_payload(memory_id, fact)
 
@@ -304,7 +280,7 @@ class TrackerMemoryWriter:
                     metadata_=dict(fact.metadata),
                 )
 
-                await _upsert_vectors(self._vectors, memory_id, dense, sparse, payload)
+                await _upsert_vectors(self._vectors, memory_id, dense, fact.text, payload)
 
                 counters.count(fact)
 

@@ -136,13 +136,9 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
             assert hit.payload["phase2_experiment_id"] == experiment_id
 
         # Sparse contract: BM25 on model class_name should also match.
-        from shared.tokenizer import tokenize_to_sparse
-
-        sp_indices, sp_values = tokenize_to_sparse("E2EModel starvation")
         sparse_hits = await vector_store.search_sparse(
             "memories_sparse",
-            sp_indices,
-            sp_values,
+            "E2EModel starvation",
             limit=20,
             filters={"paradigm": paradigm_slug},
         )
