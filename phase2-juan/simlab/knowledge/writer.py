@@ -179,9 +179,7 @@ async def _upsert_vectors(
         ),
         _safe_upsert(
             "sparse",
-            vector_store.upsert_sparse(
-                _COLLECTION_SPARSE, mem_id_str, text, payload
-            ),
+            vector_store.upsert_sparse(_COLLECTION_SPARSE, mem_id_str, text, payload),
             memory_id,
         ),
     ]
@@ -280,7 +278,9 @@ class TrackerMemoryWriter:
                     metadata_=dict(fact.metadata),
                 )
 
-                await _upsert_vectors(self._vectors, memory_id, dense, fact.text, payload)
+                await _upsert_vectors(
+                    self._vectors, memory_id, dense, fact.text, payload
+                )
 
                 counters.count(fact)
 
