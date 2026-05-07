@@ -35,6 +35,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from decisionlab.agents.classifier import UmbrellaDecision
 from decisionlab.agents.deep_researcher import DeepResearcher
 from decisionlab.config import SETTINGS
 from decisionlab.domain.models import Paradigm, ResearchReport
@@ -327,15 +328,34 @@ class Researcher:
         )
         return slugs, retrieval_text
 
-    async def run(self, problem: str) -> ResearchReport:
+    async def run(
+        self,
+        problem: str,
+        *,
+        anchor_umbrella: UmbrellaDecision | None = None,
+    ) -> ResearchReport:
         self._deep_reports.clear()
         logger.info("Researcher starting — problem: %s", problem)
 
         known_slugs, retrieval_text = await self._retrieve_known_paradigms(problem)
 
+        # If the upstream classifier picked a canonical umbrella, ensure its
+        # slug appears in the candidate list — otherwise the enum-constrained
+        # emission can't reuse it. The classifier writes the umbrella to the
+        # KG as well, so future retrievals find it organically; this is just
+        # belt-and-braces for the run that introduces it.
+        anchor_block = _format_anchor(anchor_umbrella)
+        if (
+            anchor_umbrella
+            and anchor_umbrella.chosen_slug != "__NEW__"
+            and anchor_umbrella.chosen_slug not in known_slugs
+        ):
+            known_slugs = [anchor_umbrella.chosen_slug, *known_slugs]
+
         candidate_block = _format_candidates(known_slugs, retrieval_text)
         user_message = (
             f"Problem: {problem}\n\n"
+            f"{anchor_block}"
             f"{candidate_block}\n\n"
             "Investigate the problem. Reuse candidate slugs where possible; "
             "research genuine gaps only."
@@ -366,6 +386,7 @@ class Researcher:
             summary=summary,
             known_slugs=known_slugs,
             retrieval_text=retrieval_text,
+            anchor_umbrella=anchor_umbrella,
         )
 
         return ResearchReport(
@@ -381,6 +402,7 @@ class Researcher:
         summary: str,
         known_slugs: list[str],
         retrieval_text: str,
+        anchor_umbrella: UmbrellaDecision | None = None,
     ) -> list[Paradigm]:
         """Run the enum-constrained final emission.
 
@@ -391,8 +413,10 @@ class Researcher:
         then responsible for merging duplicates.
         """
         ResearcherOutput = _build_emission_model(known_slugs)
+        anchor_block = _format_anchor(anchor_umbrella)
         emission_user = (
             f"Problem: {problem}\n\n"
+            f"{anchor_block}"
             f"Candidates already in the knowledge backbone (slug — definition):\n"
             f"{_format_candidates(known_slugs, retrieval_text)}\n\n"
             f"Researcher summary:\n{summary}\n\n"
@@ -440,6 +464,27 @@ class Researcher:
                 Paradigm(id=slug, name=name, description=emission.definition)
             )
         return paradigms
+
+
+def _format_anchor(anchor: UmbrellaDecision | None) -> str:
+    """Render the anchor-umbrella block prepended to candidate listings.
+
+    Empty string when no anchor or the classifier returned ``__NEW__`` —
+    in that case the Researcher behaves as it did pre-classifier and the
+    emission falls back to discovery-driven slug minting.
+    """
+    if anchor is None or anchor.chosen_slug == "__NEW__":
+        return ""
+    return (
+        "## Anchor paradigm\n"
+        f"This research is anchored to: **{anchor.chosen_name}** "
+        f"(slug=`{anchor.chosen_slug}`)\n"
+        f"Definition: {anchor.definition}\n\n"
+        "Treat this umbrella as the slug for your final emission. Variants "
+        "of this umbrella (e.g. Q-learning under reinforcement-learning) "
+        "should be discussed as sections inside the deep reports, NOT as "
+        "separate launch_deep_research calls or distinct paradigm emissions.\n\n"
+    )
 
 
 def _format_candidates(known_slugs: list[str], retrieval_text: str) -> str:

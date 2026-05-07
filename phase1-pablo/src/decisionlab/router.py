@@ -45,6 +45,7 @@ EmitFn = Callable[[dict], Awaitable[None]]
 # inference well-typed at downstream callsites (see server.py: stop_after
 # resolution). UP042 prefers StrEnum but breaks `Stage.X.value` typing.
 class Stage(str, Enum):  # noqa: UP042
+    CLASSIFY_UMBRELLA = "classify_umbrella"
     RESEARCH = "research"
     MEMORY_RESEARCH = "memory_research"
     REVIEW_RESEARCH = "review_research"
@@ -140,6 +141,11 @@ class PipelineState:
     approved_specs: dict[str, list[str]] = field(default_factory=dict)
     build_results: dict[str, str] = field(default_factory=dict)
     pending_reruns: list[RerunRequest] = field(default_factory=list)
+
+    # Output of the upstream umbrella classifier — in-memory only (not
+    # persisted on the Run JSON column or the WS payload). Resumed runs
+    # re-classify on the next start; the cost is one Haiku call.
+    umbrella: object | None = None  # UmbrellaDecision | None
 
     # -- S3 prefix helpers ---------------------------------------------------
 
@@ -690,6 +696,7 @@ class Router:
 
     async def run(self) -> None:
         handlers = {
+            Stage.CLASSIFY_UMBRELLA: self._classify_umbrella,
             Stage.RESEARCH: self._do_research,
             Stage.MEMORY_RESEARCH: self._memory_research,
             Stage.REVIEW_RESEARCH: self._review_research,
@@ -781,6 +788,47 @@ class Router:
 
     # -- stage handlers ------------------------------------------------------
 
+    async def _classify_umbrella(self) -> None:
+        """Pre-anchor the run to a canonical paradigm umbrella.
+
+        Runs one Haiku call against the canonical-paradigms fixture. The
+        result is stored on ``state.umbrella`` (in-memory only) and passed
+        to ``Researcher.run`` so the final emission collapses variant
+        slugs into the umbrella's slug. Failure here degrades to
+        ``state.umbrella=None`` and the Researcher behaves as it did
+        pre-classifier — never aborts the run.
+        """
+        from decisionlab.agents.classifier import classify_umbrella
+
+        try:
+            from decisionlab.knowledge.seed import _load_fixture
+
+            known = _load_fixture()
+        except Exception as exc:
+            logger.warning("Classifier: cannot load canonical paradigms — %s", exc)
+            self.state.umbrella = None
+            self.state.stage = Stage.RESEARCH
+            return
+
+        try:
+            decision = await classify_umbrella(
+                self.state.problem,
+                client=self.client,
+                known_umbrellas=known,
+            )
+        except Exception as exc:
+            logger.warning("Classifier failed (%s) — proceeding without anchor", exc)
+            self.state.umbrella = None
+            self.state.stage = Stage.RESEARCH
+            return
+
+        self.state.umbrella = decision
+        self.console.print(
+            f"[dim]Anchored to: {decision.chosen_slug} "
+            f"(confidence={decision.confidence:.2f})[/dim]"
+        )
+        self.state.stage = Stage.RESEARCH
+
     async def _do_research(self) -> None:
         from decisionlab.agents.researcher import Researcher
 
@@ -794,7 +842,10 @@ class Router:
                 run_id=self.state.run_id,
                 **self._knowledge_tool_kwargs("researcher"),
             )
-            report = await r.run(self.state.problem)
+            report = await r.run(
+                self.state.problem,
+                anchor_umbrella=self.state.umbrella,  # type: ignore[arg-type]
+            )
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")

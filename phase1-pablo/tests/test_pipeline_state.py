@@ -6,6 +6,7 @@ from decisionlab.router import PipelineState, Stage
 class TestStageEnum:
     def test_stage_enum_values(self):
         expected = {
+            "CLASSIFY_UMBRELLA": "classify_umbrella",
             "RESEARCH": "research",
             "MEMORY_RESEARCH": "memory_research",
             "REVIEW_RESEARCH": "review_research",
@@ -21,7 +22,7 @@ class TestStageEnum:
             "REVIEW_BUILD": "review_build",
             "DONE": "done",
         }
-        assert len(Stage) == 14
+        assert len(Stage) == 15
         for name, value in expected.items():
             assert Stage[name].value == value
 

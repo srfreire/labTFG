@@ -63,7 +63,7 @@ class _FakeResearcher:
     def __init__(self, **kw):
         self.run_id = kw.get("run_id")
 
-    async def run(self, problem: str):
+    async def run(self, problem: str, *, anchor_umbrella=None):
         deep_reports = {
             "reinforcement-learning": "# Reinforcement learning\n\ndeep content",
             "prospect-theory": "# Prospect theory\n\ndeep content",

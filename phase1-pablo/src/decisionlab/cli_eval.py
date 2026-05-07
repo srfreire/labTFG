@@ -350,9 +350,14 @@ def cli_kg_reset(
     confirm: bool = typer.Option(
         False, "--confirm", help="Required: this is destructive"
     ),
+    no_seed: bool = typer.Option(
+        False,
+        "--no-seed",
+        help="Skip seeding canonical paradigms after reset.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
-    """Delete every node and relation in the KG."""
+    """Delete every node and relation in the KG, then re-seed canonical paradigms."""
     _setup_logging(verbose)
     if not confirm:
         console.print(
@@ -363,8 +368,41 @@ def cli_kg_reset(
     async def _factory():
         n = await kgadmin.reset(confirm=True)
         console.print(f"[bold]Deleted {n} nodes (and all their relations).[/bold]")
+        if not no_seed:
+            await _seed_canonicals_with_console()
 
     _run(_factory)
+
+
+@kg_app.command("seed")
+def cli_kg_seed(
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """Seed canonical Paradigm umbrellas without resetting the KG."""
+    _setup_logging(verbose)
+
+    async def _factory():
+        await _seed_canonicals_with_console()
+
+    _run(_factory)
+
+
+async def _seed_canonicals_with_console() -> None:
+    """Wire ``seed_canonical_paradigms`` against ``shared``-owned infra and report."""
+    import shared
+    from decisionlab.knowledge.seed import seed_canonical_paradigms
+
+    counters = await seed_canonical_paradigms(
+        shared.kg,
+        getattr(shared, "embeddings", None),
+        getattr(shared, "vectors", None),
+    )
+    console.print(
+        f"[bold]Canonical paradigms seeded:[/bold] "
+        f"created={counters['nodes_created']} "
+        f"merged={counters['nodes_merged']} "
+        f"vectors={counters['vectors_indexed']}"
+    )
 
 
 @kg_app.command("snapshot")

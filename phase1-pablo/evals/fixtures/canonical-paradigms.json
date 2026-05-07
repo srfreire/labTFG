@@ -1,0 +1,52 @@
+[
+  {
+    "slug": "reinforcement-learning",
+    "name": "Reinforcement learning",
+    "definition": "Agents learn action-value or policy estimates from reward feedback to maximize cumulative reward."
+  },
+  {
+    "slug": "prospect-theory",
+    "name": "Prospect theory",
+    "definition": "Decisions under risk weight gains and losses asymmetrically against a reference point, with diminishing sensitivity."
+  },
+  {
+    "slug": "bounded-rationality",
+    "name": "Bounded rationality",
+    "definition": "Agents use heuristics under cognitive limits, satisficing rather than optimizing."
+  },
+  {
+    "slug": "free-energy-principle",
+    "name": "Free-energy principle",
+    "definition": "Agents minimize the divergence between predicted and observed sensory states by acting and updating beliefs."
+  },
+  {
+    "slug": "expected-utility-theory",
+    "name": "Expected utility theory",
+    "definition": "Decisions maximize expected utility computed from outcome probabilities and a utility function."
+  },
+  {
+    "slug": "drift-diffusion-model",
+    "name": "Drift-diffusion model",
+    "definition": "Choice and reaction time arise from noisy accumulation of evidence to a decision threshold."
+  },
+  {
+    "slug": "bayesian-brain-hypothesis",
+    "name": "Bayesian brain hypothesis",
+    "definition": "Perception and decision-making are posterior inference combining priors with likelihoods."
+  },
+  {
+    "slug": "homeostatic-regulation",
+    "name": "Homeostatic regulation",
+    "definition": "Behavior restores internal variables to set points via error-driven control."
+  },
+  {
+    "slug": "active-inference",
+    "name": "Active inference",
+    "definition": "Agents act to minimize expected free energy, integrating perception and policy selection under generative models."
+  },
+  {
+    "slug": "optimal-foraging-theory",
+    "name": "Optimal foraging theory",
+    "definition": "Agents allocate time/effort across patches to maximize long-run intake rate, e.g. via the Marginal Value Theorem."
+  }
+]

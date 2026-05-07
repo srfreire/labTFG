@@ -186,3 +186,78 @@ async def test_researcher_saves_summary_to_s3(streaming_client):
         r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
         await r.run("test problem")
         mock_save.assert_called_once_with("run-1", "# Final summary")
+
+
+@pytest.mark.asyncio
+async def test_researcher_anchor_umbrella_added_to_known_slugs(streaming_client):
+    """Passing anchor_umbrella with a non-__NEW__ slug ensures it appears in
+    the candidate enum so the emission can reuse it without crossing the
+    Literal-constraint barrier."""
+    from decisionlab.agents.classifier import UmbrellaDecision
+
+    text_block = _make_text_block("# Final")
+    response = _make_response("end_turn", [text_block])
+    client = streaming_client(response)
+
+    anchor = UmbrellaDecision(
+        chosen_slug="reinforcement-learning",
+        chosen_name="Reinforcement learning",
+        definition="Agents learn from reward feedback.",
+        rationale="Q-learning is RL.",
+        confidence=0.95,
+    )
+
+    captured = {}
+
+    async def _fake_emit(*, problem, summary, known_slugs, retrieval_text, **_):
+        captured["known_slugs"] = list(known_slugs)
+        from decisionlab.domain.models import Paradigm
+
+        return [
+            Paradigm(
+                id="reinforcement-learning",
+                name="Reinforcement learning",
+                description="x",
+            )
+        ]
+
+    r = Researcher(client=client, search=MockWebSearch())
+    with patch.object(r, "_emit_structured", side_effect=_fake_emit):
+        await r.run(
+            "Q-learning agent picks actions to maximize reward", anchor_umbrella=anchor
+        )
+
+    assert "reinforcement-learning" in captured["known_slugs"]
+    assert captured["known_slugs"][0] == "reinforcement-learning"
+
+
+@pytest.mark.asyncio
+async def test_researcher_anchor_umbrella_new_does_not_inject(streaming_client):
+    """Anchor with chosen_slug='__NEW__' is treated as no-anchor — the
+    Researcher behaves as it did pre-classifier."""
+    from decisionlab.agents.classifier import UmbrellaDecision
+
+    text_block = _make_text_block("# Final")
+    response = _make_response("end_turn", [text_block])
+    client = streaming_client(response)
+
+    anchor = UmbrellaDecision(
+        chosen_slug="__NEW__",
+        chosen_name="Novel",
+        definition="Something new.",
+        rationale="No known umbrella fits.",
+        confidence=0.4,
+    )
+
+    captured = {}
+
+    async def _fake_emit(*, problem, summary, known_slugs, retrieval_text, **_):
+        captured["known_slugs"] = list(known_slugs)
+        return []
+
+    r = Researcher(client=client, search=MockWebSearch())
+    with patch.object(r, "_emit_structured", side_effect=_fake_emit):
+        await r.run("a genuinely novel paradigm", anchor_umbrella=anchor)
+
+    # Empty known_slugs — anchor was __NEW__ so nothing to inject.
+    assert captured["known_slugs"] == []

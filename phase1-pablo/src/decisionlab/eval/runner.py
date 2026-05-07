@@ -167,7 +167,7 @@ async def run_pipeline(
     await _create_run_row(rid, topic)
 
     state = PipelineState(
-        stage=Stage.RESEARCH,
+        stage=Stage.CLASSIFY_UMBRELLA,
         problem=topic,
         reports_dir=reports_dir,
         run_id=rid,

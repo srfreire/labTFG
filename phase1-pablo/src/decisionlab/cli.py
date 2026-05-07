@@ -317,7 +317,7 @@ def run(
 
             reports_dir = _reports_dir(problem)
             state = PipelineState(
-                stage=Stage.RESEARCH,
+                stage=Stage.CLASSIFY_UMBRELLA,
                 problem=problem,
                 reports_dir=reports_dir,
                 run_id=run_id,

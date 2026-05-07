@@ -20,6 +20,7 @@ from decisionlab.router import Stage
 ROOT = Path(__file__).resolve().parents[2]
 SUITE_PATH = ROOT / "evals/suites/paradigm-canonicalization.yaml"
 PAIRS_PATH = ROOT / "evals/fixtures/canonicalize-pairs.json"
+CANONICAL_PARADIGMS_PATH = ROOT / "evals/fixtures/canonical-paradigms.json"
 
 
 def test_suite_yaml_parses():
@@ -96,3 +97,26 @@ def test_canonicalize_pairs_threshold_documented():
     if the canonicalizer's default τ shifts, this catches drift."""
     data = json.loads(PAIRS_PATH.read_text())
     assert data["_threshold_default"] == pytest.approx(DEFAULT_THRESHOLD)
+
+
+def test_canonical_paradigms_fixture_shape():
+    """The umbrella classifier seed fixture is a list of {slug,name,definition}.
+
+    The classifier reads this at startup; a malformed fixture would crash
+    every fresh ``decisionlab kg seed`` and disable the anchoring
+    machinery. Validate static shape so the failure surfaces in CI
+    rather than at run time.
+    """
+    data = json.loads(CANONICAL_PARADIGMS_PATH.read_text())
+    assert isinstance(data, list) and data, "expected a non-empty list"
+    seen_slugs: set[str] = set()
+    for entry in data:
+        assert isinstance(entry, dict)
+        for required in ("slug", "name", "definition"):
+            assert required in entry, f"entry missing {required!r}: {entry}"
+            assert isinstance(entry[required], str) and entry[required].strip()
+        slug = entry["slug"]
+        assert slug == slug.lower(), f"slug must be lowercase: {slug!r}"
+        assert " " not in slug, f"slug must be kebab-case: {slug!r}"
+        assert slug not in seen_slugs, f"duplicate slug: {slug!r}"
+        seen_slugs.add(slug)

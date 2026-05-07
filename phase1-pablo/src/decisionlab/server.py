@@ -324,7 +324,7 @@ async def run_pipeline(
         reports_dir.mkdir(parents=True, exist_ok=True)
 
         state = PipelineState(
-            stage=Stage.RESEARCH,
+            stage=Stage.CLASSIFY_UMBRELLA,
             problem=problem,
             reports_dir=reports_dir,
             run_id=run_id,
