@@ -55,8 +55,13 @@ null if not available.
 System is one of: homeostatic, hedonic, cognitive, or null.
 - Variable: properties={{name, type, range, unit}}. natural_key="name". \
 Extract from the "Identified Variables" table. Type is the Role column value.
-- Postulate: properties={{id, statement, falsifiable}}. natural_key="id". \
-Id is P1, P2, etc. Falsifiable is true if the statement can be empirically tested.
+- Postulate: properties={{id, statement, falsifiable, paradigm_slug}}. natural_key="id". \
+Id MUST be scoped to the postulate's paradigm to prevent cross-paradigm collisions: \
+emit it as "{{paradigm-slug}}:P1", "{{paradigm-slug}}:P2", etc. — for example \
+"reinforcement-learning:P1", "prospect-theory:P1". Use the slug of the Paradigm \
+this postulate BELONGS_TO. paradigm_slug duplicates the prefix as a separate \
+property for downstream queries. Falsifiable is true if the statement can be \
+empirically tested.
 
 Relation types to extract:
 - BELONGS_TO: Postulate → Paradigm (the paradigm the postulate belongs to)

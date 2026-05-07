@@ -899,6 +899,54 @@ async def test_uuid_shaped_value_allowed_on_paper_doi():
 
 
 @pytest.mark.asyncio
+async def test_postulate_id_paradigm_scoping_prevents_collision():
+    """Postulates with the same per-paradigm slot id (P1) but different paradigms
+    must not collide in MERGE. The fix scopes Postulate.id to "{paradigm-slug}:P1"
+    in the extraction prompt; this test asserts the writer keeps both nodes
+    when IDs are properly scoped (no silent ON MATCH overwrite of the second
+    paradigm's statement).
+    """
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Postulate",
+                properties={
+                    "id": "reinforcement-learning:P1",
+                    "statement": "reward prediction errors drive learning",
+                    "falsifiable": True,
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                natural_key="id",
+            ),
+            NodeSpec(
+                label="Postulate",
+                properties={
+                    "id": "prospect-theory:P1",
+                    "statement": "losses loom larger than gains",
+                    "falsifiable": True,
+                    "paradigm_slug": "prospect-theory",
+                },
+                natural_key="id",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-scope",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.nodes_created == 2
+    assert result.errors == []
+    rl = kg.store.nodes["Postulate:id=reinforcement-learning:P1"]
+    pt = kg.store.nodes["Postulate:id=prospect-theory:P1"]
+    assert rl["statement"] == "reward prediction errors drive learning"
+    assert pt["statement"] == "losses loom larger than gains"
+
+
+@pytest.mark.asyncio
 async def test_node_with_updated_at_in_properties_counts_as_created():
     """Node whose properties contain 'updated_at' is still correctly counted as created."""
     kg = FakeKnowledgeGraph()
