@@ -45,8 +45,21 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
 Node types to extract:
-- Paradigm: properties={{name, slug, description}}. natural_key="slug". \
-Slug is the kebab-case version of the paradigm name.
+- Paradigm: properties={{name, slug, description}}. natural_key="slug". A \
+Paradigm is a NAMED THEORY OF DECISION-MAKING with quantifiable mechanisms \
+and identifiable authors (e.g. "reinforcement learning", "prospect theory", \
+"drift-diffusion model", "bounded rationality", "free-energy principle"). \
+
+DO NOT extract as Paradigm: \
+  - aspects of a paradigm ("speed-accuracy tradeoff", "two-alternative forced-choice") \
+  - adjectives or qualifiers ("risk-averse", "high-probability", "long-run") \
+  - generic terms ("decision-making", "trade-off", "open-ended") \
+  - web-page chrome ("faculty publications", "full text", section headings) \
+  - truncated identifiers, hashes, or UUID fragments \
+
+If the prose mentions a concept that doesn't have an established name plus \
+quantifiable mechanism, OMIT it from Paradigm extraction. Slug is the \
+kebab-case version of the paradigm name.
 - Author: properties={{name, affiliation}}. natural_key="name".
 - Paper: properties={{title, year, doi, citation_count}}. natural_key="title". \
 Parse from the References section and inline citations. Set doi/citation_count to \

@@ -10,6 +10,7 @@ whole topic without any actionable signal in the trace.
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
@@ -169,6 +170,24 @@ def _fold_legacy_test_results(raw_nodes: list) -> list:
     return survivors
 
 
+_PARTIAL_UUID_RE = re.compile(r"^[0-9a-f]{4,}-[0-9a-f]{4,}", re.IGNORECASE)
+
+
+def _is_garbage_paradigm_slug(slug: str) -> bool:
+    """Reject paradigm slugs that obviously aren't paradigms.
+
+    Catches the residue the prompt can't fully prevent: partial UUID/hash
+    fragments (e.g. ``b47e-b402d07b1163``) and short single-word stubs that
+    are almost always extraction noise rather than named theories. The
+    prompt itself filters the rest (aspects, adjectives, web chrome).
+    """
+    if not isinstance(slug, str) or not slug:
+        return True
+    if len(slug) >= 12 and _PARTIAL_UUID_RE.match(slug):
+        return True
+    return "-" not in slug and len(slug) <= 4
+
+
 def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
     """Convert parsed JSON dict into an ExtractionResult with validated fields."""
     raw_nodes = _fold_legacy_test_results(data.get("nodes", []))
@@ -180,6 +199,15 @@ def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
         properties = raw.get("properties")
         natural_key = raw.get("natural_key")
         if label and isinstance(properties, dict) and natural_key:
+            if label == "Paradigm":
+                slug = properties.get("slug")
+                if _is_garbage_paradigm_slug(slug if isinstance(slug, str) else ""):
+                    logger.info(
+                        "Dropping garbage Paradigm extraction: slug=%r name=%r",
+                        slug,
+                        properties.get("name"),
+                    )
+                    continue
             nodes.append(
                 NodeSpec(
                     label=str(label),

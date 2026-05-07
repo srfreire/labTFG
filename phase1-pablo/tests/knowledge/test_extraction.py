@@ -16,6 +16,7 @@ import pytest
 from decisionlab.knowledge.extraction import (
     _build_result,
     _fold_legacy_test_results,
+    _is_garbage_paradigm_slug,
     extract,
 )
 from decisionlab.knowledge.models import ExtractionResult
@@ -844,15 +845,84 @@ async def test_extract_unknown_stage_raises_value_error():
         await extract("unknown_stage", "text", "run-1", client)
 
 
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "b47e-b402d07b1163",  # partial-UUID fragment
+        "8a3f-9b2c1d4e5f60",
+        "xyz",  # too-short single-word
+        "abc",
+        "",
+    ],
+)
+def test_garbage_paradigm_slug_rejected(slug):
+    """Partial-UUID and short single-word slugs are flagged as garbage."""
+    assert _is_garbage_paradigm_slug(slug)
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "reinforcement-learning",
+        "prospect-theory",
+        "drift-diffusion-model",
+        "free-energy-principle",
+    ],
+)
+def test_real_paradigm_slug_passes(slug):
+    """Legitimate kebab-case multi-word slugs pass through."""
+    assert not _is_garbage_paradigm_slug(slug)
+
+
+def test_build_result_filters_garbage_paradigm_nodes():
+    """``_build_result`` drops Paradigm nodes whose slug is partial-UUID/stub."""
+    data = {
+        "nodes": [
+            {
+                "label": "Paradigm",
+                "properties": {
+                    "name": "Reinforcement Learning",
+                    "slug": "reinforcement-learning",
+                    "description": "Real paradigm",
+                },
+                "natural_key": "slug",
+            },
+            {
+                "label": "Paradigm",
+                "properties": {
+                    "name": "Garbage",
+                    "slug": "b47e-b402d07b1163",
+                    "description": "UUID fragment",
+                },
+                "natural_key": "slug",
+            },
+            {
+                "label": "Paradigm",
+                "properties": {
+                    "name": "Stub",
+                    "slug": "xyz",
+                    "description": "Too short",
+                },
+                "natural_key": "slug",
+            },
+        ],
+        "relations": [],
+        "facts": [],
+    }
+    result = _build_result(data, "researcher", "run-1")
+    assert len(result.nodes) == 1
+    assert result.nodes[0].properties["slug"] == "reinforcement-learning"
+
+
 def test_build_result_skips_malformed_nodes():
     """_build_result ignores nodes missing required fields."""
     data = {
         "nodes": [
             {
                 "label": "Paradigm",
-                "properties": {"name": "X"},
+                "properties": {"name": "X", "slug": "named-theory"},
                 "natural_key": "slug",
-            },  # valid
+            },  # valid (slug passes garbage filter)
             {"label": "Bad"},  # missing properties and natural_key
             "not a dict",  # not a dict
             {
