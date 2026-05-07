@@ -18,8 +18,8 @@ import sqlparse
 from sqlalchemy import text
 
 import shared
-from simlab.utils import strip_markdown_fences
 from shared.settings import load_settings
+from simlab.utils import strip_markdown_fences
 
 logger = logging.getLogger(__name__)
 

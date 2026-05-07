@@ -4,11 +4,10 @@ All external dependencies (LLM, Postgres, S3) are mocked.
 """
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from simlab.nlsql import validate_sql
-
 
 # ---------------------------------------------------------------------------
 # Validator tests — pure function, no mocks needed
@@ -130,7 +129,7 @@ async def test_s3_fetch_respects_limit():
 
     with patch("simlab.nlsql.shared") as mock_shared:
         mock_shared.storage = mock_storage
-        result = await _fetch_s3(rows, ["analyst"], max_rows=2)
+        await _fetch_s3(rows, ["analyst"], max_rows=2)
 
     # Should only fetch 2 rows, not 4
     assert mock_storage.get_text.call_count == 2
