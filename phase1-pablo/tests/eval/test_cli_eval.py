@@ -3,6 +3,13 @@
 These are help/parsing tests: we don't need infra to run them. Real
 end-to-end CLI runs that hit Neo4j/Anthropic are integration-marked
 and live elsewhere.
+
+Note on CI flakiness: typer renders help via rich, which wraps long
+flags (``--stages``, ``--env-spec``) across physical lines when
+``COLUMNS`` is narrow. CI runners default to 80 columns and split the
+literal flag string, breaking the substring asserts. ``_HELP_ENV`` pins
+a wide terminal and disables color so the help output is plain enough
+to substring-match reliably.
 """
 
 from __future__ import annotations
@@ -13,10 +20,16 @@ from decisionlab.cli import app
 
 runner = CliRunner()
 
+_HELP_ENV: dict[str, str] = {
+    "COLUMNS": "200",
+    "NO_COLOR": "1",
+    "TERM": "dumb",
+}
+
 
 class TestTopLevelHelp:
     def test_eval_subcommand_appears(self):
-        result = runner.invoke(app, ["--help"])
+        result = runner.invoke(app, ["--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         assert "eval" in result.stdout
         assert "kg" in result.stdout
@@ -24,19 +37,19 @@ class TestTopLevelHelp:
 
 class TestEvalHelp:
     def test_eval_root_help(self):
-        result = runner.invoke(app, ["eval", "--help"])
+        result = runner.invoke(app, ["eval", "--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         for cmd in ("run", "topics", "pipeline"):
             assert cmd in result.stdout
 
     def test_eval_run_help(self):
-        result = runner.invoke(app, ["eval", "run", "--help"])
+        result = runner.invoke(app, ["eval", "run", "--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         assert "--stages" in result.stdout
         assert "--no-reset" in result.stdout
 
     def test_eval_topics_help(self):
-        result = runner.invoke(app, ["eval", "topics", "--help"])
+        result = runner.invoke(app, ["eval", "topics", "--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         assert "--env-spec" in result.stdout
 
@@ -55,7 +68,7 @@ class TestEvalHelp:
 
 class TestKGHelp:
     def test_kg_root_help(self):
-        result = runner.invoke(app, ["kg", "--help"])
+        result = runner.invoke(app, ["kg", "--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         for cmd in ("stats", "reset", "snapshot", "restore", "query"):
             assert cmd in result.stdout

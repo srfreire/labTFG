@@ -4,6 +4,7 @@ Translates natural language questions into SQL queries against the experiment
 database, optionally fetches rich data from S3, and synthesizes a natural
 language answer.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -70,24 +71,29 @@ def validate_sql(sql: str) -> tuple[str, str | None]:
 
     # Check tables — extract identifiers from the SQL
     # Use a simple regex approach: find words after FROM and JOIN keywords
-    table_pattern = r'\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-    found_tables = {m.group(1).lower() for m in re.finditer(table_pattern, sql, re.IGNORECASE)}
+    table_pattern = r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+    found_tables = {
+        m.group(1).lower() for m in re.finditer(table_pattern, sql, re.IGNORECASE)
+    }
 
     disallowed = found_tables - _ALLOWED_TABLES
     if disallowed:
-        return ("", f"Tablas no permitidas: {', '.join(sorted(disallowed))}. Solo: {', '.join(sorted(_ALLOWED_TABLES))}.")
+        return (
+            "",
+            f"Tablas no permitidas: {', '.join(sorted(disallowed))}. Solo: {', '.join(sorted(_ALLOWED_TABLES))}.",
+        )
 
     # Enforce LIMIT
     validated = sql.rstrip().rstrip(";")
 
     # Check for existing LIMIT
-    limit_match = re.search(r'\bLIMIT\s+(\d+)', validated, re.IGNORECASE)
+    limit_match = re.search(r"\bLIMIT\s+(\d+)", validated, re.IGNORECASE)
     if limit_match:
         current_limit = int(limit_match.group(1))
         if current_limit > _MAX_LIMIT:
             validated = re.sub(
-                r'\bLIMIT\s+\d+',
-                f'LIMIT {_MAX_LIMIT}',
+                r"\bLIMIT\s+\d+",
+                f"LIMIT {_MAX_LIMIT}",
                 validated,
                 flags=re.IGNORECASE,
             )
@@ -106,8 +112,7 @@ async def _plan(question: str) -> dict | None:
     settings = load_settings()
     client = anthropic.AsyncAnthropic()
     system = (
-        _SCHEMA_PROMPT
-        + "\n\n"
+        _SCHEMA_PROMPT + "\n\n"
         "You translate natural language questions about experiments into SQL queries. "
         "Return ONLY valid JSON with keys: sql, fetch_s3, reasoning. "
         "fetch_s3 is a list of S3 content types to fetch: any of "
@@ -235,7 +240,9 @@ async def _synthesize(
             snippets.append(f"--- {label} ---\n{content}")
         s3_section = "\n\nDatos adicionales de S3:\n" + "\n\n".join(snippets)
 
-    capped_note = "\n\n(Nota: los resultados están limitados a 50 filas.)" if capped else ""
+    capped_note = (
+        "\n\n(Nota: los resultados están limitados a 50 filas.)" if capped else ""
+    )
 
     user_content = (
         f"Pregunta: {question}\n\n"

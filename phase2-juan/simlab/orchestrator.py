@@ -1175,6 +1175,7 @@ class Orchestrator:
         # --- query_experiments: NL query over the experiment database ---
         async def query_experiments(params: dict) -> str:
             from simlab.nlsql import query_experiments as _query
+
             return await _query(params["question"])
 
         registry: Registry = {

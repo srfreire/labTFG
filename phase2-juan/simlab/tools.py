@@ -320,7 +320,9 @@ def build_simulation_tools(
             step_events = [e for e in step_events if e.agent_id in agent_filter]
         if not step_events:
             return json.dumps({"error": f"No events at step {step}"})
-        return json.dumps({"step": step, "traces": [_event_to_trace(e) for e in step_events]})
+        return json.dumps(
+            {"step": step, "traces": [_event_to_trace(e) for e in step_events]}
+        )
 
     schemas = [
         GET_SIMULATION_EVENTS_TOOL,

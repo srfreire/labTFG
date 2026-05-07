@@ -19,7 +19,9 @@ _EMPTY = "## Retrieved Knowledge (0 results)\n\nNo results found."
 _POSTULATES = "## Retrieved Knowledge (2 results)\n\n### Result 1\nPostulate P1: ..."
 _SIMULATION = "## Retrieved Knowledge (1 results)\n\n### Result 1\nPrevious sim ..."
 _PAPERS = "## Retrieved Knowledge (3 results)\n\n### Result 1\nSmith et al. 2024 ..."
-_FORMULATIONS = "## Retrieved Knowledge (2 results)\n\n### Result 1\nU(x) = x^0.88 for gains..."
+_FORMULATIONS = (
+    "## Retrieved Knowledge (2 results)\n\n### Result 1\nU(x) = x^0.88 for gains..."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +95,9 @@ async def test_prefetch_reporter():
 @pytest.mark.asyncio
 async def test_prefetch_partial_failure():
     """One query fails, others succeed — return successful + emit warning."""
-    mock_rc = AsyncMock(side_effect=[RuntimeError("connection refused"), _SIMULATION, _FORMULATIONS])
+    mock_rc = AsyncMock(
+        side_effect=[RuntimeError("connection refused"), _SIMULATION, _FORMULATIONS]
+    )
     on_warning = AsyncMock()
 
     with (
@@ -115,7 +119,13 @@ async def test_prefetch_partial_failure():
 @pytest.mark.asyncio
 async def test_prefetch_total_failure():
     """All queries fail — return '' + emit warnings."""
-    mock_rc = AsyncMock(side_effect=[RuntimeError("fail1"), RuntimeError("fail2"), RuntimeError("fail3")])
+    mock_rc = AsyncMock(
+        side_effect=[
+            RuntimeError("fail1"),
+            RuntimeError("fail2"),
+            RuntimeError("fail3"),
+        ]
+    )
     on_warning = AsyncMock()
 
     with (

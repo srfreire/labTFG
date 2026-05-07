@@ -32,7 +32,12 @@ def test_build_recall_extras_returns_tool_registry_prompt():
 
 
 def test_build_recall_extras_different_prompts_per_stage():
-    """Each stage gets a distinct prompt section."""
+    """Each stage gets a distinct prompt section.
+
+    Substrings are stage-unique: ``Knowledge Backbone`` only appears in
+    the architect's section, ``Postulate`` in the analyst's, and
+    ``References`` in the reporter's.
+    """
     _, _, arch_prompt = build_recall_extras("architect")
     _, _, analyst_prompt = build_recall_extras("analyst")
     _, _, reporter_prompt = build_recall_extras("reporter")

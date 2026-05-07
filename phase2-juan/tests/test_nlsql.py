@@ -2,6 +2,7 @@
 
 All external dependencies (LLM, Postgres, S3) are mocked.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -62,7 +63,9 @@ def test_validate_limit_preserved():
 
 def test_validate_valid_join():
     """Accepts JOIN between allowed tables."""
-    sql, error = validate_sql("SELECT e.id FROM experiments e JOIN models m ON e.id = m.id")
+    sql, error = validate_sql(
+        "SELECT e.id FROM experiments e JOIN models m ON e.id = m.id"
+    )
     assert error is None
 
 
@@ -77,7 +80,11 @@ async def test_plan_valid_json():
     from simlab.nlsql import _plan
 
     mock_response = MagicMock()
-    mock_response.content = [MagicMock(text='{"sql": "SELECT id FROM experiments", "fetch_s3": ["analyst"], "reasoning": "need analyst data"}')]
+    mock_response.content = [
+        MagicMock(
+            text='{"sql": "SELECT id FROM experiments", "fetch_s3": ["analyst"], "reasoning": "need analyst data"}'
+        )
+    ]
 
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(return_value=mock_response)
@@ -146,7 +153,9 @@ async def test_s3_fetch_partial_failure():
     ]
 
     mock_storage = AsyncMock()
-    mock_storage.get_text = AsyncMock(side_effect=['{"data": "ok"}', RuntimeError("S3 down")])
+    mock_storage.get_text = AsyncMock(
+        side_effect=['{"data": "ok"}', RuntimeError("S3 down")]
+    )
 
     with patch("simlab.nlsql.shared") as mock_shared:
         mock_shared.storage = mock_storage
@@ -187,7 +196,11 @@ async def test_query_experiments_roundtrip():
 
     # Mock plan LLM
     plan_response = MagicMock()
-    plan_response.content = [MagicMock(text='{"sql": "SELECT id, description FROM experiments", "fetch_s3": null, "reasoning": "list experiments"}')]
+    plan_response.content = [
+        MagicMock(
+            text='{"sql": "SELECT id, description FROM experiments", "fetch_s3": null, "reasoning": "list experiments"}'
+        )
+    ]
 
     # Mock synthesize LLM
     synth_response = MagicMock()
@@ -230,7 +243,11 @@ async def test_query_experiments_no_results():
     from simlab.nlsql import query_experiments
 
     plan_response = MagicMock()
-    plan_response.content = [MagicMock(text='{"sql": "SELECT id FROM experiments WHERE description LIKE \'%nonexistent%\'", "fetch_s3": null, "reasoning": "search"}')]
+    plan_response.content = [
+        MagicMock(
+            text='{"sql": "SELECT id FROM experiments WHERE description LIKE \'%nonexistent%\'", "fetch_s3": null, "reasoning": "search"}'
+        )
+    ]
 
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(return_value=plan_response)

@@ -139,7 +139,8 @@ async def websocket_chat(ws: WebSocket):
                 "data": {
                     "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
                     "Acciones posibles": ", ".join(
-                        a["name"] if isinstance(a, dict) else str(a) for a in spec["actions"]
+                        a["name"] if isinstance(a, dict) else str(a)
+                        for a in spec["actions"]
                     ),
                     "Recursos": resources,
                 },
@@ -174,7 +175,8 @@ async def websocket_chat(ws: WebSocket):
         if episodes:
             ep_lines = [
                 f"- **{ep.get('agent', '')}**: {ep.get('description', ep.get('type', ''))}"
-                if ep.get("agent") else f"- {ep.get('description', ep.get('type', ''))}"
+                if ep.get("agent")
+                else f"- {ep.get('description', ep.get('type', ''))}"
                 for ep in episodes[:5]
             ]
             ep_summary = "\n\nEpisodios detectados:\n" + "\n".join(ep_lines)
