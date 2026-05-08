@@ -1,7 +1,7 @@
 ---
 id: P0-005
 title: Delete SQLite registry, migrate Phase 2 callers to Postgres
-status: todo
+status: in-progress
 kind: strike
 phase: 0
 heat: registry

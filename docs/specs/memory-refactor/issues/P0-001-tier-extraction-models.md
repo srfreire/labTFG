@@ -1,7 +1,7 @@
 ---
 id: P0-001
 title: Tier extraction model selection per stage (Sonnet for Researcher/Reasoner, Haiku for Formalizer/Builder/importance)
-status: todo
+status: in-progress
 kind: strike
 phase: 0
 heat: extraction-model
