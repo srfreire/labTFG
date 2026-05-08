@@ -5,9 +5,10 @@
 
 ## Phases
 
-- [ ] **Phase 0: Stop lying** — Restore deterministic, comparable eval signal so subsequent phases can be measured. Fix model/cost mismatch, wire (or delete) the eval phase knob, seed canonical KG between runs, cap unbounded `run_ids` array, kill the SQLite split-brain registry.
+- [x] **Phase 0: Stop lying** — Restore deterministic, comparable eval signal so subsequent phases can be measured. Fix model/cost mismatch, delete the unwired merge-quality suite, seed canonical KG between runs, cap unbounded `run_ids` array, kill the SQLite split-brain registry.
   - Dependencies: none
-  - Estimated issues: 5
+  - Issues: P0-001, P0-002, P0-003, P0-004, P0-005
+  - Heats: extraction-model (P0-001), merge-quality-eval (P0-002), slug-accuracy-eval (P0-003), kg-schema (P0-004), registry (P0-005) — all 5 independent, max-4 parallel via hydra
   - Maps to: A8, A12, A13, A10, A11
 
 - [ ] **Phase 1: Canonical IDs at extraction** — Inject `canonical-paradigms.json` into the LLM extraction prompts as a constrained vocabulary. Make slug-like fields Pydantic `Literal[...]`. Route the `__NEW__` escape through the existing merger, then delete the merger and the calibration scripts. Kills three failing eval suites at once.

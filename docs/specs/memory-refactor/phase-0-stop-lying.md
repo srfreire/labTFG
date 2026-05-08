@@ -18,51 +18,76 @@ After P0, the failing test reports mean what they say.
 
 ## Requirements
 
-### R1 — Align extraction model choice (A8)
+### R1 — Per-stage extraction model tiering (A8)
 
 `decisionlab.structured.DEFAULT_MODEL` is `"anthropic/claude-sonnet-4.6"`
 today. `docs/knowledge-architecture.md` claims extraction uses Haiku
-(~$0.001 per call). The eval JSON reports (e.g.
-`2026-05-07-paradigm-canonicalization/report.json`) show ~30k+30k
-Sonnet 4.6 tokens per topic — code-side reality is Sonnet.
+(~$0.001 per call). The eval JSON reports show ~30k input + ~30k
+output Sonnet tokens per topic — code-side reality is Sonnet.
 
-Decision: pick **one** of {Haiku, Sonnet} for extraction; align the
-other side. Recommendation: **Haiku** for `extraction.extract` (the
-prompts are formulaic, classification-style); keep Sonnet for
-`resolver._classify_conflict` (genuinely needs reasoning). Resolver
-already uses `_STRUCTURED_MODEL` so we cannot just lower the global
-default — needs a per-call-site model parameter.
+Decision: **drop the blanket DEFAULT_MODEL for extraction; tier by
+stage difficulty.**
+
+Per-stage analysis of the prompts:
+
+| Stage | Task profile | Model |
+|---|---|---|
+| Researcher | Filter garbage slugs ("decision-making", "trade-off", web chrome) + scope `paradigm_slug` across nested entities — judgment-heavy | **Sonnet 4.6** |
+| Formalizer | Pull Equation/Variable/Parameter/Formulation from structured `### Equations` / `### Variables` tables — rigid schema | **Haiku 4.5** |
+| Reasoner | Trace `DERIVES_FROM` chains by walking JSON `rules` array, matching `source_postulate` — multi-step reasoning | **Sonnet 4.6** |
+| Builder | Extract one `Model` node + `IMPLEMENTS` from `.py` + pass/fail — mechanical | **Haiku 4.5** |
+| `resolver._score_importance` | Rate 1–10 per fact — currently Sonnet, wasteful | **Haiku 4.5** |
+| `resolver._classify_conflict` | DUPLICATE / CORROBORATION / ENRICHMENT / CONTRADICTION + write merged content | **Sonnet 4.6** (keep) |
+
+Implementation: introduce a `_STAGE_MODELS` dict in
+`decisionlab/knowledge/extraction.py` mapping stage → model, and pass
+the resolved model to `call_structured(..., model=...)`. Mirror the
+existing pattern at the resolver call sites for `_score_importance`.
+Update `docs/knowledge-architecture.md` and `docs/memory-system.md`
+to document the per-stage tiering.
+
+Expected cost cut: ~50 % drop on extraction (2 of 4 stages move to
+Haiku) plus the importance call. Researcher stays on Sonnet because
+the "what counts as a paradigm" filter is the exact kind of judgment
+Haiku stumbles on.
 
 Edge cases:
-- The structured-output path uses forced tool-use, which Haiku 4.5
-  supports.
-- `_pre_anchor` Haiku call already exists in `router.py:802` — reuse
-  the same model constant if possible.
-- The `decisionlab.config.SETTINGS.knowledge_fast_model` env var
-  (`DECISIONLAB_KNOWLEDGE_FAST_MODEL`) already names Haiku — extend
-  its scope to extraction.
+- Haiku 4.5 supports forced tool-use (Pydantic schema), so
+  `call_structured` works unchanged.
+- `_pre_anchor` Haiku call in `router.py:802` already uses the
+  `knowledge_fast_model` config — reuse the same constant for
+  Formalizer/Builder/importance.
+- A regression run on `cumulative-growth` after the swap should match
+  pre-change KG growth ±10 %; if not, revert that specific stage.
 
-### R2 — Wire eval `phase` knob through to `_verify_merge`, or delete duplicate suites (A12)
+### R2 — Delete merge-quality suite (A12)
 
 Three reports on 2026-05-08 (08:20, 08:30, 08:44) all produced
 **bit-identical** numbers (`tp=3, fp=0, fn=7, tn=8`). The "phase"
-identifier is in the directory name only; the eval runner does not
+identifier was in the directory name only; the eval runner does not
 plumb anything to `canonicalize._verify_merge`.
 
-Decision: since Phase 1 deletes the merger entirely (A1), the lowest-
-risk path is to **delete the duplicate `*-merge-quality` report directories
-and the suite-level phase artifact**. If the user wants to keep the
-suite alive temporarily as a regression alarm until P1 lands, instead
-add a real `phase` field to `merge_precision_recall` args, validate
-it's read inside `_verify_merge`, and surface the value in the report
-JSON so identical-output bugs are visible at a glance.
+Decision (confirmed): **delete the suite now**. Phase 1 (A1) replaces
+the entire merge-decision pathway with canonical-ID injection at
+extraction time, so the merger this suite tests will not exist. No
+transitional wiring of a `phase` arg.
+
+Files to delete:
+- `phase1-pablo/evals/suites/merge-quality.yaml`
+- `phase1-pablo/evals/reports/2026-05-*-baseline-merge-quality/`
+- `phase1-pablo/evals/reports/2026-05-*-phase[1234]-merge-quality/`
+- `phase1-pablo/evals/fixtures/canonicalize-pairs.json`
+  (only used by this suite + `scripts/calibrate_canonicalize_tau.py`,
+  both going away in P1)
+- The `merge_precision_recall` assertion handler in
+  `phase1-pablo/src/decisionlab/eval/assertions.py` if no other
+  suite references it (verify with grep).
 
 Edge cases:
-- `evals/reports/*-merge-quality/` directories are tracked outputs;
-  deleting them does not affect runtime.
-- `evals/suites/merge-quality.yaml` is the suite definition — if we
-  delete it now, the `merge-quality` CI step starts erroring on
-  "suite not found". Coordinate with R5 of P1 (delete merger).
+- If any CI workflow references `merge-quality` by name, update or
+  remove that step in the same commit.
+- Keep `_verify_merge` itself untouched in P0 — P1 is the issue that
+  deletes the canonicalize module.
 
 ### R3 — Reset KG between slug-accuracy runs + seed canonicals (A13)
 
@@ -138,17 +163,21 @@ Edge cases:
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: `extraction.extract` consistently uses Haiku 4.5 (or
-      Sonnet 4.6 — pick one), and `docs/knowledge-architecture.md` +
-      `docs/memory-system.md` accurately reflect the choice. A test
-      asserts the model constant. Eval cost per topic, re-measured on a
-      single `cumulative-growth` topic, matches the architecture
-      doc's claim within ±25%.
-- [ ] **AC2**: Either (a) `evals/reports/*-merge-quality` dirs and
-      `evals/suites/merge-quality.yaml` are deleted, or (b) the suite
-      grows a `phase` arg threaded through to `_verify_merge` and
-      surfaced in `report.json`; running the suite twice with two
-      different `phase` values produces two different JSON outputs.
+- [ ] **AC1**: `extraction.extract` resolves the model per stage from
+      a `_STAGE_MODELS` dict (Researcher+Reasoner = Sonnet 4.6,
+      Formalizer+Builder = Haiku 4.5). `resolver._score_importance`
+      uses Haiku. Documentation in `docs/knowledge-architecture.md` +
+      `docs/memory-system.md` lists the per-stage choices. A test
+      asserts the model resolution for each stage. Re-running
+      `cumulative-growth` shows total Sonnet token spend on extraction
+      drops ≥40 % vs the pre-change baseline.
+- [ ] **AC2**: `evals/suites/merge-quality.yaml`,
+      `evals/reports/*-merge-quality/`, and
+      `evals/fixtures/canonicalize-pairs.json` are deleted.
+      `merge_precision_recall` is removed from
+      `eval/assertions.py` (or kept only if another live suite
+      references it). Any CI workflow step naming `merge-quality` is
+      removed.
 - [ ] **AC3**: `evals/suites/slug-accuracy.yaml` has
       `reset_kg_before: true` and the eval runner invokes
       `seed_canonical_paradigms` before the first topic. Two
