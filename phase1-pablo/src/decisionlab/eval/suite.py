@@ -26,7 +26,9 @@ from decisionlab.eval import kgadmin
 from decisionlab.eval.assertions import (
     AssertionContext,
     AssertionOutcome,
+    SuiteAssertionContext,
     run_assertion,
+    run_suite_assertion,
 )
 from decisionlab.eval.cost import estimate_usd
 from decisionlab.eval.kgadmin import KGStats
@@ -67,6 +69,7 @@ class SuiteSpec:
     topics: tuple[TopicSpec, ...]
     max_usd_total: float | None
     source_path: Path | None = None
+    suite_assertions: tuple[dict[str, Any], ...] = ()
 
     @classmethod
     def from_yaml(cls, path: Path) -> SuiteSpec:
@@ -74,7 +77,9 @@ class SuiteSpec:
         if not isinstance(raw, dict):
             raise ValueError(f"suite YAML must be a mapping, got {type(raw)}")
 
-        stages = tuple(_parse_stages(raw.get("stages") or ["research"]))
+        # Default to ``[]`` (empty) so an offline suite that runs only
+        # ``suite_assertions:`` can declare ``stages: []``.
+        stages = tuple(_parse_stages(raw.get("stages") if "stages" in raw else ["research"]))
         env_spec_path = (
             Path(raw["env_spec"]).expanduser().resolve()
             if raw.get("env_spec")
@@ -110,6 +115,13 @@ class SuiteSpec:
         max_usd = budget.get("max_usd_total")
         max_usd = float(max_usd) if max_usd is not None else None
 
+        raw_suite_assertions = raw.get("suite_assertions") or []
+        if not isinstance(raw_suite_assertions, list):
+            raise ValueError(
+                f"suite {raw.get('name', '?')!r}: suite_assertions must be a list"
+            )
+        suite_assertions = tuple(raw_suite_assertions)
+
         return cls(
             name=raw.get("name", path.stem),
             stages=stages,
@@ -120,10 +132,13 @@ class SuiteSpec:
             topics=tuple(topics),
             max_usd_total=max_usd,
             source_path=path,
+            suite_assertions=suite_assertions,
         )
 
 
-def _parse_stages(raw: list[str] | str) -> list[Stage]:
+def _parse_stages(raw: list[str] | str | None) -> list[Stage]:
+    if raw is None:
+        return []
     if isinstance(raw, str):
         raw = [raw]
     valid = {s.value: s for s in Stage}
@@ -168,6 +183,7 @@ class SuiteResult:
     duration_ms: int
     budget_exhausted: bool
     error: str | None = None
+    suite_assertions: tuple[AssertionOutcome, ...] = ()
 
     @property
     def all_passed(self) -> bool:
@@ -175,6 +191,7 @@ class SuiteResult:
             self.error is None
             and not self.budget_exhausted
             and all(t.all_passed for t in self.topic_results)
+            and all(o.passed for o in self.suite_assertions)
         )
 
     def topics_run(self) -> int:
@@ -336,6 +353,17 @@ async def run_suite(
         except Exception as exc:
             logger.warning("Suite %r: post-stats failed: %s", spec.name, exc)
 
+    suite_outcomes: list[AssertionOutcome] = []
+    if spec.suite_assertions:
+        sctx = SuiteAssertionContext(
+            suite=spec,
+            topic_results=tuple(topic_results),
+            pre_stats=pre_stats,
+            post_stats=post_stats,
+        )
+        for sa_spec in spec.suite_assertions:
+            suite_outcomes.append(await run_suite_assertion(sa_spec, sctx))
+
     duration_ms = int((time.monotonic() - t0) * 1000)
     total_usd = estimate_usd(usage_module.snapshot())
     return SuiteResult(
@@ -347,6 +375,7 @@ async def run_suite(
         duration_ms=duration_ms,
         budget_exhausted=budget_exhausted,
         error=suite_error,
+        suite_assertions=tuple(suite_outcomes),
     )
 
 

@@ -49,10 +49,14 @@ def _validate_stages(stages: Iterable[Stage]) -> tuple[Stage, ...]:
     The eval harness only supports running a prefix because every stage
     depends on its predecessor's artifacts. ``{FORMALIZE}`` alone is
     nonsensical — there'd be no paradigms to formalize.
+
+    An empty iterable is allowed and yields an empty tuple — used by
+    offline suites that run only ``suite_assertions:`` without any
+    pipeline work.
     """
     requested = set(stages)
     if not requested:
-        raise ValueError("stages must be non-empty")
+        return ()
     bad = requested - set(_STAGE_ORDER)
     if bad:
         raise ValueError(
@@ -157,7 +161,6 @@ async def run_pipeline(
         )
 
     rid = run_id or str(uuid.uuid4())
-    reports_dir = _topic_to_reports_dir(topic, rid, reports_root)
 
     if reset_usage:
         usage_module.reset()
@@ -166,6 +169,20 @@ async def run_pipeline(
     tool_call_log = _start_tool_call_recording()
     timing_log = start_timing()
 
+    # Offline suite path: no stages requested means skip the entire
+    # pipeline — useful for ``suite_assertions:``-only suites
+    # (e.g. merge-quality.yaml against a fixture).
+    if not stages_run:
+        return PipelineRunResult(
+            run_id=rid,
+            topic=topic,
+            stages_run=(),
+            started_at=started_at_iso,
+            tool_call_log=tuple(tool_call_log),
+            timing=timing_log,
+        )
+
+    reports_dir = _topic_to_reports_dir(topic, rid, reports_root)
     await _create_run_row(rid, topic)
 
     state = PipelineState(

@@ -42,9 +42,9 @@ class TestValidateStages:
         result = _validate_stages([Stage.BUILD])
         assert result == (Stage.RESEARCH, Stage.FORMALIZE, Stage.REASON, Stage.BUILD)
 
-    def test_rejects_empty(self):
-        with pytest.raises(ValueError, match="non-empty"):
-            _validate_stages([])
+    def test_empty_returns_empty_tuple(self):
+        # Offline suites that run only suite_assertions: declare ``stages: []``.
+        assert _validate_stages([]) == ()
 
     def test_rejects_review_or_memory(self):
         with pytest.raises(ValueError, match="unsupported"):
