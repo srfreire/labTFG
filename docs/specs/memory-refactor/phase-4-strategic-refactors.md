@@ -131,7 +131,7 @@ relation semantics.
       deleted. `kg_entities_dense` deleted; Neo4j has a vector index
       on `Paradigm.embedding` (and Variable, Postulate, Formulation,
       Model). Retrieval entity-link uses `db.index.vector.queryNodes`.
-- [ ] AC3: `pipeline_memories` and `simulation_observations` exist
+- [x] AC3: `pipeline_memories` and `simulation_observations` exist
       via alembic. `memories` table renamed/migrated; FKs and indexes
       preserved. Phase 1 writers target `pipeline_memories`; Phase 2
       `TrackerMemoryWriter` targets `simulation_observations`. Both
