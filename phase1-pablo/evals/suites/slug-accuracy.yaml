@@ -1,0 +1,70 @@
+# phase1-pablo/evals/suites/slug-accuracy.yaml
+# Online slug-accuracy regression — exercises the full Researcher
+# pipeline against the slug-oracle.json fixture and bounds per-label
+# KG growth.
+#
+# Pre-condition: KG seeded by cumulative-growth.yaml first (so the
+# canonical paradigms exist and can be reused, not minted).
+#
+# Cost: 8 topics × research-stage ~$1.20/topic ≈ $10.
+
+name: slug-accuracy
+stages: [research]
+reset_kg_before: false
+
+topics:
+  - text: "Q-learning agent trades off exploration and exploitation in a foraging grid: how do action-value updates and ε-greedy schedules drive the policy toward optimal patch choice?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - paradigm: reinforcement-learning
+
+  - text: "Why do people overweight losses relative to gains in financial decisions, and how does the value function curve below the reference point predict observed risk-seeking in the loss domain?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - paradigm: prospect-theory
+
+  - text: "Speed-accuracy tradeoff in two-alternative forced-choice tasks: how does a noisy evidence-accumulation process to bound a reaction-time distribution and a choice probability?"
+    expect:
+      research:
+        - tool_called: { name: retrieve_knowledge, min: 1 }
+        - paradigm: drift-diffusion-model
+
+  - text: "Bounded rationality and satisficing heuristics: when do agents stop searching once a good-enough alternative is found?"
+    expect:
+      research:
+        - paradigm: bounded-rationality
+
+  - text: "Q-learning policy variant with eligibility traces — how does TD(λ) blend Monte-Carlo and one-step bootstrapping?"
+    expect:
+      research:
+        - paradigm: reinforcement-learning  # MUST canonicalize, not mint q-learning-traces
+
+  - text: "Drift-diffusion model with collapsing decision bounds: time-pressured perceptual choice in foraging contexts"
+    expect:
+      research:
+        - paradigm: drift-diffusion-model  # MUST canonicalize
+
+  - text: "Reference-dependent valuation in financial gambles — how does the reference point shape risk-seeking under losses?"
+    expect:
+      research:
+        - paradigm: prospect-theory
+
+  - text: "Free-energy principle as a unifying framework for perception, action, and learning in active inference agents"
+    expect:
+      research:
+        - paradigm: free-energy-principle
+
+suite_assertions:
+  - slug_hit_rate:
+      oracle: evals/fixtures/slug-oracle.json
+      min_rate: 0.80
+  - kg_growth_rate: { label: Paradigm,  max_per_topic: 1.5 }
+  - kg_growth_rate: { label: Variable,  max_per_topic: 6   }
+  - kg_growth_rate: { label: Postulate, max_per_topic: 5   }
+  - p95_below: { tool: retrieve_knowledge, p95_ms: 2500 }
+  - avg_below: { stage: canonicalize,      avg_ms: 8000 }
+
+budget:
+  max_usd_total: 12.00
