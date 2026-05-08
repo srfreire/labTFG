@@ -18,10 +18,14 @@ import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from decisionlab.eval.kgadmin import KGStats
 from decisionlab.eval.kgadmin import query as kg_query
 from decisionlab.eval.models import PipelineRunResult
+
+if TYPE_CHECKING:
+    from decisionlab.eval.suite import SuiteSpec, TopicResult
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,74 @@ def register(name: str) -> Callable[[PredicateFn], PredicateFn]:
 
 def predicate_names() -> list[str]:
     return sorted(_REGISTRY.keys())
+
+
+@dataclass(frozen=True)
+class SuiteAssertionContext:
+    """What a suite-level predicate can read: full topic-result tuple,
+    KG stats before/after, and the suite spec itself for cross-references."""
+
+    suite: SuiteSpec | None
+    topic_results: tuple[TopicResult, ...]
+    pre_stats: KGStats | None
+    post_stats: KGStats | None
+
+
+SuitePredicateFn = Callable[
+    [SuiteAssertionContext, Any], Awaitable[AssertionOutcome]
+]
+_SUITE_REGISTRY: dict[str, SuitePredicateFn] = {}
+
+
+def register_suite(name: str) -> Callable[[SuitePredicateFn], SuitePredicateFn]:
+    """Decorator: bind a suite-level predicate function to a YAML key name."""
+
+    def _wrap(fn: SuitePredicateFn) -> SuitePredicateFn:
+        if name in _SUITE_REGISTRY:
+            raise RuntimeError(f"suite predicate {name!r} already registered")
+        _SUITE_REGISTRY[name] = fn
+        return fn
+
+    return _wrap
+
+
+def suite_predicate_names() -> list[str]:
+    return sorted(_SUITE_REGISTRY.keys())
+
+
+async def run_suite_assertion(
+    spec: dict[str, Any],
+    ctx: SuiteAssertionContext,
+) -> AssertionOutcome:
+    """Resolve a one-key dict like ``{p95_below: {tool: ...}}`` to the
+    suite predicate and execute it. Mirrors ``run_assertion`` but reads
+    from a ``SuiteAssertionContext`` instead of a per-topic context."""
+    if not isinstance(spec, dict) or len(spec) != 1:
+        return AssertionOutcome(
+            name="<malformed>",
+            passed=False,
+            detail=f"suite assertion must be a single-key dict, got {spec!r}",
+        )
+    name, args = next(iter(spec.items()))
+    fn = _SUITE_REGISTRY.get(name)
+    if fn is None:
+        return AssertionOutcome(
+            name=name,
+            passed=False,
+            detail=(
+                f"unknown suite predicate {name!r}; "
+                f"valid: {suite_predicate_names()}"
+            ),
+        )
+    try:
+        return await fn(ctx, args)
+    except Exception as exc:
+        logger.exception("suite assertion %s crashed", name)
+        return AssertionOutcome(
+            name=name,
+            passed=False,
+            detail=f"suite predicate {name!r} raised: {exc}",
+        )
 
 
 async def run_assertion(
