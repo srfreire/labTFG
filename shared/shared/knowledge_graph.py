@@ -11,22 +11,22 @@ from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
 
 _T = TypeVar("_T")
 
-# Node labels → (unique key property, additional index properties)
-_NODE_SCHEMA: dict[str, tuple[str, list[str]]] = {
-    "Paradigm": ("slug", ["name"]),
-    "Variable": ("name", []),
-    "Equation": ("latex", []),
-    "BrainRegion": ("name", []),
-    "Author": ("name", []),
-    "Paper": ("doi", []),
-    "Postulate": ("id", []),
-    "Formulation": ("id", []),
-    "Parameter": ("name", []),
-    "Model": ("formulation_id", []),
-    "Reflection": ("id", []),
+# Node labels → {"unique_key": <prop>, "indexes": [<additional indexed props>]}
+_SCHEMA: dict[str, dict[str, object]] = {
+    "Paradigm": {"unique_key": "slug", "indexes": ["name"]},
+    "Variable": {"unique_key": "id", "indexes": ["paradigm_slug", "name"]},
+    "Equation": {"unique_key": "latex", "indexes": []},
+    "BrainRegion": {"unique_key": "name", "indexes": []},
+    "Author": {"unique_key": "name", "indexes": []},
+    "Paper": {"unique_key": "doi", "indexes": []},
+    "Postulate": {"unique_key": "id", "indexes": []},
+    "Formulation": {"unique_key": "id", "indexes": []},
+    "Parameter": {"unique_key": "name", "indexes": []},
+    "Model": {"unique_key": "formulation_id", "indexes": []},
+    "Reflection": {"unique_key": "id", "indexes": []},
 }
 
-_ALLOWED_LABELS = frozenset(_NODE_SCHEMA)
+_ALLOWED_LABELS = frozenset(_SCHEMA)
 _ALLOWED_REL_TYPES = frozenset(
     [
         "SUPPORTS",
@@ -63,13 +63,17 @@ def _check_ident(value: str, name: str) -> None:
 class KnowledgeGraph:
     """Thin async wrapper around Neo4j for the knowledge backbone schema."""
 
+    SCHEMA = _SCHEMA
+
     def __init__(self, uri: str, user: str, password: str) -> None:
         self._driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
 
     async def init_schema(self) -> None:
         """Create uniqueness constraints and indexes. Idempotent."""
         async with self._driver.session() as session:
-            for label, (key_prop, extra_indexes) in _NODE_SCHEMA.items():
+            for label, info in _SCHEMA.items():
+                key_prop = info["unique_key"]
+                extra_indexes = info["indexes"]
                 constraint_name = f"uniq_{label}_{key_prop}"
                 await session.run(
                     f"CREATE CONSTRAINT {constraint_name} IF NOT EXISTS "
@@ -252,7 +256,7 @@ class KnowledgeGraph:
     def unique_key_for(label: str) -> str:
         """Return the unique-key property name for a node label."""
         _check_label(label)
-        return _NODE_SCHEMA[label][0]
+        return _SCHEMA[label]["unique_key"]  # type: ignore[return-value]
 
     async def execute_write(
         self,
