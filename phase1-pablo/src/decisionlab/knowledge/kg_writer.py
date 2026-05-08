@@ -7,12 +7,33 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.models import ExtractionResult, KGWriteResult
 from decisionlab.tools.reports import slugify
 from shared.knowledge_graph import KnowledgeGraph
 
+if TYPE_CHECKING:
+    from shared.embedding import EmbeddingService
+    from shared.vector_store import VectorStore
+
 logger = logging.getLogger(__name__)
+
+
+def _get_embedding_service() -> EmbeddingService | None:
+    """Lazy lookup of shared.embeddings — None if not initialised. Test
+    seam: monkeypatch this to inject a fake."""
+    import shared
+
+    return shared.embeddings
+
+
+def _get_vector_store() -> VectorStore | None:
+    """Lazy lookup of shared.vectors — None if not initialised. Test
+    seam: monkeypatch this to inject a fake."""
+    import shared
+
+    return shared.vectors
 
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -207,6 +228,11 @@ async def populate_kg(
     # so relation lookups use the extraction's natural key, not the schema default.
     node_key_map: dict[tuple[str, str], str] = {}
 
+    # Slug-like nodes successfully written this batch — fed into the
+    # kg_entities_dense ANN index after the node loop so retrieval's
+    # _link_entities_ann can find them without an O(N) Cypher table scan.
+    ann_targets: list[tuple[str, str, str, str]] = []  # (label, key_value, name, description)
+
     # ── Nodes ────────────────────────────────────────────────────────────
     for node in extraction.nodes:
         if not _SAFE_IDENT.match(node.label):
@@ -287,6 +313,14 @@ async def populate_kg(
             counters["nodes_created"] += 1
         else:
             counters["nodes_merged"] += 1
+
+        # Queue slug-like nodes for ANN-index sync after the node loop.
+        if node.label in _SLUG_LIKE_LABELS:
+            display_name = node.properties.get("name") or str(key_value)
+            description = node.properties.get("description") or ""
+            ann_targets.append(
+                (node.label, str(key_value), display_name, description)
+            )
 
     # ── Relations ────────────────────────────────────────────────────────
     for rel in extraction.relations:
@@ -401,6 +435,38 @@ async def populate_kg(
                 f"{rel.from_label}.{from_key}={rel.from_key_value!r} or "
                 f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
             )
+
+    # ── ANN sync (best-effort) ───────────────────────────────────────────
+    # After all node writes, push the slug-like nodes into kg_entities_dense
+    # so retrieval._link_entities_ann can find them without a Cypher table
+    # scan. Fire-and-forget at this layer: a Voyage/Qdrant outage logs a
+    # warning but does not turn the KG write into a failure.
+    if ann_targets:
+        try:
+            emb = _get_embedding_service()
+            vec = _get_vector_store()
+            if emb is not None and vec is not None:
+                texts = [
+                    f"{name}: {desc}" if desc else name
+                    for (_label, _key, name, desc) in ann_targets
+                ]
+                vecs = await emb.embed_texts(texts)
+                for (label, key_value, display_name, _desc), vector in zip(
+                    ann_targets, vecs
+                ):
+                    point_id = f"{label}:{key_value}"
+                    await vec.upsert_dense(
+                        "kg_entities_dense",
+                        id=point_id,
+                        vector=vector,
+                        payload={
+                            "label": label,
+                            "key_value": key_value,
+                            "name": display_name,
+                        },
+                    )
+        except Exception as exc:
+            logger.warning("kg_writer: ANN sync failed (non-fatal): %s", exc)
 
     return KGWriteResult(**counters, errors=errors)
 
