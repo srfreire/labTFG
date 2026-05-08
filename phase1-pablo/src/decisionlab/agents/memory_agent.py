@@ -12,7 +12,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
-from decisionlab.canonicalize import canonicalize
+from decisionlab.canonicalize import CANONICALIZE_LABELS, canonicalize
 from decisionlab.knowledge.extraction import extract
 from decisionlab.knowledge.indexer import index_stage_output
 from decisionlab.knowledge.kg_writer import populate_kg
@@ -129,23 +129,35 @@ class MemoryAgent:
                 return self._failed_result(t0, f"extraction: {exc}")
 
             # Step 1b: Canonicalize Paradigm/Variable/Postulate against
-            # existing KG nodes. Drops merged duplicates and rewrites
-            # relation endpoints to canonical key values. Failures here
+            # existing KG nodes — only when the LLM emitted at least one
+            # ``slug == "__NEW__"`` escape. Canonical-slug-only extractions
+            # are already keyed against the canonical vocabulary (P1-001/2)
+            # and skip the Sonnet verify-merge call entirely. Failures here
             # degrade silently (returns the input extraction unchanged).
-            try:
-                extraction = await canonicalize(
-                    extraction,
-                    kg=self._kg,
-                    embedding_service=self._embeddings,
-                    client=self._client,
-                    feedback=self._feedback,
-                )
-            except Exception:
-                logger.exception(
-                    "Memory Agent canonicalize failed for stage=%s — "
-                    "writing extraction as-is",
+            needs_canon = any(
+                n.label in CANONICALIZE_LABELS and n.properties.get("slug") == "__NEW__"
+                for n in extraction.nodes
+            )
+            if needs_canon:
+                logger.info(
+                    "Memory Agent: __NEW__ slug detected for stage=%s — "
+                    "routing extraction through canonicalize",
                     stage,
                 )
+                try:
+                    extraction = await canonicalize(
+                        extraction,
+                        kg=self._kg,
+                        embedding_service=self._embeddings,
+                        client=self._client,
+                        feedback=self._feedback,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Memory Agent canonicalize failed for stage=%s — "
+                        "writing extraction as-is",
+                        stage,
+                    )
 
             # Step 2: Parallel KG population + embedding/indexing
             kg_result = await self._parallel_write(

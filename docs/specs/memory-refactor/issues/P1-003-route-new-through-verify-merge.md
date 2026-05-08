@@ -1,7 +1,7 @@
 ---
 id: P1-003
 title: Route __NEW__ slugs through canonicalize._verify_merge, skip otherwise
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: extraction
