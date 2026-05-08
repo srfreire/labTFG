@@ -1,7 +1,7 @@
 ---
 id: P2-001
 title: Skip CRAG when top rerank score is above confidence threshold
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: crag-grader
