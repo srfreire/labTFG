@@ -1,6 +1,6 @@
 # Phase 3: Data integrity
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-09
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-09 (P3-002 closed)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A6, §A14
 
 ## Objective
@@ -83,10 +83,10 @@ Document in `docs/memory-system.md` and in a new
       atomic `UPDATE ... RETURNING`. All three call sites
       (`touch_memory`, `update_confidence`, `apply_time_decay`) route
       through it. Unit tests cover clamp boundaries.
-- [ ] AC2: New writes to `memories_dense` and `memories_sparse` no
+- [x] AC2: New writes to `memories_dense` and `memories_sparse` no
       longer include `confidence` in payload. Integration test asserts
       payload shape.
-- [ ] AC3: `_apply_recency_weighting` fetches confidences from PG in
+- [x] AC3: `_apply_recency_weighting` fetches confidences from PG in
       one batched query; drops the `metadata.confidence` read.
       Unit test asserts the SQL query is issued exactly once per
       retrieve.
