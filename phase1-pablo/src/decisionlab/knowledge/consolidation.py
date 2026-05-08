@@ -27,9 +27,6 @@ from decisionlab.knowledge.prompts import (
 )
 from decisionlab.runtime.usage import record as record_usage
 from decisionlab.structured import (
-    DEFAULT_MODEL as _STRUCTURED_MODEL,
-)
-from decisionlab.structured import (
     StructuredOutputError,
     call_structured,
 )
@@ -46,6 +43,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _FAST_MODEL = SETTINGS.knowledge_fast_model
+# Reflection generation summarises 3+ clustered facts into a 1–2 sentence
+# higher-level insight — judgment-heavy, on the structured slot. Honours
+# DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL like every other knowledge-layer
+# Sonnet call (resolver._classify_conflict, extraction Researcher/Reasoner).
+_STRUCTURED_MODEL = SETTINGS.knowledge_structured_model
 _CLUSTER_THRESHOLD = 0.80
 _REFLECTION_SIMILARITY_THRESHOLD = 0.85
 _PRUNE_CONFIDENCE = 0.2

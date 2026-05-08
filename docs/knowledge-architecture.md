@@ -129,16 +129,17 @@ A deterministic 3-step pipeline that runs after each stage completes. Not an age
 
 ### Step 1: Extract
 
-Model: Claude Haiku (`claude-haiku-4-5-20251001`), max 8192 tokens.
+Model is tiered per stage: judgment-heavy stages on Sonnet 4.6
+(`knowledge_structured_model`), mechanical stages on Haiku 4.5
+(`knowledge_fast_model`). All four route through `call_structured`
+(forced tool-use, max 32768 tokens).
 
-Each pipeline stage gets a different extraction prompt:
-
-| Stage | What gets extracted |
-|-------|-------------------|
-| Researcher | Paradigms, Authors, Papers, BrainRegions, Variables, Postulates + relations (BELONGS_TO, AUTHORED, SUPPORTS, MEASURES) |
-| Formalizer | Equations, Variables, Parameters, Formulations + relations (USES_EQUATION, MODULATES) |
-| Reasoner | Parameters, Formulations + relations (DERIVES_FROM) |
-| Builder | Models (incl. `passed` + `failure_reason` test props) + relations (IMPLEMENTS) |
+| Stage | What gets extracted | Model |
+|-------|---------------------|-------|
+| Researcher | Paradigms, Authors, Papers, BrainRegions, Variables, Postulates + relations (BELONGS_TO, AUTHORED, SUPPORTS, MEASURES) | Sonnet 4.6 |
+| Formalizer | Equations, Variables, Parameters, Formulations + relations (USES_EQUATION, MODULATES) | Haiku 4.5 |
+| Reasoner | Parameters, Formulations + relations (DERIVES_FROM) | Sonnet 4.6 |
+| Builder | Models (incl. `passed` + `failure_reason` test props) + relations (IMPLEMENTS) | Haiku 4.5 |
 
 Output is structured JSON: `{"nodes": [...], "relations": [...], "facts": [...]}`. Facts are plain-text statements that don't fit neatly into the graph schema — things like "Q-learning converges faster with low learning rates in sparse reward environments."
 
@@ -153,11 +154,11 @@ Two operations run simultaneously via `asyncio.gather`:
 
 For each extracted fact:
 
-1. **Importance scoring** (Haiku, all facts in one batch call): scores each fact 1-10. Scoring guide: 1-3 trivial, 4-5 contextual, 6-7 informative, 8-10 fundamental.
+1. **Importance scoring** (Haiku via `knowledge_fast_model`, all facts in one batch call): scores each fact 1-10. Scoring guide: 1-3 trivial, 4-5 contextual, 6-7 informative, 8-10 fundamental.
 
 2. **Duplicate detection**: embed the fact, search `memories_dense` for similar existing memories (threshold > 0.85 similarity, different run_id).
 
-3. **Conflict classification** (Sonnet, only called when duplicates found): takes the existing memory + new fact and classifies the relationship:
+3. **Conflict classification** (Sonnet via `knowledge_structured_model`, only called when duplicates found): takes the existing memory + new fact and classifies the relationship:
    - `DUPLICATE` — same information, skip
    - `CORROBORATION` — independent confirmation, boost confidence +0.05
    - `ENRICHMENT` — new fact adds to existing knowledge, supersede old with merged content
@@ -307,14 +308,22 @@ Everything degrades gracefully. If Neo4j is down, the KG retrieval layer returns
 
 ## LLM usage summary
 
+Extraction is tiered per stage. Judgment-heavy stages run on Sonnet 4.6
+(`knowledge_structured_model`); mechanical stages run on Haiku 4.5
+(`knowledge_fast_model`). Slot defaults are env-overridable via
+`DECISIONLAB_KNOWLEDGE_FAST_MODEL` and `DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL`.
+
 | Component | Model | Purpose | Cost per call |
 |-----------|-------|---------|--------------|
-| Extraction | Haiku | Entity/relation extraction from stage output | ~$0.001 |
-| Importance scoring | Haiku | Score facts 1-10 | ~$0.001 |
-| CRAG evaluation | Haiku | Classify retrieval results | ~$0.001 |
-| NER for retrieval | Haiku | Extract entities from queries | ~$0.0005 |
-| Reflection generation | Haiku | Higher-level insights from clusters | ~$0.001 |
-| Conflict resolution | Sonnet | Classify duplicate/corroboration/enrichment/contradiction | ~$0.01 |
+| Extraction — Researcher | Sonnet 4.6 (`knowledge_structured_model`) | Filter slugs, scope `paradigm_slug` across nested entities | ~$0.01 |
+| Extraction — Formalizer | Haiku 4.5 (`knowledge_fast_model`) | Equations / Variables / Parameters / Formulations from rigid tables | ~$0.001 |
+| Extraction — Reasoner | Sonnet 4.6 (`knowledge_structured_model`) | Trace `DERIVES_FROM` chains via JSON `rules` array | ~$0.01 |
+| Extraction — Builder | Haiku 4.5 (`knowledge_fast_model`) | Extract one Model node + IMPLEMENTS from generated `.py` | ~$0.001 |
+| Importance scoring | Haiku 4.5 (`knowledge_fast_model`) | Score facts 1-10 | ~$0.001 |
+| Conflict resolution | Sonnet 4.6 (`knowledge_structured_model`) | DUPLICATE / CORROBORATION / ENRICHMENT / CONTRADICTION + merge | ~$0.01 |
+| CRAG evaluation | Haiku 4.5 (`knowledge_fast_model`) | Classify retrieval results | ~$0.001 |
+| NER for retrieval | Haiku 4.5 (`knowledge_fast_model`) | Extract entities from queries | ~$0.0005 |
+| Reflection generation | Sonnet 4.6 (`knowledge_structured_model`) | Higher-level insights from clusters | ~$0.01 |
 | Embedding | Voyage AI voyage-4-large | Document embeddings (1024-dim) | ~$0.0001/1K tokens |
 | Query embedding | Voyage AI voyage-4-lite | Query embeddings (asymmetric) | ~$0.0001/1K tokens |
 | Reranking | ZeroEntropy zerank-2 | Rerank fused results | ~$0.0001/query |
@@ -331,7 +340,7 @@ Total overhead per pipeline run: < $0.10.
 | Immutable memories | Supersession, not mutation | Research context demands full history — "how did understanding evolve?" is a valid query |
 | CRAG over threshold-only | Corrective RAG with web fallback | Prevents stale memories from degrading output |
 | RRF over learned fusion | Reciprocal Rank Fusion (k=60) | No training data needed, proven effective, trivial to implement |
-| Haiku for extraction, Sonnet for conflicts | Cost optimization | Extraction is formulaic (Haiku is enough), conflict resolution needs reasoning |
+| Tiered extraction model (Haiku/Sonnet per stage) | Cost optimization | Mechanical stages (Formalizer, Builder) hit Haiku; judgment-heavy stages (Researcher, Reasoner) and conflict resolution hit Sonnet |
 | Memory Agent between stages, not during | Clean separation | Doesn't slow down agent loops, can use different models |
 | 5 namespaces | paradigm, formulation, model, simulation, meta | Maps to pipeline stages, prevents cross-contamination in retrieval |
 | 2-hop BFS, not full PPR | Local approximation | Graph is small enough that 2-hop gives equivalent results without convergence cost |

@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.prompts import (
     BUILDER_SYSTEM,
@@ -26,7 +27,6 @@ from decisionlab.knowledge.prompts import (
     RESEARCHER_SYSTEM,
     RESEARCHER_USER,
 )
-from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
 from decisionlab.structured import call_structured
 
 if TYPE_CHECKING:
@@ -41,6 +41,20 @@ _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
     "formalizer": (FORMALIZER_SYSTEM, FORMALIZER_USER),
     "reasoner": (REASONER_SYSTEM, REASONER_USER),
     "builder": (BUILDER_SYSTEM, BUILDER_USER),
+}
+
+# Per-stage extraction model tiering. Judgment-heavy stages (Researcher
+# filters paradigm slugs across nested entities; Reasoner walks
+# DERIVES_FROM chains) get the structured Sonnet slot; mechanical stages
+# (Formalizer pulls from rigid tables, Builder extracts a single Model
+# node) get the fast Haiku slot. Replaces a blanket Sonnet default that
+# was 10× more expensive than the architecture doc claimed — see
+# docs/specs/memory-refactor/phase-0-stop-lying.md §R1.
+_STAGE_MODELS: dict[str, str] = {
+    "researcher": SETTINGS.knowledge_structured_model,
+    "formalizer": SETTINGS.knowledge_fast_model,
+    "reasoner": SETTINGS.knowledge_structured_model,
+    "builder": SETTINGS.knowledge_fast_model,
 }
 
 
@@ -97,7 +111,7 @@ async def extract(
         system=system_prompt,
         schema=_Extraction,
         max_tokens=_MAX_TOKENS,
-        model=_STRUCTURED_MODEL,
+        model=_STAGE_MODELS[stage],
     )
     return _build_result(parsed.model_dump(), stage, run_id)
 

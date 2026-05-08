@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
+from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, ResolutionResult
 from decisionlab.knowledge.prompts import (
     CONFLICT_CLASSIFICATION_SYSTEM,
@@ -22,7 +23,6 @@ from decisionlab.knowledge.prompts import (
     IMPORTANCE_SCORING_SYSTEM,
     IMPORTANCE_SCORING_USER,
 )
-from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
 from decisionlab.structured import StructuredOutputError, call_structured
 from shared.memories import create_memory, supersede_memory, update_confidence
 
@@ -35,8 +35,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Both calls run through ``call_structured`` (Sonnet 4.6) — see plan
-# decision (1) "no model variance across this rewrite". Token caps stay
+# Tiered model selection: importance scoring is mechanical 1–10 rating →
+# Haiku (knowledge_fast_model). Conflict classification needs to reason
+# about whether two memories duplicate / corroborate / enrich / contradict
+# each other and merge their content → Sonnet (knowledge_structured_model).
+# See docs/specs/memory-refactor/phase-0-stop-lying.md §R1. Token caps stay
 # generous so a long importance batch or a verbose classification can
 # spell out its reasoning without truncation.
 _IMPORTANCE_MAX_TOKENS = 16384
@@ -86,7 +89,7 @@ async def _score_importance(
     facts: list[str],
     client: AsyncAnthropic,
 ) -> dict[str, float]:
-    """Score each fact's importance via structured Sonnet 4.6 output.
+    """Score each fact's importance via the fast (Haiku) structured-output slot.
 
     Returns ``{fact: score}`` for every fact the model successfully scored.
     Schema violation raises ``StructuredOutputError`` (no silent default to
@@ -105,7 +108,7 @@ async def _score_importance(
         system=IMPORTANCE_SCORING_SYSTEM,
         schema=_ImportanceScores,
         max_tokens=_IMPORTANCE_MAX_TOKENS,
-        model=_STRUCTURED_MODEL,
+        model=SETTINGS.knowledge_fast_model,
     )
     return {entry.fact: float(entry.importance) for entry in result.scores}
 
@@ -173,7 +176,7 @@ async def _classify_conflict(
             system=CONFLICT_CLASSIFICATION_SYSTEM,
             schema=_ConflictClassification,
             max_tokens=_CLASSIFY_MAX_TOKENS,
-            model=_STRUCTURED_MODEL,
+            model=SETTINGS.knowledge_structured_model,
         )
     except (StructuredOutputError, Exception) as exc:
         # Conflict classification has a per-pair blast radius (one fact at

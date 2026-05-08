@@ -189,9 +189,13 @@ async def test_importance_scoring_high_for_meaningful_fact():
 
 
 @pytest.mark.asyncio
-async def test_importance_scoring_uses_structured_sonnet():
-    """Importance scoring runs through call_structured against Sonnet 4.6
-    (forced tool-use) — see Phase B of research-memory-rewrite.md."""
+async def test_importance_scoring_uses_fast_model():
+    """AC2 (P0-001): Importance scoring uses ``knowledge_fast_model``
+    (Haiku) — judging 1–10 importance is mechanical and the prior Sonnet
+    spend was wasteful. See docs/specs/memory-refactor/phase-0-stop-lying.md
+    §R1."""
+    from decisionlab.config import SETTINGS
+
     scored_response = json.dumps(
         [
             {"fact": "test fact", "importance": 5, "reasoning": "average"},
@@ -203,7 +207,7 @@ async def test_importance_scoring_uses_structured_sonnet():
 
     client.messages.create.assert_called_once()
     call_kwargs = client.messages.create.call_args.kwargs
-    assert "sonnet" in call_kwargs["model"].lower()
+    assert call_kwargs["model"] == SETTINGS.knowledge_fast_model
     # Forced tool-use: a single tool with input_schema, tool_choice locked.
     assert len(call_kwargs["tools"]) == 1
     assert call_kwargs["tool_choice"]["type"] == "tool"
@@ -864,8 +868,12 @@ async def test_empty_extraction_returns_zero_result():
 
 
 @pytest.mark.asyncio
-async def test_classify_conflict_calls_sonnet():
-    """_classify_conflict calls the Sonnet model."""
+async def test_classify_conflict_uses_structured_model():
+    """AC2 (P0-001): _classify_conflict stays on ``knowledge_structured_model``
+    (Sonnet) — DUPLICATE / CORROBORATION / ENRICHMENT / CONTRADICTION + merged-
+    content writing is judgment-heavy and not safe to demote."""
+    from decisionlab.config import SETTINGS
+
     conflict_resp = json.dumps(
         {
             "classification": "DUPLICATE",
@@ -886,7 +894,7 @@ async def test_classify_conflict_calls_sonnet():
 
     assert result["classification"] == "DUPLICATE"
     call_kwargs = client.messages.create.call_args.kwargs
-    assert "sonnet" in call_kwargs["model"]
+    assert call_kwargs["model"] == SETTINGS.knowledge_structured_model
 
 
 # ---------------------------------------------------------------------------

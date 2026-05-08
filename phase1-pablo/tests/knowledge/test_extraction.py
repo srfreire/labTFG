@@ -845,6 +845,51 @@ async def test_extract_unknown_stage_raises_value_error():
         await extract("unknown_stage", "text", "run-1", client)
 
 
+# ---------------------------------------------------------------------------
+# AC1 (P0-001): Per-stage model tiering
+# Researcher + Reasoner → ``knowledge_structured_model`` (Sonnet)
+# Formalizer + Builder → ``knowledge_fast_model`` (Haiku)
+# ---------------------------------------------------------------------------
+
+
+_EMPTY_EXTRACTION = {"nodes": [], "relations": [], "facts": []}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("stage", "tier"),
+    [
+        ("researcher", "structured"),
+        ("formalizer", "fast"),
+        ("reasoner", "structured"),
+        ("builder", "fast"),
+    ],
+)
+async def test_extract_resolves_model_per_stage(stage, tier):
+    """Each stage threads its tier-appropriate model into ``call_structured``."""
+    from decisionlab.config import SETTINGS
+
+    expected = (
+        SETTINGS.knowledge_structured_model
+        if tier == "structured"
+        else SETTINGS.knowledge_fast_model
+    )
+    client = _make_client([_EMPTY_EXTRACTION])
+    await extract(stage, "irrelevant body", "run-1", client)
+
+    # _MAX_TOKENS=32768 routes through ``messages.stream``.
+    client.messages.stream.assert_called_once()
+    assert client.messages.stream.call_args.kwargs["model"] == expected
+
+
+def test_stage_models_dict_covers_all_stages():
+    """``_STAGE_MODELS`` carries an entry for every prompted stage so a
+    ``KeyError`` cannot leak through ``extract``."""
+    from decisionlab.knowledge.extraction import _STAGE_MODELS, _STAGE_PROMPTS
+
+    assert set(_STAGE_MODELS) == set(_STAGE_PROMPTS)
+
+
 @pytest.mark.parametrize(
     "slug",
     [

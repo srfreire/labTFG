@@ -25,7 +25,7 @@ External dependencies wired in but **not** persistent storage:
 |---|---|
 | Voyage AI | `voyage-4-large` (docs, 1024d) + `voyage-4-lite` (queries, asymmetric) |
 | ZeroEntropy | `zerank-2` rerank |
-| Anthropic | Haiku 4.5 (extraction, importance, CRAG, NER, reflections) + Sonnet 4.6 (conflict resolution, structured output) |
+| Anthropic | Haiku 4.5 (Formalizer/Builder extraction, importance, CRAG, NER, reflections — `knowledge_fast_model`) + Sonnet 4.6 (Researcher/Reasoner extraction, conflict resolution — `knowledge_structured_model`) |
 
 Bootstrap lives in `shared/shared/__init__.py`:
 - `init()` connects Postgres, MinIO, Neo4j, Qdrant, Voyage/ZE.
@@ -305,7 +305,9 @@ Pipeline stage finishes
 ┌──────────────────────────────────────────────────────────────────┐
 │  decisionlab.knowledge.extraction.extract(stage, output)          │
 │  • Stage-specific prompt (RESEARCHER / FORMALIZER / REASONER /    │
-│    BUILDER) + Sonnet via call_structured (forced tool-use)        │
+│    BUILDER) + tiered model via call_structured (forced tool-use): │
+│    Researcher+Reasoner → knowledge_structured_model (Sonnet),     │
+│    Formalizer+Builder  → knowledge_fast_model (Haiku)             │
 │  • Pydantic-validated envelope: {nodes, relations, facts}         │
 │  • _fold_legacy_test_results — folds old TestResult into Model    │
 │  • _is_garbage_paradigm_slug — drops UUID fragments + 4-char stubs│
@@ -329,7 +331,7 @@ Pipeline stage finishes
       ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │  resolver.resolve_and_store                                       │
-│  1. _score_importance — Sonnet structured, 1–10 per fact          │
+│  1. _score_importance — Haiku (knowledge_fast_model), 1–10 / fact │
 │  2. _find_duplicates — embed_query + memories_dense, cos > 0.85,  │
 │                        excludes same run_id                        │
 │  3. Branch on best candidate:                                     │
@@ -910,25 +912,35 @@ test seams become constructor parameters. The Phase 1 ↔ Phase 2
 import cycle becomes a one-way dependency: Phase 2 owns its writer
 construction with infra it received, not infra it grabs from a global.
 
-## A8. The Memory Agent's per-stage extraction is using the expensive model
+## A8. The Memory Agent's per-stage extraction is tiered (resolved 2026-05-08)
 
-`structured.DEFAULT_MODEL = "anthropic/claude-sonnet-4.6"`.
-`extraction.extract` calls `call_structured(..., model=_STRUCTURED_MODEL)`
-which is that Sonnet default.
+Original critique: `structured.DEFAULT_MODEL = "anthropic/claude-sonnet-4.6"`
+and `extraction.extract` called `call_structured(..., model=_STRUCTURED_MODEL)`
+unconditionally, while `docs/knowledge-architecture.md` claimed Haiku
+("~$0.001 per call"). The eval JSON reports (~30k+30k Sonnet tokens per
+topic across resolver+extraction) were consistent with Sonnet, so doc was
+wrong by ~10×.
 
-The architecture overview (`docs/knowledge-architecture.md`) says
-extraction is Haiku ("~$0.001 per call"). **The doc is wrong, or the code
-is wrong** — they don't match. Looking at the eval costs (Sonnet 4.6
-input/output token counts in the JSON reports: ~30k+30k tokens per
-topic across resolver+extraction), the bill is consistent with Sonnet.
+**Resolution (P0-001).** Per-stage tiering replaces the blanket Sonnet
+default. Extraction now resolves the model from a `_STAGE_MODELS` dict:
 
-**Refactor.** One of:
-- Switch extraction to Haiku, keep Sonnet for the conflict-resolution
-  call (which actually needs reasoning).
-- Or update the architecture doc to say Sonnet and accept the cost.
+| Stage | Task profile | Model |
+|---|---|---|
+| Researcher | Filter garbage slugs + scope `paradigm_slug` across nested entities — judgment-heavy | Sonnet 4.6 (`SETTINGS.knowledge_structured_model`) |
+| Formalizer | Pull Equation/Variable/Parameter/Formulation from rigid tables | Haiku 4.5 (`SETTINGS.knowledge_fast_model`) |
+| Reasoner | Trace `DERIVES_FROM` chains by walking JSON `rules` array | Sonnet 4.6 (`SETTINGS.knowledge_structured_model`) |
+| Builder | Extract one Model node + IMPLEMENTS from `.py` + pass/fail — mechanical | Haiku 4.5 (`SETTINGS.knowledge_fast_model`) |
+| `resolver._score_importance` | 1–10 rating per fact — mechanical | Haiku 4.5 (`SETTINGS.knowledge_fast_model`) |
+| `resolver._classify_conflict` | DUPLICATE / CORROBORATION / ENRICHMENT / CONTRADICTION + write merged content | Sonnet 4.6 (`SETTINGS.knowledge_structured_model`) |
 
-Either is fine. The current state — code uses Sonnet, doc claims Haiku
-— is the kind of thing that wrecks budgeting estimates.
+`structured.DEFAULT_MODEL` stays as a back-compat constant for the few
+non-extraction call sites still threading it (e.g. `canonicalize.py`,
+`agents/researcher.py`'s LLM verifier), but `extraction.extract` and
+`resolver` no longer rely on it.
+
+`docs/knowledge-architecture.md` LLM-usage table now reflects this
+tiering. Slot defaults are env-overridable via `DECISIONLAB_KNOWLEDGE_FAST_MODEL`
+and `DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL`.
 
 ## A9. The Qdrant collection layout duplicates work
 
@@ -1057,7 +1069,7 @@ run leaves more debris behind.
 |---|---|---|---|
 | **A1** | Canonical IDs at extraction (delete merger) | M | merge-quality, slug-accuracy, KG growth — all 3 root-caused here |
 | **A12** | Wire eval phase knob (or delete it) | S | meaningful merge-quality regression detection |
-| **A8** | Decide Haiku vs Sonnet for extraction (and document) | S | cost predictability, doc/code alignment |
+| ~~**A8**~~ | ~~Decide Haiku vs Sonnet for extraction (and document)~~ — done in P0-001 (per-stage tiering) | S | cost predictability, doc/code alignment |
 | **A4 + A5** | Make CRAG conditional on rerank confidence + distinguish error from ambiguous | M | retrieve_knowledge p95 ≤ 2.5 s |
 | **A6** | Single source of truth for confidence (PG) | M | retrieval ranking accuracy |
 | **A2** | Split or unify the memories table | L | clean Phase 1 ↔ Phase 2 boundary |

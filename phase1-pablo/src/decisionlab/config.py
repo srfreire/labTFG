@@ -2,7 +2,7 @@
 
 Pipeline stages override via ``DECISIONLAB_<STAGE>_{MODEL,MAX_ITERATIONS,MAX_TOKENS}``.
 
-Knowledge-layer / feedback model slots are named by *role* (fast vs. heavy),
+Knowledge-layer / feedback model slots are named by *role* (fast vs. structured),
 not by family — swap any model id (Anthropic, OpenAI, Google via OpenRouter)
 without renaming code.
 
@@ -11,7 +11,7 @@ Example:
     DECISIONLAB_BUILDER_MAX_ITERATIONS=10
     DECISIONLAB_FORMALIZER_MODEL=anthropic/claude-sonnet-4.6
     DECISIONLAB_KNOWLEDGE_FAST_MODEL=anthropic/claude-haiku-4.5
-    DECISIONLAB_KNOWLEDGE_HEAVY_MODEL=anthropic/claude-sonnet-4.6
+    DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL=anthropic/claude-sonnet-4.6
     DECISIONLAB_FEEDBACK_MODEL=anthropic/claude-haiku-4.5
 """
 
@@ -66,8 +66,12 @@ class Settings:
     reasoner: AgentConfig
     builder: AgentConfig
     # Auxiliary model slots — role-named so the family choice stays in env.
-    knowledge_fast_model: str  # extraction, NER, scoring, classification, reflection
-    knowledge_heavy_model: str  # conflict resolution between memories
+    # ``knowledge_fast_model`` (Haiku) for mechanical extraction / NER /
+    # importance scoring / reflections; ``knowledge_structured_model``
+    # (Sonnet) for judgment-heavy stages (Researcher, Reasoner) and conflict
+    # resolution between memories.
+    knowledge_fast_model: str
+    knowledge_structured_model: str
     feedback_model: str  # feedback classifier (router re-execution decisions)
 
     @classmethod
@@ -112,8 +116,8 @@ class Settings:
             knowledge_fast_model=_env_model(
                 "KNOWLEDGE_FAST", "anthropic/claude-haiku-4.5"
             ),
-            knowledge_heavy_model=_env_model(
-                "KNOWLEDGE_HEAVY", "anthropic/claude-sonnet-4.6"
+            knowledge_structured_model=_env_model(
+                "KNOWLEDGE_STRUCTURED", "anthropic/claude-sonnet-4.6"
             ),
             feedback_model=_env_model("FEEDBACK", "anthropic/claude-haiku-4.5"),
         )
