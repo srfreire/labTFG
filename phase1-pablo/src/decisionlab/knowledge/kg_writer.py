@@ -232,7 +232,9 @@ async def populate_kg(
         # for both the MERGE binding and the property write so the node is
         # discoverable by the same key on subsequent reads.
         key_value = normalized
-        if isinstance(normalized, str) and isinstance(node.properties.get(key_name), str):
+        if isinstance(normalized, str) and isinstance(
+            node.properties.get(key_name), str
+        ):
             node.properties[key_name] = normalized
 
         # Per-entity transaction: a constraint failure on this node leaves

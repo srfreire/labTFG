@@ -209,9 +209,7 @@ def _slug_from_proposal(name: str, *, definition: str = "") -> str:
         raise ValueError(
             "_slug_from_proposal: both name and definition empty; cannot mint slug"
         )
-    digest = hashlib.sha1(
-        definition.strip()[:128].encode("utf-8")
-    ).hexdigest()[:10]
+    digest = hashlib.sha1(definition.strip()[:128].encode("utf-8")).hexdigest()[:10]
     return f"unnamed-{digest}"
 
 

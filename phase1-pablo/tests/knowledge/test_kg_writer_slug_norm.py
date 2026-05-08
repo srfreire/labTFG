@@ -2,8 +2,6 @@
 gets re-normalized through slugify. Catches LLM emissions that
 bypassed the producer-side normalization."""
 
-import pytest
-
 from decisionlab.knowledge.kg_writer import _validate_natural_key
 
 
