@@ -617,16 +617,18 @@ Existing tests must keep passing:
 
 ## Success criteria (final)
 
-| Metric | Baseline (2026-05-07) | Target |
-|--------|-----------------------|--------|
-| Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | ≥ 80% |
-| Merge precision (`merge-quality.yaml`)            | 1.000 (2026-05-08, n=18; tp=3 fp=0 fn=7 tn=8) | ≥ 0.95 |
-| Merge recall  (`merge-quality.yaml`)              | 0.300 (2026-05-08, n=18; f1=0.462) | ≥ 0.90 |
-| KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | ≤ 1.5 |
-| KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | ≤ 6 |
-| KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | ≤ 5 |
-| `retrieve_knowledge` p95                          | unmeasured | ≤ 2.5s |
-| `canonicalize` avg                                | unmeasured | ≤ 8s |
+| Metric | Baseline (2026-05-07) | Post-A2/A3/A4/A5 (2026-05-08, `slug-accuracy.yaml`) | Target |
+|--------|-----------------------|------------------------------------------------------|--------|
+| Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | **0.875** (7/8, threshold=0.80) ✓ | ≥ 80% |
+| Merge precision (`merge-quality.yaml`)            | 1.000 (2026-05-08, n=18; tp=3 fp=0 fn=7 tn=8) | — (offline; not re-run in Phase 3) | ≥ 0.95 |
+| Merge recall  (`merge-quality.yaml`)              | 0.300 (2026-05-08, n=18; f1=0.462) | — (offline; not re-run in Phase 3) | ≥ 0.90 |
+| KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | **1.62** (Δ=+13, n=8) ✗ | ≤ 1.5 |
+| KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | **7.62** (Δ=+61, n=8) ✗ | ≤ 6 |
+| KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | **7.75** (Δ=+62, n=8) ✗ | ≤ 5 |
+| `retrieve_knowledge` p95                          | unmeasured | **19789 ms** ✗ | ≤ 2.5s |
+| `canonicalize` avg                                | unmeasured | no data (stage not top-level in Phase 3 suite) | ≤ 8s |
+
+Phase 3 baseline report: `evals/reports/2026-05-08-phase3-slug-accuracy/`. Suite cost $6.23, KG growth +515 nodes / +197 relations across 8 topics. The single slug miss was on "bounded-rationality" (fragmented to `fast-and-frugal-heuristics-adaptive-toolbox`, `optimal-stopping-secretary-problem`, `satisficing-and-aspiration-level-adaptation`) — Paradigm growth/topic and per-paradigm fragmentation are the two follow-ups for Phase 4/5.
 
 All numbers emitted to `report.json`. Pass/fail surfaces in `report.md`.
 
