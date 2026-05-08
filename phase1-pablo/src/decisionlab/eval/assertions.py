@@ -799,3 +799,33 @@ async def _slug_hit_rate(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
     return AssertionOutcome(
         name="slug_hit_rate", passed=rate >= min_rate, detail=detail
     )
+
+
+@register_suite("kg_growth_rate")
+async def _kg_growth_rate(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
+    """Per-label growth rate (post - pre) / n_topics. Passes iff
+    rate <= max_per_topic.
+
+    args: {label: "Paradigm", max_per_topic: 1.5}
+    """
+    label = args["label"]
+    max_per_topic = float(args["max_per_topic"])
+    if ctx.pre_stats is None or ctx.post_stats is None:
+        return AssertionOutcome(
+            name="kg_growth_rate",
+            passed=False,
+            detail=f"missing pre/post stats — cannot compute growth for {label}",
+        )
+    n_topics = max(1, len(ctx.topic_results))
+    pre_n = ctx.pre_stats.by_label.get(label, 0)
+    post_n = ctx.post_stats.by_label.get(label, 0)
+    delta = post_n - pre_n
+    rate = delta / n_topics
+    return AssertionOutcome(
+        name="kg_growth_rate",
+        passed=rate <= max_per_topic,
+        detail=(
+            f"{label}: pre={pre_n} post={post_n} Δ={delta:+d} "
+            f"n={n_topics} rate={rate:.2f}/topic max={max_per_topic:.2f}"
+        ),
+    )
