@@ -331,15 +331,28 @@ class TestAC7_MemoryAccessTracking:
         mock_touch.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_track_memory_access_issues_one_execute_and_one_commit(self):
-        """AC1: regardless of batch size, one execute + one commit on the session."""
+    async def test_track_memory_access_one_batched_update_plus_one_commit(self):
+        """AC1: one batched access-meta UPDATE + one commit on the session.
+
+        After P3-001, per-id confidence boosts go through `update_memory_confidence`
+        (patched out here). The session still issues exactly one batched UPDATE
+        for `last_accessed_at` / `access_count` and one commit per call.
+        """
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
+        from shared import memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(5)]
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+        with (
+            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+            patch.object(
+                shared_memories,
+                "update_memory_confidence",
+                new_callable=AsyncMock,
+            ),
+        ):
             mock_shared.db = mock_db
             await _track_memory_access(mem_results)
 
@@ -352,6 +365,7 @@ class TestAC7_MemoryAccessTracking:
         import logging
 
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
+        from shared import memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(3)]
         mock_session = AsyncMock()
@@ -359,6 +373,11 @@ class TestAC7_MemoryAccessTracking:
 
         with (
             patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+            patch.object(
+                shared_memories,
+                "update_memory_confidence",
+                new_callable=AsyncMock,
+            ),
             caplog.at_level(logging.INFO, logger=_TOOL_MODULE),
         ):
             mock_shared.db = mock_db

@@ -44,34 +44,35 @@ class TestAC1_CorroborationBoost:
 
     @pytest.mark.asyncio
     async def test_single_corroboration_adds_005(self):
-        """One corroboration adds exactly +0.05 to confidence."""
+        """One corroboration routes a +0.05 delta through the helper."""
+        from shared import memories
         from shared.memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await update_confidence(session, mem_id, corroborate=True)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await update_confidence(session, mem_id, corroborate=True)
 
-        session.execute.assert_called_once()
-        stmt = session.execute.call_args[0][0]
-        # Verify the compiled SQL contains the +0.05 delta
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        assert "0.05" in compiled
+        mock_helper.assert_awaited_once_with(session, mem_id, delta=0.05)
 
     @pytest.mark.asyncio
     async def test_corroboration_capped_at_1(self):
-        """Confidence cannot exceed 1.0 after corroboration."""
+        """Clamping is the helper's job — corroboration delegates to it."""
+        from shared import memories
         from shared.memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await update_confidence(session, mem_id, corroborate=True)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await update_confidence(session, mem_id, corroborate=True)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        # Should use least/greatest clamping
-        assert "least" in compiled.lower() or "LEAST" in compiled
+        mock_helper.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -84,17 +85,19 @@ class TestAC2_ContradictionPenalty:
 
     @pytest.mark.asyncio
     async def test_contradiction_subtracts_010(self):
-        """Contradiction applies -0.10 delta."""
+        """Contradiction applies -0.10 delta via the helper."""
+        from shared import memories
         from shared.memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await update_confidence(session, mem_id, contradict=True)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await update_confidence(session, mem_id, contradict=True)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        assert "0.1" in compiled  # -0.10 delta
+        mock_helper.assert_awaited_once_with(session, mem_id, delta=-0.10)
 
     @pytest.mark.asyncio
     async def test_contradiction_logs_episodic_memory(self):
@@ -217,31 +220,35 @@ class TestAC3_AccessBoost:
 
     @pytest.mark.asyncio
     async def test_touch_memory_boosts_confidence(self):
-        """touch_memory adds +0.02 to confidence."""
+        """touch_memory routes a +0.02 delta through the helper for each id."""
+        from shared import memories
         from shared.memories import touch_memory
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await touch_memory(session, mem_id)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await touch_memory(session, mem_id)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        assert "0.02" in compiled
+        mock_helper.assert_awaited_once_with(session, mem_id, delta=0.02)
 
     @pytest.mark.asyncio
     async def test_touch_memory_capped_at_1(self):
-        """Confidence from access boost is capped at 1.0."""
+        """Clamping at the cap is the helper's job — touch_memory delegates."""
+        from shared import memories
         from shared.memories import touch_memory
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await touch_memory(session, mem_id)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await touch_memory(session, mem_id)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        assert "least" in compiled.lower() or "LEAST" in compiled
+        mock_helper.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +261,8 @@ class TestAC4_TimeDecay:
 
     @pytest.mark.asyncio
     async def test_apply_time_decay_reduces_old_memories(self):
-        """90-day untouched memory: confidence *= 0.95^3 ≈ 0.857."""
+        """90-day untouched memory: confidence *= 0.95^3 ≈ 0.857, set via helper."""
+        from shared import memories
         from shared.memories import apply_time_decay
 
         session = AsyncMock()
@@ -270,16 +278,15 @@ class TestAC4_TimeDecay:
         result_mock.scalars.return_value.all.return_value = [mem]
         session.execute = AsyncMock(return_value=result_mock)
 
-        count = await apply_time_decay(session)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            count = await apply_time_decay(session)
 
         assert count == 1
-        # The update call is the second execute (first is the select)
-        update_call = session.execute.call_args_list[1]
-        stmt = update_call[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        # 0.95^3 ≈ 0.857375
-        expected = 0.95**3
-        assert str(round(expected, 6)) in compiled or f"{expected}" in compiled
+        mock_helper.assert_awaited_once()
+        kwargs = mock_helper.await_args.kwargs
+        assert kwargs["set_to"] == pytest.approx(1.0 * 0.95**3)
 
     @pytest.mark.asyncio
     async def test_reflections_exempt_from_decay(self):
@@ -301,7 +308,8 @@ class TestAC4_TimeDecay:
 
     @pytest.mark.asyncio
     async def test_decay_floors_at_01(self):
-        """0.15 * 0.95^12 ≈ 0.082 → floored to 0.1."""
+        """0.15 * 0.95^12 ≈ 0.082 → flooring is delegated to the helper."""
+        from shared import memories
         from shared.memories import apply_time_decay
 
         session = AsyncMock()
@@ -317,14 +325,16 @@ class TestAC4_TimeDecay:
         result_mock.scalars.return_value.all.return_value = [mem]
         session.execute = AsyncMock(return_value=result_mock)
 
-        await apply_time_decay(session)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await apply_time_decay(session)
 
-        # The update call writes floored confidence
-        update_call = session.execute.call_args_list[1]
-        stmt = update_call[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        # 0.15 * 0.95^12 ≈ 0.082 → floored to 0.1
-        assert "0.1" in compiled
+        # apply_time_decay passes the raw decayed value; the helper is
+        # responsible for flooring at 0.1.
+        mock_helper.assert_awaited_once()
+        raw_target = mock_helper.await_args.kwargs["set_to"]
+        assert raw_target < 0.1
 
     @pytest.mark.asyncio
     async def test_null_last_accessed_at_skipped(self):
@@ -427,31 +437,36 @@ class TestAC6_ConfidenceFloor:
 
     @pytest.mark.asyncio
     async def test_contradiction_floors_at_01(self):
-        """Multiple contradictions cannot drop confidence below 0.1."""
+        """The floor is enforced by `update_memory_confidence`; contradiction
+        delegates to it."""
+        from shared import memories
         from shared.memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await update_confidence(session, mem_id, contradict=True)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await update_confidence(session, mem_id, contradict=True)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        # Must have a floor of 0.1
-        assert "greatest" in compiled.lower() or "GREATEST" in compiled
-        assert "0.1" in compiled
+        mock_helper.assert_awaited_once_with(session, mem_id, delta=-0.10)
 
     @pytest.mark.asyncio
     async def test_corroboration_and_contradiction_both_clamped(self):
-        """Both operations simultaneously are clamped."""
+        """Both flags applied simultaneously route the net delta through the
+        helper, which owns clamping."""
+        from shared import memories
         from shared.memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
 
-        await update_confidence(session, mem_id, corroborate=True, contradict=True)
+        with patch.object(
+            memories, "update_memory_confidence", new_callable=AsyncMock
+        ) as mock_helper:
+            await update_confidence(session, mem_id, corroborate=True, contradict=True)
 
-        stmt = session.execute.call_args[0][0]
-        compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
-        # Net delta is 0.05 - 0.10 = -0.05
-        assert "greatest" in compiled.lower() or "GREATEST" in compiled
+        mock_helper.assert_awaited_once()
+        net_delta = mock_helper.await_args.kwargs["delta"]
+        assert net_delta == pytest.approx(-0.05)

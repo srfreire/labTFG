@@ -6,6 +6,7 @@ Requires docker-compose Postgres running on localhost:5432.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime
 
@@ -20,6 +21,7 @@ from shared.memories import (
     supersede_memory,
     touch_memory,
     update_confidence,
+    update_memory_confidence,
 )
 from shared.models import Base, Memory, Run
 from shared.settings import load_settings
@@ -299,6 +301,116 @@ async def test_get_memories_min_confidence(session):
     results = await get_memories(session, min_confidence=0.5)
     assert len(results) == 1
     assert results[0].confidence == pytest.approx(0.9)
+
+
+# ── P3-001: update_memory_confidence helper ──
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_delta_positive(session):
+    """+delta increases confidence and returns the new value."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.5))
+    await session.commit()
+
+    new = await update_memory_confidence(session, mem.id, delta=0.05)
+    await session.commit()
+    assert new == pytest.approx(0.55)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_delta_negative(session):
+    """−delta decreases confidence and returns the new value."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.8))
+    await session.commit()
+
+    new = await update_memory_confidence(session, mem.id, delta=-0.10)
+    await session.commit()
+    assert new == pytest.approx(0.70)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_clamps_upper(session):
+    """+delta past 1.0 clamps at the cap."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.99))
+    await session.commit()
+
+    new = await update_memory_confidence(session, mem.id, delta=0.5)
+    await session.commit()
+    assert new == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_clamps_lower(session):
+    """−delta past 0.1 clamps at the floor."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.15))
+    await session.commit()
+
+    new = await update_memory_confidence(session, mem.id, delta=-0.5)
+    await session.commit()
+    assert new == pytest.approx(0.1)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_set_to(session):
+    """set_to writes the value directly."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.5))
+    await session.commit()
+
+    new = await update_memory_confidence(session, mem.id, set_to=0.42)
+    await session.commit()
+    assert new == pytest.approx(0.42)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_set_to_out_of_range(session):
+    """set_to outside [0.1, 1.0] is clamped on both ends."""
+    mem = await create_memory(session, **_memory_kwargs(confidence=0.5))
+    await session.commit()
+
+    new_high = await update_memory_confidence(session, mem.id, set_to=2.0)
+    await session.commit()
+    assert new_high == pytest.approx(1.0)
+
+    new_low = await update_memory_confidence(session, mem.id, set_to=0.0)
+    await session.commit()
+    assert new_low == pytest.approx(0.1)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_requires_exactly_one(session):
+    """Passing both or neither delta/set_to raises ValueError."""
+    mem = await create_memory(session, **_memory_kwargs())
+    await session.commit()
+
+    with pytest.raises(ValueError):
+        await update_memory_confidence(session, mem.id)
+    with pytest.raises(ValueError):
+        await update_memory_confidence(session, mem.id, delta=0.05, set_to=0.5)
+
+
+@pytest.mark.asyncio
+async def test_update_memory_confidence_concurrent_corroborations(engine):
+    """Concurrent corroborations on the same id converge to the right total."""
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as setup:
+        mem = await create_memory(setup, **_memory_kwargs(confidence=0.5))
+        await setup.commit()
+        mem_id = mem.id
+
+    async def bump_one() -> None:
+        async with factory() as sess:
+            await update_memory_confidence(sess, mem_id, delta=0.05)
+            await sess.commit()
+
+    # 5 concurrent +0.05 bumps → 0.5 + 5*0.05 = 0.75
+    await asyncio.gather(*(bump_one() for _ in range(5)))
+
+    async with factory() as check:
+        result = await check.execute(
+            select(Memory.confidence).where(Memory.id == mem_id)
+        )
+        final = result.scalar_one()
+    assert final == pytest.approx(0.75)
 
 
 # ── Additional: Memory with run_id FK ──

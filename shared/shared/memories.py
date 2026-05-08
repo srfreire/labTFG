@@ -15,6 +15,36 @@ _CONFIDENCE_CAP = 1.0
 _CONFIDENCE_FLOOR = 0.1
 
 
+async def update_memory_confidence(
+    session: AsyncSession,
+    memory_id: uuid.UUID,
+    *,
+    delta: float | None = None,
+    set_to: float | None = None,
+) -> float:
+    """Apply a confidence change atomically, clamp, and return the new value.
+
+    Exactly one of *delta* / *set_to* must be provided. Clamps the result to
+    ``[_CONFIDENCE_FLOOR, _CONFIDENCE_CAP]``.
+    """
+    if (delta is None) == (set_to is None):
+        raise ValueError("exactly one of delta / set_to must be provided")
+
+    target: object = Memory.confidence + delta if delta is not None else set_to
+    clamped = func.least(_CONFIDENCE_CAP, func.greatest(_CONFIDENCE_FLOOR, target))
+
+    stmt = (
+        update(Memory)
+        .where(Memory.id == memory_id)
+        .values(confidence=clamped)
+        .returning(Memory.confidence)
+    )
+    result = await session.execute(stmt)
+    new_confidence = result.scalar_one()
+    await session.flush()
+    return float(new_confidence)
+
+
 async def create_memory(session: AsyncSession, **kwargs: object) -> Memory:
     """Create and persist a new Memory row."""
     memory = Memory(**kwargs)
@@ -48,10 +78,11 @@ async def touch_memory(
     session: AsyncSession,
     memory_id: uuid.UUID | Iterable[uuid.UUID],
 ) -> int:
-    """Bump access metadata for one or more memory rows in a single UPDATE.
+    """Bump access metadata for one or more memory rows.
 
-    Accepts a single UUID or any iterable of UUIDs. Issues exactly one
-    `UPDATE ... WHERE id IN (...)` statement and returns the number of ids
+    Accepts a single UUID or any iterable of UUIDs. Issues one batched UPDATE
+    for `last_accessed_at` and `access_count`, then routes each id through
+    `update_memory_confidence` for the +0.02 boost. Returns the number of ids
     targeted (0 when an empty iterable is passed — no SQL is sent).
     """
     if isinstance(memory_id, uuid.UUID):
@@ -68,13 +99,11 @@ async def touch_memory(
         .values(
             last_accessed_at=func.now(),
             access_count=Memory.access_count + 1,
-            confidence=func.least(
-                _CONFIDENCE_CAP,
-                Memory.confidence + 0.02,
-            ),
         )
     )
     await session.execute(stmt)
+    for mid in ids:
+        await update_memory_confidence(session, mid, delta=0.02)
     await session.flush()
     return len(ids)
 
@@ -111,7 +140,7 @@ async def update_confidence(
     """Increment corroboration/contradiction counters and adjust confidence.
 
     Corroboration: +0.05, Contradiction: -0.10.
-    Confidence is clamped to [0.1, 1.0].
+    Confidence is clamped to [0.1, 1.0] via `update_memory_confidence`.
     """
     values: dict[str, object] = {}
     delta = 0.0
@@ -123,14 +152,10 @@ async def update_confidence(
         delta -= 0.10
     if not values:
         return
-    if delta:
-        raw = Memory.confidence + delta
-        values["confidence"] = func.least(
-            _CONFIDENCE_CAP,
-            func.greatest(_CONFIDENCE_FLOOR, raw),
-        )
     stmt = update(Memory).where(Memory.id == memory_id).values(**values)
     await session.execute(stmt)
+    if delta:
+        await update_memory_confidence(session, memory_id, delta=delta)
     await session.flush()
 
 
@@ -174,11 +199,8 @@ async def apply_time_decay(session: AsyncSession) -> int:
         if periods <= 0:
             continue
 
-        new_confidence = max(_CONFIDENCE_FLOOR, mem.confidence * _DECAY_RATE**periods)
-        stmt = (
-            update(Memory).where(Memory.id == mem.id).values(confidence=new_confidence)
-        )
-        await session.execute(stmt)
+        new_confidence = mem.confidence * _DECAY_RATE**periods
+        await update_memory_confidence(session, mem.id, set_to=new_confidence)
         count += 1
 
     if count:
