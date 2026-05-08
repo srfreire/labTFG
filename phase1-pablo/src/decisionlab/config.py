@@ -135,9 +135,7 @@ class Settings:
                 "KNOWLEDGE_STRUCTURED", "anthropic/claude-sonnet-4.6"
             ),
             feedback_model=_env_model("FEEDBACK", "anthropic/claude-haiku-4.5"),
-            ner_skip_threshold=_env_float(
-                "DECISIONLAB_NER_SKIP_THRESHOLD", 0.7
-            ),
+            ner_skip_threshold=_env_float("DECISIONLAB_NER_SKIP_THRESHOLD", 0.7),
         )
 
 
