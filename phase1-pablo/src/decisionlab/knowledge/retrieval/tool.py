@@ -424,8 +424,12 @@ def create_retrieve_knowledge(
             if namespace:
                 filters["namespace"] = namespace
 
-            # Dense first: its top-1 score gates the Haiku NER call
-            # inside ``kg_retrieve`` (R2 — skip NER when dense is decisive).
+            # P2-002 / R2 — sequential by design: dense first, then a
+            # conditional kg_retrieve. The previous parallel asyncio.gather
+            # was removed deliberately so the dense top-1 score can gate
+            # the Haiku NER call inside kg_retrieve. The non-skip path
+            # pays vector + kg in series; the skip path saves the kg leg
+            # entirely. Don't re-parallelise — the gate would be lost.
             if vector_store is not None and embedding_service is not None:
                 dense_results, sparse_results = await vector_retrieve(
                     query, embedding_service, vector_store, filters=filters
@@ -438,6 +442,7 @@ def create_retrieve_knowledge(
 
             if not kg_available:
                 kg_results = []
+                increment_counter("ner.unavailable")
             elif dense_top1 >= SETTINGS.ner_skip_threshold:
                 kg_results = []
                 increment_counter("ner.skipped")

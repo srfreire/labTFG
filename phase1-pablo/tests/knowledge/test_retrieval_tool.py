@@ -53,6 +53,18 @@ def _make_handler(
 _TOOL_MODULE = "decisionlab.knowledge.retrieval.tool"
 
 
+@pytest.fixture(autouse=True)
+def _reset_usage_counters():
+    """Drop the runtime counter singleton between tests so per-test
+    assertions on `ner.skipped` / `ner.evaluated` don't pick up state
+    from earlier tests in the same process."""
+    from decisionlab.runtime import usage as usage_module
+
+    usage_module.reset()
+    yield
+    usage_module.reset()
+
+
 @contextmanager
 def _patch_pipeline(*, crag_result=None, fused=None):
     """Patch all four retrieval pipeline functions with sensible defaults.
@@ -435,7 +447,6 @@ class TestEdgeCases:
 
         with _patch_pipeline() as mocks:
             mocks["vec"].return_value = ([dense_hit], [])
-            usage_module.reset()
             handler = _make_handler()
             result = await handler({"query": "reward learning paradigms"})
 
@@ -453,7 +464,6 @@ class TestEdgeCases:
 
         with _patch_pipeline() as mocks:
             mocks["vec"].return_value = ([weak_hit], [])
-            usage_module.reset()
             handler = _make_handler()
             await handler({"query": "ambiguous query"})
 
@@ -468,9 +478,47 @@ class TestEdgeCases:
 
         with _patch_pipeline() as mocks:
             mocks["vec"].return_value = ([], [])
-            usage_module.reset()
             handler = _make_handler()
             await handler({"query": "no dense hits"})
+
+        mocks["kg"].assert_called_once()
+        assert usage_module.counters_snapshot().get("ner.evaluated") == 1
+
+    @pytest.mark.asyncio
+    async def test_records_unavailable_when_kg_missing(self):
+        """KG unavailable → ner.unavailable counter fires (no skip / evaluate)."""
+        from decisionlab.runtime import usage as usage_module
+
+        with _patch_pipeline() as mocks:
+            mocks["vec"].return_value = ([_result("hit", 0.9, "dense")], [])
+            handler = _make_handler(kg=None)
+            await handler({"query": "no kg"})
+
+        mocks["kg"].assert_not_called()
+        snapshot = usage_module.counters_snapshot()
+        assert snapshot.get("ner.unavailable") == 1
+        assert "ner.skipped" not in snapshot
+        assert "ner.evaluated" not in snapshot
+
+    @pytest.mark.asyncio
+    async def test_skip_gate_uses_live_settings_threshold(self, monkeypatch):
+        """AC1+AC2: patching SETTINGS.ner_skip_threshold actually moves the gate."""
+        from decisionlab.knowledge.retrieval import tool as tool_module
+        from decisionlab.runtime import usage as usage_module
+
+        # Score 0.8 — above default 0.7 (would skip), but below the patched 0.95.
+        dense_hit = _result("Mid-confidence hit.", 0.8, "dense")
+
+        patched = type(tool_module.SETTINGS).__new__(type(tool_module.SETTINGS))
+        for f, v in vars(tool_module.SETTINGS).items():
+            object.__setattr__(patched, f, v)
+        object.__setattr__(patched, "ner_skip_threshold", 0.95)
+        monkeypatch.setattr(tool_module, "SETTINGS", patched)
+
+        with _patch_pipeline() as mocks:
+            mocks["vec"].return_value = ([dense_hit], [])
+            handler = _make_handler()
+            await handler({"query": "stricter threshold"})
 
         mocks["kg"].assert_called_once()
         assert usage_module.counters_snapshot().get("ner.evaluated") == 1

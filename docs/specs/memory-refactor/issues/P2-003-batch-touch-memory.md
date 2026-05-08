@@ -1,7 +1,7 @@
 ---
 id: P2-003
 title: Batch touch_memory writes into a single UPDATE per retrieve
-status: in-progress
+status: done
 kind: strike
 phase: 2
 heat: db-batching
@@ -46,15 +46,15 @@ Per phase spec R3:
 
 ## Acceptance Criteria
 
-- [ ] AC1: `_track_memory_access` issues one SQL statement per call
+- [x] AC1: `_track_memory_access` issues one SQL statement per call
       regardless of `len(memory_ids)`. Test asserts via mocked
       session: exactly one `execute` + one `commit`.
-- [ ] AC2: Confidence clamp is preserved (capped at 1.0); existing
+- [x] AC2: Confidence clamp is preserved (capped at 1.0); existing
       decay/access tests still pass.
-- [ ] AC3: Per-id `touch_memory` callers (if any remain) continue to
+- [x] AC3: Per-id `touch_memory` callers (if any remain) continue to
       work.
-- [ ] AC4: Telemetry: log `touch_memory.batch_size` per call.
-- [ ] AC5: Integration test confirms `access_count` increments by 1
+- [x] AC4: Telemetry: log `touch_memory.batch_size` per call.
+- [x] AC5: Integration test confirms `access_count` increments by 1
       per id, `last_accessed_at` updated, `confidence` boosted by
       0.02 (capped) — same observable behaviour as before, fewer
       round-trips.
