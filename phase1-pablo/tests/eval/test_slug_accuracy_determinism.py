@@ -147,8 +147,9 @@ class TestSlugAccuracyDeterminism:
     async def test_back_to_back_runs_produce_identical_outcomes(
         self, live_eval_kg, tmp_path, monkeypatch
     ):
-        # Run from the repo root so relative paths in slug-accuracy.yaml
-        # (fixture_path: evals/fixtures/canonical-paradigms.json) resolve.
+        # Canonical-paradigms fixture loads from packaged data (P1-001),
+        # but the suite still resolves other repo-relative artifacts via
+        # the working directory — chdir to the repo root.
         monkeypatch.chdir(REPO_ROOT)
 
         spec = SuiteSpec.from_yaml(SLUG_ACCURACY_PATH)

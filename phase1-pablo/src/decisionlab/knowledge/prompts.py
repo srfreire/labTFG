@@ -4,6 +4,39 @@ Each stage gets a system prompt and a user prompt template.
 The user prompt template accepts the stage output text via str.format().
 """
 
+import json
+from importlib.resources import files
+
+# ---------------------------------------------------------------------------
+# Canonical paradigm vocabulary (loaded once at module import)
+# ---------------------------------------------------------------------------
+#
+# The canonical list is rendered into the Researcher / Formalizer / Reasoner
+# system prompts as a constrained vocabulary. List order is preserved
+# verbatim from ``canonical-paradigms.json`` so prompt strings are
+# deterministic across processes (prompt caching needs byte-identical
+# system prompts to hit).
+
+_CANONICAL: list[dict[str, str]] = json.loads(
+    (files("decisionlab.data") / "canonical-paradigms.json").read_text()
+)
+
+_CANONICAL_LIST = "\n".join(
+    f"{i}. {p['slug']}: {p['definition']}" for i, p in enumerate(_CANONICAL, start=1)
+)
+
+_CANONICAL_DIRECTIVE = f"""\
+Canonical paradigms (reuse verbatim or emit `__NEW__`):
+The following paradigms already exist in the knowledge graph. When emitting \
+a Paradigm node, or a `paradigm_slug` field on a Variable or Postulate, \
+reuse one of these `slug` values exactly. Only emit `slug: "__NEW__"` if \
+the topic genuinely does not fit any of them — do NOT invent new variants \
+of an existing slug (e.g. `q-learning` when `reinforcement-learning` \
+already covers it).
+
+{_CANONICAL_LIST}\
+"""
+
 # ---------------------------------------------------------------------------
 # Shared JSON schema description (injected into all system prompts)
 # ---------------------------------------------------------------------------
@@ -43,6 +76,8 @@ scientific paradigm and extract structured entities, relations, and atomic facts
 
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
+
+{_CANONICAL_DIRECTIVE}
 
 Node types to extract:
 - Paradigm: properties={{name, slug, description}}. natural_key="slug". A \
@@ -105,6 +140,8 @@ Extract structured entities, relations, and atomic facts.
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
+{_CANONICAL_DIRECTIVE}
+
 Node types to extract:
 - Equation: properties={{latex, plaintext, type}}. natural_key="plaintext". \
 Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
@@ -143,6 +180,8 @@ and atomic facts.
 
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
+
+{_CANONICAL_DIRECTIVE}
 
 Node types to extract:
 - Parameter: properties={{name, default_value, source, range}}. natural_key="name". \

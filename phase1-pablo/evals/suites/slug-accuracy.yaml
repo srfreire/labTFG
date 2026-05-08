@@ -15,9 +15,10 @@ stages: [research]
 reset_kg_before: true
 
 setup:
+  # No `fixture_path` — seed_canonical_paradigms now defaults to the
+  # packaged `decisionlab/data/canonical-paradigms.json` (P1-001).
   - kind: seed_canonical_paradigms
-    args:
-      fixture_path: evals/fixtures/canonical-paradigms.json
+    args: {}
 
 topics:
   - text: "Q-learning agent trades off exploration and exploitation in a foraging grid: how do action-value updates and ε-greedy schedules drive the policy toward optimal patch choice?"

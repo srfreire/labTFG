@@ -19,6 +19,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,20 +30,19 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_FIXTURE_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "evals"
-    / "fixtures"
-    / "canonical-paradigms.json"
-)
-
 _SEED_RUN_ID = "canonical-paradigms-seed"
 
 
 def _load_fixture(path: Path | None = None) -> list[dict]:
-    fixture = path or _FIXTURE_PATH
-    with open(fixture) as f:
-        data = json.load(f)
+    if path is None:
+        fixture: Path | str = "decisionlab.data/canonical-paradigms.json"
+        data = json.loads(
+            (files("decisionlab.data") / "canonical-paradigms.json").read_text()
+        )
+    else:
+        fixture = path
+        with open(fixture) as f:
+            data = json.load(f)
     if not isinstance(data, list):
         raise ValueError(f"{fixture}: expected a list, got {type(data).__name__}")
     for entry in data:

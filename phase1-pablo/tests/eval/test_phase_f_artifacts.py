@@ -8,6 +8,7 @@ accepts and reference predicates that exist.
 from __future__ import annotations
 
 import json
+from importlib.resources import files
 from pathlib import Path
 
 from decisionlab.eval.assertions import predicate_names
@@ -16,7 +17,7 @@ from decisionlab.router import Stage
 
 ROOT = Path(__file__).resolve().parents[2]
 SUITE_PATH = ROOT / "evals/suites/paradigm-canonicalization.yaml"
-CANONICAL_PARADIGMS_PATH = ROOT / "evals/fixtures/canonical-paradigms.json"
+CANONICAL_PARADIGMS_PATH = files("decisionlab.data") / "canonical-paradigms.json"
 
 
 def test_suite_yaml_parses():
