@@ -1,7 +1,7 @@
 ---
 id: P0-001
 title: Tier extraction model selection per stage (Sonnet for Researcher/Reasoner, Haiku for Formalizer/Builder/importance)
-status: in-progress
+status: done
 kind: strike
 phase: 0
 heat: extraction-model
@@ -95,3 +95,76 @@ Phase spec: `docs/specs/memory-refactor/phase-0-stop-lying.md` (R1)
 General spec: `docs/specs/memory-refactor/general.md`
 Source critique: `docs/memory-system.md` §A8
 Heat: `extraction-model`
+
+## Completion Summary
+
+**Commit:** `9423c32` — `feat[knowledge]: tier extraction model selection per stage (P0-001)`
+
+### What was built
+- `_STAGE_MODELS` dict in `phase1-pablo/src/decisionlab/knowledge/extraction.py`
+  maps stage → model. Researcher and Reasoner resolve to
+  `SETTINGS.knowledge_structured_model` (Sonnet 4.6); Formalizer and
+  Builder resolve to `SETTINGS.knowledge_fast_model` (Haiku 4.5).
+- `resolver._score_importance` switched to `SETTINGS.knowledge_fast_model`
+  (mechanical 1–10 rating); `resolver._classify_conflict` switched to
+  `SETTINGS.knowledge_structured_model` (was reading the hardcoded
+  `structured.DEFAULT_MODEL`).
+- Renamed `Settings.knowledge_heavy_model` → `Settings.knowledge_structured_model`
+  (env: `DECISIONLAB_KNOWLEDGE_HEAVY_MODEL` →
+  `DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL`). The `_heavy_` slot had no
+  live callers outside `config.py`; the new name reflects what it
+  controls (structured-output reasoning, not just "heavy").
+- Reviewer-flagged extra: `consolidation.py` reflection generation also
+  used the hardcoded `structured.DEFAULT_MODEL`; switched to
+  `SETTINGS.knowledge_structured_model` so the env override works for
+  every judgment-heavy structured call in the knowledge layer.
+- Tests: parametrized `test_extract_resolves_model_per_stage`
+  asserting the 4 stage→model pairs;
+  `test_stage_models_dict_covers_all_stages` guarding key parity with
+  `_STAGE_PROMPTS`; resolver tests rewritten to assert
+  `SETTINGS.knowledge_fast_model` for importance and
+  `SETTINGS.knowledge_structured_model` for classify-conflict.
+- Docs: `docs/knowledge-architecture.md` LLM-usage table now itemises
+  per-stage extraction model + slot. `docs/memory-system.md` §A8
+  rewritten as resolved (2026-05-08); architecture diagram fixed to
+  show tiered call_structured + Haiku importance scoring.
+
+### Files created/modified
+- `phase1-pablo/src/decisionlab/config.py` — rename slot, reword docstring.
+- `phase1-pablo/src/decisionlab/knowledge/extraction.py` — add
+  `_STAGE_MODELS`; thread per-stage model into `call_structured`.
+- `phase1-pablo/src/decisionlab/knowledge/resolver.py` — wire fast/
+  structured model from `SETTINGS`; drop `_STRUCTURED_MODEL` import.
+- `phase1-pablo/src/decisionlab/knowledge/consolidation.py` — local
+  `_STRUCTURED_MODEL = SETTINGS.knowledge_structured_model` so
+  reflection generation honours the env override.
+- `phase1-pablo/.env.example` — rename env var.
+- `phase1-pablo/tests/knowledge/test_extraction.py` — add per-stage
+  model resolution tests.
+- `phase1-pablo/tests/knowledge/test_resolver.py` — assert
+  fast/structured slots.
+- `docs/knowledge-architecture.md`, `docs/memory-system.md` — per-stage
+  tiering + §A8 resolved.
+
+### Decisions
+- **Renamed `knowledge_heavy_model` rather than adding alongside.** The
+  P0-001 spec text says "Add `knowledge_structured_model` alongside the
+  existing `knowledge_fast_model`" — implying the spec author didn't
+  notice `knowledge_heavy_model` had been added in a prior commit. Since
+  it had zero live callers, a rename produced a single canonical name
+  with no migration burden.
+- **`_STAGE_MODELS` is a module-level dict snapshot of `SETTINGS`,
+  matching the `_FAST_MODEL = SETTINGS.knowledge_fast_model` idiom in
+  `crag.py`, `kg_retrieval.py`, and `consolidation.py`.** Env overrides
+  set after process start aren't picked up — same constraint that
+  already governed every other knowledge-layer call site.
+- **Acceptance: AC1–AC4 met by the diff. AC5 (≥40% Sonnet token drop on
+  `cumulative-growth.yaml`) is an empirical claim that requires running
+  the suite with API keys; the implementation is complete but the eval
+  re-run is still pending.** Marked AC1 of the phase spec as `[x]` with
+  a note flagging the eval re-run.
+- **Reviewer caught one critical gap.** `consolidation.py` was using
+  the hardcoded `structured.DEFAULT_MODEL` for reflection generation,
+  bypassing the env override. Fixed in the same branch — outside the
+  literal "Files Likely Affected" list but inside the spec's intent
+  ("docs/code parity for every Sonnet call in the knowledge layer").

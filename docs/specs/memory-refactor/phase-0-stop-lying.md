@@ -1,6 +1,6 @@
 # Phase 0: Stop lying
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P0-002)
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P0-001)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A8, A10, A11, A12, A13
 
 ## Objective
@@ -163,14 +163,17 @@ Edge cases:
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: `extraction.extract` resolves the model per stage from
+- [x] **AC1**: `extraction.extract` resolves the model per stage from
       a `_STAGE_MODELS` dict (Researcher+Reasoner = Sonnet 4.6,
       Formalizer+Builder = Haiku 4.5). `resolver._score_importance`
       uses Haiku. Documentation in `docs/knowledge-architecture.md` +
       `docs/memory-system.md` lists the per-stage choices. A test
       asserts the model resolution for each stage. Re-running
       `cumulative-growth` shows total Sonnet token spend on extraction
-      drops ≥40 % vs the pre-change baseline.
+      drops ≥40 % vs the pre-change baseline. *(Code/doc/tests: done in
+      P0-001 commit `9423c32`. Empirical eval re-run is the verification
+      step still pending; re-run `cumulative-growth.yaml` against
+      `2026-05-08-cumulative-growth/report.json` and confirm the drop.)*
 - [x] **AC2**: `evals/suites/merge-quality.yaml`,
       `evals/reports/*-merge-quality/`, and
       `evals/fixtures/canonicalize-pairs.json` are deleted.
@@ -188,7 +191,7 @@ Edge cases:
       `node_run_observations` table exists and is written to per
       MERGE. Migration backfills existing data without dropping any
       run-provenance information.
-- [ ] **AC5**: `shared/store.py` is deleted. All callers compile and
+- [x] **AC5**: `shared/store.py` is deleted. All callers compile and
       tests pass. `data/labtfg.db` removed from working tree. Phase 2
       readme documents the Postgres requirement.
 
