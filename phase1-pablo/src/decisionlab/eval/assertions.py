@@ -766,8 +766,7 @@ async def _slug_hit_rate(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
         )
 
     by_hash = {
-        _normalize_topic_for_match(p["topic_text"]): p["expected_slug"]
-        for p in oracle
+        _normalize_topic_for_match(p["topic_text"]): p["expected_slug"] for p in oracle
     }
 
     hits = 0
