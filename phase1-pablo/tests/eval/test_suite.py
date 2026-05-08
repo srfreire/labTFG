@@ -16,6 +16,7 @@ import pytest
 from decisionlab.eval import suite as suite_mod
 from decisionlab.eval.models import PipelineRunResult
 from decisionlab.eval.suite import (
+    SetupAction,
     SuiteSpec,
     TopicSpec,
     parse_stages,
@@ -237,7 +238,10 @@ class TestRunSuite:
         assert not outcome.passed
 
     @pytest.mark.asyncio
-    async def test_reset_called_when_flag_set(self, tmp_path):
+    async def test_reset_called_when_flag_set(self, tmp_path, monkeypatch):
+        # The eval-KG segregation guard requires the marker before reset
+        # is dispatched.
+        monkeypatch.setenv("LABTFG_EVAL_KG", "1")
         spec_path = tmp_path / "reset.yaml"
         spec_path.write_text("name: s\nreset_kg_before: true\ntopics: [alpha]\n")
         spec = SuiteSpec.from_yaml(spec_path)
@@ -334,3 +338,282 @@ class TestBudgetWatchdog:
         # be skipped (so we expect at most 1 topic_result).
         assert len(result.topic_results) >= 1
         assert result.topic_results[-1].run.error is not None
+
+
+# ---------------------------------------------------------------------------
+# Setup-action parser
+# ---------------------------------------------------------------------------
+
+
+class TestSuiteSetupParsing:
+    def test_setup_block_parsed_into_actions(self, tmp_path):
+        path = tmp_path / "with-setup.yaml"
+        path.write_text(
+            "name: setup-suite\n"
+            "topics: [alpha]\n"
+            "setup:\n"
+            "  - kind: seed_canonical_paradigms\n"
+            "    args:\n"
+            "      fixture_path: evals/fixtures/canonical-paradigms.json\n"
+        )
+        spec = SuiteSpec.from_yaml(path)
+        assert spec.setup == (
+            SetupAction(
+                kind="seed_canonical_paradigms",
+                args={"fixture_path": "evals/fixtures/canonical-paradigms.json"},
+            ),
+        )
+
+    def test_setup_block_optional(self, tmp_path):
+        path = tmp_path / "no-setup.yaml"
+        path.write_text("name: bare\ntopics: [alpha]\n")
+        spec = SuiteSpec.from_yaml(path)
+        assert spec.setup == ()
+
+    def test_setup_must_be_list(self, tmp_path):
+        path = tmp_path / "bad-setup.yaml"
+        path.write_text("name: x\ntopics: [a]\nsetup:\n  kind: foo\n")
+        with pytest.raises(ValueError, match="setup must be a list"):
+            SuiteSpec.from_yaml(path)
+
+    def test_setup_entry_must_have_kind(self, tmp_path):
+        path = tmp_path / "no-kind.yaml"
+        path.write_text("name: x\ntopics: [a]\nsetup:\n  - args: {fixture_path: f}\n")
+        with pytest.raises(ValueError, match="setup entry missing 'kind'"):
+            SuiteSpec.from_yaml(path)
+
+    def test_setup_args_must_be_mapping(self, tmp_path):
+        path = tmp_path / "bad-args.yaml"
+        path.write_text(
+            "name: x\ntopics: [a]\nsetup:\n  - kind: seed_canonical_paradigms\n"
+            "    args: 'not-a-dict'\n"
+        )
+        with pytest.raises(ValueError, match="setup args must be a mapping"):
+            SuiteSpec.from_yaml(path)
+
+    def test_setup_args_default_empty_dict(self, tmp_path):
+        path = tmp_path / "no-args.yaml"
+        path.write_text(
+            "name: x\ntopics: [a]\nsetup:\n  - kind: seed_canonical_paradigms\n"
+        )
+        spec = SuiteSpec.from_yaml(path)
+        assert spec.setup == (SetupAction(kind="seed_canonical_paradigms", args={}),)
+
+
+# ---------------------------------------------------------------------------
+# Setup-action dispatcher
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchSetupAction:
+    @pytest.mark.asyncio
+    async def test_seed_canonical_paradigms_invokes_seed_function(self):
+        seed_mock = AsyncMock(
+            return_value={"nodes_created": 3, "nodes_merged": 2, "vectors_indexed": 0}
+        )
+        fake_kg = object()
+        fake_shared = type(
+            "S", (), {"kg": fake_kg, "embeddings": None, "vectors": None}
+        )()
+        with (
+            patch.dict("sys.modules", {"shared": fake_shared}),
+            patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock),
+        ):
+            await suite_mod._dispatch_setup_action(
+                SetupAction(
+                    kind="seed_canonical_paradigms",
+                    args={"fixture_path": "/tmp/canon.json"},
+                )
+            )
+        seed_mock.assert_awaited_once()
+        kwargs = seed_mock.await_args.kwargs
+        args = seed_mock.await_args.args
+        # First positional arg is the KG; fixture_path passed as kwarg.
+        assert args[0] is fake_kg
+        assert kwargs["fixture_path"].as_posix() == "/tmp/canon.json"
+
+    @pytest.mark.asyncio
+    async def test_seed_canonical_paradigms_omits_fixture_path_when_absent(self):
+        seed_mock = AsyncMock(
+            return_value={"nodes_created": 0, "nodes_merged": 0, "vectors_indexed": 0}
+        )
+        fake_kg = object()
+        fake_shared = type(
+            "S", (), {"kg": fake_kg, "embeddings": None, "vectors": None}
+        )()
+        with (
+            patch.dict("sys.modules", {"shared": fake_shared}),
+            patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock),
+        ):
+            await suite_mod._dispatch_setup_action(
+                SetupAction(kind="seed_canonical_paradigms")
+            )
+        assert seed_mock.await_args.kwargs["fixture_path"] is None
+
+    @pytest.mark.asyncio
+    async def test_seed_canonical_paradigms_aborts_when_kg_missing(self):
+        fake_shared = type("S", (), {"kg": None})()
+        with patch.dict("sys.modules", {"shared": fake_shared}):
+            with pytest.raises(RuntimeError, match="needs a live KG"):
+                await suite_mod._dispatch_setup_action(
+                    SetupAction(kind="seed_canonical_paradigms")
+                )
+
+    @pytest.mark.asyncio
+    async def test_unknown_kind_raises(self):
+        with pytest.raises(ValueError, match="unknown setup action kind"):
+            await suite_mod._dispatch_setup_action(SetupAction(kind="not-a-thing"))
+
+
+# ---------------------------------------------------------------------------
+# Eval-KG segregation guard
+# ---------------------------------------------------------------------------
+
+
+class TestEvalKGGuard:
+    def test_marker_env_var_truthy_passes(self, monkeypatch):
+        monkeypatch.setenv("LABTFG_EVAL_KG", "1")
+        monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+        monkeypatch.delenv("NEO4J_DATABASE", raising=False)
+        suite_mod._assert_eval_kg_segregation()  # should not raise
+
+    def test_eval_in_uri_passes(self, monkeypatch):
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://eval-neo4j:7687")
+        monkeypatch.delenv("NEO4J_DATABASE", raising=False)
+        suite_mod._assert_eval_kg_segregation()
+
+    def test_eval_in_database_passes(self, monkeypatch):
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+        monkeypatch.setenv("NEO4J_DATABASE", "labtfg-eval")
+        suite_mod._assert_eval_kg_segregation()
+
+    def test_no_marker_anywhere_raises(self, monkeypatch):
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://prod-cluster:7687")
+        monkeypatch.setenv("NEO4J_DATABASE", "labtfg")
+        with pytest.raises(RuntimeError, match="Refusing to reset KG"):
+            suite_mod._assert_eval_kg_segregation()
+
+    def test_falsy_marker_value_raises(self, monkeypatch):
+        monkeypatch.setenv("LABTFG_EVAL_KG", "0")
+        monkeypatch.setenv("NEO4J_URI", "bolt://prod-cluster:7687")
+        monkeypatch.delenv("NEO4J_DATABASE", raising=False)
+        with pytest.raises(RuntimeError, match="Refusing to reset KG"):
+            suite_mod._assert_eval_kg_segregation()
+
+    def test_substring_collision_does_not_pass(self, monkeypatch):
+        """A host like ``evaluation-prod`` must NOT pass the guard.
+
+        The token boundary check is the difference between "this is the
+        eval cluster" and "this happens to contain the letters e-v-a-l".
+        """
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://evaluation-prod.internal:7687")
+        monkeypatch.setenv("NEO4J_DATABASE", "evaluations")
+        with pytest.raises(RuntimeError, match="Refusing to reset KG"):
+            suite_mod._assert_eval_kg_segregation()
+
+    def test_token_at_end_of_database_passes(self, monkeypatch):
+        """Trailing token ``labtfg-eval`` is a legitimate delimited match."""
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+        monkeypatch.setenv("NEO4J_DATABASE", "labtfg-eval")
+        suite_mod._assert_eval_kg_segregation()
+
+    def test_database_named_exactly_eval_passes(self, monkeypatch):
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
+        monkeypatch.setenv("NEO4J_DATABASE", "eval")
+        suite_mod._assert_eval_kg_segregation()
+
+
+class TestRunSuiteSetupIntegration:
+    @pytest.mark.asyncio
+    async def test_setup_actions_run_after_reset(self, tmp_path, monkeypatch):
+        """When both reset and setup are configured, reset must come first."""
+        monkeypatch.setenv("LABTFG_EVAL_KG", "1")
+        spec_path = tmp_path / "with-setup.yaml"
+        spec_path.write_text(
+            "name: ordered\n"
+            "reset_kg_before: true\n"
+            "setup:\n"
+            "  - kind: seed_canonical_paradigms\n"
+            "topics: [alpha]\n"
+        )
+        spec = SuiteSpec.from_yaml(spec_path)
+
+        call_order: list[str] = []
+
+        async def _reset(*, confirm):
+            call_order.append("reset")
+            return 0
+
+        async def _dispatch(action):
+            call_order.append(f"setup:{action.kind}")
+
+        async def _stub(topic, **kw):
+            return _fake_pipeline_result(topic)
+
+        with (
+            patch("decisionlab.eval.kgadmin.reset", _reset),
+            patch("decisionlab.eval.kgadmin.stats", AsyncMock(side_effect=Exception)),
+            patch.object(suite_mod, "_dispatch_setup_action", _dispatch),
+            patch(
+                "decisionlab.eval.suite.run_pipeline",
+                new=AsyncMock(side_effect=_stub),
+            ),
+        ):
+            await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+
+        assert call_order == ["reset", "setup:seed_canonical_paradigms"]
+
+    @pytest.mark.asyncio
+    async def test_setup_skipped_when_skip_kg_ops(self, tmp_path):
+        spec_path = tmp_path / "skip.yaml"
+        spec_path.write_text(
+            "name: skip\nreset_kg_before: true\n"
+            "setup:\n  - kind: seed_canonical_paradigms\n"
+            "topics: [alpha]\n"
+        )
+        spec = SuiteSpec.from_yaml(spec_path)
+
+        dispatch_mock = AsyncMock()
+
+        async def _stub(topic, **kw):
+            return _fake_pipeline_result(topic)
+
+        with (
+            patch.object(suite_mod, "_dispatch_setup_action", dispatch_mock),
+            patch(
+                "decisionlab.eval.suite.run_pipeline",
+                new=AsyncMock(side_effect=_stub),
+            ),
+        ):
+            await run_suite(
+                spec, client=AsyncMock(), search=AsyncMock(), skip_kg_ops=True
+            )
+
+        dispatch_mock.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_reset_aborts_without_eval_marker(self, tmp_path, monkeypatch):
+        """The guard fires before reset, so the suite returns an error."""
+        monkeypatch.delenv("LABTFG_EVAL_KG", raising=False)
+        monkeypatch.setenv("NEO4J_URI", "bolt://prod-cluster:7687")
+        monkeypatch.delenv("NEO4J_DATABASE", raising=False)
+
+        spec_path = tmp_path / "guarded.yaml"
+        spec_path.write_text("name: g\nreset_kg_before: true\ntopics: [alpha]\n")
+        spec = SuiteSpec.from_yaml(spec_path)
+
+        reset_mock = AsyncMock(return_value=0)
+        with patch("decisionlab.eval.kgadmin.reset", reset_mock):
+            result = await run_suite(
+                spec, client=AsyncMock(), search=AsyncMock(), skip_kg_ops=False
+            )
+
+        reset_mock.assert_not_awaited()
+        assert result.error is not None
+        assert "Refusing to reset KG" in result.error

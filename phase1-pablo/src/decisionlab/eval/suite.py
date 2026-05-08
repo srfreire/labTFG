@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import re
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -59,6 +61,18 @@ class TopicSpec:
 
 
 @dataclass(frozen=True)
+class SetupAction:
+    """One pre-topic setup action declared in the suite YAML.
+
+    Each action has a ``kind`` resolved by ``_dispatch_setup_action`` plus
+    a free-form ``args`` mapping passed through to the handler.
+    """
+
+    kind: str
+    args: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class SuiteSpec:
     name: str
     stages: tuple[Stage, ...]
@@ -70,6 +84,7 @@ class SuiteSpec:
     max_usd_total: float | None
     source_path: Path | None = None
     suite_assertions: tuple[dict[str, Any], ...] = ()
+    setup: tuple[SetupAction, ...] = ()
 
     @classmethod
     def from_yaml(cls, path: Path) -> SuiteSpec:
@@ -124,6 +139,8 @@ class SuiteSpec:
             )
         suite_assertions = tuple(raw_suite_assertions)
 
+        setup = tuple(_parse_setup(raw.get("setup"), suite_name=raw.get("name", "?")))
+
         return cls(
             name=raw.get("name", path.stem),
             stages=stages,
@@ -135,6 +152,7 @@ class SuiteSpec:
             max_usd_total=max_usd,
             source_path=path,
             suite_assertions=suite_assertions,
+            setup=setup,
         )
 
 
@@ -149,6 +167,41 @@ def _parse_stages(raw: list[str] | str | None) -> list[Stage]:
         if entry not in valid:
             raise ValueError(f"unknown stage {entry!r}; valid: {sorted(valid)}")
         out.append(valid[entry])
+    return out
+
+
+def _parse_setup(raw: object, *, suite_name: str) -> list[SetupAction]:
+    """Parse a YAML ``setup:`` block into a list of ``SetupAction``.
+
+    A missing/empty block is valid and yields ``[]``. Each entry must be a
+    mapping with a ``kind`` string; ``args`` is optional and defaults to
+    ``{}``. Unknown ``kind`` values are *not* validated here — that lives
+    in the dispatcher so a typo surfaces at run time rather than at parse
+    time of every imported suite.
+    """
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError(
+            f"suite {suite_name!r}: setup must be a list, got {type(raw).__name__}"
+        )
+    out: list[SetupAction] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"suite {suite_name!r}: setup entry must be a mapping, got {entry!r}"
+            )
+        kind = entry.get("kind")
+        if not isinstance(kind, str) or not kind:
+            raise ValueError(
+                f"suite {suite_name!r}: setup entry missing 'kind' string: {entry!r}"
+            )
+        args = entry.get("args") or {}
+        if not isinstance(args, dict):
+            raise ValueError(
+                f"suite {suite_name!r}: setup args must be a mapping: {entry!r}"
+            )
+        out.append(SetupAction(kind=kind, args=dict(args)))
     return out
 
 
@@ -198,6 +251,116 @@ class SuiteResult:
 
     def topics_run(self) -> int:
         return len(self.topic_results)
+
+
+# ---------------------------------------------------------------------------
+# Eval-KG segregation guard
+# ---------------------------------------------------------------------------
+
+
+_EVAL_MARKER_ENV = "LABTFG_EVAL_KG"
+_EVAL_MARKER_TRUE = frozenset({"1", "true", "yes", "on"})
+
+# Match the marker token as a *delimited* identifier so an arbitrary
+# substring collision (e.g. a host named ``evaluation-prod.internal``)
+# does NOT accidentally pass the guard. Token boundaries are anything
+# that's not [a-z0-9].
+_EVAL_TOKEN = "eval"
+_EVAL_TOKEN_RE = re.compile(
+    r"(?:^|[^a-z0-9])" + _EVAL_TOKEN + r"(?:[^a-z0-9]|$)",
+    re.IGNORECASE,
+)
+
+_EVAL_GUARD_HINT = (
+    f"Set {_EVAL_MARKER_ENV}=1 if this Neo4j instance is dedicated to evals, "
+    f"or include {_EVAL_TOKEN!r} as a delimited token in NEO4J_URI "
+    "/ NEO4J_DATABASE (e.g. bolt://eval-neo4j:7687)."
+)
+
+
+def _has_eval_token(value: str) -> bool:
+    return bool(_EVAL_TOKEN_RE.search(value))
+
+
+def _is_eval_kg() -> bool:
+    """Return True iff the active Neo4j is marked as an eval instance.
+
+    Three positive signals (any one is enough):
+
+    1. ``LABTFG_EVAL_KG`` env var is truthy.
+    2. ``NEO4J_URI`` carries the ``eval`` token bounded by non-alphanumerics
+       (so ``bolt://eval-neo4j:7687`` passes, ``bolt://evaluation-prod``
+       does NOT — guarding against substring collision on a prod host).
+    3. ``NEO4J_DATABASE`` carries the same delimited token.
+    """
+    marker = os.environ.get(_EVAL_MARKER_ENV, "").strip().lower()
+    if marker in _EVAL_MARKER_TRUE:
+        return True
+    uri = os.environ.get("NEO4J_URI", "")
+    db = os.environ.get("NEO4J_DATABASE", "")
+    return _has_eval_token(uri) or _has_eval_token(db)
+
+
+def _assert_eval_kg_segregation() -> None:
+    """Refuse to wipe a Neo4j instance that isn't marked as an eval KG.
+
+    The eval suites assume they own the KG and reset it between runs.
+    Pointing them at a prod or shared dev instance would silently destroy
+    data, so the guard fails *closed*: if the marker is missing the suite
+    aborts before the destructive Cypher fires.
+    """
+    if _is_eval_kg():
+        return
+    raise RuntimeError(
+        "Refusing to reset KG: the configured Neo4j instance is not marked "
+        "as an eval KG. " + _EVAL_GUARD_HINT
+    )
+
+
+# ---------------------------------------------------------------------------
+# Setup-action dispatcher
+# ---------------------------------------------------------------------------
+
+
+async def _dispatch_setup_action(action: SetupAction) -> None:
+    """Resolve a suite-level setup action and run it.
+
+    Each ``kind`` is a small, well-known operation that prepares the eval
+    KG before topics start. Unknown kinds raise rather than silently
+    skipping — a typo'd action shouldn't quietly leave the KG empty.
+    """
+    if action.kind == "seed_canonical_paradigms":
+        await _run_seed_canonical_paradigms(action.args)
+        return
+    raise ValueError(
+        f"unknown setup action kind: {action.kind!r}; "
+        "supported: ['seed_canonical_paradigms']"
+    )
+
+
+async def _run_seed_canonical_paradigms(args: dict[str, Any]) -> None:
+    import shared
+    from decisionlab.knowledge.seed import seed_canonical_paradigms
+
+    if shared.kg is None:
+        raise RuntimeError(
+            "setup action 'seed_canonical_paradigms' needs a live KG; "
+            "shared.init() did not produce one"
+        )
+    raw_path = args.get("fixture_path")
+    fixture_path = Path(raw_path).expanduser() if raw_path else None
+    counters = await seed_canonical_paradigms(
+        shared.kg,
+        getattr(shared, "embeddings", None),
+        getattr(shared, "vectors", None),
+        fixture_path=fixture_path,
+    )
+    logger.info(
+        "Setup seed_canonical_paradigms: created=%d merged=%d vectors=%d",
+        counters["nodes_created"],
+        counters["nodes_merged"],
+        counters["vectors_indexed"],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -270,10 +433,20 @@ async def run_suite(
 
     if spec.reset_kg_before and not skip_kg_ops:
         try:
+            _assert_eval_kg_segregation()
             await kgadmin.reset(confirm=True)
             logger.info("Suite %r: reset KG before run", spec.name)
         except Exception as exc:
             suite_error = f"KG reset failed: {exc}"
+            return _empty_suite_result(spec, t0, suite_error)
+
+    if spec.setup and not skip_kg_ops:
+        try:
+            for action in spec.setup:
+                await _dispatch_setup_action(action)
+                logger.info("Suite %r: ran setup action %r", spec.name, action.kind)
+        except Exception as exc:
+            suite_error = f"setup action failed: {exc}"
             return _empty_suite_result(spec, t0, suite_error)
 
     if not skip_kg_ops:

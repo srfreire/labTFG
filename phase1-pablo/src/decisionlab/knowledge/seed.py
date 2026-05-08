@@ -81,34 +81,41 @@ async def seed_canonical_paradigms(
     nodes_created = 0
     nodes_merged = 0
 
-    async def _seed_one(tx, slug, name, definition):
-        # P0-004: no more `run_ids` array — bump `run_count` / `last_run_at`
-        # like `kg_writer._node_work`. Seed inserts have no FK row to point
-        # at in `node_run_observations`, so we don't write one.
-        cypher = (
-            "MERGE (p:Paradigm {slug: $slug}) "
-            "ON CREATE SET p.name = $name, p.description = $description, "
-            "  p.created_at = $now, p.run_count = 1, p.last_run_at = $now, "
-            "  p.canonical = true "
-            "ON MATCH SET p.canonical = true, "
-            "  p.run_count = coalesce(p.run_count, 0) + 1, "
-            "  p.last_run_at = $now "
-            "RETURN p.created_at = $now AS was_created"
-        )
-        result = await tx.run(
-            cypher,
-            {
-                "slug": slug,
-                "name": name,
-                "description": definition,
-                "now": now,
-            },
-        )
-        return await result.single()
+    # P0-004: no more `run_ids` array — bump `run_count` / `last_run_at`
+    # like `kg_writer._node_work`. Seed inserts have no FK row to point
+    # at in `node_run_observations`, so we don't write one.
+    cypher = (
+        "MERGE (p:Paradigm {slug: $slug}) "
+        "ON CREATE SET p.name = $name, p.description = $description, "
+        "  p.created_at = $now, p.run_count = 1, p.last_run_at = $now, "
+        "  p.canonical = true "
+        "ON MATCH SET p.canonical = true, "
+        "  p.run_count = coalesce(p.run_count, 0) + 1, "
+        "  p.last_run_at = $now "
+        "RETURN p.created_at = $now AS was_created"
+    )
+
+    def _seed_one(slug: str, name: str, definition: str):
+        # Closure over the per-entry params so the txn-function signature
+        # matches what ``KnowledgeGraph.execute_write`` expects: a single
+        # callable taking only the transaction.
+        async def _work(tx):
+            result = await tx.run(
+                cypher,
+                {
+                    "slug": slug,
+                    "name": name,
+                    "description": definition,
+                    "now": now,
+                },
+            )
+            return await result.single()
+
+        return _work
 
     for entry in paradigms:
         record = await kg.execute_write(
-            _seed_one, entry["slug"], entry["name"], entry["definition"]
+            _seed_one(entry["slug"], entry["name"], entry["definition"])
         )
         if record and record["was_created"]:
             nodes_created += 1

@@ -474,28 +474,20 @@ def cli_kg_query(
 
 def _replace_stages(spec: SuiteSpec, stages: tuple[Stage, ...]) -> SuiteSpec:
     """Replace ``stages`` on a frozen SuiteSpec — used by --stages override."""
-    return SuiteSpec(
-        name=spec.name,
-        stages=stages,
-        reset_kg_before=spec.reset_kg_before,
-        env_spec_path=spec.env_spec_path,
-        project_root=spec.project_root,
-        reports_root=spec.reports_root,
-        topics=spec.topics,
-        max_usd_total=spec.max_usd_total,
-        source_path=spec.source_path,
-    )
+    return _clone_spec(spec, stages=stages)
 
 
 def _replace_reset(spec: SuiteSpec, reset_kg_before: bool) -> SuiteSpec:
-    return SuiteSpec(
-        name=spec.name,
-        stages=spec.stages,
-        reset_kg_before=reset_kg_before,
-        env_spec_path=spec.env_spec_path,
-        project_root=spec.project_root,
-        reports_root=spec.reports_root,
-        topics=spec.topics,
-        max_usd_total=spec.max_usd_total,
-        source_path=spec.source_path,
-    )
+    return _clone_spec(spec, reset_kg_before=reset_kg_before)
+
+
+def _clone_spec(spec: SuiteSpec, **overrides) -> SuiteSpec:
+    """Re-construct a frozen SuiteSpec carrying every field forward.
+
+    Uses ``dataclasses.replace`` so future ``SuiteSpec`` fields don't have
+    to be threaded through each ``_replace_*`` helper — the previous
+    bespoke helpers silently dropped ``suite_assertions``.
+    """
+    from dataclasses import replace
+
+    return replace(spec, **overrides)

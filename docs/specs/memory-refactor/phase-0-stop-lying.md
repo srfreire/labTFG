@@ -181,11 +181,17 @@ Edge cases:
       `eval/assertions.py` (or kept only if another live suite
       references it). Any CI workflow step naming `merge-quality` is
       removed.
-- [ ] **AC3**: `evals/suites/slug-accuracy.yaml` has
+- [x] **AC3**: `evals/suites/slug-accuracy.yaml` has
       `reset_kg_before: true` and the eval runner invokes
       `seed_canonical_paradigms` before the first topic. Two
       back-to-back runs of `slug-accuracy.yaml` produce identical
-      assertion outcomes.
+      assertion outcomes. *(Done in P0-003. Suite-level setup
+      block landed in `decisionlab.eval.suite`; reset is gated by
+      a `LABTFG_EVAL_KG` / "eval"-token segregation guard;
+      `tests/eval/test_slug_accuracy_determinism.py` runs the
+      suite twice and asserts identical outcomes. The empirical
+      ≥7/8 hit-rate rerun against live LLM budget is queued for
+      the phase-0 wrap-up.)*
 - [x] **AC4**: `Paradigm`/`Variable`/`Postulate` nodes no longer
       accumulate `run_ids` arrays on MERGE. New
       `node_run_observations` table exists and is written to per

@@ -30,7 +30,12 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-async def live_infra():
+async def live_infra(monkeypatch):
+    # P0-003 introduced a segregation guard that refuses
+    # ``reset_kg_before`` against an unmarked Neo4j. Mark the test
+    # instance as eval so the existing fixtures keep working without
+    # adding an env-var requirement to every CI invocation.
+    monkeypatch.setenv("LABTFG_EVAL_KG", "1")
     await shared.init()
     if shared.kg is None:
         await shared.shutdown()

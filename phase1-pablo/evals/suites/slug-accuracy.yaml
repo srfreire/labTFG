@@ -3,14 +3,21 @@
 # pipeline against the slug-oracle.json fixture and bounds per-label
 # KG growth.
 #
-# Pre-condition: KG seeded by cumulative-growth.yaml first (so the
-# canonical paradigms exist and can be reused, not minted).
+# Determinism contract (P0-003): each invocation wipes the eval KG and
+# re-seeds the canonical paradigm umbrellas, so back-to-back runs see
+# the same starting state. The reset is gated by the LABTFG_EVAL_KG
+# marker — the suite refuses to run against a non-eval Neo4j instance.
 #
 # Cost: 8 topics × research-stage ~$1.20/topic ≈ $10.
 
 name: slug-accuracy
 stages: [research]
-reset_kg_before: false
+reset_kg_before: true
+
+setup:
+  - kind: seed_canonical_paradigms
+    args:
+      fixture_path: evals/fixtures/canonical-paradigms.json
 
 topics:
   - text: "Q-learning agent trades off exploration and exploitation in a foraging grid: how do action-value updates and ε-greedy schedules drive the policy toward optimal patch choice?"
