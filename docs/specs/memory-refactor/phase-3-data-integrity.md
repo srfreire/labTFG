@@ -90,10 +90,10 @@ Document in `docs/memory-system.md` and in a new
       one batched query; drops the `metadata.confidence` read.
       Unit test asserts the SQL query is issued exactly once per
       retrieve.
-- [ ] AC4: MinIO lifecycle rule visible via `mc ilm export`; PG `runs`
+- [x] AC4: MinIO lifecycle rule visible via `mc ilm export`; PG `runs`
       table has a `kind` column with eval driver tagging inserts.
       Cron/one-shot deletion script exists and is documented.
-- [ ] AC5: Manual eval-cleanup run on a populated dev DB removes
+- [x] AC5: Manual eval-cleanup run on a populated dev DB removes
       `kind=eval` runs older than 30 days and cascades to
       `memories`. Qdrant purge script removes the corresponding
       points.
