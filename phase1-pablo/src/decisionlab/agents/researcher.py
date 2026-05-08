@@ -28,6 +28,7 @@ than silently fragmenting the registry.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from collections.abc import Awaitable, Callable
@@ -193,9 +194,25 @@ def _build_emission_model(known_slugs: list[str]) -> type[BaseModel]:
     return ResearcherOutput
 
 
-def _slug_from_proposal(name: str) -> str:
-    """Turn a free-form paradigm name into a kebab-case slug."""
-    return slugify(name) or "paradigm"
+def _slug_from_proposal(name: str, *, definition: str = "") -> str:
+    """Turn a free-form paradigm name into a kebab-case slug.
+
+    On empty ``name``, derives a deterministic short hash from the
+    definition so two unrelated paradigms with empty proposals don't
+    collide on a single sentinel slug. Refuses when both are empty —
+    we have no signal to disambiguate from.
+    """
+    s = slugify(name)
+    if s:
+        return s
+    if not definition.strip():
+        raise ValueError(
+            "_slug_from_proposal: both name and definition empty; cannot mint slug"
+        )
+    digest = hashlib.sha1(
+        definition.strip()[:128].encode("utf-8")
+    ).hexdigest()[:10]
+    return f"unnamed-{digest}"
 
 
 _KNOWN_SLUG_RE = re.compile(r"\*\s+\*\*([a-z0-9-]+)\*\*")
@@ -454,7 +471,7 @@ class Researcher:
             name = ""
             if slug == "__NEW__":
                 proposal = emission.slug_proposal or ""
-                slug = _slug_from_proposal(proposal) if proposal else "paradigm"
+                slug = _slug_from_proposal(proposal, definition=emission.definition)
                 name = proposal or slug
             else:
                 # Reused canonical slug — keep the slug as the name placeholder
