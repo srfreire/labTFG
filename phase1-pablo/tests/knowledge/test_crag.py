@@ -373,11 +373,12 @@ class TestAC8_FailClosed:
             client=client,
         )
 
-        # No search adapter: all-AMBIGUOUS routes to "supplemented"
-        # with the original kept results — but we no longer claim them
-        # as CORRECT, and grading_failed flags the cause.
-        assert crag.action == "supplemented"
-        assert len(crag.results) == 2
+        # P2-004: a Haiku failure shortcuts to "grader_unavailable" with
+        # the reranked passages handed back untouched. We do not invoke
+        # the web fallback because it would amplify the outage.
+        assert crag.action == "grader_unavailable"
+        assert crag.results == results
+        assert crag.web_results_used == 0
         assert all(e["classification"] == "AMBIGUOUS" for e in crag.evaluations)
         assert crag.grading_failed is True
 
@@ -403,8 +404,11 @@ class TestAC8_FailClosed:
             client=client,
         )
 
-        assert crag.action == "supplemented"
-        assert len(crag.results) == 1
+        # Bad JSON triggers the same fail-closed sentinel as a network
+        # error → grader_unavailable, no web fallback.
+        assert crag.action == "grader_unavailable"
+        assert crag.results == results
+        assert crag.web_results_used == 0
         assert crag.evaluations[0]["classification"] == "AMBIGUOUS"
         assert crag.grading_failed is True
 
@@ -490,11 +494,11 @@ class TestOOBHaikuIndex:
         )
 
         # OOB-only response leaves no valid evaluations, so the
-        # grader's output is unusable → fall through to the AMBIGUOUS
-        # fallback. Routing: "supplemented" (no search adapter), and
-        # grading_failed=True because no usable judgments were produced.
-        assert crag.action == "supplemented"
-        assert len(crag.results) == 1
+        # grader's output is unusable → P2-004 short-circuits to
+        # grader_unavailable instead of triggering a web fallback.
+        assert crag.action == "grader_unavailable"
+        assert crag.results == results
+        assert crag.web_results_used == 0
         assert crag.evaluations[0]["classification"] == "AMBIGUOUS"
         assert crag.grading_failed is True
 

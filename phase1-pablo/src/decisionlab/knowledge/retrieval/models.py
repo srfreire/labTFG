@@ -20,7 +20,9 @@ class CRAGResult:
     """Output of the Corrective RAG evaluation pipeline."""
 
     results: list[RetrievalResult]
-    action: str  # "pass_through", "supplemented", "web_fallback"
+    # "pass_through" | "supplemented" | "web_fallback" | "rerank_pass_through"
+    # | "grader_unavailable"
+    action: str
     evaluations: list[dict] = field(default_factory=list)
     web_results_used: int = 0
     grading_failed: bool = False

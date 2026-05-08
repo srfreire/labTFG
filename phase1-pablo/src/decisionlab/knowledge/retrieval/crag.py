@@ -1,7 +1,10 @@
 """Corrective RAG evaluator with web search fallback.
 
 Classifies reranked results as CORRECT/AMBIGUOUS/INCORRECT via Haiku,
-then routes to pass-through, supplemented, or web-fallback action.
+then routes to pass-through, supplemented, or web-fallback action. When
+the grader itself fails (rate-limit, timeout, schema drift) the routing
+short-circuits to ``grader_unavailable`` and skips the web fallback so
+a Haiku outage doesn't trigger a DuckDuckGo storm on every retrieve.
 """
 
 from __future__ import annotations
@@ -182,6 +185,20 @@ async def evaluate_results(
     grading_failed = bool(evaluations) and all(
         ev.get("reasoning") == "Default (evaluation failed)" for ev in evaluations
     )
+
+    # When the grader itself failed (rate-limit, timeout, schema drift),
+    # treating every passage as AMBIGUOUS would force a DuckDuckGo storm
+    # on every retrieve while Haiku is degraded. Return reranked results
+    # unchanged with a distinct action so the agent can read the verdict
+    # as provisional without burning the web-search budget.
+    if grading_failed:
+        return CRAGResult(
+            results=results,
+            action="grader_unavailable",
+            evaluations=evaluations,
+            web_results_used=0,
+            grading_failed=True,
+        )
 
     # Count classifications
     by_class: dict[str, list[int]] = {"CORRECT": [], "AMBIGUOUS": [], "INCORRECT": []}

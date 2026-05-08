@@ -129,12 +129,28 @@ def _final_truncate(
     return results[:cap]
 
 
-def _format_output(results: list[RetrievalResult], top_k: int) -> str:
-    limited = results[:top_k]
-    if not limited:
-        return "## Retrieved Knowledge (0 results)\n\nNo results found for this query."
+def _format_output(
+    results: list[RetrievalResult],
+    top_k: int,
+    *,
+    grader_unavailable: bool = False,
+) -> str:
+    """Format the agent-facing retrieval response.
 
-    blocks = [f"## Retrieved Knowledge ({len(limited)} results)"]
+    When ``grader_unavailable`` is set the header carries a
+    ``[grader_unavailable]`` marker so the agent can attribute the
+    bypassed CRAG grade to a degraded Haiku rather than a confident
+    rerank pass-through.
+    """
+    limited = results[:top_k]
+    marker = " [grader_unavailable]" if grader_unavailable else ""
+    if not limited:
+        return (
+            f"## Retrieved Knowledge (0 results){marker}"
+            "\n\nNo results found for this query."
+        )
+
+    blocks = [f"## Retrieved Knowledge ({len(limited)} results){marker}"]
     for i, r in enumerate(limited, start=1):
         blocks.append("")
         blocks.append(_format_result(i, r))
@@ -496,6 +512,13 @@ def create_retrieve_knowledge(
                     search_adapter=search_adapter,
                     embedding_service=embedding_service,
                 )
+                # P2-004: when the grader errors, evaluate_results returns
+                # action="grader_unavailable" with reranked results
+                # untouched. Surface as a counter so a Haiku outage shows
+                # up as crag.grader_failed instead of silently inflating
+                # the supplemented bucket / DuckDuckGo hit-rate.
+                if crag_result.grading_failed:
+                    increment_counter("crag.grader_failed")
 
             # Apply recency weighting (P5-001)
             weighted_results = _apply_recency_weighting(crag_result.results)
@@ -521,7 +544,11 @@ def create_retrieve_knowledge(
             # _format_output's own ``[:top_k]`` is now a defensive no-op
             # because final_results is already capped — pass len() so it
             # does not re-clip the supplemented set.
-            return _format_output(final_results, len(final_results) or top_k)
+            return _format_output(
+                final_results,
+                len(final_results) or top_k,
+                grader_unavailable=crag_result.action == "grader_unavailable",
+            )
 
         except Exception as exc:
             logger.error(
