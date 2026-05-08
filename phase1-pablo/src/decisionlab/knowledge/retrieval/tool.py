@@ -124,6 +124,98 @@ def _format_output(results: list[RetrievalResult], top_k: int) -> str:
     return "\n".join(blocks)
 
 
+def _get_kg() -> KnowledgeGraph | None:
+    """Module-level KG accessor — overridable in tests via monkeypatch."""
+    return getattr(shared, "kg", None)
+
+
+def _get_vector_store() -> VectorStore | None:
+    return getattr(shared, "vectors", None)
+
+
+def _get_embedding_service() -> EmbeddingService | None:
+    return getattr(shared, "embeddings", None)
+
+
+async def list_known_slugs(
+    query: str,
+    *,
+    namespace: str = "paradigm",
+    top_k: int = 8,
+) -> list[tuple[str, str]]:
+    """Return ``[(slug, definition), ...]`` for the top-k matching paradigm
+    nodes — structured KG output, not parsed markdown.
+
+    Ranking order:
+      1. When the vector store + embedding service are wired, run a dense
+         retrieval over ``namespace=paradigm`` to score candidate slugs by
+         relevance to the query, then hydrate definitions from the KG.
+      2. When vector infra is unavailable (degraded mode, tests), fall back
+         to a plain ``MATCH (p:Paradigm) ... LIMIT $k`` — order is whatever
+         the KG returns, but the helper still produces something rather
+         than empty.
+      3. KG missing → empty list (preserves the Researcher's "no candidates
+         → __NEW__ for everything" fallback).
+
+    Paradigm-only today; other namespaces don't have a comparable slug
+    field on their nodes.
+    """
+    if namespace != "paradigm":
+        raise ValueError(
+            f"list_known_slugs: unsupported namespace {namespace!r} "
+            "(paradigm-only today)"
+        )
+
+    kg = _get_kg()
+    if kg is None:
+        return []
+
+    vector_store = _get_vector_store()
+    embedding_service = _get_embedding_service()
+
+    candidate_slugs: list[str] = []
+    if vector_store is not None and embedding_service is not None:
+        try:
+            dense, sparse = await vector_retrieve(
+                query=query,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
+                limit=top_k * 2,
+                filters={"namespace": "paradigm"},
+            )
+        except Exception as exc:
+            logger.warning("list_known_slugs: vector_retrieve failed: %s", exc)
+            dense, sparse = [], []
+        seen: set[str] = set()
+        for h in sorted(dense + sparse, key=lambda r: r.score, reverse=True):
+            slug = h.metadata.get("slug")
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            candidate_slugs.append(slug)
+            if len(candidate_slugs) >= top_k:
+                break
+
+    if not candidate_slugs:
+        # Degraded path — return the first top_k Paradigm nodes from the KG
+        # in whatever order it gives them.
+        rows = await kg.execute_query(
+            "MATCH (p:Paradigm) "
+            "RETURN p.slug AS slug, p.name AS name, p.description AS description "
+            "LIMIT $k",
+            {"k": top_k},
+        )
+        return [(r["slug"], r.get("description") or "") for r in rows]
+
+    rows = await kg.execute_query(
+        "MATCH (p:Paradigm) WHERE p.slug IN $slugs "
+        "RETURN p.slug AS slug, p.description AS description",
+        {"slugs": candidate_slugs},
+    )
+    desc_by_slug = {r["slug"]: (r.get("description") or "") for r in rows}
+    return [(s, desc_by_slug.get(s, "")) for s in candidate_slugs]
+
+
 async def _track_memory_access(results: list[RetrievalResult]) -> None:
     """Call touch_memory for each Postgres-backed result."""
     if shared.db is None:
