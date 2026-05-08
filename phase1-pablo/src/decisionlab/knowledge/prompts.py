@@ -66,8 +66,11 @@ Parse from the References section and inline citations. Set doi/citation_count t
 null if not available.
 - BrainRegion: properties={{name, system}}. natural_key="name". \
 System is one of: homeostatic, hedonic, cognitive, or null.
-- Variable: properties={{name, type, range, unit}}. natural_key="name". \
-Extract from the "Identified Variables" table. Type is the Role column value.
+- Variable: properties={{name, type, range, unit, paradigm_slug}}. natural_key="name". \
+Extract from the "Identified Variables" table. Type is the Role column value. \
+paradigm_slug must be the slug of the Paradigm this report describes — it scopes \
+the variable name within its paradigm so "reward" in reinforcement-learning is \
+distinct from "reward" in prospect-theory.
 - Postulate: properties={{id, statement, falsifiable, paradigm_slug}}. natural_key="id". \
 Id MUST be scoped to the postulate's paradigm to prevent cross-paradigm collisions: \
 emit it as "{{paradigm-slug}}:P1", "{{paradigm-slug}}:P2", etc. — for example \
@@ -105,8 +108,11 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 Node types to extract:
 - Equation: properties={{latex, plaintext, type}}. natural_key="plaintext". \
 Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
-- Variable: properties={{name, type, range, unit}}. natural_key="name". \
-Extract from ### Variables tables. Type is the Type column value.
+- Variable: properties={{name, type, range, unit, paradigm_slug}}. natural_key="name". \
+Extract from ### Variables tables. Type is the Type column value. \
+paradigm_slug must be the slug of the Paradigm whose formalization this document \
+describes (the Researcher upstream sets it; if absent, derive from the document's \
+paradigm name).
 - Parameter: properties={{name, default_value, source, range}}. natural_key="name". \
 Extract from ### Parameters tables. default_value should be a number or string.
 - Formulation: properties={{id, name, type, description}}. natural_key="id". \

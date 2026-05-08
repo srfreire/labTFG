@@ -216,6 +216,23 @@ def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
                 )
             )
 
+    # Defensive: if the LLM emitted a Paradigm in this batch, fill any missing
+    # paradigm_slug on Variable nodes from it. Prevents Variables from silently
+    # falling into the orphan namespace when the LLM forgets to copy the slug
+    # down (which it does despite the prompt telling it to).
+    paradigm_slug = next(
+        (
+            n.properties.get("slug")
+            for n in nodes
+            if n.label == "Paradigm" and isinstance(n.properties.get("slug"), str)
+        ),
+        None,
+    )
+    if paradigm_slug:
+        for n in nodes:
+            if n.label == "Variable" and not n.properties.get("paradigm_slug"):
+                n.properties["paradigm_slug"] = paradigm_slug
+
     relations = []
     for raw in data.get("relations", []):
         if not isinstance(raw, dict):
