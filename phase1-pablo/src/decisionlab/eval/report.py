@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from decisionlab.eval.suite import SuiteResult
+from decisionlab.eval.timing import TimingLog
 
 
 def render_markdown(result: SuiteResult) -> str:
@@ -80,6 +81,53 @@ def render_markdown(result: SuiteResult) -> str:
                     lines.append(f"| {stage_name} | {o.name} | {mark} | {detail} |")
             lines.append("")
 
+    # Suite-level assertions section
+    if result.suite_assertions:
+        lines.append("## Suite assertions")
+        lines.append("")
+        lines.append("| Predicate | Result | Detail |")
+        lines.append("|---|:-:|---|")
+        for o in result.suite_assertions:
+            mark = "✓" if o.passed else "✗"
+            detail = o.detail.replace("|", "\\|")
+            lines.append(f"| {o.name} | {mark} | {detail} |")
+        lines.append("")
+
+    # Timing section (aggregated across topics)
+    all_calls: list = []
+    all_stage_ms: dict[str, list[float]] = {}
+    for tr in result.topic_results:
+        all_calls.extend(tr.run.tool_call_log)
+        if tr.run.timing is None:
+            continue
+        for st in tr.run.timing.stages:
+            all_stage_ms.setdefault(st.stage, []).append(st.duration_ms)
+
+    tool_summary = TimingLog.summarize_tool_calls(all_calls) if all_calls else {}
+    if all_stage_ms or tool_summary:
+        lines.append("## Timing")
+        lines.append("")
+    if all_stage_ms:
+        lines.append("**Stages (avg ms across topics)**:")
+        lines.append("")
+        lines.append("| Stage | n | avg ms |")
+        lines.append("|---|---:|---:|")
+        for stage_name, durs in sorted(all_stage_ms.items()):
+            avg = sum(durs) / len(durs)
+            lines.append(f"| {stage_name} | {len(durs)} | {avg:.0f} |")
+        lines.append("")
+    if tool_summary:
+        lines.append("**Tool calls**:")
+        lines.append("")
+        lines.append("| Tool | Calls | p50 ms | p95 ms | avg ms |")
+        lines.append("|---|---:|---:|---:|---:|")
+        for tool, s in sorted(tool_summary.items()):
+            lines.append(
+                f"| {tool} | {int(s['calls'])} | "
+                f"{s['p50_ms']:.0f} | {s['p95_ms']:.0f} | {s['avg_ms']:.0f} |"
+            )
+        lines.append("")
+
     return "\n".join(lines)
 
 
@@ -122,6 +170,14 @@ def render_json(result: SuiteResult) -> str:
                     "error": tr.run.error,
                     "tool_call_log": [asdict(c) for c in tr.run.tool_call_log],
                 },
+                "timing": (
+                    {"stages": [asdict(s) for s in tr.run.timing.stages]}
+                    if tr.run.timing is not None
+                    else None
+                ),
+                "tool_call_summary": TimingLog.summarize_tool_calls(
+                    tr.run.tool_call_log
+                ),
                 "assertions": {
                     stage: [asdict(o) for o in outs]
                     for stage, outs in tr.assertions.items()
@@ -130,6 +186,7 @@ def render_json(result: SuiteResult) -> str:
             }
             for tr in result.topic_results
         ],
+        "suite_assertions": [asdict(o) for o in result.suite_assertions],
     }
     return json.dumps(payload, indent=2, default=str)
 

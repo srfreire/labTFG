@@ -171,3 +171,87 @@ class TestWriteReport:
         assert json_path.exists() and json_path.name == "report.json"
         assert md_path.read_text().startswith("# Eval suite")
         json.loads(json_path.read_text())  # roundtrips
+
+
+def _suite_result_with_timing(*, suite_assertions=()) -> SuiteResult:
+    from decisionlab.eval.timing import StageTiming, TimingLog
+
+    timing = TimingLog(
+        stages=[
+            StageTiming(stage="researcher", duration_ms=1234.5, failed=False),
+            StageTiming(stage="canonicalize", duration_ms=678.9, failed=False),
+        ]
+    )
+    calls = (
+        ToolCall(
+            name="retrieve_knowledge",
+            stage="research",
+            args_hash="x",
+            succeeded=True,
+            duration_ms=420.0,
+        ),
+    )
+    run = PipelineRunResult(
+        run_id="r1",
+        topic="alpha",
+        stages_run=(Stage.RESEARCH,),
+        tool_call_log=calls,
+        timing=timing,
+    )
+    return SuiteResult(
+        suite=_spec(),
+        topic_results=(TopicResult(topic="alpha", run=run, assertions={}),),
+        pre_stats=None,
+        post_stats=None,
+        total_usd=0.0,
+        duration_ms=0,
+        budget_exhausted=False,
+        suite_assertions=tuple(suite_assertions),
+    )
+
+
+def test_report_md_includes_timing_section():
+    result = _suite_result_with_timing()
+    md = render_markdown(result)
+    assert "## Timing" in md
+    assert "researcher" in md
+    assert "1235" in md or "1234" in md  # ms formatting tolerance
+    assert "retrieve_knowledge" in md
+
+
+def test_report_md_includes_suite_assertions_section():
+    result = _suite_result_with_timing(
+        suite_assertions=(
+            AssertionOutcome(
+                name="merge_precision_recall",
+                passed=True,
+                detail="precision=1.000 recall=1.000",
+            ),
+        )
+    )
+    md = render_markdown(result)
+    assert "## Suite assertions" in md
+    assert "merge_precision_recall" in md
+    assert "precision=1.000" in md
+
+
+def test_report_json_includes_timing_and_suite_assertions():
+    result = _suite_result_with_timing(
+        suite_assertions=(
+            AssertionOutcome(
+                name="merge_precision_recall",
+                passed=True,
+                detail="precision=1.000 recall=1.000",
+            ),
+        )
+    )
+    payload = json.loads(render_json(result))
+    assert "suite_assertions" in payload
+    assert payload["suite_assertions"][0]["name"] == "merge_precision_recall"
+    assert (
+        payload["topics"][0]["timing"]["stages"][0]["stage"] == "researcher"
+    )
+    assert (
+        payload["topics"][0]["tool_call_summary"]["retrieve_knowledge"]["calls"]
+        == 1
+    )
