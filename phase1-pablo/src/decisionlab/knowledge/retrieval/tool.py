@@ -235,7 +235,7 @@ async def list_known_slugs(
 
 
 async def _track_memory_access(results: list[RetrievalResult]) -> None:
-    """Call touch_memory for each Postgres-backed result."""
+    """Bump access metadata for Postgres-backed results in a single UPDATE."""
     if shared.db is None:
         return
 
@@ -253,12 +253,16 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
         return
 
     async with shared.db.get_session() as session:
-        for mid in memory_ids:
-            try:
-                await touch_memory(session, mid)
-            except Exception as exc:
-                logger.warning("touch_memory failed for %s: %s", mid, exc)
-        await session.commit()
+        try:
+            await touch_memory(session, memory_ids)
+            await session.commit()
+        except Exception as exc:
+            logger.warning(
+                "touch_memory failed for batch of %d: %s", len(memory_ids), exc
+            )
+            return
+
+    logger.info("touch_memory.batch_size=%d", len(memory_ids))
 
 
 # Recency decay rates per namespace, applied as decay**days_old.

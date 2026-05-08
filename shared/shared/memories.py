@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select, update
@@ -43,11 +44,27 @@ async def get_memories(
     return list(result.scalars().all())
 
 
-async def touch_memory(session: AsyncSession, memory_id: uuid.UUID) -> None:
-    """Update last_accessed_at, increment access_count, and boost confidence +0.02."""
+async def touch_memory(
+    session: AsyncSession,
+    memory_id: uuid.UUID | Iterable[uuid.UUID],
+) -> int:
+    """Bump access metadata for one or more memory rows in a single UPDATE.
+
+    Accepts a single UUID or any iterable of UUIDs. Issues exactly one
+    `UPDATE ... WHERE id IN (...)` statement and returns the number of ids
+    targeted (0 when an empty iterable is passed — no SQL is sent).
+    """
+    if isinstance(memory_id, uuid.UUID):
+        ids: list[uuid.UUID] = [memory_id]
+    else:
+        ids = list(memory_id)
+
+    if not ids:
+        return 0
+
     stmt = (
         update(Memory)
-        .where(Memory.id == memory_id)
+        .where(Memory.id.in_(ids))
         .values(
             last_accessed_at=func.now(),
             access_count=Memory.access_count + 1,
@@ -59,6 +76,7 @@ async def touch_memory(session: AsyncSession, memory_id: uuid.UUID) -> None:
     )
     await session.execute(stmt)
     await session.flush()
+    return len(ids)
 
 
 async def supersede_memory(

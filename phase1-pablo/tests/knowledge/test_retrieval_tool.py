@@ -247,19 +247,33 @@ class TestAC6_TopK:
 # ---------------------------------------------------------------------------
 
 
+def _memory_result(mem_id: str) -> RetrievalResult:
+    return _result(
+        "A memory passage.",
+        0.9,
+        "dense",
+        entity_id=mem_id,
+        collection="memories_dense",
+    )
+
+
+def _mock_db_with_session(session: object) -> object:
+    db = MagicMock()
+    db.get_session = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock(return_value=False),
+        )
+    )
+    return db
+
+
 class TestAC7_MemoryAccessTracking:
     @pytest.mark.asyncio
-    async def test_touch_memory_called_for_memory_results(self):
-        mem_id = str(uuid.uuid4())
-        memory_results = [
-            _result(
-                "A memory passage.",
-                0.9,
-                "dense",
-                entity_id=mem_id,
-                collection="memories_dense",
-            ),
-        ]
+    async def test_touch_memory_called_with_batched_ids(self):
+        """All memory-backed results funnel into one batched touch_memory call."""
+        mem_id_1, mem_id_2 = str(uuid.uuid4()), str(uuid.uuid4())
+        memory_results = [_memory_result(mem_id_1), _memory_result(mem_id_2)]
         crag = CRAGResult(
             results=memory_results,
             action="pass_through",
@@ -268,16 +282,10 @@ class TestAC7_MemoryAccessTracking:
         )
 
         mock_session = AsyncMock()
-        mock_db = MagicMock()
-        mock_db.get_session = MagicMock(
-            return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_session),
-                __aexit__=AsyncMock(return_value=False),
-            )
-        )
+        mock_db = _mock_db_with_session(mock_session)
 
         with (
-            _patch_pipeline(crag_result=crag),
+            _patch_pipeline(crag_result=crag, fused=memory_results),
             patch(f"{_TOOL_MODULE}.touch_memory", new_callable=AsyncMock) as mock_touch,
             patch(f"{_TOOL_MODULE}.shared") as mock_shared,
         ):
@@ -286,8 +294,9 @@ class TestAC7_MemoryAccessTracking:
             await handler({"query": "test"})
 
         mock_touch.assert_called_once()
-        # touch_memory(session, memory_id) — verify the UUID was passed positionally
-        assert mock_touch.call_args[0][1] == uuid.UUID(mem_id)
+        # touch_memory(session, [id1, id2]) — verify list of UUIDs passed positionally
+        passed_ids = mock_touch.call_args[0][1]
+        assert list(passed_ids) == [uuid.UUID(mem_id_1), uuid.UUID(mem_id_2)]
 
     @pytest.mark.asyncio
     async def test_web_results_not_touched(self):
@@ -308,6 +317,61 @@ class TestAC7_MemoryAccessTracking:
             await handler({"query": "test"})
 
         mock_touch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_track_memory_access_issues_one_execute_and_one_commit(self):
+        """AC1: regardless of batch size, one execute + one commit on the session."""
+        from decisionlab.knowledge.retrieval.tool import _track_memory_access
+
+        mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(5)]
+        mock_session = AsyncMock()
+        mock_db = _mock_db_with_session(mock_session)
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            await _track_memory_access(mem_results)
+
+        assert mock_session.execute.await_count == 1
+        assert mock_session.commit.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_track_memory_access_logs_batch_size(self, caplog):
+        """AC4: emits `touch_memory.batch_size=N` telemetry log."""
+        import logging
+
+        from decisionlab.knowledge.retrieval.tool import _track_memory_access
+
+        mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(3)]
+        mock_session = AsyncMock()
+        mock_db = _mock_db_with_session(mock_session)
+
+        with (
+            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+            caplog.at_level(logging.INFO, logger=_TOOL_MODULE),
+        ):
+            mock_shared.db = mock_db
+            await _track_memory_access(mem_results)
+
+        assert any(
+            "touch_memory.batch_size=3" in record.getMessage()
+            for record in caplog.records
+        )
+
+    @pytest.mark.asyncio
+    async def test_track_memory_access_skips_when_no_memory_ids(self):
+        """No execute, no commit, no log when there are no memory-backed hits."""
+        web_only = [_result("Web passage.", 0.8, "web", url="https://example.com")]
+        mock_session = AsyncMock()
+        mock_db = _mock_db_with_session(mock_session)
+
+        from decisionlab.knowledge.retrieval.tool import _track_memory_access
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            await _track_memory_access(web_only)
+
+        mock_session.execute.assert_not_called()
+        mock_session.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

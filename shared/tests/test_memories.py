@@ -245,6 +245,47 @@ async def test_ac6_touch_memory(session):
     assert updated2.access_count == 2
 
 
+# ── P2-003 AC5: batched touch_memory ──
+
+
+@pytest.mark.asyncio
+async def test_touch_memory_batch_updates_each_id(session):
+    """P2-003 AC5: passing a list of ids updates access_count, last_accessed_at,
+    and confidence (capped at 1.0) for every row in one round-trip."""
+    mem_a = await create_memory(session, **_memory_kwargs(content="a", confidence=0.5))
+    mem_b = await create_memory(session, **_memory_kwargs(content="b", confidence=0.99))
+    mem_c = await create_memory(session, **_memory_kwargs(content="c", confidence=1.0))
+    await session.commit()
+
+    ids = [mem_a.id, mem_b.id, mem_c.id]
+    touched = await touch_memory(session, ids)
+    await session.commit()
+    assert touched == 3
+
+    session.expire_all()
+    rows = (
+        (await session.execute(select(Memory).where(Memory.id.in_(ids))))
+        .scalars()
+        .all()
+    )
+    by_id = {m.id: m for m in rows}
+
+    for mid in ids:
+        assert by_id[mid].access_count == 1
+        assert by_id[mid].last_accessed_at is not None
+
+    assert by_id[mem_a.id].confidence == pytest.approx(0.52)
+    assert by_id[mem_b.id].confidence == pytest.approx(1.0)  # clamped
+    assert by_id[mem_c.id].confidence == pytest.approx(1.0)  # already at cap
+
+
+@pytest.mark.asyncio
+async def test_touch_memory_empty_list_is_noop(session):
+    """Passing [] returns 0 and issues no SQL — no-op."""
+    touched = await touch_memory(session, [])
+    assert touched == 0
+
+
 # ── Additional: min_confidence filter ──
 
 
