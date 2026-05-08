@@ -39,6 +39,9 @@ class ToolCall:
     # without growing a sibling ledger or mutating ``PipelineRunResult``'s
     # JSON contract.
     details: dict | None = None
+    # Wall time spent inside the dispatcher handler. None for legacy
+    # call sites that don't measure (interactive CLI, tests).
+    duration_ms: float | None = None
 
 
 # Sentinel ``name`` for synthetic ``ToolCall`` entries written by
@@ -78,7 +81,13 @@ def set_stage(stage: Stage | str) -> None:
     _STAGE_VAR.set(value)
 
 
-def record(name: str, args: object, succeeded: bool) -> None:
+def record(
+    name: str,
+    args: object,
+    succeeded: bool,
+    *,
+    duration_ms: float | None = None,
+) -> None:
     """Append a ``ToolCall`` to the active recording list, if any.
 
     No-ops silently when no recording session is active (the interactive
@@ -99,6 +108,7 @@ def record(name: str, args: object, succeeded: bool) -> None:
             stage=_STAGE_VAR.get(),
             args_hash=args_hash,
             succeeded=succeeded,
+            duration_ms=duration_ms,
         )
     )
 
