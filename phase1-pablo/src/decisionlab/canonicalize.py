@@ -195,16 +195,66 @@ async def canonicalize(
                     best_score = sim
                     best_idx = j
 
-            if best_idx < 0 or best_score < tau_direct:
-                # Pass-2 ancestor expansion (Task 4) hooks in here for
-                # Paradigm in the [tau_loose, tau_direct) gray zone.
+            target: _ExistingNode | None = None
+            if best_idx >= 0 and best_score >= tau_direct:
+                # Pass 1 — direct neighbour above τ_direct
+                target = existing[best_idx]
+            elif (
+                label == "Paradigm"
+                and best_idx >= 0
+                and best_score >= tau_loose
+            ):
+                # Pass 2 — ancestor expansion. Probe the loose neighbour's
+                # parents and re-test cosine against them; the LLM verifier
+                # will then judge candidate vs the strongest ancestor, not
+                # vs the loose neighbour.
+                loose_neighbour = existing[best_idx]
+                try:
+                    ancestors = await _fetch_ancestors(kg, loose_neighbour.key_value)
+                except Exception as exc:
+                    logger.warning(
+                        "canonicalize: _fetch_ancestors failed for %s: %s",
+                        loose_neighbour.key_value,
+                        exc,
+                    )
+                    ancestors = []
+                if ancestors:
+                    try:
+                        anc_vecs = await embedding_service.embed_texts(
+                            [a.text for a in ancestors]
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "canonicalize: ancestor embedding failed for %s: %s",
+                            loose_neighbour.key_value,
+                            exc,
+                        )
+                        anc_vecs = []
+                    best_anc_score = -1.0
+                    best_anc_idx = -1
+                    for j, av in enumerate(anc_vecs):
+                        sim = _cosine(cand_vec, av)
+                        if sim > best_anc_score:
+                            best_anc_score = sim
+                            best_anc_idx = j
+                    if best_anc_idx >= 0 and best_anc_score >= tau_direct:
+                        target = ancestors[best_anc_idx]
+                        logger.info(
+                            "canonicalize: ancestor expansion %s sim=%.3f -> "
+                            "%s sim=%.3f",
+                            loose_neighbour.key_value,
+                            best_score,
+                            target.key_value,
+                            best_anc_score,
+                        )
+                        best_score = best_anc_score
+
+            if target is None:
                 continue
             if len(cand_text) < _MIN_TEXT_LENGTH_FOR_COSINE:
                 # Short candidates can cosine-match by accident — defer to
                 # the LLM verifier; if it also says no, we won't merge.
                 pass
-
-            target = existing[best_idx]
             try:
                 decision = await _verify_merge(
                     label=label,
@@ -339,6 +389,44 @@ _LABEL_KEY_FIELDS: dict[str, tuple[str, ...]] = {
     "Variable": ("name", "type", "description"),
     "Postulate": ("id", "statement"),
 }
+
+
+async def _fetch_ancestors(
+    kg: KnowledgeGraph, slug: str, *, max_hops: int = 2
+) -> list[_ExistingNode]:
+    """Return up to ``max_hops`` Paradigm ancestors via EXTENDS|BELONGS_TO.
+
+    Used by Pass-2 ancestor expansion: when a candidate cosine-matches
+    a leaf paradigm just below ``τ_direct``, we want to test merging
+    into the *parent* paradigm instead, since LLMs frequently propose
+    specialisations (e.g. "Q-learning") that should canonicalize to the
+    umbrella ("reinforcement-learning").
+    """
+    rows = await kg.execute_query(
+        f"MATCH (start:Paradigm {{slug: $slug}})"
+        f"-[:EXTENDS|BELONGS_TO*1..{max_hops}]->(p:Paradigm) "
+        "RETURN p.slug AS slug, p.name AS name, p.description AS description",
+        {"slug": slug},
+    )
+    out: list[_ExistingNode] = []
+    for r in rows:
+        synthetic = NodeSpec(
+            label="Paradigm",
+            properties={
+                "slug": r["slug"],
+                "name": r.get("name") or r["slug"],
+                "description": r.get("description") or "",
+            },
+            natural_key="slug",
+        )
+        out.append(
+            _ExistingNode(
+                key_value=str(r["slug"]),
+                text=_node_to_text(synthetic),
+                properties=dict(synthetic.properties),
+            )
+        )
+    return out
 
 
 async def _fetch_existing_nodes(kg: KnowledgeGraph, label: str) -> list[_ExistingNode]:
