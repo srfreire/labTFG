@@ -1,7 +1,7 @@
 ---
 id: P2-003
 title: Batch touch_memory writes into a single UPDATE per retrieve
-status: todo
+status: in-progress
 kind: strike
 phase: 2
 heat: db-batching
