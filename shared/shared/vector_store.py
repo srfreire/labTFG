@@ -241,4 +241,4 @@ def _build_filter(filters: dict) -> Filter:
             must.append(FieldCondition(key=key, range=Range(**value)))
         else:
             must.append(FieldCondition(key=key, match=MatchValue(value=value)))
-    return Filter(must=must or None, must_not=must_not or None)
+    return Filter(must=must, must_not=must_not)
