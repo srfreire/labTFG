@@ -111,6 +111,23 @@ def _format_result(idx: int, result: RetrievalResult) -> str:
     return "\n".join(lines)
 
 
+def _final_truncate(
+    results: list[RetrievalResult],
+    *,
+    top_k: int,
+    web_supplemented: bool,
+) -> list[RetrievalResult]:
+    """Cap the result list at the agent boundary.
+
+    When CRAG supplemented results from the web, the cap stretches to
+    ``2 * top_k`` so the agent sees both the kept stored hits and the
+    fresh web ones — clipping back to ``top_k`` would silently discard
+    exactly the supplements CRAG asked for.
+    """
+    cap = top_k * 2 if web_supplemented else top_k
+    return results[:cap]
+
+
 def _format_output(results: list[RetrievalResult], top_k: int) -> str:
     limited = results[:top_k]
     if not limited:
@@ -427,10 +444,12 @@ def create_retrieve_knowledge(
                 vec_coro,
             )
 
-            # Fuse + rerank
+            # Fuse + rerank — keep up to 2*top_k candidates through this
+            # stage so CRAG can web-supplement without us pre-clipping
+            # the results it would've kept.
             if not embedding_service:
                 # Without embedding service, just concatenate raw results
-                reranked = (kg_results + dense_results + sparse_results)[:top_k]
+                reranked = (kg_results + dense_results + sparse_results)[: top_k * 2]
             else:
                 reranked = await fuse_and_rerank(
                     query,
@@ -457,13 +476,25 @@ def create_retrieve_knowledge(
             # Apply temporal filter when as_of is specified (P5-004)
             final_results = _apply_temporal_filter(weighted_results, as_of)
 
+            # Truncate at the agent boundary. When CRAG added a web
+            # supplement, allow up to 2*top_k so the supplemented hits
+            # actually reach the agent.
+            final_results = _final_truncate(
+                final_results,
+                top_k=top_k,
+                web_supplemented=crag_result.web_results_used > 0,
+            )
+
             # Track memory access (fire-and-forget, don't block response)
             try:
                 await _track_memory_access(final_results)
             except Exception as exc:
                 logger.warning("Memory access tracking failed: %s", exc)
 
-            return _format_output(final_results, top_k)
+            # _format_output's own ``[:top_k]`` is now a defensive no-op
+            # because final_results is already capped — pass len() so it
+            # does not re-clip the supplemented set.
+            return _format_output(final_results, len(final_results) or top_k)
 
         except Exception as exc:
             logger.error(
