@@ -22,39 +22,35 @@ _DENSE_COLLECTIONS = ("artifacts_dense", "memories_dense")
 _SPARSE_COLLECTIONS = ("artifacts_sparse", "memories_sparse")
 
 
-def _translate_filters(filters: dict | None) -> tuple[dict | None, str | None]:
-    """Separate user-facing filters into Qdrant filters + exclude_run_id.
+def _translate_filters(filters: dict | None) -> dict | None:
+    """Convert user-facing filters into Qdrant-shape filters.
 
-    Returns (qdrant_filters, exclude_run_id).
+    ``exclude_run_id`` is folded into the special ``_exclude`` key so
+    Qdrant applies it as a server-side ``must_not`` condition (rather
+    than the prior Python post-filter loop).
     """
     if not filters:
-        return None, None
+        return None
 
-    qdrant = {}
-    exclude_run_id = None
-
+    qdrant: dict = {}
     for key, value in filters.items():
         if key == "exclude_run_id":
-            exclude_run_id = value
+            qdrant.setdefault("_exclude", {})["run_id"] = value
         elif key == "min_confidence":
             qdrant["confidence"] = {"gte": value}
         else:
             qdrant[key] = value
-
-    return qdrant or None, exclude_run_id
+    return qdrant or None
 
 
 def _to_results(
     points: list[ScoredPoint],
     source: str,
     collection: str,
-    exclude_run_id: str | None = None,
 ) -> list[RetrievalResult]:
-    """Convert Qdrant ScoredPoints to RetrievalResults, applying post-filters."""
+    """Convert Qdrant ScoredPoints to RetrievalResults."""
     results = []
     for p in points:
-        if exclude_run_id and p.payload.get("run_id") == exclude_run_id:
-            continue
         meta = {**p.payload, "collection": collection}
         if "created_at" in meta and "run_date" not in meta:
             meta["run_date"] = meta["created_at"]
@@ -82,7 +78,7 @@ async def dense_retrieve(
     memories_dense, merges results sorted by score descending.
     """
     query_vec = await embedding_service.embed_query(query)
-    qdrant_filters, exclude_run_id = _translate_filters(filters)
+    qdrant_filters = _translate_filters(filters)
 
     coros = [
         vector_store.search_dense(coll, query_vec, limit=limit, filters=qdrant_filters)
@@ -92,7 +88,7 @@ async def dense_retrieve(
 
     results: list[RetrievalResult] = []
     for coll, points in zip(_DENSE_COLLECTIONS, batches, strict=False):
-        results.extend(_to_results(points, "dense", coll, exclude_run_id))
+        results.extend(_to_results(points, "dense", coll))
 
     results.sort(key=lambda r: r.score, reverse=True)
     return results
@@ -113,7 +109,7 @@ async def sparse_retrieve(
     if not query.strip():
         return []
 
-    qdrant_filters, exclude_run_id = _translate_filters(filters)
+    qdrant_filters = _translate_filters(filters)
 
     coros = [
         vector_store.search_sparse(coll, query, limit=limit, filters=qdrant_filters)
@@ -123,7 +119,7 @@ async def sparse_retrieve(
 
     results: list[RetrievalResult] = []
     for coll, points in zip(_SPARSE_COLLECTIONS, batches, strict=False):
-        results.extend(_to_results(points, "sparse", coll, exclude_run_id))
+        results.extend(_to_results(points, "sparse", coll))
 
     if not results:
         return []

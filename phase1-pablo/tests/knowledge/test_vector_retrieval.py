@@ -141,22 +141,26 @@ async def test_dense_uses_embedding_sparse_does_not():
 
 
 @pytest.mark.asyncio
-async def test_exclude_run_id_filters_current_run():
-    """Results from the current run are excluded via exclude_run_id filter."""
+async def test_exclude_run_id_reaches_vector_store_as_must_not_filter():
+    """``exclude_run_id`` is folded into a Qdrant ``must_not`` filter
+    server-side — no Python post-filter drops points.
+
+    Direct exclusion behaviour against a real Qdrant is covered in the
+    integration suite; here we just confirm the dict shape that reaches
+    ``search_dense`` carries the exclusion under ``_exclude.run_id``.
+    """
     vs = _mock_vs(
-        dense_artifacts=[
-            _scored("a1", 0.9, run_id="current-run"),
-            _scored("a2", 0.8, run_id="other-run"),
-        ],
+        dense_artifacts=[_scored("a1", 0.9, run_id="other-run")],
     )
     emb = _mock_emb()
 
-    results = await dense_retrieve(
+    await dense_retrieve(
         "test", emb, vs, filters={"exclude_run_id": "current-run"}
     )
 
-    assert len(results) == 1
-    assert results[0].metadata["run_id"] == "other-run"
+    filters_passed = vs.search_dense.call_args.kwargs.get("filters")
+    assert filters_passed is not None
+    assert filters_passed.get("_exclude", {}).get("run_id") == "current-run"
 
 
 # -- AC6: namespace filter -----------------------------------------------------

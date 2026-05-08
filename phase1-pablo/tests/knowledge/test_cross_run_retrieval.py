@@ -40,56 +40,21 @@ def _result(text: str, score: float, source: str, **meta) -> RetrievalResult:
 
 
 class TestAC1_CrossRunRetrieval:
-    def test_exclude_run_id_filters_current_run_in_vector_results(self):
-        """Vector results from the current run are excluded."""
-        points = [
-            ScoredPoint(
-                "p1",
-                0.9,
-                {
-                    "text_preview": "run-1 fact",
-                    "run_id": "run-1",
-                    "created_at": _utc_iso(30),
-                },
-            ),
-            ScoredPoint(
-                "p2",
-                0.85,
-                {
-                    "text_preview": "run-2 fact",
-                    "run_id": "run-2",
-                    "created_at": _utc_iso(1),
-                },
-            ),
-            ScoredPoint(
-                "p3",
-                0.95,
-                {
-                    "text_preview": "run-3 fact",
-                    "run_id": "run-3",
-                    "created_at": _utc_iso(0),
-                },
-            ),
-        ]
+    """AC1 — exclude_run_id semantics now sit inside the Qdrant filter
+    (must_not). _to_results no longer drops points on the Python side;
+    Qdrant has already excluded the current-run hits before _to_results
+    sees them. Filter-shape coverage is in
+    tests/knowledge/retrieval/test_exclude_run_id_filter.py.
+    """
 
-        results = _to_results(
-            points, "dense", "artifacts_dense", exclude_run_id="run-3"
-        )
-
-        run_ids = [r.metadata["run_id"] for r in results]
-        assert "run-3" not in run_ids
-        assert "run-1" in run_ids
-        assert "run-2" in run_ids
-
-    def test_without_exclude_all_runs_returned(self):
-        """Without exclude_run_id, all runs are returned."""
+    def test_to_results_passes_through_all_qdrant_returned_points(self):
+        """Whatever Qdrant returns, _to_results converts. No runtime
+        run_id filtering happens here anymore."""
         points = [
             ScoredPoint("p1", 0.9, {"text_preview": "run-1 fact", "run_id": "run-1"}),
             ScoredPoint("p2", 0.85, {"text_preview": "run-2 fact", "run_id": "run-2"}),
         ]
-
-        results = _to_results(points, "dense", "artifacts_dense", exclude_run_id=None)
-
+        results = _to_results(points, "dense", "artifacts_dense")
         assert len(results) == 2
 
 

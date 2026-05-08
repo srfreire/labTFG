@@ -227,13 +227,18 @@ def _build_filter(filters: dict) -> Filter:
     """Convert a flat dict of filters to Qdrant Filter objects.
 
     Supported forms:
-        {"namespace": "paradigm"}             → exact match
-        {"confidence": {"gte": 0.7}}          → range filter
+        {"namespace": "paradigm"}                   → exact match (must)
+        {"confidence": {"gte": 0.7}}                → range filter (must)
+        {"_exclude": {"run_id": "run-123"}}         → exact match (must_not)
     """
-    conditions = []
+    must: list[FieldCondition] = []
+    must_not: list[FieldCondition] = []
     for key, value in filters.items():
-        if isinstance(value, dict):
-            conditions.append(FieldCondition(key=key, range=Range(**value)))
+        if key == "_exclude":
+            for ek, ev in (value or {}).items():
+                must_not.append(FieldCondition(key=ek, match=MatchValue(value=ev)))
+        elif isinstance(value, dict):
+            must.append(FieldCondition(key=key, range=Range(**value)))
         else:
-            conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
-    return Filter(must=conditions)
+            must.append(FieldCondition(key=key, match=MatchValue(value=value)))
+    return Filter(must=must or None, must_not=must_not or None)
