@@ -16,9 +16,7 @@ from decisionlab.runtime.tool_calls import ToolCall
 
 
 def _topic_result(durations_ms: list[float], stages: list[tuple[str, float]]):
-    timing = TimingLog(
-        stages=[StageTiming(s, d, failed=False) for s, d in stages]
-    )
+    timing = TimingLog(stages=[StageTiming(s, d, failed=False) for s, d in stages])
     calls = tuple(
         ToolCall(
             name="retrieve_knowledge",

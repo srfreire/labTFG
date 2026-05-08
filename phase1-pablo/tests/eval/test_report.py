@@ -248,10 +248,5 @@ def test_report_json_includes_timing_and_suite_assertions():
     payload = json.loads(render_json(result))
     assert "suite_assertions" in payload
     assert payload["suite_assertions"][0]["name"] == "merge_precision_recall"
-    assert (
-        payload["topics"][0]["timing"]["stages"][0]["stage"] == "researcher"
-    )
-    assert (
-        payload["topics"][0]["tool_call_summary"]["retrieve_knowledge"]["calls"]
-        == 1
-    )
+    assert payload["topics"][0]["timing"]["stages"][0]["stage"] == "researcher"
+    assert payload["topics"][0]["tool_call_summary"]["retrieve_knowledge"]["calls"] == 1

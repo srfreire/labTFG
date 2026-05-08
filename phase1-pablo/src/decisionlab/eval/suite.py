@@ -79,7 +79,9 @@ class SuiteSpec:
 
         # Default to ``[]`` (empty) so an offline suite that runs only
         # ``suite_assertions:`` can declare ``stages: []``.
-        stages = tuple(_parse_stages(raw.get("stages") if "stages" in raw else ["research"]))
+        stages = tuple(
+            _parse_stages(raw.get("stages") if "stages" in raw else ["research"])
+        )
         env_spec_path = (
             Path(raw["env_spec"]).expanduser().resolve()
             if raw.get("env_spec")

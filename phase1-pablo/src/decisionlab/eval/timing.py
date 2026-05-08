@@ -48,7 +48,7 @@ class TimingLog:
             durations.sort()
             n = len(durations)
             p50 = durations[n // 2] if n else 0.0
-            p95_idx = max(0, min(n - 1, int(round(0.95 * n)) - 1))
+            p95_idx = max(0, min(n - 1, round(0.95 * n) - 1))
             p95 = durations[p95_idx] if n else 0.0
             out[name] = {
                 "calls": float(n),

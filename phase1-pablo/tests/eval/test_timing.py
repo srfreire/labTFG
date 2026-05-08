@@ -26,11 +26,41 @@ async def test_record_stage_captures_duration():
 def test_percentiles_from_tool_calls():
     """Aggregating ToolCall.duration_ms by tool name."""
     calls = (
-        ToolCall(name="retrieve_knowledge", stage="r", args_hash="a", succeeded=True, duration_ms=100.0),
-        ToolCall(name="retrieve_knowledge", stage="r", args_hash="b", succeeded=True, duration_ms=200.0),
-        ToolCall(name="retrieve_knowledge", stage="r", args_hash="c", succeeded=True, duration_ms=300.0),
-        ToolCall(name="web_search",         stage="r", args_hash="d", succeeded=True, duration_ms=50.0),
-        ToolCall(name="web_search",         stage="r", args_hash="e", succeeded=True, duration_ms=None),
+        ToolCall(
+            name="retrieve_knowledge",
+            stage="r",
+            args_hash="a",
+            succeeded=True,
+            duration_ms=100.0,
+        ),
+        ToolCall(
+            name="retrieve_knowledge",
+            stage="r",
+            args_hash="b",
+            succeeded=True,
+            duration_ms=200.0,
+        ),
+        ToolCall(
+            name="retrieve_knowledge",
+            stage="r",
+            args_hash="c",
+            succeeded=True,
+            duration_ms=300.0,
+        ),
+        ToolCall(
+            name="web_search",
+            stage="r",
+            args_hash="d",
+            succeeded=True,
+            duration_ms=50.0,
+        ),
+        ToolCall(
+            name="web_search",
+            stage="r",
+            args_hash="e",
+            succeeded=True,
+            duration_ms=None,
+        ),
     )
     summary = TimingLog.summarize_tool_calls(calls)
     rk = summary["retrieve_knowledge"]
@@ -39,7 +69,7 @@ def test_percentiles_from_tool_calls():
     assert rk["p95_ms"] == pytest.approx(290.0, abs=15)
     assert rk["avg_ms"] == 200.0
     ws = summary["web_search"]
-    assert ws["calls"] == 1   # the None duration is dropped from p50/p95 calc
+    assert ws["calls"] == 1  # the None duration is dropped from p50/p95 calc
     assert ws["p50_ms"] == 50.0
 
 

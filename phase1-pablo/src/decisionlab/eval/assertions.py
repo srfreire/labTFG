@@ -77,9 +77,7 @@ class SuiteAssertionContext:
     post_stats: KGStats | None
 
 
-SuitePredicateFn = Callable[
-    [SuiteAssertionContext, Any], Awaitable[AssertionOutcome]
-]
+SuitePredicateFn = Callable[[SuiteAssertionContext, Any], Awaitable[AssertionOutcome]]
 _SUITE_REGISTRY: dict[str, SuitePredicateFn] = {}
 
 
@@ -119,8 +117,7 @@ async def run_suite_assertion(
             name=name,
             passed=False,
             detail=(
-                f"unknown suite predicate {name!r}; "
-                f"valid: {suite_predicate_names()}"
+                f"unknown suite predicate {name!r}; valid: {suite_predicate_names()}"
             ),
         )
     try:
@@ -618,8 +615,7 @@ async def _avg_below(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
         name="avg_below",
         passed=avg <= threshold,
         detail=(
-            f"{stage} avg={avg:.0f}ms (n={len(durations)}) "
-            f"threshold={threshold:.0f}ms"
+            f"{stage} avg={avg:.0f}ms (n={len(durations)}) threshold={threshold:.0f}ms"
         ),
     )
 
@@ -643,9 +639,7 @@ def _pair_text(node: Any, fallback: str = "") -> str:
 
 
 @register_suite("merge_precision_recall")
-async def _merge_precision_recall(
-    ctx: SuiteAssertionContext, args
-) -> AssertionOutcome:
+async def _merge_precision_recall(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
     """Run canonicalize._verify_merge over a labelled fixture and compute
     precision/recall/F1.
 
@@ -718,11 +712,7 @@ async def _merge_precision_recall(
 
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if (precision + recall)
-        else 0.0
-    )
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
     passed = precision >= min_precision and recall >= min_recall
     return AssertionOutcome(
         name="merge_precision_recall",

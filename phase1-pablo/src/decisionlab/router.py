@@ -16,12 +16,12 @@ import agrex
 from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
+from decisionlab.eval.timing import record_stage
 from decisionlab.feedback_port import CLIFeedback, FeedbackPort
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
     create_retrieve_knowledge,
 )
-from decisionlab.eval.timing import record_stage
 from decisionlab.parsing import FORMULATION_HEADER_RE
 from decisionlab.runtime.tool_calls import set_stage as _set_recording_stage
 from decisionlab.tools.reports import slugify
@@ -613,7 +613,11 @@ class Router:
                 import shared
                 from decisionlab.knowledge.consolidation import consolidate
 
-                if shared.db is None or shared.embeddings is None or shared.vectors is None:
+                if (
+                    shared.db is None
+                    or shared.embeddings is None
+                    or shared.vectors is None
+                ):
                     return
 
                 async with shared.db.get_session() as session:

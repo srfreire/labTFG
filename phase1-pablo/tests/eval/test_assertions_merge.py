@@ -23,7 +23,10 @@ def _structured_pair(
     """Build a fixture pair in the same shape as canonicalize-pairs.json."""
     return {
         "label": label,
-        "candidate": {"name": candidate_name, "description": f"desc for {candidate_name}"},
+        "candidate": {
+            "name": candidate_name,
+            "description": f"desc for {candidate_name}",
+        },
         "existing": {"name": existing_name, "description": f"desc for {existing_name}"},
         "should_merge": should_merge,
     }
