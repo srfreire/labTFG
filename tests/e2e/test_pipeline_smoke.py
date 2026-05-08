@@ -14,8 +14,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy import select
 
-from shared.memories import create_memory, get_memories
-from shared.models import Memory, Run
+from shared.models import PipelineMemory as Memory
+from shared.models import Run
+from shared.pipeline_memories import create_memory, get_memories
 
 pytestmark = pytest.mark.e2e
 
@@ -62,7 +63,7 @@ async def test_full_memory_lifecycle_against_real_infra(
     session, kg_service, vector_store, run_id
 ):
     """Create a memory, persist it, retrieve it temporally, supersede it."""
-    from shared.memories import (
+    from shared.pipeline_memories import (
         get_memories_at_time,
         get_supersession_chain,
         supersede_memory,

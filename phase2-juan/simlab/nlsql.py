@@ -50,7 +50,7 @@ runs(id UUID PK, created_at TIMESTAMP, problem_description TEXT NOT NULL,
   status VARCHAR(50), s3_report_key VARCHAR, s3_prefix VARCHAR NOT NULL,
   artifact_count INT)
 
-Tables NOT queryable: memories, artifacts.
+Tables NOT queryable: pipeline_memories, simulation_observations, artifacts.
 Only SELECT queries are allowed. Results are capped at LIMIT 50."""
 
 

@@ -30,7 +30,7 @@ from decisionlab.structured import (
     StructuredOutputError,
     call_structured,
 )
-from shared.memories import apply_time_decay, create_memory, update_confidence
+from shared.pipeline_memories import apply_time_decay, create_memory, update_confidence
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
@@ -190,7 +190,7 @@ async def _cluster_run_memories(
     """Load run memories, embed, and cluster by cosine similarity."""
     from sqlalchemy import and_, select
 
-    from shared.models import Memory
+    from shared.models import PipelineMemory as Memory
 
     stmt = select(Memory).where(
         and_(
@@ -326,6 +326,7 @@ async def _generate_reflections(
                     "entity_id": point_id,
                     "namespace": "meta",
                     "source_stage": "consolidation",
+                    "source_kind": "pipeline",
                     "run_id": run_id,
                     "importance": 8.0,
                     "created_at": datetime.now(UTC).isoformat(),
@@ -478,7 +479,7 @@ async def _prune_stale(session: AsyncSession) -> int:
     """Soft-delete memories with low confidence, zero access, and age > 90 days."""
     from sqlalchemy import and_, select, update
 
-    from shared.models import Memory
+    from shared.models import PipelineMemory as Memory
 
     # Naive UTC: see comment in `_apply_decay_and_sync`. `now` ends up bound
     # both against `created_at` (cutoff comparison) and stored in `valid_to`

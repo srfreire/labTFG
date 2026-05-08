@@ -1,4 +1,4 @@
-"""Tests for temporal memory query functions (P5-004).
+"""Tests for temporal pipeline-memory query functions (P5-004).
 
 Covers get_memories_at_time, get_memory_history, get_supersession_chain.
 Requires docker-compose Postgres running on localhost:5432.
@@ -13,14 +13,14 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from shared.memories import (
+from shared.models import Base, Run
+from shared.pipeline_memories import (
     create_memory,
     get_memories_at_time,
     get_memory_history,
     get_supersession_chain,
     supersede_memory,
 )
-from shared.models import Base
 from shared.settings import load_settings
 
 pytestmark = pytest.mark.integration
@@ -46,12 +46,21 @@ async def session(engine):
         yield sess
 
 
-def _mem_kwargs(**overrides: object) -> dict:
+@pytest_asyncio.fixture
+async def run_id(session) -> uuid.UUID:
+    run = Run(problem_description="temporal tests", s3_prefix="r/")
+    session.add(run)
+    await session.commit()
+    return run.id
+
+
+def _mem_kwargs(run_id: uuid.UUID, **overrides: object) -> dict:
     defaults = dict(
         content="Ghrelin stimulates appetite",
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run_id,
         importance=7.0,
         confidence=0.8,
     )
@@ -66,32 +75,32 @@ def _mem_kwargs(**overrides: object) -> dict:
 
 class TestGetMemoriesAtTime:
     @pytest.mark.asyncio
-    async def test_returns_memories_valid_at_given_time(self, session):
+    async def test_returns_memories_valid_at_given_time(self, session, run_id):
         """Memories valid at as_of are returned; future and expired are excluded."""
         now = datetime.now()
         past = now - timedelta(days=10)
         future = now + timedelta(days=10)
 
-        # Memory valid from past, no expiry (currently valid)
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="valid-at-past",
                 valid_from=past,
             ),
         )
-        # Memory valid from future (not yet valid at past)
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="future-only",
                 valid_from=future,
             ),
         )
-        # Memory expired before query time
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="expired",
                 valid_from=past - timedelta(days=20),
                 valid_to=past - timedelta(days=5),
@@ -99,7 +108,6 @@ class TestGetMemoriesAtTime:
         )
         await session.commit()
 
-        # Query at "past" — should only see the first one
         results = await get_memories_at_time(session, as_of=past)
         contents = [m.content for m in results]
         assert "valid-at-past" in contents
@@ -107,7 +115,7 @@ class TestGetMemoriesAtTime:
         assert "expired" not in contents
 
     @pytest.mark.asyncio
-    async def test_includes_memories_with_null_valid_to(self, session):
+    async def test_includes_memories_with_null_valid_to(self, session, run_id):
         """Memories with valid_to=NULL are considered currently valid."""
         now = datetime.now()
         past = now - timedelta(days=5)
@@ -115,6 +123,7 @@ class TestGetMemoriesAtTime:
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="no-expiry",
                 valid_from=past,
             ),
@@ -126,7 +135,7 @@ class TestGetMemoriesAtTime:
         assert results[0].content == "no-expiry"
 
     @pytest.mark.asyncio
-    async def test_filters_by_namespace(self, session):
+    async def test_filters_by_namespace(self, session, run_id):
         """get_memories_at_time respects optional namespace filter."""
         now = datetime.now()
         past = now - timedelta(days=5)
@@ -134,6 +143,7 @@ class TestGetMemoriesAtTime:
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="paradigm-fact",
                 namespace="paradigm",
                 valid_from=past,
@@ -142,6 +152,7 @@ class TestGetMemoriesAtTime:
         await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="model-fact",
                 namespace="model",
                 valid_from=past,
@@ -161,32 +172,28 @@ class TestGetMemoriesAtTime:
 
 class TestGetMemoryHistory:
     @pytest.mark.asyncio
-    async def test_returns_supersession_chain_for_content(self, session):
+    async def test_returns_supersession_chain_for_content(self, session, run_id):
         """After 3 versions of a fact, get_memory_history returns all 3."""
-        # Create v1
         v1 = await create_memory(
             session,
             **_mem_kwargs(
+                run_id,
                 content="parameter value is 50",
             ),
         )
         await session.commit()
 
-        # Supersede v1 → v2
-        kwargs = _mem_kwargs()
+        kwargs = _mem_kwargs(run_id)
         kwargs.pop("content")
         v2 = await supersede_memory(session, v1.id, "parameter value is 70", **kwargs)
         await session.commit()
 
-        # Supersede v2 → v3
         await supersede_memory(session, v2.id, "parameter value is 65", **kwargs)
         await session.commit()
 
-        # Search for the full history of "parameter value"
         results = await get_memory_history(session, content_like="parameter value%")
 
         assert len(results) == 3
-        # Ordered by valid_from ascending
         assert results[0].content == "parameter value is 50"
         assert results[-1].content == "parameter value is 65"
 
@@ -204,12 +211,12 @@ class TestGetMemoryHistory:
 
 class TestGetSupersessionChain:
     @pytest.mark.asyncio
-    async def test_chain_from_original_to_current(self, session):
+    async def test_chain_from_original_to_current(self, session, run_id):
         """From the original memory, follows superseded_by to current version."""
-        v1 = await create_memory(session, **_mem_kwargs(content="v1"))
+        v1 = await create_memory(session, **_mem_kwargs(run_id, content="v1"))
         await session.commit()
 
-        kwargs = _mem_kwargs()
+        kwargs = _mem_kwargs(run_id)
         kwargs.pop("content")
         v2 = await supersede_memory(session, v1.id, "v2", **kwargs)
         await session.commit()
@@ -224,9 +231,11 @@ class TestGetSupersessionChain:
         assert chain[2].id == v3.id
 
     @pytest.mark.asyncio
-    async def test_single_memory_no_successors(self, session):
+    async def test_single_memory_no_successors(self, session, run_id):
         """A memory with no superseded_by returns a chain of length 1."""
-        mem = await create_memory(session, **_mem_kwargs(content="standalone"))
+        mem = await create_memory(
+            session, **_mem_kwargs(run_id, content="standalone")
+        )
         await session.commit()
 
         chain = await get_supersession_chain(session, mem.id)
@@ -234,12 +243,12 @@ class TestGetSupersessionChain:
         assert chain[0].id == mem.id
 
     @pytest.mark.asyncio
-    async def test_chain_from_middle(self, session):
+    async def test_chain_from_middle(self, session, run_id):
         """Starting from a middle memory still reaches the current version."""
-        v1 = await create_memory(session, **_mem_kwargs(content="v1"))
+        v1 = await create_memory(session, **_mem_kwargs(run_id, content="v1"))
         await session.commit()
 
-        kwargs = _mem_kwargs()
+        kwargs = _mem_kwargs(run_id)
         kwargs.pop("content")
         v2 = await supersede_memory(session, v1.id, "v2", **kwargs)
         await session.commit()

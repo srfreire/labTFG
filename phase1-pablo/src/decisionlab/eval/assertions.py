@@ -263,7 +263,7 @@ async def _min_memories(ctx: AssertionContext, args: dict) -> AssertionOutcome:
     from sqlalchemy import func, select
 
     import shared
-    from shared.models import Memory
+    from shared.models import PipelineMemory as Memory
 
     if shared.db is None:
         return AssertionOutcome(
@@ -303,7 +303,7 @@ async def _confidence_above(ctx: AssertionContext, args: dict) -> AssertionOutco
     from sqlalchemy import select
 
     import shared
-    from shared.models import Memory
+    from shared.models import PipelineMemory as Memory
 
     if shared.db is None:
         return AssertionOutcome(

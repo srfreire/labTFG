@@ -140,7 +140,7 @@ async def test_shared_init_exposes_all_services():
 @pytest.mark.asyncio
 async def test_memory_storage_pairing(storage_service, session, unique_prefix, run_id):
     """A Memory row references an S3-stored extraction artifact."""
-    from shared.memories import create_memory
+    from shared.pipeline_memories import create_memory
 
     # Extraction stored in S3
     key = f"{unique_prefix}extraction.json"
@@ -180,8 +180,13 @@ async def test_memory_storage_pairing(storage_service, session, unique_prefix, r
 
 @pytest.mark.asyncio
 async def test_memory_indexed_and_retrieved(session, vector_store):
-    """A Memory row's embedding is upserted into memories_dense and searchable."""
-    from shared.memories import create_memory
+    """A PipelineMemory row's embedding is upserted into memories_dense and searchable."""
+    from shared.models import Run
+    from shared.pipeline_memories import create_memory
+
+    run = Run(problem_description="indexed", s3_prefix="r/")
+    session.add(run)
+    await session.commit()
 
     mem = await create_memory(
         session,
@@ -189,6 +194,7 @@ async def test_memory_indexed_and_retrieved(session, vector_store):
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run.id,
         importance=7.0,
         confidence=0.9,
     )

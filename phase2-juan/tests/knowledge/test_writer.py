@@ -114,7 +114,7 @@ async def test_happy_path_single_model_two_agents():
     # 4 facts expected: 1 summary + 2 trajectories + 1 episode
     writer, m = _make_writer(embed_return=[[0.1] * 5] * 4)
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(tracker_json, ctx)
 
     assert result.skipped_reason is None
@@ -182,25 +182,26 @@ async def test_comparison_run_tags_correct_paradigm_per_fact():
     # 3 facts: 1 summary + 2 trajectories
     writer, _m = _make_writer(embed_return=[[0.1]] * 3)
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1
     assert result.trajectories_written == 2
     assert result.episodes_written == 0
 
-    # Grab metadata_ kwargs passed to create_memory in order.
-    metas = [call.kwargs["metadata_"] for call in cm.await_args_list]
-    summary_meta, traj0_meta, traj1_meta = metas
+    # Per-fact kwargs passed to create_simulation_observation.
+    summary_call, traj0_call, traj1_call = cm.await_args_list
 
-    # Summary references BOTH class names via models_compared.
-    assert set(summary_meta["models_compared"]) == {"A", "B"}
+    # Summary references BOTH class names via the JSONB ``metadata_``
+    # leftovers (``models_compared`` is not a typed column).
+    assert set(summary_call.kwargs["metadata_"]["models_compared"]) == {"A", "B"}
 
-    # Trajectories carry the paradigm/formulation of their respective models.
-    assert traj0_meta["agent_id"] == "agent_0"
-    assert traj0_meta["formulation"] == "f-a"
-    assert traj1_meta["agent_id"] == "agent_2"
-    assert traj1_meta["formulation"] == "f-b"
+    # Trajectories carry paradigm/formulation/agent_id as typed kwargs now,
+    # not stuffed into JSONB metadata.
+    assert traj0_call.kwargs["agent_id"] == "agent_0"
+    assert traj0_call.kwargs["formulation"] == "f-a"
+    assert traj1_call.kwargs["agent_id"] == "agent_2"
+    assert traj1_call.kwargs["formulation"] == "f-b"
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +214,7 @@ async def test_invalid_json_short_circuits(bad_input):
     writer, m = _make_writer()
     ctx = _context(agent_to_model={"agent_0": _model()})
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(bad_input, ctx)
 
     assert result.skipped_reason == "invalid_json"
@@ -238,7 +239,7 @@ async def test_empty_tracker_returns_no_relevant_content():
     ctx = _context(agent_to_model={"agent_0": _model()})
     tracker = {"summary": "", "trajectories": {}, "episodes": []}
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.skipped_reason == "no_relevant_content"
@@ -263,7 +264,7 @@ async def test_all_routine_episodes_returns_no_relevant_content():
             {"agent": "agent_0", "type": "exploration", "step": 2, "description": "y"},
         ],
     }
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()):
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()):
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.skipped_reason == "no_relevant_content"
@@ -293,7 +294,7 @@ async def test_qdrant_dense_failure_does_not_abort_batch():
         dense_side_effect=flaky_dense,
     )
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(tracker_json, ctx)
 
     # Writer did not abort — result reflects all 4 facts as written (PG rows kept).
@@ -325,7 +326,7 @@ async def test_voyage_failure_returns_error_skipped_reason():
     writer, m = _make_writer()
     m["emb"].embed_texts.side_effect = RuntimeError("voyage exploded")
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         result = await writer.write(tracker_json, ctx)
 
     assert result.skipped_reason is not None
@@ -366,7 +367,7 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
     # Only 1 fact survives (ghost skipped pre-embedding).
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()) as cm:
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
         with caplog.at_level("WARNING"):
             result = await writer.write(json.dumps(tracker), ctx)
 
@@ -394,7 +395,7 @@ async def test_sparse_upsert_receives_raw_text():
     }
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with patch("simlab.knowledge.writer.create_memory", new=AsyncMock()):
+    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()):
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1
@@ -402,3 +403,100 @@ async def test_sparse_upsert_receives_raw_text():
     m["vec"].upsert_sparse.assert_awaited_once()
     # Text is passed directly — Qdrant handles BM25 server-side.
     assert isinstance(m["vec"].upsert_sparse.await_args.args[2], str)
+
+
+# ---------------------------------------------------------------------------
+# P4-003: _split_metadata + _coerce_uuid (typed-column projection)
+# ---------------------------------------------------------------------------
+
+
+class TestSplitMetadata:
+    """Direct unit tests for the FactSpec.metadata projection (P4-003)."""
+
+    def test_typed_keys_go_to_typed_kwargs(self):
+        from simlab.knowledge.writer import _split_metadata
+
+        meta = {
+            "phase2_experiment_id": "exp-1",
+            "model_class_name": "M",
+            "paradigm": "p",
+            "formulation": "f",
+            "phase1_run_id": None,
+            "environment": "grid_5x5",
+            "steps": 50,
+            "seed": 7,
+            "agent_id": "agent_0",
+            "episode_type": "starvation",
+            "step": 30,
+        }
+        typed, extras = _split_metadata(meta)
+        assert typed["paradigm"] == "p"
+        assert typed["formulation"] == "f"
+        assert typed["agent_id"] == "agent_0"
+        assert typed["step"] == 30
+        assert extras == {}
+
+    def test_step_range_extras_kept_in_jsonb(self):
+        """``step_start`` / ``step_end`` aren't typed columns — they belong in JSONB."""
+        from simlab.knowledge.writer import _split_metadata
+
+        meta = {
+            "paradigm": "p",
+            "step_start": 100,
+            "step_end": 120,
+        }
+        typed, extras = _split_metadata(meta)
+        assert typed == {"paradigm": "p"}
+        assert extras == {"step_start": 100, "step_end": 120}
+
+    def test_model_id_and_models_compared_kept_in_jsonb(self):
+        """Multi-model summary fields don't have typed columns."""
+        from simlab.knowledge.writer import _split_metadata
+
+        meta = {
+            "paradigm": "p",
+            "model_id": "m-1",
+            "models_compared": ["A", "B"],
+        }
+        typed, extras = _split_metadata(meta)
+        assert typed == {"paradigm": "p"}
+        assert extras == {"model_id": "m-1", "models_compared": ["A", "B"]}
+
+
+class TestCoerceUuid:
+    """Direct unit tests for ``_coerce_uuid``."""
+
+    def test_passes_through_uuid_object(self):
+        import uuid as _uuid
+
+        from simlab.knowledge.writer import _coerce_uuid
+
+        u = _uuid.uuid4()
+        assert _coerce_uuid(u) is u
+
+    def test_parses_string_uuid(self):
+        import uuid as _uuid
+
+        from simlab.knowledge.writer import _coerce_uuid
+
+        s = str(_uuid.uuid4())
+        assert _coerce_uuid(s) == _uuid.UUID(s)
+
+    def test_none_passthrough(self):
+        from simlab.knowledge.writer import _coerce_uuid
+
+        assert _coerce_uuid(None) is None
+
+    def test_empty_string_returns_none(self):
+        from simlab.knowledge.writer import _coerce_uuid
+
+        assert _coerce_uuid("") is None
+        assert _coerce_uuid("   ") is None
+
+    def test_invalid_string_warns_and_returns_none(self, caplog):
+        from simlab.knowledge.writer import _coerce_uuid
+
+        with caplog.at_level("WARNING"):
+            result = _coerce_uuid("not-a-uuid")
+        assert result is None
+        assert any("not a valid UUID" in r.message for r in caplog.records)

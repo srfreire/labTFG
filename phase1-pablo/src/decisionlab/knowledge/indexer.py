@@ -192,12 +192,16 @@ async def index_stage_output(
     for i, chunk in enumerate(fact_chunks):
         point_id = _make_point_id(run_id, stage, artifact_offset + i)
         # P3-002: confidence is no longer written to Qdrant payloads.
-        # Postgres `memories.confidence` is the single source of truth and
-        # is batch-fetched in retrieval/_apply_recency_weighting.
+        # Postgres ``pipeline_memories.confidence`` is the single source of
+        # truth and is batch-fetched in retrieval/_apply_recency_weighting.
+        # P4-003: ``source_kind`` routes retrieval back to the correct PG
+        # table (``pipeline`` → pipeline_memories, ``simulation`` →
+        # simulation_observations). Phase 1 indexer only ever writes pipeline.
         payload = {
             "entity_id": point_id,
             "namespace": namespace,
             "source_stage": stage,
+            "source_kind": "pipeline",
             "run_id": run_id,
             "importance": 5.0,
             "created_at": now,

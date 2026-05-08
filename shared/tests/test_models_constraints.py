@@ -17,10 +17,13 @@ from shared.models import (
     Artifact,
     Base,
     Experiment,
-    Memory,
     Model,
     NodeRunObservation,
     Run,
+    SimulationObservation,
+)
+from shared.models import (
+    PipelineMemory as Memory,
 )
 from shared.settings import load_settings
 
@@ -128,13 +131,18 @@ async def test_experiment_default_status_is_created(session):
 
 
 @pytest.mark.asyncio
-async def test_memory_defaults(session):
-    """Memory has sensible defaults for counters and timestamps."""
+async def test_pipeline_memory_defaults(session):
+    """PipelineMemory has sensible defaults for counters and timestamps."""
+    run = Run(problem_description="defaults", s3_prefix="r/")
+    session.add(run)
+    await session.commit()
+
     mem = Memory(
         content="defaults",
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run.id,
         importance=5.0,
         confidence=0.8,
     )
@@ -163,13 +171,18 @@ async def test_memory_defaults(session):
 
 
 @pytest.mark.asyncio
-async def test_memory_self_supersession(session):
-    """Memory.superseded_by is a self-referencing FK."""
+async def test_pipeline_memory_self_supersession(session):
+    """PipelineMemory.superseded_by is a self-referencing FK."""
+    run = Run(problem_description="self-supers", s3_prefix="r/")
+    session.add(run)
+    await session.commit()
+
     a = Memory(
         content="v1",
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run.id,
         importance=5.0,
         confidence=0.8,
     )
@@ -182,6 +195,7 @@ async def test_memory_self_supersession(session):
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run.id,
         importance=5.0,
         confidence=0.85,
         superseded_by=a_id,  # b points to a
@@ -198,25 +212,78 @@ async def test_memory_self_supersession(session):
 
 
 @pytest.mark.asyncio
-async def test_memory_indexes_present(engine):
-    """All declared indexes exist on the memories table."""
+async def test_pipeline_memory_indexes_present(engine):
+    """All declared indexes exist on the pipeline_memories table."""
     async with engine.begin() as conn:
 
         def _list_indexes(sync_conn) -> set[str]:
             insp = inspect(sync_conn)
-            return {idx["name"] for idx in insp.get_indexes("memories")}
+            return {idx["name"] for idx in insp.get_indexes("pipeline_memories")}
 
         names = await conn.run_sync(_list_indexes)
 
     expected = {
-        "ix_memories_namespace",
-        "ix_memories_run_id",
-        "ix_memories_source_stage",
-        "ix_memories_confidence",
-        "ix_memories_valid_to",
-        "ix_memories_ns_confidence",
+        "ix_pipeline_memories_namespace",
+        "ix_pipeline_memories_run_id",
+        "ix_pipeline_memories_source_stage",
+        "ix_pipeline_memories_confidence",
+        "ix_pipeline_memories_valid_to",
+        "ix_pipeline_memories_ns_confidence",
     }
     assert expected.issubset(names)
+
+
+@pytest.mark.asyncio
+async def test_simulation_observation_indexes_present(engine):
+    """All declared indexes exist on the simulation_observations table."""
+    async with engine.begin() as conn:
+
+        def _list_indexes(sync_conn) -> set[str]:
+            insp = inspect(sync_conn)
+            return {
+                idx["name"] for idx in insp.get_indexes("simulation_observations")
+            }
+
+        names = await conn.run_sync(_list_indexes)
+
+    expected = {
+        "ix_simulation_observations_phase2_experiment_id",
+        "ix_simulation_observations_paradigm",
+        "ix_simulation_observations_formulation",
+        "ix_simulation_observations_phase1_run_id",
+        "ix_simulation_observations_memory_type",
+        "ix_simulation_observations_created_at",
+    }
+    assert expected.issubset(names)
+
+
+@pytest.mark.asyncio
+async def test_simulation_observation_defaults(session):
+    """SimulationObservation defaults: namespace='simulation', source_stage='tracker', confidence=0.80."""
+    obs = SimulationObservation(
+        content="agent foraged successfully",
+        memory_type="semantic",
+        importance=5.0,
+        paradigm="hedonic",
+    )
+    session.add(obs)
+    await session.commit()
+    obs_id = obs.id
+
+    session.expire_all()
+    result = await session.execute(
+        select(
+            SimulationObservation.namespace,
+            SimulationObservation.source_stage,
+            SimulationObservation.confidence,
+            SimulationObservation.created_at,
+        ).where(SimulationObservation.id == obs_id)
+    )
+    row = result.one()
+    assert row.namespace == "simulation"
+    assert row.source_stage == "tracker"
+    assert row.confidence == pytest.approx(0.80)
+    assert row.created_at is not None
 
 
 @pytest.mark.asyncio
@@ -293,7 +360,7 @@ async def test_run_kind_check_constraint_rejects_unknown(session):
 
 @pytest.mark.asyncio
 async def test_delete_run_cascades_to_dependents(session):
-    """Deleting a run cascades to memories, artifacts, node_run_observations."""
+    """Deleting a run cascades to pipeline_memories, artifacts, node_run_observations."""
     run = Run(problem_description="cascade", s3_prefix="r/", kind="eval")
     session.add(run)
     await session.commit()
@@ -304,9 +371,9 @@ async def test_delete_run_cascades_to_dependents(session):
         namespace="paradigm",
         memory_type="semantic",
         source_stage="researcher",
+        run_id=run_id,
         importance=5.0,
         confidence=0.8,
-        run_id=run_id,
     )
     art = Artifact(
         s3_key=f"runs/{run_id}/x.txt",

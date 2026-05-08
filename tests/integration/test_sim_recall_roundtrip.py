@@ -22,7 +22,7 @@ from sqlalchemy import delete
 
 import shared
 from shared.embedding import EmbeddingService
-from shared.models import Memory
+from shared.models import SimulationObservation
 
 pytestmark = pytest.mark.integration
 
@@ -135,6 +135,8 @@ async def test_write_then_retrieve_roundtrip(
 
     finally:
         await session.execute(
-            delete(Memory).where(Memory.content.contains(paradigm_slug))
+            delete(SimulationObservation).where(
+                SimulationObservation.content.contains(paradigm_slug)
+            )
         )
         await session.commit()

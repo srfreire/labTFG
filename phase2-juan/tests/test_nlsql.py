@@ -29,9 +29,13 @@ def test_validate_select_only():
 
 def test_validate_allowed_tables():
     """Rejects queries on tables not in allowlist."""
-    sql, error = validate_sql("SELECT * FROM memories")
+    sql, error = validate_sql("SELECT * FROM pipeline_memories")
     assert error is not None
-    assert "memories" in error
+    assert "pipeline_memories" in error
+
+    sql, error = validate_sql("SELECT * FROM simulation_observations")
+    assert error is not None
+    assert "simulation_observations" in error
 
 
 def test_validate_allowed_tables_pass():

@@ -28,7 +28,7 @@ from simlab.knowledge import (
 from sqlalchemy import delete, select
 
 from shared.embedding import EmbeddingService
-from shared.models import Memory
+from shared.models import SimulationObservation
 
 pytestmark = pytest.mark.e2e
 
@@ -107,7 +107,7 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
         == 3
     )
 
-    rows: list[Memory] = []
+    rows: list[SimulationObservation] = []
     try:
         # --- Phase 1 side: simulate the Builder retrieving prior sim observations ---
         # The Phase-1 retrieval layer (retrieve_knowledge) would dispatch dense +
@@ -145,8 +145,8 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
         assert len(sparse_hits) >= 1, "Sparse channel missed the memories"
 
         # --- Cross-store join via UUID ---
-        stmt = select(Memory).where(
-            Memory.metadata_["phase2_experiment_id"].astext == experiment_id
+        stmt = select(SimulationObservation).where(
+            SimulationObservation.phase2_experiment_id == experiment_id
         )
         rows = list((await session.execute(stmt)).scalars().all())
         row_ids = {str(r.id) for r in rows}
@@ -158,8 +158,8 @@ async def test_tracker_write_is_retrievable_by_paradigm_filter(
 
     finally:
         await session.execute(
-            delete(Memory).where(
-                Memory.metadata_["phase2_experiment_id"].astext == experiment_id
+            delete(SimulationObservation).where(
+                SimulationObservation.phase2_experiment_id == experiment_id
             )
         )
         await session.commit()

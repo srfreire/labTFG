@@ -161,15 +161,23 @@ class NodeRunObservation(Base):
     observed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class Memory(Base):
-    __tablename__ = "memories"
+class PipelineMemory(Base):
+    """Phase 1 lifecycle memories: importance/confidence evolve via
+    corroboration / contradiction / decay; bi-temporal via
+    ``valid_from``/``valid_to`` plus a ``superseded_by`` chain.
+
+    Always tied to a ``runs.id`` — Phase 1 writers always know which pipeline
+    run produced the row (memory-refactor §A2 / phase-4 R3).
+    """
+
+    __tablename__ = "pipeline_memories"
     __table_args__ = (
-        Index("ix_memories_namespace", "namespace"),
-        Index("ix_memories_run_id", "run_id"),
-        Index("ix_memories_source_stage", "source_stage"),
-        Index("ix_memories_confidence", "confidence"),
-        Index("ix_memories_valid_to", "valid_to"),
-        Index("ix_memories_ns_confidence", "namespace", "confidence"),
+        Index("ix_pipeline_memories_namespace", "namespace"),
+        Index("ix_pipeline_memories_run_id", "run_id"),
+        Index("ix_pipeline_memories_source_stage", "source_stage"),
+        Index("ix_pipeline_memories_confidence", "confidence"),
+        Index("ix_pipeline_memories_valid_to", "valid_to"),
+        Index("ix_pipeline_memories_ns_confidence", "namespace", "confidence"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -179,10 +187,12 @@ class Memory(Base):
     namespace: Mapped[str] = mapped_column(String(50))
     memory_type: Mapped[str] = mapped_column(String(50))
     source_stage: Mapped[str] = mapped_column(String(100))
-    run_id: Mapped[uuid.UUID | None] = mapped_column(
+    run_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("runs.id", name="memories_run_id_fkey", ondelete="CASCADE"),
-        nullable=True,
+        ForeignKey(
+            "runs.id", name="pipeline_memories_run_id_fkey", ondelete="CASCADE"
+        ),
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -197,12 +207,79 @@ class Memory(Base):
     valid_from: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     valid_to: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("memories.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("pipeline_memories.id"), nullable=True
     )
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # relationships
     run: Mapped[Run | None] = relationship()
-    superseding_memory: Mapped[Memory | None] = relationship(
+    superseding_memory: Mapped[PipelineMemory | None] = relationship(
         remote_side=[id],
     )
+
+
+class SimulationObservation(Base):
+    """Phase 2 simulation observations: fixed confidence, no
+    corroboration/supersession, typed cross-phase metadata fields.
+
+    Phase 2's tracker emits one row per fact (summary, trajectory, episode);
+    cross-phase joins land in real columns rather than JSONB blobs (§A2 /
+    phase-4 R3).
+    """
+
+    __tablename__ = "simulation_observations"
+    __table_args__ = (
+        Index("ix_simulation_observations_phase2_experiment_id", "phase2_experiment_id"),
+        Index("ix_simulation_observations_paradigm", "paradigm"),
+        Index("ix_simulation_observations_formulation", "formulation"),
+        Index("ix_simulation_observations_phase1_run_id", "phase1_run_id"),
+        Index("ix_simulation_observations_memory_type", "memory_type"),
+        Index("ix_simulation_observations_created_at", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    content: Mapped[str] = mapped_column(Text)
+    namespace: Mapped[str] = mapped_column(
+        String(50), server_default="simulation", default="simulation"
+    )
+    memory_type: Mapped[str] = mapped_column(String(50))
+    source_stage: Mapped[str] = mapped_column(
+        String(100), server_default="tracker", default="tracker"
+    )
+    importance: Mapped[float] = mapped_column(Float)
+    confidence: Mapped[float] = mapped_column(
+        Float, server_default="0.80", default=0.80
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Cross-phase identifiers — typed columns instead of JSONB stuffing.
+    # ``phase2_experiment_id`` is a String, not a UUID: the orchestrator can
+    # pass an empty string when the experiment row hasn't been minted yet
+    # (see simlab.orchestrator), and tests use opaque slugs like "exp-1".
+    phase2_experiment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    model_class_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    paradigm: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    formulation: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phase1_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "runs.id",
+            name="simulation_observations_phase1_run_id_fkey",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+    environment: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    steps: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    episode_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    step: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+
+    # relationships
+    phase1_run: Mapped[Run | None] = relationship()

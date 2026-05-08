@@ -344,7 +344,7 @@ class TestAC7_MemoryAccessTracking:
         for `last_accessed_at` / `access_count` and one commit per call.
         """
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
-        from shared import memories as shared_memories
+        from shared import pipeline_memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(5)]
         mock_session = AsyncMock()
@@ -370,7 +370,7 @@ class TestAC7_MemoryAccessTracking:
         import logging
 
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
-        from shared import memories as shared_memories
+        from shared import pipeline_memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(3)]
         mock_session = AsyncMock()
@@ -408,6 +408,73 @@ class TestAC7_MemoryAccessTracking:
 
         mock_session.execute.assert_not_called()
         mock_session.commit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_track_memory_access_skips_simulation_results(self):
+        """Phase 2 ``simulation_observations`` rows have no last_accessed_at —
+        ``_track_memory_access`` must filter them out via ``source_kind``.
+        """
+        from decisionlab.knowledge.retrieval.tool import _track_memory_access
+
+        pipeline_id = str(uuid.uuid4())
+        sim_id = str(uuid.uuid4())
+        results = [
+            _result(
+                "pipeline result", 0.9, "dense",
+                entity_id=pipeline_id,
+                collection="memories_dense",
+                source_kind="pipeline",
+            ),
+            _result(
+                "simulation result", 0.85, "dense",
+                entity_id=sim_id,
+                collection="memories_dense",
+                source_kind="simulation",
+            ),
+        ]
+
+        mock_session = AsyncMock()
+        mock_db = _mock_db_with_session(mock_session)
+
+        with (
+            patch(f"{_TOOL_MODULE}.touch_memory", new_callable=AsyncMock) as mock_touch,
+            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+        ):
+            mock_shared.db = mock_db
+            await _track_memory_access(results)
+
+        mock_touch.assert_called_once()
+        passed_ids = mock_touch.call_args[0][1]
+        assert list(passed_ids) == [uuid.UUID(pipeline_id)], (
+            "simulation result must not be touched"
+        )
+
+
+class TestSourceKindOf:
+    """Direct unit tests for ``_source_kind_of`` payload classification."""
+
+    @pytest.mark.parametrize(
+        "metadata,expected",
+        [
+            ({"source_kind": "pipeline"}, "pipeline"),
+            ({"source_kind": "simulation"}, "simulation"),
+            # Legacy points without ``source_kind`` fall back to namespace.
+            ({"namespace": "simulation"}, "simulation"),
+            ({"namespace": "paradigm"}, "pipeline"),
+            ({"namespace": "formulation"}, "pipeline"),
+            ({"namespace": "model"}, "pipeline"),
+            ({"namespace": "meta"}, "pipeline"),
+            # No hints at all → default to pipeline (the older write path).
+            ({}, "pipeline"),
+            # Junk value in source_kind falls through to the namespace fallback.
+            ({"source_kind": "garbage", "namespace": "simulation"}, "simulation"),
+            ({"source_kind": "garbage", "namespace": "paradigm"}, "pipeline"),
+        ],
+    )
+    def test_source_kind_of_classification(self, metadata, expected):
+        from decisionlab.knowledge.retrieval.tool import _source_kind_of
+
+        assert _source_kind_of(metadata) == expected
 
 
 # ---------------------------------------------------------------------------

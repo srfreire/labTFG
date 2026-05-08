@@ -510,7 +510,7 @@ class TestAC4_TimeDecay:
 
     @pytest.mark.asyncio
     async def test_60_day_decay(self):
-        from shared.memories import apply_time_decay
+        from shared.pipeline_memories import apply_time_decay
 
         mem_id = uuid.uuid4()
         original_confidence = 0.8

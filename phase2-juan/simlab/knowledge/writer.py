@@ -1,9 +1,10 @@
-"""TrackerMemoryWriter — persists Phase 2 simulation observations as memories.
+"""TrackerMemoryWriter — persists Phase 2 simulation observations.
 
 Orchestrates the full write pipeline: parse Tracker JSON → build facts →
 embed (Voyage, single batch) → insert into Postgres
-memories table + upsert to Qdrant memories_dense/memories_sparse. All
-operations share the same UUID per fact to keep the three stores joinable.
+``simulation_observations`` table + upsert to Qdrant
+``memories_dense``/``memories_sparse``. All operations share the same UUID
+per fact to keep the three stores joinable.
 
 See docs/specs/sim-memory/phase-1-core-writer.md for the full specification.
 """
@@ -19,7 +20,7 @@ from asyncio import CancelledError
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from shared.memories import create_memory
+from shared.simulation_observations import create_simulation_observation
 
 if TYPE_CHECKING:
     from shared.database import DatabaseService
@@ -130,10 +131,18 @@ class _Counters:
 
 
 def _build_payload(memory_id: uuid.UUID, fact: FactSpec) -> dict[str, Any]:
+    """Qdrant payload for a simulation observation.
+
+    ``entity_id`` matches the Phase 1 indexer convention so retrieval can
+    look up either source via the same key. ``source_kind`` (P4-003) tells
+    the read path which Postgres table to consult.
+    """
     return {
-        "memory_id": str(memory_id),
+        "entity_id": str(memory_id),
+        "memory_id": str(memory_id),  # legacy alias, callers may still read it
         "namespace": _NAMESPACE,
         "source_stage": _SOURCE_STAGE,
+        "source_kind": "simulation",
         **fact.metadata,
     }
 
@@ -160,6 +169,62 @@ async def _safe_upsert(
             memory_id,
             exc_info=True,
         )
+
+
+_TYPED_METADATA_KEYS: frozenset[str] = frozenset(
+    {
+        "phase2_experiment_id",
+        "model_class_name",
+        "paradigm",
+        "formulation",
+        "phase1_run_id",
+        "environment",
+        "steps",
+        "seed",
+        "agent_id",
+        "episode_type",
+        "step",
+    }
+)
+
+
+def _coerce_uuid(value: object) -> uuid.UUID | None:
+    """Best-effort string → UUID coercion for ``phase1_run_id``.
+
+    ``ModelInfo.phase1_run_id`` is typed as ``str | None`` but the typed
+    column expects a UUID. Anything that doesn't parse cleanly drops to
+    ``None`` rather than aborting the whole write.
+    """
+    if value is None or isinstance(value, uuid.UUID):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return uuid.UUID(value)
+    except (ValueError, TypeError):
+        logger.warning("phase1_run_id %r is not a valid UUID; storing NULL", value)
+        return None
+
+
+def _split_metadata(meta: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Project ``FactSpec.metadata`` into typed kwargs + JSONB leftovers.
+
+    Typed fields land in their own columns on ``simulation_observations``;
+    everything else (``model_id``, ``models_compared``, ``step_start`` /
+    ``step_end`` ranges) stays in the JSONB ``metadata`` column.
+    """
+    typed: dict[str, Any] = {}
+    extras: dict[str, Any] = {}
+    for key, value in meta.items():
+        if key in _TYPED_METADATA_KEYS:
+            typed[key] = value
+        else:
+            extras[key] = value
+
+    if "phase1_run_id" in typed:
+        typed["phase1_run_id"] = _coerce_uuid(typed["phase1_run_id"])
+
+    return typed, extras
 
 
 async def _upsert_vectors(
@@ -264,18 +329,19 @@ class TrackerMemoryWriter:
             for fact, dense in zip(facts, dense_vectors, strict=True):
                 memory_id = uuid.uuid4()
                 payload = _build_payload(memory_id, fact)
+                typed, extras = _split_metadata(fact.metadata)
 
-                await create_memory(
+                await create_simulation_observation(
                     session,
                     id=memory_id,
                     content=fact.text,
-                    namespace=_NAMESPACE,
                     memory_type=fact.memory_type,
-                    source_stage=_SOURCE_STAGE,
-                    run_id=None,
                     importance=fact.importance,
                     confidence=_CONFIDENCE,
-                    metadata_=dict(fact.metadata),
+                    namespace=_NAMESPACE,
+                    source_stage=_SOURCE_STAGE,
+                    metadata_=extras or None,
+                    **typed,
                 )
 
                 await _upsert_vectors(

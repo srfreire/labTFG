@@ -25,7 +25,7 @@ from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
 from decisionlab.runtime.usage import increment_counter
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
-from shared.memories import touch_memory
+from shared.pipeline_memories import touch_memory
 from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -250,20 +250,42 @@ async def list_known_slugs(
     return [(s, desc_by_slug.get(s, "")) for s in candidate_slugs]
 
 
+def _source_kind_of(metadata: dict) -> str:
+    """Return ``"pipeline"`` or ``"simulation"`` for a retrieval result.
+
+    Reads the ``source_kind`` Qdrant payload field added in P4-003. Falls
+    back to inferring from ``namespace`` for legacy points written before
+    the field landed (anything in namespace ``simulation`` is a Phase 2
+    observation; everything else is a Phase 1 pipeline memory).
+    """
+    raw = metadata.get("source_kind")
+    if raw in ("pipeline", "simulation"):
+        return raw  # type: ignore[return-value]
+    return "simulation" if metadata.get("namespace") == "simulation" else "pipeline"
+
+
 async def _track_memory_access(results: list[RetrievalResult]) -> None:
-    """Bump access metadata for Postgres-backed results in a single UPDATE."""
+    """Bump access metadata for Phase 1 (``pipeline_memories``) results.
+
+    Phase 2 observations live in ``simulation_observations`` which has no
+    ``last_accessed_at`` / ``access_count`` columns — they are write-once
+    records, so nothing to touch on read.
+    """
     if shared.db is None:
         return
 
     memory_ids: list[uuid.UUID] = []
     for r in results:
-        entity_id = r.metadata.get("entity_id")
+        entity_id = r.metadata.get("entity_id") or r.metadata.get("memory_id")
         collection = r.metadata.get("collection", "")
-        if entity_id and "memories" in collection:
-            try:
-                memory_ids.append(uuid.UUID(entity_id))
-            except (ValueError, TypeError):
-                continue
+        if not entity_id or "memories" not in collection:
+            continue
+        if _source_kind_of(r.metadata) != "pipeline":
+            continue
+        try:
+            memory_ids.append(uuid.UUID(entity_id))
+        except (ValueError, TypeError):
+            continue
 
     if not memory_ids:
         return
@@ -323,12 +345,17 @@ def _result_created_at(r: RetrievalResult) -> datetime | None:
 
 
 def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
-    """Pull UUIDs of memory-backed results, skipping malformed entity_ids."""
+    """Pull UUIDs of memory-backed results, skipping malformed ids.
+
+    Phase 1 payloads carry the UUID under ``entity_id``; Phase 2 payloads
+    historically used ``memory_id`` (pre-P4-003). Both shapes are accepted
+    so retrieval keeps reading legacy and new points equally.
+    """
     memory_ids: list[uuid.UUID] = []
     for r in results:
         if "memories" not in r.metadata.get("collection", ""):
             continue
-        entity_id = r.metadata.get("entity_id")
+        entity_id = r.metadata.get("entity_id") or r.metadata.get("memory_id")
         if not entity_id:
             continue
         try:
@@ -341,14 +368,17 @@ def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
 async def _fetch_confidences(
     memory_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, float]:
-    """Single batched SELECT against `memories` to fetch live confidences.
+    """Batched SELECT across both memory tables for live confidences.
 
-    Returns an empty map when there are no memory IDs, when `shared.db`
+    Queries ``pipeline_memories`` and ``simulation_observations`` in a
+    single round-trip via ``UNION ALL``; an id is in at most one table by
+    construction (UUIDs are unique across both tables since each is
+    minted at write time).
+
+    Returns an empty map when there are no memory IDs, when ``shared.db``
     is unwired, or when the DB raises. Callers fall back to a 1.0 factor
-    (preserves the prior `metadata.get("confidence", 1.0)` default for
-    non-memory results). Failures are logged at WARNING — a degraded PG
-    must not silently kill an entire retrieve, but it also must not be
-    invisible.
+    so a degraded PG never silently kills a retrieve — failures are
+    logged at WARNING instead.
     """
     if not memory_ids:
         return {}
@@ -360,15 +390,28 @@ async def _fetch_confidences(
         )
         return {}
 
-    from sqlalchemy import select
+    from sqlalchemy import select, union
 
-    from shared.models import Memory
+    from shared.models import PipelineMemory, SimulationObservation
+
+    # ``union`` (not ``union_all``) — by construction each UUID lives in at
+    # most one table, but a stray duplicate from a botched
+    # rollback/re-upgrade cycle would otherwise yield two rows and a
+    # non-deterministic dict comprehension. Deduplicating server-side is
+    # cheap insurance.
+    pipeline_q = select(
+        PipelineMemory.id.label("id"),
+        PipelineMemory.confidence.label("confidence"),
+    ).where(PipelineMemory.id.in_(memory_ids))
+    sim_q = select(
+        SimulationObservation.id.label("id"),
+        SimulationObservation.confidence.label("confidence"),
+    ).where(SimulationObservation.id.in_(memory_ids))
+    stmt = union(pipeline_q, sim_q)
 
     try:
         async with shared.db.get_session() as session:
-            result = await session.execute(
-                select(Memory.id, Memory.confidence).where(Memory.id.in_(memory_ids))
-            )
+            result = await session.execute(stmt)
             return {row.id: row.confidence for row in result.all()}
     except Exception as exc:
         logger.warning(
@@ -412,7 +455,7 @@ async def _apply_recency_weighting(
             recency_factor = decay_rate**days_old
 
         confidence_factor = 1.0
-        entity_id = r.metadata.get("entity_id")
+        entity_id = r.metadata.get("entity_id") or r.metadata.get("memory_id")
         if entity_id and "memories" in r.metadata.get("collection", ""):
             try:
                 pg_confidence = conf_map.get(uuid.UUID(str(entity_id)))

@@ -1,4 +1,9 @@
-"""Async helper functions for the memories table."""
+"""Async helper functions for the ``pipeline_memories`` table.
+
+Phase 1 lifecycle ops: insert, supersede, corroborate/contradict, decay,
+prune, batched touch, time-travel queries. Phase 2 simulation observations
+have their own helper in :mod:`shared.simulation_observations`.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.models import Memory
+from shared.models import PipelineMemory
 
 _CONFIDENCE_CAP = 1.0
 _CONFIDENCE_FLOOR = 0.1
@@ -30,14 +35,14 @@ async def update_memory_confidence(
     if (delta is None) == (set_to is None):
         raise ValueError("exactly one of delta / set_to must be provided")
 
-    target: object = Memory.confidence + delta if delta is not None else set_to
+    target: object = PipelineMemory.confidence + delta if delta is not None else set_to
     clamped = func.least(_CONFIDENCE_CAP, func.greatest(_CONFIDENCE_FLOOR, target))
 
     stmt = (
-        update(Memory)
-        .where(Memory.id == memory_id)
+        update(PipelineMemory)
+        .where(PipelineMemory.id == memory_id)
         .values(confidence=clamped)
-        .returning(Memory.confidence)
+        .returning(PipelineMemory.confidence)
     )
     result = await session.execute(stmt)
     new_confidence = result.scalar_one()
@@ -45,9 +50,9 @@ async def update_memory_confidence(
     return float(new_confidence)
 
 
-async def create_memory(session: AsyncSession, **kwargs: object) -> Memory:
-    """Create and persist a new Memory row."""
-    memory = Memory(**kwargs)
+async def create_memory(session: AsyncSession, **kwargs: object) -> PipelineMemory:
+    """Create and persist a new PipelineMemory row."""
+    memory = PipelineMemory(**kwargs)
     session.add(memory)
     await session.flush()
     return memory
@@ -60,16 +65,16 @@ async def get_memories(
     min_confidence: float | None = None,
     valid_only: bool = True,
     limit: int = 50,
-) -> list[Memory]:
+) -> list[PipelineMemory]:
     """Query memories with optional filters."""
-    stmt = select(Memory)
+    stmt = select(PipelineMemory)
     if namespace is not None:
-        stmt = stmt.where(Memory.namespace == namespace)
+        stmt = stmt.where(PipelineMemory.namespace == namespace)
     if min_confidence is not None:
-        stmt = stmt.where(Memory.confidence >= min_confidence)
+        stmt = stmt.where(PipelineMemory.confidence >= min_confidence)
     if valid_only:
-        stmt = stmt.where(Memory.valid_to.is_(None))
-    stmt = stmt.order_by(Memory.created_at.desc()).limit(limit)
+        stmt = stmt.where(PipelineMemory.valid_to.is_(None))
+    stmt = stmt.order_by(PipelineMemory.created_at.desc()).limit(limit)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -94,11 +99,11 @@ async def touch_memory(
         return 0
 
     stmt = (
-        update(Memory)
-        .where(Memory.id.in_(ids))
+        update(PipelineMemory)
+        .where(PipelineMemory.id.in_(ids))
         .values(
             last_accessed_at=func.now(),
-            access_count=Memory.access_count + 1,
+            access_count=PipelineMemory.access_count + 1,
         )
     )
     await session.execute(stmt)
@@ -113,15 +118,15 @@ async def supersede_memory(
     old_id: uuid.UUID,
     new_content: str,
     **kwargs: object,
-) -> Memory:
+) -> PipelineMemory:
     """Mark an existing memory as superseded and create a replacement."""
-    new_memory = Memory(content=new_content, **kwargs)
+    new_memory = PipelineMemory(content=new_content, **kwargs)
     session.add(new_memory)
     await session.flush()
 
     stmt = (
-        update(Memory)
-        .where(Memory.id == old_id)
+        update(PipelineMemory)
+        .where(PipelineMemory.id == old_id)
         .values(valid_to=func.now(), superseded_by=new_memory.id)
     )
     await session.execute(stmt)
@@ -145,14 +150,14 @@ async def update_confidence(
     values: dict[str, object] = {}
     delta = 0.0
     if corroborate:
-        values["corroborations"] = Memory.corroborations + 1
+        values["corroborations"] = PipelineMemory.corroborations + 1
         delta += 0.05
     if contradict:
-        values["contradictions"] = Memory.contradictions + 1
+        values["contradictions"] = PipelineMemory.contradictions + 1
         delta -= 0.10
     if not values:
         return
-    stmt = update(Memory).where(Memory.id == memory_id).values(**values)
+    stmt = update(PipelineMemory).where(PipelineMemory.id == memory_id).values(**values)
     await session.execute(stmt)
     if delta:
         await update_memory_confidence(session, memory_id, delta=delta)
@@ -177,11 +182,11 @@ async def apply_time_decay(session: AsyncSession) -> int:
     # Strip tz for comparison against naive TIMESTAMP columns.
     cutoff_naive = (now - timedelta(days=_DECAY_PERIOD_DAYS)).replace(tzinfo=None)
 
-    stmt = select(Memory).where(
+    stmt = select(PipelineMemory).where(
         and_(
-            Memory.valid_to.is_(None),
-            Memory.memory_type != "reflection",
-            Memory.last_accessed_at < cutoff_naive,
+            PipelineMemory.valid_to.is_(None),
+            PipelineMemory.memory_type != "reflection",
+            PipelineMemory.last_accessed_at < cutoff_naive,
         ),
     )
     result = await session.execute(stmt)
@@ -212,7 +217,7 @@ async def get_memories_at_time(
     session: AsyncSession,
     as_of: datetime,
     namespace: str | None = None,
-) -> list[Memory]:
+) -> list[PipelineMemory]:
     """Return memories that were valid at *as_of*.
 
     Filters: valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of).
@@ -220,13 +225,13 @@ async def get_memories_at_time(
     """
     if as_of.tzinfo is not None:
         as_of = as_of.replace(tzinfo=None)
-    stmt = select(Memory).where(
-        Memory.valid_from <= as_of,
-        or_(Memory.valid_to.is_(None), Memory.valid_to > as_of),
+    stmt = select(PipelineMemory).where(
+        PipelineMemory.valid_from <= as_of,
+        or_(PipelineMemory.valid_to.is_(None), PipelineMemory.valid_to > as_of),
     )
     if namespace is not None:
-        stmt = stmt.where(Memory.namespace == namespace)
-    stmt = stmt.order_by(Memory.valid_from.asc())
+        stmt = stmt.where(PipelineMemory.namespace == namespace)
+    stmt = stmt.order_by(PipelineMemory.valid_from.asc())
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -234,16 +239,16 @@ async def get_memories_at_time(
 async def get_memory_history(
     session: AsyncSession,
     content_like: str,
-) -> list[Memory]:
+) -> list[PipelineMemory]:
     """Return a memory and all its superseded predecessors.
 
     Searches by LIKE pattern on content (e.g. "parameter value%") and
     returns all matching versions ordered by valid_from ascending.
     """
     stmt = (
-        select(Memory)
-        .where(Memory.content.like(content_like))
-        .order_by(Memory.valid_from.asc())
+        select(PipelineMemory)
+        .where(PipelineMemory.content.like(content_like))
+        .order_by(PipelineMemory.valid_from.asc())
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
@@ -255,14 +260,14 @@ _MAX_CHAIN_LENGTH = 1000
 async def get_supersession_chain(
     session: AsyncSession,
     memory_id: uuid.UUID,
-) -> list[Memory]:
+) -> list[PipelineMemory]:
     """Follow superseded_by pointers from *memory_id* to the current version.
 
     Returns the chain in chronological order (oldest first).
     Returns empty list if memory_id does not exist.
     Detects cycles and caps traversal at ``_MAX_CHAIN_LENGTH``.
     """
-    chain: list[Memory] = []
+    chain: list[PipelineMemory] = []
     seen: set[uuid.UUID] = set()
     current_id: uuid.UUID | None = memory_id
 
@@ -270,7 +275,7 @@ async def get_supersession_chain(
         if current_id in seen:
             break
         seen.add(current_id)
-        result = await session.execute(select(Memory).where(Memory.id == current_id))
+        result = await session.execute(select(PipelineMemory).where(PipelineMemory.id == current_id))
         mem = result.scalar_one_or_none()
         if mem is None:
             break

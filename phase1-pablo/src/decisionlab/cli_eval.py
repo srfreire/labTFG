@@ -378,7 +378,14 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool) -> dict:
     from sqlalchemy import func, select
 
     import shared
-    from shared.models import Artifact, Memory, NodeRunObservation, Run
+    from shared.models import (
+        Artifact,
+        NodeRunObservation,
+        Run,
+    )
+    from shared.models import (
+        PipelineMemory as Memory,
+    )
 
     if shared.db is None:
         raise RuntimeError(

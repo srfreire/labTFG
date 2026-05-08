@@ -20,7 +20,7 @@ from simlab.knowledge import (
 from sqlalchemy import delete, select
 
 from shared.embedding import EmbeddingService
-from shared.models import Memory
+from shared.models import SimulationObservation
 
 pytestmark = pytest.mark.integration
 
@@ -97,8 +97,8 @@ async def test_writer_round_trip_postgres_and_qdrant(
         assert result.episodes_written == 1
 
         # Postgres check — 3 rows with correct namespace/stage/confidence/memory_type.
-        stmt = select(Memory).where(
-            Memory.metadata_["phase2_experiment_id"].astext == experiment_id
+        stmt = select(SimulationObservation).where(
+            SimulationObservation.phase2_experiment_id == experiment_id
         )
         rows = (await session.execute(stmt)).scalars().all()
 
@@ -129,8 +129,8 @@ async def test_writer_round_trip_postgres_and_qdrant(
     finally:
         # Cleanup Postgres rows
         await session.execute(
-            delete(Memory).where(
-                Memory.metadata_["phase2_experiment_id"].astext == experiment_id
+            delete(SimulationObservation).where(
+                SimulationObservation.phase2_experiment_id == experiment_id
             )
         )
         await session.commit()

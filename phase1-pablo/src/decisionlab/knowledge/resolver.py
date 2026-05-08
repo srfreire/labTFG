@@ -24,7 +24,11 @@ from decisionlab.knowledge.prompts import (
     IMPORTANCE_SCORING_USER,
 )
 from decisionlab.structured import StructuredOutputError, call_structured
-from shared.memories import create_memory, supersede_memory, update_confidence
+from shared.pipeline_memories import (
+    create_memory,
+    supersede_memory,
+    update_confidence,
+)
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
@@ -318,6 +322,7 @@ async def resolve_and_store(
                     "entity_id": str(new_mem.id),
                     "namespace": namespace,
                     "source_stage": stage,
+                    "source_kind": "pipeline",
                     "run_id": run_id,
                     "importance": importance,
                     "created_at": datetime.now(UTC).isoformat(),

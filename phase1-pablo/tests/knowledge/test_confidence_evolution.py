@@ -45,8 +45,8 @@ class TestAC1_CorroborationBoost:
     @pytest.mark.asyncio
     async def test_single_corroboration_adds_005(self):
         """One corroboration routes a +0.05 delta through the helper."""
-        from shared import memories
-        from shared.memories import update_confidence
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -61,8 +61,8 @@ class TestAC1_CorroborationBoost:
     @pytest.mark.asyncio
     async def test_corroboration_capped_at_1(self):
         """Clamping is the helper's job — corroboration delegates to it."""
-        from shared import memories
-        from shared.memories import update_confidence
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -86,8 +86,8 @@ class TestAC2_ContradictionPenalty:
     @pytest.mark.asyncio
     async def test_contradiction_subtracts_010(self):
         """Contradiction applies -0.10 delta via the helper."""
-        from shared import memories
-        from shared.memories import update_confidence
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -221,8 +221,8 @@ class TestAC3_AccessBoost:
     @pytest.mark.asyncio
     async def test_touch_memory_boosts_confidence(self):
         """touch_memory routes a +0.02 delta through the helper for each id."""
-        from shared import memories
-        from shared.memories import touch_memory
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import touch_memory
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -237,8 +237,8 @@ class TestAC3_AccessBoost:
     @pytest.mark.asyncio
     async def test_touch_memory_capped_at_1(self):
         """Clamping at the cap is the helper's job — touch_memory delegates."""
-        from shared import memories
-        from shared.memories import touch_memory
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import touch_memory
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -262,8 +262,8 @@ class TestAC4_TimeDecay:
     @pytest.mark.asyncio
     async def test_apply_time_decay_reduces_old_memories(self):
         """90-day untouched memory: confidence *= 0.95^3 ≈ 0.857, set via helper."""
-        from shared import memories
-        from shared.memories import apply_time_decay
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import apply_time_decay
 
         session = AsyncMock()
 
@@ -291,7 +291,7 @@ class TestAC4_TimeDecay:
     @pytest.mark.asyncio
     async def test_reflections_exempt_from_decay(self):
         """Memories with memory_type='reflection' are not decayed."""
-        from shared.memories import apply_time_decay
+        from shared.pipeline_memories import apply_time_decay
 
         session = AsyncMock()
 
@@ -309,8 +309,8 @@ class TestAC4_TimeDecay:
     @pytest.mark.asyncio
     async def test_decay_floors_at_01(self):
         """0.15 * 0.95^12 ≈ 0.082 → flooring is delegated to the helper."""
-        from shared import memories
-        from shared.memories import apply_time_decay
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import apply_time_decay
 
         session = AsyncMock()
 
@@ -339,7 +339,7 @@ class TestAC4_TimeDecay:
     @pytest.mark.asyncio
     async def test_null_last_accessed_at_skipped(self):
         """Memories with NULL last_accessed_at are safely skipped."""
-        from shared.memories import apply_time_decay
+        from shared.pipeline_memories import apply_time_decay
 
         session = AsyncMock()
 
@@ -493,8 +493,8 @@ class TestAC6_ConfidenceFloor:
     async def test_contradiction_floors_at_01(self):
         """The floor is enforced by `update_memory_confidence`; contradiction
         delegates to it."""
-        from shared import memories
-        from shared.memories import update_confidence
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
@@ -510,8 +510,8 @@ class TestAC6_ConfidenceFloor:
     async def test_corroboration_and_contradiction_both_clamped(self):
         """Both flags applied simultaneously route the net delta through the
         helper, which owns clamping."""
-        from shared import memories
-        from shared.memories import update_confidence
+        from shared import pipeline_memories as memories
+        from shared.pipeline_memories import update_confidence
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
