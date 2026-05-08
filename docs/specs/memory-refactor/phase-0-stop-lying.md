@@ -1,6 +1,6 @@
 # Phase 0: Stop lying
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P0-002)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A8, A10, A11, A12, A13
 
 ## Objective
@@ -171,7 +171,7 @@ Edge cases:
       asserts the model resolution for each stage. Re-running
       `cumulative-growth` shows total Sonnet token spend on extraction
       drops ≥40 % vs the pre-change baseline.
-- [ ] **AC2**: `evals/suites/merge-quality.yaml`,
+- [x] **AC2**: `evals/suites/merge-quality.yaml`,
       `evals/reports/*-merge-quality/`, and
       `evals/fixtures/canonicalize-pairs.json` are deleted.
       `merge_precision_recall` is removed from
