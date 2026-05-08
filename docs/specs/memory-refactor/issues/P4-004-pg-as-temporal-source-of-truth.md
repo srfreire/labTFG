@@ -1,14 +1,14 @@
 ---
 id: P4-004
 title: Designate Postgres pipeline_memories as the single temporal source of truth
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: data-model
 priority: 3
 blocked_by: [P4-003]
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-05-09
 ---
 
 # P4-004: Single temporal source of truth in Postgres
