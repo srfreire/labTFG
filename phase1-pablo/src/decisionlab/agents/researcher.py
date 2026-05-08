@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import re
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
@@ -48,6 +47,7 @@ from decisionlab.tools.agents import (
     LAUNCH_DEEP_RESEARCH_SCHEMA,
     create_launch_deep_research,
 )
+from decisionlab.knowledge.retrieval.tool import list_known_slugs
 from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
     create_read_report,
@@ -213,50 +213,6 @@ def _slug_from_proposal(name: str, *, definition: str = "") -> str:
     return f"unnamed-{digest}"
 
 
-_KNOWN_SLUG_RE = re.compile(r"\*\s+\*\*([a-z0-9-]+)\*\*")
-
-
-def _parse_known_slugs(retrieved_text: str) -> list[str]:
-    """Extract paradigm slugs from a ``retrieve_knowledge`` markdown result.
-
-    The retrieval tool returns markdown blocks; paradigm-namespaced results
-    embed the slug in the metadata header. This is a best-effort parse —
-    when the format shifts, ``known_slugs`` simply falls back to "no
-    candidates", which the emission step renders as every paradigm being
-    ``__NEW__``. That degrades safely rather than crashing the run.
-    """
-    slugs: list[str] = []
-    seen: set[str] = set()
-    for match in _KNOWN_SLUG_RE.finditer(retrieved_text):
-        slug = match.group(1)
-        if slug not in seen:
-            seen.add(slug)
-            slugs.append(slug)
-        if len(slugs) >= _RETRIEVAL_TOP_K:
-            break
-
-    # Fallback: parse "namespace=paradigm" blocks where slug shows up in
-    # the result body. The retrieval tool currently formats results as
-    # "Source: ... | Namespace: paradigm | ..." so we scan attribution
-    # lines for kebab-case tokens that look like slugs.
-    if not slugs:
-        for line in retrieved_text.splitlines():
-            tokens = re.findall(r"\b([a-z][a-z0-9]*(?:-[a-z0-9]+){1,4})\b", line)
-            for tok in tokens:
-                if tok in seen:
-                    continue
-                if len(tok) < 4 or tok.endswith("-paradigm"):
-                    continue
-                # Avoid common false positives.
-                if tok in {"text-preview", "source-stage", "run-id", "created-at"}:
-                    continue
-                seen.add(tok)
-                slugs.append(tok)
-                if len(slugs) >= _RETRIEVAL_TOP_K:
-                    return slugs
-    return slugs
-
-
 class Researcher:
     def __init__(
         self,
@@ -309,10 +265,11 @@ class Researcher:
     async def _retrieve_known_paradigms(self, problem: str) -> tuple[list[str], str]:
         """Mandatory first step: ask the KG which paradigms it already covers.
 
-        Returns ``(known_slugs, retrieval_text)``. ``retrieval_text`` is the
-        formatted markdown from the retrieval tool — empty when no
-        knowledge backbone is wired up. The agent prompt embeds it so the
-        model can read full definitions, not just the slugs.
+        Returns ``(known_slugs, retrieval_text)``. ``retrieval_text`` is a
+        deterministic synthetic block built from ``(slug, definition)`` pairs
+        — the prompt template embeds it so the model can read full
+        definitions, not just the slugs. Empty when no knowledge backbone
+        is wired up.
         """
         if self._knowledge_tool_handler is None:
             logger.info(
@@ -320,22 +277,21 @@ class Researcher:
             )
             return [], ""
         try:
-            retrieval_text = await self._knowledge_tool_handler(
-                {
-                    "query": problem,
-                    "namespace": "paradigm",
-                    "top_k": _RETRIEVAL_TOP_K,
-                }
+            pairs = await list_known_slugs(
+                query=problem, namespace="paradigm", top_k=_RETRIEVAL_TOP_K
             )
         except Exception as exc:
             logger.warning(
-                "Researcher: retrieve_knowledge raised on %r — degrading to no candidates: %s",
+                "Researcher: list_known_slugs raised on %r — degrading to no candidates: %s",
                 problem,
                 exc,
             )
             return [], ""
 
-        slugs = _parse_known_slugs(retrieval_text)
+        slugs = [s for s, _d in pairs]
+        retrieval_text = "\n".join(
+            f"- **{slug}** — {defn or '(no description)'}" for slug, defn in pairs
+        )
         logger.info(
             "Researcher: retrieved %d candidate slug(s) from KG: %s",
             len(slugs),
