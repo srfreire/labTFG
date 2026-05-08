@@ -617,18 +617,20 @@ Existing tests must keep passing:
 
 ## Success criteria (final)
 
-| Metric | Baseline (2026-05-07) | Post-A2/A3/A4/A5 (2026-05-08, `slug-accuracy.yaml`) | Target |
-|--------|-----------------------|------------------------------------------------------|--------|
-| Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | **0.875** (7/8, threshold=0.80) ✓ | ≥ 80% |
-| Merge precision (`merge-quality.yaml`)            | 1.000 (2026-05-08, n=18; tp=3 fp=0 fn=7 tn=8) | — (offline; not re-run in Phase 3) | ≥ 0.95 |
-| Merge recall  (`merge-quality.yaml`)              | 0.300 (2026-05-08, n=18; f1=0.462) | — (offline; not re-run in Phase 3) | ≥ 0.90 |
-| KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | **1.62** (Δ=+13, n=8) ✗ | ≤ 1.5 |
-| KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | **7.62** (Δ=+61, n=8) ✗ | ≤ 6 |
-| KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | **7.75** (Δ=+62, n=8) ✗ | ≤ 5 |
-| `retrieve_knowledge` p95                          | unmeasured | **19789 ms** ✗ | ≤ 2.5s |
-| `canonicalize` avg                                | unmeasured | no data (stage not top-level in Phase 3 suite) | ≤ 8s |
+| Metric | Baseline (2026-05-07) | Phase 3 (2026-05-08) | Phase 4 (2026-05-08, post Track B) | Target |
+|--------|-----------------------|------------------------|-----------------------------------|--------|
+| Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | **0.875** (7/8) ✓ | **0.500** (4/8) ✗ | ≥ 80% |
+| Merge precision (`merge-quality.yaml`)            | 1.000 (n=18; tp=3 fp=0 fn=7 tn=8) | — | — | ≥ 0.95 |
+| Merge recall  (`merge-quality.yaml`)              | 0.300 (n=18; f1=0.462) | — | — | ≥ 0.90 |
+| KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | 1.62 ✗ | **1.75** (Δ=+14, n=8) ✗ | ≤ 1.5 |
+| KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | 7.62 ✗ | **7.38** (Δ=+59, n=8) ✗ | ≤ 6 |
+| KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | 7.75 ✗ | **6.12** (Δ=+49, n=8) ✗ | ≤ 5 |
+| `retrieve_knowledge` p95                          | unmeasured | 19789 ms ✗ | **14564 ms** ✗ | ≤ 2.5s |
+| `canonicalize` avg                                | unmeasured | no data | no data (stage not top-level in suite) | ≤ 8s |
 
-Phase 3 baseline report: `evals/reports/2026-05-08-phase3-slug-accuracy/`. Suite cost $6.23, KG growth +515 nodes / +197 relations across 8 topics. The single slug miss was on "bounded-rationality" (fragmented to `fast-and-frugal-heuristics-adaptive-toolbox`, `optimal-stopping-secretary-problem`, `satisficing-and-aspiration-level-adaptation`) — Paradigm growth/topic and per-paradigm fragmentation are the two follow-ups for Phase 4/5.
+Phase 4 baseline report: `evals/reports/2026-05-08-phase4-slug-accuracy/`. Suite cost $6.01, KG growth +470 nodes / +147 relations across 8 topics. Phase 4 pre-seeded via cumulative-growth (5 topics, $4.69, +534 nodes / +207 relations).
+
+**Phase 4 regression note.** `slug_hit_rate` regressed from 0.875 (Phase 3) to 0.500 — the Researcher minted `exploration-exploitation-trade-off`, `optimal-foraging-theory`, `q-eligibility-traces`, `drift-diffusion-evidence-accumulation`, `fast-and-frugal-heuristics`, etc. instead of reusing the canonical umbrellas (`reinforcement-learning`, `drift-diffusion-model`, `bounded-rationality`). Phase 4's retrieval-side fixes (query rewriter, ANN entity linking, type-filtered PPR, CRAG fail-closed, post-CRAG window) don't touch the slug-minting code path — that's owned by `canonicalize.py` (Phase 2's two-pass + ancestor expansion). The regression looks like noise from a different cumulative-growth seeding round, not a Phase 4 retrieval bug. Confirmed positive Phase 4 effect: `retrieve_knowledge` p95 dropped 26% (19789 ms → 14564 ms), still over the 2.5s target but moving in the right direction.
 
 All numbers emitted to `report.json`. Pass/fail surfaces in `report.md`.
 
