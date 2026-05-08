@@ -42,7 +42,7 @@ async def _backfill() -> None:
         ]
         vecs = await shared.embeddings.embed_texts(texts)
 
-        for r, v in zip(rows, vecs):
+        for r, v in zip(rows, vecs, strict=True):
             point_id = f"{label}:{r['key_value']}"
             await shared.vectors.upsert_dense(
                 "kg_entities_dense",

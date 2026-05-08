@@ -16,9 +16,7 @@ from shared.vector_store import ScoredPoint, _build_filter
 def test_build_filter_lifts_exclude_into_must_not():
     """Special ``_exclude`` key is converted to a Qdrant ``must_not``
     condition; normal keys stay in ``must``."""
-    f = _build_filter(
-        {"namespace": "paradigm", "_exclude": {"run_id": "run-123"}}
-    )
+    f = _build_filter({"namespace": "paradigm", "_exclude": {"run_id": "run-123"}})
     assert isinstance(f, Filter)
     assert f.must == [
         FieldCondition(key="namespace", match=MatchValue(value="paradigm"))

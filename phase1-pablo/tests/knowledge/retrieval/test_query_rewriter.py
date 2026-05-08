@@ -1,6 +1,6 @@
 """query_rewriter — Haiku-backed focal_concept + keywords extractor."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 

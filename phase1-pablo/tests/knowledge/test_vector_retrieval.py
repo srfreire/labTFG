@@ -154,9 +154,7 @@ async def test_exclude_run_id_reaches_vector_store_as_must_not_filter():
     )
     emb = _mock_emb()
 
-    await dense_retrieve(
-        "test", emb, vs, filters={"exclude_run_id": "current-run"}
-    )
+    await dense_retrieve("test", emb, vs, filters={"exclude_run_id": "current-run"})
 
     filters_passed = vs.search_dense.call_args.kwargs.get("filters")
     assert filters_passed is not None

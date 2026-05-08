@@ -35,6 +35,7 @@ def _get_vector_store() -> VectorStore | None:
 
     return shared.vectors
 
+
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # UUID4 shape: 8-4-4-4-12 hex digits. Used to catch run_id / uuid.uuid4()
@@ -231,7 +232,9 @@ async def populate_kg(
     # Slug-like nodes successfully written this batch — fed into the
     # kg_entities_dense ANN index after the node loop so retrieval's
     # _link_entities_ann can find them without an O(N) Cypher table scan.
-    ann_targets: list[tuple[str, str, str, str]] = []  # (label, key_value, name, description)
+    ann_targets: list[
+        tuple[str, str, str, str]
+    ] = []  # (label, key_value, name, description)
 
     # ── Nodes ────────────────────────────────────────────────────────────
     for node in extraction.nodes:
@@ -318,9 +321,7 @@ async def populate_kg(
         if node.label in _SLUG_LIKE_LABELS:
             display_name = node.properties.get("name") or str(key_value)
             description = node.properties.get("description") or ""
-            ann_targets.append(
-                (node.label, str(key_value), display_name, description)
-            )
+            ann_targets.append((node.label, str(key_value), display_name, description))
 
     # ── Relations ────────────────────────────────────────────────────────
     for rel in extraction.relations:
@@ -452,7 +453,7 @@ async def populate_kg(
                 ]
                 vecs = await emb.embed_texts(texts)
                 for (label, key_value, display_name, _desc), vector in zip(
-                    ann_targets, vecs
+                    ann_targets, vecs, strict=True
                 ):
                     point_id = f"{label}:{key_value}"
                     await vec.upsert_dense(

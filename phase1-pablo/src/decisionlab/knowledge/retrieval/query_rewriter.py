@@ -73,9 +73,7 @@ async def rewrite(query: str, *, client) -> _QueryRewrite:
             model=_MODEL,
         )
     except Exception as exc:
-        logger.warning(
-            "query_rewriter: rewrite failed; using passthrough: %s", exc
-        )
+        logger.warning("query_rewriter: rewrite failed; using passthrough: %s", exc)
         result = _QueryRewrite(focal_concept=query, keywords=[])
     _cache[key] = result
     return result

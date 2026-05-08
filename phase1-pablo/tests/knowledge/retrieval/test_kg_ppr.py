@@ -25,7 +25,9 @@ async def test_ppr_passes_allowed_types_for_paradigm_intent():
         ]
     )
 
-    linked = [_LinkedEntity(node_id="el-1", label="Paradigm", name="RL", confidence=1.0)]
+    linked = [
+        _LinkedEntity(node_id="el-1", label="Paradigm", name="RL", confidence=1.0)
+    ]
     await _ppr_traverse(linked, kg, intent="paradigm")
 
     # Find the traversal call (second call) — its params should include

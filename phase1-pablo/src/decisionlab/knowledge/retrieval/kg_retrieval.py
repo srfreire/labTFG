@@ -28,6 +28,7 @@ def _get_vector_store() -> VectorStore | None:
 
     return shared.vectors
 
+
 _FAST_MODEL = SETTINGS.knowledge_fast_model
 _MAX_TOKENS = 512
 _PPR_DECAY = 0.85
@@ -60,6 +61,7 @@ def _score_node(*, confidence: float, hops: int, degree: int) -> float:
     decay = _PPR_DECAY**hops
     damp = 1.0 / math.log(2 + max(0, degree))
     return confidence * decay * damp
+
 
 # Maps entity types from Haiku NER to Neo4j node labels.
 _TYPE_TO_LABEL: dict[str, str] = {
