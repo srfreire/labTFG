@@ -81,6 +81,27 @@ class _Meter:
 _METER = _Meter()
 
 
+@dataclass
+class _Counters:
+    values: dict[str, int] = field(default_factory=dict)
+    lock: Lock = field(default_factory=Lock)
+
+    def increment(self, name: str, by: int = 1) -> None:
+        with self.lock:
+            self.values[name] = self.values.get(name, 0) + by
+
+    def snapshot(self) -> dict[str, int]:
+        with self.lock:
+            return dict(self.values)
+
+    def reset(self) -> None:
+        with self.lock:
+            self.values.clear()
+
+
+_COUNTERS = _Counters()
+
+
 def record(model: str, usage: Any) -> None:
     _METER.record(model, usage)
 
@@ -91,6 +112,21 @@ def snapshot() -> dict[str, dict[str, int]]:
 
 def reset() -> None:
     _METER.reset()
+    _COUNTERS.reset()
+
+
+def increment_counter(name: str, by: int = 1) -> None:
+    """Bump a named scalar counter (e.g. ``ner.skipped`` / ``ner.evaluated``).
+
+    Used to record skip-vs-evaluate decisions in the retrieve pipeline
+    without conflating them with the per-model token totals tracked by
+    :func:`record`.
+    """
+    _COUNTERS.increment(name, by)
+
+
+def counters_snapshot() -> dict[str, int]:
+    return _COUNTERS.snapshot()
 
 
 def log_summary(console: Console | None = None) -> None:

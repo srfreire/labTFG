@@ -363,6 +363,69 @@ class TestEdgeCases:
         assert "formalizer" in task_context.lower()
 
     @pytest.mark.asyncio
+    async def test_skips_kg_retrieve_when_dense_top1_above_threshold(self):
+        """P2-002 / R2: dense top-1 ≥ ner_skip_threshold → kg_retrieve not invoked."""
+        from decisionlab.runtime import usage as usage_module
+
+        dense_hit = _result("Strong dense hit.", 0.92, "dense", namespace="paradigm")
+
+        with _patch_pipeline() as mocks:
+            mocks["vec"].return_value = ([dense_hit], [])
+            usage_module.reset()
+            handler = _make_handler()
+            result = await handler({"query": "reward learning paradigms"})
+
+        mocks["kg"].assert_not_called()
+        assert isinstance(result, str)
+        assert usage_module.counters_snapshot().get("ner.skipped") == 1
+        assert "ner.evaluated" not in usage_module.counters_snapshot()
+
+    @pytest.mark.asyncio
+    async def test_runs_kg_retrieve_when_dense_top1_below_threshold(self):
+        """P2-002 / R2: dense top-1 < threshold → kg_retrieve runs as today."""
+        from decisionlab.runtime import usage as usage_module
+
+        weak_hit = _result("Weak dense hit.", 0.3, "dense", namespace="paradigm")
+
+        with _patch_pipeline() as mocks:
+            mocks["vec"].return_value = ([weak_hit], [])
+            usage_module.reset()
+            handler = _make_handler()
+            await handler({"query": "ambiguous query"})
+
+        mocks["kg"].assert_called_once()
+        assert usage_module.counters_snapshot().get("ner.evaluated") == 1
+        assert "ner.skipped" not in usage_module.counters_snapshot()
+
+    @pytest.mark.asyncio
+    async def test_runs_kg_retrieve_when_dense_results_empty(self):
+        """Empty dense channel → top-1 score is 0.0, well below threshold."""
+        from decisionlab.runtime import usage as usage_module
+
+        with _patch_pipeline() as mocks:
+            mocks["vec"].return_value = ([], [])
+            usage_module.reset()
+            handler = _make_handler()
+            await handler({"query": "no dense hits"})
+
+        mocks["kg"].assert_called_once()
+        assert usage_module.counters_snapshot().get("ner.evaluated") == 1
+
+    def test_default_ner_skip_threshold(self):
+        """AC1: ner_skip_threshold defaults to 0.7."""
+        from decisionlab.config import SETTINGS
+
+        assert SETTINGS.ner_skip_threshold == 0.7
+
+    def test_ner_skip_threshold_env_override(self, monkeypatch):
+        """AC1: DECISIONLAB_NER_SKIP_THRESHOLD env var overrides the default."""
+        from decisionlab.config import Settings
+
+        monkeypatch.setenv("DECISIONLAB_NER_SKIP_THRESHOLD", "0.85")
+        loaded = Settings.from_env()
+        assert loaded.ner_skip_threshold == 0.85
+
+    @pytest.mark.asyncio
     async def test_web_result_formatted_with_source(self):
         """Web results should show source attribution differently."""
         web_result = _result(

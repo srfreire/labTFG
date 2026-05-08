@@ -57,6 +57,16 @@ def _env_model(slot: str, default: str) -> str:
     return raw if raw else default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name}={raw!r} is not a valid float") from exc
+
+
 @dataclass(frozen=True)
 class Settings:
     researcher: AgentConfig
@@ -73,6 +83,11 @@ class Settings:
     knowledge_fast_model: str
     knowledge_structured_model: str
     feedback_model: str  # feedback classifier (router re-execution decisions)
+    # When the dense top-1 score is at or above this threshold inside
+    # ``handle_retrieve_knowledge``, skip the Haiku NER call that
+    # ``kg_retrieve`` triggers — the dense channel already has a strong
+    # answer, so the BFS would only add latency.
+    ner_skip_threshold: float
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -120,6 +135,9 @@ class Settings:
                 "KNOWLEDGE_STRUCTURED", "anthropic/claude-sonnet-4.6"
             ),
             feedback_model=_env_model("FEEDBACK", "anthropic/claude-haiku-4.5"),
+            ner_skip_threshold=_env_float(
+                "DECISIONLAB_NER_SKIP_THRESHOLD", 0.7
+            ),
         )
 
 

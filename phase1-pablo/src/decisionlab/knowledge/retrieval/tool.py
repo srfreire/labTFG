@@ -6,7 +6,6 @@ that any pipeline agent can call. Follows the existing tool factory pattern.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
@@ -16,12 +15,14 @@ from typing import Any
 from anthropic import AsyncAnthropic
 
 import shared
+from decisionlab.config import SETTINGS
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.crag import evaluate_results
 from decisionlab.knowledge.retrieval.fusion import fuse_and_rerank
 from decisionlab.knowledge.retrieval.kg_retrieval import kg_retrieve
 from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
+from decisionlab.runtime.usage import increment_counter
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.memories import touch_memory
@@ -383,14 +384,6 @@ def _apply_temporal_filter(
     return filtered
 
 
-async def _noop_kg() -> list[RetrievalResult]:
-    return []
-
-
-async def _noop_vec() -> tuple[list[RetrievalResult], list[RetrievalResult]]:
-    return [], []
-
-
 def create_retrieve_knowledge(
     kg: KnowledgeGraph | None,
     vector_store: VectorStore | None,
@@ -427,22 +420,26 @@ def create_retrieve_knowledge(
             if namespace:
                 filters["namespace"] = namespace
 
-            # Run retrieval channels in parallel (fallback to empty when infra missing)
-            kg_coro = (
-                kg_retrieve(query, kg, embedding_service, client)
-                if kg is not None and embedding_service is not None
-                else _noop_kg()
-            )
-            vec_coro = (
-                vector_retrieve(query, embedding_service, vector_store, filters=filters)
-                if vector_store is not None and embedding_service is not None
-                else _noop_vec()
-            )
+            # Dense first: its top-1 score gates the Haiku NER call
+            # inside ``kg_retrieve`` (R2 — skip NER when dense is decisive).
+            if vector_store is not None and embedding_service is not None:
+                dense_results, sparse_results = await vector_retrieve(
+                    query, embedding_service, vector_store, filters=filters
+                )
+            else:
+                dense_results, sparse_results = [], []
 
-            kg_results, (dense_results, sparse_results) = await asyncio.gather(
-                kg_coro,
-                vec_coro,
-            )
+            kg_available = kg is not None and embedding_service is not None
+            dense_top1 = dense_results[0].score if dense_results else 0.0
+
+            if not kg_available:
+                kg_results = []
+            elif dense_top1 >= SETTINGS.ner_skip_threshold:
+                kg_results = []
+                increment_counter("ner.skipped")
+            else:
+                kg_results = await kg_retrieve(query, kg, embedding_service, client)
+                increment_counter("ner.evaluated")
 
             # Fuse + rerank — keep up to 2*top_k candidates through this
             # stage so CRAG can web-supplement without us pre-clipping
