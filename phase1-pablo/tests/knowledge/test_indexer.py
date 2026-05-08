@@ -128,8 +128,10 @@ class TestIndexStageOutput:
     """Tests for the main indexing pipeline."""
 
     @pytest.mark.asyncio
-    async def test_researcher_report_artifacts_indexed(self):
-        """AC1: Deep report sections are embedded and upserted to artifacts_dense + artifacts_sparse."""
+    async def test_researcher_report_artifacts_counted_but_not_indexed(self):
+        """AC1 (P4-002): Deep report sections are still chunked and counted
+        in ``artifacts_indexed`` but no longer upserted to Qdrant — the
+        ``artifacts_*`` collections were dropped."""
         text = (
             "# Homeostatic Regulation\n\n"
             "## Foundations\nFoundational text about homeostasis and energy balance.\n\n"
@@ -151,15 +153,10 @@ class TestIndexStageOutput:
         assert isinstance(result, IndexResult)
         assert result.artifacts_indexed >= 5
         assert result.facts_indexed == 0
-        # Dense and sparse upserts should have been called
-        assert vector_store.upsert_dense.call_count >= 5
-        assert vector_store.upsert_sparse.call_count >= 5
-        # All dense upserts should go to artifacts_dense
-        for call in vector_store.upsert_dense.call_args_list:
-            assert (
-                call.kwargs.get("collection", call.args[0] if call.args else None)
-                == "artifacts_dense"
-            )
+        # No facts → no embeddings, no Qdrant writes.
+        embedding_svc.embed_texts.assert_not_called()
+        vector_store.upsert_dense.assert_not_called()
+        vector_store.upsert_sparse.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_facts_indexed_to_memories(self):
@@ -233,13 +230,12 @@ class TestIndexStageOutput:
         Postgres is the single source of truth and is consulted at retrieve
         time. See docs/specs/memory-refactor/phase-3-data-integrity.md §R2.
         """
-        text = "## Foundations\nSome content.\n"
-        extraction = _make_extraction(facts=[])
+        extraction = _make_extraction(facts=["Hypothalamic foundations."])
         embedding_svc = _make_embedding_service()
         vector_store = _make_vector_store()
 
         await index_stage_output(
-            "researcher", text, extraction, embedding_svc, vector_store, "run-1"
+            "researcher", "", extraction, embedding_svc, vector_store, "run-1"
         )
 
         for call in (
@@ -261,12 +257,6 @@ class TestIndexStageOutput:
     async def test_namespace_inferred_from_stage(self):
         """Namespace mapping: researcher->paradigm, formalizer->formulation, reasoner->formulation, builder->model."""
         embedding_svc = _make_embedding_service()
-        stage_text = {
-            "researcher": "## Section\nContent.\n",
-            "formalizer": "### Formulation 1: X\nY\n",
-            "reasoner": '{"key": "val"}',
-            "builder": "class Model: pass",
-        }
         stage_ns = {
             "researcher": "paradigm",
             "formalizer": "formulation",
@@ -275,18 +265,20 @@ class TestIndexStageOutput:
         }
         for stage, expected_ns in stage_ns.items():
             store = _make_vector_store()
-            extraction = _make_extraction(stage=stage)
+            extraction = _make_extraction(stage=stage, facts=["A fact for routing."])
 
             await index_stage_output(
-                stage, stage_text[stage], extraction, embedding_svc, store, "run-1"
+                stage, "", extraction, embedding_svc, store, "run-1"
             )
 
-            if store.upsert_dense.call_count > 0:
-                call = store.upsert_dense.call_args_list[0]
-                payload = call.kwargs.get("payload") or call.args[3]
-                assert payload["namespace"] == expected_ns, (
-                    f"Stage {stage} should map to namespace {expected_ns}"
-                )
+            assert store.upsert_dense.call_count == 1, (
+                f"Stage {stage} should produce a single dense upsert"
+            )
+            call = store.upsert_dense.call_args_list[0]
+            payload = call.kwargs.get("payload") or call.args[3]
+            assert payload["namespace"] == expected_ns, (
+                f"Stage {stage} should map to namespace {expected_ns}"
+            )
 
     @pytest.mark.asyncio
     async def test_total_chunks_equals_artifacts_plus_facts(self):
@@ -324,42 +316,38 @@ class TestIndexStageOutput:
         retrieval path batch-reads it at query time.
         """
         embedding_svc = _make_embedding_service()
-        stage_text = {
-            "researcher": "## Section\nX.\n",
-            "formalizer": "### Formulation 1: X\nY\n",
-            "reasoner": '{"k": "v"}',
-            "builder": "class M: pass",
-        }
-        for stage in stage_text:
+        stages = ("researcher", "formalizer", "reasoner", "builder")
+        for stage in stages:
             store = _make_vector_store()
-            extraction = _make_extraction(stage=stage)
+            extraction = _make_extraction(stage=stage, facts=["A fact."])
             await index_stage_output(
-                stage, stage_text[stage], extraction, embedding_svc, store, "run-1"
+                stage, "", extraction, embedding_svc, store, "run-1"
             )
-            if store.upsert_dense.call_count > 0:
-                call = store.upsert_dense.call_args_list[0]
-                payload = call.kwargs.get("payload") or call.args[3]
-                assert "confidence" not in payload, (
-                    f"Stage {stage} payload still carries confidence"
-                )
+            assert store.upsert_dense.call_count == 1, (
+                f"Stage {stage} should produce a single dense upsert"
+            )
+            call = store.upsert_dense.call_args_list[0]
+            payload = call.kwargs.get("payload") or call.args[3]
+            assert "confidence" not in payload, (
+                f"Stage {stage} payload still carries confidence"
+            )
 
     @pytest.mark.asyncio
     async def test_embed_texts_count_mismatch_raises(self):
-        """embed_texts returning fewer vectors than texts should raise RuntimeError."""
-        text = "## Section One\nContent one.\n\n## Section Two\nContent two.\n\n## Section Three\nContent three.\n"
-        extraction = _make_extraction(facts=[])
+        """embed_texts returning fewer vectors than fact-texts should raise RuntimeError."""
+        extraction = _make_extraction(facts=["fact 1", "fact 2", "fact 3"])
         vector_store = _make_vector_store()
 
         svc = AsyncMock()
         svc.embed_texts = AsyncMock(
             return_value=[[0.1] * 1024]
-        )  # only 1 vector for 3 chunks
+        )  # only 1 vector for 3 facts
 
         with pytest.raises(
             RuntimeError, match="embed_texts returned 1 vectors for 3 texts"
         ):
             await index_stage_output(
-                "researcher", text, extraction, svc, vector_store, "run-1"
+                "researcher", "", extraction, svc, vector_store, "run-1"
             )
 
     def test_formalizer_no_headers_returns_empty(self):

@@ -26,13 +26,10 @@ from shared.settings import Settings
 BM25_MODEL = "Qdrant/bm25"
 
 COLLECTIONS_DENSE = {
-    "artifacts_dense": 1024,
     "memories_dense": 1024,
-    "kg_entities_dense": 1024,
 }
 
 COLLECTIONS_SPARSE = [
-    "artifacts_sparse",
     "memories_sparse",
 ]
 
@@ -58,7 +55,12 @@ class VectorStore:
         self._client = AsyncQdrantClient(url=self._url)
 
     async def init_collections(self) -> None:
-        """Create all 4 collections if they don't already exist (idempotent).
+        """Create the managed collections if they don't already exist (idempotent).
+
+        After P4-002 the only managed collections are ``memories_dense`` and
+        ``memories_sparse``. ``artifacts_*`` were dropped (raw stage output
+        is on MinIO and was never queried by the agent loop) and
+        ``kg_entities_dense`` moved to a native Neo4j vector index.
 
         Sparse collections use ``Modifier.IDF`` so Qdrant applies BM25's
         IDF weighting server-side; tokenization happens client-side via

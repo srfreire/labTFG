@@ -1,9 +1,11 @@
-"""ANN-backed entity linking — replaces the O(N) Cypher table scan
-with a single Qdrant ANN call against kg_entities_dense.
+"""Vector-index entity linking — replaces the prior Qdrant
+``kg_entities_dense`` round-trip with a single Cypher
+``db.index.vector.queryNodes`` call against the label's native Neo4j
+vector index (P4-002).
 
 Ordering inside _link_entities:
     1. Exact case-insensitive match on the label's name property.
-    2. ANN against kg_entities_dense (Task 4).
+    2. ANN against the label's native Neo4j vector index.
     3. (no fallback to table scan — that path is deleted).
 """
 
@@ -12,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from decisionlab.knowledge.retrieval import kg_retrieval as kg_r
-from shared.vector_store import ScoredPoint
 
 
 @pytest.mark.asyncio
@@ -43,76 +44,82 @@ async def test_link_entities_falls_through_to_ann_when_no_exact_match(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_ann_below_threshold_returns_empty(monkeypatch):
-    """If best ANN hit is below the similarity threshold, return [] —
+async def test_ann_below_threshold_returns_empty():
+    """If best vector hit is below the similarity threshold, return [] —
     no fallback to table scan."""
-    fake_vec = MagicMock()
-    fake_vec.search_dense = AsyncMock(
-        return_value=[
-            ScoredPoint(
-                id="Paradigm:foo",
-                score=0.50,
-                payload={"label": "Paradigm", "key_value": "foo", "name": "Foo"},
-            )
-        ]
-    )
-    monkeypatch.setattr(kg_r, "_get_vector_store", lambda: fake_vec)
-
     fake_emb = MagicMock()
     fake_emb.embed_query = AsyncMock(return_value=[0.1] * 1024)
 
     fake_kg = MagicMock()
+    fake_kg.query = AsyncMock(
+        return_value=[{"id": "el-low", "name": "Foo", "score": 0.50}]
+    )
 
     out = await kg_r._link_entities_ann("Paradigm", "FooQuery", fake_emb, fake_kg)
     assert out == []
+    fake_kg.query.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_ann_above_threshold_resolves_element_id(monkeypatch):
-    """Above-threshold ANN hit resolves elementId via indexed Cypher MATCH
-    on the natural key — keeps the O(1) lookup but skips the O(N) scan."""
-    fake_vec = MagicMock()
-    fake_vec.search_dense = AsyncMock(
-        return_value=[
-            ScoredPoint(
-                id="Paradigm:rl",
-                score=0.92,
-                payload={
-                    "label": "Paradigm",
-                    "key_value": "rl",
-                    "name": "Reinforcement Learning",
-                },
-            )
-        ]
-    )
-    monkeypatch.setattr(kg_r, "_get_vector_store", lambda: fake_vec)
-
+async def test_ann_above_threshold_returns_linked_entity():
+    """Above-threshold vector hit returns elementId + display name from
+    the same Cypher call — no second hop needed."""
     fake_emb = MagicMock()
     fake_emb.embed_query = AsyncMock(return_value=[0.1] * 1024)
 
     fake_kg = MagicMock()
-    fake_kg.unique_key_for = MagicMock(return_value="slug")
     fake_kg.query = AsyncMock(
-        return_value=[{"id": "el-42", "name": "Reinforcement Learning"}]
+        return_value=[
+            {"id": "el-42", "name": "Reinforcement Learning", "score": 0.92},
+        ]
     )
 
     out = await kg_r._link_entities_ann("Paradigm", "RL", fake_emb, fake_kg)
     assert len(out) == 1
     assert out[0].node_id == "el-42"
     assert out[0].label == "Paradigm"
+    assert out[0].name == "Reinforcement Learning"
     assert out[0].confidence == 0.92
+
+    # Confirm the Cypher call shape.
+    cypher, params = fake_kg.query.await_args.args
+    assert "db.index.vector.queryNodes" in cypher
+    assert params["index_name"] == "paradigm_embedding_idx"
+    assert params["k"] == 5
+    assert params["vector"] == [0.1] * 1024
 
 
 @pytest.mark.asyncio
-async def test_ann_no_vector_store_returns_empty(monkeypatch):
-    """If shared.vectors is not initialised (e.g. Qdrant down), return
-    [] cleanly rather than crashing."""
-    monkeypatch.setattr(kg_r, "_get_vector_store", lambda: None)
-
+async def test_ann_label_without_vector_index_returns_empty():
+    """Labels without a vector index (e.g. Paper, Author, Equation,
+    BrainRegion, Parameter) short-circuit to []."""
     fake_emb = MagicMock()
     fake_emb.embed_query = AsyncMock(return_value=[0.1] * 1024)
 
     fake_kg = MagicMock()
+    fake_kg.query = AsyncMock()
 
-    out = await kg_r._link_entities_ann("Paradigm", "RL", fake_emb, fake_kg)
+    out = await kg_r._link_entities_ann("Paper", "Some Paper", fake_emb, fake_kg)
     assert out == []
+    # No vector index → never embeds, never queries.
+    fake_emb.embed_query.assert_not_awaited()
+    fake_kg.query.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ann_label_with_index_but_no_name_prop_returns_empty():
+    """Labels in `_VECTOR_INDEX_LABELS` (write side) but missing from
+    `_LABEL_NAME_PROP` (read side) — Postulate, Formulation, Model —
+    return [] cleanly instead of KeyError. Today these labels aren't
+    surfaced through NER, but the read path must stay defensive."""
+    fake_emb = MagicMock()
+    fake_emb.embed_query = AsyncMock(return_value=[0.1] * 1024)
+
+    fake_kg = MagicMock()
+    fake_kg.query = AsyncMock()
+
+    for label in ("Postulate", "Formulation", "Model"):
+        out = await kg_r._link_entities_ann(label, "anything", fake_emb, fake_kg)
+        assert out == [], f"{label} should short-circuit"
+    fake_emb.embed_query.assert_not_awaited()
+    fake_kg.query.assert_not_awaited()

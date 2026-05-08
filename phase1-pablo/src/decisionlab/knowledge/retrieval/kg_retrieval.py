@@ -15,18 +15,9 @@ from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.query_rewriter import rewrite as _rewrite
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
-from shared.knowledge_graph import KnowledgeGraph
-from shared.vector_store import VectorStore
+from shared.knowledge_graph import KnowledgeGraph, vector_index_name
 
 logger = logging.getLogger(__name__)
-
-
-def _get_vector_store() -> VectorStore | None:
-    """Lazy lookup of shared.vectors — None if not initialised. Test
-    seam: monkeypatch this to inject a fake."""
-    import shared
-
-    return shared.vectors
 
 
 _FAST_MODEL = SETTINGS.knowledge_fast_model
@@ -209,53 +200,50 @@ async def _link_entities_ann(
     embedding_service: EmbeddingService,
     kg: KnowledgeGraph,
 ) -> list[_LinkedEntity]:
-    """ANN-backed entity linking against kg_entities_dense.
+    """Vector-index entity linking against the native Neo4j vector index.
 
-    Replaces the prior O(N) Cypher table scan + Python cosine loop:
-    one Qdrant ANN query filtered by label, then a single indexed
-    Cypher MATCH per surviving hit to recover ``elementId``.
+    P4-002: replaces the prior Qdrant ``kg_entities_dense`` round-trip
+    with a single ``db.index.vector.queryNodes`` Cypher call against the
+    label's ``<label>_embedding_idx``. Returns elementId + display name
+    in the same query — no second hop needed.
 
-    Hits scoring below ``_SIMILARITY_THRESHOLD`` are discarded — no
-    fallback to a table scan.
+    Labels without a vector index (Equation, BrainRegion, Author, Paper,
+    Parameter) return ``[]``. Hits scoring below ``_SIMILARITY_THRESHOLD``
+    are discarded.
     """
-    vec = _get_vector_store()
-    if vec is None:
+    try:
+        index_name = vector_index_name(label)
+    except ValueError:
+        return []
+
+    # `_VECTOR_INDEX_LABELS` is broader than `_LABEL_NAME_PROP` (e.g.
+    # Postulate/Formulation/Model carry vector indexes for write-side
+    # use but aren't surfaced through NER). Without a name property to
+    # display we can't build a useful `_LinkedEntity`; bail out.
+    name_prop = _LABEL_NAME_PROP.get(label)
+    if name_prop is None:
         return []
 
     query_vec = await embedding_service.embed_query(name)
-    hits = await vec.search_dense(
-        "kg_entities_dense",
-        query_vec,
-        limit=5,
-        filters={"label": label},
+    rows = await kg.query(
+        "CALL db.index.vector.queryNodes($index_name, $k, $vector) "
+        "YIELD node, score "
+        f"WHERE '{label}' IN labels(node) "
+        f"RETURN elementId(node) AS id, node.{name_prop} AS name, score",
+        {"index_name": index_name, "k": 5, "vector": query_vec},
     )
 
     out: list[_LinkedEntity] = []
-    for h in hits:
-        if (h.score or 0.0) < _SIMILARITY_THRESHOLD:
+    for row in rows:
+        score = float(row.get("score") or 0.0)
+        if score < _SIMILARITY_THRESHOLD:
             continue
-        payload = h.payload or {}
-        key_value = payload.get("key_value")
-        if not key_value:
-            continue
-        try:
-            unique_key = kg.unique_key_for(label)
-        except (ValueError, AttributeError):
-            continue
-        rows = await kg.query(
-            f"MATCH (n:{label} {{{unique_key}: $key_value}}) "
-            f"RETURN elementId(n) AS id, n.{_LABEL_NAME_PROP[label]} AS name",
-            {"key_value": key_value},
-        )
-        if not rows:
-            continue
-        row = rows[0]
         out.append(
             _LinkedEntity(
                 node_id=row["id"],
                 label=label,
-                name=row.get("name") or payload.get("name", ""),
-                confidence=float(h.score),
+                name=row.get("name") or "",
+                confidence=score,
             )
         )
     return out
@@ -270,8 +258,9 @@ async def _link_entities(
 
     Strategy per entity:
     1. Exact match (case-insensitive) on the label's name property.
-    2. If no exact match, ANN against ``kg_entities_dense`` filtered by
-       label (one Qdrant call, no table scan).
+    2. If no exact match, vector-index ANN against the label's native
+       Neo4j vector index (``<label>_embedding_idx``). Single Cypher
+       call, no Qdrant round-trip.
     """
     linked: list[_LinkedEntity] = []
 
@@ -299,7 +288,7 @@ async def _link_entities(
             )
             continue
 
-        # --- ANN match against kg_entities_dense ---
+        # --- ANN match against Neo4j vector index ---
         linked.extend(
             await _link_entities_ann(label, entity_name, embedding_service, kg)
         )

@@ -155,16 +155,26 @@ async def index_stage_output(
     vector_store: VectorStore,
     run_id: str,
 ) -> IndexResult:
-    """Chunk, embed, and upsert stage output + extracted facts to Qdrant."""
+    """Chunk extracted facts and upsert them to Qdrant ``memories_*``.
+
+    P4-002: artifact chunks (raw stage output) are still produced for
+    counting and downstream chunk consumers but no longer written to
+    Qdrant — the ``artifacts_dense/sparse`` collections were dropped
+    because nothing in the agent loop queried them. Facts continue to
+    flow into ``memories_dense`` / ``memories_sparse`` as the canonical
+    retrieval surface.
+    """
     artifact_chunks = chunk_stage_output(stage, output_text)
     fact_chunks = [Chunk(text=f, chunk_type="fact") for f in extraction.facts]
 
-    all_chunks = artifact_chunks + fact_chunks
-    if not all_chunks:
-        return IndexResult(artifacts_indexed=0, facts_indexed=0, total_chunks=0)
+    if not fact_chunks:
+        return IndexResult(
+            artifacts_indexed=len(artifact_chunks),
+            facts_indexed=0,
+            total_chunks=len(artifact_chunks),
+        )
 
-    # Embed all chunks in one batch
-    texts = [c.text for c in all_chunks]
+    texts = [c.text for c in fact_chunks]
     vectors = await embedding_service.embed_texts(texts)
     if len(vectors) != len(texts):
         raise RuntimeError(
@@ -175,11 +185,12 @@ async def index_stage_output(
     namespace = _STAGE_NAMESPACE.get(stage, "meta")
     now = datetime.now(UTC).isoformat()
 
-    _COLLECTION_PREFIX = {"artifact": "artifacts", "fact": "memories"}
-
+    # Fact ids start past the artifact slot range so the deterministic
+    # UUIDs stay stable even though we no longer upsert artifact points.
+    artifact_offset = len(artifact_chunks)
     upsert_tasks = []
-    for i, chunk in enumerate(all_chunks):
-        point_id = _make_point_id(run_id, stage, i)
+    for i, chunk in enumerate(fact_chunks):
+        point_id = _make_point_id(run_id, stage, artifact_offset + i)
         # P3-002: confidence is no longer written to Qdrant payloads.
         # Postgres `memories.confidence` is the single source of truth and
         # is batch-fetched in retrieval/_apply_recency_weighting.
@@ -192,12 +203,9 @@ async def index_stage_output(
             "created_at": now,
             "text_preview": chunk.text[:200],
         }
-
-        prefix = _COLLECTION_PREFIX[chunk.chunk_type]
-
         upsert_tasks.append(
             vector_store.upsert_dense(
-                collection=f"{prefix}_dense",
+                collection="memories_dense",
                 id=point_id,
                 vector=vectors[i],
                 payload=payload,
@@ -205,7 +213,7 @@ async def index_stage_output(
         )
         upsert_tasks.append(
             vector_store.upsert_sparse(
-                collection=f"{prefix}_sparse",
+                collection="memories_sparse",
                 id=point_id,
                 text=chunk.text,
                 payload=payload,
@@ -217,11 +225,11 @@ async def index_stage_output(
     artifacts = len(artifact_chunks)
     facts = len(fact_chunks)
     logger.info(
-        "Indexed %d artifacts + %d facts for stage=%s run=%s",
-        artifacts,
+        "Indexed %d facts for stage=%s run=%s (%d artifact chunks ignored)",
         facts,
         stage,
         run_id,
+        artifacts,
     )
 
     return IndexResult(

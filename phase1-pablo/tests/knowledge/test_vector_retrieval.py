@@ -44,24 +44,22 @@ def _scored(
 
 
 def _mock_vs(
-    dense_artifacts: list[ScoredPoint] | None = None,
     dense_memories: list[ScoredPoint] | None = None,
-    sparse_artifacts: list[ScoredPoint] | None = None,
     sparse_memories: list[ScoredPoint] | None = None,
 ) -> AsyncMock:
-    """Build a mock VectorStore that returns preset results per collection."""
+    """Build a mock VectorStore that returns preset results per collection.
+
+    P4-002 dropped the ``artifacts_*`` collections; only ``memories_*``
+    survive on the retrieval path.
+    """
     vs = AsyncMock()
 
     async def _search_dense(collection, vector, limit=20, filters=None):
-        if collection == "artifacts_dense":
-            return dense_artifacts or []
         if collection == "memories_dense":
             return dense_memories or []
         return []
 
     async def _search_sparse(collection, query, limit=20, filters=None):
-        if collection == "artifacts_sparse":
-            return sparse_artifacts or []
         if collection == "memories_sparse":
             return sparse_memories or []
         return []
@@ -85,8 +83,10 @@ def _mock_emb(vector: list[float] | None = None) -> AsyncMock:
 async def test_dense_retrieval_returns_results():
     """Dense search returns RetrievalResult objects with source='dense'."""
     vs = _mock_vs(
-        dense_artifacts=[_scored("a1", 0.92, text="hedonic reward paradigm")],
-        dense_memories=[_scored("m1", 0.85, text="incentive salience model")],
+        dense_memories=[
+            _scored("m1", 0.92, text="hedonic reward paradigm"),
+            _scored("m2", 0.85, text="incentive salience model"),
+        ],
     )
     emb = _mock_emb()
 
@@ -107,7 +107,7 @@ async def test_dense_retrieval_returns_results():
 async def test_sparse_retrieval_returns_results():
     """Sparse search returns RetrievalResult objects with source='sparse'."""
     vs = _mock_vs(
-        sparse_artifacts=[_scored("a1", 12.5, text="Berridge Robinson 1998 citation")],
+        sparse_memories=[_scored("m1", 12.5, text="Berridge Robinson 1998 citation")],
     )
 
     results = await sparse_retrieve("Berridge Robinson 1998", vs)
@@ -150,7 +150,7 @@ async def test_exclude_run_id_reaches_vector_store_as_must_not_filter():
     ``search_dense`` carries the exclusion under ``_exclude.run_id``.
     """
     vs = _mock_vs(
-        dense_artifacts=[_scored("a1", 0.9, run_id="other-run")],
+        dense_memories=[_scored("m1", 0.9, run_id="other-run")],
     )
     emb = _mock_emb()
 
@@ -201,8 +201,8 @@ async def test_namespace_filter_on_sparse():
 async def test_vector_retrieve_returns_both_channels():
     """vector_retrieve returns (dense_results, sparse_results) tuple."""
     vs = _mock_vs(
-        dense_artifacts=[_scored("d1", 0.9)],
-        sparse_artifacts=[_scored("s1", 5.0)],
+        dense_memories=[_scored("d1", 0.9)],
+        sparse_memories=[_scored("s1", 5.0)],
     )
     emb = _mock_emb()
 
@@ -285,10 +285,10 @@ async def test_vector_retrieve_empty():
 async def test_sparse_scores_normalized_0_to_1():
     """Sparse results have scores normalized to 0-1 range."""
     vs = _mock_vs(
-        sparse_artifacts=[
-            _scored("a1", 10.0),
-            _scored("a2", 5.0),
-            _scored("a3", 2.5),
+        sparse_memories=[
+            _scored("m1", 10.0),
+            _scored("m2", 5.0),
+            _scored("m3", 2.5),
         ],
     )
 
@@ -303,7 +303,7 @@ async def test_sparse_scores_normalized_0_to_1():
 async def test_dense_scores_used_directly():
     """Dense results use Qdrant cosine similarity scores directly (already 0-1)."""
     vs = _mock_vs(
-        dense_artifacts=[_scored("a1", 0.92)],
+        dense_memories=[_scored("m1", 0.92)],
     )
     emb = _mock_emb()
 
@@ -319,7 +319,6 @@ async def test_dense_scores_used_directly():
 async def test_result_metadata_includes_collection_source():
     """Results include the collection they came from in metadata."""
     vs = _mock_vs(
-        dense_artifacts=[_scored("a1", 0.9)],
         dense_memories=[_scored("m1", 0.8)],
     )
     emb = _mock_emb()
@@ -327,8 +326,7 @@ async def test_result_metadata_includes_collection_source():
     results = await dense_retrieve("test", emb, vs)
 
     collections = {r.metadata["collection"] for r in results}
-    assert "artifacts_dense" in collections
-    assert "memories_dense" in collections
+    assert collections == {"memories_dense"}
 
 
 # -- min_confidence filter -----------------------------------------------------

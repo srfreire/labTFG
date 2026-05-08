@@ -76,7 +76,7 @@ async def test_kg_and_vector_paradigm_round_trip(kg_service, vector_store):
     vector = [0.0] * 1024
     vector[7] = 1.0
     await vector_store.upsert_dense(
-        "artifacts_dense",
+        "memories_dense",
         pid,
         vector,
         {
@@ -98,7 +98,7 @@ async def test_kg_and_vector_paradigm_round_trip(kg_service, vector_store):
 
     # Vector search finds the same paradigm by payload
     results = await vector_store.search_dense(
-        "artifacts_dense", vector, limit=5, filters={"namespace": "paradigm"}
+        "memories_dense", vector, limit=5, filters={"namespace": "paradigm"}
     )
     matched = next((r for r in results if r.id == pid), None)
     assert matched is not None

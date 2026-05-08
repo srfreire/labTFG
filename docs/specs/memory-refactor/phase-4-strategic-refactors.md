@@ -1,6 +1,6 @@
 # Phase 4: Strategic refactors
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-09
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A2, §A3, §A7, §A9
 
 ## Objective
@@ -127,7 +127,7 @@ relation semantics.
       `shared.kg/vectors/embeddings` deleted in the same PR. Phase 1
       ↔ Phase 2 import cycle resolved (no `simlab` import inside
       `shared/__init__.py`).
-- [ ] AC2: `artifacts_dense` + `artifacts_sparse` Qdrant collections
+- [x] AC2: `artifacts_dense` + `artifacts_sparse` Qdrant collections
       deleted. `kg_entities_dense` deleted; Neo4j has a vector index
       on `Paradigm.embedding` (and Variable, Postulate, Formulation,
       Model). Retrieval entity-link uses `db.index.vector.queryNodes`.

@@ -51,6 +51,19 @@ async def test_init_schema_is_idempotent(kg: KnowledgeGraph):
     # No error = pass
 
 
+@pytest.mark.asyncio
+async def test_init_schema_creates_vector_indexes(kg: KnowledgeGraph):
+    """P4-002: init_schema creates a native vector index for each
+    slug-like label so retrieval can entity-link via
+    ``db.index.vector.queryNodes``."""
+    rows = await kg.query("SHOW VECTOR INDEXES YIELD name RETURN name")
+    names = {r["name"] for r in rows}
+    for label in ("Paradigm", "Variable", "Postulate", "Formulation", "Model"):
+        assert f"{label.lower()}_embedding_idx" in names, (
+            f"vector index for {label} missing — got {names}"
+        )
+
+
 # -- AC2: create nodes + SUPPORTS relation + query neighbors -------------------
 
 

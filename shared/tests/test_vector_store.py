@@ -16,21 +16,25 @@ pytestmark = pytest.mark.integration
 
 
 MANAGED_COLLECTIONS = [
-    "artifacts_dense",
     "memories_dense",
-    "artifacts_sparse",
     "memories_sparse",
 ]
 
 
+DROPPED_COLLECTIONS = ("artifacts_dense", "artifacts_sparse", "kg_entities_dense")
+
+
 @pytest_asyncio.fixture
 async def vs():
-    """Yield a connected VectorStore with clean collections; close on teardown."""
+    """Yield a connected VectorStore with clean collections; close on teardown.
+
+    Wipes both the managed collections (memories_*) and the P4-002
+    dropped collections so each test starts from a known-empty Qdrant.
+    """
     svc = VectorStore(Settings())
     await svc.connect()
-    # Wipe managed collections so tests start from a clean state
     client = svc._c()
-    for name in MANAGED_COLLECTIONS:
+    for name in (*MANAGED_COLLECTIONS, *DROPPED_COLLECTIONS):
         with contextlib.suppress(Exception):
             await client.delete_collection(name)
     yield svc
@@ -54,18 +58,29 @@ def _payload(namespace: str = "paradigm", confidence: float = 0.8) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_init_collections_creates_all_four(vs: VectorStore):
-    """init_collections creates all 4 collections on fresh Qdrant."""
+async def test_init_collections_creates_managed(vs: VectorStore):
+    """init_collections creates the managed collections on fresh Qdrant.
+
+    P4-002 collapsed the layout to ``memories_*`` only.
+    """
     await vs.init_collections()
     client = vs._c()
     names = {c.name for c in (await client.get_collections()).collections}
-    for expected in (
-        "artifacts_dense",
-        "memories_dense",
-        "artifacts_sparse",
-        "memories_sparse",
-    ):
+    for expected in ("memories_dense", "memories_sparse"):
         assert expected in names, f"{expected} not created"
+
+
+@pytest.mark.asyncio
+async def test_init_collections_does_not_create_dropped(vs: VectorStore):
+    """init_collections must not bring back the P4-002 drops on a Qdrant
+    where they're already absent (the post-migration state)."""
+    await vs.init_collections()
+    client = vs._c()
+    names = {c.name for c in (await client.get_collections()).collections}
+    for dropped in DROPPED_COLLECTIONS:
+        assert dropped not in names, (
+            f"{dropped} reappeared — P4-002 should keep it gone"
+        )
 
 
 @pytest.mark.asyncio
@@ -75,7 +90,7 @@ async def test_init_collections_idempotent(vs: VectorStore):
     await vs.init_collections()  # should not raise
     client = vs._c()
     names = [c.name for c in (await client.get_collections()).collections]
-    assert names.count("artifacts_dense") == 1
+    assert names.count("memories_dense") == 1
 
 
 # -- AC2: dense upsert + search -----------------------------------------------
@@ -85,7 +100,7 @@ async def test_init_collections_idempotent(vs: VectorStore):
 async def test_dense_upsert_and_search(vs: VectorStore):
     """Can upsert a dense vector and search it back with correct payload."""
     await vs.init_collections()
-    coll = "artifacts_dense"
+    coll = "memories_dense"
     point_id = str(uuid.uuid4())
     vector = [0.1] * 1024
     payload = _payload()
@@ -107,7 +122,7 @@ async def test_dense_upsert_and_search(vs: VectorStore):
 async def test_sparse_upsert_and_search(vs: VectorStore):
     """Can upsert text and search it back via native BM25."""
     await vs.init_collections()
-    coll = "artifacts_sparse"
+    coll = "memories_sparse"
     point_id = str(uuid.uuid4())
     text = "dopamine modulates reward prediction in the ventral tegmental area"
     payload = _payload()
@@ -125,7 +140,7 @@ async def test_sparse_upsert_and_search(vs: VectorStore):
 async def test_sparse_bm25_idf_ranks_rare_terms_higher(vs: VectorStore):
     """Rare terms contribute more to BM25 score than common terms (server-side IDF)."""
     await vs.init_collections()
-    coll = "artifacts_sparse"
+    coll = "memories_sparse"
 
     # Background docs establish IDF statistics for common filler words
     filler_upserts = [
@@ -162,7 +177,7 @@ async def test_sparse_bm25_idf_ranks_rare_terms_higher(vs: VectorStore):
 async def test_filter_by_namespace(vs: VectorStore):
     """Upsert 3 points with different namespaces, filter returns only matching."""
     await vs.init_collections()
-    coll = "artifacts_dense"
+    coll = "memories_dense"
     vector = [0.5] * 1024
 
     ids = []
@@ -213,7 +228,7 @@ async def test_filter_by_confidence_threshold(vs: VectorStore):
 async def test_delete_removes_points(vs: VectorStore):
     """delete() removes points and subsequent search does not return them."""
     await vs.init_collections()
-    coll = "artifacts_dense"
+    coll = "memories_dense"
     point_id = str(uuid.uuid4())
     # Use a distinct vector direction so this point is uniquely the top result
     vector = [0.0] * 1024
@@ -239,7 +254,7 @@ async def test_not_connected_raises():
     """Calling methods before connect() raises RuntimeError."""
     svc = VectorStore(Settings())
     with pytest.raises(RuntimeError, match="not connected"):
-        await svc.upsert_dense("artifacts_dense", "x", [0.0] * 1024, {})
+        await svc.upsert_dense("memories_dense", "x", [0.0] * 1024, {})
 
 
 # -- Upsert idempotency: re-upsert updates payload ----------------------------

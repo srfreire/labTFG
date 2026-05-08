@@ -17,7 +17,6 @@ from shared.knowledge_graph import KnowledgeGraph
 if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
-    from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +27,6 @@ def _get_embedding_service() -> EmbeddingService | None:
     import shared
 
     return shared.embeddings
-
-
-def _get_vector_store() -> VectorStore | None:
-    """Lazy lookup of shared.vectors — None if not initialised. Test
-    seam: monkeypatch this to inject a fake."""
-    import shared
-
-    return shared.vectors
 
 
 def _get_db() -> DatabaseService | None:
@@ -283,9 +274,11 @@ async def populate_kg(
     # so relation lookups use the extraction's natural key, not the schema default.
     node_key_map: dict[tuple[str, str], str] = {}
 
-    # Slug-like nodes successfully written this batch — fed into the
-    # kg_entities_dense ANN index after the node loop so retrieval's
-    # _link_entities_ann can find them without an O(N) Cypher table scan.
+    # Slug-like nodes successfully written this batch — embeddings are
+    # written to `n.embedding` after the node loop so the native Neo4j
+    # vector index (`<label>_embedding_idx`) can answer entity-linking
+    # queries without leaving Neo4j (replaces the prior Qdrant
+    # `kg_entities_dense` round-trip — P4-002).
     ann_targets: list[
         tuple[str, str, str, str]
     ] = []  # (label, key_value, name, description)
@@ -509,36 +502,39 @@ async def populate_kg(
             )
 
     # ── ANN sync (best-effort) ───────────────────────────────────────────
-    # After all node writes, push the slug-like nodes into kg_entities_dense
-    # so retrieval._link_entities_ann can find them without a Cypher table
-    # scan. Fire-and-forget at this layer: a Voyage/Qdrant outage logs a
-    # warning but does not turn the KG write into a failure.
+    # After all node writes, embed the slug-like nodes and write the
+    # vector to `n.embedding` so the native Neo4j vector index
+    # (`<label>_embedding_idx`) can answer retrieval._link_entities_ann
+    # queries without leaving Neo4j. Fire-and-forget: a Voyage outage or
+    # Cypher write failure logs a warning but does not turn the KG write
+    # into a failure.
     if ann_targets:
         try:
             emb = _get_embedding_service()
-            vec = _get_vector_store()
-            if emb is not None and vec is not None:
+            if emb is not None:
                 texts = [
                     f"{name}: {desc}" if desc else name
                     for (_label, _key, name, desc) in ann_targets
                 ]
                 vecs = await emb.embed_texts(texts)
-                for (label, key_value, display_name, _desc), vector in zip(
+                for (label, key_value, _display_name, _desc), vector in zip(
                     ann_targets, vecs, strict=True
                 ):
-                    point_id = f"{label}:{key_value}"
-                    await vec.upsert_dense(
-                        "kg_entities_dense",
-                        id=point_id,
-                        vector=vector,
-                        payload={
-                            "label": label,
-                            "key_value": key_value,
-                            "name": display_name,
-                        },
+                    key_name = node_key_map.get((label, key_value))
+                    if key_name is None:
+                        try:
+                            key_name = kg.unique_key_for(label)
+                        except (ValueError, AttributeError):
+                            continue
+                    if not _SAFE_IDENT.match(key_name):
+                        continue
+                    await kg.query(
+                        f"MATCH (n:{label} {{{key_name}: $key_value}}) "
+                        f"SET n.embedding = $vector",
+                        {"key_value": key_value, "vector": vector},
                     )
         except Exception as exc:
-            logger.warning("kg_writer: ANN sync failed (non-fatal): %s", exc)
+            logger.warning("kg_writer: embedding sync failed (non-fatal): %s", exc)
 
     return KGWriteResult(**counters, errors=errors)
 

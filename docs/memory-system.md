@@ -15,7 +15,7 @@ by Phase 2.
 |---|---|---|---|---|
 | 1 | **Postgres 17** | `postgres:17-alpine` (port 5432) | Relational lifecycle of memories, runs, models, experiments, artifacts | `shared.database.DatabaseService` (SQLAlchemy 2.0 async) |
 | 2 | **Neo4j 5 community** | `neo4j:5-community` (7474/7687, APOC) | Knowledge graph: paradigms, papers, equations, postulates… and their relations | `shared.knowledge_graph.KnowledgeGraph` |
-| 3 | **Qdrant** | `qdrant/qdrant:latest` (6333/6334) | 5 collections: dense (Voyage 1024d) + sparse (BM25 native, IDF) | `shared.vector_store.VectorStore` |
+| 3 | **Qdrant** | `qdrant/qdrant:latest` (6333/6334) | 2 collections (memories_dense + memories_sparse): dense (Voyage 1024d) + sparse (BM25 native, IDF) | `shared.vector_store.VectorStore` |
 | 4 | **MinIO** | `minio/minio:latest` (9000/9001), bucket `labtfg` | Raw artifact bytes (reports, formulations, code, PDFs, charts, tracker JSON) | `shared.storage.StorageService` (aioboto3) |
 | 5 | **SQLite** | `data/labtfg.db` (local file, WAL) | Phase-2-only registry of dynamically loaded models + experiments | `shared.store` (sync sqlite3) |
 
@@ -217,9 +217,13 @@ CREATE (a)-[r2:REL $new_props]->(b)
 - **`_resolve_natural_key`** priority: schema unique key → declared
   natural_key → fallback (`slug, id, doi, url, name, title`) → synthetic
   hash (`_synthetic_id = h_<sha1[:16]>`).
-- **ANN sync (best-effort, fire-and-forget):** slug-like nodes are pushed to
-  `kg_entities_dense` so retrieval can entity-link via vector lookup
-  instead of an O(N) Cypher scan.
+- **Embedding sync (best-effort, fire-and-forget):** slug-like nodes
+  (Paradigm/Variable/Postulate/Formulation/Model) get
+  `n.embedding = $vector` written via Cypher after the MERGE. The
+  native Neo4j vector index `<label>_embedding_idx` (1024d cosine,
+  created in `init_schema`) lets retrieval entity-link via
+  `db.index.vector.queryNodes` without leaving Neo4j (P4-002 — replaced
+  the prior `kg_entities_dense` Qdrant round-trip).
 
 ### 3.4 Temporal queries
 
@@ -232,18 +236,20 @@ versions ordered by `valid_from`.
 
 ## 4. Qdrant — `shared/shared/vector_store.py`
 
-**5 collections.** All dense use cosine distance, dim 1024 (Voyage). All
-sparse use Qdrant's native BM25 (`Qdrant/bm25` model) with
-`Modifier.IDF` — tokenization is FastEmbed client-side, IDF + TF
+**2 managed collections** after P4-002. Dense uses cosine distance, dim
+1024 (Voyage). Sparse uses Qdrant's native BM25 (`Qdrant/bm25` model)
+with `Modifier.IDF` — tokenization is FastEmbed client-side, IDF + TF
 saturation + length normalization is server-side. **No custom tokenizer.**
 
 | Collection | Type | Dim | Source content |
 |---|---|---|---|
-| `artifacts_dense` | dense | 1024 | Pipeline stage output chunks (researcher reports, formulations, reasoner specs, builder code) |
-| `artifacts_sparse` | sparse | — | Same chunks, BM25 representation |
 | `memories_dense` | dense | 1024 | Extracted facts (Phase 1) + simulation observations (Phase 2) |
 | `memories_sparse` | sparse | — | Same facts, BM25 representation |
-| `kg_entities_dense` | dense | 1024 | Slug-like KG nodes for fast entity linking |
+
+P4-002 retired three collections: `artifacts_dense`, `artifacts_sparse`
+(raw stage output that the agent loop never queried — chunks live on
+MinIO instead), and `kg_entities_dense` (replaced by a native Neo4j
+vector index on `n.embedding` for slug-like labels — see §3.3).
 
 ### 4.1 Payload schema (every point)
 
@@ -320,12 +326,12 @@ Pipeline stage finishes
 ┌──────────────────────────┐    ┌──────────────────────────────────┐
 │  populate_kg → Neo4j     │    │  index_stage_output → Qdrant     │
 │  • per-node managed tx   │    │  • chunk by stage strategy:      │
-│  • MERGE + run_ids accum │    │    researcher: ## sections       │
+│  • MERGE + run_count     │    │    researcher: ## sections       │
 │  • temporal supersession │    │    formalizer: ### Formulations  │
 │  • slug validation       │    │    reasoner:   JSON keys (>4K)   │
-│  • ANN sync to           │    │    builder:    code blocks       │
-│    kg_entities_dense     │    │  • Voyage embed (batch=128)      │
-└──────────────────────────┘    │  • upsert dense + sparse         │
+│  • n.embedding sync to   │    │    builder:    code blocks       │
+│    Neo4j vector index    │    │  • Voyage embed (facts only)     │
+└──────────────────────────┘    │  • upsert memories_dense+sparse  │
                                  └──────────────────────────────────┘
       │
       ▼
@@ -410,8 +416,7 @@ asyncio.gather:
    ├─ kg_retrieve         → 2-hop BFS from linked entities,
    │                        score = confidence × 0.85^hops
    └─ vector_retrieve     → dense (Voyage voyage-4-lite query embed)
-                            + sparse (BM25 server-side) on
-                            artifacts_* AND memories_*
+                            + sparse (BM25 server-side) on memories_*
       │
       ▼
 fuse_and_rerank
@@ -489,13 +494,14 @@ not available". Never raises to the caller.
    ┌───────────────────────┐   ┌─────────────────────────┐   ┌───────────────────┐
    │      Neo4j            │   │        Postgres         │   │      Qdrant       │
    │                       │   │                         │   │                   │
-   │ Paradigm/Variable/    │   │  runs                   │   │ artifacts_dense   │
-   │ Equation/BrainRegion/ │◄──┤  models                 │   │ artifacts_sparse  │
-   │ Author/Paper/Postulate│   │  experiments            │   │ memories_dense    │
-   │ Formulation/Parameter/│   │  artifacts (s3 keys)    │◄──┤ memories_sparse   │
-   │ Model/Reflection      │   │  memories (lifecycle)   │   │ kg_entities_dense │
+   │ Paradigm/Variable/    │   │  runs                   │   │ memories_dense    │
+   │ Equation/BrainRegion/ │◄──┤  models                 │   │ memories_sparse   │
+   │ Author/Paper/Postulate│   │  experiments            │   │                   │
+   │ Formulation/Parameter/│   │  artifacts (s3 keys)    │◄──┤ same UUID as PG   │
+   │ Model/Reflection      │   │  memories (lifecycle)   │   │                   │
    │ + 11 rel types        │   │                         │   │                   │
-   │ + temporal metadata   │   │  same UUID as Qdrant    │   │ same UUID as PG   │
+   │ + temporal metadata   │   │  same UUID as Qdrant    │   │                   │
+   │ + n.embedding vec idx │   │                         │   │                   │
    └───────────┬───────────┘   └─────────────┬───────────┘   └─────────┬─────────┘
                │                              │                         │
                └──────────────┬───────────────┴─────────────────────────┘
@@ -942,7 +948,7 @@ non-extraction call sites still threading it (e.g. `canonicalize.py`,
 tiering. Slot defaults are env-overridable via `DECISIONLAB_KNOWLEDGE_FAST_MODEL`
 and `DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL`.
 
-## A9. The Qdrant collection layout duplicates work
+## A9. The Qdrant collection layout duplicates work — DONE 2026-05-09 (P4-002)
 
 Five collections, but two of them (`artifacts_dense`, `artifacts_sparse`)
 mirror chunked stage output that is **already on MinIO**. The Memory
@@ -970,6 +976,27 @@ manually keep it in sync (best-effort, fire-and-forget — see
 
 If you keep artifacts indexed, at least give them a TTL — they grow
 unboundedly per run with no pruning policy.
+
+### Resolution (P4-002)
+
+`artifacts_dense` / `artifacts_sparse` / `kg_entities_dense` deleted.
+Two managed Qdrant collections remain: `memories_dense` +
+`memories_sparse`. Slug-like KG nodes (`Paradigm`, `Variable`,
+`Postulate`, `Formulation`, `Model`) now carry an `n.embedding`
+property indexed by a native Neo4j 5 vector index
+`<label>_embedding_idx` (1024d cosine). `kg_writer` writes embeddings
+directly on the node via Cypher; retrieval entity-links with
+`db.index.vector.queryNodes(...)` instead of a Qdrant round-trip.
+`index_stage_output` no longer writes artifact chunks to Qdrant —
+artifact bytes still live on MinIO and are referenced via the
+`artifacts` Postgres table. One-shot cleanup:
+
+```bash
+# Populate the Neo4j vector index from existing nodes first
+uv run scripts/backfill_kg_entities.py
+# Drop the three Qdrant collections (back up first if needed)
+uv run scripts/qdrant_drop_artifacts.py
+```
 
 ## A10. Unbounded `run_ids` array on KG nodes
 
@@ -1105,7 +1132,7 @@ from automatic retention; see retention.md.
 | **A2** | Split or unify the memories table | L | clean Phase 1 ↔ Phase 2 boundary |
 | **A3** | One temporal lifecycle, replicated read-only | L | "as of T" queries become consistent |
 | **A7** | Drop module-level infra singletons | L | testability, parallel runs |
-| **A9** | Kill `artifacts_*` collections; move `kg_entities_dense` to Neo4j | M | one fewer store to sync |
+| ~~**A9**~~ | ~~Kill `artifacts_*` collections; move `kg_entities_dense` to Neo4j~~ — done in P4-002 | M | one fewer store to sync |
 | **A10** | Cap `run_ids` accumulation | S | KG node payload size |
 | **A13** | Reset KG between eval runs | S | deterministic eval signal |
 | **A11** | One experiment registry (Postgres) | S | no split-brain |

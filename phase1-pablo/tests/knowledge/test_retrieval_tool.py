@@ -440,11 +440,10 @@ class TestP3_002_RecencyConfidenceFromPG:
                 namespace="paradigm",
             ),
             _result(
-                "artifact hit",
+                "non-memory hit",
                 0.7,
-                "dense",
-                entity_id=str(uuid.uuid4()),
-                collection="artifacts_dense",
+                "web",
+                url="https://example.com",
                 namespace="paradigm",
             ),
         ]
@@ -470,23 +469,17 @@ class TestP3_002_RecencyConfidenceFromPG:
         by_text = {r.text: r for r in weighted}
         assert by_text["memory hit 1"].metadata["confidence_factor"] == 0.5
         assert by_text["memory hit 2"].metadata["confidence_factor"] == 0.4
-        # Artifact-only result has no PG row → factor stays 1.0.
-        assert by_text["artifact hit"].metadata["confidence_factor"] == 1.0
+        # Non-memory result (web fallback) has no PG row → factor stays 1.0.
+        assert by_text["non-memory hit"].metadata["confidence_factor"] == 1.0
 
     @pytest.mark.asyncio
     async def test_recency_weighting_skips_pg_when_no_memory_ids(self):
-        """AC3 corollary: pure artifact / web results → no PG round-trip."""
+        """AC3 corollary: pure non-memory results → no PG round-trip."""
         from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
 
         results = [
-            _result("web hit", 0.9, "web", url="https://example.com"),
-            _result(
-                "artifact",
-                0.8,
-                "dense",
-                entity_id=str(uuid.uuid4()),
-                collection="artifacts_dense",
-            ),
+            _result("web hit 1", 0.9, "web", url="https://example.com/1"),
+            _result("web hit 2", 0.8, "web", url="https://example.com/2"),
         ]
 
         mock_session = AsyncMock()

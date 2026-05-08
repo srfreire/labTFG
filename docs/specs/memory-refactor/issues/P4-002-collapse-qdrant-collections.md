@@ -1,14 +1,14 @@
 ---
 id: P4-002
 title: Collapse artifacts_* Qdrant collections and move kg_entities to Neo4j vector index
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: vectors
 priority: 2
 blocked_by: [P3-002, P3-003]
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-05-09
 ---
 
 # P4-002: Reduce Qdrant footprint, use Neo4j native vector index
@@ -52,17 +52,17 @@ Per phase spec R2:
 
 ## Acceptance Criteria
 
-- [ ] AC1: `artifacts_dense`, `artifacts_sparse`, `kg_entities_dense`
+- [x] AC1: `artifacts_dense`, `artifacts_sparse`, `kg_entities_dense`
       no longer in `vector_store.py`. `init_collections` only creates
       `memories_dense` / `memories_sparse`.
-- [ ] AC2: Neo4j has vector indexes on Paradigm/Variable/Postulate/
+- [x] AC2: Neo4j has vector indexes on Paradigm/Variable/Postulate/
       Formulation/Model `embedding` properties. `init_schema` is
       idempotent.
-- [ ] AC3: KG writer writes embeddings to `n.embedding` on each
+- [x] AC3: KG writer writes embeddings to `n.embedding` on each
       slug-like node. Retrieval entity linking queries via
       `db.index.vector.queryNodes`. Unit test covers both write and
       read paths.
-- [ ] AC4: One-shot drop script removes the three Qdrant collections
+- [x] AC4: One-shot drop script removes the three Qdrant collections
       cleanly on a populated dev DB.
 - [ ] AC5: Full eval suite green. `_link_entities_ann` retrieval
       latency does not regress vs Phase 3 baseline.

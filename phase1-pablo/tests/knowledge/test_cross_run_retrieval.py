@@ -54,7 +54,7 @@ class TestAC1_CrossRunRetrieval:
             ScoredPoint("p1", 0.9, {"text_preview": "run-1 fact", "run_id": "run-1"}),
             ScoredPoint("p2", 0.85, {"text_preview": "run-2 fact", "run_id": "run-2"}),
         ]
-        results = _to_results(points, "dense", "artifacts_dense")
+        results = _to_results(points, "dense", "memories_dense")
         assert len(results) == 2
 
 
@@ -166,7 +166,7 @@ class TestAC4_RunMetadataInResults:
             ),
         ]
 
-        results = _to_results(points, "dense", "artifacts_dense")
+        results = _to_results(points, "dense", "memories_dense")
 
         assert results[0].metadata["run_id"] == "run-1"
         assert results[0].metadata["run_date"] == ts
@@ -175,7 +175,7 @@ class TestAC4_RunMetadataInResults:
     def test_vector_results_without_created_at_have_no_run_date(self):
         """If created_at is missing, run_date is not added."""
         points = [ScoredPoint("p1", 0.9, {"text_preview": "fact", "run_id": "run-1"})]
-        results = _to_results(points, "dense", "artifacts_dense")
+        results = _to_results(points, "dense", "memories_dense")
         assert "run_date" not in results[0].metadata
 
     async def test_recency_preserves_all_existing_metadata(self):

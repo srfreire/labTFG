@@ -18,8 +18,8 @@ from shared.vector_store import ScoredPoint, VectorStore
 
 logger = logging.getLogger(__name__)
 
-_DENSE_COLLECTIONS = ("artifacts_dense", "memories_dense")
-_SPARSE_COLLECTIONS = ("artifacts_sparse", "memories_sparse")
+_DENSE_COLLECTIONS = ("memories_dense",)
+_SPARSE_COLLECTIONS = ("memories_sparse",)
 
 
 def _translate_filters(filters: dict | None) -> dict | None:
@@ -74,8 +74,9 @@ async def dense_retrieve(
 ) -> list[RetrievalResult]:
     """Retrieve via dense (semantic) vector search across both collections.
 
-    Embeds query with input_type="query", searches artifacts_dense and
-    memories_dense, merges results sorted by score descending.
+    Embeds query with input_type="query", searches ``memories_dense``,
+    sorts results by score descending. P4-002 dropped the parallel
+    ``artifacts_dense`` channel.
     """
     query_vec = await embedding_service.embed_query(query)
     qdrant_filters = _translate_filters(filters)
@@ -100,11 +101,11 @@ async def sparse_retrieve(
     limit: int = 20,
     filters: dict | None = None,
 ) -> list[RetrievalResult]:
-    """Retrieve via sparse (lexical/BM25) vector search across both collections.
+    """Retrieve via sparse (lexical/BM25) vector search.
 
     Passes raw query text to Qdrant's native BM25 search over
-    ``artifacts_sparse`` and ``memories_sparse``; merged scores are
-    normalized to 0-1.
+    ``memories_sparse``; scores are normalized to 0-1. P4-002 dropped
+    the parallel ``artifacts_sparse`` channel.
     """
     if not query.strip():
         return []

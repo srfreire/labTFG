@@ -51,6 +51,19 @@ _ALLOWED_REL_TYPES = frozenset(
 )
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
+# Labels that get a native Neo4j vector index on `n.embedding` (P4-002).
+# Replaces the dropped Qdrant `kg_entities_dense` collection — entity
+# linking now goes via `db.index.vector.queryNodes` on these indexes.
+_VECTOR_INDEX_LABELS = ("Paradigm", "Variable", "Postulate", "Formulation", "Model")
+_VECTOR_INDEX_DIMENSIONS = 1024
+
+
+def vector_index_name(label: str) -> str:
+    """Return the Neo4j vector index name for a slug-like label."""
+    if label not in _VECTOR_INDEX_LABELS:
+        raise ValueError(f"No vector index for label: {label!r}")
+    return f"{label.lower()}_embedding_idx"
+
 
 def _check_label(label: str) -> None:
     if label not in _ALLOWED_LABELS:
@@ -76,7 +89,7 @@ class KnowledgeGraph:
         self._driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
 
     async def init_schema(self) -> None:
-        """Create uniqueness constraints and indexes. Idempotent."""
+        """Create uniqueness constraints, indexes, and vector indexes. Idempotent."""
         async with self._driver.session() as session:
             for label, info in _SCHEMA.items():
                 key_prop = info["unique_key"]
@@ -92,6 +105,17 @@ class KnowledgeGraph:
                         f"CREATE INDEX {index_name} IF NOT EXISTS "
                         f"FOR (n:{label}) ON (n.{prop})"
                     )
+            for label in _VECTOR_INDEX_LABELS:
+                index_name = vector_index_name(label)
+                await session.run(
+                    f"CREATE VECTOR INDEX {index_name} IF NOT EXISTS "
+                    f"FOR (n:{label}) ON (n.embedding) "
+                    "OPTIONS { indexConfig: { "
+                    "`vector.dimensions`: $dims, "
+                    "`vector.similarity_function`: 'cosine' "
+                    "}}",
+                    {"dims": _VECTOR_INDEX_DIMENSIONS},
+                )
 
     async def create_node(self, label: str, properties: dict) -> str:
         """Create a node and return its element ID."""

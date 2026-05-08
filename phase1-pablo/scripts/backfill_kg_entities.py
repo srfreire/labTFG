@@ -1,8 +1,17 @@
-"""One-shot backfill: walk every Paradigm/Variable/Postulate node in
-Neo4j, embed (label, name, description), upsert into kg_entities_dense.
+"""One-shot backfill of ``n.embedding`` on slug-like KG nodes (P4-002).
 
-Idempotent — re-running with no changes is cheap (Voyage caches
-embeddings; Qdrant upserts overwrite on point id collision).
+Walks every Paradigm/Variable/Postulate/Formulation/Model node, embeds
+``"<name>: <description>"``, and writes the vector to ``n.embedding``
+via Cypher. Populates the native Neo4j vector index that replaced the
+dropped ``kg_entities_dense`` Qdrant collection.
+
+Idempotent — re-running with no schema changes is cheap. Existing
+``n.embedding`` values are overwritten with a fresh embedding (Voyage
+caches make this near-free).
+
+Usage:
+
+    uv run scripts/backfill_kg_entities.py
 """
 
 from __future__ import annotations
@@ -11,25 +20,21 @@ import asyncio
 import logging
 
 import shared
+from shared.knowledge_graph import _VECTOR_INDEX_LABELS
 
 logger = logging.getLogger(__name__)
 
 
-LABELS = ("Paradigm", "Variable", "Postulate")
-
-
 async def _backfill() -> None:
-    if shared.kg is None or shared.vectors is None or shared.embeddings is None:
-        raise RuntimeError(
-            "shared.init() did not bring up KG / VectorStore / EmbeddingService"
-        )
+    if shared.kg is None or shared.embeddings is None:
+        raise RuntimeError("shared.init() did not bring up KG / EmbeddingService")
 
-    for label in LABELS:
+    for label in _VECTOR_INDEX_LABELS:
+        unique_key = shared.kg.unique_key_for(label)
         rows = await shared.kg.query(
             f"MATCH (n:{label}) "
-            "RETURN elementId(n) AS id, "
-            "COALESCE(n.slug, n.name, n.id) AS key_value, "
-            "COALESCE(n.name, n.slug) AS name, "
+            f"RETURN n.{unique_key} AS key_value, "
+            "COALESCE(n.name, n.slug, n.id) AS name, "
             "COALESCE(n.description, '') AS description"
         )
         if not rows:
@@ -43,18 +48,12 @@ async def _backfill() -> None:
         vecs = await shared.embeddings.embed_texts(texts)
 
         for r, v in zip(rows, vecs, strict=True):
-            point_id = f"{label}:{r['key_value']}"
-            await shared.vectors.upsert_dense(
-                "kg_entities_dense",
-                id=point_id,
-                vector=v,
-                payload={
-                    "label": label,
-                    "key_value": r["key_value"],
-                    "name": r["name"],
-                },
+            await shared.kg.query(
+                f"MATCH (n:{label} {{{unique_key}: $key_value}}) "
+                "SET n.embedding = $vector",
+                {"key_value": r["key_value"], "vector": v},
             )
-        logger.info("backfill: upserted %d %s entities", len(rows), label)
+        logger.info("backfill: wrote n.embedding on %d %s nodes", len(rows), label)
 
 
 async def main() -> None:

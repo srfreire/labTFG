@@ -144,17 +144,29 @@ async def seed_canonical_paradigms(
                 "slug": entry["slug"],
                 "name": entry["name"],
             }
+            # P4-002: artifacts_* collections were dropped. Seed
+            # paradigm definitions live alongside the rest of retrieval
+            # in memories_*.
             await vector_store.upsert_dense(
-                collection="artifacts_dense",
+                collection="memories_dense",
                 id=point_id,
                 vector=vec,
                 payload=payload,
             )
             await vector_store.upsert_sparse(
-                collection="artifacts_sparse",
+                collection="memories_sparse",
                 id=point_id,
                 text=f"{entry['name']}: {entry['definition']}",
                 payload=payload,
+            )
+            # P4-002: also write the embedding to the Paradigm node so
+            # retrieval `_link_entities_ann` (Cypher
+            # `db.index.vector.queryNodes` against `paradigm_embedding_idx`)
+            # finds the seeded canonical paradigms without a separate
+            # backfill.
+            await kg.query(
+                "MATCH (n:Paradigm {slug: $slug}) SET n.embedding = $vector",
+                {"slug": entry["slug"], "vector": vec},
             )
             vectors_indexed += 1
 

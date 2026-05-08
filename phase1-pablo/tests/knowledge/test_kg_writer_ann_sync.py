@@ -1,8 +1,9 @@
-"""kg_writer upserts into kg_entities_dense after writing slug-like
-nodes — so the entity ANN index stays current with the graph.
+"""kg_writer writes ``n.embedding`` to Neo4j after writing slug-like
+nodes — replacing the prior Qdrant ``kg_entities_dense`` upsert.
 
-Test seam: kg_writer reads the embedding/vector services via two helper
-funcs that the test monkeypatches.
+Test seam: kg_writer reads the embedding service via a helper func
+that the test monkeypatches. The KG itself is mocked through
+``execute_write`` and ``query``.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -20,19 +21,16 @@ def _ext(nodes):
 
 
 @pytest.mark.asyncio
-async def test_paradigm_write_triggers_ann_upsert(monkeypatch):
+async def test_paradigm_write_triggers_embedding_set(monkeypatch):
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(return_value=[[0.1] * 1024])
-
-    fake_vec = MagicMock()
-    fake_vec.upsert_dense = AsyncMock()
 
     fake_kg = MagicMock()
     fake_kg.execute_write = AsyncMock(return_value={"was_created": True})
     fake_kg.unique_key_for = MagicMock(return_value="slug")
+    fake_kg.query = AsyncMock(return_value=[])
 
     monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-    monkeypatch.setattr(w, "_get_vector_store", lambda: fake_vec)
 
     extraction = _ext(
         [
@@ -51,29 +49,26 @@ async def test_paradigm_write_triggers_ann_upsert(monkeypatch):
     await w.populate_kg(extraction, fake_kg)
 
     fake_emb.embed_texts.assert_awaited_once()
-    fake_vec.upsert_dense.assert_awaited_once()
-    call = fake_vec.upsert_dense.await_args
-    # Single-point API: upsert_dense(collection, id=..., vector=..., payload=...).
-    assert call.args[0] == "kg_entities_dense"
-    payload = call.kwargs["payload"]
-    assert payload["label"] == "Paradigm"
-    assert payload["key_value"] == "rl"
+    fake_kg.query.assert_awaited_once()
+    cypher, params = fake_kg.query.await_args.args
+    assert "SET n.embedding = $vector" in cypher
+    assert "MATCH (n:Paradigm" in cypher
+    assert "{slug:" in cypher
+    assert params["key_value"] == "rl"
+    assert params["vector"] == [0.1] * 1024
 
 
 @pytest.mark.asyncio
-async def test_non_slug_label_does_not_trigger_ann_upsert(monkeypatch):
+async def test_non_slug_label_does_not_trigger_embedding_set(monkeypatch):
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(return_value=[[0.1] * 1024])
-
-    fake_vec = MagicMock()
-    fake_vec.upsert_dense = AsyncMock()
 
     fake_kg = MagicMock()
     fake_kg.execute_write = AsyncMock(return_value={"was_created": True})
     fake_kg.unique_key_for = MagicMock(return_value="doi")
+    fake_kg.query = AsyncMock(return_value=[])
 
     monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-    monkeypatch.setattr(w, "_get_vector_store", lambda: fake_vec)
 
     extraction = _ext(
         [
@@ -86,24 +81,22 @@ async def test_non_slug_label_does_not_trigger_ann_upsert(monkeypatch):
     )
 
     await w.populate_kg(extraction, fake_kg)
-    fake_vec.upsert_dense.assert_not_awaited()
+    fake_kg.query.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_ann_failure_does_not_break_write(monkeypatch):
-    """If Qdrant is down, the KG write should still complete cleanly —
-    ANN sync is best-effort."""
+async def test_embedding_failure_does_not_break_write(monkeypatch):
+    """If Voyage is down, the KG write should still complete cleanly —
+    embedding sync is best-effort."""
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(side_effect=RuntimeError("voyage down"))
-
-    fake_vec = MagicMock()
 
     fake_kg = MagicMock()
     fake_kg.execute_write = AsyncMock(return_value={"was_created": True})
     fake_kg.unique_key_for = MagicMock(return_value="slug")
+    fake_kg.query = AsyncMock(return_value=[])
 
     monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-    monkeypatch.setattr(w, "_get_vector_store", lambda: fake_vec)
 
     extraction = _ext(
         [
@@ -116,5 +109,5 @@ async def test_ann_failure_does_not_break_write(monkeypatch):
     )
 
     result = await w.populate_kg(extraction, fake_kg)
-    # Write succeeded; ANN failure logged but not surfaced as an error.
+    # Write succeeded; embedding failure logged but not surfaced as an error.
     assert result.nodes_created == 1

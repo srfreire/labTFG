@@ -84,12 +84,7 @@ async def test_qdrant_connectivity_and_collections(vector_store):
     """Managed collections exist after init_collections."""
     client = vector_store._c()
     names = {c.name for c in (await client.get_collections()).collections}
-    for expected in (
-        "artifacts_dense",
-        "memories_dense",
-        "artifacts_sparse",
-        "memories_sparse",
-    ):
+    for expected in ("memories_dense", "memories_sparse"):
         assert expected in names
 
 

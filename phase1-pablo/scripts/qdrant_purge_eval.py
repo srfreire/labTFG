@@ -30,12 +30,11 @@ import shared
 logger = logging.getLogger(__name__)
 
 # Collections whose payloads carry ``run_id`` (see docs/memory-system.md §4.1).
-# ``kg_entities_dense`` is excluded — it indexes KG nodes, not run-scoped points.
+# After P4-002 only ``memories_*`` survive — ``artifacts_*`` and
+# ``kg_entities_dense`` were dropped.
 PURGE_COLLECTIONS = (
     "memories_dense",
     "memories_sparse",
-    "artifacts_dense",
-    "artifacts_sparse",
 )
 
 
