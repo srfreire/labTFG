@@ -1,14 +1,14 @@
 ---
 id: P4-003
 title: Split memories table into pipeline_memories and simulation_observations
-status: todo
+status: in-progress
 kind: strike
 phase: 4
 heat: data-model
 priority: 2
 blocked_by: [P3-002, P3-003]
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-05-09
 ---
 
 # P4-003: Split the memories table by phase
