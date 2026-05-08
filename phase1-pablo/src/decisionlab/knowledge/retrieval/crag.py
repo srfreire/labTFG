@@ -48,12 +48,15 @@ async def _classify_results(
 ) -> list[dict]:
     """Call Haiku to classify each result. Returns list of evaluation dicts.
 
-    On failure, returns all-CORRECT evaluations (fail-open).
+    Fail-closed: on grading error or unparseable response, every passage
+    is marked AMBIGUOUS so the routing layer either web-supplements or
+    downgrades trust — silently passing every passage as CORRECT was
+    masking real grader failures.
     """
     fallback = [
         {
             "index": i,
-            "classification": "CORRECT",
+            "classification": "AMBIGUOUS",
             "reasoning": "Default (evaluation failed)",
         }
         for i in range(len(results))
@@ -104,18 +107,19 @@ async def _classify_results(
 
         if not valid:
             logger.warning(
-                "CRAG: no valid evaluations parsed, falling back to all-CORRECT"
+                "CRAG: no valid evaluations parsed, falling back to all-AMBIGUOUS"
             )
             return fallback
 
-        # Fill missing indices with CORRECT
+        # Fill missing indices with AMBIGUOUS — fail-closed: a passage
+        # the grader didn't classify is not assumed CORRECT.
         evaluated_indices = {ev["index"] for ev in valid}
         for i in range(len(results)):
             if i not in evaluated_indices:
                 valid.append(
                     {
                         "index": i,
-                        "classification": "CORRECT",
+                        "classification": "AMBIGUOUS",
                         "reasoning": "Not evaluated (missing from response)",
                     }
                 )
@@ -123,7 +127,7 @@ async def _classify_results(
         return valid
 
     except Exception as exc:
-        logger.warning("CRAG evaluation failed, defaulting all to CORRECT: %s", exc)
+        logger.warning("CRAG evaluation failed, defaulting all to AMBIGUOUS: %s", exc)
         return fallback
 
 
@@ -173,6 +177,11 @@ async def evaluate_results(
         )
 
     evaluations = await _classify_results(query, task_context, results, client)
+    # Detect the fail-closed sentinel — every fallback eval carries the
+    # exact reasoning string "Default (evaluation failed)".
+    grading_failed = bool(evaluations) and all(
+        ev.get("reasoning") == "Default (evaluation failed)" for ev in evaluations
+    )
 
     # Count classifications
     by_class: dict[str, list[int]] = {"CORRECT": [], "AMBIGUOUS": [], "INCORRECT": []}
@@ -193,6 +202,7 @@ async def evaluate_results(
             action="pass_through",
             evaluations=evaluations,
             web_results_used=0,
+            grading_failed=grading_failed,
         )
 
     if n_correct == 0 and n_ambiguous == 0:
@@ -204,12 +214,14 @@ async def evaluate_results(
                 action="web_fallback",
                 evaluations=evaluations,
                 web_results_used=len(web_results),
+                grading_failed=grading_failed,
             )
         return CRAGResult(
             results=[],
             action="web_fallback",
             evaluations=evaluations,
             web_results_used=0,
+            grading_failed=grading_failed,
         )
 
     if n_ambiguous == 0 and n_correct > 0:
@@ -222,6 +234,7 @@ async def evaluate_results(
             action="pass_through",
             evaluations=evaluations,
             web_results_used=0,
+            grading_failed=grading_failed,
         )
 
     # Has AMBIGUOUS → supplement with web
@@ -257,6 +270,7 @@ async def evaluate_results(
             action="supplemented",
             evaluations=evaluations,
             web_results_used=len(web_results),
+            grading_failed=grading_failed,
         )
 
     # No search adapter — return kept results only
@@ -265,4 +279,5 @@ async def evaluate_results(
         action="supplemented",
         evaluations=evaluations,
         web_results_used=0,
+        grading_failed=grading_failed,
     )

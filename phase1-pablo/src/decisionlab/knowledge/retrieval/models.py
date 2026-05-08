@@ -23,3 +23,7 @@ class CRAGResult:
     action: str  # "pass_through", "supplemented", "web_fallback"
     evaluations: list[dict] = field(default_factory=list)
     web_results_used: int = 0
+    grading_failed: bool = False
+    """True iff the Haiku grading call errored or produced no valid
+    evaluations — caller can attribute the AMBIGUOUS bucket to a model
+    failure rather than genuine ambiguity."""

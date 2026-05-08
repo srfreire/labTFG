@@ -351,11 +351,13 @@ class TestAC7_UsesDuckDuckGo:
 # ==============================================================================
 
 
-class TestAC8_FailOpen:
-    """If Haiku evaluation fails, all results default to CORRECT."""
+class TestAC8_FailClosed:
+    """If Haiku evaluation fails, all results are marked AMBIGUOUS so
+    the agent layer either web-supplements or downgrades trust —
+    fail-OPEN (default to CORRECT) silently masked grader outages."""
 
     @pytest.mark.asyncio
-    async def test_haiku_failure_defaults_to_correct(self):
+    async def test_haiku_failure_marks_results_ambiguous(self):
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("some doc"), _rr("another doc")]
@@ -371,12 +373,16 @@ class TestAC8_FailOpen:
             client=client,
         )
 
-        assert crag.action == "pass_through"
+        # No search adapter: all-AMBIGUOUS routes to "supplemented"
+        # with the original kept results — but we no longer claim them
+        # as CORRECT, and grading_failed flags the cause.
+        assert crag.action == "supplemented"
         assert len(crag.results) == 2
-        assert all(e["classification"] == "CORRECT" for e in crag.evaluations)
+        assert all(e["classification"] == "AMBIGUOUS" for e in crag.evaluations)
+        assert crag.grading_failed is True
 
     @pytest.mark.asyncio
-    async def test_haiku_bad_json_defaults_to_correct(self):
+    async def test_haiku_bad_json_marks_results_ambiguous(self):
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("some doc")]
@@ -397,9 +403,10 @@ class TestAC8_FailOpen:
             client=client,
         )
 
-        assert crag.action == "pass_through"
+        assert crag.action == "supplemented"
         assert len(crag.results) == 1
-        assert crag.evaluations[0]["classification"] == "CORRECT"
+        assert crag.evaluations[0]["classification"] == "AMBIGUOUS"
+        assert crag.grading_failed is True
 
 
 # ==============================================================================
@@ -460,10 +467,12 @@ class TestMixedCorrectIncorrect:
 
 
 class TestOOBHaikuIndex:
-    """Out-of-bounds Haiku index is ignored; missing indices default to CORRECT."""
+    """Out-of-bounds Haiku index is ignored; missing indices default to
+    AMBIGUOUS (fail-closed) — the agent should be told the passage was
+    not graded, not silently presumed CORRECT."""
 
     @pytest.mark.asyncio
-    async def test_oob_index_ignored(self):
+    async def test_oob_index_marks_missing_ambiguous(self):
         from decisionlab.knowledge.retrieval.crag import evaluate_results
 
         results = [_rr("only doc")]
@@ -480,9 +489,14 @@ class TestOOBHaikuIndex:
             client=client,
         )
 
-        # OOB index rejected → missing index 0 defaults to CORRECT → pass_through
-        assert crag.action == "pass_through"
+        # OOB-only response leaves no valid evaluations, so the
+        # grader's output is unusable → fall through to the AMBIGUOUS
+        # fallback. Routing: "supplemented" (no search adapter), and
+        # grading_failed=True because no usable judgments were produced.
+        assert crag.action == "supplemented"
         assert len(crag.results) == 1
+        assert crag.evaluations[0]["classification"] == "AMBIGUOUS"
+        assert crag.grading_failed is True
 
 
 class TestWebFallbackEmpty:
