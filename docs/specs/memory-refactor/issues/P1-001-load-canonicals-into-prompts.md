@@ -1,7 +1,7 @@
 ---
 id: P1-001
 title: Load canonical-paradigms.json at runtime and inject into extraction prompts
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: extraction
