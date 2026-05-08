@@ -61,9 +61,17 @@ DEFAULT_THRESHOLD: float = 0.85
 # parents and re-test against ancestors. For non-Paradigm labels
 # τ_direct == τ_loose, i.e. no Pass 2.
 LABEL_THRESHOLDS: dict[str, tuple[float, float]] = {
-    "Paradigm": (0.85, 0.78),
-    "Variable": (0.90, 0.90),
-    "Postulate": (0.83, 0.83),
+    # Calibrated 2026-05-08 against canonicalize-pairs.json (n=18) by
+    # scripts/calibrate_canonicalize_tau.py. Cosine-only F1 max:
+    #   Paradigm  τ=0.70 F1=0.909 (n=8)
+    #   Variable  τ=0.87 F1=1.000 (n=6)
+    #   Postulate τ=0.80 F1=1.000 (n=4)
+    # Paradigm τ_direct held at 0.78 (above F1-max) so Pass-2 ancestor
+    # expansion has a useful gray zone [0.70, 0.78); the LLM verifier
+    # remains the final gate above τ_direct.
+    "Paradigm": (0.78, 0.70),
+    "Variable": (0.87, 0.87),
+    "Postulate": (0.80, 0.80),
 }
 
 

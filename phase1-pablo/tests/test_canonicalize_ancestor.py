@@ -20,14 +20,15 @@ async def test_ancestor_expansion_merges_into_parent(monkeypatch):
     from decisionlab.canonicalize import _MergeVerification
     from decisionlab.knowledge.models import ExtractionResult, NodeSpec
 
-    # Each text gets a 3-d unit vector keyed by its substring; cosines:
-    # q-learning vs policy-gradient = 0.82 (gray zone)
+    # Each text gets a 3-d unit vector keyed by its substring; cosines (with
+    # the calibrated Paradigm τ_direct=0.78, τ_loose=0.70):
+    # q-learning vs policy-gradient = 0.74 (gray zone [0.70, 0.78))
     # q-learning vs reinforcement-learning = 0.91 (above τ_direct)
     def _vec(text: str):
         if "Q-learning" in text or "q-learning" in text:
             return [1.0, 0.0, 0.0]
         if "Policy Gradient" in text or "policy-gradient" in text:
-            return [0.82, 0.5724, 0.0]  # cosine 0.82 with q-learning
+            return [0.74, 0.6726, 0.0]  # cosine 0.74 with q-learning
         if "Reinforcement Learning" in text or "reinforcement-learning" in text:
             return [0.91, 0.4146, 0.0]  # cosine 0.91 with q-learning
         return [0.0, 0.0, 1.0]
