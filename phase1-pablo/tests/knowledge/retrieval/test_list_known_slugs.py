@@ -49,9 +49,7 @@ async def test_list_known_slugs_empty_when_kg_unavailable(monkeypatch):
     monkeypatch.setattr(tool_mod, "_get_kg", lambda: None)
     monkeypatch.setattr(tool_mod, "_get_vector_store", lambda: None)
     monkeypatch.setattr(tool_mod, "_get_embedding_service", lambda: None)
-    out = await tool_mod.list_known_slugs(
-        query="probe", namespace="paradigm", top_k=5
-    )
+    out = await tool_mod.list_known_slugs(query="probe", namespace="paradigm", top_k=5)
     assert out == []
 
 

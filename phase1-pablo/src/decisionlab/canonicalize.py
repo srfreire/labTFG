@@ -81,6 +81,7 @@ def threshold_for(label: str) -> tuple[float, float]:
     is total."""
     return LABEL_THRESHOLDS.get(label, (DEFAULT_THRESHOLD, DEFAULT_THRESHOLD))
 
+
 # When the candidate text is shorter than this, defer entirely to the LLM
 # verification step rather than trusting cosine — short strings amplify
 # spurious similarity ("reward" vs. "reward signal" can cosine-match >0.95).
@@ -207,11 +208,7 @@ async def canonicalize(
             if best_idx >= 0 and best_score >= tau_direct:
                 # Pass 1 — direct neighbour above τ_direct
                 target = existing[best_idx]
-            elif (
-                label == "Paradigm"
-                and best_idx >= 0
-                and best_score >= tau_loose
-            ):
+            elif label == "Paradigm" and best_idx >= 0 and best_score >= tau_loose:
                 # Pass 2 — ancestor expansion. Probe the loose neighbour's
                 # parents and re-test cosine against them; the LLM verifier
                 # will then judge candidate vs the strongest ancestor, not

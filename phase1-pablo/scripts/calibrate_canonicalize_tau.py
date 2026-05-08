@@ -84,9 +84,19 @@ async def main() -> None:
             best_p = 0.0
             for tau_int in range(70, 96):
                 tau = tau_int / 100.0
-                tp = sum(1 for c, l in zip(cosines, labels, strict=True) if c >= tau and l)
-                fp = sum(1 for c, l in zip(cosines, labels, strict=True) if c >= tau and not l)
-                fn = sum(1 for c, l in zip(cosines, labels, strict=True) if c < tau and l)
+                tp = sum(
+                    1
+                    for c, lbl in zip(cosines, labels, strict=True)
+                    if c >= tau and lbl
+                )
+                fp = sum(
+                    1
+                    for c, lbl in zip(cosines, labels, strict=True)
+                    if c >= tau and not lbl
+                )
+                fn = sum(
+                    1 for c, lbl in zip(cosines, labels, strict=True) if c < tau and lbl
+                )
                 precision = tp / (tp + fp) if (tp + fp) else 0.0
                 recall = tp / (tp + fn) if (tp + fn) else 0.0
                 f1 = (

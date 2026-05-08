@@ -65,7 +65,10 @@ async def test_ancestor_expansion_merges_into_parent(monkeypatch):
 
     async def fake_verify(*, label, candidate_text, existing_text, similarity, client):
         # Approve when verifying against the parent (RL), reject otherwise.
-        approved = "reinforcement-learning" in existing_text or "Reinforcement" in existing_text
+        approved = (
+            "reinforcement-learning" in existing_text
+            or "Reinforcement" in existing_text
+        )
         return _MergeVerification(merge=approved, reason="ok")
 
     monkeypatch.setattr(c_mod, "_verify_merge", fake_verify)

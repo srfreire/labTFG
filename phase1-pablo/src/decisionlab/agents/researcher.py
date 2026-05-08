@@ -40,6 +40,7 @@ from decisionlab.agents.deep_researcher import DeepResearcher
 from decisionlab.config import SETTINGS
 from decisionlab.domain.models import Paradigm, ResearchReport
 from decisionlab.domain.ports import WebSearchPort
+from decisionlab.knowledge.retrieval.tool import list_known_slugs
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
 from decisionlab.structured import StructuredOutputError, call_structured
@@ -47,7 +48,6 @@ from decisionlab.tools.agents import (
     LAUNCH_DEEP_RESEARCH_SCHEMA,
     create_launch_deep_research,
 )
-from decisionlab.knowledge.retrieval.tool import list_known_slugs
 from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
     create_read_report,
