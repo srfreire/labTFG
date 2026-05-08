@@ -1,6 +1,6 @@
 # Phase 2: Retrieve latency
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P2-002 + P2-003 done)
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P2-001 + P2-002 + P2-003 done)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A4, §A5
 
 ## Objective
@@ -95,7 +95,7 @@ DuckDuckGo budget on every retrieve while Haiku is rate-limited.
 
 ## Acceptance Criteria
 
-- [ ] AC1: `CRAG_SKIP_THRESHOLD` is read from settings, default 0.5.
+- [x] AC1: `CRAG_SKIP_THRESHOLD` is read from settings, default 0.5.
       Skip path is exercised when top rerank score ≥ threshold; full
       CRAG runs when below. Unit test covers both.
 - [x] AC2: `NER_SKIP_THRESHOLD` is read from settings, default 0.7.
