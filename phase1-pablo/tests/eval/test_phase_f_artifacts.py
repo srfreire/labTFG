@@ -10,16 +10,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from decisionlab.canonicalize import CANONICALIZE_LABELS, DEFAULT_THRESHOLD
 from decisionlab.eval.assertions import predicate_names
 from decisionlab.eval.suite import SuiteSpec
 from decisionlab.router import Stage
 
 ROOT = Path(__file__).resolve().parents[2]
 SUITE_PATH = ROOT / "evals/suites/paradigm-canonicalization.yaml"
-PAIRS_PATH = ROOT / "evals/fixtures/canonicalize-pairs.json"
 CANONICAL_PARADIGMS_PATH = ROOT / "evals/fixtures/canonical-paradigms.json"
 
 
@@ -62,41 +58,6 @@ def test_suite_uses_phase_a_instrumentation():
                 if isinstance(entry, dict) and "tool_called" in entry:
                     has_tool_called = True
     assert has_tool_called, "regression suite should exercise tool_called"
-
-
-def test_canonicalize_pairs_fixture_well_formed():
-    """The labeled fixture parses and every pair carries the fields used
-    to tune τ."""
-    data = json.loads(PAIRS_PATH.read_text())
-    assert "pairs" in data
-    assert isinstance(data["pairs"], list) and data["pairs"]
-
-    valid_labels = set(CANONICALIZE_LABELS)
-    for pair in data["pairs"]:
-        assert pair["label"] in valid_labels, (
-            f"pair label {pair['label']!r} not in CANONICALIZE_LABELS"
-        )
-        assert isinstance(pair["candidate"], dict)
-        assert isinstance(pair["existing"], dict)
-        assert isinstance(pair["should_merge"], bool)
-        assert isinstance(pair["rationale"], str) and pair["rationale"]
-
-
-def test_canonicalize_pairs_have_balanced_classes():
-    """Sanity: the labeled set should contain both merge=True and
-    merge=False examples, otherwise it can't pin down a useful threshold."""
-    data = json.loads(PAIRS_PATH.read_text())
-    merges = [p for p in data["pairs"] if p["should_merge"]]
-    keeps = [p for p in data["pairs"] if not p["should_merge"]]
-    assert len(merges) >= 5, "need at least 5 positive examples"
-    assert len(keeps) >= 5, "need at least 5 negative examples"
-
-
-def test_canonicalize_pairs_threshold_documented():
-    """The fixture preserves the canonicalize threshold for reference;
-    if the canonicalizer's default τ shifts, this catches drift."""
-    data = json.loads(PAIRS_PATH.read_text())
-    assert data["_threshold_default"] == pytest.approx(DEFAULT_THRESHOLD)
 
 
 def test_canonical_paradigms_fixture_shape():

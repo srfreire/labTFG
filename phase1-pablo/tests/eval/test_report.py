@@ -223,30 +223,30 @@ def test_report_md_includes_suite_assertions_section():
     result = _suite_result_with_timing(
         suite_assertions=(
             AssertionOutcome(
-                name="merge_precision_recall",
+                name="p95_below",
                 passed=True,
-                detail="precision=1.000 recall=1.000",
+                detail="researcher p95=1234ms threshold=2000ms",
             ),
         )
     )
     md = render_markdown(result)
     assert "## Suite assertions" in md
-    assert "merge_precision_recall" in md
-    assert "precision=1.000" in md
+    assert "p95_below" in md
+    assert "p95=1234ms" in md
 
 
 def test_report_json_includes_timing_and_suite_assertions():
     result = _suite_result_with_timing(
         suite_assertions=(
             AssertionOutcome(
-                name="merge_precision_recall",
+                name="p95_below",
                 passed=True,
-                detail="precision=1.000 recall=1.000",
+                detail="researcher p95=1234ms threshold=2000ms",
             ),
         )
     )
     payload = json.loads(render_json(result))
     assert "suite_assertions" in payload
-    assert payload["suite_assertions"][0]["name"] == "merge_precision_recall"
+    assert payload["suite_assertions"][0]["name"] == "p95_below"
     assert payload["topics"][0]["timing"]["stages"][0]["stage"] == "researcher"
     assert payload["topics"][0]["tool_call_summary"]["retrieve_knowledge"]["calls"] == 1

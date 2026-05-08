@@ -170,8 +170,8 @@ async def run_pipeline(
     timing_log = start_timing()
 
     # Offline suite path: no stages requested means skip the entire
-    # pipeline — useful for ``suite_assertions:``-only suites
-    # (e.g. merge-quality.yaml against a fixture).
+    # pipeline — useful for ``suite_assertions:``-only suites that
+    # operate over a fixture rather than running the agent pipeline.
     if not stages_run:
         return PipelineRunResult(
             run_id=rid,
