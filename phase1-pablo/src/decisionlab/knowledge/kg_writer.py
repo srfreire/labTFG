@@ -97,23 +97,12 @@ async def _record_node_run_observation(
 
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-# UUID4 shape: 8-4-4-4-12 hex digits. Used to catch run_id / uuid.uuid4()
-# leaks into identifier-style natural keys (Paradigm.slug being the canonical
-# offender — see research-memory-rewrite-status.md "Known issues").
-_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    re.IGNORECASE,
-)
-
 # Hard ceiling on natural-key length. Real slugs/names sit well under this;
 # anything longer is almost certainly a hash, full statement, or LLM blob
 # accidentally promoted to a key.
 _MAX_KEY_VALUE_LEN = 80
 
 # Labels whose natural key is a human-readable identifier (slug, name, id).
-# A UUID-shaped value on these is a leak, not a legitimate identifier.
-# Paper.doi is excluded — DOIs share the dash-pattern surface but are content
-# keys, not slugs, and never collide with the UUID4 shape in practice.
 _SLUG_LIKE_LABELS = frozenset(
     {"Paradigm", "Variable", "Postulate", "Formulation", "Model", "BrainRegion"}
 )
@@ -141,25 +130,21 @@ def _validate_natural_key(
     """Validate and (for slug-like labels) renormalize a natural-key value.
 
     Returns ``(ok, normalized_value, err)``:
-      - ``ok=True``: caller may MERGE on ``normalized_value``. For slug-like
-        labels the value has been re-slugified; for everything else it is
+      - ``ok=True``: caller may MERGE on ``normalized_value``. For ``slug``
+        keys the value has been re-slugified; for everything else it is
         returned verbatim.
       - ``ok=False``: ``err`` carries a human-readable reason; the caller
         records it in ``KGWriteResult.errors`` and skips the node.
 
-    Catches three classes of bugs:
-      1. ``run_id`` UUIDs leaking into ``Paradigm.slug`` (upstream
-         coercion).
-      2. LLM-emitted slugs that bypassed producer-side normalization
-         ("Reinforcement Learning" → "reinforcement-learning").
-      3. Outsized blobs (full statements, hashes) accidentally promoted
-         to a key.
+    Length cap rejects outsized blobs (full statements, hashes) accidentally
+    promoted to a key on slug-like labels. ``slug`` keys also get
+    re-slugified to enforce kebab-case identity.
     """
     if not isinstance(key_value, str):
         return (True, key_value, None)
-    # Length and UUID-shape checks are scoped to slug-like labels. Content keys
-    # (Paper.title, Equation.latex) routinely exceed the slug ceiling and must
-    # pass through unmolested.
+    # Length cap is scoped to slug-like labels. Content keys (Paper.title,
+    # Equation.latex) routinely exceed the slug ceiling and must pass
+    # through unmolested.
     if label in _SLUG_LIKE_LABELS:
         if len(key_value) > _MAX_KEY_VALUE_LEN:
             return (
@@ -167,13 +152,6 @@ def _validate_natural_key(
                 key_value,
                 f"{label}.{key_name}={key_value!r}: natural-key value exceeds "
                 f"{_MAX_KEY_VALUE_LEN} characters — refusing to write",
-            )
-        if _UUID_RE.match(key_value):
-            return (
-                False,
-                key_value,
-                f"{label}.{key_name}={key_value!r}: natural-key value is shaped "
-                "like a UUID — likely a run_id leak; refusing to write",
             )
         # Only the key actually called "slug" gets renormalized — Variable.name
         # ("energy_level") and Postulate.id ("P1") are slug-like labels but

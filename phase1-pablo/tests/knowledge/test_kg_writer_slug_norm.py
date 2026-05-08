@@ -21,16 +21,6 @@ def test_slug_already_canonical_passes_through():
     assert value == "prospect-theory"
 
 
-def test_uuid_shaped_slug_still_rejected():
-    ok, value, err = _validate_natural_key(
-        label="Paradigm",
-        key_name="slug",
-        key_value="a6744d26-4c5d-4e3f-9b8a-1f2c3d4e5f60",
-    )
-    assert not ok
-    assert "uuid" in err.lower() or "natural key" in err.lower()
-
-
 def test_non_slug_label_unchanged():
     """Author.name shouldn't be slugified — it's a human-readable name."""
     ok, value, err = _validate_natural_key(

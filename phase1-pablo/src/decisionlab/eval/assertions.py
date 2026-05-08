@@ -593,7 +593,7 @@ async def _p95_below(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
 async def _avg_below(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
     """Average stage duration across topics, asserting it's below threshold.
 
-    args: {"stage": "canonicalize", "avg_ms": 8000}
+    args: {"stage": "researcher", "avg_ms": 8000}
     """
     stage = args["stage"]
     threshold = float(args["avg_ms"])

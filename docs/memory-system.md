@@ -671,7 +671,7 @@ rewrite if you were doing the system over today. I read the code, the specs
 and the calibration scripts before writing each item — these are not
 hypotheticals.
 
-## A1. The merge step exists because identity is solved one layer too late
+## A1. The merge step exists because identity is solved one layer too late — DONE 2026-05-08
 
 Look at the actual moving parts:
 

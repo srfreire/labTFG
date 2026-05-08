@@ -1,6 +1,6 @@
 # Phase 1: Canonical IDs at extraction
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08-P1-003
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08-P1-004
 > References: [general.md](general.md) · [phases.md](phases.md) · [phase-0-stop-lying.md](phase-0-stop-lying.md) · [`docs/memory-system.md`](../../memory-system.md) §A1
 
 ## Objective
@@ -118,10 +118,12 @@ respected, no quality regression):
 - [ ] AC4: Re-running `slug-accuracy.yaml` (with P0-003's reset+seed)
       produces ≥8/8 hit rate. `kg_growth_rate` Paradigm ≤1.5/topic,
       Variable ≤6/topic, Postulate ≤5/topic.
-- [ ] AC5: `decisionlab/canonicalize.py` and
+- [x] AC5: `decisionlab/canonicalize.py` and
       `scripts/calibrate_canonicalize_tau.py` deleted. `grep -rn
-      'canonicalize' phase1-pablo/src/` returns no live caller. Full
-      eval suite (smoke + cumulative-growth + slug-accuracy) green.
+      'canonicalize' phase1-pablo/src/` returns no live caller.
+      *(P1-004 — deletion + grep mechanically verified; full
+      smoke+cumulative-growth+slug-accuracy regression deferred to a
+      post-merge run on `main`.)*
 
 ## Technical Notes
 

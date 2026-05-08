@@ -407,7 +407,6 @@ class Router:
                 vector_store=getattr(shared, "vectors", None),
                 embedding_service=getattr(shared, "embeddings", None),
                 db=shared.db,
-                feedback=self.feedback,
             )
         except Exception:
             logger.debug("Knowledge infrastructure unavailable — Memory Agent disabled")

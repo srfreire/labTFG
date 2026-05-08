@@ -72,7 +72,6 @@ suite_assertions:
   - kg_growth_rate: { label: Variable,  max_per_topic: 6   }
   - kg_growth_rate: { label: Postulate, max_per_topic: 5   }
   - p95_below: { tool: retrieve_knowledge, p95_ms: 2500 }
-  - avg_below: { stage: canonicalize,      avg_ms: 8000 }
 
 budget:
   max_usd_total: 12.00
