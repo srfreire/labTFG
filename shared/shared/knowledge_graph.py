@@ -5,14 +5,20 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TypeVar
+from typing import TypedDict, TypeVar
 
 from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
 
 _T = TypeVar("_T")
 
+
+class _SchemaEntry(TypedDict):
+    unique_key: str
+    indexes: list[str]
+
+
 # Node labels → {"unique_key": <prop>, "indexes": [<additional indexed props>]}
-_SCHEMA: dict[str, dict[str, object]] = {
+_SCHEMA: dict[str, _SchemaEntry] = {
     "Paradigm": {"unique_key": "slug", "indexes": ["name"]},
     "Variable": {"unique_key": "id", "indexes": ["paradigm_slug", "name"]},
     "Equation": {"unique_key": "latex", "indexes": []},
@@ -256,7 +262,7 @@ class KnowledgeGraph:
     def unique_key_for(label: str) -> str:
         """Return the unique-key property name for a node label."""
         _check_label(label)
-        return _SCHEMA[label]["unique_key"]  # type: ignore[return-value]
+        return _SCHEMA[label]["unique_key"]
 
     async def execute_write(
         self,
