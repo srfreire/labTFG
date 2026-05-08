@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from decisionlab.eval.models import PipelineRunResult
+from decisionlab.eval.timing import start_timing
 from decisionlab.feedback_port import AutoApproveFeedback
 from decisionlab.router import PipelineState, Router, Stage
 from decisionlab.runtime import usage as usage_module
@@ -163,6 +164,7 @@ async def run_pipeline(
 
     started_at_iso = datetime.now(UTC).isoformat()
     tool_call_log = _start_tool_call_recording()
+    timing_log = start_timing()
 
     await _create_run_row(rid, topic)
 
@@ -232,4 +234,5 @@ async def run_pipeline(
         error=error,
         tool_call_log=tuple(tool_call_log),
         started_at=started_at_iso,
+        timing=timing_log,
     )

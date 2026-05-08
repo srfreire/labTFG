@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from decisionlab.eval.timing import TimingLog
 from decisionlab.router import Stage
 from decisionlab.runtime.tool_calls import ToolCall
 
@@ -45,6 +46,10 @@ class PipelineRunResult:
     # ``paradigm_reused`` to distinguish "this run minted the node" from
     # "this run hit an existing node".
     started_at: str = ""
+    # Per-stage durations captured by ``eval.timing.record_stage`` while the
+    # router was running. ``None`` for legacy callers that construct a
+    # ``PipelineRunResult`` without going through ``run_pipeline``.
+    timing: TimingLog | None = None
 
     @property
     def succeeded(self) -> bool:
