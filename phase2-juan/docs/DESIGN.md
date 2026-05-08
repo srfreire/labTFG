@@ -145,47 +145,53 @@ La solucion combina dos conceptos de data engineering:
 
 ### Schema (implementado)
 
-La DB es SQLite en `data/labtfg.db` (gitignored). Paquete compartido `shared/` con `store.py`.
+La persistencia es **Postgres** via SQLAlchemy async, definida en `shared/shared/models.py`. Las tablas relevantes son `models` y `experiments`. El stack se levanta con `docker compose up`; no hay fallback SQLite.
 
 ```
-models
-  ├── formulation_id  TEXT PRIMARY KEY   -- e.g. "homeostatic-regulation_drive_reduction_rl"
-  ├── class_name      TEXT NOT NULL      -- e.g. "HomeostaticDriveReductionRL"
-  ├── paradigm        TEXT               -- e.g. "homeostatic-regulation"
-  ├── description     TEXT               -- docstring del modulo
-  ├── file_path       TEXT NOT NULL      -- ruta al *_model.py
+models                                    -- tabla shared.models.Model
+  ├── id              UUID PRIMARY KEY
+  ├── class_name      VARCHAR(255) NOT NULL  -- e.g. "DriveReductionRLModel"
+  ├── paradigm        VARCHAR(255) NOT NULL  -- e.g. "homeostatic-regulation"
+  ├── formulation     VARCHAR(255) NOT NULL  -- e.g. "drive-reduction-rl"
+  ├── description     TEXT
+  ├── run_id          UUID FK runs(id)       -- Phase 1 run que produjo el modelo
+  ├── s3_model_key    VARCHAR(500) NOT NULL  -- key en MinIO con el .py
+  ├── s3_test_key     VARCHAR(500)
   ├── registered_at   TIMESTAMP
-  └── metadata_json   TEXT               -- JSON libre para metadatos extra
+  └── metadata        JSONB
+  UNIQUE (run_id, paradigm, formulation)
 
-experiments
-  ├── id              TEXT PRIMARY KEY (UUID)
+experiments                               -- tabla shared.models.Experiment
+  ├── id              UUID PRIMARY KEY
   ├── created_at      TIMESTAMP
   ├── updated_at      TIMESTAMP
-  ├── description     TEXT               -- prompt original del usuario
-  ├── status          TEXT               -- created | simulated | tracked | analyzed | reported
-  ├── spec_json       TEXT               -- JSON spec del environment
-  ├── models_used     TEXT               -- JSON array de formulation_ids
+  ├── description     TEXT NOT NULL
+  ├── status          VARCHAR(50)         -- created | simulated | tracked | analyzed | reported
+  ├── spec            JSONB
+  ├── models_used     JSONB
   ├── steps           INTEGER
-  ├── seed            INTEGER | NULL
-  ├── events_json     TEXT               -- eventos serializados (sin model_state)
-  ├── replay_json     TEXT               -- frames para el replay del frontend
-  ├── tracker_json    TEXT               -- salida completa del Tracker
-  ├── analyst_json    TEXT               -- salida completa del Analyst
-  └── pdf_path        TEXT               -- ruta al PDF generado
+  ├── seed            INTEGER
+  ├── s3_events_key   VARCHAR(500)        -- eventos serializados en MinIO
+  ├── s3_replay_key   VARCHAR(500)        -- frames del replay en MinIO
+  ├── s3_tracker_key  VARCHAR(500)
+  ├── s3_analyst_key  VARCHAR(500)
+  ├── s3_pdf_key      VARCHAR(500)
+  ├── s3_tex_key      VARCHAR(500)
+  └── s3_charts_prefix VARCHAR(500)
 ```
 
-Diseno simplificado: JSON blobs dentro de `experiments` en vez de tablas normalizadas. Suficiente para el volumen esperado y evita joins innecesarios. Si en el futuro se necesitan queries SQL granulares (e.g. "media de reward del modelo X en los ultimos 10 experimentos"), se puede normalizar a tablas separadas (`experiment_agents`, `events`, `tracker_results`, etc.).
+Las salidas grandes (events, tracker, analyst, PDF, replay) viven como objetos en MinIO y la fila guarda solo el `s3_*_key`. Esto mantiene las filas compactas y permite consultas rapidas sin deserializar JSON pesado.
 
 ### Integracion con la arquitectura
 
-El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igual, y la persistencia se anade como efecto secundario:
+La persistencia se integra como efecto secundario del pipeline:
 
-1. **`shared/store.py`** — inicializa DB, expone `create_experiment()`, `update_experiment()`, `get_experiment()`, `list_experiments()`, `register_model()`, `list_models()`, `get_model()`.
-2. **`orchestrator.py`** — despues de cada paso del pipeline, llama a `update_experiment()` con el status y los datos correspondientes.
-3. **`model_loader.py`** — al descubrir modelos de la Fase 1, los registra automaticamente en la tabla `models` (idempotente via INSERT OR REPLACE).
-4. **`tools.py`** — ademas de los 3 tools de simulacion (current experiment), expone 2 tools de DB: `list_past_experiments` y `get_experiment_analysis` para consultas cross-experiment.
+1. **`shared/shared/models.py`** — define los ORM `Model`, `Experiment`, `Run`, `Artifact`, `Memory`. Acceso async via `shared.db.get_session()`.
+2. **`orchestrator.py`** — despues de cada paso del pipeline, hace `update` async sobre la fila de `Experiment` con el status y los `s3_*_key` correspondientes.
+3. **`model_loader.py`** — `discover_models()` consulta `select(Model)` desde Postgres y `load_model()` baja el `.py` desde MinIO via `s3_model_key`. El registro de modelos lo hace Phase 1 (no Phase 2).
+4. **`tools.py`** — ademas de los tools de simulacion, expone tools de consulta cross-experiment (`list_past_experiments`, `get_experiment_analysis`) que leen de Postgres.
 5. **Orchestrator tool `list_experiments`** — permite al usuario ver historial desde el chat.
-6. **Analyst** — tiene acceso a los 5 tools (3 de simulacion + 2 de DB) para comparar el experimento actual con experimentos pasados.
+6. **Analyst** — usa los tools cross-experiment para comparar el experimento actual con pasados.
 
 ### Capacidades
 
@@ -197,7 +203,7 @@ El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igua
 
 ### Tecnologia
 
-**SQLite** (`sqlite3` stdlib, zero dependencias). Fichero en `data/labtfg.db` (root del repo, gitignored). WAL mode habilitado para lecturas concurrentes.
+**Postgres** via SQLAlchemy 2.0 async (`asyncpg` driver). Migraciones con Alembic en `shared/migrations/`. Levantar con `docker compose up`. No hay fallback local — Phase 2 requiere los servicios compartidos.
 
 ---
 
@@ -214,6 +220,6 @@ El cambio es **no-invasivo** — el `Orchestrator._state` sigue funcionando igua
 - Dynamic model loader para modelos de la Fase 1
 - Comparacion multi-modelo en mismo environment
 - Pipeline completo e2e testeado con Playwright
-- Experiment Store: persistencia SQLite con historial, reproducibilidad y comparacion cross-experiment
-- Registro automatico de modelos en DB al descubrirlos
-- Analyst con tools de DB para comparacion cross-experiment
+- Experiment Store: persistencia Postgres con historial, reproducibilidad y comparacion cross-experiment
+- Registro automatico de modelos en Postgres al descubrirlos (lo hace Phase 1)
+- Analyst con tools de Postgres para comparacion cross-experiment

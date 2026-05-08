@@ -72,15 +72,3 @@ async def test_shutdown_cleans_up():
     assert shared.kg is None
     assert shared.vectors is None
     assert shared.embeddings is None
-
-
-@pytest.mark.asyncio
-async def test_store_backward_compat():
-    """Old store.py functions still work independently."""
-    from shared.store import create_experiment, get_experiment, init_db
-
-    init_db()
-    exp_id = create_experiment("lifecycle backward compat test")
-    exp = get_experiment(exp_id)
-    assert exp is not None
-    assert exp["description"] == "lifecycle backward compat test"

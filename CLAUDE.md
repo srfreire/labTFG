@@ -44,7 +44,14 @@ Perception keys: `x, y, grid_width, grid_height, step, resources, last_action_re
 
 ## Running
 
+Phase 2 requires the shared backend services (Postgres, MinIO, Neo4j, Qdrant)
+running. The simplest way is `docker compose up` from the repo root — there is
+no SQLite fallback.
+
 ```bash
+# Backend services (Postgres, MinIO, Neo4j, Qdrant)
+docker compose up -d
+
 # CLI chat
 cd phase2-juan && uv run simlab
 
@@ -53,7 +60,8 @@ uvicorn simlab.api:app --port 8000    # backend
 cd web && npm run dev                  # frontend (Vite → localhost:5173)
 ```
 
-Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY`.
+Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY` and the standard
+Postgres/MinIO/Neo4j/Qdrant connection settings (see `shared.settings`).
 
 ## Current Status
 
