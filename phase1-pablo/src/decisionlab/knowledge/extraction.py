@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.prompts import (
+    _CANONICAL,
     BUILDER_SYSTEM,
     BUILDER_USER,
     FORMALIZER_SYSTEM,
@@ -60,14 +61,97 @@ _STAGE_MODELS: dict[str, str] = {
 
 # Pydantic schemas mirror the pre-rewrite prompt JSON shape so the
 # downstream ``_build_result`` parser still sees the same dict structure.
-# ``properties`` is left as ``dict`` (free-form) because each node label
-# carries different keys; the Pydantic root validates only the envelope.
+# ``properties`` stays ``dict[str, Any]`` on the wire, but slug-bearing
+# labels (Paradigm/Variable/Postulate) get a typed sub-validator dispatched
+# by ``_NodeRaw``'s ``model_validator`` — malformed slugs raise
+# ``ValidationError`` (which ``call_structured`` translates to
+# ``StructuredOutputError``). This is the gate that keeps minted-variant
+# slugs like ``q-eligibility-traces`` out of the KG.
+
+# Build the canonical-slug Literal at module import. ``Literal[tuple]``
+# unpacks the tuple into the literal's args at runtime — Pydantic still
+# validates membership the same way as a hand-written
+# ``Literal["a", "b", ...]``. ``__NEW__`` is the LLM's "doesn't fit any of
+# these" escape; routed through ``_verify_merge`` later by P1-003.
+_CANONICAL_SLUGS: tuple[str, ...] = (
+    *(p["slug"] for p in _CANONICAL),
+    "__NEW__",
+)
+ParadigmSlug = Literal[_CANONICAL_SLUGS]  # type: ignore[valid-type]
+
+# Postulate ids are scoped by their parent paradigm slug to prevent
+# cross-paradigm collisions (e.g. RL's "P1" colliding with Prospect
+# Theory's "P1"). The regex tolerates the ``__NEW__`` escape so that an
+# extraction for an unknown paradigm still parses — P1-003 routes such
+# extractions through ``_verify_merge`` to mint or reuse a slug before
+# they reach the KG.
+_POSTULATE_ID_RE = re.compile(r"^(__NEW__|[a-z0-9-]+):P\d+$")
+
+
+class _ParadigmProps(BaseModel):
+    slug: ParadigmSlug  # type: ignore[valid-type]
+    name: str
+    description: str = ""
+
+
+class _VariableProps(BaseModel):
+    name: str
+    paradigm_slug: ParadigmSlug  # type: ignore[valid-type]
+    type: str | None = None
+    range: str | None = None
+    unit: str | None = None
+
+
+class _PostulateProps(BaseModel):
+    id: str
+    statement: str
+    falsifiable: bool
+    paradigm_slug: ParadigmSlug  # type: ignore[valid-type]
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id_prefix(cls, v: str) -> str:
+        # Two gates: regex enforces shape (kebab + the ``__NEW__`` escape);
+        # membership check enforces canonical-set vocabulary so
+        # ``valid-shape-but-fabricated:P1`` is caught.
+        m = _POSTULATE_ID_RE.match(v)
+        if m is None:
+            raise ValueError(
+                f"Postulate.id must match '<paradigm-slug>:P<num>'; got {v!r}"
+            )
+        prefix = m.group(1)
+        if prefix not in _CANONICAL_SLUGS:
+            raise ValueError(
+                f"Postulate.id prefix {prefix!r} is not a canonical paradigm slug"
+            )
+        return v
+
+
+_LABEL_TO_PROPS: dict[str, type[BaseModel]] = {
+    "Paradigm": _ParadigmProps,
+    "Variable": _VariableProps,
+    "Postulate": _PostulateProps,
+}
 
 
 class _NodeRaw(BaseModel):
     label: str
     properties: dict[str, Any] = Field(default_factory=dict)
     natural_key: str = ""
+
+    @model_validator(mode="after")
+    def _dispatch_properties_validator(self) -> _NodeRaw:
+        """Validate ``properties`` against the typed model for this label.
+
+        Runs *after* the envelope is parsed so every field (including
+        ``label``) is available. Slug-bearing labels go through
+        ``_*Props.model_validate`` which enforces the ``ParadigmSlug``
+        Literal; other labels fall through with their dict intact.
+        """
+        sub_model = _LABEL_TO_PROPS.get(self.label)
+        if sub_model is not None:
+            sub_model.model_validate(self.properties)
+        return self
 
 
 class _RelationRaw(BaseModel):
