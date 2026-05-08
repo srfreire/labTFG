@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from decisionlab.eval.kgadmin import KGStats
 from decisionlab.eval.kgadmin import query as kg_query
 from decisionlab.eval.models import PipelineRunResult
+from decisionlab.eval.timing import TimingLog
 
 if TYPE_CHECKING:
     from decisionlab.eval.suite import SuiteSpec, TopicResult
@@ -555,5 +556,69 @@ async def _decide_returns_action(ctx: AssertionContext, args: dict) -> Assertion
         detail=(
             f"decide() returned {action!r}"
             + ("" if looks_like_action else " (not action-shaped)")
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Suite-level timing predicates
+# ---------------------------------------------------------------------------
+
+
+@register_suite("p95_below")
+async def _p95_below(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
+    """Aggregate ToolCall.duration_ms across all topics and assert the
+    per-tool p95 is below the configured threshold.
+
+    args: {"tool": "retrieve_knowledge", "p95_ms": 2500}
+    """
+    tool = args["tool"]
+    threshold = float(args["p95_ms"])
+    all_calls: list = []
+    for tr in ctx.topic_results:
+        all_calls.extend(tr.run.tool_call_log)
+    summary = TimingLog.summarize_tool_calls(all_calls)
+    if tool not in summary:
+        return AssertionOutcome(
+            name="p95_below",
+            passed=False,
+            detail=f"no data for tool {tool!r} across topics",
+        )
+    p95 = summary[tool]["p95_ms"]
+    return AssertionOutcome(
+        name="p95_below",
+        passed=p95 <= threshold,
+        detail=f"{tool} p95={p95:.0f}ms threshold={threshold:.0f}ms",
+    )
+
+
+@register_suite("avg_below")
+async def _avg_below(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
+    """Average stage duration across topics, asserting it's below threshold.
+
+    args: {"stage": "canonicalize", "avg_ms": 8000}
+    """
+    stage = args["stage"]
+    threshold = float(args["avg_ms"])
+    durations: list[float] = []
+    for tr in ctx.topic_results:
+        if tr.run.timing is None:
+            continue
+        for st in tr.run.timing.stages:
+            if st.stage == stage:
+                durations.append(st.duration_ms)
+    if not durations:
+        return AssertionOutcome(
+            name="avg_below",
+            passed=False,
+            detail=f"no data for stage {stage!r} across topics",
+        )
+    avg = sum(durations) / len(durations)
+    return AssertionOutcome(
+        name="avg_below",
+        passed=avg <= threshold,
+        detail=(
+            f"{stage} avg={avg:.0f}ms (n={len(durations)}) "
+            f"threshold={threshold:.0f}ms"
         ),
     )
