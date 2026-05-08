@@ -53,6 +53,26 @@ logger = logging.getLogger(__name__)
 CANONICALIZE_LABELS: tuple[str, ...] = ("Paradigm", "Variable", "Postulate")
 DEFAULT_THRESHOLD: float = 0.85
 
+# Per-label cosine thresholds tuned by
+# scripts/calibrate_canonicalize_tau.py.
+# (τ_direct, τ_loose). τ_loose is only consulted by the Pass-2
+# ancestor expansion for Paradigm — when the candidate cosine sits
+# in [τ_loose, τ_direct), we widen to the candidate neighbour's
+# parents and re-test against ancestors. For non-Paradigm labels
+# τ_direct == τ_loose, i.e. no Pass 2.
+LABEL_THRESHOLDS: dict[str, tuple[float, float]] = {
+    "Paradigm": (0.85, 0.78),
+    "Variable": (0.90, 0.90),
+    "Postulate": (0.83, 0.83),
+}
+
+
+def threshold_for(label: str) -> tuple[float, float]:
+    """Return ``(τ_direct, τ_loose)`` for a label. Unknown labels fall
+    back to ``(DEFAULT_THRESHOLD, DEFAULT_THRESHOLD)`` so the helper
+    is total."""
+    return LABEL_THRESHOLDS.get(label, (DEFAULT_THRESHOLD, DEFAULT_THRESHOLD))
+
 # When the candidate text is shorter than this, defer entirely to the LLM
 # verification step rather than trusting cosine — short strings amplify
 # spurious similarity ("reward" vs. "reward signal" can cosine-match >0.95).
@@ -132,6 +152,7 @@ async def canonicalize(
     dropped_keys: set[tuple[str, str]] = set()
 
     for label, candidates in by_label.items():
+        tau_direct, tau_loose = threshold_for(label)
         try:
             existing = await _fetch_existing_nodes(kg, label)
         except Exception as exc:
@@ -174,7 +195,9 @@ async def canonicalize(
                     best_score = sim
                     best_idx = j
 
-            if best_idx < 0 or best_score < threshold:
+            if best_idx < 0 or best_score < tau_direct:
+                # Pass-2 ancestor expansion (Task 4) hooks in here for
+                # Paradigm in the [tau_loose, tau_direct) gray zone.
                 continue
             if len(cand_text) < _MIN_TEXT_LENGTH_FOR_COSINE:
                 # Short candidates can cosine-match by accident — defer to
