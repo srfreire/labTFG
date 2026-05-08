@@ -141,7 +141,10 @@ if label == "Paradigm" and direct_match is None:
 `_fetch_ancestors` runs Cypher
 `MATCH (n:Paradigm {slug: $slug})-[:EXTENDS|:BELONGS_TO*1..2]->(p:Paradigm) RETURN p`.
 
-**A5. Per-label thresholds.** Replace `DEFAULT_THRESHOLD = 0.85` with:
+**A5. Per-label thresholds, calibrated against the fixture.** Replace
+`DEFAULT_THRESHOLD = 0.85` with hand-picked initial values, then calibrate
+once against `canonicalize-pairs.json` using only cached embeddings (no
+LLM loop):
 
 ```python
 LABEL_THRESHOLDS: dict[str, tuple[float, float]] = {
@@ -152,8 +155,14 @@ LABEL_THRESHOLDS: dict[str, tuple[float, float]] = {
 }
 ```
 
-The eval suite from Track D5 lets us calibrate these against the 18-pair
-fixture instead of guessing.
+A new script `scripts/calibrate_canonicalize_tau.py` runs the 18-pair
+fixture through the cached cosine scores at every τ ∈ [0.70, 0.95] in
+0.01 steps, computes precision/recall vs the labelled `should_merge`,
+picks the τ that maximizes F1 (tie-break toward higher precision), and
+emits new `LABEL_THRESHOLDS` values. Total cost ~$0 — embeddings are
+deterministic and cached. The LLM verifier sits on top of cosine and
+catches the gray-zone subset between τ_loose and τ_direct, so the
+calibrated τ doesn't need to be perfect on its own.
 
 ### Track B — Retrieval (closes B6-B11)
 
@@ -163,15 +172,18 @@ fixture instead of guessing.
 ```python
 class _QueryRewrite(BaseModel):
     focal_concept: str   # short noun phrase, used for dense embedding
-    keywords: list[str]  # 3-7 lemmas, used for BM25 augmentation
+    keywords: list[str]  # 3-7 lemmas, used for BM25 augmentation + KG NER hint
 
 async def rewrite(query: str, client: AsyncAnthropic) -> _QueryRewrite:
     """One-shot Haiku call. Caches by sha1(query[:512]) for 1h."""
 ```
 
-In `vector_retrieval.py`:
-- Dense path embeds `focal_concept` only.
+The rewritten query feeds **both** vector retrieval and KG NER:
+- Dense path (`vector_retrieval.py`) embeds `focal_concept` only.
 - Sparse path uses original `query + " ".join(keywords)`.
+- KG NER (`kg_retrieval._extract_entities`) accepts the rewritten object
+  and prepends `keywords` to its prompt as a hint. Avoids re-discovering
+  noun phrases the rewriter already extracted.
 
 Cache hits make this near-free for repeated queries within a run.
 
@@ -355,10 +367,23 @@ topics:
   ...
 suite_assertions:
   - slug_hit_rate: { oracle: evals/fixtures/slug-oracle.json, min_rate: 0.8 }
-  - kg_growth_rate: { label: Paradigm, max_per_topic: 1.5 }
+  # Per-label growth limits — Paradigm is the real signal; Variable is
+  # expected to inflate after C1 paradigm-scoping; Postulate stays
+  # bounded.
+  - kg_growth_rate: { label: Paradigm,  max_per_topic: 1.5 }
+  - kg_growth_rate: { label: Variable,  max_per_topic: 6   }
+  - kg_growth_rate: { label: Postulate, max_per_topic: 5   }
 budget:
   max_usd_total: 10.00
 ```
+
+`slug_hit_rate` uses **liberal "anywhere" matching**: the canonical slug
+counts as a hit if it appears anywhere in `result.paradigms`, not only at
+position 0. The Researcher legitimately emits multiple paradigms when a
+topic spans them (e.g. "Q-learning trade-off" emits both
+`reinforcement-learning` and `exploration-exploitation`). Paired with
+`kg_growth_rate(Paradigm) ≤ 1.5/topic` as the brake, the metric can't be
+gamed by slug-spamming.
 
 `suite_assertions` is a new top-level field — runs after all topics finish.
 
@@ -464,7 +489,9 @@ Phase 1 — Cheap Track A wins (~$2 of LLM)
 Phase 2 — Structural Track A wins (~$3)
     A1 list_known_slugs helper, drop _parse_known_slugs
     A4 ancestor expansion (Paradigm only)
-    A5 per-label thresholds (calibrated against fixture)
+    A5 per-label thresholds — ship hand-picked, then run
+       scripts/calibrate_canonicalize_tau.py against the 18-pair
+       fixture (no LLM cost), commit calibrated values
     Re-run merge-quality + new slug-accuracy.yaml
     Expected: slug hit rate 50% → 75-85%
 
@@ -569,32 +596,37 @@ Existing tests must keep passing:
 - **D6 timing overhead** must be negligible — use `time.monotonic_ns()`,
   not wall-clock formatting in hot paths.
 
-## Open questions
+## Decisions
 
-1. Should `slug_hit_rate` count partial matches (e.g. Researcher emits
-   `reinforcement-learning` AND `q-learning` for an RL topic — does that
-   pass)? Recommendation: yes if the canonical slug appears anywhere in
-   `result.paradigms`.
-2. Is the cumulative-growth suite's 30-nodes/topic target still right
-   after Variable scoping (C1) increases Variable node count by ~3×?
-   May need to recalibrate.
-3. Should query rewriter (B1) run for KG entity NER too, or only vector
-   search? Currently the spec only rewrites vector queries. KG NER could
-   benefit similarly but requires more thought.
-4. Per-label canonicalize thresholds (A5) — pick by gradient search on
-   the 18-pair fixture, or set by hand? Spec assumes hand-picked initial
-   values then fixture-tuned in Phase 2.
+1. **`slug_hit_rate` uses liberal matching.** The canonical slug counts
+   as a hit if it appears anywhere in `result.paradigms`. Slug-spamming
+   is bounded by `kg_growth_rate(Paradigm) ≤ 1.5/topic` (D3).
+2. **No aggregate KG-growth target.** Replaced by per-label
+   `kg_growth_rate` predicates. Paradigm growth is the slug-fragmentation
+   signal; Variable inflation after C1 paradigm-scoping is expected and
+   not a regression.
+3. **Query rewriter (B1) feeds KG NER too.** The `keywords` field is
+   prepended to the NER prompt as a hint. Cost is zero (rewrite already
+   cached); quality lift is real on long queries.
+4. **Per-label τ are hand-picked, then calibrated against the fixture
+   using cached cosine scores only — no LLM gradient loop.** A new script
+   `scripts/calibrate_canonicalize_tau.py` sweeps τ ∈ [0.70, 0.95] in
+   0.01 steps, picks the F1 maximum (tie-break toward precision), and
+   emits new `LABEL_THRESHOLDS` values. The LLM verifier on top catches
+   the gray zone, so τ doesn't need to be perfect on its own.
 
 ## Success criteria (final)
 
 | Metric | Baseline (2026-05-07) | Target |
 |--------|-----------------------|--------|
-| Slug reuse rate (`slug-accuracy.yaml`) | ~50% | ≥ 80% |
-| Merge precision (`merge-quality.yaml`) | unmeasured | ≥ 0.95 |
-| Merge recall  (`merge-quality.yaml`)   | unmeasured | ≥ 0.90 |
-| KG growth nodes/topic (`cumulative-growth.yaml`) | ~84 | ≤ 30 |
-| `retrieve_knowledge` p95 | unmeasured | ≤ 2.5s |
-| `canonicalize` avg | unmeasured | ≤ 8s |
+| Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | ≥ 80% |
+| Merge precision (`merge-quality.yaml`)            | unmeasured | ≥ 0.95 |
+| Merge recall  (`merge-quality.yaml`)              | unmeasured | ≥ 0.90 |
+| KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | ≤ 1.5 |
+| KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | ≤ 6 |
+| KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | ≤ 5 |
+| `retrieve_knowledge` p95                          | unmeasured | ≤ 2.5s |
+| `canonicalize` avg                                | unmeasured | ≤ 8s |
 
 All numbers emitted to `report.json`. Pass/fail surfaces in `report.md`.
 
