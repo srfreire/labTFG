@@ -723,3 +723,79 @@ async def _merge_precision_recall(ctx: SuiteAssertionContext, args) -> Assertion
             f"thresholds: P>={min_precision:.2f} R>={min_recall:.2f}"
         ),
     )
+
+
+def _normalize_topic_for_match(text: str) -> str:
+    """Identity-style hash for matching topic text -> oracle entry.
+    Robust to whitespace differences."""
+    import hashlib as _hashlib
+
+    cleaned = " ".join(text.split())
+    return _hashlib.sha1(cleaned.encode("utf-8")).hexdigest()
+
+
+@register_suite("slug_hit_rate")
+async def _slug_hit_rate(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
+    """For each topic in topic_results, look up its oracle entry by text
+    hash; count a hit if expected_slug appears anywhere in
+    result.paradigms (liberal matching). Pass iff hits/total >= min_rate.
+
+    args: {oracle: path, min_rate: 0.8}
+
+    Topics not present in the oracle are skipped (don't count toward
+    the denominator).
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    oracle_path = _Path(args["oracle"])
+    if not oracle_path.exists():
+        return AssertionOutcome(
+            name="slug_hit_rate",
+            passed=False,
+            detail=f"oracle not found: {oracle_path}",
+        )
+    min_rate = float(args.get("min_rate", 0.8))
+    try:
+        oracle = _json.loads(oracle_path.read_text())
+    except _json.JSONDecodeError as exc:
+        return AssertionOutcome(
+            name="slug_hit_rate",
+            passed=False,
+            detail=f"oracle not valid JSON: {exc}",
+        )
+
+    by_hash = {
+        _normalize_topic_for_match(p["topic_text"]): p["expected_slug"]
+        for p in oracle
+    }
+
+    hits = 0
+    total = 0
+    misses: list[str] = []
+    for tr in ctx.topic_results:
+        h = _normalize_topic_for_match(tr.topic)
+        expected = by_hash.get(h)
+        if expected is None:
+            continue
+        total += 1
+        if expected in tr.run.paradigms:
+            hits += 1
+        else:
+            misses.append(f"{expected!r} not in {list(tr.run.paradigms)!r}")
+
+    if total == 0:
+        return AssertionOutcome(
+            name="slug_hit_rate",
+            passed=False,
+            detail="no topic_results matched the oracle",
+        )
+    rate = hits / total
+    detail = f"{hits}/{total} = {rate:.3f}, threshold={min_rate:.2f}"
+    if misses:
+        detail += "; misses: " + "; ".join(misses[:3])
+        if len(misses) > 3:
+            detail += f" (+{len(misses) - 3} more)"
+    return AssertionOutcome(
+        name="slug_hit_rate", passed=rate >= min_rate, detail=detail
+    )
