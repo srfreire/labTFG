@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import re
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ from decisionlab.tools.reports import slugify
 from shared.knowledge_graph import KnowledgeGraph
 
 if TYPE_CHECKING:
+    from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
     from shared.vector_store import VectorStore
 
@@ -34,6 +36,63 @@ def _get_vector_store() -> VectorStore | None:
     import shared
 
     return shared.vectors
+
+
+def _get_db() -> DatabaseService | None:
+    """Lazy lookup of shared.db — None if not initialised. Test seam:
+    monkeypatch this to inject a fake."""
+    import shared
+
+    return shared.db
+
+
+async def _record_node_run_observation(
+    *, label: str, key_value: str, run_id: str
+) -> None:
+    """Best-effort insert of one ``node_run_observations`` row.
+
+    Skipped when ``shared.db`` is unavailable or ``run_id`` isn't a UUID
+    (e.g. the ``canonical-paradigms-seed`` constant — those nodes have no
+    backing ``runs`` row to point at). Postgres failures are logged but
+    never propagate: the KG write must succeed even if Postgres is down.
+    """
+    try:
+        parsed_run_id = uuid.UUID(run_id)
+    except (ValueError, AttributeError, TypeError):
+        return
+
+    db = _get_db()
+    if db is None:
+        return
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        async with db.get_session() as session:
+            await session.execute(
+                sql_text(
+                    "INSERT INTO node_run_observations "
+                    "(id, label, key_value, run_id) "
+                    "VALUES (:id, :label, :key_value, :run_id) "
+                    "ON CONFLICT (label, key_value, run_id) DO NOTHING"
+                ),
+                {
+                    "id": uuid.uuid4(),
+                    "label": label[:40],
+                    "key_value": str(key_value)[:120],
+                    "run_id": parsed_run_id,
+                },
+            )
+            await session.commit()
+    except Exception as exc:
+        logger.warning(
+            "node_run_observations insert failed (non-fatal) "
+            "label=%s key=%r run_id=%s: %s",
+            label,
+            key_value,
+            run_id,
+            exc,
+        )
 
 
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -288,18 +347,29 @@ async def populate_kg(
         # every node + relation in a single tx, so a single Paper.doi
         # collision wiped the whole topic's writes (cumulative-growth t1).
         async def _node_work(tx, node=node, key_name=key_name, key_value=key_value):
+            # P0-004: drop unbounded `run_ids` array; track count + recency
+            # only. Per-run provenance moves to the Postgres
+            # node_run_observations table written after this Cypher returns.
+            #
+            # `run_count` increment is read-modify-write inside the Cypher
+            # tx. Neo4j serialises write-tx on the same node, so two
+            # concurrent populate_kg calls on the *same* node will not
+            # interleave reads — the loser retries the whole tx work fn.
+            # Cross-pipeline concurrent write throughput is single-digit
+            # in this project, so the simple `coalesce(...) + 1` is safe.
             create_props = {
                 **{k: v for k, v in node.properties.items() if k != "updated_at"},
                 "created_at": now,
-                "run_ids": [run_id],
+                "run_count": 1,
+                "last_run_at": now,
             }
-            update_props = {**node.properties, "updated_at": now}
+            update_props = {**node.properties, "updated_at": now, "last_run_at": now}
 
             cypher = (
                 f"MERGE (n:{node.label} {{{key_name}: $key_value}}) "
                 f"ON CREATE SET n += $create_props "
                 f"ON MATCH SET n += $update_props, "
-                f"n.run_ids = coalesce(n.run_ids, []) + $run_id "
+                f"n.run_count = coalesce(n.run_count, 0) + 1 "
                 f"RETURN n.updated_at IS NULL AS was_created"
             )
             result = await tx.run(
@@ -308,7 +378,6 @@ async def populate_kg(
                     "key_value": key_value,
                     "create_props": create_props,
                     "update_props": update_props,
-                    "run_id": run_id,
                 },
             )
             return await result.single()
@@ -333,6 +402,13 @@ async def populate_kg(
             counters["nodes_created"] += 1
         else:
             counters["nodes_merged"] += 1
+
+        # Per-run provenance: best-effort PG insert. Postgres failures or
+        # non-UUID run_ids (e.g. the seed run) silently skip — the KG write
+        # already succeeded and counts toward the result.
+        await _record_node_run_observation(
+            label=node.label, key_value=str(key_value), run_id=run_id
+        )
 
         # Queue slug-like nodes for ANN-index sync after the node loop.
         if node.label in _SLUG_LIKE_LABELS:

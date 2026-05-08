@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
+import uuid
 
 import pytest
 
+from decisionlab.knowledge import kg_writer
 from decisionlab.knowledge.kg_writer import populate_kg
 from decisionlab.knowledge.models import (
     ExtractionResult,
@@ -13,6 +15,21 @@ from decisionlab.knowledge.models import (
     NodeSpec,
     RelationSpec,
 )
+
+
+@pytest.fixture(autouse=True)
+def _stub_node_run_observation(monkeypatch):
+    """Suppress the Postgres insert by default.
+
+    Tests that need to verify the side-effect override this with their own
+    recorder (see ``test_node_run_observation_records_per_merge``).
+    """
+
+    async def _noop(**_kwargs):
+        return None
+
+    monkeypatch.setattr(kg_writer, "_record_node_run_observation", _noop)
+
 
 # ---------------------------------------------------------------------------
 # Fake in-memory Neo4j — simulates MERGE, relation lookup, supersession
@@ -74,13 +91,10 @@ class FakeNeo4jStore:
         nk = self._node_key(label, key_prop, key_value)
 
         if nk in self.nodes:
-            # ON MATCH path
+            # ON MATCH path: bump run_count, refresh last_run_at via update_props.
             update_props = params.get("update_props", {})
             self.nodes[nk].update(update_props)
-            run_id = params.get("run_id")
-            if run_id:
-                self.nodes[nk].setdefault("run_ids", [])
-                self.nodes[nk]["run_ids"].append(run_id)
+            self.nodes[nk]["run_count"] = self.nodes[nk].get("run_count", 0) + 1
             return [{"was_created": False}]
         else:
             # ON CREATE path
@@ -671,7 +685,11 @@ async def test_node_merge_preserves_created_at():
     node = kg.store.nodes["Variable:id=reinforcement-learning:dopamine"]
     assert node["created_at"] == original_created  # preserved from first creation
     assert node["type"] == "neurotransmitter"  # updated property
-    assert "run-2" in node.get("run_ids", [])
+    # P0-004: run provenance moved off the node — count + recency only.
+    assert node["run_count"] == 2
+    assert node.get("last_run_at") is not None
+    # Legacy `run_ids` array no longer accumulates.
+    assert "run_ids" not in node
 
 
 # ---------------------------------------------------------------------------
@@ -984,3 +1002,143 @@ async def test_node_with_updated_at_in_properties_counts_as_created():
 
     assert result.nodes_created == 1
     assert result.nodes_merged == 0
+
+
+# ---------------------------------------------------------------------------
+# P0-004: run_count / last_run_at + node_run_observations replace run_ids array
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_p0004_first_merge_sets_run_count_and_last_run_at():
+    """Newly created nodes carry ``run_count = 1`` and a ``last_run_at`` stamp.
+
+    No legacy ``run_ids`` array is written.
+    """
+    kg = FakeKnowledgeGraph()
+    extraction = _research_extraction(run_id=str(uuid.uuid4()))
+
+    await populate_kg(extraction, kg)
+
+    paradigm = kg.store.nodes["Paradigm:slug=homeostatic-regulation"]
+    assert paradigm["run_count"] == 1
+    assert isinstance(paradigm.get("last_run_at"), str)
+    assert "run_ids" not in paradigm
+
+
+@pytest.mark.asyncio
+async def test_p0004_second_merge_increments_run_count_and_refreshes_recency():
+    """Re-MERGEing the same node with a fresh run_id bumps run_count and
+    overwrites last_run_at — replacing the unbounded ``run_ids`` accumulation."""
+    kg = FakeKnowledgeGraph()
+    run_a, run_b = str(uuid.uuid4()), str(uuid.uuid4())
+
+    await populate_kg(_research_extraction(run_id=run_a), kg)
+    paradigm = kg.store.nodes["Paradigm:slug=homeostatic-regulation"]
+    last_run_first = paradigm["last_run_at"]
+
+    await populate_kg(_research_extraction(run_id=run_b), kg)
+    paradigm = kg.store.nodes["Paradigm:slug=homeostatic-regulation"]
+
+    assert paradigm["run_count"] == 2
+    assert paradigm["last_run_at"] is not None
+    # last_run_at refresh stamps the current write — for two writes inside the
+    # same `now()` it may match, but the property must always be set.
+    assert paradigm["last_run_at"] >= last_run_first
+    assert "run_ids" not in paradigm
+
+
+@pytest.mark.asyncio
+async def test_node_run_observation_records_per_merge(monkeypatch):
+    """Every successful MERGE triggers one ``_record_node_run_observation``
+    call carrying (label, key_value, run_id). The seed run_id (non-UUID) and
+    Postgres unavailability are handled inside the helper itself; here we
+    only verify the helper is invoked once per MERGE."""
+    captured: list[dict] = []
+
+    async def _capture(*, label, key_value, run_id):
+        captured.append({"label": label, "key_value": key_value, "run_id": run_id})
+
+    monkeypatch.setattr(kg_writer, "_record_node_run_observation", _capture)
+
+    kg = FakeKnowledgeGraph()
+    run_id = str(uuid.uuid4())
+    extraction = _research_extraction(run_id=run_id)
+
+    result = await populate_kg(extraction, kg)
+
+    # One observation per accepted node (7 in the realistic extraction).
+    assert len(captured) == result.nodes_created + result.nodes_merged
+    assert all(call["run_id"] == run_id for call in captured)
+    labels = {call["label"] for call in captured}
+    assert "Paradigm" in labels and "Postulate" in labels
+
+
+@pytest.mark.asyncio
+async def test_record_node_run_observation_skips_non_uuid_run_id(monkeypatch):
+    """Non-UUID run_ids (e.g. ``canonical-paradigms-seed``) silently skip
+    the Postgres insert — no FK violation, no log spam at error level."""
+    db_called = False
+
+    class _SentinelDB:
+        nonlocal_marker = True
+
+        def get_session(self):
+            nonlocal db_called
+            db_called = True
+            raise AssertionError("DB must not be touched for non-UUID run_id")
+
+    monkeypatch.setattr(kg_writer, "_get_db", lambda: _SentinelDB())
+
+    await kg_writer._record_node_run_observation(
+        label="Paradigm",
+        key_value="reinforcement-learning",
+        run_id="canonical-paradigms-seed",
+    )
+
+    assert db_called is False
+
+
+@pytest.mark.asyncio
+async def test_record_node_run_observation_skips_when_db_unavailable(monkeypatch):
+    """When ``shared.db`` is None the helper is a quiet no-op."""
+    monkeypatch.setattr(kg_writer, "_get_db", lambda: None)
+
+    # No exception, no return value required.
+    await kg_writer._record_node_run_observation(
+        label="Paradigm",
+        key_value="reinforcement-learning",
+        run_id=str(uuid.uuid4()),
+    )
+
+
+@pytest.mark.asyncio
+async def test_record_node_run_observation_swallows_pg_failure(monkeypatch):
+    """Postgres exceptions inside the helper must not propagate — the KG
+    write must still report success even if the audit row insert fails."""
+
+    class _BrokenSession:
+        async def execute(self, *_a, **_kw):
+            raise RuntimeError("postgres down")
+
+        async def commit(self):
+            return None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc_info):
+            return None
+
+    class _BrokenDB:
+        def get_session(self):
+            return _BrokenSession()
+
+    monkeypatch.setattr(kg_writer, "_get_db", lambda: _BrokenDB())
+
+    # Must not raise.
+    await kg_writer._record_node_run_observation(
+        label="Paradigm",
+        key_value="reinforcement-learning",
+        run_id=str(uuid.uuid4()),
+    )

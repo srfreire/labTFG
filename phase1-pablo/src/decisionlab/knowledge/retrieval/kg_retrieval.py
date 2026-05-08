@@ -447,12 +447,15 @@ def _collect_passages(
             "labels": node.labels,
             "relation_chain": node.relation_chain,
         }
-        # Add run provenance from node properties (set by populate_kg).
-        # populate_kg appends run_ids chronologically, so [-1] is the most recent.
-        run_ids = node.properties.get("run_ids")
-        if run_ids:
-            meta["run_ids"] = run_ids
-            meta["run_id"] = run_ids[-1]
+        # Run provenance comes from the new run_count / last_run_at properties
+        # (memory-refactor P0-004). Per-run history lives in Postgres
+        # ``node_run_observations`` and is fetched separately when needed.
+        run_count = node.properties.get("run_count")
+        if run_count:
+            meta["run_count"] = run_count
+        last_run_at = node.properties.get("last_run_at")
+        if last_run_at:
+            meta["last_run_at"] = last_run_at
         created_at = node.properties.get("created_at")
         if created_at:
             meta["run_date"] = created_at

@@ -401,11 +401,16 @@ async def run_pipeline(
 
 
 @app.get("/api/kg/snapshot")
-async def kg_snapshot() -> dict:
+async def kg_snapshot(run_id: str | None = None) -> dict:
     """Return all nodes and active (non-superseded) relations.
 
-    Frontend uses ``run_ids`` / ``run_id`` to distinguish nodes/edges created
-    during the current run.
+    Each node carries ``run_count`` (cumulative MERGEs that have touched it)
+    and ``last_run_at`` (most recent MERGE timestamp), which replaced the
+    old per-node ``run_ids`` array (memory-refactor P0-004). When ``run_id``
+    is supplied, the response also contains ``current_run_node_ids`` — the
+    Neo4j elementIds of nodes the run has touched, computed by joining
+    against the Postgres ``node_run_observations`` table; the frontend uses
+    it to highlight new-this-run nodes.
     """
     import shared
 
@@ -423,6 +428,7 @@ async def kg_snapshot() -> dict:
     )
 
     nodes = []
+    label_key_to_id: dict[tuple[str, str], str] = {}
     for n in nodes_raw:
         props = n["props"] or {}
         label = n["labels"][0] if n["labels"] else "Node"
@@ -436,12 +442,31 @@ async def kg_snapshot() -> dict:
             or props.get("formulation_id")
             or label
         )
+        # Index every plausible natural-key property — `kg_writer` may have
+        # picked any of these, and `node_run_observations` stores the value
+        # used at write time. Enumerating them all keeps the lookup
+        # in sync without coupling to `_resolve_natural_key`'s precedence.
+        for key_prop in (
+            "slug",
+            "id",
+            "doi",
+            "name",
+            "title",
+            "latex",
+            "url",
+            "formulation_id",
+            "_synthetic_id",
+        ):
+            val = props.get(key_prop)
+            if val is not None:
+                label_key_to_id.setdefault((label, str(val)), n["id"])
         nodes.append(
             {
                 "id": n["id"],
                 "label": label,
                 "display": str(display)[:60],
-                "run_ids": props.get("run_ids", []),
+                "run_count": props.get("run_count", 0),
+                "last_run_at": props.get("last_run_at"),
                 "properties": props,
             }
         )
@@ -460,7 +485,62 @@ async def kg_snapshot() -> dict:
             }
         )
 
-    return {"nodes": nodes, "relations": relations}
+    current_run_node_ids = await _resolve_current_run_node_ids(run_id, label_key_to_id)
+
+    return {
+        "nodes": nodes,
+        "relations": relations,
+        "current_run_node_ids": current_run_node_ids,
+    }
+
+
+async def _resolve_current_run_node_ids(
+    run_id: str | None, label_key_to_id: dict[tuple[str, str], str]
+) -> list[str]:
+    """Map (label, key_value) observations for ``run_id`` back to Neo4j elementIds.
+
+    Returns an empty list when no ``run_id`` is provided, the run_id isn't
+    a UUID (e.g. the seed run), or Postgres is unavailable. The frontend
+    treats the empty case as "no highlighting needed".
+    """
+    if not run_id:
+        return []
+    try:
+        import uuid as _uuid
+
+        parsed = _uuid.UUID(run_id)
+    except ValueError:
+        return []
+
+    import shared
+
+    if shared.db is None:
+        return []
+
+    from sqlalchemy import text as sql_text
+
+    try:
+        async with shared.db.get_session() as session:
+            result = await session.execute(
+                sql_text(
+                    "SELECT label, key_value FROM node_run_observations "
+                    "WHERE run_id = :run_id"
+                ),
+                {"run_id": parsed},
+            )
+            rows = result.all()
+    except Exception:
+        logger.warning(
+            "kg_snapshot: node_run_observations lookup failed", exc_info=True
+        )
+        return []
+
+    ids: list[str] = []
+    for row in rows:
+        node_id = label_key_to_id.get((row.label, row.key_value))
+        if node_id is not None:
+            ids.append(node_id)
+    return ids
 
 
 @app.get("/api/runs")

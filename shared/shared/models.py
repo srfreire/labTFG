@@ -120,6 +120,33 @@ class Artifact(Base):
     experiment: Mapped[Experiment | None] = relationship(back_populates="artifacts")
 
 
+class NodeRunObservation(Base):
+    """Per-run observation of a KG node MERGE.
+
+    Replaces the unbounded ``n.run_ids`` array on Neo4j nodes (memory-refactor
+    P0-004 / `docs/memory-system.md` §A10). Each MERGE in
+    ``populate_kg._node_work`` inserts one row so per-run provenance stays
+    queryable without bloating the graph payload.
+    """
+
+    __tablename__ = "node_run_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "label", "key_value", "run_id", name="uq_node_run_observations_node_run"
+        ),
+        Index("ix_node_run_observations_run_id", "run_id"),
+        Index("ix_node_run_observations_node", "label", "key_value"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    label: Mapped[str] = mapped_column(String(40))
+    key_value: Mapped[str] = mapped_column(String(120))
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("runs.id"))
+    observed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class Memory(Base):
     __tablename__ = "memories"
     __table_args__ = (

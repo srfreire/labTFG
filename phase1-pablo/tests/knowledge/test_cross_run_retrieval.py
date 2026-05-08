@@ -198,15 +198,21 @@ class TestAC4_RunMetadataInResults:
 
 
 class TestAC5_KGRunIdProvenance:
-    def test_kg_passages_include_run_ids_from_node_properties(self):
-        """KG results include run_ids from the node's properties."""
+    def test_kg_passages_include_run_count_and_recency_from_node_properties(self):
+        """KG results expose ``run_count`` and ``last_run_at`` from node props.
+
+        P0-004 replaced the unbounded ``run_ids`` array with these two
+        properties; per-run history now lives in Postgres
+        ``node_run_observations`` and is fetched separately.
+        """
         nodes = [
             _ScoredNode(
                 node_id="4:a",
                 labels=["Variable"],
                 properties={
                     "name": "ghrelin",
-                    "run_ids": ["run-1", "run-2"],
+                    "run_count": 2,
+                    "last_run_at": "2026-04-10T12:00:00Z",
                     "created_at": "2026-04-10T12:00:00Z",
                 },
                 score=1.0,
@@ -216,8 +222,8 @@ class TestAC5_KGRunIdProvenance:
 
         results = _collect_passages(nodes, limit=10)
 
-        assert results[0].metadata["run_ids"] == ["run-1", "run-2"]
-        assert results[0].metadata["run_id"] == "run-2"  # most recent
+        assert results[0].metadata["run_count"] == 2
+        assert results[0].metadata["last_run_at"] == "2026-04-10T12:00:00Z"
         assert results[0].metadata["run_date"] == "2026-04-10T12:00:00Z"
         assert results[0].metadata["created_at"] == "2026-04-10T12:00:00Z"
 
@@ -227,7 +233,7 @@ class TestAC5_KGRunIdProvenance:
             _ScoredNode(
                 node_id="4:b",
                 labels=["BrainRegion"],
-                properties={"name": "VTA", "run_ids": ["run-1"]},
+                properties={"name": "VTA", "run_count": 1},
                 score=0.85,
                 relation_chain=["MEASURES"],
                 rel_run_ids=["run-1"],
@@ -238,8 +244,8 @@ class TestAC5_KGRunIdProvenance:
 
         assert results[0].metadata["rel_run_ids"] == ["run-1"]
 
-    def test_kg_passages_without_run_ids_omit_key(self):
-        """Nodes without run_ids don't get run_id/run_ids in metadata."""
+    def test_kg_passages_without_run_provenance_omit_keys(self):
+        """Nodes without run_count/last_run_at don't get the keys in metadata."""
         nodes = [
             _ScoredNode(
                 node_id="4:c",
@@ -252,6 +258,9 @@ class TestAC5_KGRunIdProvenance:
 
         results = _collect_passages(nodes, limit=10)
 
+        assert "run_count" not in results[0].metadata
+        assert "last_run_at" not in results[0].metadata
+        # Legacy keys must not leak back in.
         assert "run_ids" not in results[0].metadata
         assert "run_id" not in results[0].metadata
 
@@ -261,7 +270,7 @@ class TestAC5_KGRunIdProvenance:
             _ScoredNode(
                 node_id="4:seed",
                 labels=["Variable"],
-                properties={"name": "x", "run_ids": ["run-1"]},
+                properties={"name": "x", "run_count": 1},
                 score=1.0,
                 relation_chain=[],
                 rel_run_ids=None,

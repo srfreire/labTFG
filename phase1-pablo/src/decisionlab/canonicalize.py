@@ -14,7 +14,7 @@ emits, the canonicalizer:
    merge / keep-separate decision.
 4. Approved merges remap relation endpoints to the canonical key and
    drop the duplicate node from the extraction so ``populate_kg`` only
-   touches (extends ``run_ids``) the existing KG node.
+   touches (bumps ``run_count`` / ``last_run_at``) the existing KG node.
 
 Below threshold, or when verification rejects the merge, or when KG/
 embedding infrastructure is unavailable, the extraction is returned

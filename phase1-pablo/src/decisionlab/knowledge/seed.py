@@ -82,11 +82,17 @@ async def seed_canonical_paradigms(
     nodes_merged = 0
 
     async def _seed_one(tx, slug, name, definition):
+        # P0-004: no more `run_ids` array — bump `run_count` / `last_run_at`
+        # like `kg_writer._node_work`. Seed inserts have no FK row to point
+        # at in `node_run_observations`, so we don't write one.
         cypher = (
             "MERGE (p:Paradigm {slug: $slug}) "
             "ON CREATE SET p.name = $name, p.description = $description, "
-            "  p.created_at = $now, p.run_ids = [$run_id], p.canonical = true "
-            "ON MATCH SET p.canonical = true "
+            "  p.created_at = $now, p.run_count = 1, p.last_run_at = $now, "
+            "  p.canonical = true "
+            "ON MATCH SET p.canonical = true, "
+            "  p.run_count = coalesce(p.run_count, 0) + 1, "
+            "  p.last_run_at = $now "
             "RETURN p.created_at = $now AS was_created"
         )
         result = await tx.run(
@@ -96,7 +102,6 @@ async def seed_canonical_paradigms(
                 "name": name,
                 "description": definition,
                 "now": now,
-                "run_id": _SEED_RUN_ID,
             },
         )
         return await result.single()

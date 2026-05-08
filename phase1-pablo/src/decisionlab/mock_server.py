@@ -317,7 +317,10 @@ async def kg_snapshot() -> dict:
     nodes = [
         {
             **n,
-            "run_ids": [run_id] if n["id"] in revealed_nodes else [],
+            "run_count": 1 if n["id"] in revealed_nodes else 0,
+            "last_run_at": "2026-05-08T12:00:00+00:00"
+            if n["id"] in revealed_nodes
+            else None,
             "properties": n.get("properties", {}),
         }
         for n in _SYNTHETIC_KG["nodes"]
@@ -330,7 +333,16 @@ async def kg_snapshot() -> dict:
         }
         for r in _SYNTHETIC_KG["relations"]
     ]
-    return {"nodes": nodes, "relations": relations}
+    current_run_node_ids = (
+        [n["id"] for n in _SYNTHETIC_KG["nodes"] if n["id"] in revealed_nodes]
+        if run_id
+        else []
+    )
+    return {
+        "nodes": nodes,
+        "relations": relations,
+        "current_run_node_ids": current_run_node_ids,
+    }
 
 
 # ---------------------------------------------------------------------------

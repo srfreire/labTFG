@@ -50,10 +50,15 @@ function toReagraph(
   nodes: KGNode[],
   relations: KGRelation[],
   runId: string | null,
+  currentRunNodeIds: Set<string>,
   showAll: boolean,
 ): { nodes: ReagraphNode[]; edges: ReagraphEdge[] } {
+  // P0-004: per-run node membership comes from the API's
+  // `current_run_node_ids` (sourced from the Postgres
+  // node_run_observations table) instead of the old per-node `run_ids`
+  // array.
   const isNewNode = (n: KGNode) =>
-    runId !== null && n.run_ids.includes(runId);
+    runId !== null && currentRunNodeIds.has(n.id);
   const keptNodes = showAll ? nodes : nodes.filter(isNewNode);
   const keptIds = new Set(keptNodes.map((n) => n.id));
   const keptEdges = relations.filter(
@@ -85,7 +90,8 @@ function toReagraph(
 // Keys hidden from the stats panel — temporal/provenance fields are shown
 // in a dedicated footer, not mixed into the main property list.
 const HIDDEN_PROP_KEYS = new Set([
-  "run_ids",
+  "run_count",
+  "last_run_at",
   "created_at",
   "updated_at",
 ]);
@@ -163,7 +169,7 @@ function NodeStatsPanel({
   );
   const createdAt = props.created_at as string | undefined;
   const updatedAt = props.updated_at as string | undefined;
-  const runIds = (props.run_ids as string[] | undefined) ?? node.run_ids ?? [];
+  const runCount = node.run_count;
 
   const outgoing = neighbors.filter((n) => n.direction === "out");
   const incoming = neighbors.filter((n) => n.direction === "in");
@@ -271,7 +277,7 @@ function NodeStatsPanel({
         )}
 
         {/* Provenance footer */}
-        {(createdAt || updatedAt || runIds.length > 0) && (
+        {(createdAt || updatedAt || runCount > 0) && (
           <section className="pt-3 border-t border-border-subtle space-y-1 text-[10px] text-text-faint">
             {createdAt && (
               <div>
@@ -285,10 +291,10 @@ function NodeStatsPanel({
                 {updatedAt}
               </div>
             )}
-            {runIds.length > 0 && (
+            {runCount > 0 && (
               <div>
                 <span className="uppercase tracking-[1px] mr-2">Runs</span>
-                {runIds.length}
+                {runCount}
               </div>
             )}
           </section>
@@ -312,14 +318,19 @@ export default function KnowledgeGraphPanel({
 
   const fetchSnapshot = useCallback(async () => {
     try {
-      const res = await fetch("/api/kg/snapshot");
+      // Pass the active run_id so the backend can resolve
+      // current_run_node_ids from node_run_observations (P0-004).
+      const url = runId
+        ? `/api/kg/snapshot?run_id=${encodeURIComponent(runId)}`
+        : "/api/kg/snapshot";
+      const res = await fetch(url);
       if (!res.ok) return;
       const data: KGSnapshot = await res.json();
       setSnapshot(data);
     } catch {
       /* KG may be unavailable — silently stay empty */
     }
-  }, []);
+  }, [runId]);
 
   /* Initial fetch */
   useEffect(() => {
@@ -344,15 +355,21 @@ export default function KnowledgeGraphPanel({
     }
   }, [expanded]);
 
+  const currentRunNodeIds = useMemo(
+    () => new Set(snapshot?.current_run_node_ids ?? []),
+    [snapshot],
+  );
+
   const delta = useMemo(
     () =>
       toReagraph(
         snapshot?.nodes ?? [],
         snapshot?.relations ?? [],
         runId,
+        currentRunNodeIds,
         false,
       ),
-    [snapshot, runId],
+    [snapshot, runId, currentRunNodeIds],
   );
 
   const full = useMemo(
@@ -361,9 +378,10 @@ export default function KnowledgeGraphPanel({
         snapshot?.nodes ?? [],
         snapshot?.relations ?? [],
         runId,
+        currentRunNodeIds,
         true,
       ),
-    [snapshot, runId],
+    [snapshot, runId, currentRunNodeIds],
   );
 
   const isWorking = memoryStatus === "working";

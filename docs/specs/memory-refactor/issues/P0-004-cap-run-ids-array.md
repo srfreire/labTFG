@@ -1,7 +1,7 @@
 ---
 id: P0-004
 title: Replace run_ids array on KG nodes with run_count + node_run_observations table
-status: todo
+status: in-progress
 kind: strike
 phase: 0
 heat: kg-schema

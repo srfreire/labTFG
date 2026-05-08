@@ -86,7 +86,8 @@ export interface KGNode {
   id: string;
   label: string;        // Neo4j label (Paradigm, Variable, ...)
   display: string;      // human-readable display string
-  run_ids: string[];    // runs this node has been touched in
+  run_count: number;    // total MERGEs that have touched this node
+  last_run_at: string | null; // ISO timestamp of the most recent MERGE
   properties: Record<string, unknown>;
 }
 
@@ -99,9 +100,13 @@ export interface KGRelation {
   properties: Record<string, unknown>;
 }
 
+// `current_run_node_ids` is populated by the snapshot endpoint when called
+// with `?run_id=`. It contains the elementIds of nodes touched in that
+// run, joined from the Postgres node_run_observations table (P0-004).
 export interface KGSnapshot {
   nodes: KGNode[];
   relations: KGRelation[];
+  current_run_node_ids: string[];
 }
 
 // Frontend -> Backend messages
