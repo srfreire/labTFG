@@ -1,7 +1,7 @@
 ---
 id: P1-002
 title: Constrain slug-like fields to Pydantic Literal[canonical-set + __NEW__]
-status: todo
+status: in-progress
 kind: strike
 phase: 1
 heat: extraction
