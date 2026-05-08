@@ -427,8 +427,13 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_stage_description_in_task_context(self):
-        """The stage parameter should generate an appropriate task_context for CRAG."""
-        fused = [_result("test", 0.9, "dense")]
+        """The stage parameter should generate an appropriate task_context for CRAG.
+
+        Uses a sub-threshold score so the conditional CRAG skip
+        introduced in P2-001 does not bypass ``evaluate_results``
+        before this test can inspect its arguments.
+        """
+        fused = [_result("test", 0.3, "dense")]
         crag = CRAGResult(results=fused, action="pass_through")
 
         with _patch_pipeline(crag_result=crag, fused=fused) as mocks:

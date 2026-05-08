@@ -57,7 +57,8 @@ def _env_model(slot: str, default: str) -> str:
     return raw if raw else default
 
 
-def _env_float(name: str, default: float) -> float:
+def _env_float(slot: str, default: float) -> float:
+    name = f"DECISIONLAB_{slot}"
     raw = os.environ.get(name)
     if raw is None or raw == "":
         return default
@@ -83,8 +84,13 @@ class Settings:
     knowledge_fast_model: str
     knowledge_structured_model: str
     feedback_model: str  # feedback classifier (router re-execution decisions)
-    # When the dense top-1 score is at or above this threshold inside
-    # ``handle_retrieve_knowledge``, skip the Haiku NER call that
+    # Conditional CRAG (P2-001): when the top rerank score in
+    # ``handle_retrieve_knowledge`` is at or above this threshold, skip
+    # the Haiku grader entirely and pass the rerank through unchanged.
+    # Override via ``DECISIONLAB_CRAG_SKIP_THRESHOLD``.
+    crag_skip_threshold: float
+    # P2-002: when the dense top-1 score is at or above this threshold
+    # inside ``handle_retrieve_knowledge``, skip the Haiku NER call that
     # ``kg_retrieve`` triggers — the dense channel already has a strong
     # answer, so the BFS would only add latency.
     ner_skip_threshold: float
@@ -135,7 +141,8 @@ class Settings:
                 "KNOWLEDGE_STRUCTURED", "anthropic/claude-sonnet-4.6"
             ),
             feedback_model=_env_model("FEEDBACK", "anthropic/claude-haiku-4.5"),
-            ner_skip_threshold=_env_float("DECISIONLAB_NER_SKIP_THRESHOLD", 0.7),
+            crag_skip_threshold=_env_float("CRAG_SKIP_THRESHOLD", 0.5),
+            ner_skip_threshold=_env_float("NER_SKIP_THRESHOLD", 0.7),
         )
 
 

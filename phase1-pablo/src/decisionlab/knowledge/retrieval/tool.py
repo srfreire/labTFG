@@ -20,7 +20,7 @@ from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.crag import evaluate_results
 from decisionlab.knowledge.retrieval.fusion import fuse_and_rerank
 from decisionlab.knowledge.retrieval.kg_retrieval import kg_retrieve
-from decisionlab.knowledge.retrieval.models import RetrievalResult
+from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
 from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
 from decisionlab.runtime.usage import increment_counter
 from shared.embedding import EmbeddingService
@@ -454,8 +454,14 @@ def create_retrieve_knowledge(
             # stage so CRAG can web-supplement without us pre-clipping
             # the results it would've kept.
             if not embedding_service:
-                # Without embedding service, just concatenate raw results
-                reranked = (kg_results + dense_results + sparse_results)[: top_k * 2]
+                # Degraded path: no rerank service. Sort by raw channel
+                # score so reranked[0] is genuinely the top hit — the
+                # CRAG-skip branch below assumes a score-descending order.
+                reranked = sorted(
+                    kg_results + dense_results + sparse_results,
+                    key=lambda r: r.score,
+                    reverse=True,
+                )[: top_k * 2]
             else:
                 reranked = await fuse_and_rerank(
                     query,
@@ -465,16 +471,31 @@ def create_retrieve_knowledge(
                     embedding_service,
                 )
 
-            # CRAG evaluation
-            task_context = _build_task_context(stage)
-            crag_result = await evaluate_results(
-                query,
-                task_context,
-                reranked,
-                client,
-                search_adapter=search_adapter,
-                embedding_service=embedding_service,
-            )
+            # Conditional CRAG (P2-001): if the rerank's top hit is
+            # already confident, skip the Haiku grader entirely — it's
+            # the largest single contributor to retrieve_p95, so this is
+            # the cheapest latency win available here.
+            top_score = max((r.score for r in reranked[:top_k]), default=0.0)
+            if top_score >= SETTINGS.crag_skip_threshold:
+                increment_counter("crag.skipped")
+                crag_result = CRAGResult(
+                    results=reranked[: top_k * 2],
+                    action="rerank_pass_through",
+                    evaluations=[],
+                    web_results_used=0,
+                    grading_failed=False,
+                )
+            else:
+                increment_counter("crag.evaluated")
+                task_context = _build_task_context(stage)
+                crag_result = await evaluate_results(
+                    query,
+                    task_context,
+                    reranked,
+                    client,
+                    search_adapter=search_adapter,
+                    embedding_service=embedding_service,
+                )
 
             # Apply recency weighting (P5-001)
             weighted_results = _apply_recency_weighting(crag_result.results)
