@@ -313,7 +313,9 @@ async def _generate_reflections(
             )
             reflections_generated += 1
 
-            # Embed and index the new reflection
+            # Embed and index the new reflection. P3-002: payload no longer
+            # carries `confidence` — the PG row owns it; retrieval batch-
+            # fetches the live value.
             vectors = await embedding_service.embed_texts([reflection.content])
             point_id = str(reflection.id)
             await vector_store.upsert_dense(
@@ -326,7 +328,6 @@ async def _generate_reflections(
                     "source_stage": "consolidation",
                     "run_id": run_id,
                     "importance": 8.0,
-                    "confidence": 0.7,
                     "created_at": datetime.now(UTC).isoformat(),
                     "text_preview": reflection.content[:200],
                 },
@@ -458,54 +459,14 @@ async def _apply_decay_and_sync(
     session: AsyncSession,
     vector_store: VectorStore,
 ) -> int:
-    """Apply time decay via shared helper, then sync confidence to Qdrant."""
-    from sqlalchemy import and_, select
+    """Apply time decay. Postgres owns confidence; no Qdrant sync needed.
 
-    from shared.models import Memory
-
-    # Collect pre-decay confidences for changed memories. The DateTime columns
-    # on Memory are TIMESTAMP WITHOUT TIME ZONE (naive), so the cutoff bound
-    # against them must also be naive — asyncpg refuses to compare aware vs
-    # naive in the same query.
-    now = datetime.now(UTC).replace(tzinfo=None)
-    cutoff = now - timedelta(days=30)
-
-    stmt = select(Memory.id, Memory.confidence).where(
-        and_(
-            Memory.valid_to.is_(None),
-            Memory.memory_type != "reflection",
-            Memory.last_accessed_at < cutoff,
-            Memory.last_accessed_at.isnot(None),
-        ),
-    )
-    result = await session.execute(stmt)
-    pre_decay = {row.id: row.confidence for row in result.all()}
-
-    # Apply decay
-    count = await apply_time_decay(session)
-
-    # Sync updated confidences to Qdrant
-    if count > 0:
-        # Re-read the decayed memories to get new confidence values
-        stmt = select(Memory.id, Memory.confidence).where(
-            Memory.id.in_(list(pre_decay.keys())),
-        )
-        result = await session.execute(stmt)
-        for row in result.all():
-            if row.confidence != pre_decay.get(row.id):
-                try:
-                    await vector_store.set_payload(
-                        collection="memories_dense",
-                        id=str(row.id),
-                        payload={"confidence": row.confidence},
-                    )
-                except Exception:
-                    logger.debug(
-                        "Could not sync confidence to Qdrant for %s",
-                        row.id,
-                    )
-
-    return count
+    Pre-P3-002 this re-mirrored the decayed value into `memories_dense`
+    payloads (sparse was never synced — silent drift). Now the retrieval
+    path batch-reads `Memory.confidence` from PG, so the mirror is gone.
+    """
+    del vector_store  # Postgres-only path now; kept in signature for callers.
+    return await apply_time_decay(session)
 
 
 # ---------------------------------------------------------------------------

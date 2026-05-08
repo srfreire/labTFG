@@ -367,61 +367,115 @@ class TestAC4_TimeDecay:
 
 
 class TestAC5_ConfidenceInRetrieval:
-    """Retrieval scoring includes confidence as a multiplicative factor."""
+    """Retrieval scoring includes confidence as a multiplicative factor.
 
-    def test_high_confidence_ranks_above_low(self):
+    Post-P3-002 the multiplier comes from a batched PG fetch keyed by
+    `entity_id`, not from the Qdrant payload. Tests in this class build
+    memory-backed results (entity_id + collection="memories_dense") and
+    patch `_fetch_confidences` to supply the PG-side values directly.
+    """
+
+    @staticmethod
+    def _memory_result(
+        text: str, score: float, *, ts: str
+    ) -> tuple[RetrievalResult, uuid.UUID]:
+        mem_id = uuid.uuid4()
+        return (
+            _result(
+                text,
+                score,
+                "dense",
+                created_at=ts,
+                entity_id=str(mem_id),
+                collection="memories_dense",
+            ),
+            mem_id,
+        )
+
+    async def test_high_confidence_ranks_above_low(self):
         """Same base score + recency: high confidence wins."""
         ts = _utc_iso(0)
-        results = [
-            _result("Low conf", 0.9, "dense", created_at=ts, confidence=0.3),
-            _result("High conf", 0.9, "dense", created_at=ts, confidence=0.9),
-        ]
+        low, low_id = self._memory_result("Low conf", 0.9, ts=ts)
+        high, high_id = self._memory_result("High conf", 0.9, ts=ts)
+        conf_map = {low_id: 0.3, high_id: 0.9}
 
-        weighted = _apply_recency_weighting(results)
+        with patch(
+            "decisionlab.knowledge.retrieval.tool._fetch_confidences",
+            new_callable=AsyncMock,
+            return_value=conf_map,
+        ):
+            weighted = await _apply_recency_weighting([low, high])
 
         assert weighted[0].text == "High conf"
         assert weighted[0].score > weighted[1].score
 
-    def test_confidence_factor_in_score_calculation(self):
-        """Final score = base_score * recency_factor * confidence."""
+    async def test_confidence_factor_in_score_calculation(self):
+        """Final score = base_score * recency_factor * PG confidence."""
         ts = _utc_iso(30)
-        results = [_result("Test", 1.0, "dense", created_at=ts, confidence=0.5)]
+        result, mem_id = self._memory_result("Test", 1.0, ts=ts)
 
-        weighted = _apply_recency_weighting(results)
+        with patch(
+            "decisionlab.knowledge.retrieval.tool._fetch_confidences",
+            new_callable=AsyncMock,
+            return_value={mem_id: 0.5},
+        ):
+            weighted = await _apply_recency_weighting([result])
 
         recency = 0.995**30
         expected = 1.0 * recency * 0.5
         assert weighted[0].score == pytest.approx(expected, rel=1e-3)
 
-    def test_missing_confidence_defaults_to_1(self):
-        """Results without confidence metadata get factor 1.0 (no penalty)."""
+    async def test_missing_pg_row_defaults_to_1(self):
+        """Memory-backed result whose PG row is missing falls back to 1.0."""
+        ts = _utc_iso(0)
+        result, _ = self._memory_result("Orphan", 0.8, ts=ts)
+
+        with patch(
+            "decisionlab.knowledge.retrieval.tool._fetch_confidences",
+            new_callable=AsyncMock,
+            return_value={},
+        ):
+            weighted = await _apply_recency_weighting([result])
+
+        assert weighted[0].metadata["confidence_factor"] == 1.0
+
+    async def test_non_memory_result_defaults_to_1(self):
+        """Web / artifact results are not PG-backed → factor stays 1.0."""
         ts = _utc_iso(0)
         results = [_result("No conf", 0.8, "web", created_at=ts)]
 
-        weighted = _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results)
 
-        # Without confidence key, factor is 1.0 → score stays ~0.8
         assert weighted[0].score == pytest.approx(0.8, rel=0.01)
+        assert weighted[0].metadata["confidence_factor"] == 1.0
 
-    def test_confidence_factor_stored_in_metadata(self):
+    async def test_confidence_factor_stored_in_metadata(self):
         """The confidence_factor is included in result metadata."""
         ts = _utc_iso(0)
-        results = [_result("Test", 0.9, "dense", created_at=ts, confidence=0.7)]
+        result, mem_id = self._memory_result("Test", 0.9, ts=ts)
 
-        weighted = _apply_recency_weighting(results)
+        with patch(
+            "decisionlab.knowledge.retrieval.tool._fetch_confidences",
+            new_callable=AsyncMock,
+            return_value={mem_id: 0.7},
+        ):
+            weighted = await _apply_recency_weighting([result])
 
         assert "confidence_factor" in weighted[0].metadata
         assert weighted[0].metadata["confidence_factor"] == pytest.approx(0.7)
 
-    def test_out_of_range_confidence_clamped(self):
-        """Confidence values > 1.0 or < 0.0 in payload are clamped."""
+    async def test_out_of_range_pg_confidence_clamped(self):
+        """PG-side confidence values outside [0, 1] are clamped on read."""
         ts = _utc_iso(0)
-        results = [
-            _result("Over", 0.9, "dense", created_at=ts, confidence=1.5),
-            _result("Under", 0.9, "dense", created_at=ts, confidence=-0.5),
-        ]
+        over, over_id = self._memory_result("Over", 0.9, ts=ts)
+        under, under_id = self._memory_result("Under", 0.9, ts=ts)
 
-        weighted = _apply_recency_weighting(results)
+        with patch(
+            "decisionlab.knowledge.retrieval.tool._fetch_confidences",
+            new_callable=AsyncMock,
+            return_value={over_id: 1.5, under_id: -0.5},
+        ):
+            weighted = await _apply_recency_weighting([over, under])
 
         for r in weighted:
             assert 0.0 <= r.metadata["confidence_factor"] <= 1.0

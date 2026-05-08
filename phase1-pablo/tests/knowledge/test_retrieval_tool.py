@@ -299,6 +299,11 @@ class TestAC7_MemoryAccessTracking:
         with (
             _patch_pipeline(crag_result=crag, fused=memory_results),
             patch(f"{_TOOL_MODULE}.touch_memory", new_callable=AsyncMock) as mock_touch,
+            patch(
+                f"{_TOOL_MODULE}._fetch_confidences",
+                new_callable=AsyncMock,
+                return_value={},
+            ),
             patch(f"{_TOOL_MODULE}.shared") as mock_shared,
         ):
             mock_shared.db = mock_db
@@ -403,6 +408,221 @@ class TestAC7_MemoryAccessTracking:
 
         mock_session.execute.assert_not_called()
         mock_session.commit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# P3-002 / AC2: confidence batch-fetched from PG inside _apply_recency_weighting
+# ---------------------------------------------------------------------------
+
+
+class TestP3_002_RecencyConfidenceFromPG:
+    @pytest.mark.asyncio
+    async def test_recency_weighting_issues_one_pg_select(self):
+        """AC2: exactly one batched SELECT per retrieve when memory IDs present."""
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        mem_id_1, mem_id_2 = uuid.uuid4(), uuid.uuid4()
+        results = [
+            _result(
+                "memory hit 1",
+                0.9,
+                "dense",
+                entity_id=str(mem_id_1),
+                collection="memories_dense",
+                namespace="paradigm",
+            ),
+            _result(
+                "memory hit 2",
+                0.8,
+                "sparse",
+                entity_id=str(mem_id_2),
+                collection="memories_sparse",
+                namespace="paradigm",
+            ),
+            _result(
+                "artifact hit",
+                0.7,
+                "dense",
+                entity_id=str(uuid.uuid4()),
+                collection="artifacts_dense",
+                namespace="paradigm",
+            ),
+        ]
+
+        # Mock PG returns 0.5 / 0.4 for the two memory IDs.
+        rows = [
+            MagicMock(id=mem_id_1, confidence=0.5),
+            MagicMock(id=mem_id_2, confidence=0.4),
+        ]
+        execute_result = MagicMock()
+        execute_result.all.return_value = rows
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=execute_result)
+        mock_db = _mock_db_with_session(mock_session)
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            weighted = await _apply_recency_weighting(results)
+
+        assert mock_session.execute.await_count == 1
+
+        by_text = {r.text: r for r in weighted}
+        assert by_text["memory hit 1"].metadata["confidence_factor"] == 0.5
+        assert by_text["memory hit 2"].metadata["confidence_factor"] == 0.4
+        # Artifact-only result has no PG row → factor stays 1.0.
+        assert by_text["artifact hit"].metadata["confidence_factor"] == 1.0
+
+    @pytest.mark.asyncio
+    async def test_recency_weighting_skips_pg_when_no_memory_ids(self):
+        """AC3 corollary: pure artifact / web results → no PG round-trip."""
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        results = [
+            _result("web hit", 0.9, "web", url="https://example.com"),
+            _result(
+                "artifact",
+                0.8,
+                "dense",
+                entity_id=str(uuid.uuid4()),
+                collection="artifacts_dense",
+            ),
+        ]
+
+        mock_session = AsyncMock()
+        mock_db = _mock_db_with_session(mock_session)
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            weighted = await _apply_recency_weighting(results)
+
+        mock_session.execute.assert_not_called()
+        assert all(r.metadata["confidence_factor"] == 1.0 for r in weighted)
+
+    @pytest.mark.asyncio
+    async def test_recency_weighting_handles_missing_pg_row(self):
+        """A memory id with no PG row (orphaned Qdrant point) keeps factor 1.0."""
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        orphan_id = uuid.uuid4()
+        results = [
+            _result(
+                "orphaned memory",
+                0.6,
+                "dense",
+                entity_id=str(orphan_id),
+                collection="memories_dense",
+            ),
+        ]
+
+        execute_result = MagicMock()
+        execute_result.all.return_value = []  # PG returns nothing
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=execute_result)
+        mock_db = _mock_db_with_session(mock_session)
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            weighted = await _apply_recency_weighting(results)
+
+        assert weighted[0].metadata["confidence_factor"] == 1.0
+
+    @pytest.mark.asyncio
+    async def test_recency_weighting_ignores_qdrant_payload_confidence(self):
+        """Stale `confidence` left in a Qdrant payload must NOT be honoured.
+
+        Pre-P3-002 the per-result `r.metadata["confidence"]` lookup let
+        drifted Qdrant values shape the score. Now PG is the only source.
+        """
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        mem_id = uuid.uuid4()
+        results = [
+            _result(
+                "memory with stale payload confidence",
+                0.9,
+                "dense",
+                entity_id=str(mem_id),
+                collection="memories_dense",
+                confidence=0.99,  # stale, should be ignored
+            ),
+        ]
+
+        execute_result = MagicMock()
+        execute_result.all.return_value = [MagicMock(id=mem_id, confidence=0.3)]
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=execute_result)
+        mock_db = _mock_db_with_session(mock_session)
+
+        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
+            mock_shared.db = mock_db
+            weighted = await _apply_recency_weighting(results)
+
+        assert weighted[0].metadata["confidence_factor"] == 0.3
+
+    @pytest.mark.asyncio
+    async def test_recency_weighting_no_db_falls_back_to_one(self, caplog):
+        """When `shared.db` is None (degraded mode) use 1.0 + log warning.
+
+        A misconfigured prod where shared.init() failed to wire the DB
+        must not silently bypass scoring with no observable signal.
+        """
+        import logging
+
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        results = [
+            _result(
+                "memory",
+                0.9,
+                "dense",
+                entity_id=str(uuid.uuid4()),
+                collection="memories_dense",
+            ),
+        ]
+
+        with (
+            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+            caplog.at_level(logging.WARNING, logger=_TOOL_MODULE),
+        ):
+            mock_shared.db = None
+            weighted = await _apply_recency_weighting(results)
+
+        assert weighted[0].metadata["confidence_factor"] == 1.0
+        assert any("shared.db is None" in r.getMessage() for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_recency_weighting_pg_error_falls_back_to_one(self, caplog):
+        """A PG fetch error must degrade to factor=1.0, not abort retrieve."""
+        import logging
+
+        from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
+
+        results = [
+            _result(
+                "memory",
+                0.9,
+                "dense",
+                entity_id=str(uuid.uuid4()),
+                collection="memories_dense",
+            ),
+        ]
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(side_effect=RuntimeError("connection lost"))
+        mock_db = _mock_db_with_session(mock_session)
+
+        with (
+            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
+            caplog.at_level(logging.WARNING, logger=_TOOL_MODULE),
+        ):
+            mock_shared.db = mock_db
+            weighted = await _apply_recency_weighting(results)
+
+        assert weighted[0].metadata["confidence_factor"] == 1.0
+        assert any("PG fetch failed" in r.getMessage() for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------

@@ -227,7 +227,12 @@ class TestIndexStageOutput:
 
     @pytest.mark.asyncio
     async def test_payload_contains_required_fields(self):
-        """AC6: Payload includes entity_id, namespace, source_stage, run_id, importance, confidence, etc."""
+        """AC6: Payload includes entity_id, namespace, source_stage, run_id, importance, etc.
+
+        After P3-002, `confidence` is no longer written to Qdrant payloads —
+        Postgres is the single source of truth and is consulted at retrieve
+        time. See docs/specs/memory-refactor/phase-3-data-integrity.md §R2.
+        """
         text = "## Foundations\nSome content.\n"
         extraction = _make_extraction(facts=[])
         embedding_svc = _make_embedding_service()
@@ -237,17 +242,20 @@ class TestIndexStageOutput:
             "researcher", text, extraction, embedding_svc, vector_store, "run-1"
         )
 
-        call = vector_store.upsert_dense.call_args_list[0]
-        payload = call.kwargs.get("payload") or call.args[3]
-        assert "entity_id" in payload
-        assert payload["namespace"] == "paradigm"
-        assert payload["source_stage"] == "researcher"
-        assert payload["run_id"] == "run-1"
-        assert "importance" in payload
-        assert "confidence" in payload
-        assert "created_at" in payload
-        assert "text_preview" in payload
-        assert len(payload["text_preview"]) <= 200
+        for call in (
+            vector_store.upsert_dense.call_args_list[0],
+            vector_store.upsert_sparse.call_args_list[0],
+        ):
+            payload = call.kwargs.get("payload") or call.args[3]
+            assert "entity_id" in payload
+            assert payload["namespace"] == "paradigm"
+            assert payload["source_stage"] == "researcher"
+            assert payload["run_id"] == "run-1"
+            assert "importance" in payload
+            assert "confidence" not in payload
+            assert "created_at" in payload
+            assert "text_preview" in payload
+            assert len(payload["text_preview"]) <= 200
 
     @pytest.mark.asyncio
     async def test_namespace_inferred_from_stage(self):
@@ -309,8 +317,12 @@ class TestIndexStageOutput:
         embedding_svc.embed_texts.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_confidence_defaults_by_stage(self):
-        """Confidence: researcher=0.6, formalizer=0.7, reasoner=0.8, builder=0.9."""
+    async def test_confidence_never_written_to_payload(self):
+        """P3-002: `confidence` is not written to Qdrant for any stage.
+
+        Postgres `memories.confidence` is the single source of truth; the
+        retrieval path batch-reads it at query time.
+        """
         embedding_svc = _make_embedding_service()
         stage_text = {
             "researcher": "## Section\nX.\n",
@@ -318,13 +330,7 @@ class TestIndexStageOutput:
             "reasoner": '{"k": "v"}',
             "builder": "class M: pass",
         }
-        expected_confidence = {
-            "researcher": 0.6,
-            "formalizer": 0.7,
-            "reasoner": 0.8,
-            "builder": 0.9,
-        }
-        for stage, conf in expected_confidence.items():
+        for stage in stage_text:
             store = _make_vector_store()
             extraction = _make_extraction(stage=stage)
             await index_stage_output(
@@ -333,8 +339,8 @@ class TestIndexStageOutput:
             if store.upsert_dense.call_count > 0:
                 call = store.upsert_dense.call_args_list[0]
                 payload = call.kwargs.get("payload") or call.args[3]
-                assert payload["confidence"] == conf, (
-                    f"Stage {stage} should have confidence {conf}"
+                assert "confidence" not in payload, (
+                    f"Stage {stage} payload still carries confidence"
                 )
 
     @pytest.mark.asyncio

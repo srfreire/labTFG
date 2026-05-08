@@ -30,13 +30,6 @@ _STAGE_NAMESPACE: dict[str, str] = {
     "builder": "model",
 }
 
-_STAGE_CONFIDENCE: dict[str, float] = {
-    "researcher": 0.6,
-    "formalizer": 0.7,
-    "reasoner": 0.8,
-    "builder": 0.9,
-}
-
 _SECTION_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 _FORMULATION_RE = re.compile(r"^###\s+(Formulation\s+\d+:.+)$", re.MULTILINE)
 _CODE_BLOCK_RE = re.compile(r"```python\n(.*?)```", re.DOTALL)
@@ -180,7 +173,6 @@ async def index_stage_output(
         )
 
     namespace = _STAGE_NAMESPACE.get(stage, "meta")
-    confidence = _STAGE_CONFIDENCE.get(stage, 0.5)
     now = datetime.now(UTC).isoformat()
 
     _COLLECTION_PREFIX = {"artifact": "artifacts", "fact": "memories"}
@@ -188,13 +180,15 @@ async def index_stage_output(
     upsert_tasks = []
     for i, chunk in enumerate(all_chunks):
         point_id = _make_point_id(run_id, stage, i)
+        # P3-002: confidence is no longer written to Qdrant payloads.
+        # Postgres `memories.confidence` is the single source of truth and
+        # is batch-fetched in retrieval/_apply_recency_weighting.
         payload = {
             "entity_id": point_id,
             "namespace": namespace,
             "source_stage": stage,
             "run_id": run_id,
             "importance": 5.0,
-            "confidence": confidence,
             "created_at": now,
             "text_preview": chunk.text[:200],
         }

@@ -322,7 +322,65 @@ def _result_created_at(r: RetrievalResult) -> datetime | None:
     return _parse_utc(r.metadata.get("created_at") or r.metadata.get("run_date"))
 
 
-def _apply_recency_weighting(
+def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
+    """Pull UUIDs of memory-backed results, skipping malformed entity_ids."""
+    memory_ids: list[uuid.UUID] = []
+    for r in results:
+        if "memories" not in r.metadata.get("collection", ""):
+            continue
+        entity_id = r.metadata.get("entity_id")
+        if not entity_id:
+            continue
+        try:
+            memory_ids.append(uuid.UUID(str(entity_id)))
+        except (ValueError, TypeError):
+            continue
+    return memory_ids
+
+
+async def _fetch_confidences(
+    memory_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, float]:
+    """Single batched SELECT against `memories` to fetch live confidences.
+
+    Returns an empty map when there are no memory IDs, when `shared.db`
+    is unwired, or when the DB raises. Callers fall back to a 1.0 factor
+    (preserves the prior `metadata.get("confidence", 1.0)` default for
+    non-memory results). Failures are logged at WARNING — a degraded PG
+    must not silently kill an entire retrieve, but it also must not be
+    invisible.
+    """
+    if not memory_ids:
+        return {}
+    if shared.db is None:
+        logger.warning(
+            "_fetch_confidences: shared.db is None, scoring %d memories with "
+            "confidence_factor=1.0",
+            len(memory_ids),
+        )
+        return {}
+
+    from sqlalchemy import select
+
+    from shared.models import Memory
+
+    try:
+        async with shared.db.get_session() as session:
+            result = await session.execute(
+                select(Memory.id, Memory.confidence).where(Memory.id.in_(memory_ids))
+            )
+            return {row.id: row.confidence for row in result.all()}
+    except Exception as exc:
+        logger.warning(
+            "_fetch_confidences: PG fetch failed for %d ids, defaulting to "
+            "confidence_factor=1.0: %s",
+            len(memory_ids),
+            exc,
+        )
+        return {}
+
+
+async def _apply_recency_weighting(
     results: list[RetrievalResult],
 ) -> list[RetrievalResult]:
     """Apply recency and confidence-based score weighting.
@@ -330,12 +388,18 @@ def _apply_recency_weighting(
     For each result:
         decay_rate = _RECENCY_DECAY_BY_NAMESPACE[namespace]  (default 0.995)
         recency_factor = decay_rate ** days_old  (1.0 if no timestamp)
-        confidence_factor = metadata["confidence"]  (1.0 if missing)
+        confidence_factor = PG `memories.confidence`  (1.0 if not memory-backed)
         final_score = score * recency_factor * confidence_factor
+
+    P3-002: confidence is read from Postgres in one batched SELECT rather
+    than per-result `metadata["confidence"]`. Qdrant payload confidence
+    drifted (sparse never synced), so it is no longer trusted; artifact-
+    only results without a PG row keep `confidence_factor = 1.0`.
 
     Returns a new list re-sorted by final_score descending.
     """
     now = datetime.now(UTC)
+    conf_map = await _fetch_confidences(_collect_memory_ids(results))
     weighted: list[RetrievalResult] = []
 
     for r in results:
@@ -347,7 +411,15 @@ def _apply_recency_weighting(
             days_old = max(0, (now - created_at).days)
             recency_factor = decay_rate**days_old
 
-        confidence_factor = max(0.0, min(1.0, float(r.metadata.get("confidence", 1.0))))
+        confidence_factor = 1.0
+        entity_id = r.metadata.get("entity_id")
+        if entity_id and "memories" in r.metadata.get("collection", ""):
+            try:
+                pg_confidence = conf_map.get(uuid.UUID(str(entity_id)))
+            except (ValueError, TypeError):
+                pg_confidence = None
+            if pg_confidence is not None:
+                confidence_factor = max(0.0, min(1.0, float(pg_confidence)))
 
         final_score = r.score * recency_factor * confidence_factor
         weighted.append(
@@ -520,8 +592,9 @@ def create_retrieve_knowledge(
                 if crag_result.grading_failed:
                     increment_counter("crag.grader_failed")
 
-            # Apply recency weighting (P5-001)
-            weighted_results = _apply_recency_weighting(crag_result.results)
+            # Apply recency weighting (P5-001) — async since P3-002 because
+            # it batch-fetches `memories.confidence` from Postgres.
+            weighted_results = await _apply_recency_weighting(crag_result.results)
 
             # Apply temporal filter when as_of is specified (P5-004)
             final_results = _apply_temporal_filter(weighted_results, as_of)

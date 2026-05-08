@@ -356,7 +356,11 @@ async def test_enrichment_supersedes_old_memory():
     vs.upsert_dense.assert_called_once()
     upsert_kwargs = vs.upsert_dense.call_args
     assert upsert_kwargs.args[0] == "memories_dense"
-    assert merged_text[:200] in upsert_kwargs.args[3]["text_preview"]
+    enrichment_payload = upsert_kwargs.args[3]
+    assert merged_text[:200] in enrichment_payload["text_preview"]
+    # P3-002: enrichment payload no longer carries confidence — Postgres
+    # is the single source of truth.
+    assert "confidence" not in enrichment_payload
 
 
 # ---------------------------------------------------------------------------

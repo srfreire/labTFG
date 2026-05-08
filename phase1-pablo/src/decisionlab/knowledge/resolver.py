@@ -308,6 +308,8 @@ async def resolve_and_store(
                 confidence=confidence,
             )
             new_vector = await embedding_service.embed_query(merged)
+            # P3-002: payload does not carry `confidence` — Postgres is the
+            # single source of truth, batch-fetched at retrieval time.
             await vector_store.upsert_dense(
                 "memories_dense",
                 str(new_mem.id),
@@ -318,7 +320,6 @@ async def resolve_and_store(
                     "source_stage": stage,
                     "run_id": run_id,
                     "importance": importance,
-                    "confidence": confidence,
                     "created_at": datetime.now(UTC).isoformat(),
                     "text_preview": merged[:200],
                 },
