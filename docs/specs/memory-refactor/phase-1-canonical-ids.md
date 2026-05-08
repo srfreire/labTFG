@@ -1,6 +1,6 @@
 # Phase 1: Canonical IDs at extraction
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08-P1-001
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08-P1-002
 > References: [general.md](general.md) · [phases.md](phases.md) · [phase-0-stop-lying.md](phase-0-stop-lying.md) · [`docs/memory-system.md`](../../memory-system.md) §A1
 
 ## Objective
@@ -108,9 +108,9 @@ respected, no quality regression):
 - [x] AC1: `_CANONICAL` constant loaded at module import. All 3
       affected stage prompts (researcher/formalizer/reasoner) embed
       the canonical list. *(P1-001)*
-- [ ] AC2: `_ParadigmProps`, `_VariableProps`, `_PostulateProps`
+- [x] AC2: `_ParadigmProps`, `_VariableProps`, `_PostulateProps`
       enforce slug `Literal[...]`. Unit test covers a valid slug pass
-      and an invalid slug raise.
+      and an invalid slug raise. *(P1-002)*
 - [ ] AC3: `memory_agent` skips `canonicalize` when no `__NEW__`
       slug appears in the extraction. Test asserts skip path on a
       fully-canonical extraction and run path on a `__NEW__`
