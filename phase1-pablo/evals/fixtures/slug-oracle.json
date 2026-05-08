@@ -1,0 +1,42 @@
+[
+  {
+    "topic_text": "Q-learning agent trades off exploration and exploitation in a foraging grid: how do action-value updates and ε-greedy schedules drive the policy toward optimal patch choice?",
+    "expected_slug": "reinforcement-learning",
+    "_doc": "RL umbrella — Q-learning is a child"
+  },
+  {
+    "topic_text": "Why do people overweight losses relative to gains in financial decisions, and how does the value function curve below the reference point predict observed risk-seeking in the loss domain?",
+    "expected_slug": "prospect-theory",
+    "_doc": "Loss aversion is prospect theory"
+  },
+  {
+    "topic_text": "Speed-accuracy tradeoff in two-alternative forced-choice tasks: how does a noisy evidence-accumulation process to bound a reaction-time distribution and a choice probability?",
+    "expected_slug": "drift-diffusion-model",
+    "_doc": "Mechanism description — DDM"
+  },
+  {
+    "topic_text": "Bounded rationality and satisficing heuristics: when do agents stop searching once a good-enough alternative is found?",
+    "expected_slug": "bounded-rationality",
+    "_doc": "Direct match"
+  },
+  {
+    "topic_text": "Q-learning policy variant with eligibility traces — how does TD(λ) blend Monte-Carlo and one-step bootstrapping?",
+    "expected_slug": "reinforcement-learning",
+    "_doc": "Fragmenting variant — should NOT mint a new q-learning-traces slug"
+  },
+  {
+    "topic_text": "Drift-diffusion model with collapsing decision bounds: time-pressured perceptual choice in foraging contexts",
+    "expected_slug": "drift-diffusion-model",
+    "_doc": "Fragmenting variant — should NOT mint a new ddm-collapsing-bounds slug"
+  },
+  {
+    "topic_text": "Reference-dependent valuation in financial gambles — how does the reference point shape risk-seeking under losses?",
+    "expected_slug": "prospect-theory",
+    "_doc": "Phrasing variant of loss aversion"
+  },
+  {
+    "topic_text": "Free-energy principle as a unifying framework for perception, action, and learning in active inference agents",
+    "expected_slug": "free-energy-principle",
+    "_doc": "Direct match — must reuse the canonical slug"
+  }
+]
