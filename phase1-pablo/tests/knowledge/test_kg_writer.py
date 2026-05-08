@@ -166,7 +166,7 @@ class FakeKnowledgeGraph:
     def unique_key_for(label: str) -> str:
         schema = {
             "Paradigm": "slug",
-            "Variable": "name",
+            "Variable": "id",
             "Equation": "latex",
             "BrainRegion": "name",
             "Author": "name",
@@ -207,19 +207,21 @@ def _research_extraction(run_id: str = "run-1") -> ExtractionResult:
                 label="Variable",
                 properties={
                     "name": "energy_level",
+                    "paradigm_slug": "homeostatic-regulation",
                     "type": "state",
                     "range": "[0,100]",
                 },
-                natural_key="name",
+                natural_key="id",
             ),
             NodeSpec(
                 label="Variable",
                 properties={
                     "name": "ghrelin",
+                    "paradigm_slug": "homeostatic-regulation",
                     "type": "molecular",
                     "range": "positive",
                 },
-                natural_key="name",
+                natural_key="id",
             ),
             NodeSpec(
                 label="BrainRegion",
@@ -284,7 +286,7 @@ def _research_extraction(run_id: str = "run-1") -> ExtractionResult:
             ),
             RelationSpec(
                 from_label="Variable",
-                from_key_value="ghrelin",
+                from_key_value="homeostatic-regulation:ghrelin",
                 to_label="BrainRegion",
                 to_key_value="hypothalamus",
                 rel_type="MEASURES",
@@ -320,8 +322,8 @@ async def test_ac1_creates_all_expected_nodes():
     # Verify specific nodes exist in the store
     store = kg.store
     assert "Paradigm:slug=homeostatic-regulation" in store.nodes
-    assert "Variable:name=energy_level" in store.nodes
-    assert "Variable:name=ghrelin" in store.nodes
+    assert "Variable:id=homeostatic-regulation:energy-level" in store.nodes
+    assert "Variable:id=homeostatic-regulation:ghrelin" in store.nodes
     assert "BrainRegion:name=hypothalamus" in store.nodes
     assert "Paper:doi=10.1234/twotb" in store.nodes
     assert "Postulate:id=P1" in store.nodes
@@ -628,8 +630,12 @@ async def test_node_merge_preserves_created_at():
         nodes=[
             NodeSpec(
                 label="Variable",
-                properties={"name": "dopamine", "type": "molecular"},
-                natural_key="name",
+                properties={
+                    "name": "dopamine",
+                    "paradigm_slug": "reinforcement-learning",
+                    "type": "molecular",
+                },
+                natural_key="id",
             ),
         ],
         relations=[],
@@ -639,14 +645,20 @@ async def test_node_merge_preserves_created_at():
     )
     await populate_kg(ext1, kg)
 
-    original_created = kg.store.nodes["Variable:name=dopamine"]["created_at"]
+    original_created = kg.store.nodes["Variable:id=reinforcement-learning:dopamine"][
+        "created_at"
+    ]
 
     ext2 = ExtractionResult(
         nodes=[
             NodeSpec(
                 label="Variable",
-                properties={"name": "dopamine", "type": "neurotransmitter"},
-                natural_key="name",
+                properties={
+                    "name": "dopamine",
+                    "paradigm_slug": "reinforcement-learning",
+                    "type": "neurotransmitter",
+                },
+                natural_key="id",
             ),
         ],
         relations=[],
@@ -656,7 +668,7 @@ async def test_node_merge_preserves_created_at():
     )
     await populate_kg(ext2, kg)
 
-    node = kg.store.nodes["Variable:name=dopamine"]
+    node = kg.store.nodes["Variable:id=reinforcement-learning:dopamine"]
     assert node["created_at"] == original_created  # preserved from first creation
     assert node["type"] == "neurotransmitter"  # updated property
     assert "run-2" in node.get("run_ids", [])

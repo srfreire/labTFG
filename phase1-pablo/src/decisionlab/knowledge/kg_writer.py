@@ -146,7 +146,24 @@ def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
     For (4) the property is injected into ``node.properties`` so MERGE has
     something to bind to. Returning None means the node has neither a label
     nor any property to hash — effectively unrecoverable.
+
+    Variable nodes get a composite ``id = {paradigm_slug}:{slugify(name)}``
+    so the same name under two paradigms cannot collide. Bypasses the
+    schema/declared/fallback chain entirely: the canonical id is always
+    derived here, even if ``id`` was already set on the incoming node.
     """
+    if node.label == "Variable":
+        name = node.properties.get("name") or ""
+        paradigm = node.properties.get("paradigm_slug") or ""
+        slug_name = slugify(name) if isinstance(name, str) else ""
+        if not slug_name:
+            return None
+        if paradigm:
+            return ("id", f"{slugify(paradigm)}:{slug_name}")
+        # Orphan: still scope it under a fixed namespace so it can't collide
+        # with a real paradigm-scoped variable.
+        return ("id", f"orphan:{slug_name}")
+
     schema_key: str | None = None
     if kg is not None:
         try:
