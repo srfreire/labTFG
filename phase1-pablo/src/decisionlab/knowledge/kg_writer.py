@@ -9,6 +9,7 @@ import re
 from datetime import UTC, datetime
 
 from decisionlab.knowledge.models import ExtractionResult, KGWriteResult
+from decisionlab.tools.reports import slugify
 from shared.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
@@ -53,33 +54,59 @@ _TEMPORAL_KEYS = frozenset(
 _FALLBACK_KEY_NAMES = ("slug", "id", "doi", "url", "name", "title")
 
 
-def _validate_natural_key(label: str, key_name: str, key_value: object) -> None:
-    """Raise ValueError when a natural-key value is shaped like a leaked UUID
-    or exceeds the sanity ceiling.
+def _validate_natural_key(
+    *, label: str, key_name: str, key_value: object
+) -> tuple[bool, object, str | None]:
+    """Validate and (for slug-like labels) renormalize a natural-key value.
 
-    Catches a class of bugs where a ``run_id`` (UUID4) ends up as
-    ``Paradigm.slug`` because some upstream code treated the run_id as a
-    fallback for a missing slug. We refuse to write rather than silently
-    coerce — the caller's per-node try/except records the error so the
-    failure surfaces in ``KGWriteResult.errors`` instead of the KG.
+    Returns ``(ok, normalized_value, err)``:
+      - ``ok=True``: caller may MERGE on ``normalized_value``. For slug-like
+        labels the value has been re-slugified; for everything else it is
+        returned verbatim.
+      - ``ok=False``: ``err`` carries a human-readable reason; the caller
+        records it in ``KGWriteResult.errors`` and skips the node.
+
+    Catches three classes of bugs:
+      1. ``run_id`` UUIDs leaking into ``Paradigm.slug`` (upstream
+         coercion).
+      2. LLM-emitted slugs that bypassed producer-side normalization
+         ("Reinforcement Learning" → "reinforcement-learning").
+      3. Outsized blobs (full statements, hashes) accidentally promoted
+         to a key.
     """
     if not isinstance(key_value, str):
-        return
+        return (True, key_value, None)
     # Length and UUID-shape checks are scoped to slug-like labels. Content keys
     # (Paper.title, Equation.latex) routinely exceed the slug ceiling and must
-    # pass through unmolested; the writer's fallback to title when DOI is null
-    # would otherwise reject every Paper with a long title.
+    # pass through unmolested.
     if label in _SLUG_LIKE_LABELS:
         if len(key_value) > _MAX_KEY_VALUE_LEN:
-            raise ValueError(
+            return (
+                False,
+                key_value,
                 f"{label}.{key_name}={key_value!r}: natural-key value exceeds "
-                f"{_MAX_KEY_VALUE_LEN} characters — refusing to write"
+                f"{_MAX_KEY_VALUE_LEN} characters — refusing to write",
             )
         if _UUID_RE.match(key_value):
-            raise ValueError(
+            return (
+                False,
+                key_value,
                 f"{label}.{key_name}={key_value!r}: natural-key value is shaped "
-                "like a UUID — likely a run_id leak; refusing to write"
+                "like a UUID — likely a run_id leak; refusing to write",
             )
+        # Only the key actually called "slug" gets renormalized — Variable.name
+        # ("energy_level") and Postulate.id ("P1") are slug-like labels but
+        # their natural_key is a human-readable name, not a kebab-case slug.
+        if key_name == "slug":
+            normalized = slugify(key_value)
+            if not normalized:
+                return (
+                    False,
+                    key_value,
+                    f"{label}.{key_name}={key_value!r}: slug normalized to empty",
+                )
+            return (True, normalized, None)
+    return (True, key_value, None)
 
 
 def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
@@ -194,12 +221,19 @@ async def populate_kg(
             continue
         key_name, key_value = resolved
 
-        try:
-            _validate_natural_key(node.label, key_name, key_value)
-        except ValueError as exc:
-            errors.append(str(exc))
-            logger.warning("kg_write_skipped: %s", exc)
+        ok, normalized, err = _validate_natural_key(
+            label=node.label, key_name=key_name, key_value=key_value
+        )
+        if not ok:
+            errors.append(err or f"natural-key rejected: {node.label}.{key_name}")
+            logger.warning("kg_write_skipped: %s", err)
             continue
+        # Re-slugified or content-key passthrough — use the canonical form
+        # for both the MERGE binding and the property write so the node is
+        # discoverable by the same key on subsequent reads.
+        key_value = normalized
+        if isinstance(normalized, str) and isinstance(node.properties.get(key_name), str):
+            node.properties[key_name] = normalized
 
         # Per-entity transaction: a constraint failure on this node leaves
         # the rest of the batch untouched. The pre-rewrite version wrapped
