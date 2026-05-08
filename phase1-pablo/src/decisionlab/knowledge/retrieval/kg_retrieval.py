@@ -15,8 +15,17 @@ from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
+from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+def _get_vector_store() -> VectorStore | None:
+    """Lazy lookup of shared.vectors — None if not initialised. Test
+    seam: monkeypatch this to inject a fake."""
+    import shared
+
+    return shared.vectors
 
 _FAST_MODEL = SETTINGS.knowledge_fast_model
 _MAX_TOKENS = 512
@@ -138,13 +147,73 @@ async def _extract_entities(query: str, client: AsyncAnthropic) -> list[dict]:
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Compute cosine similarity between two vectors."""
+    """Compute cosine similarity between two vectors. Retained as a
+    public helper for tests and ad-hoc use; entity linking now goes
+    through Qdrant ANN."""
     dot = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
     if norm_a == 0.0 or norm_b == 0.0:
         return 0.0
     return dot / (norm_a * norm_b)
+
+
+async def _link_entities_ann(
+    label: str,
+    name: str,
+    embedding_service: EmbeddingService,
+    kg: KnowledgeGraph,
+) -> list[_LinkedEntity]:
+    """ANN-backed entity linking against kg_entities_dense.
+
+    Replaces the prior O(N) Cypher table scan + Python cosine loop:
+    one Qdrant ANN query filtered by label, then a single indexed
+    Cypher MATCH per surviving hit to recover ``elementId``.
+
+    Hits scoring below ``_SIMILARITY_THRESHOLD`` are discarded — no
+    fallback to a table scan.
+    """
+    vec = _get_vector_store()
+    if vec is None:
+        return []
+
+    query_vec = await embedding_service.embed_query(name)
+    hits = await vec.search_dense(
+        "kg_entities_dense",
+        query_vec,
+        limit=5,
+        filters={"label": label},
+    )
+
+    out: list[_LinkedEntity] = []
+    for h in hits:
+        if (h.score or 0.0) < _SIMILARITY_THRESHOLD:
+            continue
+        payload = h.payload or {}
+        key_value = payload.get("key_value")
+        if not key_value:
+            continue
+        try:
+            unique_key = kg.unique_key_for(label)
+        except (ValueError, AttributeError):
+            continue
+        rows = await kg.query(
+            f"MATCH (n:{label} {{{unique_key}: $key_value}}) "
+            f"RETURN elementId(n) AS id, n.{_LABEL_NAME_PROP[label]} AS name",
+            {"key_value": key_value},
+        )
+        if not rows:
+            continue
+        row = rows[0]
+        out.append(
+            _LinkedEntity(
+                node_id=row["id"],
+                label=label,
+                name=row.get("name") or payload.get("name", ""),
+                confidence=float(h.score),
+            )
+        )
+    return out
 
 
 async def _link_entities(
@@ -156,8 +225,8 @@ async def _link_entities(
 
     Strategy per entity:
     1. Exact match (case-insensitive) on the label's name property.
-    2. If no exact match, embed the entity name and compare against
-       all nodes of that label via cosine similarity (threshold > 0.75).
+    2. If no exact match, ANN against ``kg_entities_dense`` filtered by
+       label (one Qdrant call, no table scan).
     """
     linked: list[_LinkedEntity] = []
 
@@ -185,36 +254,10 @@ async def _link_entities(
             )
             continue
 
-        # --- Fuzzy match via embedding similarity ---
-        all_candidates = await kg.query(
-            f"MATCH (n:{label}) RETURN elementId(n) AS id, n.{name_prop} AS name",
+        # --- ANN match against kg_entities_dense ---
+        linked.extend(
+            await _link_entities_ann(label, entity_name, embedding_service, kg)
         )
-        if not all_candidates:
-            continue
-
-        # Filter out candidates with null/empty names to keep indices aligned.
-        candidates = [c for c in all_candidates if c["name"]]
-        if not candidates:
-            continue
-
-        candidate_names = [c["name"] for c in candidates]
-        query_vec = await embedding_service.embed_query(entity_name)
-        candidate_vecs = await embedding_service.embed_texts(candidate_names)
-
-        similarities = [_cosine_similarity(query_vec, cvec) for cvec in candidate_vecs]
-        best_idx = max(range(len(similarities)), key=lambda i: similarities[i])
-        best_sim = similarities[best_idx]
-
-        if best_sim >= _SIMILARITY_THRESHOLD:
-            matched = candidates[best_idx]
-            linked.append(
-                _LinkedEntity(
-                    node_id=matched["id"],
-                    label=label,
-                    name=matched["name"],
-                    confidence=best_sim,
-                )
-            )
 
     return linked
 

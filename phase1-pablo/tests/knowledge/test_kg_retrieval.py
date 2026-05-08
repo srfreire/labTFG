@@ -140,65 +140,6 @@ class TestLinkEntities:
         embedding.embed_query.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_fuzzy_match_above_threshold(self):
-        kg = AsyncMock()
-        # First call: exact match returns nothing
-        # Second call: all candidates
-        kg.query = AsyncMock(
-            side_effect=[
-                [],  # no exact match
-                [
-                    {"id": "4:xyz", "name": "hedonic-reward-based-regulation"},
-                    {"id": "4:other", "name": "homeostatic-regulation"},
-                ],
-            ]
-        )
-        embedding = AsyncMock()
-        # Query vector for "reward learning"
-        embedding.embed_query = AsyncMock(return_value=[1.0, 0.0, 0.0])
-        # Candidate vectors: first is very similar, second is not
-        embedding.embed_texts = AsyncMock(
-            return_value=[[0.95, 0.05, 0.0], [0.0, 1.0, 0.0]]
-        )
-
-        entities = [{"name": "reward learning", "type": "paradigm"}]
-        result = await _link_entities(entities, kg, embedding)
-
-        assert len(result) == 1
-        assert result[0].node_id == "4:xyz"
-        assert result[0].label == "Paradigm"
-        assert result[0].confidence > _SIMILARITY_THRESHOLD
-
-    @pytest.mark.asyncio
-    async def test_fuzzy_match_below_threshold(self):
-        kg = AsyncMock()
-        kg.query = AsyncMock(
-            side_effect=[
-                [],  # no exact match
-                [{"id": "4:far", "name": "completely-unrelated"}],
-            ]
-        )
-        embedding = AsyncMock()
-        embedding.embed_query = AsyncMock(return_value=[1.0, 0.0])
-        embedding.embed_texts = AsyncMock(return_value=[[0.0, 1.0]])
-
-        entities = [{"name": "reward", "type": "paradigm"}]
-        result = await _link_entities(entities, kg, embedding)
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_no_candidates_in_graph(self):
-        kg = AsyncMock()
-        kg.query = AsyncMock(
-            side_effect=[[], []]  # no exact, no candidates
-        )
-        embedding = AsyncMock()
-
-        entities = [{"name": "nonexistent", "type": "variable"}]
-        result = await _link_entities(entities, kg, embedding)
-        assert result == []
-
-    @pytest.mark.asyncio
     async def test_case_insensitive_exact_match(self):
         """AC3: 'Berridge' matches 'Berridge, Kent C.' via toLower."""
         kg = AsyncMock()
@@ -214,40 +155,10 @@ class TestLinkEntities:
         assert result[0].name == "Berridge, Kent C."
         assert result[0].confidence == 1.0
 
-    @pytest.mark.asyncio
-    async def test_fuzzy_match_skips_null_name_candidates(self):
-        """Candidates with null names are filtered before embedding."""
-        kg = AsyncMock()
-        kg.query = AsyncMock(
-            side_effect=[
-                [],  # no exact match
-                [
-                    {"id": "4:a", "name": "alpha"},
-                    {"id": "4:null", "name": None},
-                    {"id": "4:c", "name": "gamma"},
-                ],
-            ]
-        )
-        embedding = AsyncMock()
-        embedding.embed_query = AsyncMock(return_value=[0.0, 0.0, 1.0])
-        # Two candidate vecs (alpha and gamma), gamma is best match
-        embedding.embed_texts = AsyncMock(
-            return_value=[[1.0, 0.0, 0.0], [0.0, 0.0, 0.95]]
-        )
 
-        entities = [{"name": "gamma-match", "type": "variable"}]
-        result = await _link_entities(entities, kg, embedding)
-
-        assert len(result) == 1
-        # Should pick 4:c (gamma), not 4:null
-        assert result[0].node_id == "4:c"
-        assert result[0].name == "gamma"
-
-
-# Need to import the threshold constant for fuzzy tests
-from decisionlab.knowledge.retrieval.kg_retrieval import (  # noqa: E402
-    _SIMILARITY_THRESHOLD,
-)
+# ANN-backed fuzzy matching is exercised in tests/knowledge/retrieval/
+# test_kg_link_entities_ann.py — the prior table-scan + Python-cosine
+# tests were deleted with the implementation they targeted.
 
 # ---------------------------------------------------------------------------
 # Step 3: PPR traversal
