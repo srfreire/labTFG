@@ -32,6 +32,34 @@ _MAX_TOKENS = 512
 _PPR_DECAY = 0.85
 _SIMILARITY_THRESHOLD = 0.75
 
+# Per-intent allowed relation types for PPR traversal. The intent is
+# derived from the dominant linked-entity label in the query (paradigm
+# vs. variable). Filtering trims hub-bridging edges that drag in
+# unrelated regions of the graph.
+_PARADIGM_INTENT_TYPES = ("SUPPORTS", "CONTRADICTS", "EXTENDS", "BELONGS_TO")
+_VARIABLE_INTENT_TYPES = ("MEASURES", "HAS_PARAMETER", "GOVERNS")
+
+
+def _types_for_intent(intent: str) -> tuple[str, ...]:
+    """Map a query intent label to the set of allowed PPR relation types."""
+    if intent == "variable":
+        return _VARIABLE_INTENT_TYPES
+    return _PARADIGM_INTENT_TYPES
+
+
+def _score_node(*, confidence: float, hops: int, degree: int) -> float:
+    """PPR score with hub-dampening:
+
+        score = confidence * 0.85^hops / log(2 + degree)
+
+    The log-degree term penalises high-degree hubs (e.g. "Brain" connected
+    to everything) so a low-degree neighbour scoring 0.85 dominates a
+    200-degree hub scoring 0.85.
+    """
+    decay = _PPR_DECAY**hops
+    damp = 1.0 / math.log(2 + max(0, degree))
+    return confidence * decay * damp
+
 # Maps entity types from Haiku NER to Neo4j node labels.
 _TYPE_TO_LABEL: dict[str, str] = {
     "paradigm": "Paradigm",
@@ -280,13 +308,22 @@ class _ScoredNode:
 
 
 async def _ppr_traverse(
-    linked: list[_LinkedEntity], kg: KnowledgeGraph
+    linked: list[_LinkedEntity],
+    kg: KnowledgeGraph,
+    *,
+    intent: str = "paradigm",
 ) -> list[_ScoredNode]:
     """Run 2-hop BFS from each linked entity with score decay.
 
-    Score = base_confidence * 0.85^hops.  For nodes reached by multiple
-    paths, keep the maximum score.
+    Two filters keep the traversal focused:
+
+    - Relations are filtered to those relevant for the query intent
+      (paradigm-style vs. variable-style) — see ``_types_for_intent``.
+    - Per-node degree dampens hub influence — see ``_score_node``.
+
+    For nodes reached by multiple paths, the maximum score wins.
     """
+    allowed_types = list(_types_for_intent(intent))
     scored: dict[str, _ScoredNode] = {}
 
     def _update(
@@ -307,7 +344,8 @@ async def _ppr_traverse(
             )
 
     for entity in linked:
-        # Include the seed node itself (hop 0).
+        # Include the seed node itself (hop 0). Score = confidence (no
+        # decay or damp at hop 0 — the seed is the anchor).
         seed_results = await kg.query(
             "MATCH (n) WHERE elementId(n) = $id "
             "RETURN elementId(n) AS id, labels(n) AS labels, "
@@ -325,21 +363,29 @@ async def _ppr_traverse(
             )
             continue
 
-        # 1-hop and 2-hop neighbors.
+        # 1-hop and 2-hop neighbours, filtered by allowed relation types.
+        # Connected node degree (used for hub dampening) is computed
+        # server-side via COUNT { (connected)--() }.
         traversal_results = await kg.query(
-            "MATCH path = (start)-[*1..2]-(connected) "
+            "MATCH path = (start)-[r*1..2]-(connected) "
             "WHERE elementId(start) = $start_id "
+            "  AND ALL(rel IN r WHERE type(rel) IN $allowed_types) "
             "RETURN elementId(connected) AS id, "
             "labels(connected) AS labels, "
             "properties(connected) AS props, "
             "length(path) AS hops, "
-            "[r IN relationships(path) | type(r)] AS rel_types, "
-            "[r IN relationships(path) | r.run_id] AS rel_run_ids",
-            {"start_id": entity.node_id},
+            "[rel IN r | type(rel)] AS rel_types, "
+            "[rel IN r | rel.run_id] AS rel_run_ids, "
+            "COUNT { (connected)--() } AS degree",
+            {"start_id": entity.node_id, "allowed_types": allowed_types},
         )
 
         for row in traversal_results:
-            score = entity.confidence * (_PPR_DECAY ** row["hops"])
+            score = _score_node(
+                confidence=entity.confidence,
+                hops=int(row["hops"]),
+                degree=int(row.get("degree") or 0),
+            )
             _update(
                 row["id"],
                 row,

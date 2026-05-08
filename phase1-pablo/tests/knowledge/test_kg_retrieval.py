@@ -17,6 +17,7 @@ from decisionlab.knowledge.retrieval.kg_retrieval import (
     _link_entities,
     _LinkedEntity,
     _ppr_traverse,
+    _score_node,
     _ScoredNode,
     kg_retrieve,
 )
@@ -210,7 +211,10 @@ class TestPprTraverse:
                         "props": {"name": "dopamine"},
                     }
                 ],
-                # Traversal: 1-hop and 2-hop neighbors
+                # Traversal: 1-hop and 2-hop neighbors. degree=10 mocks
+                # a moderate-degree node; the absolute scores are derived
+                # via _score_node so the test stays in lock-step with
+                # whatever scoring formula the implementation uses.
                 [
                     {
                         "id": "4:hop1",
@@ -218,6 +222,7 @@ class TestPprTraverse:
                         "props": {"name": "VTA"},
                         "hops": 1,
                         "rel_types": ["MEASURES"],
+                        "degree": 10,
                     },
                     {
                         "id": "4:hop2",
@@ -225,6 +230,7 @@ class TestPprTraverse:
                         "props": {"name": "hedonic"},
                         "hops": 2,
                         "rel_types": ["MEASURES", "BELONGS_TO"],
+                        "degree": 10,
                     },
                 ],
             ]
@@ -241,8 +247,12 @@ class TestPprTraverse:
 
         scores = {n.node_id: n.score for n in result}
         assert scores["4:seed"] > scores["4:hop1"] > scores["4:hop2"]
-        assert scores["4:hop1"] == pytest.approx(0.85)
-        assert scores["4:hop2"] == pytest.approx(0.85**2)
+        assert scores["4:hop1"] == pytest.approx(
+            _score_node(confidence=1.0, hops=1, degree=10)
+        )
+        assert scores["4:hop2"] == pytest.approx(
+            _score_node(confidence=1.0, hops=2, degree=10)
+        )
 
     @pytest.mark.asyncio
     async def test_multi_path_takes_max_score(self):
@@ -266,6 +276,7 @@ class TestPprTraverse:
                         "props": {"name": "hypo"},
                         "hops": 2,
                         "rel_types": ["MEASURES", "MODULATES"],
+                        "degree": 5,
                     },
                 ],
                 # Seed 2
@@ -284,6 +295,7 @@ class TestPprTraverse:
                         "props": {"name": "hypo"},
                         "hops": 1,
                         "rel_types": ["MEASURES"],
+                        "degree": 5,
                     },
                 ],
             ]
@@ -296,8 +308,10 @@ class TestPprTraverse:
 
         shared = [n for n in result if n.node_id == "4:shared"]
         assert len(shared) == 1
-        # Should have the 1-hop score (0.85), not the 2-hop score (0.7225)
-        assert shared[0].score == pytest.approx(0.85)
+        # Max-score wins: 1-hop > 2-hop (both at the same degree).
+        assert shared[0].score == pytest.approx(
+            _score_node(confidence=1.0, hops=1, degree=5)
+        )
 
 
 # ---------------------------------------------------------------------------
