@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
@@ -32,9 +33,25 @@ READ_REPORT_SCHEMA: dict[str, Any] = {
 
 
 def slugify(name: str) -> str:
-    """Turn a paradigm name into a filesystem-safe slug."""
-    slug = name.lower().replace(" ", "-").replace("/", "-").replace(":", "")
-    return re.sub(r"-{2,}", "-", slug).strip("-")
+    """Idempotent kebab-case slug for paradigm/variable/postulate keys.
+
+    Steps:
+      1. Unicode-normalize and strip diacritics (NFKD + ASCII filter).
+      2. Lowercase.
+      3. Collapse any run of non-alphanumeric characters into a single '-'.
+      4. Strip leading/trailing '-'.
+
+    The collapse-runs rule is what makes the function idempotent: once the
+    output is restricted to ``[a-z0-9-]+`` with no leading/trailing/consecutive
+    hyphens, applying the same transformation again produces the same string.
+    """
+    if not name:
+        return ""
+    normalized = unicodedata.normalize("NFKD", name)
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    lowered = ascii_only.lower()
+    hyphenated = re.sub(r"[^a-z0-9]+", "-", lowered)
+    return hyphenated.strip("-")
 
 
 def create_read_report(run_id: str) -> Callable[[dict], Awaitable[str]]:

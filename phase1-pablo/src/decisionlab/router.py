@@ -16,7 +16,6 @@ import agrex
 from rich.console import Console
 
 from decisionlab.domain.models import RerunRequest
-from decisionlab.eval.timing import record_stage
 from decisionlab.feedback_port import CLIFeedback, FeedbackPort
 from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
@@ -608,6 +607,8 @@ class Router:
 
     async def _run_consolidation(self) -> None:
         """Run post-run consolidation. Never blocks pipeline."""
+        from decisionlab.eval.timing import record_stage
+
         async with record_stage("consolidation"):
             try:
                 import shared
@@ -729,6 +730,8 @@ class Router:
         await self._emit_agents()
 
         import os
+
+        from decisionlab.eval.timing import record_stage
 
         max_retries = int(
             os.environ.get("DECISIONLAB_MAX_STAGE_RETRIES", _MAX_STAGE_RETRIES)
