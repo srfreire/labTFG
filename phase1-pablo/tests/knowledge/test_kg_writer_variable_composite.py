@@ -17,8 +17,12 @@ def test_variable_with_paradigm_gets_composite_id():
     assert out == ("id", "reinforcement-learning:reward")
 
 
-def test_variable_without_paradigm_falls_back_to_name():
-    """Orphan variable — no paradigm context — gets unscoped id."""
+def test_variable_without_paradigm_uses_orphan_namespace():
+    """Orphan variable — no paradigm context — gets scoped under `orphan:`.
+
+    The orphan namespace is load-bearing: it prevents an unscoped variable
+    from silently merging with a paradigm-scoped one of the same name.
+    """
     spec = type(
         "_Spec",
         (),
@@ -28,12 +32,7 @@ def test_variable_without_paradigm_falls_back_to_name():
         },
     )()
     out = _resolve_natural_key(spec)
-    # Orphan tag — accept either bare name or "orphan:reward"; pick whichever
-    # the implementation chooses, just don't silently merge with the scoped one.
-    assert out is not None
-    label, value = out
-    assert label == "id"
-    assert value != "reinforcement-learning:reward"
+    assert out == ("id", "orphan:reward")
 
 
 def test_variable_id_normalises_name():
@@ -51,3 +50,30 @@ def test_variable_id_normalises_name():
     )()
     out = _resolve_natural_key(spec)
     assert out == ("id", "reinforcement-learning:action-value")
+
+
+def test_variable_missing_name_returns_none():
+    spec = type("_Spec", (), {"label": "Variable", "properties": {}})()
+    assert _resolve_natural_key(spec) is None
+
+
+def test_variable_non_string_name_returns_none():
+    spec = type(
+        "_Spec",
+        (),
+        {"label": "Variable", "properties": {"name": 123}},
+    )()
+    assert _resolve_natural_key(spec) is None
+
+
+def test_variable_name_empty_after_slugify_returns_none():
+    """A name that slugifies to "" (e.g. only punctuation) is unrecoverable."""
+    spec = type(
+        "_Spec",
+        (),
+        {
+            "label": "Variable",
+            "properties": {"name": "!!!", "paradigm_slug": "reinforcement-learning"},
+        },
+    )()
+    assert _resolve_natural_key(spec) is None
