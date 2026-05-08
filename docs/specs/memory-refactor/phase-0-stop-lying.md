@@ -1,6 +1,6 @@
 # Phase 0: Stop lying
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P0-001)
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P0-004)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A8, A10, A11, A12, A13
 
 ## Objective
@@ -186,7 +186,7 @@ Edge cases:
       `seed_canonical_paradigms` before the first topic. Two
       back-to-back runs of `slug-accuracy.yaml` produce identical
       assertion outcomes.
-- [ ] **AC4**: `Paradigm`/`Variable`/`Postulate` nodes no longer
+- [x] **AC4**: `Paradigm`/`Variable`/`Postulate` nodes no longer
       accumulate `run_ids` arrays on MERGE. New
       `node_run_observations` table exists and is written to per
       MERGE. Migration backfills existing data without dropping any
