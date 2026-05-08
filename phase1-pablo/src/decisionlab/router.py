@@ -21,6 +21,7 @@ from decisionlab.knowledge.retrieval.tool import (
     RETRIEVE_KNOWLEDGE_SCHEMA,
     create_retrieve_knowledge,
 )
+from decisionlab.eval.timing import record_stage
 from decisionlab.parsing import FORMULATION_HEADER_RE
 from decisionlab.runtime.tool_calls import set_stage as _set_recording_stage
 from decisionlab.tools.reports import slugify
@@ -607,25 +608,26 @@ class Router:
 
     async def _run_consolidation(self) -> None:
         """Run post-run consolidation. Never blocks pipeline."""
-        try:
-            import shared
-            from decisionlab.knowledge.consolidation import consolidate
+        async with record_stage("consolidation"):
+            try:
+                import shared
+                from decisionlab.knowledge.consolidation import consolidate
 
-            if shared.db is None or shared.embeddings is None or shared.vectors is None:
-                return
+                if shared.db is None or shared.embeddings is None or shared.vectors is None:
+                    return
 
-            async with shared.db.get_session() as session:
-                result = await consolidate(
-                    db_session=session,
-                    embedding_service=shared.embeddings,
-                    vector_store=shared.vectors,
-                    client=self.client,
-                    run_id=self.state.run_id,
-                    kg=getattr(shared, "kg", None),
-                )
-            logger.info("Consolidation completed: %s", result)
-        except Exception:
-            logger.exception("Consolidation failed — continuing pipeline")
+                async with shared.db.get_session() as session:
+                    result = await consolidate(
+                        db_session=session,
+                        embedding_service=shared.embeddings,
+                        vector_store=shared.vectors,
+                        client=self.client,
+                        run_id=self.state.run_id,
+                        kg=getattr(shared, "kg", None),
+                    )
+                logger.info("Consolidation completed: %s", result)
+            except Exception:
+                logger.exception("Consolidation failed — continuing pipeline")
 
     async def _collect_stage_output(self, stage: Stage) -> str:
         """Return the stage's output text. Prefers the in-memory cache populated
@@ -743,7 +745,8 @@ class Router:
                 self._tracer.marker(current_stage.value, color="#fbbf24")
                 await self._send_event(self._tracer.events()[-1])
 
-            await handler()
+            async with record_stage(current_stage.value):
+                await handler()
 
             # Stuck-stage detection: work-stage handlers swallow agent failures
             # and return without advancing `state.stage`. Without this, a
