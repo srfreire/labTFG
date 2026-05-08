@@ -1,7 +1,7 @@
 ---
 id: P3-003
 title: Per-store retention policies for MinIO, Postgres runs, Qdrant points, KG reflections
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: retention

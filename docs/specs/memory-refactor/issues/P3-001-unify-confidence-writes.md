@@ -1,7 +1,7 @@
 ---
 id: P3-001
 title: Unify all confidence write sites through one atomic helper
-status: todo
+status: in-progress
 kind: strike
 phase: 3
 heat: confidence
