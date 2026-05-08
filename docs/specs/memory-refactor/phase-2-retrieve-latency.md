@@ -1,6 +1,6 @@
 # Phase 2: Retrieve latency
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08 (P2-003 done)
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A4, §A5
 
 ## Objective
@@ -101,7 +101,7 @@ DuckDuckGo budget on every retrieve while Haiku is rate-limited.
 - [ ] AC2: `NER_SKIP_THRESHOLD` is read from settings, default 0.7.
       Skip path is exercised when dense top-1 ≥ threshold; KG
       retrieval runs when below. Unit test covers both.
-- [ ] AC3: `_track_memory_access` issues exactly one SQL UPDATE per
+- [x] AC3: `_track_memory_access` issues exactly one SQL UPDATE per
       retrieve call regardless of result count. Test asserts via
       mocked session.
 - [ ] AC4: When CRAG grader errors, the routing returns reranked
