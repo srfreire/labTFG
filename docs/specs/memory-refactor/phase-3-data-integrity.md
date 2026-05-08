@@ -1,6 +1,6 @@
 # Phase 3: Data integrity
 
-> Status: current | Created: 2026-05-08 | Last updated: 2026-05-08
+> Status: current | Created: 2026-05-08 | Last updated: 2026-05-09
 > References: [general.md](general.md) · [phases.md](phases.md) · [`docs/memory-system.md`](../../memory-system.md) §A6, §A14
 
 ## Objective
@@ -79,7 +79,7 @@ Document in `docs/memory-system.md` and in a new
 
 ## Acceptance Criteria
 
-- [ ] AC1: `update_memory_confidence` exists in `shared.memories` with
+- [x] AC1: `update_memory_confidence` exists in `shared.memories` with
       atomic `UPDATE ... RETURNING`. All three call sites
       (`touch_memory`, `update_confidence`, `apply_time_decay`) route
       through it. Unit tests cover clamp boundaries.
