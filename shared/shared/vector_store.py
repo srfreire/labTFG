@@ -26,6 +26,7 @@ BM25_MODEL = "Qdrant/bm25"
 COLLECTIONS_DENSE = {
     "artifacts_dense": 1024,
     "memories_dense": 1024,
+    "kg_entities_dense": 1024,
 }
 
 COLLECTIONS_SPARSE = [
@@ -204,6 +205,19 @@ class VectorStore:
             collection_name=collection,
             points_selector=ids,
         )
+
+    async def delete_dense(self, collection: str, *, point_id: str) -> None:
+        """Delete a single point from a dense collection by id.
+
+        Thin wrapper over ``delete`` with the ``point_id`` keyword shape
+        Phase 5 prune callers expect. Qdrant does not distinguish dense
+        from sparse for delete — the collection name carries that.
+        """
+        await self.delete(collection, [point_id])
+
+    async def delete_sparse(self, collection: str, *, point_id: str) -> None:
+        """Delete a single point from a sparse collection by id."""
+        await self.delete(collection, [point_id])
 
 
 # -- helpers -------------------------------------------------------------------
