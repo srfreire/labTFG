@@ -620,8 +620,8 @@ Existing tests must keep passing:
 | Metric | Baseline (2026-05-07) | Target |
 |--------|-----------------------|--------|
 | Slug reuse rate (`slug-accuracy.yaml`)            | ~50%       | ≥ 80% |
-| Merge precision (`merge-quality.yaml`)            | unmeasured | ≥ 0.95 |
-| Merge recall  (`merge-quality.yaml`)              | unmeasured | ≥ 0.90 |
+| Merge precision (`merge-quality.yaml`)            | 1.000 (2026-05-08, n=18; tp=3 fp=0 fn=7 tn=8) | ≥ 0.95 |
+| Merge recall  (`merge-quality.yaml`)              | 0.300 (2026-05-08, n=18; f1=0.462) | ≥ 0.90 |
 | KG Paradigm  growth/topic (`cumulative-growth.yaml`) | ~6      | ≤ 1.5 |
 | KG Variable  growth/topic (`cumulative-growth.yaml`) | ~9      | ≤ 6 |
 | KG Postulate growth/topic (`cumulative-growth.yaml`) | ~7      | ≤ 5 |
