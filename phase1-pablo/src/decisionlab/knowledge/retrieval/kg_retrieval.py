@@ -12,6 +12,7 @@ from anthropic import AsyncAnthropic
 
 from decisionlab.config import SETTINGS
 from decisionlab.knowledge.retrieval.models import RetrievalResult
+from decisionlab.knowledge.retrieval.query_rewriter import rewrite as _rewrite
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
@@ -117,17 +118,31 @@ class _LinkedEntity:
 # ---------------------------------------------------------------------------
 
 
-async def _extract_entities(query: str, client: AsyncAnthropic) -> list[dict]:
+async def _extract_entities(
+    query: str,
+    client: AsyncAnthropic,
+    *,
+    keyword_hints: list[str] | None = None,
+) -> list[dict]:
     """Prompt Haiku to extract named entities from the query.
+
+    When *keyword_hints* is given, prepend a 'Hint keywords: ...' line
+    so the model is biased toward the rewriter's focal terms before it
+    reads the raw question.
 
     Returns a list of dicts with 'name' and 'type' keys.
     """
+    user_message = query
+    if keyword_hints:
+        hint_line = "Hint keywords: " + ", ".join(keyword_hints)
+        user_message = f"{hint_line}\n\n{query}"
+
     for attempt in range(2):
         response = await client.messages.create(
             model=_FAST_MODEL,
             max_tokens=_MAX_TOKENS,
             system=_NER_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": query}],
+            messages=[{"role": "user", "content": user_message}],
         )
         record_usage(_FAST_MODEL, getattr(response, "usage", None))
 
@@ -475,8 +490,15 @@ async def kg_retrieve(
     degrade gracefully.
     """
     try:
-        # Step 1: Extract entities.
-        entities = await _extract_entities(query, client)
+        # Step 0: Rewrite the query — focal_concept feeds the dense
+        # path, keywords bias the NER prompt. Best-effort: a rewrite
+        # failure falls back to passthrough inside `_rewrite` itself.
+        rewritten = await _rewrite(query, client=client)
+
+        # Step 1: Extract entities, hinting with the rewriter's keywords.
+        entities = await _extract_entities(
+            query, client, keyword_hints=rewritten.keywords or None
+        )
         if not entities:
             logger.info("kg_retrieve: no entities extracted from query %r", query)
             return []

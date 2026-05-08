@@ -12,6 +12,7 @@ import logging
 from dataclasses import replace
 
 from decisionlab.knowledge.retrieval.models import RetrievalResult
+from decisionlab.knowledge.retrieval.query_rewriter import rewrite as _rewrite
 from shared.embedding import EmbeddingService
 from shared.vector_store import ScoredPoint, VectorStore
 
@@ -141,17 +142,36 @@ async def vector_retrieve(
     vector_store: VectorStore,
     limit: int = 20,
     filters: dict | None = None,
+    *,
+    client=None,
 ) -> tuple[list[RetrievalResult], list[RetrievalResult]]:
     """Run dense and sparse retrieval in parallel.
 
-    Returns (dense_results, sparse_results) as separate lists for RRF fusion.
-    Returns empty lists on any connection or service error so callers
-    degrade gracefully.
+    When *client* is supplied the query is run through the rewriter
+    first; the dense path then embeds only the focal concept (cleaner
+    semantic signal) while the sparse path uses ``query + keywords``
+    (broader BM25 lemma coverage). With no *client*, both paths receive
+    the raw query — the pre-rewriter behaviour.
+
+    Returns (dense_results, sparse_results) as separate lists for RRF
+    fusion. Returns empty lists on any connection or service error so
+    callers degrade gracefully.
     """
     try:
+        dense_query = query
+        sparse_query = query
+        if client is not None:
+            rewritten = await _rewrite(query, client=client)
+            if rewritten.focal_concept:
+                dense_query = rewritten.focal_concept
+            if rewritten.keywords:
+                sparse_query = f"{query} {' '.join(rewritten.keywords)}"
+
         dense_results, sparse_results = await asyncio.gather(
-            dense_retrieve(query, embedding_service, vector_store, limit, filters),
-            sparse_retrieve(query, vector_store, limit, filters),
+            dense_retrieve(
+                dense_query, embedding_service, vector_store, limit, filters
+            ),
+            sparse_retrieve(sparse_query, vector_store, limit, filters),
         )
         return dense_results, sparse_results
     except Exception as exc:
