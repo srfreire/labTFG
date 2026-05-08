@@ -185,6 +185,9 @@ class TestRunPipelineE2E:
         assert row is not None
         assert row.problem_description == "topic-x"
         assert row.s3_prefix == f"research/{run_id}"
+        # P3-003 AC2: eval driver tags inserts with kind='eval' so the
+        # retention prune command can reap them by age.
+        assert row.kind == "eval"
 
     @pytest.mark.asyncio
     async def test_kg_writes_attribute_to_correct_run_id(self, live_infra):

@@ -10,6 +10,8 @@ from qdrant_client.models import (
     Document,
     FieldCondition,
     Filter,
+    FilterSelector,
+    MatchAny,
     MatchValue,
     Modifier,
     PointStruct,
@@ -205,6 +207,30 @@ class VectorStore:
             collection_name=collection,
             points_selector=ids,
         )
+
+    async def delete_by_run_ids(
+        self,
+        collection: str,
+        run_ids: list[str],
+    ) -> int:
+        """Delete every point whose payload ``run_id`` is in *run_ids*.
+
+        Returns the number of run_ids dispatched (not the count of points
+        deleted — Qdrant's delete response only reports operation status,
+        not row counts). A delete matching zero points is a no-op, so the
+        script can be re-run idempotently after a partial pipeline failure.
+        """
+        if not run_ids:
+            return 0
+        await self._c().delete(
+            collection_name=collection,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[FieldCondition(key="run_id", match=MatchAny(any=run_ids))]
+                )
+            ),
+        )
+        return len(run_ids)
 
     async def delete_dense(self, collection: str, *, point_id: str) -> None:
         """Delete a single point from a dense collection by id.

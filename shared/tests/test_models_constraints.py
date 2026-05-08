@@ -13,7 +13,15 @@ from sqlalchemy import inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from shared.models import Artifact, Base, Experiment, Memory, Model, Run
+from shared.models import (
+    Artifact,
+    Base,
+    Experiment,
+    Memory,
+    Model,
+    NodeRunObservation,
+    Run,
+)
 from shared.settings import load_settings
 
 pytestmark = pytest.mark.integration
@@ -245,3 +253,85 @@ async def test_uuid_primary_keys_generated(session):
     await session.commit()
     assert isinstance(run.id, uuid.UUID)
     assert isinstance(exp.id, uuid.UUID)
+
+
+# ── Run.kind: defaults, allowed values, CHECK constraint (P3-003) ──
+
+
+@pytest.mark.asyncio
+async def test_run_kind_defaults_to_prod(session):
+    """Inserting a Run without specifying kind yields kind='prod'."""
+    run = Run(problem_description="kind default", s3_prefix="r/")
+    session.add(run)
+    await session.commit()
+    run_id = run.id
+    session.expire_all()
+    result = await session.execute(select(Run.kind).where(Run.id == run_id))
+    assert result.scalar_one() == "prod"
+
+
+@pytest.mark.asyncio
+async def test_run_kind_eval_allowed(session):
+    run = Run(problem_description="kind eval", s3_prefix="r/", kind="eval")
+    session.add(run)
+    await session.commit()
+    run_id = run.id
+    session.expire_all()
+    result = await session.execute(select(Run.kind).where(Run.id == run_id))
+    assert result.scalar_one() == "eval"
+
+
+@pytest.mark.asyncio
+async def test_run_kind_check_constraint_rejects_unknown(session):
+    """The runs_kind_check CHECK constraint rejects values outside {prod, eval}."""
+    run = Run(problem_description="kind bogus", s3_prefix="r/", kind="staging")
+    session.add(run)
+    with pytest.raises(IntegrityError):
+        await session.commit()
+    await session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_delete_run_cascades_to_dependents(session):
+    """Deleting a run cascades to memories, artifacts, node_run_observations."""
+    run = Run(problem_description="cascade", s3_prefix="r/", kind="eval")
+    session.add(run)
+    await session.commit()
+    run_id = run.id
+
+    mem = Memory(
+        content="cascaded",
+        namespace="paradigm",
+        memory_type="semantic",
+        source_stage="researcher",
+        importance=5.0,
+        confidence=0.8,
+        run_id=run_id,
+    )
+    art = Artifact(
+        s3_key=f"runs/{run_id}/x.txt",
+        artifact_type="report",
+        size_bytes=10,
+        content_type="text/plain",
+        run_id=run_id,
+    )
+    obs = NodeRunObservation(label="Paradigm", key_value="rl", run_id=run_id)
+    session.add_all([mem, art, obs])
+    await session.commit()
+
+    fetched_run = await session.get(Run, run_id)
+    await session.delete(fetched_run)
+    await session.commit()
+
+    session.expire_all()
+    assert (
+        await session.execute(select(Memory).where(Memory.run_id == run_id))
+    ).first() is None
+    assert (
+        await session.execute(select(Artifact).where(Artifact.run_id == run_id))
+    ).first() is None
+    assert (
+        await session.execute(
+            select(NodeRunObservation).where(NodeRunObservation.run_id == run_id)
+        )
+    ).first() is None

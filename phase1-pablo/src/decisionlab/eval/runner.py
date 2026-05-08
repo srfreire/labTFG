@@ -95,6 +95,11 @@ async def _create_run_row(run_id: str, topic: str) -> None:
     the Router writes ``status``, ``memory_results``, ``s3_report_key`` to
     this row as the run progresses. Without this row those updates would
     silently no-op (router catches the missing-row case).
+
+    Eval runs are tagged ``kind='eval'`` so the retention prune command can
+    reap them by age (memory-refactor P3-003 / phase-3 R3). Interactive
+    runs created via ``cli.run`` and ``server.run_pipeline`` keep the
+    ``kind='prod'`` default.
     """
     import shared
     from shared.models import Run
@@ -109,6 +114,7 @@ async def _create_run_row(run_id: str, topic: str) -> None:
                 problem_description=topic,
                 status="running",
                 s3_prefix=f"research/{run_id}",
+                kind="eval",
             )
         )
         await session.commit()

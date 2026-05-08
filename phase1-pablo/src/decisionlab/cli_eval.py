@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import date
+import re
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import typer
@@ -300,6 +301,151 @@ def cli_eval_pipeline(
             raise typer.Exit(code=1)
 
     _run(_factory)
+
+
+# ---------------------------------------------------------------------------
+# Retention
+# ---------------------------------------------------------------------------
+
+
+_DURATION_RE = re.compile(r"^\s*(\d+)\s*([dhm])\s*$")
+_DURATION_UNIT_SECONDS = {"d": 86400, "h": 3600, "m": 60}
+
+
+def _parse_duration(value: str) -> timedelta:
+    """Parse compact retention strings like ``30d``, ``24h``, ``60m``.
+
+    The ``--older-than`` flag intentionally accepts only one unit (no
+    composites like ``1d12h``) — operators set retention windows in
+    whole days/hours, never both at once.
+    """
+    match = _DURATION_RE.match(value)
+    if match is None:
+        raise ValueError(
+            f"Invalid duration {value!r}; expected '<int><d|h|m>' (e.g. '30d')"
+        )
+    n = int(match.group(1))
+    if n <= 0:
+        raise ValueError(f"Duration must be > 0; got {value!r}")
+    return timedelta(seconds=n * _DURATION_UNIT_SECONDS[match.group(2)])
+
+
+@eval_app.command("prune")
+def cli_eval_prune(
+    older_than: str = typer.Option(
+        "30d",
+        "--older-than",
+        help="Reap eval runs older than this (e.g. '30d', '24h', '60m').",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be deleted without modifying the database.",
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """Delete ``kind='eval'`` runs older than --older-than.
+
+    Cascades to ``memories``, ``node_run_observations`` and ``artifacts``
+    via the ON DELETE CASCADE FKs landed in the ``runs.kind`` migration
+    (memory-refactor P3-003 / phase-3 R3).
+
+    The output JSON is consumed by ``scripts/qdrant_purge_eval.py`` —
+    pipe ``--dry-run`` (or the live result, both emit the same shape) to
+    feed Qdrant the run_ids that are about to disappear.
+    """
+    _setup_logging(verbose)
+    try:
+        delta = _parse_duration(older_than)
+    except ValueError as exc:
+        console.print(f"[bold red]{exc}[/bold red]")
+        raise typer.Exit(code=2) from exc
+
+    async def _factory():
+        result = await _prune_eval_runs(delta, dry_run=dry_run)
+        console.print_json(json.dumps(result))
+
+    _run(_factory)
+
+
+async def _prune_eval_runs(delta: timedelta, *, dry_run: bool) -> dict:
+    """Reap eval runs older than *delta*. Returns counts + the deleted IDs.
+
+    The counts for descendant tables are computed BEFORE the delete so
+    they reflect what cascade actually clears (Postgres doesn't surface
+    cascaded row counts on a top-level DELETE).
+    """
+    from sqlalchemy import func, select
+
+    import shared
+    from shared.models import Artifact, Memory, NodeRunObservation, Run
+
+    if shared.db is None:
+        raise RuntimeError(
+            "shared.db is None — cannot prune without a Postgres connection"
+        )
+
+    cutoff = datetime.now(UTC) - delta
+
+    async with shared.db.get_session() as session:
+        run_ids = (
+            (
+                await session.execute(
+                    select(Run.id).where(Run.kind == "eval", Run.created_at < cutoff)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        if not run_ids:
+            return {
+                "cutoff": cutoff.isoformat(),
+                "older_than": str(delta),
+                "dry_run": dry_run,
+                "runs_deleted": 0,
+                "memories_cascaded": 0,
+                "artifacts_cascaded": 0,
+                "node_run_observations_cascaded": 0,
+                "run_ids": [],
+            }
+
+        memories_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(Memory)
+                .where(Memory.run_id.in_(run_ids))
+            )
+        ).scalar_one()
+        artifacts_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(Artifact)
+                .where(Artifact.run_id.in_(run_ids))
+            )
+        ).scalar_one()
+        observations_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(NodeRunObservation)
+                .where(NodeRunObservation.run_id.in_(run_ids))
+            )
+        ).scalar_one()
+
+        if not dry_run:
+            await session.execute(Run.__table__.delete().where(Run.id.in_(run_ids)))
+            await session.commit()
+
+        return {
+            "cutoff": cutoff.isoformat(),
+            "older_than": str(delta),
+            "dry_run": dry_run,
+            "runs_deleted": len(run_ids),
+            "memories_cascaded": memories_count,
+            "artifacts_cascaded": artifacts_count,
+            "node_run_observations_cascaded": observations_count,
+            "run_ids": [str(r) for r in run_ids],
+        }
 
 
 # ---------------------------------------------------------------------------

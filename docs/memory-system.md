@@ -1039,7 +1039,7 @@ reuse — but didn't. Either:
 canonical paradigms (no other content), so every run starts from the
 same baseline. Variance becomes signal again.
 
-## A14. No retention story anywhere
+## A14. No retention story anywhere — DONE 2026-05-09 (P3-003)
 
 Cumulative-growth and slug-accuracy run daily, each adding ~500 nodes
 and ~200 relations. After a month of CI: 15k nodes, 6k relations, none
@@ -1061,6 +1061,36 @@ Qdrant has no TTL. The `runs` and `artifacts` tables grow forever.
 Without this, the eval suite becomes self-defeating: every regression
 run leaves more debris behind.
 
+### Retention (resolved by P3-003)
+
+Per-store retention now lives at
+[`docs/specs/memory-refactor/retention.md`](specs/memory-refactor/retention.md).
+Defaults: `RETENTION_EVAL_DAYS=30`, `RETENTION_PROD_DAYS=365`,
+reflection rollup at 90 days.
+
+- **MinIO** — `minio-init` posts a 2-rule lifecycle on boot; `runs/eval/`
+  expires after `RETENTION_EVAL_DAYS`, `runs/prod/` after
+  `RETENTION_PROD_DAYS`. Verify with `mc ilm export local/labtfg`.
+- **Postgres `runs`** — `kind ∈ {prod, eval}` column (default `prod`,
+  CHECK constraint). Eval driver tags inserts `kind='eval'`. Prune via
+  `uv run cli_eval prune --older-than 30d`; cascades to `memories`,
+  `artifacts`, `node_run_observations` via `ON DELETE CASCADE` FKs.
+- **Qdrant** — `phase1-pablo/scripts/qdrant_purge_eval.py` reads
+  deleted run_ids from the prune output (stdin) and filter-deletes
+  matching points across `memories_*` and `artifacts_*` collections.
+  The two-step pipe is the prescribed workflow:
+  ```bash
+  uv run cli_eval prune --older-than 30d \
+    | uv run scripts/qdrant_purge_eval.py
+  ```
+- **KG `Reflection` rollup** — `phase1-pablo/scripts/kg_rollup_reflections.py`
+  groups Reflections older than 90d by `YYYY-MM`, MERGEs into
+  `RollupReflection` nodes (deduped on re-run), and detach-deletes the
+  originals. One transaction per cohort.
+
+`prod`-kind runs and `kg_entities_dense` are intentionally excluded
+from automatic retention; see retention.md.
+
 ---
 
 ## Summary table — what to refactor in what order
@@ -1079,7 +1109,7 @@ run leaves more debris behind.
 | **A10** | Cap `run_ids` accumulation | S | KG node payload size |
 | **A13** | Reset KG between eval runs | S | deterministic eval signal |
 | **A11** | One experiment registry (Postgres) | S | no split-brain |
-| **A14** | Retention policies per store | M | system stays sustainable past 6 months |
+| ~~**A14**~~ | ~~Retention policies per store~~ — done in P3-003 | M | system stays sustainable past 6 months |
 
 Effort: S = afternoon, M = a couple of days, L = a week+. None of these
 are speculative — every one points at actual code in the current tree.

@@ -30,6 +30,7 @@ _SCHEMA: dict[str, _SchemaEntry] = {
     "Parameter": {"unique_key": "name", "indexes": []},
     "Model": {"unique_key": "formulation_id", "indexes": []},
     "Reflection": {"unique_key": "id", "indexes": []},
+    "RollupReflection": {"unique_key": "id", "indexes": ["month"]},
 }
 
 _ALLOWED_LABELS = frozenset(_SCHEMA)

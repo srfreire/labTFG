@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -26,6 +27,9 @@ class Base(DeclarativeBase):
 
 class Run(Base):
     __tablename__ = "runs"
+    __table_args__ = (
+        CheckConstraint("kind IN ('prod', 'eval')", name="runs_kind_check"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -33,6 +37,7 @@ class Run(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     problem_description: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="created")
+    kind: Mapped[str] = mapped_column(String(10), default="prod", server_default="prod")
     s3_report_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     s3_prefix: Mapped[str] = mapped_column(String(500))
     artifact_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -106,7 +111,9 @@ class Artifact(Base):
     s3_key: Mapped[str] = mapped_column(String(500), unique=True)
     artifact_type: Mapped[str] = mapped_column(String(50))
     run_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("runs.id", name="artifacts_run_id_fkey", ondelete="CASCADE"),
+        nullable=True,
     )
     experiment_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("experiments.id"), nullable=True
@@ -143,7 +150,14 @@ class NodeRunObservation(Base):
     )
     label: Mapped[str] = mapped_column(String(40))
     key_value: Mapped[str] = mapped_column(String(120))
-    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("runs.id"))
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "runs.id",
+            name="node_run_observations_run_id_fkey",
+            ondelete="CASCADE",
+        ),
+    )
     observed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -166,7 +180,9 @@ class Memory(Base):
     memory_type: Mapped[str] = mapped_column(String(50))
     source_stage: Mapped[str] = mapped_column(String(100))
     run_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("runs.id"), nullable=True
+        UUID(as_uuid=True),
+        ForeignKey("runs.id", name="memories_run_id_fkey", ondelete="CASCADE"),
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
