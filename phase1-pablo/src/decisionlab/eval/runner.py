@@ -198,7 +198,9 @@ async def run_pipeline(
         reports_dir=reports_dir,
         run_id=rid,
     )
-    feedback = AutoApproveFeedback(env_spec_path=env_spec_path)
+    feedback = AutoApproveFeedback(
+        storage=services.storage, env_spec_path=env_spec_path
+    )
     stop_after = stages_run[-1]
 
     router = Router(
