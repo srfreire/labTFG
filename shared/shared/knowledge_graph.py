@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
-from typing import TypedDict, TypeVar
+from datetime import datetime
+from typing import TYPE_CHECKING, TypedDict, TypeVar
 
 from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 _T = TypeVar("_T")
+
+# Default namespace for relations bookkept as ``pipeline_memories`` rows under
+# the P4-004 PG-as-temporal-source-of-truth pattern.
+KG_RELATION_NAMESPACE = "kg_relation"
 
 
 class _SchemaEntry(TypedDict):
@@ -141,7 +148,13 @@ class KnowledgeGraph:
         rel_type: str,
         properties: dict | None = None,
     ) -> None:
-        """Create a typed relation between two nodes, injecting temporal metadata.
+        """Create a typed relation between two nodes.
+
+        Per P4-004 the temporal lifecycle of a relation lives in Postgres
+        ``pipeline_memories``: callers seed a row first, then pass the new
+        memory_id via ``properties`` so this method can write only the
+        identity triple + ``memory_id`` link.  No ``created_at`` /
+        ``valid_from`` / ``valid_to`` is stamped here anymore.
 
         Raises ValueError if either endpoint node is not found.
         """
@@ -152,9 +165,6 @@ class KnowledgeGraph:
         _check_ident(to_key, "to_key")
 
         props = dict(properties or {})
-        now = datetime.now(UTC).isoformat()
-        props.setdefault("created_at", now)
-        props.setdefault("valid_from", now)
 
         async with self._driver.session() as session:
             result = await session.run(
@@ -230,25 +240,34 @@ class KnowledgeGraph:
         self,
         cypher: str,
         as_of: datetime,
+        *,
+        session: AsyncSession,
+        namespace: str = KG_RELATION_NAMESPACE,
         params: dict | None = None,
     ) -> list[dict]:
-        """Execute Cypher with a temporal validity filter on relations.
+        """Execute Cypher against the set of relations valid at *as_of*.
 
-        Injects a ``WHERE`` clause before the ``RETURN`` that keeps only
-        relations valid at *as_of*:
-            r.valid_from <= $_as_of AND (r.valid_to IS NULL OR r.valid_to > $_as_of)
+        Per P4-004, Postgres ``pipeline_memories`` is the source of truth
+        for relation temporal validity.  This is a two-step helper:
+
+          1. PG SELECT — fetch ``pipeline_memories.id`` rows whose namespace
+             matches *namespace* and whose
+             ``valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)``.
+          2. Neo4j MATCH — inject ``WHERE r.memory_id IS NULL OR
+             r.memory_id IN $_valid_ids`` before the ``RETURN`` so only
+             relations referencing a still-valid PG row (or pre-P4-004
+             seed relations with no ``memory_id`` at all) survive.
 
         The input *cypher* must bind relations as ``r`` and contain a
         ``RETURN`` keyword.  If no ``RETURN`` is found the filter is
         appended as a ``WITH * WHERE`` clause (useful for sub-queries).
         """
-        as_of_iso = as_of.isoformat()
+        valid_ids = await select_valid_memory_ids(session, as_of, namespace=namespace)
+
         temporal_clause = (
-            "WHERE r.valid_from <= $_as_of "
-            "AND (r.valid_to IS NULL OR r.valid_to > $_as_of)"
+            "WHERE r.memory_id IS NULL OR r.memory_id IN $_valid_ids"
         )
 
-        # Insert temporal filter before the RETURN clause
         upper = cypher.upper()
         ret_idx = upper.rfind("RETURN")
         if ret_idx != -1:
@@ -259,7 +278,8 @@ class KnowledgeGraph:
             wrapped = f"{cypher}\nWITH * {temporal_clause}"
 
         merged = dict(params or {})
-        merged["_as_of"] = as_of_iso
+        merged["_valid_ids"] = valid_ids
+        merged["_as_of"] = as_of.isoformat()
         return await self.query(wrapped, merged)
 
     async def get_node_history(
@@ -267,21 +287,47 @@ class KnowledgeGraph:
         label: str,
         key_property: str,
         key_value: str | int,
+        *,
+        session: AsyncSession,
+        namespace: str = KG_RELATION_NAMESPACE,
     ) -> list[dict]:
-        """Return all versions of a node's relations ordered by valid_from.
+        """Return every version of a node's relations, oldest first.
 
-        Returns a list of dicts with keys: type, props, neighbor — showing
-        how the node's relationships evolved over time.
+        Each row carries ``type``/``props``/``neighbor`` as before, plus
+        ``memory_id``, ``valid_from``, ``valid_to``, and ``confidence``
+        joined from the corresponding ``pipeline_memories`` row.  Pre-P4-004
+        seed relations (no ``memory_id``) are returned with the temporal
+        fields set to ``None`` and sort first.
         """
         _check_label(label)
         _check_ident(key_property, "key_property")
         cypher = (
             f"MATCH (n:{label} {{{key_property}: $val}})-[r]-(m) "
             f"RETURN type(r) AS type, properties(r) AS props, "
-            f"properties(m) AS neighbor "
-            f"ORDER BY r.valid_from ASC"
+            f"properties(m) AS neighbor, r.memory_id AS memory_id"
         )
-        return await self.query(cypher, {"val": key_value})
+        rows = await self.query(cypher, {"val": key_value})
+        if not rows:
+            return rows
+
+        memory_ids = [row["memory_id"] for row in rows if row.get("memory_id")]
+        meta = await fetch_memory_temporal_meta(
+            session, memory_ids, namespace=namespace
+        )
+        for row in rows:
+            mid = row.get("memory_id")
+            entry = meta.get(mid) if mid else None
+            row["valid_from"] = entry["valid_from"] if entry else None
+            row["valid_to"] = entry["valid_to"] if entry else None
+            row["confidence"] = entry["confidence"] if entry else None
+
+        rows.sort(
+            key=lambda r: (
+                r.get("valid_from") is None,
+                r.get("valid_from") or "",
+            )
+        )
+        return rows
 
     @staticmethod
     def unique_key_for(label: str) -> str:
@@ -300,3 +346,81 @@ class KnowledgeGraph:
     async def close(self) -> None:
         """Close the driver."""
         await self._driver.close()
+
+
+async def select_valid_memory_ids(
+    session: AsyncSession,
+    as_of: datetime,
+    *,
+    namespace: str = KG_RELATION_NAMESPACE,
+) -> list[str]:
+    """Return the ``pipeline_memories`` ids valid at *as_of*, as strings.
+
+    Returns string-encoded UUIDs (Neo4j has no native UUID type, so the
+    relation property ``r.memory_id`` is stored as a string).  An empty
+    list is a perfectly valid answer — it means no relation in the given
+    namespace was live at *as_of*.
+    """
+    from sqlalchemy import select
+
+    from shared.models import PipelineMemory
+
+    naive_as_of = as_of.replace(tzinfo=None) if as_of.tzinfo is not None else as_of
+
+    stmt = select(PipelineMemory.id).where(
+        PipelineMemory.namespace == namespace,
+        PipelineMemory.valid_from <= naive_as_of,
+        (PipelineMemory.valid_to.is_(None)) | (PipelineMemory.valid_to > naive_as_of),
+    )
+    result = await session.execute(stmt)
+    return [str(row[0]) for row in result.all()]
+
+
+async def fetch_memory_temporal_meta(
+    session: AsyncSession,
+    memory_ids: list[str],
+    *,
+    namespace: str = KG_RELATION_NAMESPACE,
+) -> dict[str, dict]:
+    """Hydrate temporal + confidence metadata for a batch of memory_ids.
+
+    Returns ``{str(memory_id): {"valid_from", "valid_to", "confidence"}}``.
+    Ids that don't resolve (deleted PG row, foreign namespace) are absent
+    from the map — callers fall back to None on miss.
+    """
+    if not memory_ids:
+        return {}
+
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from shared.models import PipelineMemory
+
+    parsed: list[_uuid.UUID] = []
+    for mid in memory_ids:
+        try:
+            parsed.append(_uuid.UUID(str(mid)))
+        except (ValueError, TypeError):
+            continue
+    if not parsed:
+        return {}
+
+    stmt = select(
+        PipelineMemory.id,
+        PipelineMemory.valid_from,
+        PipelineMemory.valid_to,
+        PipelineMemory.confidence,
+    ).where(
+        PipelineMemory.id.in_(parsed),
+        PipelineMemory.namespace == namespace,
+    )
+    result = await session.execute(stmt)
+    out: dict[str, dict] = {}
+    for row in result.all():
+        out[str(row.id)] = {
+            "valid_from": row.valid_from.isoformat() if row.valid_from else None,
+            "valid_to": row.valid_to.isoformat() if row.valid_to else None,
+            "confidence": row.confidence,
+        }
+    return out

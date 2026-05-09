@@ -92,9 +92,12 @@ class TestStatsLive:
         )
         stats = await kgadmin.stats()
         assert stats.total_nodes == 4
-        assert stats.total_relations == 2  # active only
+        # Per P4-004 supersession lives in PG (`pipeline_memories.valid_to`),
+        # not on the relation. ``stats()`` now counts every Neo4j edge — the
+        # third "superseded" seed relation is included.
+        assert stats.total_relations == 3
         assert stats.by_label == {"Paradigm": 2, "Variable": 2}
-        assert stats.by_type == {"BELONGS_TO": 2}
+        assert stats.by_type == {"BELONGS_TO": 3}
 
 
 # ---------------------------------------------------------------------------

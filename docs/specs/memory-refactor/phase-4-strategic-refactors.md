@@ -136,7 +136,7 @@ relation semantics.
       preserved. Phase 1 writers target `pipeline_memories`; Phase 2
       `TrackerMemoryWriter` targets `simulation_observations`. Both
       feed the same Qdrant collections with `source_kind` payload.
-- [ ] AC4: Neo4j relations no longer carry temporal props. Two-step
+- [x] AC4: Neo4j relations no longer carry temporal props. Two-step
       temporal queries pass an integration test
       (`test_temporal_consistency.py`) that confirms PG and KG agree
       for an `as_of` query against a multi-version dataset.

@@ -53,19 +53,18 @@ def _require_kg():
 async def stats() -> KGStats:
     """Count nodes and active (non-superseded) relations.
 
-    "Active" follows the temporal-graph convention used by ``kg_writer``:
-    relations carrying ``valid_to IS NULL`` are considered current.
-    Superseded relations remain in the graph for history but don't count
-    towards present state.
+    Per P4-004 every Neo4j relation is in principle "current": temporal
+    validity now lives in ``pipeline_memories`` (joined via
+    ``r.memory_id``).  These counts include every edge — superseded
+    versions and the active replacement both contribute. For an "as-of"
+    view callers should go through ``KnowledgeGraph.query_at_time``.
     """
     kg = _require_kg()
 
     total_nodes_rows = await kg.query("MATCH (n) RETURN count(n) AS n")
     total_nodes = int(total_nodes_rows[0]["n"]) if total_nodes_rows else 0
 
-    total_rels_rows = await kg.query(
-        "MATCH ()-[r]->() WHERE r.valid_to IS NULL RETURN count(r) AS n"
-    )
+    total_rels_rows = await kg.query("MATCH ()-[r]->() RETURN count(r) AS n")
     total_relations = int(total_rels_rows[0]["n"]) if total_rels_rows else 0
 
     label_rows = await kg.query(
@@ -75,7 +74,7 @@ async def stats() -> KGStats:
     by_label = {row["label"]: int(row["n"]) for row in label_rows}
 
     type_rows = await kg.query(
-        "MATCH ()-[r]->() WHERE r.valid_to IS NULL "
+        "MATCH ()-[r]->() "
         "RETURN type(r) AS rel_type, count(r) AS n ORDER BY n DESC"
     )
     by_type = {row["rel_type"]: int(row["n"]) for row in type_rows}

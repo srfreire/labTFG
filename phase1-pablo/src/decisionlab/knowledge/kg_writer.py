@@ -12,13 +12,31 @@ from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.models import ExtractionResult, KGWriteResult
 from decisionlab.tools.reports import slugify
-from shared.knowledge_graph import KnowledgeGraph
+from shared.knowledge_graph import KG_RELATION_NAMESPACE, KnowledgeGraph
 
 if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
 
 logger = logging.getLogger(__name__)
+
+# Per-stage defaults for KG-relation memory rows. Mirror the resolver's
+# shape (importance / confidence / memory_type) so that PG `pipeline_memories`
+# rows seeded by `populate_kg` are queryable alongside fact-style rows.
+_STAGE_RELATION_IMPORTANCE: dict[str, float] = {
+    "researcher": 5.0,
+    "formalizer": 6.0,
+    "reasoner": 7.0,
+    "builder": 8.0,
+}
+_STAGE_RELATION_CONFIDENCE: dict[str, float] = {
+    "researcher": 0.6,
+    "formalizer": 0.7,
+    "reasoner": 0.8,
+    "builder": 0.9,
+}
+_DEFAULT_RELATION_IMPORTANCE = 5.0
+_DEFAULT_RELATION_CONFIDENCE = 0.7
 
 
 def _get_embedding_service() -> EmbeddingService | None:
@@ -86,6 +104,207 @@ async def _record_node_run_observation(
         )
 
 
+def _relation_content(
+    *,
+    from_label: str,
+    from_key_value: str | int,
+    rel_type: str,
+    to_label: str,
+    to_key_value: str | int,
+) -> str:
+    """Stable text encoding of a relation identity triple.
+
+    Used as ``pipeline_memories.content`` so the row is human-readable in
+    SQL inspection and survives the JSONB round-trip without ambiguity.
+    """
+    return f"{from_label}.{from_key_value} -[{rel_type}]-> {to_label}.{to_key_value}"
+
+
+async def _create_relation_memory(
+    *,
+    run_id: uuid.UUID,
+    stage: str,
+    content: str,
+    confidence: float,
+    importance: float,
+    properties: dict,
+    valid_from: datetime,
+) -> uuid.UUID | None:
+    """Insert a fresh ``pipeline_memories`` row for a KG relation.
+
+    Returns the new id on success, or ``None`` if Postgres is unavailable
+    or the insert fails (caller falls back to writing the relation with no
+    ``memory_id``).  The KG write must keep working even when PG is down.
+    """
+    db = _get_db()
+    if db is None:
+        return None
+
+    new_id = uuid.uuid4()
+    naive_valid_from = (
+        valid_from.replace(tzinfo=None) if valid_from.tzinfo is not None else valid_from
+    )
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        async with db.get_session() as session:
+            await session.execute(
+                sql_text(
+                    "INSERT INTO pipeline_memories "
+                    "(id, content, namespace, memory_type, source_stage, "
+                    "run_id, importance, confidence, valid_from, metadata) "
+                    "VALUES (:id, :content, :namespace, :memory_type, :stage, "
+                    ":run_id, :importance, :confidence, :valid_from, "
+                    "CAST(:metadata AS JSONB))"
+                ),
+                {
+                    "id": new_id,
+                    "content": content,
+                    "namespace": KG_RELATION_NAMESPACE,
+                    "memory_type": "semantic",
+                    "stage": stage[:100] if stage else "kg_writer",
+                    "run_id": run_id,
+                    "importance": importance,
+                    "confidence": confidence,
+                    "valid_from": naive_valid_from,
+                    "metadata": json.dumps(properties, default=str),
+                },
+            )
+            await session.commit()
+        return new_id
+    except Exception as exc:
+        logger.warning(
+            "kg_writer: pipeline_memories insert failed (non-fatal) "
+            "content=%r run_id=%s: %s",
+            content,
+            run_id,
+            exc,
+        )
+        return None
+
+
+async def _close_memory(memory_id: uuid.UUID, *, valid_to: datetime) -> bool:
+    """Stamp ``valid_to`` on an existing ``pipeline_memories`` row.
+
+    Returns True on success, False on Postgres failure or unavailability.
+    Idempotent: a row whose ``valid_to`` is already set is left alone (the
+    UPDATE only matches rows where the column is NULL).
+    """
+    db = _get_db()
+    if db is None:
+        return False
+
+    naive_valid_to = (
+        valid_to.replace(tzinfo=None) if valid_to.tzinfo is not None else valid_to
+    )
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        async with db.get_session() as session:
+            await session.execute(
+                sql_text(
+                    "UPDATE pipeline_memories SET valid_to = :valid_to "
+                    "WHERE id = :id AND valid_to IS NULL"
+                ),
+                {"id": memory_id, "valid_to": naive_valid_to},
+            )
+            await session.commit()
+        return True
+    except Exception as exc:
+        logger.warning(
+            "kg_writer: pipeline_memories valid_to update failed (non-fatal) "
+            "id=%s: %s",
+            memory_id,
+            exc,
+        )
+        return False
+
+
+async def _list_existing_relations(
+    *,
+    kg: KnowledgeGraph,
+    from_label: str,
+    from_key: str,
+    from_value: str | int,
+    to_label: str,
+    to_key: str,
+    to_value: str | int,
+    rel_type: str,
+) -> list[dict]:
+    """Return every Neo4j relation matching the identity triple, with props.
+
+    Each row carries ``{"memory_id": str | None, "props": dict}``.
+    Relations without ``memory_id`` are pre-P4-004 seed edges (timeless
+    canonical truth) — they participate in content-based idempotency
+    checks but are never tombstoned.
+    """
+    cypher = (
+        f"MATCH (a:{from_label} {{{from_key}: $from_val}})"
+        f"-[r:{rel_type}]->"
+        f"(b:{to_label} {{{to_key}: $to_val}}) "
+        f"RETURN r.memory_id AS memory_id, properties(r) AS props"
+    )
+    rows = await kg.query(
+        cypher,
+        {"from_val": from_value, "to_val": to_value},
+    )
+    return [
+        {"memory_id": row.get("memory_id"), "props": row.get("props") or {}}
+        for row in rows
+    ]
+
+
+async def _fetch_active_memory_meta(
+    memory_ids: list[str],
+) -> dict[str, dict]:
+    """Return ``{memory_id: {valid_to, content, properties}}`` for live rows.
+
+    "Live" = ``valid_to IS NULL``. Rows already superseded are excluded so
+    only at most one live row per Neo4j triple should ever come back.
+    """
+    if not memory_ids:
+        return {}
+    db = _get_db()
+    if db is None:
+        return {}
+
+    parsed: list[uuid.UUID] = []
+    for mid in memory_ids:
+        try:
+            parsed.append(uuid.UUID(str(mid)))
+        except (ValueError, TypeError):
+            continue
+    if not parsed:
+        return {}
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        async with db.get_session() as session:
+            result = await session.execute(
+                sql_text(
+                    "SELECT id, content, metadata FROM pipeline_memories "
+                    "WHERE id = ANY(:ids) AND valid_to IS NULL"
+                ),
+                {"ids": parsed},
+            )
+            return {
+                str(row.id): {
+                    "content": row.content,
+                    "properties": row.metadata or {},
+                }
+                for row in result.all()
+            }
+    except Exception as exc:
+        logger.warning(
+            "kg_writer: pipeline_memories fetch failed (non-fatal): %s",
+            exc,
+        )
+        return {}
+
+
 _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # Hard ceiling on natural-key length. Real slugs/names sit well under this;
@@ -99,6 +318,7 @@ _SLUG_LIKE_LABELS = frozenset(
 )
 
 # Relation properties that are temporal metadata — excluded from content comparison.
+# `memory_id` is the PG join key (P4-004), not part of the relation's identity.
 _TEMPORAL_KEYS = frozenset(
     {
         "valid_from",
@@ -107,6 +327,8 @@ _TEMPORAL_KEYS = frozenset(
         "created_at",
         "updated_at",
         "superseded_by",
+        "memory_id",
+        "confidence",
     }
 )
 
@@ -387,7 +609,24 @@ async def populate_kg(
             description = node.properties.get("description") or ""
             ann_targets.append((node.label, str(key_value), display_name, description))
 
-    # ── Relations ────────────────────────────────────────────────────────
+    # ── Relations (P4-004: PG-then-KG with memory_id link) ───────────────
+    # Parse run_id once; non-UUID seed runs (e.g. canonical-paradigms-seed)
+    # skip the PG insert path entirely and write the relation without a
+    # memory_id — those relations are timeless canonical truth.
+    parsed_run_id: uuid.UUID | None
+    try:
+        parsed_run_id = uuid.UUID(run_id)
+    except (ValueError, AttributeError, TypeError):
+        parsed_run_id = None
+
+    valid_from_dt = datetime.fromisoformat(now)
+    stage_confidence = _STAGE_RELATION_CONFIDENCE.get(
+        extraction.stage, _DEFAULT_RELATION_CONFIDENCE
+    )
+    stage_importance = _STAGE_RELATION_IMPORTANCE.get(
+        extraction.stage, _DEFAULT_RELATION_IMPORTANCE
+    )
+
     for rel in extraction.relations:
         if not _SAFE_IDENT.match(rel.from_label):
             errors.append(f"Relation: invalid from_label '{rel.from_label}'")
@@ -409,55 +648,78 @@ async def populate_kg(
             )
             continue
 
-        new_props = {
-            **rel.properties,
-            "run_id": run_id,
-            "created_at": now,
-            "valid_from": now,
+        # Step 1: enumerate existing relations matching this identity.
+        existing_rels = await _list_existing_relations(
+            kg=kg,
+            from_label=rel.from_label,
+            from_key=from_key,
+            from_value=rel.from_key_value,
+            to_label=rel.to_label,
+            to_key=to_key,
+            to_value=rel.to_key_value,
+            rel_type=rel.rel_type,
+        )
+
+        new_content_props = {
+            k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS
         }
+
+        # Idempotency: if any existing relation has the same content (modulo
+        # temporal/memory_id/confidence), skip without writing. Works in
+        # both PG-available and PG-unavailable modes.
+        if any(
+            {k: v for k, v in er["props"].items() if k not in _TEMPORAL_KEYS}
+            == new_content_props
+            for er in existing_rels
+        ):
+            continue
+
+        # Step 2: find the active superseded-by-this-write version via PG
+        # (we close out exactly one live PG row per triple). Skipped when
+        # PG is unavailable or when no existing relation carries memory_id.
+        existing_mids = [
+            str(er["memory_id"]) for er in existing_rels if er.get("memory_id")
+        ]
+        active_meta = await _fetch_active_memory_meta(existing_mids)
+        active_id: uuid.UUID | None = None
+        for mid_str in active_meta:
+            active_id = uuid.UUID(mid_str)
+            break
+
+        # Step 2: insert a fresh `pipeline_memories` row for the new edge
+        # (skipped for non-UUID seed runs).
+        relation_confidence = float(rel.properties.get("confidence", stage_confidence))
+        new_memory_id: uuid.UUID | None = None
+        if parsed_run_id is not None:
+            new_memory_id = await _create_relation_memory(
+                run_id=parsed_run_id,
+                stage=extraction.stage,
+                content=_relation_content(
+                    from_label=rel.from_label,
+                    from_key_value=rel.from_key_value,
+                    rel_type=rel.rel_type,
+                    to_label=rel.to_label,
+                    to_key_value=rel.to_key_value,
+                ),
+                confidence=relation_confidence,
+                importance=stage_importance,
+                properties=new_content_props,
+                valid_from=valid_from_dt,
+            )
+
+        # Step 3: create the Neo4j relation. Identity props + memory_id
+        # (when present); no temporal metadata.
+        kg_props: dict = dict(new_content_props)
+        if new_memory_id is not None:
+            kg_props["memory_id"] = str(new_memory_id)
 
         async def _rel_work(
             tx,
             rel=rel,
             from_key=from_key,
             to_key=to_key,
-            new_props=new_props,
+            kg_props=kg_props,
         ):
-            check_cypher = (
-                f"MATCH (a:{rel.from_label} {{{from_key}: $from_val}})"
-                f"-[r:{rel.rel_type}]->"
-                f"(b:{rel.to_label} {{{to_key}: $to_val}}) "
-                f"WHERE r.valid_to IS NULL "
-                f"RETURN properties(r) AS props, elementId(r) AS rid"
-            )
-            check_result = await tx.run(
-                check_cypher,
-                {
-                    "from_val": rel.from_key_value,
-                    "to_val": rel.to_key_value,
-                },
-            )
-            existing = await check_result.single()
-
-            superseded = False
-            if existing:
-                old_content = {
-                    k: v
-                    for k, v in existing["props"].items()
-                    if k not in _TEMPORAL_KEYS
-                }
-                new_content = {
-                    k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS
-                }
-                if old_content == new_content:
-                    return ("idempotent", False)
-
-                await tx.run(
-                    "MATCH ()-[r]->() WHERE elementId(r) = $rid SET r.valid_to = $now",
-                    {"rid": existing["rid"], "now": now},
-                )
-                superseded = True
-
             create_cypher = (
                 f"MATCH (a:{rel.from_label} {{{from_key}: $from_val}}), "
                 f"(b:{rel.to_label} {{{to_key}: $to_val}}) "
@@ -469,16 +731,14 @@ async def populate_kg(
                 {
                     "from_val": rel.from_key_value,
                     "to_val": rel.to_key_value,
-                    "props": new_props,
+                    "props": kg_props,
                 },
             )
             create_record = await create_result.single()
-            if create_record is None:
-                return ("missing_endpoint", superseded)
-            return ("created", superseded)
+            return ("missing_endpoint" if create_record is None else "created")
 
         try:
-            outcome, superseded = await kg.execute_write(_rel_work)
+            outcome = await kg.execute_write(_rel_work)
         except Exception as exc:
             errors.append(f"Relation {rel.rel_type}: write failed: {exc}")
             logger.warning(
@@ -488,18 +748,33 @@ async def populate_kg(
                 rel.to_label,
                 exc,
             )
+            # Roll back the PG insert: there's no live Neo4j relation pointing
+            # at the new memory_id, so close it out so retrieval doesn't pick
+            # up an orphaned PG row.
+            if new_memory_id is not None:
+                await _close_memory(new_memory_id, valid_to=valid_from_dt)
             continue
 
-        if superseded:
-            counters["relations_superseded"] += 1
-        if outcome == "created":
-            counters["relations_created"] += 1
-        elif outcome == "missing_endpoint":
+        if outcome == "missing_endpoint":
             errors.append(
                 f"Relation {rel.rel_type}: endpoint not found — "
                 f"{rel.from_label}.{from_key}={rel.from_key_value!r} or "
                 f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
             )
+            if new_memory_id is not None:
+                await _close_memory(new_memory_id, valid_to=valid_from_dt)
+            continue
+
+        # Step 4: now that the new relation exists, supersede the old PG
+        # row (if any). Doing this *after* the new edge is in Neo4j keeps
+        # retrieval consistent: a concurrent read at any point sees either
+        # both edges live (PG view: old still valid until we stamp valid_to)
+        # or only the new edge live (after stamp).
+        if active_id is not None:
+            await _close_memory(active_id, valid_to=valid_from_dt)
+            counters["relations_superseded"] += 1
+
+        counters["relations_created"] += 1
 
     # ── ANN sync (best-effort) ───────────────────────────────────────────
     # After all node writes, embed the slug-like nodes and write the

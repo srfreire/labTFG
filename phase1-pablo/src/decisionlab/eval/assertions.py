@@ -425,15 +425,19 @@ async def _relation_exists(ctx: AssertionContext, args: dict) -> AssertionOutcom
             passed=False,
             detail="missing one of 'from'/'type'/'to' args",
         )
+    # Per P4-004 active-version filtering lives in PG; this assertion
+    # counts every relation matching the triple regardless of supersession
+    # state.  Eval suites that need "as-of" semantics should use
+    # ``KnowledgeGraph.query_at_time`` directly.
     rows = await kg_query(
         f"MATCH (a:{from_label})-[r:{rel_type}]->(b:{to_label}) "
-        "WHERE r.valid_to IS NULL RETURN count(r) AS c"
+        "RETURN count(r) AS c"
     )
     actual = int(rows[0]["c"]) if rows else 0
     return AssertionOutcome(
         name="relation_exists",
         passed=actual > 0,
-        detail=f"{from_label}-[{rel_type}]->{to_label}: {actual} active",
+        detail=f"{from_label}-[{rel_type}]->{to_label}: {actual} relation(s)",
     )
 
 

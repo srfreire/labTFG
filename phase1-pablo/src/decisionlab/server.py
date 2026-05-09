@@ -421,8 +421,12 @@ async def kg_snapshot(run_id: str | None = None) -> dict:
         "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
         "properties(n) AS props"
     )
+    # Post-P4-004 the relation has no `valid_to`; temporal validity lives
+    # in `pipeline_memories`.  The graph-viz endpoint shows every edge —
+    # superseded versions appear alongside their replacements until the
+    # caller adds a temporal filter via `query_at_time`.
     rels_raw = await shared.kg.query(
-        "MATCH (a)-[r]->(b) WHERE r.valid_to IS NULL "
+        "MATCH (a)-[r]->(b) "
         "RETURN elementId(r) AS id, elementId(a) AS source, "
         "elementId(b) AS target, type(r) AS type, properties(r) AS props"
     )

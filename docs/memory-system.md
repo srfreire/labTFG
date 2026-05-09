@@ -767,7 +767,7 @@ schema can't express them.
 The current state — same table, two semantics, JSONB to paper over
 schema gaps — is the worst of both.
 
-## A3. Temporal lifecycle is double-bookkept across Postgres and Neo4j
+## A3. Temporal lifecycle is double-bookkept across Postgres and Neo4j — DONE 2026-05-09 (P4-004)
 
 Both stores carry `valid_from` / `valid_to`. Postgres has it on every
 `memories` row; Neo4j has it on every relation (and effectively on every

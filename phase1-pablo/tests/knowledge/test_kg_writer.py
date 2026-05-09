@@ -31,6 +31,81 @@ def _stub_node_run_observation(monkeypatch):
     monkeypatch.setattr(kg_writer, "_record_node_run_observation", _noop)
 
 
+class _FakePGStore:
+    """In-memory ``pipeline_memories`` analog for kg_writer relation tests.
+
+    Simulates the three PG helpers (``_create_relation_memory``,
+    ``_close_memory``, ``_fetch_active_memory_meta``) so the AC3
+    supersession path stays exercisable without hitting Postgres.
+    """
+
+    def __init__(self) -> None:
+        self.rows: dict[uuid.UUID, dict] = {}
+
+    async def create(
+        self,
+        *,
+        run_id: uuid.UUID,
+        stage: str,
+        content: str,
+        confidence: float,
+        importance: float,
+        properties: dict,
+        valid_from,
+    ) -> uuid.UUID:
+        new_id = uuid.uuid4()
+        self.rows[new_id] = {
+            "run_id": run_id,
+            "stage": stage,
+            "content": content,
+            "confidence": confidence,
+            "importance": importance,
+            "properties": dict(properties),
+            "valid_from": valid_from,
+            "valid_to": None,
+        }
+        return new_id
+
+    async def close(self, memory_id: uuid.UUID, *, valid_to) -> bool:
+        row = self.rows.get(memory_id)
+        if row is None or row.get("valid_to") is not None:
+            return False
+        row["valid_to"] = valid_to
+        return True
+
+    async def fetch_active(self, memory_ids: list[str]) -> dict[str, dict]:
+        out: dict[str, dict] = {}
+        for mid_str in memory_ids:
+            try:
+                mid = uuid.UUID(str(mid_str))
+            except (ValueError, TypeError):
+                continue
+            row = self.rows.get(mid)
+            if row is None or row.get("valid_to") is not None:
+                continue
+            out[str(mid)] = {
+                "content": row["content"],
+                "properties": row["properties"],
+            }
+        return out
+
+
+@pytest.fixture
+def pg_store(monkeypatch):
+    """Wire an in-memory ``_FakePGStore`` over kg_writer's PG helpers.
+
+    Use in tests that need PG-backed semantics (idempotency check, AC3
+    supersession). Leaving the fixture out keeps PG unavailable so the
+    writer falls back to the no-PG degraded path (relations get no
+    memory_id, supersession can't be tracked).
+    """
+    store = _FakePGStore()
+    monkeypatch.setattr(kg_writer, "_create_relation_memory", store.create)
+    monkeypatch.setattr(kg_writer, "_close_memory", store.close)
+    monkeypatch.setattr(kg_writer, "_fetch_active_memory_meta", store.fetch_active)
+    return store
+
+
 # ---------------------------------------------------------------------------
 # Fake in-memory Neo4j — simulates MERGE, relation lookup, supersession
 # ---------------------------------------------------------------------------
@@ -56,6 +131,13 @@ class FakeResult:
     async def single(self) -> dict | None:
         return self._records[0] if self._records else None
 
+    def __aiter__(self):
+        async def _agen():
+            for r in self._records:
+                yield r
+
+        return _agen()
+
 
 class FakeNeo4jStore:
     """In-memory graph store that interprets a subset of Cypher patterns."""
@@ -73,10 +155,8 @@ class FakeNeo4jStore:
 
         if cypher_upper.startswith("MERGE"):
             return self._handle_merge(cypher, params)
-        elif "WHERE r.valid_to IS NULL" in cypher:
-            return self._handle_relation_check(cypher, params)
-        elif "WHERE elementId(r)" in cypher:
-            return self._handle_supersede(cypher, params)
+        elif "RETURN R.MEMORY_ID AS MEMORY_ID, PROPERTIES(R)" in cypher_upper:
+            return self._handle_relation_list(cypher, params)
         elif cypher_upper.startswith("MATCH") and "CREATE (a)-[r:" in cypher:
             return self._handle_create_relation(cypher, params)
         return []
@@ -102,30 +182,27 @@ class FakeNeo4jStore:
             self.nodes[nk] = dict(create_props)
             return [{"was_created": True}]
 
-    def _handle_relation_check(self, cypher: str, params: dict) -> list[dict]:
-        """Check for existing active relation (valid_to IS NULL)."""
+    def _handle_relation_list(self, cypher: str, params: dict) -> list[dict]:
+        """Return all relations matching identity (P4-004 list query)."""
         from_val = params.get("from_val")
         to_val = params.get("to_val")
-
+        rm = re.search(r"-\[r:(\w+)\]->", cypher)
+        rel_type = rm.group(1) if rm else None
+        out: list[dict] = []
         for rel in self.relations:
             if (
                 rel["from_val"] == from_val
                 and rel["to_val"] == to_val
-                and rel.get("valid_to") is None
+                and (rel_type is None or rel.get("rel_type") == rel_type)
             ):
-                return [{"props": dict(rel["props"]), "rid": rel["rid"]}]
-        return []
-
-    def _handle_supersede(self, cypher: str, params: dict) -> list[dict]:
-        """Set valid_to on an existing relation."""
-        rid = params.get("rid")
-        now = params.get("now")
-        for rel in self.relations:
-            if rel["rid"] == rid:
-                rel["valid_to"] = now
-                rel["props"]["valid_to"] = now
-                return [{}]
-        return []
+                props = dict(rel["props"])
+                out.append(
+                    {
+                        "memory_id": props.get("memory_id"),
+                        "props": props,
+                    }
+                )
+        return out
 
     def _handle_create_relation(self, cypher: str, params: dict) -> list[dict]:
         """Create a new relation between matched nodes."""
@@ -197,6 +274,9 @@ class FakeKnowledgeGraph:
     async def execute_write(self, work):
         tx = FakeTransaction(self.store)
         return await work(tx)
+
+    async def query(self, cypher: str, params: dict | None = None) -> list[dict]:
+        return self.store.execute(cypher, params or {})
 
 
 # ---------------------------------------------------------------------------
@@ -358,19 +438,43 @@ async def test_ac1_creates_relations():
 
 
 @pytest.mark.asyncio
-async def test_ac1_relations_carry_provenance():
-    """AC1+AC4: All created relations carry run_id, created_at, valid_from."""
+async def test_ac1_relations_carry_memory_id_when_pg_available(pg_store):
+    """P4-004 / AC1: Each relation written under a UUID run_id carries
+    ``memory_id`` linking back to a fresh ``pipeline_memories`` row.
+
+    No legacy ``run_id`` / ``created_at`` / ``valid_from`` is stamped on
+    the relation — Postgres is the temporal source of truth now.
+    """
     kg = FakeKnowledgeGraph()
-    extraction = _research_extraction()
+    run_uuid = str(uuid.uuid4())
+    extraction = _research_extraction(run_id=run_uuid)
 
     await populate_kg(extraction, kg)
 
     for rel in kg.store.relations:
         props = rel["props"]
-        assert "run_id" in props, f"Relation missing run_id: {rel}"
-        assert "created_at" in props, f"Relation missing created_at: {rel}"
-        assert "valid_from" in props, f"Relation missing valid_from: {rel}"
-        assert props["run_id"] == "run-1"
+        assert "memory_id" in props, f"Relation missing memory_id: {rel}"
+        assert "run_id" not in props
+        assert "created_at" not in props
+        assert "valid_from" not in props
+        assert "valid_to" not in props
+        # The memory row exists in PG with the expected run_id.
+        mem_row = pg_store.rows[uuid.UUID(props["memory_id"])]
+        assert mem_row["run_id"] == uuid.UUID(run_uuid)
+
+
+@pytest.mark.asyncio
+async def test_ac1_seed_run_skips_pg_insert():
+    """Non-UUID seed runs skip PG entirely; relations get no memory_id."""
+    kg = FakeKnowledgeGraph()
+    extraction = _research_extraction(run_id="canonical-paradigms-seed")
+
+    await populate_kg(extraction, kg)
+
+    for rel in kg.store.relations:
+        assert "memory_id" not in rel["props"]
+        assert "run_id" not in rel["props"]
+        assert "valid_from" not in rel["props"]
 
 
 # ---------------------------------------------------------------------------
@@ -398,21 +502,24 @@ async def test_ac2_second_run_merges_nodes():
 
 
 @pytest.mark.asyncio
-async def test_ac2_second_run_skips_duplicate_relations():
-    """AC2: Second run skips relations with identical properties."""
+async def test_ac2_second_run_skips_duplicate_relations(pg_store):
+    """AC2: Second run with identical content is idempotent — content-based
+    dedup against existing Neo4j relations skips the write entirely. No
+    second ``pipeline_memories`` row is created.
+    """
     kg = FakeKnowledgeGraph()
-    extraction = _research_extraction(run_id="run-1")
+    run_a = str(uuid.uuid4())
+    run_b = str(uuid.uuid4())
 
-    result1 = await populate_kg(extraction, kg)
+    result1 = await populate_kg(_research_extraction(run_id=run_a), kg)
     assert result1.relations_created == 4
+    assert len(pg_store.rows) == 4
 
-    # Second run — same extraction, same properties
-    extraction2 = _research_extraction(run_id="run-2")
-    result2 = await populate_kg(extraction2, kg)
-
-    # Relations with identical non-temporal props should be skipped
+    result2 = await populate_kg(_research_extraction(run_id=run_b), kg)
     assert result2.relations_created == 0
     assert result2.relations_superseded == 0
+    # No new PG rows minted on the idempotent pass.
+    assert len(pg_store.rows) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -421,11 +528,17 @@ async def test_ac2_second_run_skips_duplicate_relations():
 
 
 @pytest.mark.asyncio
-async def test_ac3_modified_relation_supersedes_old():
-    """AC3: Changed relation confidence → old gets valid_to, new created."""
+async def test_ac3_modified_relation_supersedes_old(pg_store):
+    """AC3 (P4-004): Changed relation content → old PG row gets valid_to,
+    new ``pipeline_memories`` row + new Neo4j relation created.
+
+    Both Neo4j relations remain (each with its own memory_id); PG holds
+    the supersession truth via valid_to.
+    """
     kg = FakeKnowledgeGraph()
-    extraction1 = _research_extraction(run_id="run-1")
+    extraction1 = _research_extraction(run_id=str(uuid.uuid4()))
     await populate_kg(extraction1, kg)
+    assert len(pg_store.rows) == 4
 
     # Second run with modified confidence on SUPPORTS relation
     extraction2 = ExtractionResult(
@@ -445,25 +558,25 @@ async def test_ac3_modified_relation_supersedes_old():
         ],
         facts=[],
         stage="researcher",
-        run_id="run-2",
+        run_id=str(uuid.uuid4()),
     )
     result2 = await populate_kg(extraction2, kg)
 
     assert result2.relations_superseded == 1
     assert result2.relations_created == 1
 
-    # Old relation should have valid_to set
-    superseded = [r for r in kg.store.relations if r["valid_to"] is not None]
-    assert len(superseded) == 1
+    # Two SUPPORTS relations now in Neo4j: each with its own memory_id.
+    supports_rels = [r for r in kg.store.relations if r["rel_type"] == "SUPPORTS"]
+    assert len(supports_rels) == 2
+    mids = [uuid.UUID(r["props"]["memory_id"]) for r in supports_rels]
 
-    # New relation should have the updated confidence
-    active = [
-        r
-        for r in kg.store.relations
-        if r["valid_to"] is None and r["rel_type"] == "SUPPORTS"
-    ]
-    assert len(active) == 1
-    assert active[0]["props"]["confidence"] == 0.95
+    # In PG: exactly one of those rows is closed (valid_to set), the other
+    # is the live successor.
+    closed = [pg_store.rows[m] for m in mids if pg_store.rows[m]["valid_to"]]
+    live = [pg_store.rows[m] for m in mids if pg_store.rows[m]["valid_to"] is None]
+    assert len(closed) == 1
+    assert len(live) == 1
+    assert live[0]["properties"].get("quote") == "updated evidence for set points"
 
 
 # ---------------------------------------------------------------------------
@@ -472,22 +585,30 @@ async def test_ac3_modified_relation_supersedes_old():
 
 
 @pytest.mark.asyncio
-async def test_ac4_relations_carry_metadata():
-    """AC4: Every relation has run_id, created_at, confidence, valid_from."""
+async def test_ac4_relations_carry_pg_metadata_via_memory_id(pg_store):
+    """P4-004: Provenance/temporal/confidence live in ``pipeline_memories``,
+    reachable from each relation via ``r.memory_id``.
+    """
     kg = FakeKnowledgeGraph()
-    extraction = _research_extraction()
+    run_uuid = str(uuid.uuid4())
+    extraction = _research_extraction(run_id=run_uuid)
 
     await populate_kg(extraction, kg)
 
     for rel in kg.store.relations:
-        props = rel["props"]
-        assert "run_id" in props
-        assert "created_at" in props
-        assert "valid_from" in props
-    # The SUPPORTS relation should also have confidence
+        mid = uuid.UUID(rel["props"]["memory_id"])
+        row = pg_store.rows[mid]
+        assert row["run_id"] == uuid.UUID(run_uuid)
+        assert row["valid_from"] is not None
+        assert row["valid_to"] is None
+        assert row["confidence"] is not None
+
+    # The SUPPORTS relation's PG row preserves the explicit confidence
+    # passed via RelationSpec.properties (overrides the stage default).
     supports = [r for r in kg.store.relations if r["rel_type"] == "SUPPORTS"]
     assert len(supports) == 1
-    assert supports[0]["props"]["confidence"] == 0.9
+    supports_row = pg_store.rows[uuid.UUID(supports[0]["props"]["memory_id"])]
+    assert supports_row["confidence"] == 0.9
 
 
 # ---------------------------------------------------------------------------

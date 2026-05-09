@@ -227,8 +227,8 @@ class TestAC5_KGRunIdProvenance:
         assert results[0].metadata["run_date"] == "2026-04-10T12:00:00Z"
         assert results[0].metadata["created_at"] == "2026-04-10T12:00:00Z"
 
-    def test_kg_passages_include_relation_run_ids(self):
-        """KG results include rel_run_ids from traversed relations."""
+    def test_kg_passages_include_relation_memory_ids(self):
+        """KG results carry rel_memory_ids — caller joins through PG for run_id."""
         nodes = [
             _ScoredNode(
                 node_id="4:b",
@@ -236,13 +236,13 @@ class TestAC5_KGRunIdProvenance:
                 properties={"name": "VTA", "run_count": 1},
                 score=0.85,
                 relation_chain=["MEASURES"],
-                rel_run_ids=["run-1"],
+                rel_memory_ids=["mem-1"],
             ),
         ]
 
         results = _collect_passages(nodes, limit=10)
 
-        assert results[0].metadata["rel_run_ids"] == ["run-1"]
+        assert results[0].metadata["rel_memory_ids"] == ["mem-1"]
 
     def test_kg_passages_without_run_provenance_omit_keys(self):
         """Nodes without run_count/last_run_at don't get the keys in metadata."""
@@ -264,8 +264,8 @@ class TestAC5_KGRunIdProvenance:
         assert "run_ids" not in results[0].metadata
         assert "run_id" not in results[0].metadata
 
-    def test_seed_node_has_no_rel_run_ids(self):
-        """Seed nodes (hop 0) have no relation run_ids."""
+    def test_seed_node_has_no_rel_memory_ids(self):
+        """Seed nodes (hop 0) have no relation memory_ids."""
         nodes = [
             _ScoredNode(
                 node_id="4:seed",
@@ -273,10 +273,10 @@ class TestAC5_KGRunIdProvenance:
                 properties={"name": "x", "run_count": 1},
                 score=1.0,
                 relation_chain=[],
-                rel_run_ids=None,
+                rel_memory_ids=None,
             ),
         ]
 
         results = _collect_passages(nodes, limit=10)
 
-        assert "rel_run_ids" not in results[0].metadata
+        assert "rel_memory_ids" not in results[0].metadata

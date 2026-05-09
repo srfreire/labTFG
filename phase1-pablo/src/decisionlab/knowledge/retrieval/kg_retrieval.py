@@ -310,7 +310,7 @@ class _ScoredNode:
     properties: dict
     score: float
     relation_chain: list[str]
-    rel_run_ids: list[str | None] | None = None
+    rel_memory_ids: list[str | None] | None = None
 
 
 async def _ppr_traverse(
@@ -337,7 +337,7 @@ async def _ppr_traverse(
         row: dict,
         score: float,
         rels: list[str],
-        rel_run_ids: list[str | None] | None = None,
+        rel_memory_ids: list[str | None] | None = None,
     ):
         if node_id not in scored or score > scored[node_id].score:
             scored[node_id] = _ScoredNode(
@@ -346,7 +346,7 @@ async def _ppr_traverse(
                 properties=row["props"],
                 score=score,
                 relation_chain=rels,
-                rel_run_ids=rel_run_ids,
+                rel_memory_ids=rel_memory_ids,
             )
 
     for entity in linked:
@@ -371,7 +371,9 @@ async def _ppr_traverse(
 
         # 1-hop and 2-hop neighbours, filtered by allowed relation types.
         # Connected node degree (used for hub dampening) is computed
-        # server-side via COUNT { (connected)--() }.
+        # server-side via COUNT { (connected)--() }. Per P4-004 the
+        # relation no longer carries `run_id` — `rel.memory_id` joins back
+        # to the PG row that owns the per-run provenance.
         traversal_results = await kg.query(
             "MATCH path = (start)-[r*1..2]-(connected) "
             "WHERE elementId(start) = $start_id "
@@ -381,7 +383,7 @@ async def _ppr_traverse(
             "properties(connected) AS props, "
             "length(path) AS hops, "
             "[rel IN r | type(rel)] AS rel_types, "
-            "[rel IN r | rel.run_id] AS rel_run_ids, "
+            "[rel IN r | rel.memory_id] AS rel_memory_ids, "
             "COUNT { (connected)--() } AS degree",
             {"start_id": entity.node_id, "allowed_types": allowed_types},
         )
@@ -397,7 +399,7 @@ async def _ppr_traverse(
                 row,
                 score,
                 row["rel_types"],
-                rel_run_ids=row.get("rel_run_ids"),
+                rel_memory_ids=row.get("rel_memory_ids"),
             )
 
     return list(scored.values())
@@ -449,9 +451,10 @@ def _collect_passages(
         if created_at:
             meta["run_date"] = created_at
             meta["created_at"] = created_at
-        # Add relation-level run_id provenance (AC5).
-        if node.rel_run_ids:
-            meta["rel_run_ids"] = node.rel_run_ids
+        # Add relation-level memory_id provenance — callers can join through
+        # ``pipeline_memories`` for run_id, valid_from/valid_to, confidence.
+        if node.rel_memory_ids:
+            meta["rel_memory_ids"] = node.rel_memory_ids
         results.append(
             RetrievalResult(
                 text=_format_passage(node),
