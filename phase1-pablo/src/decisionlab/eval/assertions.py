@@ -264,12 +264,7 @@ async def _min_memories(ctx: AssertionContext, args: dict) -> AssertionOutcome:
         )
     from sqlalchemy import func, select
 
-<<<<<<< HEAD
-    import shared
     from shared.models import PipelineMemory as Memory
-=======
-    from shared.models import Memory
->>>>>>> strike/infra-P4-001
 
     if ctx.services.db is None:
         return AssertionOutcome(
@@ -308,12 +303,7 @@ async def _confidence_above(ctx: AssertionContext, args: dict) -> AssertionOutco
         )
     from sqlalchemy import select
 
-<<<<<<< HEAD
-    import shared
     from shared.models import PipelineMemory as Memory
-=======
-    from shared.models import Memory
->>>>>>> strike/infra-P4-001
 
     if ctx.services.db is None:
         return AssertionOutcome(
@@ -443,13 +433,8 @@ async def _relation_exists(ctx: AssertionContext, args: dict) -> AssertionOutcom
     # state.  Eval suites that need "as-of" semantics should use
     # ``KnowledgeGraph.query_at_time`` directly.
     rows = await kg_query(
-        f"MATCH (a:{from_label})-[r:{rel_type}]->(b:{to_label}) "
-<<<<<<< HEAD
-        "RETURN count(r) AS c"
-=======
-        "WHERE r.valid_to IS NULL RETURN count(r) AS c",
+        f"MATCH (a:{from_label})-[r:{rel_type}]->(b:{to_label}) RETURN count(r) AS c",
         services=ctx.services,
->>>>>>> strike/infra-P4-001
     )
     actual = int(rows[0]["c"]) if rows else 0
     return AssertionOutcome(

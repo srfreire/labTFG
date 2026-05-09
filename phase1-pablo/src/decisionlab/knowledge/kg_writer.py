@@ -17,6 +17,7 @@ from shared.knowledge_graph import KG_RELATION_NAMESPACE, KnowledgeGraph
 if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
+    from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -39,25 +40,6 @@ _DEFAULT_RELATION_IMPORTANCE = 5.0
 _DEFAULT_RELATION_CONFIDENCE = 0.7
 
 
-<<<<<<< HEAD
-def _get_embedding_service() -> EmbeddingService | None:
-    """Lazy lookup of shared.embeddings — None if not initialised. Test
-    seam: monkeypatch this to inject a fake."""
-    import shared
-
-    return shared.embeddings
-
-
-def _get_db() -> DatabaseService | None:
-    """Lazy lookup of shared.db — None if not initialised. Test seam:
-    monkeypatch this to inject a fake."""
-    import shared
-
-    return shared.db
-
-
-=======
->>>>>>> strike/infra-P4-001
 async def _record_node_run_observation(
     *,
     label: str,
@@ -135,6 +117,7 @@ async def _create_relation_memory(
     importance: float,
     properties: dict,
     valid_from: datetime,
+    db: DatabaseService | None,
 ) -> uuid.UUID | None:
     """Insert a fresh ``pipeline_memories`` row for a KG relation.
 
@@ -142,7 +125,6 @@ async def _create_relation_memory(
     or the insert fails (caller falls back to writing the relation with no
     ``memory_id``).  The KG write must keep working even when PG is down.
     """
-    db = _get_db()
     if db is None:
         return None
 
@@ -190,14 +172,18 @@ async def _create_relation_memory(
         return None
 
 
-async def _close_memory(memory_id: uuid.UUID, *, valid_to: datetime) -> bool:
+async def _close_memory(
+    memory_id: uuid.UUID,
+    *,
+    valid_to: datetime,
+    db: DatabaseService | None,
+) -> bool:
     """Stamp ``valid_to`` on an existing ``pipeline_memories`` row.
 
     Returns True on success, False on Postgres failure or unavailability.
     Idempotent: a row whose ``valid_to`` is already set is left alone (the
     UPDATE only matches rows where the column is NULL).
     """
-    db = _get_db()
     if db is None:
         return False
 
@@ -220,8 +206,7 @@ async def _close_memory(memory_id: uuid.UUID, *, valid_to: datetime) -> bool:
         return True
     except Exception as exc:
         logger.warning(
-            "kg_writer: pipeline_memories valid_to update failed (non-fatal) "
-            "id=%s: %s",
+            "kg_writer: pipeline_memories valid_to update failed (non-fatal) id=%s: %s",
             memory_id,
             exc,
         )
@@ -264,6 +249,8 @@ async def _list_existing_relations(
 
 async def _fetch_active_memory_meta(
     memory_ids: list[str],
+    *,
+    db: DatabaseService | None,
 ) -> dict[str, dict]:
     """Return ``{memory_id: {valid_to, content, properties}}`` for live rows.
 
@@ -272,7 +259,6 @@ async def _fetch_active_memory_meta(
     """
     if not memory_ids:
         return {}
-    db = _get_db()
     if db is None:
         return {}
 
@@ -691,7 +677,7 @@ async def populate_kg(
         existing_mids = [
             str(er["memory_id"]) for er in existing_rels if er.get("memory_id")
         ]
-        active_meta = await _fetch_active_memory_meta(existing_mids)
+        active_meta = await _fetch_active_memory_meta(existing_mids, db=db)
         active_id: uuid.UUID | None = None
         for mid_str in active_meta:
             active_id = uuid.UUID(mid_str)
@@ -716,6 +702,7 @@ async def populate_kg(
                 importance=stage_importance,
                 properties=new_content_props,
                 valid_from=valid_from_dt,
+                db=db,
             )
 
         # Step 3: create the Neo4j relation. Identity props + memory_id
@@ -746,7 +733,7 @@ async def populate_kg(
                 },
             )
             create_record = await create_result.single()
-            return ("missing_endpoint" if create_record is None else "created")
+            return "missing_endpoint" if create_record is None else "created"
 
         try:
             outcome = await kg.execute_write(_rel_work)
@@ -763,7 +750,7 @@ async def populate_kg(
             # at the new memory_id, so close it out so retrieval doesn't pick
             # up an orphaned PG row.
             if new_memory_id is not None:
-                await _close_memory(new_memory_id, valid_to=valid_from_dt)
+                await _close_memory(new_memory_id, valid_to=valid_from_dt, db=db)
             continue
 
         if outcome == "missing_endpoint":
@@ -773,7 +760,7 @@ async def populate_kg(
                 f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
             )
             if new_memory_id is not None:
-                await _close_memory(new_memory_id, valid_to=valid_from_dt)
+                await _close_memory(new_memory_id, valid_to=valid_from_dt, db=db)
             continue
 
         # Step 4: now that the new relation exists, supersede the old PG
@@ -782,7 +769,7 @@ async def populate_kg(
         # both edges live (PG view: old still valid until we stamp valid_to)
         # or only the new edge live (after stamp).
         if active_id is not None:
-            await _close_memory(active_id, valid_to=valid_from_dt)
+            await _close_memory(active_id, valid_to=valid_from_dt, db=db)
             counters["relations_superseded"] += 1
 
         counters["relations_created"] += 1
@@ -796,18 +783,12 @@ async def populate_kg(
     # into a failure.
     if ann_targets:
         try:
-<<<<<<< HEAD
-            emb = _get_embedding_service()
-            if emb is not None:
-=======
-            if embeddings is not None and vectors is not None:
->>>>>>> strike/infra-P4-001
+            if embeddings is not None:
                 texts = [
                     f"{name}: {desc}" if desc else name
                     for (_label, _key, name, desc) in ann_targets
                 ]
-<<<<<<< HEAD
-                vecs = await emb.embed_texts(texts)
+                vecs = await embeddings.embed_texts(texts)
                 for (label, key_value, _display_name, _desc), vector in zip(
                     ann_targets, vecs, strict=True
                 ):
@@ -823,22 +804,6 @@ async def populate_kg(
                         f"MATCH (n:{label} {{{key_name}: $key_value}}) "
                         f"SET n.embedding = $vector",
                         {"key_value": key_value, "vector": vector},
-=======
-                vecs = await embeddings.embed_texts(texts)
-                for (label, key_value, display_name, _desc), vector in zip(
-                    ann_targets, vecs, strict=True
-                ):
-                    point_id = f"{label}:{key_value}"
-                    await vectors.upsert_dense(
-                        "kg_entities_dense",
-                        id=point_id,
-                        vector=vector,
-                        payload={
-                            "label": label,
-                            "key_value": key_value,
-                            "name": display_name,
-                        },
->>>>>>> strike/infra-P4-001
                     )
         except Exception as exc:
             logger.warning("kg_writer: embedding sync failed (non-fatal): %s", exc)

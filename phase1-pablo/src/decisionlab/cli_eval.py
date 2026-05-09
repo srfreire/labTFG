@@ -372,9 +372,7 @@ def cli_eval_prune(
     _run(_factory)
 
 
-async def _prune_eval_runs(
-    delta: timedelta, *, dry_run: bool, services
-) -> dict:
+async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict:
     """Reap eval runs older than *delta*. Returns counts + the deleted IDs.
 
     The counts for descendant tables are computed BEFORE the delete so
@@ -383,19 +381,8 @@ async def _prune_eval_runs(
     """
     from sqlalchemy import func, select
 
-<<<<<<< HEAD
-    import shared
-    from shared.models import (
-        Artifact,
-        NodeRunObservation,
-        Run,
-    )
-    from shared.models import (
-        PipelineMemory as Memory,
-    )
-=======
-    from shared.models import Artifact, Memory, NodeRunObservation, Run
->>>>>>> strike/infra-P4-001
+    from shared.models import Artifact, NodeRunObservation, Run
+    from shared.models import PipelineMemory as Memory
 
     if services.db is None:
         raise RuntimeError(

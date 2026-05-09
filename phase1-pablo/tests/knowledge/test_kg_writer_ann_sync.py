@@ -1,14 +1,8 @@
-<<<<<<< HEAD
 """kg_writer writes ``n.embedding`` to Neo4j after writing slug-like
 nodes — replacing the prior Qdrant ``kg_entities_dense`` upsert.
 
-Test seam: kg_writer reads the embedding service via a helper func
-that the test monkeypatches. The KG itself is mocked through
-``execute_write`` and ``query``.
-=======
-"""kg_writer upserts into kg_entities_dense after writing slug-like nodes —
-so the entity ANN index stays current with the graph.
->>>>>>> strike/infra-P4-001
+Embeddings are passed in via the ``embeddings`` keyword (post-P4-001
+DI). The KG itself is mocked through ``execute_write`` and ``query``.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -26,11 +20,7 @@ def _ext(nodes):
 
 
 @pytest.mark.asyncio
-<<<<<<< HEAD
-async def test_paradigm_write_triggers_embedding_set(monkeypatch):
-=======
-async def test_paradigm_write_triggers_ann_upsert():
->>>>>>> strike/infra-P4-001
+async def test_paradigm_write_triggers_embedding_set():
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(return_value=[[0.1] * 1024])
 
@@ -39,11 +29,6 @@ async def test_paradigm_write_triggers_ann_upsert():
     fake_kg.unique_key_for = MagicMock(return_value="slug")
     fake_kg.query = AsyncMock(return_value=[])
 
-<<<<<<< HEAD
-    monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-
-=======
->>>>>>> strike/infra-P4-001
     extraction = _ext(
         [
             NodeSpec(
@@ -58,7 +43,7 @@ async def test_paradigm_write_triggers_ann_upsert():
         ]
     )
 
-    await w.populate_kg(extraction, fake_kg, embeddings=fake_emb, vectors=fake_vec)
+    await w.populate_kg(extraction, fake_kg, embeddings=fake_emb)
 
     fake_emb.embed_texts.assert_awaited_once()
     fake_kg.query.assert_awaited_once()
@@ -71,11 +56,7 @@ async def test_paradigm_write_triggers_ann_upsert():
 
 
 @pytest.mark.asyncio
-<<<<<<< HEAD
-async def test_non_slug_label_does_not_trigger_embedding_set(monkeypatch):
-=======
-async def test_non_slug_label_does_not_trigger_ann_upsert():
->>>>>>> strike/infra-P4-001
+async def test_non_slug_label_does_not_trigger_embedding_set():
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(return_value=[[0.1] * 1024])
 
@@ -84,11 +65,6 @@ async def test_non_slug_label_does_not_trigger_ann_upsert():
     fake_kg.unique_key_for = MagicMock(return_value="doi")
     fake_kg.query = AsyncMock(return_value=[])
 
-<<<<<<< HEAD
-    monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-
-=======
->>>>>>> strike/infra-P4-001
     extraction = _ext(
         [
             NodeSpec(
@@ -99,25 +75,14 @@ async def test_non_slug_label_does_not_trigger_ann_upsert():
         ]
     )
 
-<<<<<<< HEAD
-    await w.populate_kg(extraction, fake_kg)
+    await w.populate_kg(extraction, fake_kg, embeddings=fake_emb)
     fake_kg.query.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_embedding_failure_does_not_break_write(monkeypatch):
+async def test_embedding_failure_does_not_break_write():
     """If Voyage is down, the KG write should still complete cleanly —
     embedding sync is best-effort."""
-=======
-    await w.populate_kg(extraction, fake_kg, embeddings=fake_emb, vectors=fake_vec)
-    fake_vec.upsert_dense.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_ann_failure_does_not_break_write():
-    """If Qdrant is down, the KG write should still complete cleanly — ANN
-    sync is best-effort."""
->>>>>>> strike/infra-P4-001
     fake_emb = MagicMock()
     fake_emb.embed_texts = AsyncMock(side_effect=RuntimeError("voyage down"))
 
@@ -126,11 +91,6 @@ async def test_ann_failure_does_not_break_write():
     fake_kg.unique_key_for = MagicMock(return_value="slug")
     fake_kg.query = AsyncMock(return_value=[])
 
-<<<<<<< HEAD
-    monkeypatch.setattr(w, "_get_embedding_service", lambda: fake_emb)
-
-=======
->>>>>>> strike/infra-P4-001
     extraction = _ext(
         [
             NodeSpec(
@@ -141,13 +101,6 @@ async def test_ann_failure_does_not_break_write():
         ]
     )
 
-<<<<<<< HEAD
-    result = await w.populate_kg(extraction, fake_kg)
+    result = await w.populate_kg(extraction, fake_kg, embeddings=fake_emb)
     # Write succeeded; embedding failure logged but not surfaced as an error.
-=======
-    result = await w.populate_kg(
-        extraction, fake_kg, embeddings=fake_emb, vectors=fake_vec
-    )
-    # Write succeeded; ANN failure logged but not surfaced as an error.
->>>>>>> strike/infra-P4-001
     assert result.nodes_created == 1

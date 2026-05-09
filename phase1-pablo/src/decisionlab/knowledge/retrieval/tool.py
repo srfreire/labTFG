@@ -219,7 +219,7 @@ async def list_known_slugs(
     if not candidate_slugs:
         # Degraded path — return the first top_k Paradigm nodes from the KG
         # in whatever order it gives them.
-        rows = await kg.execute_query(
+        rows = await kg.query(
             "MATCH (p:Paradigm) "
             "RETURN p.slug AS slug, p.name AS name, p.description AS description "
             "LIMIT $k",
@@ -227,7 +227,7 @@ async def list_known_slugs(
         )
         return [(r["slug"], r.get("description") or "") for r in rows]
 
-    rows = await kg.execute_query(
+    rows = await kg.query(
         "MATCH (p:Paradigm) WHERE p.slug IN $slugs "
         "RETURN p.slug AS slug, p.description AS description",
         {"slugs": candidate_slugs},
@@ -236,7 +236,6 @@ async def list_known_slugs(
     return [(s, desc_by_slug.get(s, "")) for s in candidate_slugs]
 
 
-<<<<<<< HEAD
 def _source_kind_of(metadata: dict) -> str:
     """Return ``"pipeline"`` or ``"simulation"`` for a retrieval result.
 
@@ -251,21 +250,16 @@ def _source_kind_of(metadata: dict) -> str:
     return "simulation" if metadata.get("namespace") == "simulation" else "pipeline"
 
 
-async def _track_memory_access(results: list[RetrievalResult]) -> None:
+async def _track_memory_access(
+    results: list[RetrievalResult], db: DatabaseService | None
+) -> None:
     """Bump access metadata for Phase 1 (``pipeline_memories``) results.
 
     Phase 2 observations live in ``simulation_observations`` which has no
     ``last_accessed_at`` / ``access_count`` columns — they are write-once
     records, so nothing to touch on read.
     """
-    if shared.db is None:
-=======
-async def _track_memory_access(
-    results: list[RetrievalResult], db: DatabaseService | None
-) -> None:
-    """Bump access metadata for Postgres-backed results in a single UPDATE."""
     if db is None:
->>>>>>> strike/infra-P4-001
         return
 
     memory_ids: list[uuid.UUID] = []
@@ -364,24 +358,15 @@ async def _fetch_confidences(
 ) -> dict[uuid.UUID, float]:
     """Batched SELECT across both memory tables for live confidences.
 
-<<<<<<< HEAD
     Queries ``pipeline_memories`` and ``simulation_observations`` in a
-    single round-trip via ``UNION ALL``; an id is in at most one table by
+    single round-trip via ``UNION``; an id is in at most one table by
     construction (UUIDs are unique across both tables since each is
     minted at write time).
 
-    Returns an empty map when there are no memory IDs, when ``shared.db``
-    is unwired, or when the DB raises. Callers fall back to a 1.0 factor
-    so a degraded PG never silently kills a retrieve — failures are
-    logged at WARNING instead.
-=======
     Returns an empty map when there are no memory IDs, when ``db`` is
     unwired, or when the DB raises. Callers fall back to a 1.0 factor
-    (preserves the prior `metadata.get("confidence", 1.0)` default for
-    non-memory results). Failures are logged at WARNING — a degraded PG
-    must not silently kill an entire retrieve, but it also must not be
-    invisible.
->>>>>>> strike/infra-P4-001
+    so a degraded PG never silently kills a retrieve — failures are
+    logged at WARNING instead.
     """
     if not memory_ids:
         return {}
@@ -413,15 +398,8 @@ async def _fetch_confidences(
     stmt = union(pipeline_q, sim_q)
 
     try:
-<<<<<<< HEAD
-        async with shared.db.get_session() as session:
-            result = await session.execute(stmt)
-=======
         async with db.get_session() as session:
-            result = await session.execute(
-                select(Memory.id, Memory.confidence).where(Memory.id.in_(memory_ids))
-            )
->>>>>>> strike/infra-P4-001
+            result = await session.execute(stmt)
             return {row.id: row.confidence for row in result.all()}
     except Exception as exc:
         logger.warning(

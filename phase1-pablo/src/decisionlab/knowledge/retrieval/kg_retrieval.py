@@ -16,6 +16,7 @@ from decisionlab.knowledge.retrieval.query_rewriter import rewrite as _rewrite
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph, vector_index_name
+from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +213,6 @@ async def _link_entities_ann(
     Parameter) return ``[]``. Hits scoring below ``_SIMILARITY_THRESHOLD``
     are discarded.
     """
-<<<<<<< HEAD
     try:
         index_name = vector_index_name(label)
     except ValueError:
@@ -233,17 +233,6 @@ async def _link_entities_ann(
         f"WHERE '{label}' IN labels(node) "
         f"RETURN elementId(node) AS id, node.{name_prop} AS name, score",
         {"index_name": index_name, "k": 5, "vector": query_vec},
-=======
-    if vectors is None:
-        return []
-
-    query_vec = await embedding_service.embed_query(name)
-    hits = await vectors.search_dense(
-        "kg_entities_dense",
-        query_vec,
-        limit=5,
-        filters={"label": label},
->>>>>>> strike/infra-P4-001
     )
 
     out: list[_LinkedEntity] = []
@@ -304,9 +293,7 @@ async def _link_entities(
 
         # --- ANN match against Neo4j vector index ---
         linked.extend(
-            await _link_entities_ann(
-                label, entity_name, embedding_service, kg, vectors
-            )
+            await _link_entities_ann(label, entity_name, embedding_service, kg, vectors)
         )
 
     return linked
