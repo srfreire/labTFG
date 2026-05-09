@@ -99,10 +99,17 @@ kebab-case version of the paradigm name.
 - Paper: properties={{title, year, doi, citation_count}}. natural_key="title". \
 Parse from the References section and inline citations. Set doi/citation_count to \
 null if not available.
-- BrainRegion: properties={{name, system}}. natural_key="name". \
-System is one of: homeostatic, hedonic, cognitive, or null.
-- Variable: properties={{name, type, range, unit, paradigm_slug}}. natural_key="name". \
+- BrainRegion: properties={{name, description, system}}. natural_key="name". \
+System is one of: homeostatic, hedonic, cognitive, or null. \
+description is a 1-sentence summary of the region's primary function (e.g. \
+"Hypothalamus: regulates homeostasis, hormonal control of hunger/thirst/temperature"); \
+disambiguates aliases (e.g. "VTA" vs "ventral tegmental area") and enriches retrieval.
+- Variable: properties={{name, description, type, range, unit, paradigm_slug}}. natural_key="name". \
 Extract from the "Identified Variables" table. Type is the Role column value. \
+description is a 1-sentence semantic explanation of the variable in the context of \
+its paradigm (e.g. "reward: scalar feedback signal received after each action") — \
+this disambiguates same-named variables across paradigms ("reward" in RL vs \
+prospect-theory) and improves retrieval embeddings beyond the bare name. \
 paradigm_slug must be the slug of the Paradigm this report describes — it scopes \
 the variable name within its paradigm so "reward" in reinforcement-learning is \
 distinct from "reward" in prospect-theory.
@@ -145,8 +152,13 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 Node types to extract:
 - Equation: properties={{latex, plaintext, type}}. natural_key="plaintext". \
 Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
-- Variable: properties={{name, type, range, unit, paradigm_slug}}. natural_key="name". \
+- Variable: properties={{name, description, type, range, unit, paradigm_slug}}. natural_key="name". \
 Extract from ### Variables tables. Type is the Type column value. \
+description is a 1-sentence semantic explanation of the variable's role in this \
+formulation (e.g. "Q(s,a): action-value function — expected discounted return for \
+taking action a in state s"). Carry it through from the Researcher's extraction \
+when present; otherwise derive from the variable's row commentary or the \
+formulation's narrative. \
 paradigm_slug must be the slug of the Paradigm whose formalization this document \
 describes (the Researcher upstream sets it; if absent, derive from the document's \
 paradigm name).

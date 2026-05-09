@@ -97,6 +97,7 @@ class _ParadigmProps(BaseModel):
 class _VariableProps(BaseModel):
     name: str
     paradigm_slug: ParadigmSlug  # type: ignore[valid-type]
+    description: str = ""
     type: str | None = None
     range: str | None = None
     unit: str | None = None
