@@ -52,6 +52,7 @@ class _FakePGStore:
         importance: float,
         properties: dict,
         valid_from,
+        db=None,
     ) -> uuid.UUID:
         new_id = uuid.uuid4()
         self.rows[new_id] = {
@@ -66,14 +67,16 @@ class _FakePGStore:
         }
         return new_id
 
-    async def close(self, memory_id: uuid.UUID, *, valid_to) -> bool:
+    async def close(self, memory_id: uuid.UUID, *, valid_to, db=None) -> bool:
         row = self.rows.get(memory_id)
         if row is None or row.get("valid_to") is not None:
             return False
         row["valid_to"] = valid_to
         return True
 
-    async def fetch_active(self, memory_ids: list[str]) -> dict[str, dict]:
+    async def fetch_active(
+        self, memory_ids: list[str], *, db=None
+    ) -> dict[str, dict]:
         out: dict[str, dict] = {}
         for mid_str in memory_ids:
             try:

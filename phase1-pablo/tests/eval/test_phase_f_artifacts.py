@@ -21,12 +21,20 @@ CANONICAL_PARADIGMS_PATH = files("decisionlab.data") / "canonical-paradigms.json
 
 
 def test_suite_yaml_parses():
-    """The new suite parses through the eval harness's loader."""
+    """The new suite parses through the eval harness's loader.
+
+    Post-2026-05-09 the suite is self-contained: `seed_canonical_paradigms`
+    runs in setup so `paradigm_reused` predicates have something to reuse
+    against, and `reset_kg_before: true` keeps the run deterministic.
+    """
     spec = SuiteSpec.from_yaml(SUITE_PATH)
     assert spec.name == "paradigm-canonicalization"
     assert spec.stages == (Stage.RESEARCH,)
-    assert spec.reset_kg_before is False
+    assert spec.reset_kg_before is True
     assert len(spec.topics) == 4
+    assert any(
+        action.kind == "seed_canonical_paradigms" for action in spec.setup
+    ), "suite must seed canonical paradigms before topics run"
 
 
 def test_suite_predicates_are_registered():

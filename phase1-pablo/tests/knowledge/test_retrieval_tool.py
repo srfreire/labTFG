@@ -428,12 +428,10 @@ class TestAC7_MemoryAccessTracking:
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
-        with (
-            patch(f"{_TOOL_MODULE}.touch_memory", new_callable=AsyncMock) as mock_touch,
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
-        ):
-            mock_shared.db = mock_db
-            await _track_memory_access(results)
+        with patch(
+            f"{_TOOL_MODULE}.touch_memory", new_callable=AsyncMock
+        ) as mock_touch:
+            await _track_memory_access(results, mock_db)
 
         mock_touch.assert_called_once()
         passed_ids = mock_touch.call_args[0][1]

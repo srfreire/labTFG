@@ -24,7 +24,7 @@ async def test_list_known_slugs_returns_tuples():
     ]
 
     fake_kg = MagicMock()
-    fake_kg.execute_query = AsyncMock(return_value=fake_records)
+    fake_kg.query = AsyncMock(return_value=fake_records)
 
     out = await tool_mod.list_known_slugs(
         query="how do animals decide which patch to forage",
