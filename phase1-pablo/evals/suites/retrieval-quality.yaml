@@ -1,0 +1,103 @@
+# Retrieval-quality suite — verifies that `retrieve_knowledge` actually
+# surfaces seeded facts when queried. Closes the gap from
+# MEMORY_SYSTEM_REPORT.md §6.3 / finding 3 ("Retrieval quality has zero
+# direct coverage — `tool_called` only checks the call happened, not
+# whether results were correct").
+#
+# Three known facts get seeded (PG `pipeline_memories` + Qdrant dense +
+# Qdrant sparse via the extended `seed_pipeline_memory` action), then a
+# few targeted queries assert each fact's distinctive substring lands in
+# the top-K result text.
+#
+# Cost: each `retrieval_finds` invocation runs the full retrieve_knowledge
+# pipeline (Haiku query rewrite + dense + sparse + maybe NER + maybe
+# CRAG + zerank). With a populated KG and gates skipping, ~$0.05 / query
+# is typical; cold-cache + all-gates-firing pushes it to ~$0.15. Cap at
+# $1.50 for the four queries below.
+
+name: retrieval-quality
+stages: []
+reset_kg_before: true
+
+setup:
+  # Canonical paradigms first so KG-leg entity linking has Paradigm
+  # nodes to anchor against.
+  - kind: seed_canonical_paradigms
+    args: {}
+
+  # Three discriminative facts — each contains a phrase only that fact
+  # should produce ("epsilon-greedy schedule" is RL-only, "value function
+  # curve" is prospect-theory-only, etc.).
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
+      content: "Q-learning resolves the exploration-exploitation tradeoff via an epsilon-greedy schedule that anneals from random toward greedy as confidence in action-value estimates grows."
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: researcher
+      run_id: "aaaaaaaa-aaaa-aaaa-aaaa-bbbbbbbbbbb1"
+      confidence: 0.85
+      importance: 7.0
+      valid_from: "2026-04-01T00:00:00Z"
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"
+      content: "Prospect theory's value function curves concave above the reference point and convex below it, encoding loss aversion via a steeper slope on the loss side than the equivalent gain."
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: researcher
+      run_id: "aaaaaaaa-aaaa-aaaa-aaaa-bbbbbbbbbbb1"
+      confidence: 0.85
+      importance: 7.0
+      valid_from: "2026-04-01T00:00:00Z"
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3"
+      content: "The drift-diffusion model represents two-alternative forced-choice decisions as noisy evidence accumulation toward one of two collapsing decision bounds, predicting both reaction-time distributions and choice probabilities from the same parameter set."
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: researcher
+      run_id: "aaaaaaaa-aaaa-aaaa-aaaa-bbbbbbbbbbb1"
+      confidence: 0.85
+      importance: 7.0
+      valid_from: "2026-04-01T00:00:00Z"
+
+suite_assertions:
+  # Q1: paraphrase of fact 1 — should retrieve via dense semantic match.
+  - retrieval_finds:
+      query: "How does Q-learning balance exploring new actions vs exploiting known good ones?"
+      expected_substring: "epsilon-greedy"
+      top_k: 5
+      namespace: paradigm
+
+  # Q2: paraphrase of fact 2 — different paradigm, should NOT bleed
+  # into RL territory.
+  - retrieval_finds:
+      query: "Why do humans treat losses as worse than equivalent gains?"
+      expected_substring: "loss aversion"
+      top_k: 5
+      namespace: paradigm
+
+  # Q3: technical-term query for fact 3 — sparse BM25 channel should
+  # carry this even if dense is weak (the literal phrase
+  # "evidence accumulation" should match exactly).
+  - retrieval_finds:
+      query: "evidence accumulation toward decision bounds"
+      expected_substring: "drift-diffusion"
+      top_k: 5
+      namespace: paradigm
+
+  # Q4: cross-fact discrimination — querying for one paradigm's
+  # mechanism should not surface another's content. This is a negative
+  # check via positive substring (the *right* substring should appear).
+  - retrieval_finds:
+      query: "two-alternative forced-choice reaction time distributions"
+      expected_substring: "drift-diffusion"
+      top_k: 5
+      namespace: paradigm
+
+budget:
+  max_usd_total: 1.50

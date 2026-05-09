@@ -71,12 +71,16 @@ def predicate_names() -> list[str]:
 @dataclass(frozen=True)
 class SuiteAssertionContext:
     """What a suite-level predicate can read: full topic-result tuple,
-    KG stats before/after, and the suite spec itself for cross-references."""
+    KG stats before/after, the suite spec itself for cross-references,
+    and a `services` handle so predicates can hit PG / Neo4j / Qdrant
+    directly (used by the temporal-correctness + retrieval-quality suites
+    where assertions read or write store state)."""
 
     suite: SuiteSpec | None
     topic_results: tuple[TopicResult, ...]
     pre_stats: KGStats | None
     post_stats: KGStats | None
+    services: Services | None = None
 
 
 SuitePredicateFn = Callable[[SuiteAssertionContext, Any], Awaitable[AssertionOutcome]]
@@ -728,5 +732,274 @@ async def _kg_growth_rate(ctx: SuiteAssertionContext, args) -> AssertionOutcome:
         detail=(
             f"{label}: pre={pre_n} post={post_n} Δ={delta:+d} "
             f"n={n_topics} rate={rate:.2f}/topic max={max_per_topic:.2f}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# P4-004 temporal-correctness predicates — verify that
+# `pipeline_memories.valid_from / valid_to / superseded_by` give the
+# expected snapshot at any point in time. Used by suites that seed
+# fixtures via `seed_pipeline_memory` and assert temporal queries.
+# ---------------------------------------------------------------------------
+
+
+def _services_from_ctx(ctx: SuiteAssertionContext):
+    """Pull `services` off the suite context. Suites that exercise PG /
+    Neo4j / Qdrant directly require `ctx.services` to be set by the
+    runner; offline harnesses that lack it return None so the predicate
+    can short-circuit with a clear error."""
+    return ctx.services
+
+
+@register_suite("memory_at_time")
+async def _memory_at_time(
+    ctx: SuiteAssertionContext, args: dict[str, Any]
+) -> AssertionOutcome:
+    """Verify a memory's presence/absence at a specific point in time.
+
+    Queries ``pipeline_memories`` with the temporal predicate
+    ``valid_from <= as_of AND (valid_to IS NULL OR valid_to > as_of)`` and
+    looks for *content_substring* in the result set.
+
+    YAML::
+
+        memory_at_time:
+          content_substring: "TD bootstrapping"
+          as_of: "2026-01-15T00:00:00Z"
+          expected: present  # or absent
+          namespace: paradigm  # optional filter
+    """
+    from datetime import datetime as _dt
+
+    from sqlalchemy import text as _sql
+
+    needle = args.get("content_substring")
+    as_of_raw = args.get("as_of")
+    expected = str(args.get("expected", "present")).lower()
+    namespace = args.get("namespace")
+
+    if not needle or not as_of_raw:
+        return AssertionOutcome(
+            name="memory_at_time",
+            passed=False,
+            detail="missing content_substring or as_of arg",
+        )
+    if expected not in ("present", "absent"):
+        return AssertionOutcome(
+            name="memory_at_time",
+            passed=False,
+            detail=f"expected must be 'present' or 'absent', got {expected!r}",
+        )
+
+    as_of_str = str(as_of_raw)
+    if as_of_str.endswith("Z"):
+        as_of_str = as_of_str[:-1] + "+00:00"
+    as_of = _dt.fromisoformat(as_of_str)
+    if as_of.tzinfo is not None:
+        as_of = as_of.replace(tzinfo=None)
+
+    services = _services_from_ctx(ctx)
+    if services is None or services.db is None:
+        return AssertionOutcome(
+            name="memory_at_time",
+            passed=False,
+            detail="services.db unavailable",
+        )
+
+    cypher_filter = ""
+    params: dict[str, Any] = {"needle": f"%{needle}%", "as_of": as_of}
+    if namespace:
+        cypher_filter = "AND namespace = :ns "
+        params["ns"] = str(namespace)
+
+    sql = _sql(
+        f"SELECT id, content, namespace, valid_from, valid_to "
+        f"FROM pipeline_memories "
+        f"WHERE valid_from <= :as_of "
+        f"  AND (valid_to IS NULL OR valid_to > :as_of) "
+        f"  AND content ILIKE :needle "
+        f"  {cypher_filter}"
+        f"LIMIT 5"
+    )
+    async with services.db.get_session() as session:
+        rows = (await session.execute(sql, params)).all()
+
+    matched = len(rows) > 0
+    passed = matched if expected == "present" else not matched
+    detail = (
+        f"as_of={as_of.isoformat()} needle={needle!r}: "
+        f"{len(rows)} match(es); expected {expected}"
+    )
+    if rows and expected == "absent":
+        detail += f" — first match: id={rows[0][0]} content={rows[0][1][:80]!r}"
+    return AssertionOutcome(name="memory_at_time", passed=passed, detail=detail)
+
+
+@register_suite("supersession_chain_length")
+async def _supersession_chain_length(
+    ctx: SuiteAssertionContext, args: dict[str, Any]
+) -> AssertionOutcome:
+    """Walk the ``superseded_by`` chain forward from *starting_id* and
+    assert the chain has exactly *expected_length* nodes (inclusive).
+
+    YAML::
+
+        supersession_chain_length:
+          starting_id: "11111111-1111-1111-1111-111111111111"
+          expected_length: 2
+    """
+    import uuid as _uuid
+
+    from sqlalchemy import text as _sql
+
+    starting_raw = args.get("starting_id")
+    expected_length = args.get("expected_length")
+    if not starting_raw or expected_length is None:
+        return AssertionOutcome(
+            name="supersession_chain_length",
+            passed=False,
+            detail="missing starting_id or expected_length arg",
+        )
+    try:
+        start_id = _uuid.UUID(str(starting_raw))
+    except (ValueError, TypeError):
+        return AssertionOutcome(
+            name="supersession_chain_length",
+            passed=False,
+            detail=f"starting_id not a valid UUID: {starting_raw!r}",
+        )
+    expected_length = int(expected_length)
+
+    services = _services_from_ctx(ctx)
+    if services is None or services.db is None:
+        return AssertionOutcome(
+            name="supersession_chain_length",
+            passed=False,
+            detail="services.db unavailable",
+        )
+
+    chain: list[_uuid.UUID] = [start_id]
+    visited: set[_uuid.UUID] = {start_id}
+    cursor: _uuid.UUID = start_id
+    sql = _sql("SELECT superseded_by FROM pipeline_memories WHERE id = :id")
+    async with services.db.get_session() as session:
+        # Follow the chain forward up to a generous max-hops bound to
+        # detect accidental cycles instead of looping forever.
+        for _ in range(64):
+            row = (await session.execute(sql, {"id": cursor})).first()
+            if row is None:
+                break
+            next_id = row[0]
+            if next_id is None:
+                break
+            next_uuid = _uuid.UUID(str(next_id))
+            if next_uuid in visited:
+                return AssertionOutcome(
+                    name="supersession_chain_length",
+                    passed=False,
+                    detail=(
+                        f"supersession cycle detected starting from {start_id} "
+                        f"at length {len(chain)}; revisited {next_uuid}"
+                    ),
+                )
+            visited.add(next_uuid)
+            chain.append(next_uuid)
+            cursor = next_uuid
+
+    actual = len(chain)
+    return AssertionOutcome(
+        name="supersession_chain_length",
+        passed=actual == expected_length,
+        detail=(
+            f"chain from {start_id}: length={actual} (expected {expected_length}); "
+            f"path={[str(uid)[:8] for uid in chain]}"
+        ),
+    )
+
+
+@register_suite("retrieval_finds")
+async def _retrieval_finds(
+    ctx: SuiteAssertionContext, args: dict[str, Any]
+) -> AssertionOutcome:
+    """Issue a `retrieve_knowledge` call and assert that any of the top-k
+    results contains *expected_substring* in their text.
+
+    YAML::
+
+        retrieval_finds:
+          query: "How does Q-learning update value estimates?"
+          expected_substring: "TD bootstrapping"
+          top_k: 5
+          namespace: paradigm   # optional
+    """
+    query = args.get("query")
+    expected = args.get("expected_substring")
+    top_k = int(args.get("top_k", 5))
+    namespace = args.get("namespace")
+
+    if not query or not expected:
+        return AssertionOutcome(
+            name="retrieval_finds",
+            passed=False,
+            detail="missing query or expected_substring arg",
+        )
+
+    services = _services_from_ctx(ctx)
+    if services is None or services.db is None:
+        return AssertionOutcome(
+            name="retrieval_finds",
+            passed=False,
+            detail="services.db unavailable",
+        )
+
+    # Lazy imports keep the predicate registry import-cheap.
+    from anthropic import AsyncAnthropic
+
+    from decisionlab.knowledge.retrieval.tool import create_retrieve_knowledge
+
+    if not (services.kg and services.vectors and services.embeddings):
+        return AssertionOutcome(
+            name="retrieval_finds",
+            passed=False,
+            detail="retrieve_knowledge needs kg + vectors + embeddings — "
+            "init_services() did not provide all three",
+        )
+
+    # AsyncAnthropic reads ANTHROPIC_API_KEY (and optionally
+    # ANTHROPIC_BASE_URL) from the environment — same construction the
+    # CLI/server use elsewhere.
+    client = AsyncAnthropic()
+
+    # `run_id` and `stage` are used only to scope filters and access-tracking.
+    # A synthetic UUID here ensures `exclude_run_id` doesn't filter our seeded
+    # fixtures (whose run_ids are different).
+    handler = create_retrieve_knowledge(
+        kg=services.kg,
+        vector_store=services.vectors,
+        embedding_service=services.embeddings,
+        search_adapter=None,
+        client=client,
+        run_id="00000000-0000-0000-0000-0000000000ff",
+        stage="retrieval_eval",
+        db=services.db,
+    )
+
+    params: dict[str, Any] = {"query": str(query), "top_k": top_k}
+    if namespace:
+        params["namespace"] = str(namespace)
+
+    raw = await handler(params)
+    # Handler returns formatted text — substring match is the cheap
+    # assertion shape that doesn't couple to result-object internals.
+    matched = expected.lower() in str(raw).lower()
+    snippet = str(raw)[:200].replace("\n", " ")
+    return AssertionOutcome(
+        name="retrieval_finds",
+        passed=matched,
+        detail=(
+            f"query={query[:60]!r} expected={expected!r} "
+            f"top_k={top_k}: {'found' if matched else 'NOT found'}; "
+            f"snippet={snippet!r}"
         ),
     )

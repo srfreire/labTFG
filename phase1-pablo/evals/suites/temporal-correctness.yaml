@@ -1,0 +1,122 @@
+# Temporal-correctness suite — verifies the P4-004 invariant that
+# `pipeline_memories.valid_from / valid_to / superseded_by` give the
+# correct snapshot at any point in time.
+#
+# Offline (no LLM): seeds three known memories that form a supersession
+# chain (M1 → M2 → M3), then asserts that point-in-time queries return
+# the right one for each timestamp and that the chain has the expected
+# length.
+#
+# This is the regression suite that earlier reports flagged as missing
+# (MEMORY_SYSTEM_REPORT.md §6.3, finding 1: "PG-as-temporal-truth has
+# zero coverage"). Cost: $0 — direct PG seeding via `seed_pipeline_memory`,
+# no pipeline run, no LLM call.
+
+name: temporal-correctness
+stages: []
+reset_kg_before: false
+
+setup:
+  # All three memories share a single fixture run so a re-run can be
+  # cleaned up by deleting that one runs row.
+  #
+  # T0 = 2026-01-01: M1 created.       valid_from=T0, valid_to=T1, superseded_by=M2
+  # T1 = 2026-02-01: M2 supersedes M1. valid_from=T1, valid_to=T2, superseded_by=M3
+  # T2 = 2026-03-01: M3 supersedes M2. valid_from=T2, valid_to=null, superseded_by=null
+  #
+  # Seeded tail-first (M3 → M2 → M1) because `pipeline_memories.superseded_by`
+  # is a FK to the same table — each row's referent must exist before the row.
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "44444444-4444-4444-4444-444444444444"
+      content: "Q-learning uses one-step TD bootstrapping with semi-gradient updates"
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: formalizer
+      run_id: "22222222-2222-2222-2222-222222222222"
+      confidence: 0.85
+      valid_from: "2026-03-01T00:00:00Z"
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "33333333-3333-3333-3333-333333333333"
+      content: "Q-learning uses TD(0) bootstrapping with one-step return"
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: researcher
+      run_id: "22222222-2222-2222-2222-222222222222"
+      confidence: 0.8
+      valid_from: "2026-02-01T00:00:00Z"
+      valid_to: "2026-03-01T00:00:00Z"
+      superseded_by: "44444444-4444-4444-4444-444444444444"
+
+  - kind: seed_pipeline_memory
+    args:
+      id: "11111111-1111-1111-1111-111111111111"
+      content: "Q-learning uses TD bootstrapping"
+      namespace: paradigm
+      memory_type: semantic
+      source_stage: researcher
+      run_id: "22222222-2222-2222-2222-222222222222"
+      confidence: 0.7
+      valid_from: "2026-01-01T00:00:00Z"
+      valid_to: "2026-02-01T00:00:00Z"
+      superseded_by: "33333333-3333-3333-3333-333333333333"
+
+suite_assertions:
+  # ── Point-in-time correctness ──────────────────────────────────────
+  # T0 < t < T1 — M1 is the live row.
+  - memory_at_time:
+      content_substring: "TD bootstrapping"
+      as_of: "2026-01-15T00:00:00Z"
+      expected: present
+      namespace: paradigm
+  - memory_at_time:
+      content_substring: "TD(0) bootstrapping with one-step return"
+      as_of: "2026-01-15T00:00:00Z"
+      expected: absent
+      namespace: paradigm
+
+  # T1 < t < T2 — M2 is live, M1 is superseded, M3 not yet valid.
+  - memory_at_time:
+      content_substring: "TD(0) bootstrapping with one-step return"
+      as_of: "2026-02-15T00:00:00Z"
+      expected: present
+      namespace: paradigm
+
+  # M1's exact phrasing "TD bootstrapping" (with space, no parens) only
+  # appears in M1's content. After M1 is superseded at T1, it should no
+  # longer surface for as_of > T1 — even though M2 is now live with
+  # similar-but-distinct phrasing ("TD(0) bootstrapping...").
+  - memory_at_time:
+      content_substring: "uses TD bootstrapping"
+      as_of: "2026-02-15T00:00:00Z"
+      expected: absent
+      namespace: paradigm
+
+  # t > T2 — M3 is live, M1 and M2 superseded.
+  - memory_at_time:
+      content_substring: "semi-gradient updates"
+      as_of: "2026-03-15T00:00:00Z"
+      expected: present
+      namespace: paradigm
+  - memory_at_time:
+      content_substring: "semi-gradient updates"
+      as_of: "2026-02-15T00:00:00Z"
+      expected: absent
+      namespace: paradigm
+
+  # ── Chain integrity ───────────────────────────────────────────────
+  # Walking forward from M1 should visit M1 → M2 → M3 = length 3.
+  - supersession_chain_length:
+      starting_id: "11111111-1111-1111-1111-111111111111"
+      expected_length: 3
+
+  # Starting from the tail (M3), the chain is just itself = length 1.
+  - supersession_chain_length:
+      starting_id: "44444444-4444-4444-4444-444444444444"
+      expected_length: 1
+
+budget:
+  max_usd_total: 0.50  # safety floor; suite uses no LLM

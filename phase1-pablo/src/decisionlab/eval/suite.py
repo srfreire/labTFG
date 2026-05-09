@@ -333,9 +333,12 @@ async def _dispatch_setup_action(action: SetupAction, services: Services) -> Non
     if action.kind == "seed_canonical_paradigms":
         await _run_seed_canonical_paradigms(action.args, services)
         return
+    if action.kind == "seed_pipeline_memory":
+        await _run_seed_pipeline_memory(action.args, services)
+        return
     raise ValueError(
         f"unknown setup action kind: {action.kind!r}; "
-        "supported: ['seed_canonical_paradigms']"
+        "supported: ['seed_canonical_paradigms', 'seed_pipeline_memory']"
     )
 
 
@@ -363,6 +366,191 @@ async def _run_seed_canonical_paradigms(
         counters["nodes_merged"],
         counters["vectors_indexed"],
     )
+
+
+async def _run_seed_pipeline_memory(
+    args: dict[str, Any], services: Services
+) -> None:
+    """Insert a fixed `pipeline_memories` row (and its parent `runs` row) for
+    deterministic temporal/lifecycle eval suites.
+
+    Idempotent: re-running the same setup overwrites prior fixture content
+    rather than creating duplicates. Uses ``ON CONFLICT (id) DO UPDATE`` so
+    a re-seeded fixture starts from a known state every time.
+
+    Required args:
+        id (UUID), content (str), namespace (str), memory_type (str),
+        source_stage (str), run_id (UUID), confidence (float),
+        valid_from (ISO datetime).
+
+    Optional args:
+        importance (float, default 5.0), valid_to (ISO datetime, default null),
+        superseded_by (UUID, default null).
+    """
+    import json
+    import uuid as _uuid
+    from datetime import datetime
+
+    from sqlalchemy import text as sql_text
+
+    if services.db is None:
+        raise RuntimeError(
+            "setup action 'seed_pipeline_memory' needs services.db; "
+            "init_services() did not produce one"
+        )
+
+    def _parse_dt(value: object) -> datetime | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=None) if value.tzinfo else value
+        s = str(value)
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+    def _parse_uuid(value: object, *, field: str) -> _uuid.UUID:
+        try:
+            return _uuid.UUID(str(value))
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+                f"seed_pipeline_memory: {field} must be a valid UUID, got {value!r}"
+            ) from exc
+
+    required = ("id", "content", "namespace", "source_stage", "run_id",
+                "confidence", "valid_from")
+    missing = [k for k in required if k not in args]
+    if missing:
+        raise ValueError(
+            f"seed_pipeline_memory: missing required args {missing}"
+        )
+
+    mem_id = _parse_uuid(args["id"], field="id")
+    run_id = _parse_uuid(args["run_id"], field="run_id")
+    superseded_by_raw = args.get("superseded_by")
+    superseded_by = (
+        _parse_uuid(superseded_by_raw, field="superseded_by")
+        if superseded_by_raw
+        else None
+    )
+    valid_from = _parse_dt(args["valid_from"])
+    valid_to = _parse_dt(args.get("valid_to"))
+
+    async with services.db.get_session() as session:
+        # Ensure parent runs row exists (FK + cascade target). Idempotent
+        # via ON CONFLICT — a previous seed pass that already created the
+        # row is fine; the row's content doesn't matter for these suites.
+        await session.execute(
+            sql_text(
+                "INSERT INTO runs "
+                "(id, problem_description, status, kind, s3_prefix, created_at) "
+                "VALUES (:id, :problem, 'done', 'eval', :s3_prefix, now()) "
+                "ON CONFLICT (id) DO NOTHING"
+            ),
+            {
+                "id": run_id,
+                "problem": f"fixture run for memory {mem_id}",
+                "s3_prefix": f"fixture/{run_id}",
+            },
+        )
+
+        # Upsert the memory row. ON CONFLICT (id) DO UPDATE rewrites every
+        # field so re-seeding from a different state is deterministic.
+        await session.execute(
+            sql_text(
+                "INSERT INTO pipeline_memories "
+                "(id, content, namespace, memory_type, source_stage, "
+                "run_id, importance, confidence, valid_from, valid_to, "
+                "superseded_by, metadata) "
+                "VALUES (:id, :content, :namespace, :memory_type, :source_stage, "
+                ":run_id, :importance, :confidence, :valid_from, :valid_to, "
+                ":superseded_by, CAST(:metadata AS JSONB)) "
+                "ON CONFLICT (id) DO UPDATE SET "
+                "content = EXCLUDED.content, "
+                "namespace = EXCLUDED.namespace, "
+                "memory_type = EXCLUDED.memory_type, "
+                "source_stage = EXCLUDED.source_stage, "
+                "run_id = EXCLUDED.run_id, "
+                "importance = EXCLUDED.importance, "
+                "confidence = EXCLUDED.confidence, "
+                "valid_from = EXCLUDED.valid_from, "
+                "valid_to = EXCLUDED.valid_to, "
+                "superseded_by = EXCLUDED.superseded_by, "
+                "metadata = EXCLUDED.metadata"
+            ),
+            {
+                "id": mem_id,
+                "content": str(args["content"]),
+                "namespace": str(args["namespace"]),
+                "memory_type": str(args.get("memory_type", "semantic")),
+                "source_stage": str(args["source_stage"]),
+                "run_id": run_id,
+                "importance": float(args.get("importance", 5.0)),
+                "confidence": float(args["confidence"]),
+                "valid_from": valid_from,
+                "valid_to": valid_to,
+                "superseded_by": superseded_by,
+                "metadata": json.dumps(args.get("metadata") or {}),
+            },
+        )
+        await session.commit()
+
+    logger.info(
+        "Setup seed_pipeline_memory: id=%s ns=%s confidence=%.2f valid=[%s..%s]",
+        mem_id,
+        args["namespace"],
+        float(args["confidence"]),
+        valid_from,
+        valid_to or "open",
+    )
+
+    # Also index into Qdrant when an embedding service is available so
+    # `retrieve_knowledge` can surface the seeded fact in dense + sparse
+    # search. Skipped when embeddings aren't wired (the temporal suite,
+    # which only reads PG, doesn't need this and the absence of
+    # VOYAGE_API_KEY shouldn't block it).
+    if services.embeddings is None or services.vectors is None:
+        return
+
+    try:
+        [vector] = await services.embeddings.embed_texts([str(args["content"])])
+    except Exception as exc:
+        logger.warning(
+            "seed_pipeline_memory: embed_texts failed for id=%s — skipping "
+            "Qdrant insert (PG row was created): %s",
+            mem_id,
+            exc,
+        )
+        return
+
+    payload = {
+        "entity_id": str(mem_id),
+        "namespace": str(args["namespace"]),
+        "source_stage": str(args["source_stage"]),
+        "source_kind": "pipeline",
+        "run_id": str(run_id),
+        "importance": float(args.get("importance", 5.0)),
+        "created_at": (valid_from or datetime.now()).isoformat(),
+        "text_preview": str(args["content"])[:200],
+    }
+    try:
+        await services.vectors.upsert_dense(
+            "memories_dense", id=str(mem_id), vector=vector, payload=payload
+        )
+        await services.vectors.upsert_sparse(
+            "memories_sparse",
+            id=str(mem_id),
+            text=str(args["content"]),
+            payload=payload,
+        )
+    except Exception as exc:
+        logger.warning(
+            "seed_pipeline_memory: Qdrant upsert failed for id=%s "
+            "(PG row was still created): %s",
+            mem_id,
+            exc,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -539,6 +727,7 @@ async def run_suite(
             topic_results=tuple(topic_results),
             pre_stats=pre_stats,
             post_stats=post_stats,
+            services=services,
         )
         for sa_spec in spec.suite_assertions:
             suite_outcomes.append(await run_suite_assertion(sa_spec, sctx))
