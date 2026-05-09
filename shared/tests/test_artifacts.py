@@ -12,7 +12,6 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import shared
 from shared.artifacts import register_artifact
 from shared.database import DatabaseService
 from shared.models import Artifact, Base, Experiment, Run
@@ -44,13 +43,11 @@ async def session(engine):
 
 @pytest_asyncio.fixture
 async def db_global(engine):
-    """Wire up shared.db so register_artifact's `async with shared.db.get_session()` works."""
+    """Provide a connected DatabaseService for register_artifact."""
     settings = Settings(POSTGRES_DSN=DSN)
     db = DatabaseService(settings)
     await db.connect()
-    shared.db = db
     yield db
-    shared.db = None
     await db.close()
 
 
@@ -66,6 +63,7 @@ async def test_register_artifact_with_run(session, db_global):
         artifact_type="report",
         size_bytes=100,
         run_id=str(run.id),
+        db=db_global,
     )
 
     result = await session.execute(select(Artifact).where(Artifact.run_id == run.id))
@@ -89,6 +87,7 @@ async def test_register_artifact_with_experiment(session, db_global):
         size_bytes=2048,
         content_type="application/octet-stream",
         experiment_id=str(exp.id),
+        db=db_global,
     )
 
     result = await session.execute(
@@ -108,6 +107,7 @@ async def test_register_artifact_no_links(session, db_global):
         s3_key=s3_key,
         artifact_type="misc",
         size_bytes=1,
+        db=db_global,
     )
 
     result = await session.execute(select(Artifact).where(Artifact.s3_key == s3_key))
@@ -129,6 +129,7 @@ async def test_register_artifact_string_uuids_converted(session, db_global):
         artifact_type="r",
         size_bytes=5,
         run_id=str(run.id),
+        db=db_global,
     )
 
     result = await session.execute(select(Artifact).where(Artifact.run_id == run.id))

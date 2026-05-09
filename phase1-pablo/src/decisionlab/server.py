@@ -26,8 +26,21 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 load_dotenv(override=True)
 
 from decisionlab.router import EmitFn, PipelineState, Router, Stage  # noqa: E402
+from shared.services import Services, init_services, shutdown_services  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+# Set by `lifespan` at startup; read by HTTP/WS handlers below. The
+# legacy ``shared.kg / shared.db / shared.storage`` module-level
+# singletons no longer exist — every consumer reads from this services
+# bundle.
+_services: Services | None = None
+
+
+def _require_services() -> Services:
+    if _services is None:
+        raise HTTPException(status_code=503, detail="Services not initialised")
+    return _services
 
 
 @asynccontextmanager
@@ -41,14 +54,15 @@ async def lifespan(app: FastAPI):
     can drop the trace.jsonl mid-write and skip the run-status update.
     """
     del app
-    import shared
-
-    await shared.init()
+    global _services
+    _services = await init_services()
     try:
         yield
     finally:
         await _cancel_running_pipeline()
-        await shared.shutdown()
+        if _services is not None:
+            await shutdown_services(_services)
+        _services = None
 
 
 app = FastAPI(title="DecisionLab", lifespan=lifespan)
@@ -282,9 +296,10 @@ async def run_pipeline(
 
     from anthropic import AsyncAnthropic
 
-    import shared
     from decisionlab.adapters import default_search_chain
     from shared.models import Run
+
+    services = _require_services()
 
     stop_after: Stage | None = None
     if until_stage is not None:
@@ -309,7 +324,7 @@ async def run_pipeline(
 
         run_id = str(uuid.uuid4())
         await emit({"type": "run_start", "run_id": run_id})
-        async with shared.db.get_session() as session:
+        async with services.db.get_session() as session:
             db_run = Run(
                 id=uuid.UUID(run_id),
                 problem_description=problem,
@@ -340,12 +355,13 @@ async def run_pipeline(
             emit=emit,
             stop_after=stop_after,
             feedback=WebFeedback(emit),
+            services=services,
         )
 
         try:
             await router.run()
             # Update Run status on success
-            async with shared.db.get_session() as session:
+            async with services.db.get_session() as session:
                 from sqlalchemy import update
 
                 await session.execute(
@@ -360,9 +376,9 @@ async def run_pipeline(
                 await session.commit()
             await emit({"type": "pipeline_done"})
         except asyncio.CancelledError:
-            await state.save()
+            await state.save(services)
             try:
-                async with shared.db.get_session() as session:
+                async with services.db.get_session() as session:
                     from sqlalchemy import update
 
                     await session.execute(
@@ -377,7 +393,7 @@ async def run_pipeline(
         except Exception as exc:
             logger.exception("Pipeline failed")
             try:
-                async with shared.db.get_session() as session:
+                async with services.db.get_session() as session:
                     from sqlalchemy import update
 
                     await session.execute(
@@ -412,21 +428,26 @@ async def kg_snapshot(run_id: str | None = None) -> dict:
     against the Postgres ``node_run_observations`` table; the frontend uses
     it to highlight new-this-run nodes.
     """
-    import shared
+    services = _require_services()
 
-    if shared.kg is None:
+    if services.kg is None:
         raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
 
-    nodes_raw = await shared.kg.query(
+    nodes_raw = await services.kg.query(
         "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
         "properties(n) AS props"
     )
+<<<<<<< HEAD
     # Post-P4-004 the relation has no `valid_to`; temporal validity lives
     # in `pipeline_memories`.  The graph-viz endpoint shows every edge —
     # superseded versions appear alongside their replacements until the
     # caller adds a temporal filter via `query_at_time`.
     rels_raw = await shared.kg.query(
         "MATCH (a)-[r]->(b) "
+=======
+    rels_raw = await services.kg.query(
+        "MATCH (a)-[r]->(b) WHERE r.valid_to IS NULL "
+>>>>>>> strike/infra-P4-001
         "RETURN elementId(r) AS id, elementId(a) AS source, "
         "elementId(b) AS target, type(r) AS type, properties(r) AS props"
     )
@@ -516,15 +537,15 @@ async def _resolve_current_run_node_ids(
     except ValueError:
         return []
 
-    import shared
+    services = _require_services()
 
-    if shared.db is None:
+    if services.db is None:
         return []
 
     from sqlalchemy import text as sql_text
 
     try:
-        async with shared.db.get_session() as session:
+        async with services.db.get_session() as session:
             result = await session.execute(
                 sql_text(
                     "SELECT label, key_value FROM node_run_observations "
@@ -552,10 +573,11 @@ async def list_runs() -> list[dict]:
     """Return terminal runs newest-first for the idle-screen past-runs list."""
     from sqlalchemy import select
 
-    import shared
     from shared.models import Run
 
-    async with shared.db.get_session() as session:
+    services = _require_services()
+
+    async with services.db.get_session() as session:
         stmt = (
             select(Run)
             .where(Run.status.in_(["done", "cancelled", "failed"]))
@@ -590,22 +612,23 @@ async def get_run_trace(run_id: str):
     from fastapi.responses import PlainTextResponse
     from sqlalchemy import select
 
-    import shared
     from shared.models import Run
+
+    services = _require_services()
 
     try:
         run_uuid = uuid.UUID(run_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Trace not found") from None
 
-    async with shared.db.get_session() as session:
+    async with services.db.get_session() as session:
         result = await session.execute(select(Run.status).where(Run.id == run_uuid))
         row = result.first()
     if row is not None and row[0] == "running":
         raise HTTPException(status_code=409, detail="Run still in progress")
 
     key = f"research/{run_id}/trace.jsonl"
-    if not await shared.storage.exists(key):
+    if not await services.storage.exists(key):
         raise HTTPException(status_code=404, detail="Trace not found")
-    body = await shared.storage.get_text(key)
+    body = await services.storage.get_text(key)
     return PlainTextResponse(body, media_type="application/x-ndjson")

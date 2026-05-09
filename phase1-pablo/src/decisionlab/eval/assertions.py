@@ -27,6 +27,7 @@ from decisionlab.eval.timing import TimingLog
 
 if TYPE_CHECKING:
     from decisionlab.eval.suite import SuiteSpec, TopicResult
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,10 @@ class AssertionOutcome:
 @dataclass(frozen=True)
 class AssertionContext:
     """What an assertion can read from. Pipeline-result predicates use
-    ``result``; KG predicates ignore it and call ``kg_query`` directly."""
+    ``result``; KG predicates ignore it and call ``kg_query`` via ``services``."""
 
     result: PipelineRunResult
+    services: Services
 
 
 PredicateFn = Callable[[AssertionContext, Any], Awaitable[AssertionOutcome]]
@@ -262,16 +264,20 @@ async def _min_memories(ctx: AssertionContext, args: dict) -> AssertionOutcome:
         )
     from sqlalchemy import func, select
 
+<<<<<<< HEAD
     import shared
     from shared.models import PipelineMemory as Memory
+=======
+    from shared.models import Memory
+>>>>>>> strike/infra-P4-001
 
-    if shared.db is None:
+    if ctx.services.db is None:
         return AssertionOutcome(
             name="min_memories",
             passed=False,
-            detail="shared.db unavailable",
+            detail="services.db unavailable",
         )
-    async with shared.db.get_session() as session:
+    async with ctx.services.db.get_session() as session:
         stmt = select(func.count(Memory.id)).where(
             Memory.namespace == namespace,
             Memory.valid_to.is_(None),
@@ -302,14 +308,18 @@ async def _confidence_above(ctx: AssertionContext, args: dict) -> AssertionOutco
         )
     from sqlalchemy import select
 
+<<<<<<< HEAD
     import shared
     from shared.models import PipelineMemory as Memory
+=======
+    from shared.models import Memory
+>>>>>>> strike/infra-P4-001
 
-    if shared.db is None:
+    if ctx.services.db is None:
         return AssertionOutcome(
-            name="confidence_above", passed=False, detail="shared.db unavailable"
+            name="confidence_above", passed=False, detail="services.db unavailable"
         )
-    async with shared.db.get_session() as session:
+    async with ctx.services.db.get_session() as session:
         stmt = (
             select(Memory.confidence)
             .where(
@@ -354,7 +364,9 @@ async def _min_nodes(ctx: AssertionContext, args: dict) -> AssertionOutcome:
         return AssertionOutcome(
             name="min_nodes", passed=False, detail="missing 'label' arg"
         )
-    rows = await kg_query(f"MATCH (n:{label}) RETURN count(n) AS c")
+    rows = await kg_query(
+        f"MATCH (n:{label}) RETURN count(n) AS c", services=ctx.services
+    )
     actual = int(rows[0]["c"]) if rows else 0
     return AssertionOutcome(
         name="min_nodes",
@@ -385,6 +397,7 @@ async def _paradigm_reused(ctx: AssertionContext, slug: str) -> AssertionOutcome
     rows = await kg_query(
         "MATCH (p:Paradigm {slug: $slug}) RETURN p.created_at AS created_at LIMIT 1",
         {"slug": slug},
+        services=ctx.services,
     )
     if not rows:
         return AssertionOutcome(
@@ -431,7 +444,12 @@ async def _relation_exists(ctx: AssertionContext, args: dict) -> AssertionOutcom
     # ``KnowledgeGraph.query_at_time`` directly.
     rows = await kg_query(
         f"MATCH (a:{from_label})-[r:{rel_type}]->(b:{to_label}) "
+<<<<<<< HEAD
         "RETURN count(r) AS c"
+=======
+        "WHERE r.valid_to IS NULL RETURN count(r) AS c",
+        services=ctx.services,
+>>>>>>> strike/infra-P4-001
     )
     actual = int(rows[0]["c"]) if rows else 0
     return AssertionOutcome(

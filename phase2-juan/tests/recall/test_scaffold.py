@@ -3,19 +3,28 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 from simlab.recall import (
     RETRIEVE_CONTEXT_TOOL,
     build_retriever_from_settings,
     retrieve_context,
 )
 
-import shared
+from shared.services import Services
 from shared.settings import Settings
 
 _EMPTY = "## Retrieved Knowledge (0 results)\n\nNo results found."
+
+
+def _make_services(*, kg=None, vectors=None, embeddings=None) -> Services:
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=kg,
+        vectors=vectors,
+        embeddings=embeddings,
+    )
 
 
 # ── Public imports ──────────────────────────────────────────────────────
@@ -33,39 +42,32 @@ def test_public_imports():
 
 async def test_retrieve_context_flag_off_returns_empty():
     """AC2: with ENABLE_KNOWLEDGE_READ=False, returns 0-results immediately."""
+    services = _make_services()
     with patch("simlab.recall.retrieve.load_settings", return_value=Settings()):
-        result = await retrieve_context(query="test query")
+        result = await retrieve_context(services=services, query="test query")
     assert result == _EMPTY
 
 
 async def test_retrieve_context_flag_off_never_calls_pablo():
     """AC2: with flag off, decisionlab is never imported/called."""
+    services = _make_services()
     with (
         patch("simlab.recall.retrieve.load_settings", return_value=Settings()),
         patch.dict("sys.modules", {"decisionlab.knowledge.retrieval.tool": None}),
     ):
-        result = await retrieve_context(query="anything")
+        result = await retrieve_context(services=services, query="anything")
     assert result == _EMPTY
 
 
 # ── Infra missing ──────────────────────────────────────────────────────
 
 
-@pytest.fixture(autouse=True)
-def _reset_shared_singletons():
-    originals = (shared.kg, shared.vectors, shared.embeddings)
-    shared.kg = None
-    shared.vectors = None
-    shared.embeddings = None
-    yield
-    shared.kg, shared.vectors, shared.embeddings = originals
-
-
 async def test_retrieve_context_flag_on_but_no_infra():
     """With flag on but all infra None, returns empty without error."""
+    services = _make_services()
     settings = Settings(ENABLE_KNOWLEDGE_READ=True)
     with patch("simlab.recall.retrieve.load_settings", return_value=settings):
-        result = await retrieve_context(query="test")
+        result = await retrieve_context(services=services, query="test")
     assert result == _EMPTY
 
 
@@ -74,9 +76,7 @@ async def test_retrieve_context_flag_on_but_no_infra():
 
 async def test_retrieve_context_exception_returns_empty(caplog):
     """AC4 (partial): any exception from Pablo's tool is caught."""
-    from unittest.mock import MagicMock
-
-    shared.vectors = MagicMock()  # non-None so infra check passes
+    services = _make_services(vectors=MagicMock())  # non-None so infra check passes
     settings = Settings(ENABLE_KNOWLEDGE_READ=True)
 
     with (
@@ -87,7 +87,7 @@ async def test_retrieve_context_exception_returns_empty(caplog):
         ),
         caplog.at_level("ERROR", logger="simlab.recall.retrieve"),
     ):
-        result = await retrieve_context(query="test")
+        result = await retrieve_context(services=services, query="test")
 
     assert result == _EMPTY
     assert any("retrieve_context failed" in r.message for r in caplog.records)
@@ -118,22 +118,22 @@ def test_tool_schema_has_required_anthropic_keys():
 
 async def test_build_retriever_returns_none_flag_off():
     """AC4: factory returns None when flag is off."""
-    result = await build_retriever_from_settings(Settings())
+    services = _make_services()
+    result = await build_retriever_from_settings(services, Settings())
     assert result is None
 
 
 async def test_build_retriever_returns_none_no_infra():
     """AC4: factory returns None when flag on but infra missing."""
+    services = _make_services()
     settings = Settings(ENABLE_KNOWLEDGE_READ=True)
-    result = await build_retriever_from_settings(settings)
+    result = await build_retriever_from_settings(services, settings)
     assert result is None
 
 
 async def test_build_retriever_returns_callable_when_ready():
     """AC4: factory returns callable when flag on and infra available."""
-    from unittest.mock import MagicMock
-
-    shared.vectors = MagicMock()
+    services = _make_services(vectors=MagicMock())
     settings = Settings(ENABLE_KNOWLEDGE_READ=True)
-    result = await build_retriever_from_settings(settings)
+    result = await build_retriever_from_settings(services, settings)
     assert callable(result)

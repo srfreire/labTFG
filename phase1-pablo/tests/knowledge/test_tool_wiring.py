@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -17,10 +17,21 @@ from decisionlab.agents.reasoner import Reasoner
 from decisionlab.agents.reasoner_sub import ReasonerSubAgent
 from decisionlab.agents.researcher import Researcher
 from decisionlab.knowledge.retrieval.tool import RETRIEVE_KNOWLEDGE_SCHEMA
+from shared.services import Services
 
 _MOCK_HANDLER = AsyncMock(return_value="## Retrieved Knowledge (0 results)")
 _CLIENT = AsyncMock()
 _SEARCH = MockWebSearch()
+
+
+def _make_services(*, db=None, storage=None, kg=None, vectors=None, embeddings=None):
+    return Services(
+        db=db or MagicMock(),
+        storage=storage or MagicMock(),
+        kg=kg,
+        vectors=vectors,
+        embeddings=embeddings,
+    )
 
 
 # ── AC1: Each agent includes retrieve_knowledge when infra is available ──
@@ -56,6 +67,8 @@ class TestToolPresent:
         fs = FormalizerSubAgent(
             client=_CLIENT,
             research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -68,6 +81,8 @@ class TestToolPresent:
             client=_CLIENT,
             research_prefix="research/run-1",
             models_prefix="models/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -80,6 +95,8 @@ class TestToolPresent:
             client=_CLIENT,
             models_prefix="models/run-1",
             project_root=Path("/tmp"),
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -111,6 +128,8 @@ class TestToolAbsent:
         fs = FormalizerSubAgent(
             client=_CLIENT,
             research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         names = [t["name"] for t in fs.tools]
         assert "retrieve_knowledge" not in names
@@ -121,6 +140,8 @@ class TestToolAbsent:
             client=_CLIENT,
             research_prefix="research/run-1",
             models_prefix="models/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         names = [t["name"] for t in rs.tools]
         assert "retrieve_knowledge" not in names
@@ -131,6 +152,8 @@ class TestToolAbsent:
             client=_CLIENT,
             models_prefix="models/run-1",
             project_root=Path("/tmp"),
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         names = [t["name"] for t in bs.tools]
         assert "retrieve_knowledge" not in names
@@ -176,6 +199,8 @@ async def test_dispatch_retrieve_knowledge_through_registry():
         client=_CLIENT,
         models_prefix="models/run-1",
         project_root=Path("/tmp"),
+        storage=MagicMock(),
+        db=MagicMock(),
         knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
         knowledge_tool_handler=handler,
     )
@@ -221,6 +246,8 @@ class TestSystemPromptAugmentation:
         fs = FormalizerSubAgent(
             client=_CLIENT,
             research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -231,6 +258,8 @@ class TestSystemPromptAugmentation:
             client=_CLIENT,
             models_prefix="models/run-1",
             project_root=Path("/tmp"),
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -247,6 +276,8 @@ class TestOrchestratorForwarding:
         f = Formalizer(
             client=_CLIENT,
             research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -258,6 +289,8 @@ class TestOrchestratorForwarding:
             client=_CLIENT,
             research_prefix="research/run-1",
             models_prefix="models/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -269,6 +302,8 @@ class TestOrchestratorForwarding:
             client=_CLIENT,
             models_prefix="models/run-1",
             project_root=Path("/tmp"),
+            storage=MagicMock(),
+            db=MagicMock(),
             knowledge_tool_schema=RETRIEVE_KNOWLEDGE_SCHEMA,
             knowledge_tool_handler=_MOCK_HANDLER,
         )
@@ -279,6 +314,8 @@ class TestOrchestratorForwarding:
         f = Formalizer(
             client=_CLIENT,
             research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         assert f._knowledge_tool_schema is None
         assert f._knowledge_tool_handler is None
@@ -288,6 +325,8 @@ class TestOrchestratorForwarding:
             client=_CLIENT,
             research_prefix="research/run-1",
             models_prefix="models/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         assert r._knowledge_tool_schema is None
         assert r._knowledge_tool_handler is None
@@ -297,6 +336,8 @@ class TestOrchestratorForwarding:
             client=_CLIENT,
             models_prefix="models/run-1",
             project_root=Path("/tmp"),
+            storage=MagicMock(),
+            db=MagicMock(),
         )
         assert b._knowledge_tool_schema is None
         assert b._knowledge_tool_handler is None
@@ -308,7 +349,7 @@ class TestOrchestratorForwarding:
 class TestRouterKnowledgeToolKwargs:
     """Test Router._knowledge_tool_kwargs graceful degradation."""
 
-    def _make_router(self):
+    def _make_router(self, *, services):
         from unittest.mock import patch
 
         from decisionlab.router import PipelineState, Router, Stage
@@ -325,57 +366,20 @@ class TestRouterKnowledgeToolKwargs:
                 state=state,
                 search=_SEARCH,
                 project_root=Path("/tmp"),
+                services=services,
             )
         return router
 
-    def _mock_shared(self, *, kg=None, vectors=None, embeddings=None):
-        """Create a mock shared module for inline `import shared`."""
-        mock = AsyncMock()
-        mock.kg = kg
-        mock.vectors = vectors
-        mock.embeddings = embeddings
-        mock.db = None
-        return mock
-
     def test_returns_empty_when_no_infra(self):
-        import sys
-
-        router = self._make_router()
-        mock = self._mock_shared()
-        orig = sys.modules.get("shared")
-        sys.modules["shared"] = mock
-        try:
-            result = router._knowledge_tool_kwargs("researcher")
-        finally:
-            if orig is not None:
-                sys.modules["shared"] = orig
-            else:
-                sys.modules.pop("shared", None)
-        assert result == {}
+        router = self._make_router(services=_make_services())
+        assert router._knowledge_tool_kwargs("researcher") == {}
 
     def test_returns_kwargs_when_infra_available(self):
-        import sys
-
-        mock_kg = AsyncMock()
-        mock_vectors = AsyncMock()
-        mock_embeddings = AsyncMock()
-
-        router = self._make_router()
-        mock = self._mock_shared(
-            kg=mock_kg,
-            vectors=mock_vectors,
-            embeddings=mock_embeddings,
+        services = _make_services(
+            kg=AsyncMock(), vectors=AsyncMock(), embeddings=AsyncMock()
         )
-        orig = sys.modules.get("shared")
-        sys.modules["shared"] = mock
-        try:
-            result = router._knowledge_tool_kwargs("researcher")
-        finally:
-            if orig is not None:
-                sys.modules["shared"] = orig
-            else:
-                sys.modules.pop("shared", None)
-
+        router = self._make_router(services=services)
+        result = router._knowledge_tool_kwargs("researcher")
         assert "knowledge_tool_schema" in result
         assert "knowledge_tool_handler" in result
         assert result["knowledge_tool_schema"] is RETRIEVE_KNOWLEDGE_SCHEMA
@@ -383,19 +387,8 @@ class TestRouterKnowledgeToolKwargs:
 
     def test_returns_empty_when_only_kg_available(self):
         """Partial infra (only kg) should still return kwargs since kg is not None."""
-        import sys
-
-        router = self._make_router()
-        mock = self._mock_shared(kg=AsyncMock())
-        orig = sys.modules.get("shared")
-        sys.modules["shared"] = mock
-        try:
-            result = router._knowledge_tool_kwargs("researcher")
-        finally:
-            if orig is not None:
-                sys.modules["shared"] = orig
-            else:
-                sys.modules.pop("shared", None)
-
+        services = _make_services(kg=AsyncMock())
+        router = self._make_router(services=services)
+        result = router._knowledge_tool_kwargs("researcher")
         assert "knowledge_tool_schema" in result
         assert callable(result["knowledge_tool_handler"])

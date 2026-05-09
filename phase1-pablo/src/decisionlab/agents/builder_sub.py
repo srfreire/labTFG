@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
 from decisionlab.runtime.loop import run_agent_loop
@@ -16,6 +16,10 @@ from decisionlab.tools.files import (
     create_write_file,
 )
 from decisionlab.tools.tests import RUN_TESTS_SCHEMA, create_run_tests
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +205,8 @@ class BuilderSubAgent:
         *,
         client,
         models_prefix: str,
+        storage: StorageService,
+        db: DatabaseService,
         run_id: str | None = None,
         project_root: Path,
         knowledge_tool_schema: dict[str, Any] | None = None,
@@ -213,9 +219,13 @@ class BuilderSubAgent:
             RUN_TESTS_SCHEMA,
         ]
         self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
-            "read_file": create_read_file(models_prefix),
-            "write_file": create_write_file(models_prefix, run_id=run_id),
-            "run_tests": create_run_tests(models_prefix, project_root),
+            "read_file": create_read_file(models_prefix, storage=storage),
+            "write_file": create_write_file(
+                models_prefix, storage=storage, db=db, run_id=run_id
+            ),
+            "run_tests": create_run_tests(
+                models_prefix, project_root, storage=storage
+            ),
         }
 
         self._has_knowledge = False

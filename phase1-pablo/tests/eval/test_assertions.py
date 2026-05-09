@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -15,6 +15,7 @@ from decisionlab.eval.assertions import (
 )
 from decisionlab.eval.models import PipelineRunResult
 from decisionlab.router import Stage
+from shared.services import Services
 
 
 def _result(
@@ -37,7 +38,14 @@ def _result(
 
 
 def _ctx(**kw):
-    return AssertionContext(result=_result(**kw))
+    services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=MagicMock(),
+        vectors=None,
+        embeddings=None,
+    )
+    return AssertionContext(result=_result(**kw), services=services)
 
 
 # ---------------------------------------------------------------------------

@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
 
     from decisionlab.domain.ports import WebSearchPort
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -322,7 +323,7 @@ def _assert_eval_kg_segregation() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def _dispatch_setup_action(action: SetupAction) -> None:
+async def _dispatch_setup_action(action: SetupAction, services: Services) -> None:
     """Resolve a suite-level setup action and run it.
 
     Each ``kind`` is a small, well-known operation that prepares the eval
@@ -330,7 +331,7 @@ async def _dispatch_setup_action(action: SetupAction) -> None:
     skipping — a typo'd action shouldn't quietly leave the KG empty.
     """
     if action.kind == "seed_canonical_paradigms":
-        await _run_seed_canonical_paradigms(action.args)
+        await _run_seed_canonical_paradigms(action.args, services)
         return
     raise ValueError(
         f"unknown setup action kind: {action.kind!r}; "
@@ -338,21 +339,22 @@ async def _dispatch_setup_action(action: SetupAction) -> None:
     )
 
 
-async def _run_seed_canonical_paradigms(args: dict[str, Any]) -> None:
-    import shared
+async def _run_seed_canonical_paradigms(
+    args: dict[str, Any], services: Services
+) -> None:
     from decisionlab.knowledge.seed import seed_canonical_paradigms
 
-    if shared.kg is None:
+    if services.kg is None:
         raise RuntimeError(
             "setup action 'seed_canonical_paradigms' needs a live KG; "
-            "shared.init() did not produce one"
+            "init_services() did not produce one"
         )
     raw_path = args.get("fixture_path")
     fixture_path = Path(raw_path).expanduser() if raw_path else None
     counters = await seed_canonical_paradigms(
-        shared.kg,
-        getattr(shared, "embeddings", None),
-        getattr(shared, "vectors", None),
+        services.kg,
+        services.embeddings,
+        services.vectors,
         fixture_path=fixture_path,
     )
     logger.info(
@@ -414,11 +416,12 @@ async def _run_with_budget(
 async def run_suite(
     spec: SuiteSpec,
     *,
+    services: Services,
     client: AsyncAnthropic,
     search: WebSearchPort,
     skip_kg_ops: bool = False,
 ) -> SuiteResult:
-    """Execute a suite end-to-end. ``shared.init()`` must have been called.
+    """Execute a suite end-to-end. ``init_services()`` must have been called.
 
     ``skip_kg_ops=True`` disables every KG-touching call (reset, stats,
     assertions like ``min_nodes``). Used by tests that don't have a live
@@ -434,7 +437,7 @@ async def run_suite(
     if spec.reset_kg_before and not skip_kg_ops:
         try:
             _assert_eval_kg_segregation()
-            await kgadmin.reset(confirm=True)
+            await kgadmin.reset(services, confirm=True)
             logger.info("Suite %r: reset KG before run", spec.name)
         except Exception as exc:
             suite_error = f"KG reset failed: {exc}"
@@ -443,7 +446,7 @@ async def run_suite(
     if spec.setup and not skip_kg_ops:
         try:
             for action in spec.setup:
-                await _dispatch_setup_action(action)
+                await _dispatch_setup_action(action, services)
                 logger.info("Suite %r: ran setup action %r", spec.name, action.kind)
         except Exception as exc:
             suite_error = f"setup action failed: {exc}"
@@ -451,7 +454,7 @@ async def run_suite(
 
     if not skip_kg_ops:
         try:
-            pre_stats = await kgadmin.stats()
+            pre_stats = await kgadmin.stats(services)
         except Exception as exc:
             logger.warning("Suite %r: pre-stats failed: %s", spec.name, exc)
 
@@ -466,6 +469,7 @@ async def run_suite(
         async def _topic_factory(topic=topic):
             return await run_pipeline(
                 topic.text,
+                services=services,
                 stages=spec.stages,
                 env_spec_path=spec.env_spec_path,
                 project_root=spec.project_root,
@@ -498,7 +502,7 @@ async def run_suite(
 
         # Run assertions for each stage that has any.
         assertions_per_stage: dict[str, list[AssertionOutcome]] = {}
-        ctx = AssertionContext(result=pipeline_result)
+        ctx = AssertionContext(result=pipeline_result, services=services)
         for stage_name, stage_assertions in topic.expect.items():
             outs: list[AssertionOutcome] = []
             for spec_dict in stage_assertions or []:
@@ -524,7 +528,7 @@ async def run_suite(
 
     if not skip_kg_ops:
         try:
-            post_stats = await kgadmin.stats()
+            post_stats = await kgadmin.stats(services)
         except Exception as exc:
             logger.warning("Suite %r: post-stats failed: %s", spec.name, exc)
 

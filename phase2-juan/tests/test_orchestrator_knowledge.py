@@ -1,9 +1,8 @@
 """P2-003 — tests for the knowledge-writer integration in observe_simulation.
 
 These exercise the closure returned by `Orchestrator._build_tools()`; they
-patch the `Tracker` class so no LLM is called, and patch
-`shared.sim_memory_writer` to assert the writer is invoked (or not) as
-specified. No real infra required.
+patch the `Tracker` class so no LLM is called, and pass the writer in
+explicitly via the orchestrator's ``Services``. No real infra required.
 """
 
 from __future__ import annotations
@@ -11,24 +10,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from simlab.knowledge import WriteResult
 from simlab.orchestrator import Orchestrator
-
-import shared
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True)
-def _reset_writer_singleton():
-    """Keep tests isolated — the singleton is module-level global."""
-    original = getattr(shared, "sim_memory_writer", None)
-    shared.sim_memory_writer = None
-    yield
-    shared.sim_memory_writer = original
 
 
 def _tracker_json() -> str:
@@ -75,14 +58,24 @@ def _prepopulated_state(experiment_id: str | None = None) -> dict:
     }
 
 
-def _make_orchestrator():
-    """Build an Orchestrator with a mocked Anthropic client."""
-    return Orchestrator(client=MagicMock())
+def _make_orchestrator(*, sim_memory_writer=None):
+    """Build an Orchestrator with a mocked Anthropic client and Services."""
+    from shared.services import Services
+
+    services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+        sim_memory_writer=sim_memory_writer,
+    )
+    return Orchestrator(client=MagicMock(), services=services)
 
 
-async def _run_observe(state: dict) -> tuple[str, object]:
+async def _run_observe(state: dict, *, sim_memory_writer=None) -> tuple[str, object]:
     """Run observe_simulation with a mocked Tracker that returns _tracker_json()."""
-    orch = _make_orchestrator()
+    orch = _make_orchestrator(sim_memory_writer=sim_memory_writer)
     orch._state.update(state)
     _, registry = orch._build_tools()
 
@@ -110,9 +103,10 @@ async def test_observe_simulation_invokes_writer_when_set():
             skipped_reason=None,
         )
     )
-    shared.sim_memory_writer = writer
 
-    result, _ = await _run_observe(_prepopulated_state(experiment_id=None))
+    result, _ = await _run_observe(
+        _prepopulated_state(experiment_id=None), sim_memory_writer=writer
+    )
 
     writer.write.assert_awaited_once()
     tracker_arg, context_arg = writer.write.await_args.args
@@ -134,8 +128,6 @@ async def test_observe_simulation_invokes_writer_when_set():
 
 
 async def test_observe_simulation_skips_when_writer_is_none():
-    shared.sim_memory_writer = None
-
     # Should NOT touch any writer and must return the tracker output unchanged.
     result, mock_tracker = await _run_observe(_prepopulated_state(experiment_id=None))
 
@@ -151,10 +143,11 @@ async def test_observe_simulation_skips_when_writer_is_none():
 async def test_observe_simulation_swallows_writer_exception(caplog):
     writer = MagicMock()
     writer.write = AsyncMock(side_effect=RuntimeError("boom"))
-    shared.sim_memory_writer = writer
 
     with caplog.at_level("ERROR", logger="simlab.orchestrator"):
-        result, _ = await _run_observe(_prepopulated_state(experiment_id=None))
+        result, _ = await _run_observe(
+            _prepopulated_state(experiment_id=None), sim_memory_writer=writer
+        )
 
     assert result == _tracker_json()
     assert any("knowledge writer raised" in r.message for r in caplog.records)

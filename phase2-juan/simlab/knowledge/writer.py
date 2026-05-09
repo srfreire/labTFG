@@ -25,6 +25,7 @@ from shared.simulation_observations import create_simulation_observation
 if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.embedding import EmbeddingService
+    from shared.services import Services
     from shared.settings import Settings
     from shared.vector_store import VectorStore
     from simlab.knowledge.facts import FactSpec
@@ -436,4 +437,25 @@ async def build_writer_from_settings(settings: Settings) -> TrackerMemoryWriter 
         vector_store=vector_store,
         embedding_service=embedding_service,
         db=db,
+    )
+
+
+def build_writer_from_services(services: Services) -> TrackerMemoryWriter | None:
+    """Build a `TrackerMemoryWriter` from an existing `Services` bundle.
+
+    Returns `None` (and logs a warning) when the bundle is missing one of
+    the required components (Qdrant / Voyage / Postgres). Reuses the live
+    connections in `services` rather than opening new ones — the entry
+    point retains ownership and `shutdown_services` tears them down.
+    """
+    if services.vectors is None or services.embeddings is None:
+        logger.warning(
+            "build_writer_from_services: Qdrant or Voyage missing — "
+            "knowledge writes disabled"
+        )
+        return None
+    return TrackerMemoryWriter(
+        vector_store=services.vectors,
+        embedding_service=services.embeddings,
+        db=services.db,
     )

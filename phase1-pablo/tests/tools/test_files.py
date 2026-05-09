@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -31,7 +31,7 @@ def s3_store():
 
 @pytest.fixture
 def mock_storage(s3_store):
-    """Patch shared.storage to use in-memory dict."""
+    """Build a mock StorageService backed by an in-memory dict."""
 
     async def fake_get_text(key):
         if key not in s3_store:
@@ -44,72 +44,80 @@ def mock_storage(s3_store):
     mock = MagicMock()
     mock.get_text = AsyncMock(side_effect=fake_get_text)
     mock.put_text = AsyncMock(side_effect=fake_put_text)
+    return mock
 
-    with patch("shared.storage", mock):
-        yield
+
+@pytest.fixture
+def mock_db():
+    """Build a mock DatabaseService for write_file (artifact registration)."""
+    mock = MagicMock()
+    mock.execute = AsyncMock()
+    mock.fetchrow = AsyncMock()
+    mock.fetch = AsyncMock(return_value=[])
+    return mock
 
 
 @pytest.mark.asyncio
 async def test_read_file_returns_content(s3_store, mock_storage):
     s3_store["my-prefix/hello.txt"] = "hello world"
-    fn = create_read_file("my-prefix")
+    fn = create_read_file("my-prefix", storage=mock_storage)
     result = await fn({"path": "hello.txt"})
     assert result == "hello world"
 
 
 @pytest.mark.asyncio
 async def test_read_file_missing_file(mock_storage):
-    fn = create_read_file("my-prefix")
+    fn = create_read_file("my-prefix", storage=mock_storage)
     with pytest.raises(FileNotFoundError):
         await fn({"path": "nonexistent.txt"})
 
 
 @pytest.mark.asyncio
 async def test_read_file_path_traversal(mock_storage):
-    fn = create_read_file("my-prefix")
+    fn = create_read_file("my-prefix", storage=mock_storage)
     with pytest.raises(ValueError, match="Invalid path"):
         await fn({"path": "../../etc/passwd"})
 
 
 @pytest.mark.asyncio
 async def test_read_file_missing_param(mock_storage):
-    fn = create_read_file("my-prefix")
+    fn = create_read_file("my-prefix", storage=mock_storage)
     with pytest.raises(ValueError, match="path"):
         await fn({})
 
 
 @pytest.mark.asyncio
-async def test_write_file_creates_file(s3_store, mock_storage):
-    fn = create_write_file("my-prefix")
+async def test_write_file_creates_file(s3_store, mock_storage, mock_db):
+    fn = create_write_file("my-prefix", storage=mock_storage, db=mock_db)
     result = await fn({"path": "out.txt", "content": "data"})
     assert "4 chars" in result
     assert s3_store["my-prefix/out.txt"] == "data"
 
 
 @pytest.mark.asyncio
-async def test_write_file_creates_nested_path(s3_store, mock_storage):
-    fn = create_write_file("my-prefix")
+async def test_write_file_creates_nested_path(s3_store, mock_storage, mock_db):
+    fn = create_write_file("my-prefix", storage=mock_storage, db=mock_db)
     result = await fn({"path": "sub/dir/out.txt", "content": "nested"})
     assert "6 chars" in result
     assert s3_store["my-prefix/sub/dir/out.txt"] == "nested"
 
 
 @pytest.mark.asyncio
-async def test_write_file_path_traversal(mock_storage):
-    fn = create_write_file("my-prefix")
+async def test_write_file_path_traversal(mock_storage, mock_db):
+    fn = create_write_file("my-prefix", storage=mock_storage, db=mock_db)
     with pytest.raises(ValueError, match="Invalid path"):
         await fn({"path": "../../evil.txt", "content": "bad"})
 
 
 @pytest.mark.asyncio
-async def test_write_file_missing_path_param(mock_storage):
-    fn = create_write_file("my-prefix")
+async def test_write_file_missing_path_param(mock_storage, mock_db):
+    fn = create_write_file("my-prefix", storage=mock_storage, db=mock_db)
     with pytest.raises(ValueError, match="path"):
         await fn({"content": "data"})
 
 
 @pytest.mark.asyncio
-async def test_write_file_missing_content_param(mock_storage):
-    fn = create_write_file("my-prefix")
+async def test_write_file_missing_content_param(mock_storage, mock_db):
+    fn = create_write_file("my-prefix", storage=mock_storage, db=mock_db)
     with pytest.raises(ValueError, match="content"):
         await fn({"path": "out.txt"})

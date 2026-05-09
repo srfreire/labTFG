@@ -8,6 +8,7 @@ from simlab.knowledge.writer import (
     SimulationContext,
     TrackerMemoryWriter,
     WriteResult,
+    build_writer_from_services,
     build_writer_from_settings,
 )
 
@@ -16,5 +17,6 @@ __all__ = [
     "SimulationContext",
     "TrackerMemoryWriter",
     "WriteResult",
+    "build_writer_from_services",
     "build_writer_from_settings",
 ]

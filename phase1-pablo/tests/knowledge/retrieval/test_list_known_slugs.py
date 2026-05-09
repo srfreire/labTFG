@@ -7,7 +7,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_list_known_slugs_returns_tuples(monkeypatch):
+async def test_list_known_slugs_returns_tuples():
     from decisionlab.knowledge.retrieval import tool as tool_mod
 
     fake_records = [
@@ -26,13 +26,11 @@ async def test_list_known_slugs_returns_tuples(monkeypatch):
     fake_kg = MagicMock()
     fake_kg.execute_query = AsyncMock(return_value=fake_records)
 
-    monkeypatch.setattr(tool_mod, "_get_kg", lambda: fake_kg)
-    # Force the KG-only path (no vector ranking) so the test is hermetic.
-    monkeypatch.setattr(tool_mod, "_get_vector_store", lambda: None)
-    monkeypatch.setattr(tool_mod, "_get_embedding_service", lambda: None)
-
     out = await tool_mod.list_known_slugs(
         query="how do animals decide which patch to forage",
+        kg=fake_kg,
+        vectors=None,
+        embeddings=None,
         namespace="paradigm",
         top_k=5,
     )
@@ -43,22 +41,30 @@ async def test_list_known_slugs_returns_tuples(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_list_known_slugs_empty_when_kg_unavailable(monkeypatch):
+async def test_list_known_slugs_empty_when_kg_unavailable():
     from decisionlab.knowledge.retrieval import tool as tool_mod
 
-    monkeypatch.setattr(tool_mod, "_get_kg", lambda: None)
-    monkeypatch.setattr(tool_mod, "_get_vector_store", lambda: None)
-    monkeypatch.setattr(tool_mod, "_get_embedding_service", lambda: None)
-    out = await tool_mod.list_known_slugs(query="probe", namespace="paradigm", top_k=5)
+    out = await tool_mod.list_known_slugs(
+        query="probe",
+        kg=None,
+        vectors=None,
+        embeddings=None,
+        namespace="paradigm",
+        top_k=5,
+    )
     assert out == []
 
 
 @pytest.mark.asyncio
-async def test_list_known_slugs_rejects_non_paradigm_namespace(monkeypatch):
+async def test_list_known_slugs_rejects_non_paradigm_namespace():
     from decisionlab.knowledge.retrieval import tool as tool_mod
 
-    monkeypatch.setattr(tool_mod, "_get_kg", lambda: MagicMock())
-    monkeypatch.setattr(tool_mod, "_get_vector_store", lambda: None)
-    monkeypatch.setattr(tool_mod, "_get_embedding_service", lambda: None)
     with pytest.raises(ValueError, match="namespace"):
-        await tool_mod.list_known_slugs(query="x", namespace="formulation", top_k=5)
+        await tool_mod.list_known_slugs(
+            query="x",
+            kg=MagicMock(),
+            vectors=None,
+            embeddings=None,
+            namespace="formulation",
+            top_k=5,
+        )

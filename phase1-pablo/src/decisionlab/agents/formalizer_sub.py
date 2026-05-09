@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
 from decisionlab.runtime.loop import run_agent_loop
@@ -14,6 +14,10 @@ from decisionlab.tools.files import (
     create_read_file,
     create_write_file,
 )
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +119,8 @@ class FormalizerSubAgent:
         *,
         client,
         research_prefix: str,
+        storage: StorageService,
+        db: DatabaseService,
         run_id: str | None = None,
         knowledge_tool_schema: dict[str, Any] | None = None,
         knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
@@ -122,8 +128,10 @@ class FormalizerSubAgent:
         self.client = client
         self.tools: list[dict[str, Any]] = [READ_FILE_SCHEMA, WRITE_FILE_SCHEMA]
         self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
-            "read_file": create_read_file(research_prefix),
-            "write_file": create_write_file(research_prefix, run_id=run_id),
+            "read_file": create_read_file(research_prefix, storage=storage),
+            "write_file": create_write_file(
+                research_prefix, storage=storage, db=db, run_id=run_id
+            ),
         }
 
         self._has_knowledge = False

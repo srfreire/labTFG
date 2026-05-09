@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from decisionlab.router import PipelineState, Router, Stage
+from shared.services import Services
 
 TEST_RUN_ID = "00000000-0000-4000-8000-000000000001"
 
@@ -26,19 +27,8 @@ def _make_state(tmp_path: Path) -> PipelineState:
     )
 
 
-def _make_router(state: PipelineState) -> Router:
-    client = AsyncMock()
-    search = MagicMock()
-    return Router(
-        client=client,
-        state=state,
-        search=search,
-        project_root=state.reports_dir.parent,
-    )
-
-
 def _mock_db_session():
-    """Return (mock_db, mock_session) for patching shared.db."""
+    """Return (mock_db, mock_session) usable as a Services.db drop-in."""
     mock_session = AsyncMock()
     mock_session.commit = AsyncMock()
     mock_session.add = MagicMock()
@@ -51,6 +41,28 @@ def _mock_db_session():
 
     mock_db.get_session = fake_get_session
     return mock_db, mock_session
+
+
+def _make_router(
+    state: PipelineState, *, db=None, storage=None
+) -> Router:
+    client = AsyncMock()
+    search = MagicMock()
+    services = Services(
+        db=db if db is not None else MagicMock(),
+        storage=storage if storage is not None else MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
+    with patch.object(Router, "_init_memory_agent", return_value=None):
+        return Router(
+            client=client,
+            state=state,
+            search=search,
+            project_root=state.reports_dir.parent,
+            services=services,
+        )
 
 
 class TestReviewBuildReasonerReruns:
@@ -77,17 +89,24 @@ class TestReviewBuildReasonerReruns:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
+        mock_storage = MagicMock()
+        mock_storage.delete = AsyncMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class PIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
         ):
-            mock_storage.delete = AsyncMock()
-            mock_storage.get_text = AsyncMock(
-                return_value="class PIControllerModel:\n    pass\n"
-            )
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -121,14 +140,20 @@ class TestReviewBuildReasonerReruns:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class PIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
         ):
-            mock_storage.get_text = AsyncMock(
-                return_value="class PIControllerModel:\n    pass\n"
-            )
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -156,16 +181,23 @@ class TestReviewBuildReasonerReruns:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class PIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
         ):
-            mock_storage.get_text = AsyncMock(
-                return_value="class PIControllerModel:\n    pass\n"
-            )
             mock_builder_inst = AsyncMock()
             mock_builder_inst.run.return_value = mock_builder_report
             MockBuilder.return_value = mock_builder_inst
@@ -203,17 +235,24 @@ class TestReviewBuildReasonerReruns:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
+        mock_storage = MagicMock()
+        mock_storage.delete = AsyncMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class PIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
         with (
             patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
             patch("decisionlab.agents.reasoner.Reasoner") as MockReasoner,
             patch("decisionlab.agents.builder.Builder") as MockBuilder,
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
         ):
-            mock_storage.delete = AsyncMock()
-            mock_storage.get_text = AsyncMock(
-                return_value="class PIControllerModel:\n    pass\n"
-            )
             mock_reasoner_inst = AsyncMock()
             MockReasoner.return_value = mock_reasoner_inst
             mock_builder_inst = AsyncMock()
@@ -259,18 +298,25 @@ class TestModelRegistration:
 
         mock_session.add = track_add
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
-        ):
-            mock_storage.get_text = AsyncMock(
-                side_effect=lambda key: (
-                    "class PIControllerModel:\n    pass\n"
-                    if "pi-controller" in key
-                    else "class DualProcessModel:\n    pass\n"
-                )
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            side_effect=lambda key: (
+                "class PIControllerModel:\n    pass\n"
+                if "pi-controller" in key
+                else "class DualProcessModel:\n    pass\n"
             )
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
+        ):
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -315,16 +361,23 @@ class TestModelRegistration:
         added_models = []
         mock_session.add = lambda obj: added_models.append(obj)
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
+        mock_storage = MagicMock()
+        # Source body deliberately disagrees with the slug — the
+        # registry must still use the derived name.
+        mock_storage.get_text = AsyncMock(
+            return_value='class WildlyDifferentName:\n    """drift"""\n'
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
         ):
-            # Source body deliberately disagrees with the slug — the
-            # registry must still use the derived name.
-            mock_storage.get_text = AsyncMock(
-                return_value='class WildlyDifferentName:\n    """drift"""\n'
-            )
             await router._review_build()
 
         assert len(added_models) == 1
@@ -346,14 +399,21 @@ class TestModelRegistration:
         added_models = []
         mock_session.add = lambda obj: added_models.append(obj)
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            side_effect=FileNotFoundError("not found")
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
         ):
-            mock_storage.get_text = AsyncMock(
-                side_effect=FileNotFoundError("not found")
-            )
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -383,14 +443,21 @@ class TestModelRegistration:
         added_models = []
         mock_session.add = lambda obj: added_models.append(obj)
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class NewPIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
         ):
-            mock_storage.get_text = AsyncMock(
-                return_value="class NewPIControllerModel:\n    pass\n"
-            )
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -419,14 +486,21 @@ class TestModelRegistration:
         added_models = []
         mock_session.add = lambda obj: added_models.append(obj)
 
-        with (
-            patch("decisionlab.feedback.review_build", side_effect=mock_review_build),
-            patch("shared.storage") as mock_storage,
-            patch("shared.db", mock_db),
+        mock_storage = MagicMock()
+        mock_storage.get_text = AsyncMock(
+            return_value="class PIControllerModel:\n    pass\n"
+        )
+        router._services = type(router._services)(
+            db=mock_db,
+            storage=mock_storage,
+            kg=None,
+            vectors=None,
+            embeddings=None,
+        )
+
+        with patch(
+            "decisionlab.feedback.review_build", side_effect=mock_review_build
         ):
-            mock_storage.get_text = AsyncMock(
-                return_value="class PIControllerModel:\n    pass\n"
-            )
             await router._review_build()
 
         assert len(added_models) == 1

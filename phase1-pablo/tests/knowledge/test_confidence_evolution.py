@@ -404,7 +404,7 @@ class TestAC5_ConfidenceInRetrieval:
             new_callable=AsyncMock,
             return_value=conf_map,
         ):
-            weighted = await _apply_recency_weighting([low, high])
+            weighted = await _apply_recency_weighting([low, high], None)
 
         assert weighted[0].text == "High conf"
         assert weighted[0].score > weighted[1].score
@@ -419,7 +419,7 @@ class TestAC5_ConfidenceInRetrieval:
             new_callable=AsyncMock,
             return_value={mem_id: 0.5},
         ):
-            weighted = await _apply_recency_weighting([result])
+            weighted = await _apply_recency_weighting([result], None)
 
         recency = 0.995**30
         expected = 1.0 * recency * 0.5
@@ -435,7 +435,7 @@ class TestAC5_ConfidenceInRetrieval:
             new_callable=AsyncMock,
             return_value={},
         ):
-            weighted = await _apply_recency_weighting([result])
+            weighted = await _apply_recency_weighting([result], None)
 
         assert weighted[0].metadata["confidence_factor"] == 1.0
 
@@ -444,7 +444,7 @@ class TestAC5_ConfidenceInRetrieval:
         ts = _utc_iso(0)
         results = [_result("No conf", 0.8, "web", created_at=ts)]
 
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
 
         assert weighted[0].score == pytest.approx(0.8, rel=0.01)
         assert weighted[0].metadata["confidence_factor"] == 1.0
@@ -459,7 +459,7 @@ class TestAC5_ConfidenceInRetrieval:
             new_callable=AsyncMock,
             return_value={mem_id: 0.7},
         ):
-            weighted = await _apply_recency_weighting([result])
+            weighted = await _apply_recency_weighting([result], None)
 
         assert "confidence_factor" in weighted[0].metadata
         assert weighted[0].metadata["confidence_factor"] == pytest.approx(0.7)
@@ -475,7 +475,7 @@ class TestAC5_ConfidenceInRetrieval:
             new_callable=AsyncMock,
             return_value={over_id: 1.5, under_id: -0.5},
         ):
-            weighted = await _apply_recency_weighting([over, under])
+            weighted = await _apply_recency_weighting([over, under], None)
 
         for r in weighted:
             assert 0.0 <= r.metadata["confidence_factor"] <= 1.0

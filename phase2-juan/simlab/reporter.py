@@ -15,9 +15,14 @@ import json
 import re
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from simlab.loop import Registry, run_agent_loop
 from simlab.utils import extract_text
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -103,27 +108,27 @@ COMPILE_REPORT_TOOL = {
 def _build_tools(
     run_id: str,
     experiment_id: str,
+    *,
+    storage: StorageService,
+    db: DatabaseService,
 ) -> tuple[list[dict], Registry]:
     """Build tool schemas and implementations for the Reporter."""
 
     async def read_research(params: dict) -> str:
         """Read a Phase 1 research file from S3 (path-traversal safe)."""
-        import shared
-
         path = params["path"]
         if ".." in path or path.startswith("/"):
             return json.dumps({"error": f"Invalid path: {path}"})
         key = f"research/{run_id}/{path}"
-        if not await shared.storage.exists(key):
+        if not await storage.exists(key):
             return json.dumps({"error": f"File not found: {path}"})
-        return await shared.storage.get_text(key)
+        return await storage.get_text(key)
 
     async def compile_report(params: dict) -> str:
         """Compile LaTeX content into a PDF using tectonic."""
         import shutil
         import tempfile
 
-        import shared
         from shared.artifacts import register_artifact
 
         content = _fix_markdown_in_latex(params["content"])
@@ -150,9 +155,9 @@ def _build_tools(
 
         # Download chart PNGs from S3 to temp dir for \includegraphics
         charts_prefix = f"experiments/{experiment_id}/charts/"
-        chart_keys = await shared.storage.list(charts_prefix)
+        chart_keys = await storage.list(charts_prefix)
         for ck in chart_keys:
-            png_data = await shared.storage.get(ck)
+            png_data = await storage.get(ck)
             local_name = ck.split("/")[-1]
             (Path(tmp) / local_name).write_bytes(png_data)
 
@@ -185,14 +190,15 @@ def _build_tools(
             pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
             tex_bytes = full_latex.encode()
             pdf_bytes = pdf_path.read_bytes()
-            await shared.storage.put(tex_key, tex_bytes, "text/x-tex")
-            await shared.storage.put(pdf_key, pdf_bytes, "application/pdf")
+            await storage.put(tex_key, tex_bytes, "text/x-tex")
+            await storage.put(pdf_key, pdf_bytes, "application/pdf")
             await register_artifact(
                 tex_key,
                 "tex",
                 len(tex_bytes),
                 experiment_id=experiment_id,
                 content_type="text/x-tex",
+                db=db,
             )
             await register_artifact(
                 pdf_key,
@@ -200,6 +206,7 @@ def _build_tools(
                 len(pdf_bytes),
                 experiment_id=experiment_id,
                 content_type="application/pdf",
+                db=db,
             )
 
             shutil.rmtree(tmp, ignore_errors=True)
@@ -366,9 +373,18 @@ source — do not mention knowledge context absence in the report.
 
 
 class Reporter:
-    def __init__(self, *, client, model: str = DEFAULT_MODEL):
+    def __init__(
+        self,
+        *,
+        client,
+        storage: StorageService,
+        db: DatabaseService,
+        model: str = DEFAULT_MODEL,
+    ):
         self.client = client
         self.model = model
+        self._storage = storage
+        self._db = db
 
     async def run(
         self,
@@ -388,7 +404,9 @@ class Reporter:
         prompt_suffix: str = "",
         knowledge_context: str = "",
     ) -> str:
-        tools, registry = _build_tools(run_id, experiment_id)
+        tools, registry = _build_tools(
+            run_id, experiment_id, storage=self._storage, db=self._db
+        )
 
         # Knowledge Backbone tools (sim-recall / P1-003)
         tools += extra_tools or []

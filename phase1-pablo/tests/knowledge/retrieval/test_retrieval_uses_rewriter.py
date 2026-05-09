@@ -144,6 +144,7 @@ async def test_kg_ner_receives_keyword_hints(monkeypatch):
         kg=fake_kg,
         embedding_service=fake_emb,
         client=fake_client,
+        vectors=None,
     )
 
     assert captured_messages, "NER call was not made"

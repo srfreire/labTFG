@@ -25,7 +25,7 @@ import uuid
 
 import typer
 
-import shared
+from shared.services import init_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 
@@ -103,17 +103,17 @@ def purge(
 
 
 async def _run(run_ids: list[str], *, dry_run: bool) -> None:
-    await shared.init()
+    services = await init_services()
     try:
-        result = await _purge(run_ids, dry_run=dry_run)
+        result = await _purge(run_ids, dry_run=dry_run, services=services)
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
     typer.echo(json.dumps(result))
 
 
-async def _purge(run_ids: list[str], *, dry_run: bool) -> dict:
-    if shared.vectors is None:
-        raise RuntimeError("shared.vectors is None — Qdrant not initialised")
+async def _purge(run_ids: list[str], *, dry_run: bool, services) -> dict:
+    if services.vectors is None:
+        raise RuntimeError("services.vectors is None — Qdrant not initialised")
 
     per_collection: dict[str, int] = {}
     for collection in PURGE_COLLECTIONS:
@@ -125,7 +125,7 @@ async def _purge(run_ids: list[str], *, dry_run: bool) -> dict:
                 len(run_ids),
             )
             continue
-        dispatched = await shared.vectors.delete_by_run_ids(collection, run_ids)
+        dispatched = await services.vectors.delete_by_run_ids(collection, run_ids)
         per_collection[collection] = dispatched
         logger.info("purged %s for %d run_id(s)", collection, dispatched)
 

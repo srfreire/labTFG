@@ -10,12 +10,23 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from decisionlab.eval.runner import _validate_stages, run_pipeline
 from decisionlab.router import Stage
+from shared.services import Services
+
+
+def _services():
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
 
 # ---------------------------------------------------------------------------
 # _validate_stages
@@ -109,6 +120,7 @@ async def test_happy_path_returns_populated_result(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _FakeRouter):
         result = await run_pipeline(
             "homeostasis under uncertainty",
+            services=_services(),
             stages=[Stage.RESEARCH],
             project_root=tmp_path,
             client=client,
@@ -136,6 +148,7 @@ async def test_router_exception_is_captured(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _CrashingRouter):
         result = await run_pipeline(
             "topic",
+            services=_services(),
             stages=[Stage.RESEARCH],
             project_root=tmp_path,
             client=client,
@@ -154,6 +167,7 @@ async def test_env_spec_required_for_reason(tmp_path, patch_run_row):
     with pytest.raises(ValueError, match="env_spec_path is required"):
         await run_pipeline(
             "topic",
+            services=_services(),
             stages=[Stage.REASON],
             project_root=tmp_path,
             client=client,
@@ -181,6 +195,7 @@ async def test_env_spec_passed_to_feedback(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _CapturingRouter):
         await run_pipeline(
             "topic",
+            services=_services(),
             stages=[Stage.RESEARCH, Stage.FORMALIZE, Stage.REASON],
             env_spec_path=env_spec,
             project_root=tmp_path,
@@ -207,6 +222,7 @@ async def test_reports_dir_is_created_under_root(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _DirCapturing):
         await run_pipeline(
             "Foraging in Uncertain Environments",
+            services=_services(),
             stages=[Stage.RESEARCH],
             project_root=tmp_path,
             client=client,
@@ -239,6 +255,7 @@ async def test_usage_meter_is_reset_per_run(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _FakeRouter):
         result = await run_pipeline(
             "topic",
+            services=_services(),
             stages=[Stage.RESEARCH],
             project_root=tmp_path,
             client=client,

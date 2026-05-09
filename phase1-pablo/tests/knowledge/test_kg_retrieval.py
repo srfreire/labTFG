@@ -131,7 +131,7 @@ class TestLinkEntities:
         embedding = AsyncMock()
 
         entities = [{"name": "ghrelin", "type": "variable"}]
-        result = await _link_entities(entities, kg, embedding)
+        result = await _link_entities(entities, kg, embedding, None)
 
         assert len(result) == 1
         assert result[0].node_id == "4:abc"
@@ -150,7 +150,7 @@ class TestLinkEntities:
         embedding = AsyncMock()
 
         entities = [{"name": "Berridge", "type": "author"}]
-        result = await _link_entities(entities, kg, embedding)
+        result = await _link_entities(entities, kg, embedding, None)
 
         assert len(result) == 1
         assert result[0].name == "Berridge, Kent C."
@@ -378,7 +378,7 @@ class TestKgRetrieve:
         kg = AsyncMock()
         embedding = AsyncMock()
 
-        result = await kg_retrieve("hello world", kg, embedding, client)
+        result = await kg_retrieve("hello world", kg, embedding, client, vectors=None)
         assert result == []
 
     @pytest.mark.asyncio
@@ -391,7 +391,7 @@ class TestKgRetrieve:
         kg.query = AsyncMock(side_effect=[[], []])
         embedding = AsyncMock()
 
-        result = await kg_retrieve("test", kg, embedding, client)
+        result = await kg_retrieve("test", kg, embedding, client, vectors=None)
         assert result == []
 
     @pytest.mark.asyncio
@@ -458,7 +458,9 @@ class TestKgRetrieve:
         )
         embedding = AsyncMock()
 
-        results = await kg_retrieve("ghrelin hunger signaling", kg, embedding, client)
+        results = await kg_retrieve(
+            "ghrelin hunger signaling", kg, embedding, client, vectors=None
+        )
 
         assert len(results) > 0
         assert all(isinstance(r, RetrievalResult) for r in results)
@@ -514,7 +516,9 @@ class TestKgRetrieve:
         )
         embedding = AsyncMock()
 
-        results = await kg_retrieve("dopamine", kg, embedding, client, limit=20)
+        results = await kg_retrieve(
+            "dopamine", kg, embedding, client, vectors=None, limit=20
+        )
 
         texts = " ".join(r.text for r in results)
         assert "VTA" in texts

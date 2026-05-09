@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import shared
 from shared.artifacts import register_artifact
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +54,11 @@ def _infer_artifact_type(path: str) -> str:
     return "unknown"
 
 
-def create_read_file(s3_prefix: str) -> Callable[[dict], Awaitable[str]]:
+def create_read_file(
+    s3_prefix: str,
+    *,
+    storage: StorageService,
+) -> Callable[[dict], Awaitable[str]]:
     async def read_file(params: dict) -> str:
         if "path" not in params:
             raise ValueError("read_file requires 'path' parameter")
@@ -60,13 +67,16 @@ def create_read_file(s3_prefix: str) -> Callable[[dict], Awaitable[str]]:
         if ".." in path or path.startswith("/"):
             raise ValueError(f"Invalid path: {path}")
         key = f"{s3_prefix}/{path}"
-        return await shared.storage.get_text(key)
+        return await storage.get_text(key)
 
     return read_file
 
 
 def create_write_file(
     s3_prefix: str,
+    *,
+    storage: StorageService,
+    db: DatabaseService,
     run_id: str | None = None,
 ) -> Callable[[dict], Awaitable[str]]:
     async def write_file(params: dict) -> str:
@@ -79,13 +89,14 @@ def create_write_file(
         if ".." in path or path.startswith("/"):
             raise ValueError(f"Invalid path: {path}")
         key = f"{s3_prefix}/{path}"
-        await shared.storage.put_text(key, content)
+        await storage.put_text(key, content)
         if run_id:
             await register_artifact(
                 key,
                 _infer_artifact_type(path),
                 len(content.encode()),
                 run_id=run_id,
+                db=db,
             )
         return f"Written {len(content)} chars to {path}"
 

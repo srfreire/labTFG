@@ -81,14 +81,19 @@ class TestCLIFeedbackDelegation:
 
     @pytest.mark.asyncio
     async def test_review_formalize_delegates_with_run_id(self, tmp_path):
-        cli = CLIFeedback()
+        from unittest.mock import MagicMock
+
+        storage = MagicMock()
+        cli = CLIFeedback(storage=storage)
         with patch(
             "decisionlab.feedback.review_formalize",
             new=AsyncMock(return_value={"foo": [1, 2]}),
         ) as mock:
             result = await cli.review_formalize(tmp_path, ["foo"], run_id="run-1")
         assert result == {"foo": [1, 2]}
-        mock.assert_awaited_once_with(tmp_path, ["foo"], run_id="run-1")
+        mock.assert_awaited_once_with(
+            tmp_path, ["foo"], run_id="run-1", storage=storage
+        )
 
     @pytest.mark.asyncio
     async def test_get_env_spec_delegates(self):
@@ -138,14 +143,19 @@ class TestWebFeedbackDelegation:
 
     @pytest.mark.asyncio
     async def test_review_formalize_passes_emit_and_run_id(self, tmp_path):
+        from unittest.mock import MagicMock
+
         emit = AsyncMock()
-        web = WebFeedback(emit)
+        storage = MagicMock()
+        web = WebFeedback(emit, storage=storage)
         with patch(
             "decisionlab.web_feedback.review_formalize",
             new=AsyncMock(return_value={}),
         ) as mock:
             await web.review_formalize(tmp_path, ["foo"], run_id="r1")
-        mock.assert_awaited_once_with(tmp_path, ["foo"], emit, run_id="r1")
+        mock.assert_awaited_once_with(
+            tmp_path, ["foo"], emit, run_id="r1", storage=storage
+        )
 
     @pytest.mark.asyncio
     async def test_get_env_spec_passes_emit(self):
@@ -195,9 +205,8 @@ class TestAutoApproveResearch:
             ]
 
         storage = type("S", (), {"list": staticmethod(fake_list)})()
-        with patch("shared.storage", storage, create=True):
-            auto = AutoApproveFeedback()
-            approved, additional = await auto.review_research(tmp_path, run_id="run-x")
+        auto = AutoApproveFeedback(storage=storage)
+        approved, additional = await auto.review_research(tmp_path, run_id="run-x")
         assert approved == ["alpha", "zeta"]
         assert additional is None
 
@@ -207,9 +216,8 @@ class TestAutoApproveResearch:
             raise RuntimeError("S3 unreachable")
 
         storage = type("S", (), {"list": staticmethod(fake_list)})()
-        with patch("shared.storage", storage, create=True):
-            auto = AutoApproveFeedback()
-            approved, additional = await auto.review_research(tmp_path, run_id="r1")
+        auto = AutoApproveFeedback(storage=storage)
+        approved, additional = await auto.review_research(tmp_path, run_id="r1")
         assert approved == []
         assert additional is None
 
@@ -227,9 +235,8 @@ class TestAutoApproveFormalize:
             return sample
 
         storage = type("S", (), {"get_text": staticmethod(fake_get_text)})()
-        with patch("shared.storage", storage, create=True):
-            auto = AutoApproveFeedback()
-            result = await auto.review_formalize(tmp_path, ["foo"], run_id="r1")
+        auto = AutoApproveFeedback(storage=storage)
+        result = await auto.review_formalize(tmp_path, ["foo"], run_id="r1")
         assert result == {"foo": [1, 2]}
 
     @pytest.mark.asyncio
@@ -238,9 +245,8 @@ class TestAutoApproveFormalize:
             raise FileNotFoundError(key)
 
         storage = type("S", (), {"get_text": staticmethod(fake_get_text)})()
-        with patch("shared.storage", storage, create=True):
-            auto = AutoApproveFeedback()
-            result = await auto.review_formalize(tmp_path, ["missing"], run_id="r1")
+        auto = AutoApproveFeedback(storage=storage)
+        result = await auto.review_formalize(tmp_path, ["missing"], run_id="r1")
         assert result == {"missing": []}
 
 

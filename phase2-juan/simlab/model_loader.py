@@ -16,6 +16,11 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +60,7 @@ def _has_decision_model_interface(cls: type) -> bool:
 # ---------------------------------------------------------------------------
 
 
-async def discover_models() -> dict[str, ModelInfo]:
+async def discover_models(*, db: DatabaseService) -> dict[str, ModelInfo]:
     """Discover models from the Postgres models table.
 
     Returns a dict keyed by ``"{paradigm}/{formulation}"`` compound string.
@@ -64,11 +69,10 @@ async def discover_models() -> dict[str, ModelInfo]:
     """
     from sqlalchemy import select
 
-    import shared
     from shared.models import Model as DBModel
 
     models: dict[str, ModelInfo] = {}
-    async with shared.db.get_session() as session:
+    async with db.get_session() as session:
         result = await session.execute(select(DBModel))
         rows = result.scalars().all()
         for row in rows:
@@ -98,7 +102,11 @@ async def discover_models() -> dict[str, ModelInfo]:
 
 
 async def load_model(
-    model_info: ModelInfo, *, seed: int | None = None, **kwargs
+    model_info: ModelInfo,
+    *,
+    storage: StorageService,
+    seed: int | None = None,
+    **kwargs,
 ) -> object:
     """Download a model from S3 and instantiate it.
 
@@ -106,9 +114,7 @@ async def load_model(
     If seed is provided, the module's `random` attribute is replaced with
     a newly-seeded Random instance for reproducibility.
     """
-    import shared
-
-    model_bytes = await shared.storage.get(model_info.s3_model_key)
+    model_bytes = await storage.get(model_info.s3_model_key)
     tmp_dir = tempfile.mkdtemp(prefix="model_")
     tmp_path = Path(tmp_dir) / f"{model_info.formulation}_model.py"
     tmp_path.write_bytes(model_bytes)

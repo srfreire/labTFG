@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from typing import ClassVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -118,7 +118,7 @@ def _assert_invalid_report(
 
 
 def _make_s3_mock(s3_store: dict | None = None):
-    """Return (s3_store, mock_storage_obj) for patching shared.storage."""
+    """Return (s3_store, mock_storage_obj) for use as the agent's storage param."""
     if s3_store is None:
         s3_store = {}
 
@@ -305,9 +305,13 @@ class TestFormalizerSubRobustness:
         )
         client = _mock_client(resp1, resp2, final)
 
-        with patch("shared.storage", mock_storage):
-            agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
-            result = await agent.run("gibberish")
+        agent = FormalizerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("gibberish")
 
         assert isinstance(result, str)
         assert result
@@ -325,9 +329,13 @@ class TestFormalizerSubRobustness:
         )
         client = _mock_client(resp1, final)
 
-        with patch("shared.storage", mock_storage):
-            agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
-            result = await agent.run("nonexistent")
+        agent = FormalizerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("nonexistent")
 
         assert isinstance(result, str)
 
@@ -337,7 +345,12 @@ class TestFormalizerSubRobustness:
         final = _response("end_turn", [_text_block("Invalid paradigm slug.")])
         client = _mock_client(final)
 
-        agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+        agent = FormalizerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            storage=MagicMock(),
+            db=MagicMock(),
+        )
         result = await agent.run("🎉🎉🎉")
 
         assert isinstance(result, str)
@@ -446,13 +459,14 @@ class TestReasonerSubRobustness:
         client = _mock_client(*reads, write, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(
-                client=client,
-                research_prefix="research/run-1",
-                models_prefix="models/run-1",
-            )
-            result = await agent.run("nonsense", formulation_slugs=["nonsense-F01"])
+        agent = ReasonerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            models_prefix="models/run-1",
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("nonsense", formulation_slugs=["nonsense-F01"])
 
         assert isinstance(result, str)
         _assert_invalid_report(
@@ -489,13 +503,14 @@ class TestReasonerSubRobustness:
         client = _mock_client(*reads, write, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(
-                client=client,
-                research_prefix="research/run-1",
-                models_prefix="models/run-1",
-            )
-            result = await agent.run("empty", formulation_slugs=["empty-F01"])
+        agent = ReasonerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            models_prefix="models/run-1",
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("empty", formulation_slugs=["empty-F01"])
 
         assert isinstance(result, str)
         _assert_invalid_report(s3_store, "models/run-1", "reasoner", "empty-F01.json")
@@ -511,13 +526,14 @@ class TestReasonerSubRobustness:
         client = _mock_client(resp1, final)
 
         _s3_store, mock_storage = _make_s3_mock()
-        with patch("shared.storage", mock_storage):
-            agent = ReasonerSubAgent(
-                client=client,
-                research_prefix="research/run-1",
-                models_prefix="models/run-1",
-            )
-            result = await agent.run("../../etc/passwd")
+        agent = ReasonerSubAgent(
+            client=client,
+            research_prefix="research/run-1",
+            models_prefix="models/run-1",
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("../../etc/passwd")
 
         assert isinstance(result, str)
 
@@ -649,11 +665,14 @@ class TestBuilderSubRobustness:
         client = _mock_client(resp1, resp2, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(
-                client=client, models_prefix="models/run-1", project_root=tmp_path
-            )
-            result = await agent.run(spec_id, spec_path)
+        agent = BuilderSubAgent(
+            client=client,
+            models_prefix="models/run-1",
+            project_root=tmp_path,
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
         _assert_invalid_report(
@@ -690,11 +709,14 @@ class TestBuilderSubRobustness:
         client = _mock_client(resp1, resp2, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(
-                client=client, models_prefix="models/run-1", project_root=tmp_path
-            )
-            result = await agent.run(spec_id, spec_path)
+        agent = BuilderSubAgent(
+            client=client,
+            models_prefix="models/run-1",
+            project_root=tmp_path,
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run(spec_id, spec_path)
 
         assert isinstance(result, str)
         _assert_invalid_report(
@@ -721,11 +743,14 @@ class TestBuilderSubRobustness:
         client = _mock_client(resp1, resp2, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(
-                client=client, models_prefix="models/run-1", project_root=tmp_path
-            )
-            result = await agent.run("broken", spec_path)
+        agent = BuilderSubAgent(
+            client=client,
+            models_prefix="models/run-1",
+            project_root=tmp_path,
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("broken", spec_path)
 
         assert isinstance(result, str)
         _assert_invalid_report(
@@ -746,11 +771,14 @@ class TestBuilderSubRobustness:
         client = _mock_client(resp1, final)
 
         _, mock_storage = _make_s3_mock(s3_store)
-        with patch("shared.storage", mock_storage):
-            agent = BuilderSubAgent(
-                client=client, models_prefix="models/run-1", project_root=tmp_path
-            )
-            result = await agent.run("ghost", "reasoner/ghost.json")
+        agent = BuilderSubAgent(
+            client=client,
+            models_prefix="models/run-1",
+            project_root=tmp_path,
+            storage=mock_storage,
+            db=MagicMock(),
+        )
+        result = await agent.run("ghost", "reasoner/ghost.json")
 
         assert isinstance(result, str)
 
@@ -786,25 +814,31 @@ class TestMaxIterationsRobustness:
         )
         client = _mock_client(stuck_resp)
 
+        _s3_store, mock_storage = _make_s3_mock()
+        common = {"storage": mock_storage, "db": MagicMock()}
         if agent_cls is FormalizerSubAgent:
-            kwargs = {"client": client, "research_prefix": "research/run-1"}
+            kwargs = {
+                "client": client,
+                "research_prefix": "research/run-1",
+                **common,
+            }
         elif agent_cls is ReasonerSubAgent:
             kwargs = {
                 "client": client,
                 "research_prefix": "research/run-1",
                 "models_prefix": "models/run-1",
+                **common,
             }
         elif agent_cls is BuilderSubAgent:
             kwargs = {
                 "client": client,
                 "models_prefix": "models/run-1",
                 "project_root": tmp_path,
+                **common,
             }
         else:
             kwargs = {"client": client}
 
-        _s3_store, mock_storage = _make_s3_mock()
-        with patch("shared.storage", mock_storage):
-            agent = agent_cls(**kwargs)
-            with pytest.raises(RuntimeError, match="Max iterations"):
-                await agent.run(*run_args)
+        agent = agent_cls(**kwargs)
+        with pytest.raises(RuntimeError, match="Max iterations"):
+            await agent.run(*run_args)

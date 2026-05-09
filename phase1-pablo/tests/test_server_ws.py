@@ -21,7 +21,6 @@ import pytest
 from starlette.testclient import TestClient
 
 import decisionlab.server as server_mod
-import shared  # type: ignore[import-not-found]
 from decisionlab.server import ConnectionManager, app, manager
 
 # ---------------------------------------------------------------------------
@@ -35,12 +34,26 @@ def stub_shared(monkeypatch):
     Postgres / S3 / Neo4j during TestClient startup. The /ws endpoint itself
     doesn't depend on shared, so this is sufficient.
     """
+    from unittest.mock import MagicMock
 
-    async def noop():
+    from shared.services import Services
+
+    fake_services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
+
+    async def fake_init_services(_settings=None):
+        return fake_services
+
+    async def fake_shutdown_services(_services):
         return None
 
-    monkeypatch.setattr(shared, "init", noop, raising=True)
-    monkeypatch.setattr(shared, "shutdown", noop, raising=True)
+    monkeypatch.setattr(server_mod, "init_services", fake_init_services)
+    monkeypatch.setattr(server_mod, "shutdown_services", fake_shutdown_services)
 
 
 @pytest.fixture(autouse=True)
@@ -329,10 +342,10 @@ def test_double_start_cancels_first_pipeline_cleanly(monkeypatch):
 def test_lifespan_shutdown_cancels_running_pipeline(monkeypatch):
     """When the FastAPI app shuts down (Ctrl-C, SIGTERM, test-client exit)
     the lifespan teardown must cancel and await any still-running pipeline
-    BEFORE shared.shutdown() — otherwise the task hangs onto the LLM client,
-    DB session, and trace.jsonl writer until the loop is force-closed.
+    BEFORE ``shutdown_services()`` — otherwise the task hangs onto the LLM
+    client, DB session, and trace.jsonl writer until the loop is force-closed.
 
-    Asserts state captured inside the ``shared.shutdown`` hook (which runs
+    Asserts state captured inside the ``shutdown_services`` hook (which runs
     immediately after the cancel-await in the lifespan's finally block).
     Without the fix the captured task would still be pending.
     """
@@ -349,13 +362,13 @@ def test_lifespan_shutdown_cancels_running_pipeline(monkeypatch):
             cancelled.set()
             raise
 
-    async def shutdown_capture():
+    async def shutdown_capture(_services=None):
         task = manager.pipeline_task
         captured["task_done"] = task.done() if task is not None else None
         captured["cancelled"] = cancelled.is_set()
 
     monkeypatch.setattr(server_mod, "run_pipeline", fake_pipeline)
-    monkeypatch.setattr(shared, "shutdown", shutdown_capture)
+    monkeypatch.setattr(server_mod, "shutdown_services", shutdown_capture)
 
     with TestClient(app) as client, client.websocket_connect("/ws") as ws:
         ws.send_json({"type": "start", "problem": "test"})
@@ -364,7 +377,7 @@ def test_lifespan_shutdown_cancels_running_pipeline(monkeypatch):
         ws.receive_json()
 
     assert captured.get("task_done") is True, (
-        "lifespan must cancel + await pipeline_task before shared.shutdown — "
+        "lifespan must cancel + await pipeline_task before shutdown_services — "
         f"captured={captured}"
     )
     assert captured.get("cancelled") is True, (

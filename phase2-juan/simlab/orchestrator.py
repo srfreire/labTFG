@@ -17,10 +17,10 @@ import logging
 import random
 import re
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select, update
 
-import shared
 from shared.models import Experiment as DBExperiment
 from shared.settings import Settings, load_settings
 from simlab.analyst import Analyst
@@ -34,6 +34,9 @@ from simlab.reporter import Reporter
 from simlab.spec import spec_to_environment
 from simlab.tools import _make_serializable
 from simlab.tracker import Tracker
+
+if TYPE_CHECKING:
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -161,11 +164,14 @@ async def prefetch_knowledge(
     on_warning=None,
     *,
     enabled: bool = True,
+    services: Services | None = None,
 ) -> str:
     """Pre-fetch KG context for an agent stage. Returns markdown or ``""``."""
     if not enabled:
         return ""
     if not paradigm:
+        return ""
+    if services is None:
         return ""
 
     queries = _PREFETCH_QUERIES.get(stage)
@@ -182,6 +188,7 @@ async def prefetch_knowledge(
         """Run a single retrieve_context call, return (title, result)."""
         try:
             result = await retrieve_context(
+                services=services,
                 query=query_tpl.format(paradigm=paradigm),
                 namespace=ns,
                 top_k=top_k,
@@ -579,10 +586,16 @@ class Orchestrator:
         self,
         *,
         client,
+        services: Services,
         model: str = DEFAULT_MODEL,
     ):
         self.client = client
         self.model = model
+
+        # ``services`` must be constructed via ``init_services`` at the
+        # entry point (api.py lifespan, CLI bootstrap) and passed in
+        # explicitly. There is no module-level fallback.
+        self._services = services
 
         # Pipeline state — tracks what has been done so far
         self._state: dict = {}
@@ -654,10 +667,9 @@ class Orchestrator:
         self._messages.append({"role": "assistant", "content": response.content})
         return text
 
-    @staticmethod
-    async def _update_experiment(exp_id: str, **kwargs) -> None:
+    async def _update_experiment(self, exp_id: str, **kwargs) -> None:
         """Update an experiment row in Postgres."""
-        async with shared.db.get_session() as session:
+        async with self._services.db.get_session() as session:
             await session.execute(
                 update(DBExperiment)
                 .where(DBExperiment.id == uuid.UUID(exp_id))
@@ -692,7 +704,7 @@ class Orchestrator:
                 from simlab.recall import build_recall_extras
 
                 for stage in ("architect", "analyst", "reporter"):
-                    _recall[stage] = build_recall_extras(stage)
+                    _recall[stage] = build_recall_extras(stage, self._services)
             except Exception:
                 logger.warning(
                     "Failed to initialise recall extras; running without knowledge tools."
@@ -719,6 +731,7 @@ class Orchestrator:
                 "architect",
                 on_warning=_on_kg_warning,
                 enabled=settings.ENABLE_KNOWLEDGE_READ,
+                services=self._services,
             )
             arch = Architect(client=client)
             spec_json = await arch.run(
@@ -738,7 +751,7 @@ class Orchestrator:
             state["seed"] = None
             # Persist experiment to Postgres
             exp_id = str(uuid.uuid4())
-            async with shared.db.get_session() as session:
+            async with self._services.db.get_session() as session:
                 exp = DBExperiment(
                     id=uuid.UUID(exp_id),
                     description=params["description"],
@@ -753,7 +766,7 @@ class Orchestrator:
         # --- list_available_models: discovers Phase 1 models from Postgres ---
         async def list_available_models(params: dict) -> str:
             if self._discovered_models is None:
-                self._discovered_models = await discover_models()
+                self._discovered_models = await discover_models(db=self._services.db)
             if not self._discovered_models:
                 return json.dumps(
                     {"models": [], "note": "No models registered in database"}
@@ -787,7 +800,7 @@ class Orchestrator:
             # Find the run_id from models that match this paradigm
             run_id = state.get("run_id")
             if not run_id:
-                async with shared.db.get_session() as session:
+                async with self._services.db.get_session() as session:
                     result = await session.execute(
                         select(DBModel)
                         .where(DBModel.paradigm.ilike(f"%{slug}%"))
@@ -807,10 +820,12 @@ class Orchestrator:
 
             key = f"research/{run_id}/deep/{slug}.md"
             try:
-                content = await shared.storage.get_text(key)
+                content = await self._services.storage.get_text(key)
             except Exception:
                 # Try listing available deep research files for this run
-                available_keys = await shared.storage.list(f"research/{run_id}/deep/")
+                available_keys = await self._services.storage.list(
+                    f"research/{run_id}/deep/"
+                )
                 available = [
                     k.split("/")[-1].removesuffix(".md") for k in available_keys
                 ]
@@ -852,7 +867,9 @@ class Orchestrator:
             available = {}
             if model_ids:
                 if self._discovered_models is None:
-                    self._discovered_models = await discover_models()
+                    self._discovered_models = await discover_models(
+                        db=self._services.db
+                    )
                 available = self._discovered_models
 
             # Create agents — one (or num_agents) per model
@@ -871,7 +888,11 @@ class Orchestrator:
                         )
                     label = info.formulation
                     for i in range(num_agents):
-                        model = await _load_model(info, seed=rng.randint(0, 2**32))
+                        model = await _load_model(
+                            info,
+                            storage=self._services.storage,
+                            seed=rng.randint(0, 2**32),
+                        )
                         pos = Position(
                             rng.randint(0, env.width - 1),
                             rng.randint(0, env.height - 1),
@@ -990,8 +1011,10 @@ class Orchestrator:
                 )
                 events_key = f"experiments/{exp_id}/events.json"
                 replay_key = f"experiments/{exp_id}/replay.json"
-                await shared.storage.put_text(events_key, events_stripped)
-                await shared.storage.put_text(replay_key, json.dumps(state["replay"]))
+                await self._services.storage.put_text(events_key, events_stripped)
+                await self._services.storage.put_text(
+                    replay_key, json.dumps(state["replay"])
+                )
                 await self._update_experiment(
                     exp_id,
                     s3_events_key=events_key,
@@ -1030,13 +1053,13 @@ class Orchestrator:
             if state.get("experiment_id"):
                 exp_id = state["experiment_id"]
                 tracker_key = f"experiments/{exp_id}/tracker.json"
-                await shared.storage.put_text(tracker_key, result)
+                await self._services.storage.put_text(tracker_key, result)
                 await self._update_experiment(
                     exp_id, s3_tracker_key=tracker_key, status="tracked"
                 )
 
             # Knowledge-Backbone write (non-fatal — never aborts observe_simulation)
-            writer = getattr(shared, "sim_memory_writer", None)
+            writer = getattr(self._services, "sim_memory_writer", None)
             if writer is not None:
                 try:
                     await _write_tracker_memories(writer, result, state)
@@ -1062,8 +1085,13 @@ class Orchestrator:
                 "analyst",
                 on_warning=_on_kg_warning,
                 enabled=settings.ENABLE_KNOWLEDGE_READ,
+                services=self._services,
             )
-            analyst = Analyst(client=client)
+            analyst = Analyst(
+                client=client,
+                storage=self._services.storage,
+                db=self._services.db,
+            )
             focus = params.get("focus", "Analiza patrones y compara los agentes.")
             result = await analyst.run(
                 focus,
@@ -1082,7 +1110,7 @@ class Orchestrator:
             if state.get("experiment_id"):
                 exp_id = state["experiment_id"]
                 analyst_key = f"experiments/{exp_id}/analyst.json"
-                await shared.storage.put_text(analyst_key, result)
+                await self._services.storage.put_text(analyst_key, result)
                 await self._update_experiment(
                     exp_id, s3_analyst_key=analyst_key, status="analyzed"
                 )
@@ -1106,8 +1134,14 @@ class Orchestrator:
                 "reporter",
                 on_warning=_on_kg_warning,
                 enabled=settings.ENABLE_KNOWLEDGE_READ,
+                services=self._services,
             )
-            reporter = Reporter(client=client, model=reporter_model)
+            reporter = Reporter(
+                client=client,
+                storage=self._services.storage,
+                db=self._services.db,
+                model=reporter_model,
+            )
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
             exp_id = state.get("experiment_id", "")
             result = await reporter.run(
@@ -1150,7 +1184,7 @@ class Orchestrator:
         # --- list_experiments: shows past experiments ---
         async def list_experiments_fn(params: dict) -> str:
             limit = params.get("limit", 10)
-            async with shared.db.get_session() as session:
+            async with self._services.db.get_session() as session:
                 result = await session.execute(
                     select(DBExperiment)
                     .order_by(DBExperiment.created_at.desc())
@@ -1176,7 +1210,11 @@ class Orchestrator:
         async def query_experiments(params: dict) -> str:
             from simlab.nlsql import query_experiments as _query
 
-            return await _query(params["question"])
+            return await _query(
+                params["question"],
+                db=self._services.db,
+                storage=self._services.storage,
+            )
 
         registry: Registry = {
             "create_environment": create_environment,
@@ -1195,11 +1233,14 @@ class Orchestrator:
         if settings.ENABLE_KNOWLEDGE_READ:
             from simlab.recall import RETRIEVE_CONTEXT_TOOL, retrieve_context
 
+            services = self._services
+
             async def retrieve_context_handler(params: dict) -> str:
                 query = params.get("query")
                 if not query:
                     return "## Retrieved Knowledge (0 results)\n\nNo query provided."
                 return await retrieve_context(
+                    services=services,
                     query=query,
                     namespace=params.get("namespace"),
                     top_k=params.get("top_k", 5),

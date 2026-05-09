@@ -27,7 +27,7 @@ import argparse
 import asyncio
 import logging
 
-import shared
+from shared.services import init_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +36,19 @@ COLLECTIONS = ("memories_dense", "memories_sparse")
 SCROLL_BATCH = 1024
 
 
-async def _strip_collection(collection: str, *, dry_run: bool) -> tuple[int, int]:
+async def _strip_collection(
+    collection: str, *, dry_run: bool, services
+) -> tuple[int, int]:
     """Walk every point in *collection* and blank `confidence`.
 
     Returns (points_seen, points_updated). Points already missing
     `confidence` (or holding `None`) are skipped to keep the run cheap on
     a re-execution.
     """
-    if shared.vectors is None:
-        raise RuntimeError("shared.init() did not bring up the VectorStore")
+    if services.vectors is None:
+        raise RuntimeError("init_services() did not bring up the VectorStore")
 
-    client = shared.vectors._c()
+    client = services.vectors._c()
     seen = 0
     updated = 0
     offset: object | None = None
@@ -84,10 +86,12 @@ async def _strip_collection(collection: str, *, dry_run: bool) -> tuple[int, int
 
 
 async def _main(*, dry_run: bool) -> None:
-    await shared.init()
+    services = await init_services()
     try:
         for collection in COLLECTIONS:
-            seen, updated = await _strip_collection(collection, dry_run=dry_run)
+            seen, updated = await _strip_collection(
+                collection, dry_run=dry_run, services=services
+            )
             verb = "would blank" if dry_run else "blanked"
             logger.info(
                 "qdrant_strip_confidence: %s — scanned %d, %s %d stale `confidence`",
@@ -97,7 +101,7 @@ async def _main(*, dry_run: bool) -> None:
                 updated,
             )
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
 
 
 def _parse_args() -> argparse.Namespace:

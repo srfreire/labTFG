@@ -20,9 +20,9 @@ from simlab.knowledge import ModelInfo, SimulationContext, TrackerMemoryWriter
 from simlab.recall.retrieve import retrieve_context
 from sqlalchemy import delete
 
-import shared
 from shared.embedding import EmbeddingService
 from shared.models import SimulationObservation
+from shared.services import Services
 
 pytestmark = pytest.mark.integration
 
@@ -43,25 +43,30 @@ async def test_write_then_retrieve_roundtrip(
     vector_store,
     session,
     kg_service,
+    storage_service,
 ):
     """Write memories via TrackerMemoryWriter, then read back via retrieve_context."""
     _skip_if_no_keys()
 
-    # -- Setup: wire shared singletons so retrieve_context can find infra --
-    shared.vectors = vector_store
-    shared.kg = kg_service
-    shared.embeddings = EmbeddingService(
+    # -- Setup: build a Services bundle wired to the per-fixture connections --
+    embeddings = EmbeddingService(
         voyage_api_key=settings.VOYAGE_API_KEY,
         zeroentropy_api_key=settings.ZEROENTROPY_API_KEY,
     )
-    shared.db = db_service
+    services = Services(
+        db=db_service,
+        storage=storage_service,
+        kg=kg_service,
+        vectors=vector_store,
+        embeddings=embeddings,
+    )
 
     paradigm_slug = f"recall-e2e-{uuid.uuid4().hex[:8]}"
 
     # -- Step 1: Write via sim-memory --
     writer = TrackerMemoryWriter(
         vector_store=vector_store,
-        embedding_service=shared.embeddings,
+        embedding_service=embeddings,
         db=db_service,
     )
     model = ModelInfo(
@@ -123,6 +128,7 @@ async def test_write_then_retrieve_roundtrip(
     try:
         with patch("simlab.recall.retrieve.load_settings", return_value=flag_on):
             retrieved = await retrieve_context(
+                services=services,
                 query=f"simulation results for {paradigm_slug}",
                 namespace="simulation",
                 top_k=5,

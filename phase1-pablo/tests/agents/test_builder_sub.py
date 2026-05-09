@@ -19,6 +19,8 @@ def test_builder_sub_has_correct_tools(tmp_path):
         client=client,
         models_prefix="models/run-1",
         project_root=tmp_path,
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
@@ -87,6 +89,8 @@ async def test_builder_sub_run_returns_content(
         client=client,
         models_prefix="models/run-1",
         project_root=tmp_path,
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     result = await agent.run(
         "pi_controller",
@@ -150,6 +154,8 @@ async def test_builder_sub_uses_sonnet_model(
         client=client,
         models_prefix="models/run-1",
         project_root=tmp_path,
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     await agent.run("pi_controller", "reasoner/homeostatic/pi_controller.json")
 

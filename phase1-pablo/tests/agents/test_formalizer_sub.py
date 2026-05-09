@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -23,7 +23,12 @@ def test_system_prompt_includes_cross_formulation_comparison():
 
 def test_formalizer_sub_has_correct_tools():
     client = AsyncMock()
-    agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+    agent = FormalizerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
+    )
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
     assert "write_file" in tool_names
@@ -82,9 +87,13 @@ async def test_formalizer_sub_run_returns_content(
     client = AsyncMock()
     client.messages.stream = MagicMock(side_effect=lambda **_kw: StreamCM(next(queue)))
 
-    with patch("shared.storage", mock_storage):
-        agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
-        result = await agent.run("homeostatic")
+    agent = FormalizerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        storage=mock_storage,
+        db=MagicMock(),
+    )
+    result = await agent.run("homeostatic")
 
     assert "Homeostatic" in result
     assert "Formulation 1" in result
@@ -99,7 +108,12 @@ async def test_formalizer_sub_uses_opus_model(
 
     client = streaming_client(resp)
 
-    agent = FormalizerSubAgent(client=client, research_prefix="research/run-1")
+    agent = FormalizerSubAgent(
+        client=client,
+        research_prefix="research/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
+    )
     await agent.run("homeostatic")
 
     from decisionlab.config import SETTINGS

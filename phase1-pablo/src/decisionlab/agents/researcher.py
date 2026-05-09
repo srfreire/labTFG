@@ -31,7 +31,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,10 @@ from decisionlab.tools.reports import (
     slugify,
 )
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -219,13 +223,23 @@ class Researcher:
         *,
         client,
         search: WebSearchPort,
+        storage: StorageService | None = None,
+        db: DatabaseService | None = None,
         run_id: str | None = None,
         knowledge_tool_schema: dict[str, Any] | None = None,
         knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+        kg=None,
+        vectors=None,
+        embeddings=None,
     ):
         self.client = client
         self.search = search
         self.run_id = run_id
+        self._storage = storage
+        self._db = db
+        self._kg = kg
+        self._vectors = vectors
+        self._embeddings = embeddings
 
         self._deep_reports: dict[str, str] = {}
 
@@ -240,9 +254,11 @@ class Researcher:
             ),
         }
 
-        if run_id:
+        if run_id and storage is not None:
             self.tools.append(READ_REPORT_SCHEMA)
-            self.registry["read_report"] = create_read_report(run_id)
+            self.registry["read_report"] = create_read_report(
+                run_id, storage=storage
+            )
 
         self._knowledge_tool_schema = knowledge_tool_schema
         self._knowledge_tool_handler = knowledge_tool_handler
@@ -256,7 +272,13 @@ class Researcher:
 
     async def _run_deep_research(self, paradigm: str) -> str:
         logger.info("Launching DeepResearcher for paradigm: %s", paradigm)
-        dr = DeepResearcher(client=self.client, search=self.search, run_id=self.run_id)
+        dr = DeepResearcher(
+            client=self.client,
+            search=self.search,
+            storage=self._storage,
+            db=self._db,
+            run_id=self.run_id,
+        )
         summary = await dr.run(paradigm)
         self._deep_reports[paradigm] = summary
         logger.info("DeepResearcher finished for: %s", paradigm)
@@ -278,7 +300,12 @@ class Researcher:
             return [], ""
         try:
             pairs = await list_known_slugs(
-                query=problem, namespace="paradigm", top_k=_RETRIEVAL_TOP_K
+                query=problem,
+                kg=self._kg,
+                vectors=self._vectors,
+                embeddings=self._embeddings,
+                namespace="paradigm",
+                top_k=_RETRIEVAL_TOP_K,
             )
         except Exception as exc:
             logger.warning(
@@ -349,8 +376,13 @@ class Researcher:
         if not summary.strip():
             logger.warning("Researcher produced empty summary for problem: %s", problem)
 
-        if self.run_id:
-            await save_summary_report(self.run_id, summary)
+        if self.run_id and self._storage is not None and self._db is not None:
+            await save_summary_report(
+                self.run_id,
+                summary,
+                storage=self._storage,
+                db=self._db,
+            )
 
         paradigms = await self._emit_structured(
             problem=problem,

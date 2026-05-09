@@ -122,7 +122,7 @@ relation semantics.
 
 ## Acceptance Criteria
 
-- [ ] AC1: `Services` dataclass exists; every Phase 1 / Phase 2 entry
+- [x] AC1: `Services` dataclass exists; every Phase 1 / Phase 2 entry
       point constructs and threads it. Module-level
       `shared.kg/vectors/embeddings` deleted in the same PR. Phase 1
       ↔ Phase 2 import cycle resolved (no `simlab` import inside

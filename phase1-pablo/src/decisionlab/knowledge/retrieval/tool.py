@@ -14,7 +14,6 @@ from typing import Any
 
 from anthropic import AsyncAnthropic
 
-import shared
 from decisionlab.config import SETTINGS
 from decisionlab.domain.ports import WebSearchPort
 from decisionlab.knowledge.retrieval.crag import evaluate_results
@@ -23,6 +22,7 @@ from decisionlab.knowledge.retrieval.kg_retrieval import kg_retrieve
 from decisionlab.knowledge.retrieval.models import CRAGResult, RetrievalResult
 from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
 from decisionlab.runtime.usage import increment_counter
+from shared.database import DatabaseService
 from shared.embedding import EmbeddingService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.pipeline_memories import touch_memory
@@ -158,22 +158,12 @@ def _format_output(
     return "\n".join(blocks)
 
 
-def _get_kg() -> KnowledgeGraph | None:
-    """Module-level KG accessor — overridable in tests via monkeypatch."""
-    return getattr(shared, "kg", None)
-
-
-def _get_vector_store() -> VectorStore | None:
-    return getattr(shared, "vectors", None)
-
-
-def _get_embedding_service() -> EmbeddingService | None:
-    return getattr(shared, "embeddings", None)
-
-
 async def list_known_slugs(
     query: str,
     *,
+    kg: KnowledgeGraph | None,
+    vectors: VectorStore | None,
+    embeddings: EmbeddingService | None,
     namespace: str = "paradigm",
     top_k: int = 8,
 ) -> list[tuple[str, str]]:
@@ -200,20 +190,16 @@ async def list_known_slugs(
             "(paradigm-only today)"
         )
 
-    kg = _get_kg()
     if kg is None:
         return []
 
-    vector_store = _get_vector_store()
-    embedding_service = _get_embedding_service()
-
     candidate_slugs: list[str] = []
-    if vector_store is not None and embedding_service is not None:
+    if vectors is not None and embeddings is not None:
         try:
             dense, sparse = await vector_retrieve(
                 query=query,
-                embedding_service=embedding_service,
-                vector_store=vector_store,
+                embedding_service=embeddings,
+                vector_store=vectors,
                 limit=top_k * 2,
                 filters={"namespace": "paradigm"},
             )
@@ -250,6 +236,7 @@ async def list_known_slugs(
     return [(s, desc_by_slug.get(s, "")) for s in candidate_slugs]
 
 
+<<<<<<< HEAD
 def _source_kind_of(metadata: dict) -> str:
     """Return ``"pipeline"`` or ``"simulation"`` for a retrieval result.
 
@@ -272,6 +259,13 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
     records, so nothing to touch on read.
     """
     if shared.db is None:
+=======
+async def _track_memory_access(
+    results: list[RetrievalResult], db: DatabaseService | None
+) -> None:
+    """Bump access metadata for Postgres-backed results in a single UPDATE."""
+    if db is None:
+>>>>>>> strike/infra-P4-001
         return
 
     memory_ids: list[uuid.UUID] = []
@@ -290,7 +284,7 @@ async def _track_memory_access(results: list[RetrievalResult]) -> None:
     if not memory_ids:
         return
 
-    async with shared.db.get_session() as session:
+    async with db.get_session() as session:
         try:
             await touch_memory(session, memory_ids)
             await session.commit()
@@ -366,10 +360,11 @@ def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
 
 
 async def _fetch_confidences(
-    memory_ids: list[uuid.UUID],
+    memory_ids: list[uuid.UUID], db: DatabaseService | None
 ) -> dict[uuid.UUID, float]:
     """Batched SELECT across both memory tables for live confidences.
 
+<<<<<<< HEAD
     Queries ``pipeline_memories`` and ``simulation_observations`` in a
     single round-trip via ``UNION ALL``; an id is in at most one table by
     construction (UUIDs are unique across both tables since each is
@@ -379,12 +374,20 @@ async def _fetch_confidences(
     is unwired, or when the DB raises. Callers fall back to a 1.0 factor
     so a degraded PG never silently kills a retrieve — failures are
     logged at WARNING instead.
+=======
+    Returns an empty map when there are no memory IDs, when ``db`` is
+    unwired, or when the DB raises. Callers fall back to a 1.0 factor
+    (preserves the prior `metadata.get("confidence", 1.0)` default for
+    non-memory results). Failures are logged at WARNING — a degraded PG
+    must not silently kill an entire retrieve, but it also must not be
+    invisible.
+>>>>>>> strike/infra-P4-001
     """
     if not memory_ids:
         return {}
-    if shared.db is None:
+    if db is None:
         logger.warning(
-            "_fetch_confidences: shared.db is None, scoring %d memories with "
+            "_fetch_confidences: db is None, scoring %d memories with "
             "confidence_factor=1.0",
             len(memory_ids),
         )
@@ -410,8 +413,15 @@ async def _fetch_confidences(
     stmt = union(pipeline_q, sim_q)
 
     try:
+<<<<<<< HEAD
         async with shared.db.get_session() as session:
             result = await session.execute(stmt)
+=======
+        async with db.get_session() as session:
+            result = await session.execute(
+                select(Memory.id, Memory.confidence).where(Memory.id.in_(memory_ids))
+            )
+>>>>>>> strike/infra-P4-001
             return {row.id: row.confidence for row in result.all()}
     except Exception as exc:
         logger.warning(
@@ -425,6 +435,7 @@ async def _fetch_confidences(
 
 async def _apply_recency_weighting(
     results: list[RetrievalResult],
+    db: DatabaseService | None,
 ) -> list[RetrievalResult]:
     """Apply recency and confidence-based score weighting.
 
@@ -442,7 +453,7 @@ async def _apply_recency_weighting(
     Returns a new list re-sorted by final_score descending.
     """
     now = datetime.now(UTC)
-    conf_map = await _fetch_confidences(_collect_memory_ids(results))
+    conf_map = await _fetch_confidences(_collect_memory_ids(results), db)
     weighted: list[RetrievalResult] = []
 
     for r in results:
@@ -527,6 +538,8 @@ def create_retrieve_knowledge(
     client: AsyncAnthropic,
     run_id: str,
     stage: str,
+    *,
+    db: DatabaseService | None = None,
 ) -> Callable[[dict], Awaitable[str]]:
     """Factory that creates the retrieve_knowledge tool handler.
 
@@ -578,7 +591,9 @@ def create_retrieve_knowledge(
                 kg_results = []
                 increment_counter("ner.skipped")
             else:
-                kg_results = await kg_retrieve(query, kg, embedding_service, client)
+                kg_results = await kg_retrieve(
+                    query, kg, embedding_service, client, vectors=vector_store
+                )
                 increment_counter("ner.evaluated")
 
             # Fuse + rerank — keep up to 2*top_k candidates through this
@@ -637,7 +652,7 @@ def create_retrieve_knowledge(
 
             # Apply recency weighting (P5-001) — async since P3-002 because
             # it batch-fetches `memories.confidence` from Postgres.
-            weighted_results = await _apply_recency_weighting(crag_result.results)
+            weighted_results = await _apply_recency_weighting(crag_result.results, db)
 
             # Apply temporal filter when as_of is specified (P5-004)
             final_results = _apply_temporal_filter(weighted_results, as_of)
@@ -653,7 +668,7 @@ def create_retrieve_knowledge(
 
             # Track memory access (fire-and-forget, don't block response)
             try:
-                await _track_memory_access(final_results)
+                await _track_memory_access(final_results, db)
             except Exception as exc:
                 logger.warning("Memory access tracking failed: %s", exc)
 

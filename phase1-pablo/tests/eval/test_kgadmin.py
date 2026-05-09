@@ -5,17 +5,18 @@ The KG itself is mocked — we exercise:
 - ``reset`` confirmation guard + node-count return
 - ``snapshot`` round-trip serializability
 - ``query`` pass-through
-- ``_require_kg`` raises when shared.kg is None
+- ``_require_kg`` raises when services.kg is None
 """
 
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from decisionlab.eval import kgadmin
+from shared.services import Services
 
 
 def _fake_kg(query_responses: dict[str, list[dict]]) -> AsyncMock:
@@ -33,6 +34,16 @@ def _fake_kg(query_responses: dict[str, list[dict]]) -> AsyncMock:
     return kg
 
 
+def _services_with(kg) -> Services:
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=kg,
+        vectors=None,
+        embeddings=None,
+    )
+
+
 # ---------------------------------------------------------------------------
 # _require_kg
 # ---------------------------------------------------------------------------
@@ -40,14 +51,14 @@ def _fake_kg(query_responses: dict[str, list[dict]]) -> AsyncMock:
 
 class TestRequireKG:
     def test_raises_when_kg_none(self):
-        with patch("shared.kg", None, create=True):
-            with pytest.raises(RuntimeError, match="not initialised"):
-                kgadmin._require_kg()
+        services = _services_with(None)
+        with pytest.raises(RuntimeError, match="not initialised"):
+            kgadmin._require_kg(services)
 
     def test_returns_when_kg_set(self):
-        sentinel = object()
-        with patch("shared.kg", sentinel, create=True):
-            assert kgadmin._require_kg() is sentinel
+        sentinel = MagicMock()
+        services = _services_with(sentinel)
+        assert kgadmin._require_kg(services) is sentinel
 
 
 # ---------------------------------------------------------------------------
@@ -72,8 +83,8 @@ class TestStats:
                 ],
             }
         )
-        with patch("shared.kg", kg, create=True):
-            result = await kgadmin.stats()
+        services = _services_with(kg)
+        result = await kgadmin.stats(services)
 
         assert result.total_nodes == 42
         assert result.total_relations == 17
@@ -94,8 +105,8 @@ class TestStats:
                 "type(r)": [],
             }
         )
-        with patch("shared.kg", kg, create=True):
-            result = await kgadmin.stats()
+        services = _services_with(kg)
+        result = await kgadmin.stats(services)
         assert result.total_nodes == 0
         assert result.total_relations == 0
         assert result.by_label == {}
@@ -111,9 +122,9 @@ class TestReset:
     @pytest.mark.asyncio
     async def test_requires_confirm(self):
         kg = _fake_kg({})
-        with patch("shared.kg", kg, create=True):
-            with pytest.raises(RuntimeError, match="confirm=True"):
-                await kgadmin.reset()
+        services = _services_with(kg)
+        with pytest.raises(RuntimeError, match="confirm=True"):
+            await kgadmin.reset(services)
         kg.query.assert_not_called()
 
     @pytest.mark.asyncio
@@ -124,8 +135,8 @@ class TestReset:
                 "DETACH DELETE": [],
             }
         )
-        with patch("shared.kg", kg, create=True):
-            n = await kgadmin.reset(confirm=True)
+        services = _services_with(kg)
+        n = await kgadmin.reset(services, confirm=True)
         assert n == 9
         # Verify both queries (count + delete) ran.
         cyphers = [c.args[0] for c in kg.query.call_args_list]
@@ -156,8 +167,8 @@ class TestSnapshot:
                 ],
             }
         )
-        with patch("shared.kg", kg, create=True):
-            snap = await kgadmin.snapshot()
+        services = _services_with(kg)
+        snap = await kgadmin.snapshot(services)
 
         # Must be JSON-roundtrippable.
         assert json.loads(json.dumps(snap, default=str))
@@ -174,8 +185,8 @@ class TestSnapshot:
                 "type(r)": [],
             }
         )
-        with patch("shared.kg", kg, create=True):
-            await kgadmin.snapshot_to_file(tmp_path / "snap.json")
+        services = _services_with(kg)
+        await kgadmin.snapshot_to_file(tmp_path / "snap.json", services)
         data = json.loads((tmp_path / "snap.json").read_text())
         assert data["nodes"][0]["props"]["slug"] == "rl"
 
@@ -196,14 +207,14 @@ class TestRestore:
 
         kg = AsyncMock()
         kg.query = AsyncMock(side_effect=_q)
+        services = _services_with(kg)
         snap = {
             "nodes": [
                 {"id": "old-n0", "labels": ["Paradigm"], "props": {"slug": "rl"}}
             ],
             "relations": [],
         }
-        with patch("shared.kg", kg, create=True):
-            await kgadmin.restore(snap)
+        await kgadmin.restore(snap, services)
 
         # First call after reset must be DETACH DELETE.
         assert any("DETACH DELETE" in c for c in order)
@@ -221,10 +232,10 @@ class TestQuery:
     async def test_passes_cypher_and_params(self):
         kg = AsyncMock()
         kg.query = AsyncMock(return_value=[{"x": 1}])
-        with patch("shared.kg", kg, create=True):
-            rows = await kgadmin.query(
-                "MATCH (n) WHERE n.slug = $s RETURN n", {"s": "rl"}
-            )
+        services = _services_with(kg)
+        rows = await kgadmin.query(
+            "MATCH (n) WHERE n.slug = $s RETURN n", {"s": "rl"}, services=services
+        )
         assert rows == [{"x": 1}]
         kg.query.assert_awaited_once_with(
             "MATCH (n) WHERE n.slug = $s RETURN n", {"s": "rl"}

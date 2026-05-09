@@ -17,9 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
 
 from sqlalchemy import select
 
-import shared
 from shared.artifacts import register_artifact as _register_artifact
 from shared.models import Model, Run
+from shared.services import init_services, shutdown_services
 
 SAMPLE_RUN_DIR = (
     Path(__file__).resolve().parent.parent / "phase1-pablo" / "examples" / "sample-run"
@@ -28,10 +28,10 @@ SAMPLE_RUN_MARKER = "sample-run-migration"
 
 
 async def main():
-    await shared.init()
+    services = await init_services()
     try:
         # Check if already migrated
-        async with shared.db.get_session() as session:
+        async with services.db.get_session() as session:
             result = await session.execute(
                 select(Run).where(Run.problem_description == SAMPLE_RUN_MARKER)
             )
@@ -48,7 +48,7 @@ async def main():
         print(f"Migrating sample-run with run_id={run_id}")
 
         # Create Run record
-        async with shared.db.get_session() as session:
+        async with services.db.get_session() as session:
             db_run = Run(
                 id=uuid.UUID(run_id),
                 problem_description=SAMPLE_RUN_MARKER,
@@ -65,9 +65,13 @@ async def main():
         report_path = SAMPLE_RUN_DIR / "report.md"
         if report_path.exists():
             key = f"research/{run_id}/report.md"
-            await shared.storage.put_text(key, report_path.read_text())
+            await services.storage.put_text(key, report_path.read_text())
             await _register_artifact(
-                key, "report", report_path.stat().st_size, run_id=run_id
+                key,
+                "report",
+                report_path.stat().st_size,
+                run_id=run_id,
+                db=services.db,
             )
             uploaded += 1
 
@@ -76,9 +80,13 @@ async def main():
         if deep_dir.exists():
             for f in sorted(deep_dir.glob("*.md")):
                 key = f"research/{run_id}/deep/{f.name}"
-                await shared.storage.put_text(key, f.read_text())
+                await services.storage.put_text(key, f.read_text())
                 await _register_artifact(
-                    key, "deep_report", f.stat().st_size, run_id=run_id
+                    key,
+                    "deep_report",
+                    f.stat().st_size,
+                    run_id=run_id,
+                    db=services.db,
                 )
                 uploaded += 1
 
@@ -87,9 +95,13 @@ async def main():
         if form_dir.exists():
             for f in sorted(form_dir.glob("*.md")):
                 key = f"research/{run_id}/formulations/{f.name}"
-                await shared.storage.put_text(key, f.read_text())
+                await services.storage.put_text(key, f.read_text())
                 await _register_artifact(
-                    key, "formulation", f.stat().st_size, run_id=run_id
+                    key,
+                    "formulation",
+                    f.stat().st_size,
+                    run_id=run_id,
+                    db=services.db,
                 )
                 uploaded += 1
 
@@ -98,9 +110,13 @@ async def main():
         if reasoner_dir.exists():
             for f in sorted(reasoner_dir.glob("*.json")):
                 key = f"models/{run_id}/reasoner/{f.name}"
-                await shared.storage.put_text(key, f.read_text())
+                await services.storage.put_text(key, f.read_text())
                 await _register_artifact(
-                    key, "reasoner_spec", f.stat().st_size, run_id=run_id
+                    key,
+                    "reasoner_spec",
+                    f.stat().st_size,
+                    run_id=run_id,
+                    db=services.db,
                 )
                 uploaded += 1
 
@@ -112,13 +128,14 @@ async def main():
                 content = f.read_text()
                 content_bytes = content.encode()
                 model_key = f"models/{run_id}/builder/{f.name}"
-                await shared.storage.put(model_key, content_bytes, "text/x-python")
+                await services.storage.put(model_key, content_bytes, "text/x-python")
                 await _register_artifact(
                     model_key,
                     "model",
                     len(content_bytes),
                     run_id=run_id,
                     content_type="text/x-python",
+                    db=services.db,
                 )
                 class_match = re.search(r"class\s+(\w+)", content)
                 class_name = class_match.group(1) if class_match else fid
@@ -132,7 +149,7 @@ async def main():
                 test_file = builder_dir / f"test_{fid}.py"
                 if test_file.exists():
                     test_key = f"models/{run_id}/builder/test_{fid}.py"
-                    await shared.storage.put(
+                    await services.storage.put(
                         test_key, test_file.read_bytes(), "text/x-python"
                     )
                     await _register_artifact(
@@ -141,10 +158,11 @@ async def main():
                         test_file.stat().st_size,
                         run_id=run_id,
                         content_type="text/x-python",
+                        db=services.db,
                     )
                     uploaded += 1
 
-                async with shared.db.get_session() as session:
+                async with services.db.get_session() as session:
                     db_model = Model(
                         class_name=class_name,
                         paradigm=paradigm,
@@ -162,13 +180,14 @@ async def main():
         env_spec = SAMPLE_RUN_DIR / "env_spec.json"
         if env_spec.exists():
             key = f"research/{run_id}/env_spec.json"
-            await shared.storage.put_text(key, env_spec.read_text())
+            await services.storage.put_text(key, env_spec.read_text())
             await _register_artifact(
                 key,
                 "report",
                 env_spec.stat().st_size,
                 run_id=run_id,
                 content_type="application/json",
+                db=services.db,
             )
             uploaded += 1
 
@@ -176,14 +195,14 @@ async def main():
         ps = SAMPLE_RUN_DIR / "pipeline_state.json"
         if ps.exists():
             key = f"research/{run_id}/pipeline_state.json"
-            await shared.storage.put_text(key, ps.read_text())
+            await services.storage.put_text(key, ps.read_text())
             uploaded += 1
 
         print(
             f"Done! Uploaded {uploaded} files to MinIO, registered models in Postgres."
         )
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
 
 
 if __name__ == "__main__":

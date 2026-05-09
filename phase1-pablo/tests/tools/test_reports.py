@@ -1,6 +1,6 @@
 """Tests for reports tools."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -11,6 +11,7 @@ from decisionlab.tools.reports import (
     generate_tree_map,
     slugify,
 )
+from shared.services import Services
 
 
 def test_read_report_schema_has_required_fields():
@@ -27,9 +28,36 @@ def test_slugify():
     assert slugify("/ leading /") == "leading"
 
 
+def _make_storage_mock(files: dict[str, str] | None = None) -> MagicMock:
+    """Build a mock StorageService backed by a key→content dict."""
+    files = files or {}
+    storage = MagicMock()
+    storage.exists = AsyncMock(side_effect=lambda k: k in files)
+
+    async def _get_text(k):
+        if k not in files:
+            raise FileNotFoundError(k)
+        return files[k]
+
+    storage.get_text = AsyncMock(side_effect=_get_text)
+    storage.put_text = AsyncMock()
+    return storage
+
+
+def _make_services(*, storage=None, db=None) -> Services:
+    return Services(
+        db=db or MagicMock(),
+        storage=storage or MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
+
+
 @pytest.mark.asyncio
 async def test_read_report_missing_param(tmp_path):
-    fn = create_read_report(tmp_path)
+    storage = _make_storage_mock({})
+    fn = create_read_report("test-run", storage=storage)
     with pytest.raises(ValueError, match="paradigm"):
         await fn({})
 
@@ -55,29 +83,19 @@ def _make_state(
     )
 
 
-def _mock_storage(files: dict[str, str]):
-    """Create a mock shared.storage with given key→content mapping."""
-    storage = AsyncMock()
-    storage.exists = AsyncMock(side_effect=lambda k: k in files)
-    storage.get_text = AsyncMock(side_effect=lambda k: files[k])
-    storage.put_text = AsyncMock()
-    return storage
-
-
 class TestGenerateTreeMap:
     @pytest.mark.asyncio
     async def test_single_paradigm_no_formulations(self, tmp_path):
         state = _make_state(tmp_path, {"homeostatic-regulation": []})
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report\n\nSome content.",
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
         assert "Homeostatic Regulation" in tree
 
@@ -89,16 +107,15 @@ class TestGenerateTreeMap:
                 "homeostatic-regulation": ["pi-controller", "dual-process-model"],
             },
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report\n\nSome content.",
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n\nContent...",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
         assert "pi-controller" in tree
         assert "dual-process-model" in tree
@@ -112,17 +129,16 @@ class TestGenerateTreeMap:
                 "homeostatic-regulation": ["pi-controller"],
             },
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report\n\nSome content.",
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
                 "research/test-run/deep/hedonic-reward.md": "# Hedonic Reward — Deep Research\n",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
         assert "├──" in tree or "└──" in tree
         assert "Homeostatic Regulation" in tree
@@ -138,18 +154,16 @@ class TestGenerateTreeMap:
                 "homeostatic-regulation": ["pi-controller"],
             },
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report\n\nSome content.",
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            await generate_tree_map(state)
+        await generate_tree_map(state, services)
 
-        # put_text was called with the updated report
         storage.put_text.assert_called_once()
         written_content = storage.put_text.call_args[0][1]
         assert "## Research Tree Map" in written_content
@@ -164,17 +178,16 @@ class TestGenerateTreeMap:
                 "paradigm-b": ["f1"],
             },
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report",
                 "research/test-run/deep/paradigm-a.md": "# Paradigm A — Deep Research\n",
                 "research/test-run/deep/paradigm-b.md": "# Paradigm B — Deep Research\n",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
         lines = tree.strip().split("\n")
         paradigm_lines = [line for line in lines if "Paradigm" in line]
@@ -185,41 +198,26 @@ class TestGenerateTreeMap:
     async def test_paradigm_name_fallback_to_slug(self, tmp_path):
         """If deep report doesn't exist, fall back to slug."""
         state = _make_state(tmp_path, {"unknown-paradigm": []})
-        storage = _mock_storage(
-            {
-                "research/test-run/report.md": "# Report",
-            }
-        )
-        # get_text raises for missing deep report
-        original_get = storage.get_text.side_effect
+        files = {"research/test-run/report.md": "# Report"}
+        storage = _make_storage_mock(files)
+        services = _make_services(storage=storage)
 
-        async def get_text_with_missing(key):
-            if "deep/unknown-paradigm" in key:
-                raise FileNotFoundError
-            return original_get(key)
-
-        storage.get_text = AsyncMock(side_effect=get_text_with_missing)
-
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
         assert "unknown-paradigm" in tree
 
     @pytest.mark.asyncio
     async def test_empty_selected_formulations(self, tmp_path):
         state = _make_state(tmp_path, {})
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": "# Report",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            tree = await generate_tree_map(state)
+        tree = await generate_tree_map(state, services)
 
-        # The report heading is used as the topic label
         assert "Report" in tree
 
     @pytest.mark.asyncio
@@ -230,15 +228,14 @@ class TestGenerateTreeMap:
                 "homeostatic-regulation": ["pi-controller"],
             },
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            await generate_tree_map(state)
+        await generate_tree_map(state, services)
 
         storage.put_text.assert_called_once()
         written_content = storage.put_text.call_args[0][1]
@@ -258,16 +255,15 @@ class TestGenerateTreeMap:
             "\n## Research Tree Map\n\n```\nold tree\n```\n"
             "\n## References\n\nSome refs.\n"
         )
-        storage = _mock_storage(
+        storage = _make_storage_mock(
             {
                 "research/test-run/report.md": existing,
                 "research/test-run/deep/homeostatic-regulation.md": "# Homeostatic Regulation — Deep Research\n",
             }
         )
+        services = _make_services(storage=storage)
 
-        with patch("decisionlab.tools.reports.shared") as mock_shared:
-            mock_shared.storage = storage
-            await generate_tree_map(state)
+        await generate_tree_map(state, services)
 
         written_content = storage.put_text.call_args[0][1]
         assert "## References" in written_content

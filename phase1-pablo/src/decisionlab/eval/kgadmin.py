@@ -1,9 +1,10 @@
 """Knowledge-graph admin: stats, reset, snapshot/restore, raw query.
 
-Operates on the live ``shared.kg`` (Neo4j) — caller must have invoked
-``shared.init()`` first. Every public function raises ``RuntimeError``
-when the KG is not connected so failures surface at the entry point
-rather than as cryptic Cypher errors deeper in the call stack.
+Operates on the ``services.kg`` (Neo4j) passed in by the caller — entry
+points (CLI, suite runner) build a ``Services`` via ``init_services()`` and
+thread it through. Every public function raises ``RuntimeError`` when the
+KG is not connected so failures surface at the entry point rather than as
+cryptic Cypher errors deeper in the call stack.
 """
 
 from __future__ import annotations
@@ -12,6 +13,11 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shared.knowledge_graph import KnowledgeGraph
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -34,15 +40,13 @@ class KGStats:
         }
 
 
-def _require_kg():
-    import shared
-
-    if shared.kg is None:
+def _require_kg(services: Services) -> KnowledgeGraph:
+    if services.kg is None:
         raise RuntimeError(
-            "knowledge graph not initialised — call shared.init() first "
+            "knowledge graph not initialised — call init_services() first "
             "and ensure NEO4J_* env vars point at a reachable instance"
         )
-    return shared.kg
+    return services.kg
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +54,7 @@ def _require_kg():
 # ---------------------------------------------------------------------------
 
 
-async def stats() -> KGStats:
+async def stats(services: Services) -> KGStats:
     """Count nodes and active (non-superseded) relations.
 
     Per P4-004 every Neo4j relation is in principle "current": temporal
@@ -59,7 +63,7 @@ async def stats() -> KGStats:
     versions and the active replacement both contribute. For an "as-of"
     view callers should go through ``KnowledgeGraph.query_at_time``.
     """
-    kg = _require_kg()
+    kg = _require_kg(services)
 
     total_nodes_rows = await kg.query("MATCH (n) RETURN count(n) AS n")
     total_nodes = int(total_nodes_rows[0]["n"]) if total_nodes_rows else 0
@@ -92,7 +96,7 @@ async def stats() -> KGStats:
 # ---------------------------------------------------------------------------
 
 
-async def reset(*, confirm: bool = False) -> int:
+async def reset(services: Services, *, confirm: bool = False) -> int:
     """Delete every node and relation. Returns the number of nodes deleted.
 
     The ``confirm=True`` requirement is a safety belt: this is destructive
@@ -102,7 +106,7 @@ async def reset(*, confirm: bool = False) -> int:
         raise RuntimeError(
             "kgadmin.reset requires confirm=True to proceed (destructive)"
         )
-    kg = _require_kg()
+    kg = _require_kg(services)
     before_rows = await kg.query("MATCH (n) RETURN count(n) AS n")
     before = int(before_rows[0]["n"]) if before_rows else 0
     await kg.query("MATCH (n) DETACH DELETE n")
@@ -115,7 +119,7 @@ async def reset(*, confirm: bool = False) -> int:
 # ---------------------------------------------------------------------------
 
 
-async def snapshot() -> dict:
+async def snapshot(services: Services) -> dict:
     """Return a JSON-serialisable dump of the entire KG.
 
     Shape::
@@ -129,7 +133,7 @@ async def snapshot() -> dict:
     Includes superseded relations so a ``restore`` exactly reproduces the
     temporal history.
     """
-    kg = _require_kg()
+    kg = _require_kg(services)
     node_rows = await kg.query(
         "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
         "properties(n) AS props"
@@ -157,9 +161,9 @@ async def snapshot() -> dict:
     }
 
 
-async def snapshot_to_file(path: Path) -> None:
+async def snapshot_to_file(path: Path, services: Services) -> None:
     """Convenience: ``snapshot()`` → ``json.dump`` to *path*."""
-    snap = await snapshot()
+    snap = await snapshot(services)
     path.write_text(json.dumps(snap, indent=2, default=str))
     logger.info(
         "kgadmin.snapshot: wrote %d nodes / %d relations to %s",
@@ -169,7 +173,7 @@ async def snapshot_to_file(path: Path) -> None:
     )
 
 
-async def restore(snap: dict, *, reset_first: bool = True) -> None:
+async def restore(snap: dict, services: Services, *, reset_first: bool = True) -> None:
     """Restore a snapshot produced by ``snapshot()``.
 
     By default this wipes the KG first (``reset_first=True``) so the
@@ -179,9 +183,9 @@ async def restore(snap: dict, *, reset_first: bool = True) -> None:
     data (rarely useful — risks duplicate nodes when natural-key MERGE
     isn't possible).
     """
-    kg = _require_kg()
+    kg = _require_kg(services)
     if reset_first:
-        await reset(confirm=True)
+        await reset(services, confirm=True)
 
     # Element-ID → newly-created internal id (Neo4j-side)
     id_map: dict[str, int] = {}
@@ -223,10 +227,10 @@ async def restore(snap: dict, *, reset_first: bool = True) -> None:
     )
 
 
-async def restore_from_file(path: Path) -> None:
+async def restore_from_file(path: Path, services: Services) -> None:
     """Convenience: ``json.load`` *path* → ``restore()`` (with reset_first=True)."""
     snap = json.loads(path.read_text())
-    await restore(snap, reset_first=True)
+    await restore(snap, services, reset_first=True)
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +238,9 @@ async def restore_from_file(path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def query(cypher: str, params: dict | None = None) -> list[dict]:
-    """Run an arbitrary Cypher query. Thin pass-through to ``shared.kg.query``."""
-    kg = _require_kg()
+async def query(
+    cypher: str, params: dict | None = None, *, services: Services
+) -> list[dict]:
+    """Run an arbitrary Cypher query. Thin pass-through to ``services.kg.query``."""
+    kg = _require_kg(services)
     return await kg.query(cypher, params or {})

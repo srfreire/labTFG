@@ -199,6 +199,7 @@ async def _link_entities_ann(
     name: str,
     embedding_service: EmbeddingService,
     kg: KnowledgeGraph,
+    vectors: VectorStore | None,
 ) -> list[_LinkedEntity]:
     """Vector-index entity linking against the native Neo4j vector index.
 
@@ -211,6 +212,7 @@ async def _link_entities_ann(
     Parameter) return ``[]``. Hits scoring below ``_SIMILARITY_THRESHOLD``
     are discarded.
     """
+<<<<<<< HEAD
     try:
         index_name = vector_index_name(label)
     except ValueError:
@@ -231,6 +233,17 @@ async def _link_entities_ann(
         f"WHERE '{label}' IN labels(node) "
         f"RETURN elementId(node) AS id, node.{name_prop} AS name, score",
         {"index_name": index_name, "k": 5, "vector": query_vec},
+=======
+    if vectors is None:
+        return []
+
+    query_vec = await embedding_service.embed_query(name)
+    hits = await vectors.search_dense(
+        "kg_entities_dense",
+        query_vec,
+        limit=5,
+        filters={"label": label},
+>>>>>>> strike/infra-P4-001
     )
 
     out: list[_LinkedEntity] = []
@@ -253,6 +266,7 @@ async def _link_entities(
     entities: list[dict],
     kg: KnowledgeGraph,
     embedding_service: EmbeddingService,
+    vectors: VectorStore | None,
 ) -> list[_LinkedEntity]:
     """Link extracted entities to existing Neo4j nodes.
 
@@ -290,7 +304,9 @@ async def _link_entities(
 
         # --- ANN match against Neo4j vector index ---
         linked.extend(
-            await _link_entities_ann(label, entity_name, embedding_service, kg)
+            await _link_entities_ann(
+                label, entity_name, embedding_service, kg, vectors
+            )
         )
 
     return linked
@@ -476,6 +492,8 @@ async def kg_retrieve(
     kg: KnowledgeGraph,
     embedding_service: EmbeddingService,
     client: AsyncAnthropic,
+    *,
+    vectors: VectorStore | None,
     limit: int = 20,
 ) -> list[RetrievalResult]:
     """Retrieve knowledge graph passages relevant to a query.
@@ -501,7 +519,7 @@ async def kg_retrieve(
             return []
 
         # Step 2: Link entities to graph nodes.
-        linked = await _link_entities(entities, kg, embedding_service)
+        linked = await _link_entities(entities, kg, embedding_service, vectors)
         if not linked:
             logger.info(
                 "kg_retrieve: no entities linked for query %r (extracted: %s)",

@@ -102,9 +102,22 @@ suite_assertions:
         AsyncMock(return_value=None),
     )
 
+    from unittest.mock import MagicMock
+
+    from shared.services import Services
+
+    services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
     client = AsyncMock()
     search = AsyncMock()
-    result = await run_suite(spec, client=client, search=search, skip_kg_ops=True)
+    result = await run_suite(
+        spec, services=services, client=client, search=search, skip_kg_ops=True
+    )
     assert len(result.suite_assertions) == 1
     assert result.suite_assertions[0].name == "hits_n"
     assert result.suite_assertions[0].passed

@@ -6,9 +6,24 @@ from decisionlab.agents.formalizer import Formalizer
 from decisionlab.domain.models import FormalizationReport
 
 
+def _make_storage(*, list_keys=None):
+    storage = MagicMock()
+    storage.list = AsyncMock(return_value=list_keys or [])
+    return storage
+
+
+def _make_db():
+    return MagicMock()
+
+
 def test_formalizer_construction():
     client = AsyncMock()
-    f = Formalizer(client=client, research_prefix="research/run-1")
+    f = Formalizer(
+        client=client,
+        research_prefix="research/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
+    )
     assert f.client is client
     assert f.research_prefix == "research/run-1"
 
@@ -16,7 +31,12 @@ def test_formalizer_construction():
 @pytest.mark.asyncio
 async def test_formalizer_run_collects_results():
     client = AsyncMock()
-    f = Formalizer(client=client, research_prefix="research/run-1")
+    f = Formalizer(
+        client=client,
+        research_prefix="research/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
+    )
 
     async def fake_run(slug):
         return f"# {slug} formulation"
@@ -38,24 +58,23 @@ async def test_formalizer_run_collects_results():
 @pytest.mark.asyncio
 async def test_formalizer_run_discovers_paradigms_from_s3():
     client = AsyncMock()
-    f = Formalizer(client=client, research_prefix="research/run-1")
+    storage = _make_storage(
+        list_keys=[
+            "research/run-1/deep/paradigm-a.md",
+            "research/run-1/deep/paradigm-b.md",
+        ]
+    )
+    f = Formalizer(
+        client=client,
+        research_prefix="research/run-1",
+        storage=storage,
+        db=_make_db(),
+    )
 
     async def fake_run(slug):
         return f"# {slug} content"
 
-    async def fake_list(prefix):
-        return [
-            "research/run-1/deep/paradigm-a.md",
-            "research/run-1/deep/paradigm-b.md",
-        ]
-
-    mock_storage = MagicMock()
-    mock_storage.list = AsyncMock(side_effect=fake_list)
-
-    with (
-        patch("decisionlab.agents.formalizer.FormalizerSubAgent") as MockSub,
-        patch("shared.storage", mock_storage),
-    ):
+    with patch("decisionlab.agents.formalizer.FormalizerSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -68,7 +87,12 @@ async def test_formalizer_run_discovers_paradigms_from_s3():
 @pytest.mark.asyncio
 async def test_formalizer_run_handles_partial_failure():
     client = AsyncMock()
-    f = Formalizer(client=client, research_prefix="research/run-1")
+    f = Formalizer(
+        client=client,
+        research_prefix="research/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
+    )
 
     call_count = 0
 

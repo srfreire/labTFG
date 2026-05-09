@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,13 +11,54 @@ import pytest
 
 from decisionlab.knowledge.models import MemoryAgentResult
 from decisionlab.router import PipelineState, Router, Stage
+from shared.services import Services
 
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_router(emit=None, memory_agent=None) -> Router:
+def _make_db_with_session():
+    """Build a mock DatabaseService whose get_session is a working asynccontextmanager."""
+    mock_db = MagicMock()
+    session = AsyncMock()
+    session.commit = AsyncMock()
+    exec_result = MagicMock()
+    exec_result.scalars.return_value.all.return_value = []
+    exec_result.all.return_value = []
+    session.execute = AsyncMock(return_value=exec_result)
+    fake_run = MagicMock()
+    fake_run.memory_results = None
+    session.get = AsyncMock(return_value=fake_run)
+
+    @asynccontextmanager
+    async def _ctx():
+        yield session
+
+    mock_db.get_session = _ctx
+    return mock_db
+
+
+def _make_storage():
+    storage = MagicMock()
+    storage.get_text = AsyncMock(return_value="mock stage output")
+    storage.put_text = AsyncMock()
+    storage.list = AsyncMock(return_value=[])
+    storage.exists = AsyncMock(return_value=True)
+    return storage
+
+
+def _make_services(*, db=None, storage=None, kg=None, vectors=None, embeddings=None):
+    return Services(
+        db=db if db is not None else _make_db_with_session(),
+        storage=storage if storage is not None else _make_storage(),
+        kg=kg,
+        vectors=vectors,
+        embeddings=embeddings,
+    )
+
+
+def _make_router(emit=None, memory_agent=None, services=None) -> Router:
     client = AsyncMock()
     state = PipelineState(
         stage=Stage.RESEARCH,
@@ -26,7 +67,8 @@ def _make_router(emit=None, memory_agent=None) -> Router:
         run_id=str(uuid.uuid4()),
     )
     search = MagicMock()
-    # Patch _init_memory_agent to avoid importing shared during construction
+    services = services or _make_services()
+    # Patch _init_memory_agent to avoid auto-creating one.
     with patch.object(Router, "_init_memory_agent", return_value=None):
         router = Router(
             client=client,
@@ -34,6 +76,7 @@ def _make_router(emit=None, memory_agent=None) -> Router:
             search=search,
             project_root=Path("."),
             emit=emit,
+            services=services,
         )
     if memory_agent is not None:
         router.memory_agent = memory_agent
@@ -56,38 +99,6 @@ def _make_memory_result(**overrides) -> MemoryAgentResult:
     return MemoryAgentResult(**defaults)
 
 
-def _mock_shared():
-    """Create a mock shared module for inline import shared."""
-    from contextlib import asynccontextmanager
-
-    mock = MagicMock()
-    session = AsyncMock()
-    session.commit = AsyncMock()
-    # `await session.execute(...)` must return an object whose .scalars().all()
-    # is a sync no-op — otherwise AsyncMock auto-creates async children and
-    # consolidation's `_cluster_run_memories` blows up with
-    # "coroutine has no attribute .all".
-    exec_result = MagicMock()
-    exec_result.scalars.return_value.all.return_value = []
-    exec_result.all.return_value = []
-    session.execute = AsyncMock(return_value=exec_result)
-    # `session.get(Run, run_uuid)` — used by Router._record_memory_result.
-    # Return a plain object with memory_results=None so
-    # `dict(run.memory_results or {})` short-circuits cleanly to {} instead of
-    # producing an unawaited-AsyncMock RuntimeWarning.
-    fake_run = MagicMock()
-    fake_run.memory_results = None
-    session.get = AsyncMock(return_value=fake_run)
-
-    @asynccontextmanager
-    async def _ctx():
-        yield session
-
-    mock.db.get_session = _ctx
-    mock.storage.get_text = AsyncMock(return_value="mock stage output")
-    return mock
-
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -103,27 +114,27 @@ async def test_router_has_memory_agent_attribute():
 
 @pytest.mark.asyncio
 async def test_router_auto_inits_memory_agent_when_shared_available():
-    """Router creates MemoryAgent automatically when shared infra is available."""
-    mock_shared = _mock_shared()
-    mock_shared.db = MagicMock()
-    mock_shared.kg = MagicMock()
-    mock_shared.vectors = MagicMock()
-    mock_shared.embeddings = MagicMock()
+    """Router creates MemoryAgent automatically when knowledge infra is available."""
+    services = _make_services(
+        kg=MagicMock(),
+        vectors=MagicMock(),
+        embeddings=MagicMock(),
+    )
 
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        client = AsyncMock()
-        state = PipelineState(
-            stage=Stage.RESEARCH,
-            problem="test",
-            reports_dir=Path("."),
-            run_id=str(uuid.uuid4()),
-        )
-        router = Router(
-            client=client,
-            state=state,
-            search=MagicMock(),
-            project_root=Path("."),
-        )
+    client = AsyncMock()
+    state = PipelineState(
+        stage=Stage.RESEARCH,
+        problem="test",
+        reports_dir=Path("."),
+        run_id=str(uuid.uuid4()),
+    )
+    router = Router(
+        client=client,
+        state=state,
+        search=MagicMock(),
+        project_root=Path("."),
+        services=services,
+    )
 
     assert router.memory_agent is not None
 
@@ -139,21 +150,16 @@ async def test_memory_agent_called_after_research():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        # Mirrors the real handler — advances to MEMORY_RESEARCH (when memory
-        # infra is available) so the loop dispatches the real _memory_research
-        # handler which awaits memory_agent.run().
         router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
     assert memory_agent.run.await_count >= 1
     first_call = memory_agent.run.call_args_list[0]
@@ -172,10 +178,8 @@ async def test_memory_agent_not_called_for_review_stages():
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with patch.object(router, "_review_research", side_effect=mock_review):
-            await router.run()
+    with patch.object(router, "_review_research", side_effect=mock_review):
+        await router.run()
 
     memory_agent.run.assert_not_awaited()
 
@@ -196,13 +200,11 @@ async def test_memory_agent_failure_does_not_block_pipeline():
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
     assert router.state.stage == Stage.DONE
 
@@ -215,19 +217,16 @@ async def test_memory_agent_skipped_when_none():
     router.state.stage = Stage.RESEARCH
 
     async def mock_research():
-        # No memory_agent → _next_after_work returns REVIEW_RESEARCH directly.
         router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
     assert router.state.stage == Stage.DONE
 
@@ -248,22 +247,17 @@ async def test_memory_agent_skipped_on_handler_failure():
         call_count += 1
         if call_count == 1:
             return  # don't advance stage — simulates handler failure
-        # 2nd call: succeed → advance through the memory interstitial.
         router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research_fail),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research_fail),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
-    # Memory agent called exactly once — for the 2nd successful iteration only.
-    # The 1st iteration (handler failure, no stage advance) did NOT trigger it.
     assert memory_agent.run.await_count == 1
 
 
@@ -280,10 +274,6 @@ async def test_memory_agent_called_for_all_work_stages():
     router.state.selected_formulations = {"test-paradigm": ["f01"]}
     router.state.approved_specs = {"test-paradigm": ["f01"]}
 
-    # Work-handler mocks advance to MEMORY_X via _next_after_work; the real
-    # _memory_<stage> handlers then await memory_agent.run() and transition to
-    # REVIEW_X. Review mocks set the next work stage. GET_ENV_SPEC has no
-    # memory tick, so it advances directly.
     def make_work(work_stage: Stage):
         async def fn():
             router.state.stage = router._next_after_work(work_stage)
@@ -308,19 +298,17 @@ async def test_memory_agent_called_for_all_work_stages():
         "_review_build": make_advance(Stage.DONE),
     }
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        patches = [
-            patch.object(router, name, side_effect=fn)
-            for name, fn in handler_mocks.items()
-        ]
+    patches = [
+        patch.object(router, name, side_effect=fn)
+        for name, fn in handler_mocks.items()
+    ]
+    for p in patches:
+        p.start()
+    try:
+        await router.run()
+    finally:
         for p in patches:
-            p.start()
-        try:
-            await router.run()
-        finally:
-            for p in patches:
-                p.stop()
+            p.stop()
 
     called_stages = [call.args[0] for call in memory_agent.run.call_args_list]
     assert "researcher" in called_stages
@@ -351,15 +339,12 @@ async def test_router_emits_agents_message_with_memory_agent():
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
-    # Find the agents message
     agents_msgs = [
         call.args[0]
         for call in emit.call_args_list
@@ -369,7 +354,6 @@ async def test_router_emits_agents_message_with_memory_agent():
     agents_list = agents_msgs[0]["agents"]
     agent_names = [a["name"] for a in agents_list]
     assert "memory_agent" in agent_names
-    # Memory agent entry should have a color
     ma_entry = next(a for a in agents_list if a["name"] == "memory_agent")
     assert "color" in ma_entry
 
@@ -389,13 +373,11 @@ async def test_router_emits_agents_message_without_memory_agent():
     async def mock_review():
         router.state.stage = Stage.DONE
 
-    mock_shared = _mock_shared()
-    with patch.dict(sys.modules, {"shared": mock_shared}):
-        with (
-            patch.object(router, "_do_research", side_effect=mock_research),
-            patch.object(router, "_review_research", side_effect=mock_review),
-        ):
-            await router.run()
+    with (
+        patch.object(router, "_do_research", side_effect=mock_research),
+        patch.object(router, "_review_research", side_effect=mock_review),
+    ):
+        await router.run()
 
     agents_msgs = [
         call.args[0]

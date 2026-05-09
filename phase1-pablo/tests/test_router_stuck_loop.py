@@ -15,6 +15,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from decisionlab.router import PipelineState, Router, Stage
+from shared.services import Services
+
+
+def _make_services() -> Services:
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
 
 
 def _make_router(stage: Stage = Stage.RESEARCH) -> Router:
@@ -30,6 +41,7 @@ def _make_router(stage: Stage = Stage.RESEARCH) -> Router:
             state=state,
             search=MagicMock(),
             project_root=Path("."),
+            services=_make_services(),
         )
 
 

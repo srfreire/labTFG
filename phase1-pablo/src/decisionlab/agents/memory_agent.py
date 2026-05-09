@@ -179,7 +179,15 @@ class MemoryAgent:
         # Build named tasks so results can be identified without index tracking
         coros: dict[str, asyncio.Task] = {}
         if do_kg:
-            coros["kg"] = asyncio.create_task(populate_kg(extraction, self._kg))
+            coros["kg"] = asyncio.create_task(
+                populate_kg(
+                    extraction,
+                    self._kg,
+                    db=self._db,
+                    embeddings=self._embeddings,
+                    vectors=self._vectors,
+                )
+            )
         if do_idx:
             coros["idx"] = asyncio.create_task(
                 index_stage_output(

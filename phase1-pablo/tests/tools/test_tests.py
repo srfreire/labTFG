@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -11,7 +11,7 @@ def test_run_tests_schema_has_required_fields():
     assert RUN_TESTS_SCHEMA["input_schema"]["required"] == ["path"]
 
 
-def _make_s3_mock(files: dict[str, str]):
+def _make_storage_mock(files: dict[str, str]):
     """Build a mock storage object from a dict of {relative_path: content}."""
     prefix = "models/run-1"
     store: dict[str, bytes] = {}
@@ -39,22 +39,24 @@ def _make_s3_mock(files: dict[str, str]):
 @pytest.mark.asyncio
 async def test_run_tests_passing_file(tmp_path):
     test_content = "def test_ok():\n    assert 1 + 1 == 2\n"
-    mock = _make_s3_mock({"test_passing.py": test_content})
+    storage = _make_storage_mock({"test_passing.py": test_content})
 
-    with patch("shared.storage", mock):
-        fn = create_run_tests(s3_prefix="models/run-1", project_root=tmp_path)
-        result = await fn({"path": "test_passing.py"})
+    fn = create_run_tests(
+        s3_prefix="models/run-1", project_root=tmp_path, storage=storage
+    )
+    result = await fn({"path": "test_passing.py"})
     assert "passed" in result
 
 
 @pytest.mark.asyncio
 async def test_run_tests_failing_file(tmp_path):
     test_content = "def test_bad():\n    assert 1 == 2\n"
-    mock = _make_s3_mock({"test_failing.py": test_content})
+    storage = _make_storage_mock({"test_failing.py": test_content})
 
-    with patch("shared.storage", mock):
-        fn = create_run_tests(s3_prefix="models/run-1", project_root=tmp_path)
-        result = await fn({"path": "test_failing.py"})
+    fn = create_run_tests(
+        s3_prefix="models/run-1", project_root=tmp_path, storage=storage
+    )
+    result = await fn({"path": "test_failing.py"})
     assert "FAILED" in result or "AssertionError" in result
 
 
@@ -70,23 +72,30 @@ async def test_run_tests_timeout(tmp_path, monkeypatch):
     monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
 
     test_content = "def test_ok():\n    pass\n"
-    mock = _make_s3_mock({"test_any.py": test_content})
+    storage = _make_storage_mock({"test_any.py": test_content})
 
-    with patch("shared.storage", mock):
-        fn = create_run_tests(s3_prefix="models/run-1", project_root=tmp_path)
-        result = await fn({"path": "test_any.py"})
+    fn = create_run_tests(
+        s3_prefix="models/run-1", project_root=tmp_path, storage=storage
+    )
+    result = await fn({"path": "test_any.py"})
     assert "timed out" in result
 
 
 @pytest.mark.asyncio
 async def test_run_tests_path_traversal(tmp_path):
-    fn = create_run_tests(s3_prefix="models/run-1", project_root=tmp_path)
+    storage = MagicMock()
+    fn = create_run_tests(
+        s3_prefix="models/run-1", project_root=tmp_path, storage=storage
+    )
     with pytest.raises(ValueError, match="Invalid path"):
         await fn({"path": "../../evil_test.py"})
 
 
 @pytest.mark.asyncio
 async def test_run_tests_missing_param(tmp_path):
-    fn = create_run_tests(s3_prefix="models/run-1", project_root=tmp_path)
+    storage = MagicMock()
+    fn = create_run_tests(
+        s3_prefix="models/run-1", project_root=tmp_path, storage=storage
+    )
     with pytest.raises(ValueError, match="path"):
         await fn({})

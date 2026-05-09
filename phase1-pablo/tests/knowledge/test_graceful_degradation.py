@@ -16,48 +16,30 @@ import pytest
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-_SHARED_MODULE = "shared"
 _TOOL_MODULE = "decisionlab.knowledge.retrieval.tool"
 _KG_RETRIEVAL_MODULE = "decisionlab.knowledge.retrieval.kg_retrieval"
 _VECTOR_MODULE = "decisionlab.knowledge.retrieval.vector_retrieval"
 _MEMORY_AGENT_MODULE = "decisionlab.agents.memory_agent"
 
 
-@pytest.fixture(autouse=True)
-def _reset_shared_singletons():
-    """Reset shared module-level singletons between tests."""
-    import shared
-
-    saved = (shared.storage, shared.db, shared.kg, shared.vectors, shared.embeddings)
-    shared.storage = None
-    shared.db = None
-    shared.kg = None
-    shared.vectors = None
-    shared.embeddings = None
-    yield
-    shared.storage, shared.db, shared.kg, shared.vectors, shared.embeddings = saved
-
-
 def _make_settings(**overrides):
-    """Create a minimal Settings-like object for shared.init()."""
-    defaults = {
-        "MINIO_ENDPOINT": "localhost:9000",
-        "MINIO_ACCESS_KEY": "test",
-        "MINIO_SECRET_KEY": "test",
-        "S3_BUCKET": "test",
-        "DATABASE_URL": "sqlite+aiosqlite:///test.db",
-        "NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USER": "neo4j",
-        "NEO4J_PASSWORD": "password",
-        "QDRANT_URL": "http://localhost:6333",
-        "VOYAGE_API_KEY": "voy-test",
-        "ZEROENTROPY_API_KEY": "ze-test",
-    }
-    defaults.update(overrides)
-    settings = MagicMock()
-    for k, v in defaults.items():
-        setattr(settings, k, v)
-    return settings
+    """Create a real Settings instance for init_services()."""
+    from dataclasses import replace
+
+    from shared.settings import Settings
+
+    base = Settings(
+        VOYAGE_API_KEY="voy-test",
+        ZEROENTROPY_API_KEY="ze-test",
+    )
+    if overrides:
+        # Only pass overrides whose keys exist on Settings
+        from dataclasses import fields
+
+        valid_names = {f.name for f in fields(Settings)}
+        clean = {k: v for k, v in overrides.items() if k in valid_names}
+        return replace(base, **clean)
+    return base
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -70,8 +52,8 @@ class TestStartupDegradation:
 
     @pytest.mark.asyncio
     async def test_neo4j_down_sets_kg_to_none(self):
-        """When Neo4j is unreachable, shared.kg stays None and init doesn't crash."""
-        import shared
+        """When Neo4j is unreachable, services.kg stays None and init doesn't crash."""
+        from shared.services import init_services
 
         settings = _make_settings()
 
@@ -84,10 +66,10 @@ class TestStartupDegradation:
         mock_vs.init_collections = AsyncMock()
 
         with (
-            patch("shared.StorageService", return_value=mock_storage),
-            patch("shared.DatabaseService", return_value=mock_db),
-            patch("shared.KnowledgeGraph") as mock_kg_cls,
-            patch("shared.VectorStore", return_value=mock_vs),
+            patch("shared.services.StorageService", return_value=mock_storage),
+            patch("shared.services.DatabaseService", return_value=mock_db),
+            patch("shared.services.KnowledgeGraph") as mock_kg_cls,
+            patch("shared.services.VectorStore", return_value=mock_vs),
         ):
             mock_kg_instance = MagicMock()
             mock_kg_instance.init_schema = AsyncMock(
@@ -95,16 +77,16 @@ class TestStartupDegradation:
             )
             mock_kg_cls.return_value = mock_kg_instance
 
-            await shared.init(settings)
+            services = await init_services(settings)
 
-        assert shared.kg is None
-        assert shared.vectors is not None
-        assert shared.embeddings is not None
+        assert services.kg is None
+        assert services.vectors is not None
+        assert services.embeddings is not None
 
     @pytest.mark.asyncio
     async def test_qdrant_down_sets_vectors_to_none(self):
-        """When Qdrant is unreachable, shared.vectors stays None."""
-        import shared
+        """When Qdrant is unreachable, services.vectors stays None."""
+        from shared.services import init_services
 
         settings = _make_settings()
 
@@ -116,10 +98,10 @@ class TestStartupDegradation:
         mock_kg.init_schema = AsyncMock()
 
         with (
-            patch("shared.StorageService", return_value=mock_storage),
-            patch("shared.DatabaseService", return_value=mock_db),
-            patch("shared.KnowledgeGraph", return_value=mock_kg),
-            patch("shared.VectorStore") as mock_vs_cls,
+            patch("shared.services.StorageService", return_value=mock_storage),
+            patch("shared.services.DatabaseService", return_value=mock_db),
+            patch("shared.services.KnowledgeGraph", return_value=mock_kg),
+            patch("shared.services.VectorStore") as mock_vs_cls,
         ):
             mock_vs_instance = MagicMock()
             mock_vs_instance.connect = AsyncMock(
@@ -127,16 +109,16 @@ class TestStartupDegradation:
             )
             mock_vs_cls.return_value = mock_vs_instance
 
-            await shared.init(settings)
+            services = await init_services(settings)
 
-        assert shared.kg is not None
-        assert shared.vectors is None
-        assert shared.embeddings is not None
+        assert services.kg is not None
+        assert services.vectors is None
+        assert services.embeddings is not None
 
     @pytest.mark.asyncio
     async def test_voyage_api_key_missing_sets_embeddings_to_none(self):
-        """When Voyage AI key is missing, shared.embeddings stays None."""
-        import shared
+        """When Voyage AI key is missing, services.embeddings stays None."""
+        from shared.services import init_services
 
         settings = _make_settings(VOYAGE_API_KEY="", ZEROENTROPY_API_KEY="")
 
@@ -151,21 +133,21 @@ class TestStartupDegradation:
         mock_vs.init_collections = AsyncMock()
 
         with (
-            patch("shared.StorageService", return_value=mock_storage),
-            patch("shared.DatabaseService", return_value=mock_db),
-            patch("shared.KnowledgeGraph", return_value=mock_kg),
-            patch("shared.VectorStore", return_value=mock_vs),
+            patch("shared.services.StorageService", return_value=mock_storage),
+            patch("shared.services.DatabaseService", return_value=mock_db),
+            patch("shared.services.KnowledgeGraph", return_value=mock_kg),
+            patch("shared.services.VectorStore", return_value=mock_vs),
         ):
-            await shared.init(settings)
+            services = await init_services(settings)
 
-        assert shared.kg is not None
-        assert shared.vectors is not None
-        assert shared.embeddings is None
+        assert services.kg is not None
+        assert services.vectors is not None
+        assert services.embeddings is None
 
     @pytest.mark.asyncio
     async def test_all_knowledge_infra_down(self):
         """When all knowledge services are down, pipeline still starts."""
-        import shared
+        from shared.services import init_services
 
         settings = _make_settings(VOYAGE_API_KEY="", ZEROENTROPY_API_KEY="")
 
@@ -175,10 +157,10 @@ class TestStartupDegradation:
         mock_db.connect = AsyncMock()
 
         with (
-            patch("shared.StorageService", return_value=mock_storage),
-            patch("shared.DatabaseService", return_value=mock_db),
-            patch("shared.KnowledgeGraph") as mock_kg_cls,
-            patch("shared.VectorStore") as mock_vs_cls,
+            patch("shared.services.StorageService", return_value=mock_storage),
+            patch("shared.services.DatabaseService", return_value=mock_db),
+            patch("shared.services.KnowledgeGraph") as mock_kg_cls,
+            patch("shared.services.VectorStore") as mock_vs_cls,
         ):
             mock_kg_cls.return_value.init_schema = AsyncMock(
                 side_effect=OSError("Neo4j down")
@@ -187,21 +169,21 @@ class TestStartupDegradation:
                 side_effect=OSError("Qdrant down")
             )
 
-            await shared.init(settings)
+            services = await init_services(settings)
 
-        assert shared.kg is None
-        assert shared.vectors is None
-        assert shared.embeddings is None
+        assert services.kg is None
+        assert services.vectors is None
+        assert services.embeddings is None
         # Core infra still works
-        assert shared.storage is not None
-        assert shared.db is not None
+        assert services.storage is not None
+        assert services.db is not None
 
     @pytest.mark.asyncio
     async def test_degradation_warning_logged(self, caplog):
         """WARNING logged listing unavailable services."""
         import logging
 
-        import shared
+        from shared.services import init_services
 
         settings = _make_settings(VOYAGE_API_KEY="")
 
@@ -211,10 +193,10 @@ class TestStartupDegradation:
         mock_db.connect = AsyncMock()
 
         with (
-            patch("shared.StorageService", return_value=mock_storage),
-            patch("shared.DatabaseService", return_value=mock_db),
-            patch("shared.KnowledgeGraph") as mock_kg_cls,
-            patch("shared.VectorStore") as mock_vs_cls,
+            patch("shared.services.StorageService", return_value=mock_storage),
+            patch("shared.services.DatabaseService", return_value=mock_db),
+            patch("shared.services.KnowledgeGraph") as mock_kg_cls,
+            patch("shared.services.VectorStore") as mock_vs_cls,
         ):
             mock_kg_cls.return_value.init_schema = AsyncMock(
                 side_effect=OSError("Neo4j down")
@@ -224,7 +206,7 @@ class TestStartupDegradation:
             )
 
             with caplog.at_level(logging.WARNING, logger="shared"):
-                await shared.init(settings)
+                await init_services(settings)
 
         assert "Running in degraded mode" in caplog.text
 
@@ -577,7 +559,9 @@ class TestPartialDegradation:
         ]
         mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-        result = await kg_retrieve("test query", mock_kg, mock_embedding, mock_client)
+        result = await kg_retrieve(
+            "test query", mock_kg, mock_embedding, mock_client, vectors=None
+        )
 
         assert result == []
 
@@ -749,7 +733,9 @@ class TestNoUnhandledExceptions:
             side_effect=Exception("API totally down")
         )
 
-        result = await kg_retrieve("query", MagicMock(), MagicMock(), mock_client)
+        result = await kg_retrieve(
+            "query", MagicMock(), MagicMock(), mock_client, vectors=None
+        )
         assert result == []
 
     @pytest.mark.asyncio

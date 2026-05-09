@@ -10,11 +10,17 @@ Flow:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from simlab.charts import build_chart_tools
 from simlab.environment import Event
 from simlab.loop import run_agent_loop
 from simlab.tools import build_cross_experiment_tools, build_simulation_tools
 from simlab.utils import extract_text
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 
@@ -250,9 +256,18 @@ absence.
 
 
 class Analyst:
-    def __init__(self, *, client, model: str = DEFAULT_MODEL):
+    def __init__(
+        self,
+        *,
+        client,
+        storage: StorageService,
+        db: DatabaseService,
+        model: str = DEFAULT_MODEL,
+    ):
         self.client = client
         self.model = model
+        self._storage = storage
+        self._db = db
         self.charts: list[dict] = []
 
     async def run(
@@ -280,14 +295,20 @@ class Analyst:
         tools, registry = build_simulation_tools(
             events, critical_events=critical_events
         )
-        db_tools, db_registry = build_cross_experiment_tools()
+        db_tools, db_registry = build_cross_experiment_tools(
+            db=self._db, storage=self._storage
+        )
         tools += db_tools
         registry.update(db_registry)
 
         # Add chart tools if experiment_id is available
         if experiment_id:
             chart_tools, chart_registry = build_chart_tools(
-                events, experiment_id, self.charts
+                events,
+                experiment_id,
+                self.charts,
+                storage=self._storage,
+                db=self._db,
             )
             tools += chart_tools
             registry.update(chart_registry)

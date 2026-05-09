@@ -97,7 +97,15 @@ async def test_deep_researcher_saves_report_to_s3():
     )
     client.messages.create = AsyncMock(return_value=summary_response)
 
-    dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
+    storage = MagicMock()
+    db = MagicMock()
+    dr = DeepResearcher(
+        client=client,
+        search=MockWebSearch(),
+        run_id="run-1",
+        storage=storage,
+        db=db,
+    )
 
     with patch(
         "decisionlab.agents.deep_researcher.save_deep_report", new_callable=AsyncMock
@@ -107,6 +115,8 @@ async def test_deep_researcher_saves_report_to_s3():
             "run-1",
             "Homeostatic regulation",
             "# Homeostatic — Deep research\n\nFull content.",
+            storage=storage,
+            db=db,
         )
 
 

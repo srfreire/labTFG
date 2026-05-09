@@ -13,14 +13,18 @@ import logging
 import re
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import anthropic
 import sqlparse
 from sqlalchemy import text
 
-import shared
 from shared.settings import load_settings
 from simlab.utils import strip_markdown_fences
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -134,13 +138,13 @@ async def _plan(question: str) -> dict | None:
         return None
 
 
-async def _execute(sql: str) -> list[dict] | None:
+async def _execute(sql: str, *, db: DatabaseService) -> list[dict] | None:
     """Run a validated SQL query in a read-only transaction.
 
     Returns a list of row dicts, or None on error.
     """
     try:
-        async with shared.db.get_session() as session:
+        async with db.get_session() as session:
             await session.execute(text("SET TRANSACTION READ ONLY"))
             result = await session.execute(text(sql))
             rows = result.mappings().all()
@@ -163,6 +167,8 @@ async def _fetch_s3(
     rows: list[dict],
     fetch_types: list[str],
     max_rows: int,
+    *,
+    storage: StorageService,
 ) -> dict[str, str]:
     """Fetch S3 content for the first *max_rows* rows in parallel.
 
@@ -181,7 +187,7 @@ async def _fetch_s3(
 
     async def _fetch_one(exp_id: str, ftype: str, key: str) -> tuple[str, str] | None:
         try:
-            content = await shared.storage.get_text(key)
+            content = await storage.get_text(key)
             truncated = content[:4000]
             return (f"{exp_id}:{ftype}", truncated)
         except Exception:
@@ -263,7 +269,9 @@ async def _synthesize(
     return response.content[0].text.strip()
 
 
-async def query_experiments(question: str) -> str:
+async def query_experiments(
+    question: str, *, db: DatabaseService, storage: StorageService
+) -> str:
     """Translate a natural language question into SQL, execute it, and synthesize an answer.
 
     Never raises — all error paths return a user-friendly Spanish string.
@@ -284,7 +292,7 @@ async def query_experiments(question: str) -> str:
         return error
 
     # 3. Execute
-    rows = await _execute(validated_sql)
+    rows = await _execute(validated_sql, db=db)
     if rows is None:
         return "Error al ejecutar la consulta."
 
@@ -294,7 +302,9 @@ async def query_experiments(question: str) -> str:
     capped = len(rows) == _MAX_LIMIT
 
     # 4. Fetch S3
-    s3_data = await _fetch_s3(rows, fetch_types, settings.NLSQL_MAX_S3_FETCH)
+    s3_data = await _fetch_s3(
+        rows, fetch_types, settings.NLSQL_MAX_S3_FETCH, storage=storage
+    )
 
     # 5. Synthesize
     try:

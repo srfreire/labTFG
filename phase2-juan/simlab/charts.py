@@ -15,10 +15,15 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from simlab.environment import Event
 from simlab.loop import Registry
 from simlab.utils import get_q_values
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 # ---------------------------------------------------------------------------
 # Data extraction from events
@@ -368,6 +373,9 @@ def build_chart_tools(
     events: list[Event],
     experiment_id: str,
     charts_accumulator: list[dict],
+    *,
+    storage: StorageService,
+    db: DatabaseService,
 ) -> tuple[list[dict], Registry]:
     """Build chart generation tools for the Analyst.
 
@@ -375,11 +383,12 @@ def build_chart_tools(
         events: simulation events to extract data from
         experiment_id: experiment UUID — charts are uploaded to S3 under this prefix
         charts_accumulator: mutable list — chart specs are appended here
+        storage: object store
+        db: database (for artifact registration)
     """
     counter = [len(charts_accumulator)]  # continue numbering
 
     async def create_chart(params: dict) -> str:
-        import shared
         from shared.artifacts import register_artifact
 
         chart_type = params["chart_type"]
@@ -443,7 +452,7 @@ def build_chart_tools(
         png_bytes = _generate_chart_image(spec)
         if png_bytes:
             s3_key = f"experiments/{experiment_id}/charts/{chart_id}.png"
-            await shared.storage.put(s3_key, png_bytes, "image/png")
+            await storage.put(s3_key, png_bytes, "image/png")
             spec["image_path"] = s3_key
 
             await register_artifact(
@@ -452,6 +461,7 @@ def build_chart_tools(
                 len(png_bytes),
                 experiment_id=experiment_id,
                 content_type="image/png",
+                db=db,
             )
 
         charts_accumulator.append(spec)

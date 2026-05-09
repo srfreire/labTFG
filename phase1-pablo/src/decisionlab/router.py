@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
     from decisionlab.agents.memory_agent import MemoryAgent
     from decisionlab.domain.ports import WebSearchPort
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -159,10 +160,8 @@ class PipelineState:
 
     # -- persistence ---------------------------------------------------------
 
-    async def save(self) -> None:
+    async def save(self, services: Services) -> None:
         """Save state to S3 at research/{run_id}/pipeline_state.json."""
-        import shared
-
         data = {
             "stage": self.stage.value,
             "problem": self.problem,
@@ -178,11 +177,11 @@ class PipelineState:
             ],
         }
         key = f"research/{self.run_id}/pipeline_state.json"
-        await shared.storage.put_text(key, json.dumps(data, indent=2))
+        await services.storage.put_text(key, json.dumps(data, indent=2))
         logger.debug("PipelineState saved to s3://%s", key)
 
     @classmethod
-    async def load(cls, run_id: str) -> PipelineState:
+    async def load(cls, run_id: str, services: Services) -> PipelineState:
         """Load state from S3 and verify referenced artifacts still exist.
 
         Raises ``FileNotFoundError`` when the state file itself is missing,
@@ -191,11 +190,9 @@ class PipelineState:
         usually means a previous run crashed mid-stage and left the state
         ahead of the actual outputs.
         """
-        import shared
-
         key = f"research/{run_id}/pipeline_state.json"
         try:
-            raw = await shared.storage.get_text(key)
+            raw = await services.storage.get_text(key)
             data = json.loads(raw)
         except Exception:
             raise FileNotFoundError(f"Pipeline state not found at s3://{key}") from None
@@ -219,7 +216,7 @@ class PipelineState:
             ],
         )
 
-        missing = await state._missing_artifacts()
+        missing = await state._missing_artifacts(services)
         if missing:
             preview = ", ".join(missing[:5])
             extra = f" (and {len(missing) - 5} more)" if len(missing) > 5 else ""
@@ -232,15 +229,13 @@ class PipelineState:
 
         return state
 
-    async def _missing_artifacts(self) -> list[str]:
+    async def _missing_artifacts(self, services: Services) -> list[str]:
         """Return S3 keys this state references that don't exist on the bucket.
 
         Walks the artifacts implied by each filled-in state field. Empty fields
         are skipped (a state in early RESEARCH has nothing to validate beyond
         itself). Returns an empty list when state is coherent.
         """
-        import shared
-
         candidates: list[str] = []
         for slug in self.approved_paradigms:
             candidates.append(f"{self.research_prefix}/formulations/{slug}.md")
@@ -258,7 +253,7 @@ class PipelineState:
         missing: list[str] = []
         for key in candidates:
             try:
-                if not await shared.storage.exists(key):
+                if not await services.storage.exists(key):
                     missing.append(key)
             except Exception:
                 # Storage unreachable → don't pretend the artifact is missing;
@@ -273,10 +268,9 @@ class PipelineState:
 async def _convert_formulations_to_slugs(
     state: PipelineState,
     raw_selected: dict[str, list[int]],
+    services: Services,
 ) -> dict[str, list[str]]:
     """Convert ``{slug: [int]}`` from feedback to ``{slug: [formulation_slug]}``."""
-    import shared
-
     converted: dict[str, list[str]] = {}
     for slug, kept_numbers in raw_selected.items():
         if not kept_numbers:
@@ -284,7 +278,7 @@ async def _convert_formulations_to_slugs(
             continue
         key = f"research/{state.run_id}/formulations/{slug}.md"
         try:
-            text = await shared.storage.get_text(key)
+            text = await services.storage.get_text(key)
         except Exception:
             logger.warning("Formulation file not found for '%s'; skipping", slug)
             converted[slug] = []
@@ -316,6 +310,8 @@ class Router:
         state: PipelineState,
         search: WebSearchPort,
         project_root: Path,
+        *,
+        services: Services,
         emit: EmitFn | None = None,
         stop_after: Stage | None = None,
         feedback: FeedbackPort | None = None,
@@ -324,6 +320,7 @@ class Router:
         self.state = state
         self.search = search
         self.project_root = project_root
+        self._services: Services = services
         self.console = Console()
         self.emit = emit  # None → no UI mirroring of trace events
         # Feedback port: defaults to CLIFeedback (questionary). The web server
@@ -366,11 +363,9 @@ class Router:
         (agent runs without the tool — graceful degradation).
         """
         try:
-            import shared
-
-            kg = getattr(shared, "kg", None)
-            vectors = getattr(shared, "vectors", None)
-            embeddings = getattr(shared, "embeddings", None)
+            kg = self._services.kg
+            vectors = self._services.vectors
+            embeddings = self._services.embeddings
 
             if kg is None and vectors is None and embeddings is None:
                 return {}
@@ -383,6 +378,7 @@ class Router:
                 client=self.client,
                 run_id=self.state.run_id,
                 stage=stage,
+                db=self._services.db,
             )
             return {
                 "knowledge_tool_schema": RETRIEVE_KNOWLEDGE_SCHEMA,
@@ -395,18 +391,16 @@ class Router:
     def _init_memory_agent(self) -> MemoryAgent | None:
         """Create a MemoryAgent if knowledge infrastructure is available."""
         try:
-            import shared
-
-            if shared.db is None:
+            if self._services.db is None:
                 return None
             from decisionlab.agents.memory_agent import MemoryAgent
 
             return MemoryAgent(
                 client=self.client,
-                kg=getattr(shared, "kg", None),
-                vector_store=getattr(shared, "vectors", None),
-                embedding_service=getattr(shared, "embeddings", None),
-                db=shared.db,
+                kg=self._services.kg,
+                vector_store=self._services.vectors,
+                embedding_service=self._services.embeddings,
+                db=self._services.db,
             )
         except Exception:
             logger.debug("Knowledge infrastructure unavailable — Memory Agent disabled")
@@ -464,11 +458,10 @@ class Router:
         try:
             if local_path is not None and local_path.exists():
                 content = local_path.read_text(encoding="utf-8")
-                import shared
 
-                if shared.storage is not None:
+                if self._services.storage is not None:
                     key = f"research/{run_id}/trace.jsonl"
-                    await shared.storage.put_text(key, content)
+                    await self._services.storage.put_text(key, content)
                     logger.debug(
                         "Trace uploaded to s3://%s (%d bytes)", key, len(content)
                     )
@@ -503,10 +496,9 @@ class Router:
         """Update the Run row in Postgres with the given column values."""
         from sqlalchemy import update
 
-        import shared
         from shared.models import Run
 
-        async with shared.db.get_session() as session:
+        async with self._services.db.get_session() as session:
             await session.execute(
                 update(Run)
                 .where(Run.id == uuid.UUID(self.state.run_id))
@@ -572,13 +564,12 @@ class Router:
         """Merge a per-stage Memory Agent result into runs.memory_results.
         Read-modify-write is fine here: the Router is the sole writer for any
         given run, so there's no concurrent-update race to worry about."""
-        import shared
         from shared.models import Run
 
         self.memory_results[agent_name] = payload
 
         try:
-            async with shared.db.get_session() as session:
+            async with self._services.db.get_session() as session:
                 run = await session.get(Run, uuid.UUID(self.state.run_id))
                 if run is None:
                     return
@@ -610,24 +601,23 @@ class Router:
 
         async with record_stage("consolidation"):
             try:
-                import shared
                 from decisionlab.knowledge.consolidation import consolidate
 
                 if (
-                    shared.db is None
-                    or shared.embeddings is None
-                    or shared.vectors is None
+                    self._services.db is None
+                    or self._services.embeddings is None
+                    or self._services.vectors is None
                 ):
                     return
 
-                async with shared.db.get_session() as session:
+                async with self._services.db.get_session() as session:
                     result = await consolidate(
                         db_session=session,
-                        embedding_service=shared.embeddings,
-                        vector_store=shared.vectors,
+                        embedding_service=self._services.embeddings,
+                        vector_store=self._services.vectors,
                         client=self.client,
                         run_id=self.state.run_id,
-                        kg=getattr(shared, "kg", None),
+                        kg=self._services.kg,
                     )
                 logger.info("Consolidation completed: %s", result)
             except Exception:
@@ -641,15 +631,13 @@ class Router:
         if cached is not None:
             return cached
 
-        import shared
-
         prefix = self.state.research_prefix
         models = self.state.models_prefix
 
         if stage == Stage.RESEARCH:
             key = f"{prefix}/report.md"
             try:
-                text = await shared.storage.get_text(key)
+                text = await self._services.storage.get_text(key)
             except Exception:
                 logger.warning("Could not read research report from %s", key)
                 return ""
@@ -661,7 +649,7 @@ class Router:
             for slug in self.state.approved_paradigms:
                 key = f"{prefix}/formulations/{slug}.md"
                 try:
-                    parts.append(await shared.storage.get_text(key))
+                    parts.append(await self._services.storage.get_text(key))
                 except Exception:
                     logger.warning("Could not read formulation %s", key)
             text = "\n\n".join(parts)
@@ -674,7 +662,7 @@ class Router:
                 for fid in fids:
                     key = f"{models}/reasoner/{paradigm}/{fid}.json"
                     try:
-                        parts.append(await shared.storage.get_text(key))
+                        parts.append(await self._services.storage.get_text(key))
                     except Exception:
                         logger.warning("Could not read reasoner spec %s", key)
             text = "\n\n".join(parts)
@@ -687,7 +675,7 @@ class Router:
                 for fid in fids:
                     model_key = f"{models}/builder/{paradigm}/{fid}_model.py"
                     try:
-                        parts.append(await shared.storage.get_text(model_key))
+                        parts.append(await self._services.storage.get_text(model_key))
                     except Exception:
                         logger.warning("Could not read builder model %s", model_key)
             if self.state.build_results:
@@ -779,7 +767,7 @@ class Router:
             ):
                 self.state.stage = Stage.DONE
 
-            await self.state.save()
+            await self.state.save(self._services)
             await self._update_run(status=self.state.stage.value)
 
         # Finalize run: consolidation + s3_report_key. final_stage is set
@@ -848,7 +836,12 @@ class Router:
             r = Researcher(
                 client=self.client,
                 search=self.search,
+                storage=self._services.storage,
+                db=self._services.db,
                 run_id=self.state.run_id,
+                kg=self._services.kg,
+                vectors=self._services.vectors,
+                embeddings=self._services.embeddings,
                 **self._knowledge_tool_kwargs("researcher"),
             )
             report = await r.run(
@@ -883,6 +876,8 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("deep_researcher"),
                     )
@@ -896,7 +891,7 @@ class Router:
                 continue
             # No more additions — store approved slugs
             self.state.approved_paradigms = approved
-            await self.state.save()
+            await self.state.save(self._services)
             break
         self.state.stage = Stage.FORMALIZE
 
@@ -910,6 +905,8 @@ class Router:
             f = Formalizer(
                 client=self.client,
                 research_prefix=self.state.research_prefix,
+                storage=self._services.storage,
+                db=self._services.db,
                 run_id=self.state.run_id,
                 **self._knowledge_tool_kwargs("formalizer"),
             )
@@ -933,22 +930,21 @@ class Router:
         self.state.selected_formulations = await _convert_formulations_to_slugs(
             self.state,
             selected,
+            self._services,
         )
-        await self.state.save()
+        await self.state.save(self._services)
         from decisionlab.tools.reports import generate_tree_map
 
-        await generate_tree_map(self.state)
+        await generate_tree_map(self.state, self._services)
         self.state.stage = Stage.GET_ENV_SPEC
 
     async def _get_env_spec(self) -> None:
-        import shared
-
         try:
             src_path = await self.feedback.get_env_spec()
             # Upload env_spec to S3
             env_spec_data = src_path.read_text()
             s3_key = f"research/{self.state.run_id}/env_spec.json"
-            await shared.storage.put_text(s3_key, env_spec_data)
+            await self._services.storage.put_text(s3_key, env_spec_data)
             self.state.env_spec_path = Path(s3_key)  # transitional
         except Exception as exc:
             self.console.print(f"[bold red]env_spec setup failed: {exc}[/bold red]")
@@ -972,6 +968,8 @@ class Router:
                 client=self.client,
                 research_prefix=self.state.research_prefix,
                 models_prefix=self.state.models_prefix,
+                storage=self._services.storage,
+                db=self._services.db,
                 run_id=self.state.run_id,
                 **self._knowledge_tool_kwargs("reasoner"),
             )
@@ -1015,6 +1013,8 @@ class Router:
                     f = Formalizer(
                         client=self.client,
                         research_prefix=self.state.research_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("formalizer"),
                     )
@@ -1034,6 +1034,8 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("reasoner"),
                     )
@@ -1055,6 +1057,8 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("reasoner"),
                     )
@@ -1080,6 +1084,8 @@ class Router:
             b = Builder(
                 client=self.client,
                 models_prefix=self.state.models_prefix,
+                storage=self._services.storage,
+                db=self._services.db,
                 run_id=self.state.run_id,
                 project_root=self.project_root,
                 **self._knowledge_tool_kwargs("builder"),
@@ -1098,7 +1104,6 @@ class Router:
         self.state.stage = self._next_after_work(Stage.BUILD)
 
     async def _review_build(self) -> None:
-        import shared
         from decisionlab.agents.builder import Builder
 
         while True:
@@ -1123,6 +1128,8 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("reasoner"),
                     )
@@ -1142,6 +1149,8 @@ class Router:
                     b = Builder(
                         client=self.client,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
                         **self._knowledge_tool_kwargs("builder"),
@@ -1153,7 +1162,7 @@ class Router:
                     self.state.build_results.update(report.results)
                     # Clean up stale validation reports for this paradigm in S3
                     for sid in paradigm_specs:
-                        await shared.storage.delete(
+                        await self._services.storage.delete(
                             f"{self.state.models_prefix}/builder/{paradigm_slug}/{sid}_validation.json"
                         )
                 except Exception as exc:
@@ -1171,6 +1180,8 @@ class Router:
                     b = Builder(
                         client=self.client,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
                         **self._knowledge_tool_kwargs("builder"),
@@ -1201,19 +1212,17 @@ class Router:
         memory namespace) ended up with two different identifiers for the
         same artifact.
         """
-        import shared
-
         prefix = f"{self.state.models_prefix}/reasoner/"
         for paradigm, formulations in selected.items():
             for formulation in formulations:
                 expected = f"{prefix}{paradigm}/{formulation}.json"
-                if not await shared.storage.exists(expected):
+                if not await self._services.storage.exists(expected):
                     paradigm_prefix = f"{prefix}{paradigm}/"
-                    keys = await shared.storage.list(paradigm_prefix)
+                    keys = await self._services.storage.list(paradigm_prefix)
                     json_keys = [k for k in keys if k.endswith(".json")]
                     if json_keys:
                         old_key = json_keys[0]
-                        await shared.storage.rename(old_key, expected)
+                        await self._services.storage.rename(old_key, expected)
                         logger.warning(
                             "Reasoner file renamed: %s → %s",
                             old_key,
@@ -1225,7 +1234,7 @@ class Router:
 
                 # Re-pin formulation_id to the canonical slug.
                 try:
-                    text = await shared.storage.get_text(expected)
+                    text = await self._services.storage.get_text(expected)
                     data = json.loads(text)
                 except Exception:
                     continue
@@ -1240,27 +1249,25 @@ class Router:
                     expected,
                 )
                 data["formulation_id"] = formulation
-                await shared.storage.put_text(expected, json.dumps(data, indent=2))
+                await self._services.storage.put_text(expected, json.dumps(data, indent=2))
 
     async def _validate_builder_files(
         self,
         approved_specs: dict[str, list[str]],
     ) -> None:
         """Verify expected builder files exist; rename mismatches."""
-        import shared
-
         prefix = f"{self.state.models_prefix}/builder/"
         for paradigm, formulations in approved_specs.items():
             for formulation in formulations:
                 expected = f"{prefix}{paradigm}/{formulation}_model.py"
-                if await shared.storage.exists(expected):
+                if await self._services.storage.exists(expected):
                     continue
                 paradigm_prefix = f"{prefix}{paradigm}/"
-                keys = await shared.storage.list(paradigm_prefix)
+                keys = await self._services.storage.list(paradigm_prefix)
                 model_keys = [k for k in keys if k.endswith("_model.py")]
                 if model_keys:
                     old_key = model_keys[0]
-                    await shared.storage.rename(old_key, expected)
+                    await self._services.storage.rename(old_key, expected)
                     logger.warning(
                         "Builder file renamed: %s → %s",
                         old_key,
@@ -1273,13 +1280,12 @@ class Router:
         """Insert or update Model rows in Postgres for each approved build."""
         from sqlalchemy import select
 
-        import shared
         from decisionlab.agents.builder_sub import derive_class_name
         from shared.models import Model
 
         run_uuid = uuid.UUID(self.state.run_id)
 
-        async with shared.db.get_session() as session:
+        async with self._services.db.get_session() as session:
             for paradigm, formulations in self.state.approved_specs.items():
                 for formulation in formulations:
                     s3_model_key = (
@@ -1298,7 +1304,7 @@ class Router:
                     # registering a row pointing at a missing artifact
                     # would mislead downstream consumers.
                     try:
-                        await shared.storage.get_text(s3_model_key)
+                        await self._services.storage.get_text(s3_model_key)
                     except Exception:
                         logger.warning(
                             "Model file not found in S3: %s — skipping registration",
@@ -1363,6 +1369,8 @@ class Router:
                     dr = DeepResearcher(
                         client=self.client,
                         search=self.search,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("deep_researcher"),
                     )
@@ -1377,6 +1385,8 @@ class Router:
                     f = Formalizer(
                         client=self.client,
                         research_prefix=self.state.research_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("formalizer"),
                     )
@@ -1392,6 +1402,8 @@ class Router:
                         client=self.client,
                         research_prefix=self.state.research_prefix,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         **self._knowledge_tool_kwargs("reasoner"),
                     )
@@ -1407,6 +1419,8 @@ class Router:
                     b = Builder(
                         client=self.client,
                         models_prefix=self.state.models_prefix,
+                        storage=self._services.storage,
+                        db=self._services.db,
                         run_id=self.state.run_id,
                         project_root=self.project_root,
                         **self._knowledge_tool_kwargs("builder"),

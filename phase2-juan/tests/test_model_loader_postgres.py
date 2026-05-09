@@ -1,23 +1,21 @@
 """Integration test: model_loader.discover_models reads from real Postgres.
 
 Requires docker-compose Postgres running on localhost:5432. The test inserts a
-`Model` row, points `shared.db` at the live engine, and verifies the loader
-sees the row through the same async session machinery the orchestrator uses
-in production.
+`Model` row, hands the live ``DatabaseService`` to the loader, and verifies the
+loader sees the row through the same async session machinery the orchestrator
+uses in production.
 """
 
 from __future__ import annotations
 
 import uuid
 from contextlib import asynccontextmanager
-from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 from simlab.model_loader import discover_models
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-import shared
 from shared.models import Base, Model, Run
 from shared.settings import load_settings
 
@@ -77,8 +75,7 @@ async def test_discover_models_reads_from_postgres(engine, db_with_engine):
         )
         await session.commit()
 
-    with patch.object(shared, "db", db_with_engine):
-        models = await discover_models()
+    models = await discover_models(db=db_with_engine)
 
     key = "homeostatic-regulation/drive-reduction-rl"
     assert key in models
@@ -86,14 +83,11 @@ async def test_discover_models_reads_from_postgres(engine, db_with_engine):
     assert info.class_name == "DriveReductionRLModel"
     assert info.description == "Loader integration"
     assert info.run_id == str(run_id)
-    assert info.s3_model_key == (
-        "models/loader-test/drive-reduction-rl_model.py"
-    )
+    assert info.s3_model_key == ("models/loader-test/drive-reduction-rl_model.py")
 
 
 @pytest.mark.asyncio
 async def test_discover_models_empty_table(db_with_engine):
     """No rows → empty dict, no errors."""
-    with patch.object(shared, "db", db_with_engine):
-        models = await discover_models()
+    models = await discover_models(db=db_with_engine)
     assert models == {}

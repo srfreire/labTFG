@@ -39,6 +39,7 @@ _DEFAULT_RELATION_IMPORTANCE = 5.0
 _DEFAULT_RELATION_CONFIDENCE = 0.7
 
 
+<<<<<<< HEAD
 def _get_embedding_service() -> EmbeddingService | None:
     """Lazy lookup of shared.embeddings — None if not initialised. Test
     seam: monkeypatch this to inject a fake."""
@@ -55,22 +56,27 @@ def _get_db() -> DatabaseService | None:
     return shared.db
 
 
+=======
+>>>>>>> strike/infra-P4-001
 async def _record_node_run_observation(
-    *, label: str, key_value: str, run_id: str
+    *,
+    label: str,
+    key_value: str,
+    run_id: str,
+    db: DatabaseService | None,
 ) -> None:
     """Best-effort insert of one ``node_run_observations`` row.
 
-    Skipped when ``shared.db`` is unavailable or ``run_id`` isn't a UUID
-    (e.g. the ``canonical-paradigms-seed`` constant — those nodes have no
-    backing ``runs`` row to point at). Postgres failures are logged but
-    never propagate: the KG write must succeed even if Postgres is down.
+    Skipped when ``db`` is unavailable or ``run_id`` isn't a UUID (e.g. the
+    ``canonical-paradigms-seed`` constant — those nodes have no backing
+    ``runs`` row to point at). Postgres failures are logged but never
+    propagate: the KG write must succeed even if Postgres is down.
     """
     try:
         parsed_run_id = uuid.UUID(run_id)
     except (ValueError, AttributeError, TypeError):
         return
 
-    db = _get_db()
     if db is None:
         return
 
@@ -465,7 +471,12 @@ def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
 
 
 async def populate_kg(
-    extraction: ExtractionResult, kg: KnowledgeGraph
+    extraction: ExtractionResult,
+    kg: KnowledgeGraph,
+    *,
+    db: DatabaseService | None = None,
+    embeddings: EmbeddingService | None = None,
+    vectors: VectorStore | None = None,
 ) -> KGWriteResult:
     """Write extraction nodes and relations to Neo4j with dedup and provenance.
 
@@ -600,7 +611,7 @@ async def populate_kg(
         # non-UUID run_ids (e.g. the seed run) silently skip — the KG write
         # already succeeded and counts toward the result.
         await _record_node_run_observation(
-            label=node.label, key_value=str(key_value), run_id=run_id
+            label=node.label, key_value=str(key_value), run_id=run_id, db=db
         )
 
         # Queue slug-like nodes for ANN-index sync after the node loop.
@@ -785,12 +796,17 @@ async def populate_kg(
     # into a failure.
     if ann_targets:
         try:
+<<<<<<< HEAD
             emb = _get_embedding_service()
             if emb is not None:
+=======
+            if embeddings is not None and vectors is not None:
+>>>>>>> strike/infra-P4-001
                 texts = [
                     f"{name}: {desc}" if desc else name
                     for (_label, _key, name, desc) in ann_targets
                 ]
+<<<<<<< HEAD
                 vecs = await emb.embed_texts(texts)
                 for (label, key_value, _display_name, _desc), vector in zip(
                     ann_targets, vecs, strict=True
@@ -807,6 +823,22 @@ async def populate_kg(
                         f"MATCH (n:{label} {{{key_name}: $key_value}}) "
                         f"SET n.embedding = $vector",
                         {"key_value": key_value, "vector": vector},
+=======
+                vecs = await embeddings.embed_texts(texts)
+                for (label, key_value, display_name, _desc), vector in zip(
+                    ann_targets, vecs, strict=True
+                ):
+                    point_id = f"{label}:{key_value}"
+                    await vectors.upsert_dense(
+                        "kg_entities_dense",
+                        id=point_id,
+                        vector=vector,
+                        payload={
+                            "label": label,
+                            "key_value": key_value,
+                            "name": display_name,
+                        },
+>>>>>>> strike/infra-P4-001
                     )
         except Exception as exc:
             logger.warning("kg_writer: embedding sync failed (non-fatal): %s", exc)

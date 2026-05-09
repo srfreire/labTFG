@@ -36,6 +36,7 @@ def _make_handler(
     client: object | None = _SENTINEL,
     run_id: str = _RUN_ID,
     stage: str = _STAGE,
+    db: object | None = _SENTINEL,
 ):
     return create_retrieve_knowledge(
         kg=MagicMock() if kg is _SENTINEL else kg,
@@ -47,6 +48,7 @@ def _make_handler(
         client=AsyncMock() if client is _SENTINEL else client,
         run_id=run_id,
         stage=stage,
+        db=MagicMock() if db is _SENTINEL else db,
     )
 
 
@@ -83,6 +85,17 @@ def _patch_pipeline(*, crag_result=None, fused=None):
         mock_fuse.return_value = fused or default_crag.results
         mock_crag.return_value = default_crag
         yield {"kg": mock_kg, "vec": mock_vec, "fuse": mock_fuse, "crag": mock_crag}
+
+
+def _mock_db_with_session(session: object) -> object:
+    db = MagicMock()
+    db.get_session = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock(return_value=False),
+        )
+    )
+    return db
 
 
 # ---------------------------------------------------------------------------
@@ -269,17 +282,6 @@ def _memory_result(mem_id: str) -> RetrievalResult:
     )
 
 
-def _mock_db_with_session(session: object) -> object:
-    db = MagicMock()
-    db.get_session = MagicMock(
-        return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=session),
-            __aexit__=AsyncMock(return_value=False),
-        )
-    )
-    return db
-
-
 class TestAC7_MemoryAccessTracking:
     @pytest.mark.asyncio
     async def test_touch_memory_called_with_batched_ids(self):
@@ -304,10 +306,8 @@ class TestAC7_MemoryAccessTracking:
                 new_callable=AsyncMock,
                 return_value={},
             ),
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
         ):
-            mock_shared.db = mock_db
-            handler = _make_handler()
+            handler = _make_handler(db=mock_db)
             await handler({"query": "test"})
 
         mock_touch.assert_called_once()
@@ -350,16 +350,12 @@ class TestAC7_MemoryAccessTracking:
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
-        with (
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
-            patch.object(
-                shared_memories,
-                "update_memory_confidence",
-                new_callable=AsyncMock,
-            ),
+        with patch.object(
+            shared_memories,
+            "update_memory_confidence",
+            new_callable=AsyncMock,
         ):
-            mock_shared.db = mock_db
-            await _track_memory_access(mem_results)
+            await _track_memory_access(mem_results, mock_db)
 
         assert mock_session.execute.await_count == 1
         assert mock_session.commit.await_count == 1
@@ -377,7 +373,6 @@ class TestAC7_MemoryAccessTracking:
         mock_db = _mock_db_with_session(mock_session)
 
         with (
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
             patch.object(
                 shared_memories,
                 "update_memory_confidence",
@@ -385,8 +380,7 @@ class TestAC7_MemoryAccessTracking:
             ),
             caplog.at_level(logging.INFO, logger=_TOOL_MODULE),
         ):
-            mock_shared.db = mock_db
-            await _track_memory_access(mem_results)
+            await _track_memory_access(mem_results, mock_db)
 
         assert any(
             "touch_memory.batch_size=3" in record.getMessage()
@@ -402,9 +396,7 @@ class TestAC7_MemoryAccessTracking:
 
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
-            mock_shared.db = mock_db
-            await _track_memory_access(web_only)
+        await _track_memory_access(web_only, mock_db)
 
         mock_session.execute.assert_not_called()
         mock_session.commit.assert_not_called()
@@ -527,9 +519,7 @@ class TestP3_002_RecencyConfidenceFromPG:
         mock_session.execute = AsyncMock(return_value=execute_result)
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
-            mock_shared.db = mock_db
-            weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, mock_db)
 
         assert mock_session.execute.await_count == 1
 
@@ -552,9 +542,7 @@ class TestP3_002_RecencyConfidenceFromPG:
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
-            mock_shared.db = mock_db
-            weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, mock_db)
 
         mock_session.execute.assert_not_called()
         assert all(r.metadata["confidence_factor"] == 1.0 for r in weighted)
@@ -582,9 +570,7 @@ class TestP3_002_RecencyConfidenceFromPG:
         mock_session.execute = AsyncMock(return_value=execute_result)
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
-            mock_shared.db = mock_db
-            weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, mock_db)
 
         assert weighted[0].metadata["confidence_factor"] == 1.0
 
@@ -616,17 +602,15 @@ class TestP3_002_RecencyConfidenceFromPG:
         mock_session.execute = AsyncMock(return_value=execute_result)
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch(f"{_TOOL_MODULE}.shared") as mock_shared:
-            mock_shared.db = mock_db
-            weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, mock_db)
 
         assert weighted[0].metadata["confidence_factor"] == 0.3
 
     @pytest.mark.asyncio
     async def test_recency_weighting_no_db_falls_back_to_one(self, caplog):
-        """When `shared.db` is None (degraded mode) use 1.0 + log warning.
+        """When db is None (degraded mode) use 1.0 + log warning.
 
-        A misconfigured prod where shared.init() failed to wire the DB
+        A misconfigured prod where init failed to wire the DB
         must not silently bypass scoring with no observable signal.
         """
         import logging
@@ -643,15 +627,11 @@ class TestP3_002_RecencyConfidenceFromPG:
             ),
         ]
 
-        with (
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
-            caplog.at_level(logging.WARNING, logger=_TOOL_MODULE),
-        ):
-            mock_shared.db = None
-            weighted = await _apply_recency_weighting(results)
+        with caplog.at_level(logging.WARNING, logger=_TOOL_MODULE):
+            weighted = await _apply_recency_weighting(results, None)
 
         assert weighted[0].metadata["confidence_factor"] == 1.0
-        assert any("shared.db is None" in r.getMessage() for r in caplog.records)
+        assert any("db is None" in r.getMessage() for r in caplog.records)
 
     @pytest.mark.asyncio
     async def test_recency_weighting_pg_error_falls_back_to_one(self, caplog):
@@ -674,12 +654,8 @@ class TestP3_002_RecencyConfidenceFromPG:
         mock_session.execute = AsyncMock(side_effect=RuntimeError("connection lost"))
         mock_db = _mock_db_with_session(mock_session)
 
-        with (
-            patch(f"{_TOOL_MODULE}.shared") as mock_shared,
-            caplog.at_level(logging.WARNING, logger=_TOOL_MODULE),
-        ):
-            mock_shared.db = mock_db
-            weighted = await _apply_recency_weighting(results)
+        with caplog.at_level(logging.WARNING, logger=_TOOL_MODULE):
+            weighted = await _apply_recency_weighting(results, mock_db)
 
         assert weighted[0].metadata["confidence_factor"] == 1.0
         assert any("PG fetch failed" in r.getMessage() for r in caplog.records)

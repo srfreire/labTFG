@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 
 import typer
 
-import shared
+from shared.services import init_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 app = typer.Typer(no_args_is_help=False, add_completion=False)
@@ -53,11 +53,11 @@ def rollup(
 
 
 async def _run(older_than_days: int, *, dry_run: bool) -> None:
-    await shared.init()
+    services = await init_services()
     try:
-        result = await _rollup(older_than_days, dry_run=dry_run)
+        result = await _rollup(older_than_days, dry_run=dry_run, services=services)
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
     typer.echo(json.dumps(result, indent=2))
 
 
@@ -68,13 +68,13 @@ def _month_cohort(created_at: str | None) -> str | None:
     return created_at[:7]
 
 
-async def _rollup(older_than_days: int, *, dry_run: bool) -> dict:
-    if shared.kg is None:
-        raise RuntimeError("shared.kg is None — Neo4j not initialised")
+async def _rollup(older_than_days: int, *, dry_run: bool, services) -> dict:
+    if services.kg is None:
+        raise RuntimeError("services.kg is None — Neo4j not initialised")
 
     cutoff = (datetime.now(UTC) - timedelta(days=older_than_days)).isoformat()
 
-    rows = await shared.kg.query(
+    rows = await services.kg.query(
         "MATCH (r:Reflection) "
         "WHERE r.created_at IS NOT NULL AND r.created_at < $cutoff "
         "RETURN r.id AS id, r.created_at AS created_at",
@@ -102,7 +102,9 @@ async def _rollup(older_than_days: int, *, dry_run: bool) -> dict:
                 "merged": 0,
             }
             continue
-        merged = await _merge_and_delete(rollup_id, month, ids, now_iso)
+        merged = await _merge_and_delete(
+            rollup_id, month, ids, now_iso, services=services
+        )
         summary[month] = {
             "rollup_id": rollup_id,
             "candidates": len(ids),
@@ -120,7 +122,7 @@ async def _rollup(older_than_days: int, *, dry_run: bool) -> dict:
 
 
 async def _merge_and_delete(
-    rollup_id: str, month: str, ids: list[str], now_iso: str
+    rollup_id: str, month: str, ids: list[str], now_iso: str, *, services
 ) -> int:
     """Atomically MERGE the rollup and DETACH DELETE the original Reflections.
 
@@ -128,7 +130,7 @@ async def _merge_and_delete(
     present (from a partial prior run) are deduped server-side and counted
     as zero new merges.
     """
-    assert shared.kg is not None
+    assert services.kg is not None
 
     async def _work(tx):
         # Single SET path so the CREATE and MATCH branches share dedup logic
@@ -157,7 +159,7 @@ async def _merge_and_delete(
         )
         return merged
 
-    return await shared.kg.execute_write(_work)
+    return await services.kg.execute_write(_work)
 
 
 if __name__ == "__main__":

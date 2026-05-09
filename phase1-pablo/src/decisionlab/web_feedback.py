@@ -11,7 +11,10 @@ import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from shared.storage import StorageService
 
 # ---------------------------------------------------------------------------
 # Module-level coordination between WS handler and review coroutines
@@ -119,6 +122,7 @@ async def review_formalize(
     paradigm_slugs: list[str],
     emit: Callable[[dict], Awaitable[None]],
     *,
+    storage: StorageService,
     run_id: str = "",
 ) -> dict[str, list[int]]:
     """WebSocket review of formalization results.
@@ -126,13 +130,11 @@ async def review_formalize(
     Returns ``{paradigm_slug: [1-based formulation numbers]}``.
     Also rewrites each paradigm's formulation file in S3.
     """
-    import shared
-
     paradigms_data: list[dict] = []
     for slug in paradigm_slugs:
         s3_key = f"research/{run_id}/formulations/{slug}.md"
         try:
-            text = await shared.storage.get_text(s3_key)
+            text = await storage.get_text(s3_key)
         except Exception:
             continue
         headers = parse_formulation_headers(text)
@@ -164,9 +166,9 @@ async def review_formalize(
         if kept:
             s3_key = f"research/{run_id}/formulations/{slug}.md"
             try:
-                text = await shared.storage.get_text(s3_key)
+                text = await storage.get_text(s3_key)
                 filtered = filter_formulations_md(text, kept)
-                await shared.storage.put_text(s3_key, filtered)
+                await storage.put_text(s3_key, filtered)
             except Exception:
                 pass
 

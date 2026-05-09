@@ -8,9 +8,10 @@ import shutil
 import tempfile
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import shared
+if TYPE_CHECKING:
+    from shared.storage import StorageService
 
 RUN_TESTS_SCHEMA: dict[str, Any] = {
     "name": "run_tests",
@@ -31,6 +32,8 @@ RUN_TESTS_SCHEMA: dict[str, Any] = {
 def create_run_tests(
     s3_prefix: str,
     project_root: Path,
+    *,
+    storage: StorageService,
 ) -> Callable[[dict], Awaitable[str]]:
     async def run_tests(params: dict) -> str:
         if "path" not in params:
@@ -41,7 +44,7 @@ def create_run_tests(
 
         # Download builder/ files from S3 to a temp directory for pytest
         builder_prefix = f"{s3_prefix}/builder/"
-        keys = await shared.storage.list(builder_prefix)
+        keys = await storage.list(builder_prefix)
 
         tmp = tempfile.mkdtemp()
         try:
@@ -50,7 +53,7 @@ def create_run_tests(
                 filename = key[len(builder_prefix) :]
                 if not filename:
                     continue
-                data = await shared.storage.get(key)
+                data = await storage.get(key)
                 dest = Path(tmp) / filename
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(data)

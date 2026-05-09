@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
 from decisionlab.domain.ports import WebSearchPort
@@ -13,6 +13,10 @@ from decisionlab.runtime.usage import record as record_usage
 from decisionlab.tools.papers import SEARCH_PAPERS_SCHEMA, create_search_papers
 from decisionlab.tools.reports import save_deep_report
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -103,12 +107,16 @@ class DeepResearcher:
         *,
         client,
         search: WebSearchPort,
+        storage: StorageService | None = None,
+        db: DatabaseService | None = None,
         run_id: str | None = None,
         knowledge_tool_schema: dict[str, Any] | None = None,
         knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
     ):
         self.client = client
         self.run_id = run_id
+        self._storage = storage
+        self._db = db
         self.tools: list[dict[str, Any]] = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
         self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "web_search": create_web_search(search),
@@ -151,8 +159,14 @@ class DeepResearcher:
             )
             return f"No results found for paradigm: {paradigm}"
 
-        if self.run_id:
-            await save_deep_report(self.run_id, paradigm, full_report)
+        if self.run_id and self._storage is not None and self._db is not None:
+            await save_deep_report(
+                self.run_id,
+                paradigm,
+                full_report,
+                storage=self._storage,
+                db=self._db,
+            )
 
         try:
             summary_cfg = SETTINGS.deep_researcher_summary

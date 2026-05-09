@@ -71,7 +71,7 @@ class TestAC2_RecencyWeighting:
             _result("Same fact", 0.9, "dense", run_id="run-2", created_at=_utc_iso(1)),
         ]
 
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
 
         run2 = next(r for r in weighted if r.metadata["run_id"] == "run-2")
         run1 = next(r for r in weighted if r.metadata["run_id"] == "run-1")
@@ -84,7 +84,7 @@ class TestAC2_RecencyWeighting:
             _result("New lower score", 0.85, "dense", created_at=_utc_iso(0)),
         ]
 
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
 
         # 0.85 * 1.0 = 0.85 vs 0.95 * 0.16 = 0.152 — new wins
         assert weighted[0].score > weighted[1].score
@@ -99,12 +99,12 @@ class TestAC2_RecencyWeighting:
 class TestAC3_RecencyFactorValues:
     async def test_zero_day_factor_is_1(self):
         results = [_result("Today", 1.0, "dense", created_at=_utc_iso(0))]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         assert weighted[0].metadata["recency_factor"] == pytest.approx(1.0)
 
     async def test_30_day_factor_approx_086(self):
         results = [_result("30d old", 1.0, "dense", created_at=_utc_iso(30))]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         expected = 0.995**30  # ~0.8607
         assert weighted[0].metadata["recency_factor"] == pytest.approx(
             expected, rel=1e-3
@@ -112,7 +112,7 @@ class TestAC3_RecencyFactorValues:
 
     async def test_365_day_factor_approx_016(self):
         results = [_result("365d old", 1.0, "dense", created_at=_utc_iso(365))]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         expected = 0.995**365  # ~0.1613
         assert weighted[0].metadata["recency_factor"] == pytest.approx(
             expected, rel=1e-2
@@ -120,29 +120,29 @@ class TestAC3_RecencyFactorValues:
 
     async def test_final_score_is_original_times_recency(self):
         results = [_result("Test", 0.9, "dense", created_at=_utc_iso(30))]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         factor = 0.995**30
         assert weighted[0].score == pytest.approx(0.9 * factor, rel=1e-3)
 
     async def test_no_timestamp_gets_factor_1(self):
         results = [_result("Web result", 0.8, "web")]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         assert weighted[0].metadata["recency_factor"] == 1.0
         assert weighted[0].score == 0.8
 
     async def test_invalid_timestamp_gets_factor_1(self):
         results = [_result("Bad ts", 0.8, "dense", created_at="not-a-date")]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         assert weighted[0].metadata["recency_factor"] == 1.0
 
     async def test_naive_timestamp_treated_as_utc(self):
         naive = datetime.now().isoformat()
         results = [_result("Naive", 1.0, "dense", created_at=naive)]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         assert weighted[0].metadata["recency_factor"] == pytest.approx(1.0, abs=0.01)
 
     async def test_empty_results(self):
-        assert await _apply_recency_weighting([]) == []
+        assert await _apply_recency_weighting([], None) == []
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ class TestAC4_RunMetadataInResults:
             "source_stage": "researcher",
         }
         results = [RetrievalResult(text="T", score=0.9, source="dense", metadata=meta)]
-        weighted = await _apply_recency_weighting(results)
+        weighted = await _apply_recency_weighting(results, None)
         for key in ("run_id", "namespace", "source_stage"):
             assert key in weighted[0].metadata
         assert "recency_factor" in weighted[0].metadata

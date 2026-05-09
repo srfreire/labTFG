@@ -106,30 +106,25 @@ async def test_kg_and_vector_paradigm_round_trip(kg_service, vector_store):
 
 
 # ---------------------------------------------------------------------------
-# Full shared.init() lifecycle with all services
+# Full init_services() lifecycle with all services
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_shared_init_exposes_all_services():
-    """shared.init() boots Storage + DB; KG/Vectors come up when reachable."""
-    import shared
+async def test_init_services_exposes_all_services():
+    """init_services() boots Storage + DB; KG/Vectors come up when reachable."""
+    from shared.services import init_services, shutdown_services
 
-    await shared.shutdown()
-    await shared.init()
+    services = await init_services()
     try:
-        assert shared.storage is not None
-        assert shared.db is not None
+        assert services.storage is not None
+        assert services.db is not None
         # KG and vectors depend on connectivity — assert at least one worked
         # (docker-compose setup has all of them healthy)
-        assert shared.kg is not None
-        assert shared.vectors is not None
+        assert services.kg is not None
+        assert services.vectors is not None
     finally:
-        await shared.shutdown()
-        assert shared.storage is None
-        assert shared.db is None
-        assert shared.kg is None
-        assert shared.vectors is None
+        await shutdown_services(services)
 
 
 # ---------------------------------------------------------------------------

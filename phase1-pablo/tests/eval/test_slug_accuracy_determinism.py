@@ -31,11 +31,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import shared
 from decisionlab.eval.models import PipelineRunResult
 from decisionlab.eval.suite import SuiteSpec, run_suite
 from decisionlab.router import Stage
 from decisionlab.runtime.tool_calls import ToolCall
+from shared.services import init_services, shutdown_services
 
 pytestmark = pytest.mark.integration
 
@@ -45,7 +45,7 @@ SLUG_ACCURACY_PATH = REPO_ROOT / "evals/suites/slug-accuracy.yaml"
 
 @pytest.fixture
 async def live_eval_kg(monkeypatch):
-    """Boot ``shared`` against the LABTFG_EVAL_KG-marked Neo4j and clean up.
+    """Boot ``Services`` against the LABTFG_EVAL_KG-marked Neo4j and clean up.
 
     The marker is mandatory after P0-003: ``run_suite`` refuses to wipe a
     KG that isn't tagged as an eval instance. We set it for the duration
@@ -53,18 +53,18 @@ async def live_eval_kg(monkeypatch):
     from an empty graph regardless of what other suites left behind.
     """
     monkeypatch.setenv("LABTFG_EVAL_KG", "1")
-    await shared.init()
-    if shared.kg is None:
-        await shared.shutdown()
+    services = await init_services()
+    if services.kg is None:
+        await shutdown_services(services)
         pytest.skip("Neo4j not reachable")
-    await shared.kg.query("MATCH (n) DETACH DELETE n")
+    await services.kg.query("MATCH (n) DETACH DELETE n")
     try:
-        yield
+        yield services
     finally:
         try:
-            await shared.kg.query("MATCH (n) DETACH DELETE n")
+            await services.kg.query("MATCH (n) DETACH DELETE n")
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
 
 def _expected_paradigm_for(topic_text: str, expect: dict) -> tuple[str, ...]:
@@ -259,8 +259,11 @@ def test_slug_accuracy_yaml_uses_reset_and_seed():
     assert seed_actions, (
         "slug-accuracy.yaml must declare a seed_canonical_paradigms setup action"
     )
+    # P1-001: fixture_path is optional now (defaults to packaged data).
+    # When supplied, it must resolve to an existing file.
     fixture = seed_actions[0].args.get("fixture_path")
-    assert fixture and "canonical-paradigms" in str(fixture)
-    assert os.path.exists(REPO_ROOT / fixture), (
-        f"seed fixture path {fixture!r} does not exist relative to repo root"
-    )
+    if fixture:
+        assert "canonical-paradigms" in str(fixture)
+        assert os.path.exists(REPO_ROOT / fixture), (
+            f"seed fixture path {fixture!r} does not exist relative to repo root"
+        )

@@ -5,11 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import shared
 from decisionlab.agents.reasoner_sub import ReasonerSubAgent
 from decisionlab.domain.models import ReasonerReport
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,8 @@ class Reasoner:
         client,
         research_prefix: str,
         models_prefix: str,
+        storage: StorageService,
+        db: DatabaseService,
         run_id: str | None = None,
         knowledge_tool_schema: dict[str, Any] | None = None,
         knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
@@ -29,6 +34,8 @@ class Reasoner:
         self.research_prefix = research_prefix
         self.models_prefix = models_prefix
         self.run_id = run_id
+        self._storage = storage
+        self._db = db
         self._knowledge_tool_schema = knowledge_tool_schema
         self._knowledge_tool_handler = knowledge_tool_handler
 
@@ -42,7 +49,7 @@ class Reasoner:
 
         if not selected_formulations:
             formulations_prefix = f"{self.research_prefix}/formulations/"
-            keys = await shared.storage.list(formulations_prefix)
+            keys = await self._storage.list(formulations_prefix)
             paradigm_slugs = [
                 k[len(formulations_prefix) :].removesuffix(".md")
                 for k in keys
@@ -62,6 +69,8 @@ class Reasoner:
                 client=self.client,
                 research_prefix=self.research_prefix,
                 models_prefix=self.models_prefix,
+                storage=self._storage,
+                db=self._db,
                 run_id=self.run_id,
                 knowledge_tool_schema=self._knowledge_tool_schema,
                 knowledge_tool_handler=self._knowledge_tool_handler,

@@ -7,9 +7,12 @@ in its ``run()`` method and extends its own tools/registry/prompt.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from simlab.recall.retrieve import RETRIEVE_CONTEXT_TOOL, retrieve_context
+
+if TYPE_CHECKING:
+    from shared.services import Services
 
 # ── Per-agent prompt sections ───────────────────────────────────────────
 
@@ -51,6 +54,7 @@ related paradigm), call `retrieve_context` with a targeted query.
 
 def build_recall_extras(
     stage: str,
+    services: Services,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], str]:
     """Return ``(extra_tools, extra_registry, prompt_section)`` for *stage*.
 
@@ -66,6 +70,7 @@ def build_recall_extras(
         if not query:
             return "## Retrieved Knowledge (0 results)\n\nNo query provided."
         return await retrieve_context(
+            services=services,
             query=query,
             namespace=params.get("namespace"),
             top_k=params.get("top_k", 5),

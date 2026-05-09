@@ -63,19 +63,19 @@ def _search():
 
 
 async def _with_shared(coro_factory):
-    """Run *coro_factory* with shared.init / shared.shutdown around it.
+    """Run *coro_factory* with init_services/shutdown_services around it.
 
-    coro_factory is a zero-arg callable that returns the coroutine to await,
-    so ``shared.init`` runs first and the awaitable is created with full
-    infra available.
+    coro_factory is a one-arg callable receiving the freshly-built
+    ``Services`` and returning the coroutine to await — eval commands need
+    explicit access to infra now that the module-level globals are gone.
     """
-    import shared
+    from shared.services import init_services, shutdown_services
 
-    await shared.init()
+    services = await init_services()
     try:
-        return await coro_factory()
+        return await coro_factory(services)
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
 
 
 def _run(coro_factory) -> None:
@@ -184,8 +184,10 @@ def cli_eval_run(
 
     out_dir = report_dir or _suite_report_dir(spec.name)
 
-    async def _factory():
-        result = await run_suite(spec, client=_client(), search=_search())
+    async def _factory(services):
+        result = await run_suite(
+            spec, services=services, client=_client(), search=_search()
+        )
         write_report(result, out_dir)
         _print_suite_summary(result, out_dir)
         if not result.all_passed:
@@ -226,14 +228,15 @@ def cli_eval_topics(
         console.print("[yellow]No topics found in file.[/yellow]")
         return
 
-    async def _factory():
+    async def _factory(services):
         if reset_kg:
-            n = await kgadmin.reset(confirm=True)
+            n = await kgadmin.reset(services, confirm=True)
             console.print(f"[dim]KG reset: deleted {n} nodes[/dim]")
         for i, topic in enumerate(topics, 1):
             console.rule(f"[bold]({i}/{len(topics)}) {topic}")
             result = await run_pipeline(
                 topic,
+                services=services,
                 stages=stage_seq,
                 env_spec_path=env_spec,
                 project_root=Path("evals/runs"),
@@ -273,9 +276,10 @@ def cli_eval_pipeline(
         )
         raise typer.Exit(code=2)
 
-    async def _factory():
+    async def _factory(services):
         result = await run_pipeline(
             topic,
+            services=services,
             stages=stage_seq,
             env_spec_path=env_spec,
             project_root=Path("evals/runs"),
@@ -361,14 +365,16 @@ def cli_eval_prune(
         console.print(f"[bold red]{exc}[/bold red]")
         raise typer.Exit(code=2) from exc
 
-    async def _factory():
-        result = await _prune_eval_runs(delta, dry_run=dry_run)
+    async def _factory(services):
+        result = await _prune_eval_runs(delta, dry_run=dry_run, services=services)
         console.print_json(json.dumps(result))
 
     _run(_factory)
 
 
-async def _prune_eval_runs(delta: timedelta, *, dry_run: bool) -> dict:
+async def _prune_eval_runs(
+    delta: timedelta, *, dry_run: bool, services
+) -> dict:
     """Reap eval runs older than *delta*. Returns counts + the deleted IDs.
 
     The counts for descendant tables are computed BEFORE the delete so
@@ -377,6 +383,7 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool) -> dict:
     """
     from sqlalchemy import func, select
 
+<<<<<<< HEAD
     import shared
     from shared.models import (
         Artifact,
@@ -386,15 +393,18 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool) -> dict:
     from shared.models import (
         PipelineMemory as Memory,
     )
+=======
+    from shared.models import Artifact, Memory, NodeRunObservation, Run
+>>>>>>> strike/infra-P4-001
 
-    if shared.db is None:
+    if services.db is None:
         raise RuntimeError(
-            "shared.db is None — cannot prune without a Postgres connection"
+            "services.db is None — cannot prune without a Postgres connection"
         )
 
     cutoff = datetime.now(UTC) - delta
 
-    async with shared.db.get_session() as session:
+    async with services.db.get_session() as session:
         run_ids = (
             (
                 await session.execute(
@@ -473,8 +483,8 @@ def cli_kg_stats(
     """Print node/relation totals and per-label/per-type breakdowns."""
     _setup_logging(verbose)
 
-    async def _factory():
-        s = await kgadmin.stats()
+    async def _factory(services):
+        s = await kgadmin.stats(services)
         if as_json:
             console.print_json(json.dumps(s.to_dict()))
             return
@@ -518,11 +528,11 @@ def cli_kg_reset(
         )
         raise typer.Exit(code=2)
 
-    async def _factory():
-        n = await kgadmin.reset(confirm=True)
+    async def _factory(services):
+        n = await kgadmin.reset(services, confirm=True)
         console.print(f"[bold]Deleted {n} nodes (and all their relations).[/bold]")
         if not no_seed:
-            await _seed_canonicals_with_console()
+            await _seed_canonicals_with_console(services)
 
     _run(_factory)
 
@@ -534,21 +544,20 @@ def cli_kg_seed(
     """Seed canonical Paradigm umbrellas without resetting the KG."""
     _setup_logging(verbose)
 
-    async def _factory():
-        await _seed_canonicals_with_console()
+    async def _factory(services):
+        await _seed_canonicals_with_console(services)
 
     _run(_factory)
 
 
-async def _seed_canonicals_with_console() -> None:
-    """Wire ``seed_canonical_paradigms`` against ``shared``-owned infra and report."""
-    import shared
+async def _seed_canonicals_with_console(services) -> None:
+    """Wire ``seed_canonical_paradigms`` against the supplied services and report."""
     from decisionlab.knowledge.seed import seed_canonical_paradigms
 
     counters = await seed_canonical_paradigms(
-        shared.kg,
-        getattr(shared, "embeddings", None),
-        getattr(shared, "vectors", None),
+        services.kg,
+        services.embeddings,
+        services.vectors,
     )
     console.print(
         f"[bold]Canonical paradigms seeded:[/bold] "
@@ -566,8 +575,8 @@ def cli_kg_snapshot(
     """Dump the entire KG (nodes + relations, including superseded)."""
     _setup_logging(verbose)
 
-    async def _factory():
-        await kgadmin.snapshot_to_file(out)
+    async def _factory(services):
+        await kgadmin.snapshot_to_file(out, services)
         console.print(f"[bold]Snapshot written:[/bold] {out}")
 
     _run(_factory)
@@ -586,9 +595,9 @@ def cli_kg_restore(
     """Wipe + restore from a snapshot (the default safe path)."""
     _setup_logging(verbose)
 
-    async def _factory():
+    async def _factory(services):
         snap = json.loads(src.read_text())
-        await kgadmin.restore(snap, reset_first=not no_reset)
+        await kgadmin.restore(snap, services, reset_first=not no_reset)
         console.print("[bold]Restore complete.[/bold]")
 
     _run(_factory)
@@ -613,8 +622,8 @@ def cli_kg_query(
         k, v = kv.split("=", 1)
         parsed[k] = v
 
-    async def _factory():
-        rows = await kgadmin.query(cypher, parsed)
+    async def _factory(services):
+        rows = await kgadmin.query(cypher, parsed, services=services)
         console.print_json(json.dumps(rows, default=str))
 
     _run(_factory)

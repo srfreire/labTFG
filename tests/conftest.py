@@ -38,10 +38,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-import shared
 from shared.database import DatabaseService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.models import Base
+from shared.services import Services, init_services, shutdown_services
 from shared.settings import Settings, load_settings
 from shared.storage import StorageService
 from shared.vector_store import VectorStore
@@ -137,17 +137,18 @@ async def vector_store(settings: Settings) -> AsyncIterator[VectorStore]:
 
 
 # ---------------------------------------------------------------------------
-# Shared global lifecycle
+# Services lifecycle (replaces the legacy shared.init/shutdown shim)
 # ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
-async def shared_initialized() -> AsyncIterator[None]:
-    """Boots ``shared.init()`` with all infra, tears down on exit."""
-    await shared.shutdown()
-    await shared.init()
-    yield
-    await shared.shutdown()
+async def services(settings: Settings) -> AsyncIterator[Services]:
+    """Boots a ``Services`` via ``init_services``, tears down on exit."""
+    svc = await init_services(settings)
+    try:
+        yield svc
+    finally:
+        await shutdown_services(svc)
 
 
 # ---------------------------------------------------------------------------

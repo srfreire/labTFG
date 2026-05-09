@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from decisionlab.eval.runner import run_pipeline
 from decisionlab.eval.timing import record_stage
 from decisionlab.router import Stage
+from shared.services import Services
+
+
+def _services():
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
 
 
 class _TimingRouter:
@@ -41,6 +52,7 @@ async def test_run_pipeline_populates_timing(tmp_path, patch_run_row):
     with patch("decisionlab.eval.runner.Router", _TimingRouter):
         result = await run_pipeline(
             "homeostasis under uncertainty",
+            services=_services(),
             stages=[Stage.RESEARCH],
             project_root=tmp_path,
             client=client,

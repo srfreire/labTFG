@@ -32,7 +32,13 @@ def test_researcher_has_correct_tools():
 
 def test_researcher_has_read_report_when_run_id():
     client = AsyncMock()
-    r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
+    r = Researcher(
+        client=client,
+        search=MockWebSearch(),
+        run_id="run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
+    )
     tool_names = [t["name"] for t in r.tools]
     assert "read_report" in tool_names
 
@@ -180,12 +186,22 @@ async def test_researcher_saves_summary_to_s3(streaming_client):
 
     client = streaming_client(response)
 
+    storage = MagicMock()
+    db = MagicMock()
     with patch(
         "decisionlab.agents.researcher.save_summary_report", new_callable=AsyncMock
     ) as mock_save:
-        r = Researcher(client=client, search=MockWebSearch(), run_id="run-1")
+        r = Researcher(
+            client=client,
+            search=MockWebSearch(),
+            run_id="run-1",
+            storage=storage,
+            db=db,
+        )
         await r.run("test problem")
-        mock_save.assert_called_once_with("run-1", "# Final summary")
+        mock_save.assert_called_once_with(
+            "run-1", "# Final summary", storage=storage, db=db
+        )
 
 
 @pytest.mark.asyncio

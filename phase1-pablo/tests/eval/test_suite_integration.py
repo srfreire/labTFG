@@ -21,12 +21,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import yaml
 
-import shared
 from decisionlab.eval.models import PipelineRunResult
 from decisionlab.eval.suite import SuiteSpec, run_suite
 from decisionlab.router import Stage
+from shared.services import init_services, shutdown_services
 
 pytestmark = pytest.mark.integration
+
+# Module-level holder so the fakes that patch ``run_pipeline`` (and run
+# inside the suite, without fixture access) can reach the live Neo4j.
+_live_services = None
 
 
 @pytest.fixture
@@ -35,19 +39,22 @@ async def live_infra(monkeypatch):
     # ``reset_kg_before`` against an unmarked Neo4j. Mark the test
     # instance as eval so the existing fixtures keep working without
     # adding an env-var requirement to every CI invocation.
+    global _live_services
     monkeypatch.setenv("LABTFG_EVAL_KG", "1")
-    await shared.init()
-    if shared.kg is None:
-        await shared.shutdown()
+    services = await init_services()
+    if services.kg is None:
+        await shutdown_services(services)
         pytest.skip("Neo4j not reachable")
-    await shared.kg.query("MATCH (n) DETACH DELETE n")
+    _live_services = services
+    await services.kg.query("MATCH (n) DETACH DELETE n")
     try:
-        yield
+        yield services
     finally:
         try:
-            await shared.kg.query("MATCH (n) DETACH DELETE n")
+            await services.kg.query("MATCH (n) DETACH DELETE n")
         finally:
-            await shared.shutdown()
+            _live_services = None
+            await shutdown_services(services)
 
 
 def _write_suite(tmp_path, body: dict):
@@ -75,7 +82,7 @@ class TestSuiteAgainstLiveKG:
     @pytest.mark.asyncio
     async def test_reset_kg_before_actually_wipes(self, live_infra, tmp_path):
         # Seed the KG with a stale node so we can prove the reset ran.
-        await shared.kg.query("CREATE (n:Stale {slug: 'left-over'})")
+        await live_infra.kg.query("CREATE (n:Stale {slug: 'left-over'})")
 
         spec = _write_suite(
             tmp_path,
@@ -103,13 +110,13 @@ class TestSuiteAgainstLiveKG:
         assert result.post_stats.total_nodes == 0
 
         # Stale node from before should be gone.
-        rows = await shared.kg.query("MATCH (n:Stale) RETURN count(n) AS c")
+        rows = await live_infra.kg.query("MATCH (n:Stale) RETURN count(n) AS c")
         assert rows[0]["c"] == 0
 
     @pytest.mark.asyncio
     async def test_kg_growth_delta_reflects_writes(self, live_infra, tmp_path):
         # Seed BEFORE the suite — pre-stats should see 1 node.
-        await shared.kg.query("CREATE (n:Existing {slug: 'pre'})")
+        await live_infra.kg.query("CREATE (n:Existing {slug: 'pre'})")
 
         spec = _write_suite(
             tmp_path,
@@ -122,7 +129,9 @@ class TestSuiteAgainstLiveKG:
 
         async def _stub_that_writes(topic, **kw):
             # Simulate what the real MemoryAgent would do: drop a node.
-            await shared.kg.query("CREATE (n:WrittenByStub {slug: $s})", {"s": topic})
+            await live_infra.kg.query(
+                "CREATE (n:WrittenByStub {slug: $s})", {"s": topic}
+            )
             return _fake_result(topic)
 
         with patch(
@@ -155,9 +164,9 @@ class TestSuiteAgainstLiveKG:
         )
 
         async def _stub_writes_paradigms(topic, **kw):
-            await shared.kg.query("CREATE (n:Paradigm {slug: 'a'})")
-            await shared.kg.query("CREATE (n:Paradigm {slug: 'b'})")
-            await shared.kg.query("CREATE (n:Paradigm {slug: 'c'})")
+            await live_infra.kg.query("CREATE (n:Paradigm {slug: 'a'})")
+            await live_infra.kg.query("CREATE (n:Paradigm {slug: 'b'})")
+            await live_infra.kg.query("CREATE (n:Paradigm {slug: 'c'})")
             return _fake_result(topic)
 
         with patch(
@@ -193,7 +202,7 @@ class TestSuiteAgainstLiveKG:
 
         # Only one Paradigm written — threshold 5 should fail.
         async def _stub(topic, **kw):
-            await shared.kg.query("CREATE (n:Paradigm {slug: 'lonely'})")
+            await live_infra.kg.query("CREATE (n:Paradigm {slug: 'lonely'})")
             return _fake_result(topic)
 
         with patch(

@@ -100,10 +100,19 @@ def research(
     reports_dir = _reports_dir(problem)
 
     async def _run():
-        r = Researcher(
-            client=_client(), search=default_search_chain(), reports_dir=reports_dir
-        )
-        return await r.run(problem)
+        from shared.services import init_services, shutdown_services
+
+        services = await init_services()
+        try:
+            r = Researcher(
+                client=_client(),
+                search=default_search_chain(),
+                storage=services.storage,
+                db=services.db,
+            )
+            return await r.run(problem)
+        finally:
+            await shutdown_services(services)
 
     report = _run_async(_run())
     _print_research_report("Research Report", report, reports_dir)
@@ -122,10 +131,19 @@ def deep_research(
     reports_dir = _reports_dir(paradigm)
 
     async def _run():
-        dr = DeepResearcher(
-            client=_client(), search=default_search_chain(), reports_dir=reports_dir
-        )
-        return await dr.run(paradigm)
+        from shared.services import init_services, shutdown_services
+
+        services = await init_services()
+        try:
+            dr = DeepResearcher(
+                client=_client(),
+                search=default_search_chain(),
+                storage=services.storage,
+                db=services.db,
+            )
+            return await dr.run(paradigm)
+        finally:
+            await shutdown_services(services)
 
     result = _run_async(_run())
 
@@ -161,8 +179,19 @@ def formalize(
     from decisionlab.agents.formalizer import Formalizer
 
     async def _run():
-        f = Formalizer(client=_client(), reports_dir=reports_dir)
-        return await f.run(paradigms)
+        from shared.services import init_services, shutdown_services
+
+        services = await init_services()
+        try:
+            f = Formalizer(
+                client=_client(),
+                research_prefix=f"research/{reports_dir.name}",
+                storage=services.storage,
+                db=services.db,
+            )
+            return await f.run(paradigms)
+        finally:
+            await shutdown_services(services)
 
     report = _run_async(_run())
 
@@ -207,19 +236,25 @@ def reason(
     from decisionlab.agents.reasoner import Reasoner
 
     async def _run():
-        import shared
+        from shared.services import init_services, shutdown_services
 
-        await shared.init()
+        services = await init_services()
         try:
             # Upload env_spec to S3 (uses reports_dir slug as a fallback run_id)
             env_spec_data = env_spec.read_text()
             s3_key = f"research/{reports_dir.name}/env_spec.json"
-            await shared.storage.put_text(s3_key, env_spec_data)
+            await services.storage.put_text(s3_key, env_spec_data)
 
-            r = Reasoner(client=_client(), reports_dir=reports_dir)
+            r = Reasoner(
+                client=_client(),
+                research_prefix=f"research/{reports_dir.name}",
+                models_prefix=f"models/{reports_dir.name}",
+                storage=services.storage,
+                db=services.db,
+            )
             return await r.run(paradigms)
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
     report = _run_async(_run())
 
@@ -253,8 +288,20 @@ def build(
     from decisionlab.agents.builder import Builder
 
     async def _run():
-        b = Builder(client=_client(), reports_dir=reports_dir, project_root=Path.cwd())
-        return await b.run(paradigms or None)
+        from shared.services import init_services, shutdown_services
+
+        services = await init_services()
+        try:
+            b = Builder(
+                client=_client(),
+                models_prefix=f"models/{reports_dir.name}",
+                project_root=Path.cwd(),
+                storage=services.storage,
+                db=services.db,
+            )
+            return await b.run(paradigms or None)
+        finally:
+            await shutdown_services(services)
 
     report = _run_async(_run())
 
@@ -299,13 +346,13 @@ def run(
     async def _run():
         import uuid as _uuid
 
-        import shared
         from shared.models import Run
+        from shared.services import init_services, shutdown_services
 
-        await shared.init()
+        services = await init_services()
         try:
             run_id = str(_uuid.uuid4())
-            async with shared.db.get_session() as session:
+            async with services.db.get_session() as session:
                 db_run = Run(
                     id=_uuid.UUID(run_id),
                     problem_description=problem,
@@ -322,7 +369,7 @@ def run(
                 reports_dir=reports_dir,
                 run_id=run_id,
             )
-            await state.save()
+            await state.save(services)
             router = Router(
                 client=_client(),
                 state=state,
@@ -330,10 +377,11 @@ def run(
                 project_root=Path.cwd(),
                 stop_after=stop_after,
                 feedback=CLIFeedback(),
+                services=services,
             )
             await router.run()
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
     _run_async(_run())
 
@@ -360,28 +408,29 @@ def resume(
     from decisionlab.router import PipelineState, Router, Stage
 
     async def _run():
-        import shared
+        from shared.services import init_services, shutdown_services
 
-        await shared.init()
+        services = await init_services()
         try:
             if run_id:
-                state = await PipelineState.load(run_id)
+                state = await PipelineState.load(run_id, services)
             else:
                 # Legacy: load from local reports_dir
-                state = await PipelineState.load("")  # will fail; use run_id
+                state = await PipelineState.load("", services)  # will fail; use run_id
                 console.print(
                     "[bold red]--reports-dir is deprecated; use --run-id[/bold red]"
                 )
                 raise typer.Exit(code=1)
             if from_stage:
                 state.stage = Stage[from_stage.upper()]
-                await state.save()
+                await state.save(services)
             router = Router(
                 client=_client(),
                 state=state,
                 search=default_search_chain(),
                 project_root=Path.cwd(),
                 feedback=CLIFeedback(),
+                services=services,
             )
             await router.run()
 
@@ -393,7 +442,7 @@ def resume(
 
                 from shared.models import Run
 
-                async with shared.db.get_session() as session:
+                async with services.db.get_session() as session:
                     await session.execute(
                         update(Run)
                         .where(Run.id == _uuid2.UUID(state.run_id))
@@ -404,7 +453,7 @@ def resume(
                     )
                     await session.commit()
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
     _run_async(_run())
 

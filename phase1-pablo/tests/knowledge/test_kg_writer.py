@@ -1110,7 +1110,8 @@ async def test_node_run_observation_records_per_merge(monkeypatch):
     only verify the helper is invoked once per MERGE."""
     captured: list[dict] = []
 
-    async def _capture(*, label, key_value, run_id):
+    async def _capture(*, label, key_value, run_id, db):
+        del db
         captured.append({"label": label, "key_value": key_value, "run_id": run_id})
 
     monkeypatch.setattr(kg_writer, "_record_node_run_observation", _capture)
@@ -1129,45 +1130,41 @@ async def test_node_run_observation_records_per_merge(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_record_node_run_observation_skips_non_uuid_run_id(monkeypatch):
+async def test_record_node_run_observation_skips_non_uuid_run_id():
     """Non-UUID run_ids (e.g. ``canonical-paradigms-seed``) silently skip
     the Postgres insert — no FK violation, no log spam at error level."""
     db_called = False
 
     class _SentinelDB:
-        nonlocal_marker = True
-
         def get_session(self):
             nonlocal db_called
             db_called = True
             raise AssertionError("DB must not be touched for non-UUID run_id")
 
-    monkeypatch.setattr(kg_writer, "_get_db", lambda: _SentinelDB())
-
     await kg_writer._record_node_run_observation(
         label="Paradigm",
         key_value="reinforcement-learning",
         run_id="canonical-paradigms-seed",
+        db=_SentinelDB(),
     )
 
     assert db_called is False
 
 
 @pytest.mark.asyncio
-async def test_record_node_run_observation_skips_when_db_unavailable(monkeypatch):
-    """When ``shared.db`` is None the helper is a quiet no-op."""
-    monkeypatch.setattr(kg_writer, "_get_db", lambda: None)
-
+async def test_record_node_run_observation_skips_when_db_unavailable():
+    """When ``db`` is None the helper is a quiet no-op."""
     # No exception, no return value required.
     await kg_writer._record_node_run_observation(
         label="Paradigm",
         key_value="reinforcement-learning",
         run_id=str(uuid.uuid4()),
+        db=None,
     )
 
 
 @pytest.mark.asyncio
-async def test_record_node_run_observation_swallows_pg_failure(monkeypatch):
+async def test_record_node_run_observation_swallows_pg_failure():
     """Postgres exceptions inside the helper must not propagate — the KG
     write must still report success even if the audit row insert fails."""
 
@@ -1188,11 +1185,10 @@ async def test_record_node_run_observation_swallows_pg_failure(monkeypatch):
         def get_session(self):
             return _BrokenSession()
 
-    monkeypatch.setattr(kg_writer, "_get_db", lambda: _BrokenDB())
-
     # Must not raise.
     await kg_writer._record_node_run_observation(
         label="Paradigm",
         key_value="reinforcement-learning",
         run_id=str(uuid.uuid4()),
+        db=_BrokenDB(),
     )

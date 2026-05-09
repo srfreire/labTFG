@@ -11,10 +11,12 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import shared
 from shared.settings import Settings, load_settings
+
+if TYPE_CHECKING:
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,7 @@ RETRIEVE_CONTEXT_TOOL: dict[str, Any] = {
 
 async def retrieve_context(
     *,
+    services: Services,
     query: str,
     namespace: str | None = None,
     top_k: int = 5,
@@ -61,12 +64,20 @@ async def retrieve_context(
 
     Returns a markdown-formatted string.  Never raises — any failure is
     logged and the caller receives *_EMPTY_RESULT*.
+
+    Callers must pass an explicit ``Services`` (constructed via
+    ``init_services``). The ENABLE_KNOWLEDGE_READ flag still gates the
+    call: with the flag off this returns ``_EMPTY_RESULT`` immediately
+    without touching ``services``.
     """
     settings = load_settings()
     if not settings.ENABLE_KNOWLEDGE_READ:
         return _EMPTY_RESULT
 
-    if shared.vectors is None and shared.embeddings is None and shared.kg is None:
+    if services is None:
+        return _EMPTY_RESULT
+
+    if services.vectors is None and services.embeddings is None and services.kg is None:
         logger.debug("Knowledge infra unavailable — returning empty result")
         return _EMPTY_RESULT
 
@@ -77,13 +88,14 @@ async def retrieve_context(
 
         client = AsyncAnthropic()  # reads ANTHROPIC_API_KEY from env
         handler = create_retrieve_knowledge(
-            kg=shared.kg,
-            vector_store=shared.vectors,
-            embedding_service=shared.embeddings,
+            kg=services.kg,
+            vector_store=services.vectors,
+            embedding_service=services.embeddings,
             search_adapter=None,
             client=client,
             run_id=run_id or str(uuid.uuid4()),
             stage=stage,
+            db=services.db,
         )
         params: dict[str, Any] = {"query": query, "top_k": top_k}
         if namespace is not None:
@@ -100,6 +112,7 @@ async def retrieve_context(
 
 
 async def build_retriever_from_settings(
+    services: Services,
     settings: Settings | None = None,
 ) -> Callable[..., Any] | None:
     """Return a ready-to-call retriever, or *None* if the feature is off.
@@ -113,8 +126,29 @@ async def build_retriever_from_settings(
     if not settings.ENABLE_KNOWLEDGE_READ:
         return None
 
-    if shared.vectors is None and shared.embeddings is None and shared.kg is None:
+    if services is None:
+        return None
+    if services.vectors is None and services.embeddings is None and services.kg is None:
         logger.warning("ENABLE_KNOWLEDGE_READ=true but knowledge infra unavailable")
         return None
 
-    return retrieve_context
+    async def _bound(
+        *,
+        query: str,
+        namespace: str | None = None,
+        top_k: int = 5,
+        as_of: str | None = None,
+        stage: str = "phase2",
+        run_id: str | None = None,
+    ) -> str:
+        return await retrieve_context(
+            services=services,
+            query=query,
+            namespace=namespace,
+            top_k=top_k,
+            as_of=as_of,
+            stage=stage,
+            run_id=run_id,
+        )
+
+    return _bound

@@ -119,7 +119,7 @@ async def test_plan_invalid_json():
 
 
 # ---------------------------------------------------------------------------
-# S3 fetch tests — mock shared.storage
+# S3 fetch tests — pass an explicit StorageService mock
 # ---------------------------------------------------------------------------
 
 
@@ -138,9 +138,7 @@ async def test_s3_fetch_respects_limit():
     mock_storage = AsyncMock()
     mock_storage.get_text = AsyncMock(return_value='{"data": "test"}')
 
-    with patch("simlab.nlsql.shared") as mock_shared:
-        mock_shared.storage = mock_storage
-        await _fetch_s3(rows, ["analyst"], max_rows=2)
+    await _fetch_s3(rows, ["analyst"], max_rows=2, storage=mock_storage)
 
     # Should only fetch 2 rows, not 4
     assert mock_storage.get_text.call_count == 2
@@ -161,9 +159,7 @@ async def test_s3_fetch_partial_failure():
         side_effect=['{"data": "ok"}', RuntimeError("S3 down")]
     )
 
-    with patch("simlab.nlsql.shared") as mock_shared:
-        mock_shared.storage = mock_storage
-        result = await _fetch_s3(rows, ["analyst"], max_rows=2)
+    result = await _fetch_s3(rows, ["analyst"], max_rows=2, storage=mock_storage)
 
     # Should have 1 result (the successful one)
     assert len(result) == 1
@@ -180,9 +176,7 @@ async def test_s3_fetch_truncation():
     mock_storage = AsyncMock()
     mock_storage.get_text = AsyncMock(return_value=long_content)
 
-    with patch("simlab.nlsql.shared") as mock_shared:
-        mock_shared.storage = mock_storage
-        result = await _fetch_s3(rows, ["analyst"], max_rows=1)
+    result = await _fetch_s3(rows, ["analyst"], max_rows=1, storage=mock_storage)
 
     for v in result.values():
         assert len(v) <= 4100  # 4000 + some truncation marker
@@ -230,13 +224,17 @@ async def test_query_experiments_roundtrip():
     mock_settings.NLSQL_MODEL = "claude-haiku"
     mock_settings.NLSQL_MAX_S3_FETCH = 3
 
+    mock_db = MagicMock()
+    mock_db.get_session = MagicMock(return_value=mock_session)
+    mock_storage = AsyncMock()
+
     with (
         patch("simlab.nlsql.anthropic.AsyncAnthropic", return_value=mock_client),
-        patch("simlab.nlsql.shared") as mock_shared,
         patch("simlab.nlsql.load_settings", return_value=mock_settings),
     ):
-        mock_shared.db.get_session = MagicMock(return_value=mock_session)
-        answer = await query_experiments("cuántos experimentos tengo?")
+        answer = await query_experiments(
+            "cuántos experimentos tengo?", db=mock_db, storage=mock_storage
+        )
 
     assert "2 experimentos" in answer
 
@@ -269,12 +267,16 @@ async def test_query_experiments_no_results():
     mock_settings.NLSQL_MODEL = "claude-haiku"
     mock_settings.NLSQL_MAX_S3_FETCH = 3
 
+    mock_db = MagicMock()
+    mock_db.get_session = MagicMock(return_value=mock_session)
+    mock_storage = AsyncMock()
+
     with (
         patch("simlab.nlsql.anthropic.AsyncAnthropic", return_value=mock_client),
-        patch("simlab.nlsql.shared") as mock_shared,
         patch("simlab.nlsql.load_settings", return_value=mock_settings),
     ):
-        mock_shared.db.get_session = MagicMock(return_value=mock_session)
-        answer = await query_experiments("find nonexistent experiments")
+        answer = await query_experiments(
+            "find nonexistent experiments", db=mock_db, storage=mock_storage
+        )
 
     assert "No encontré" in answer

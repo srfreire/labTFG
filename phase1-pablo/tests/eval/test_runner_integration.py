@@ -20,35 +20,41 @@ Run with:
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-import shared
 from decisionlab.adapters.duckduckgo import DuckDuckGoAdapter
 from decisionlab.domain.models import Paradigm, ResearchReport
 from decisionlab.eval.runner import run_pipeline
 from decisionlab.knowledge.models import MemoryAgentResult
 from decisionlab.router import Stage
+from shared.services import init_services, shutdown_services
 
 pytestmark = pytest.mark.integration
+
+# Module-level holder so the in-test fakes (which don't see fixture args)
+# can write KG nodes through the same connection ``run_pipeline`` uses.
+_live_services = None
 
 
 @pytest.fixture
 async def live_infra(tmp_path):
-    await shared.init()
-    if shared.kg is None or shared.db is None:
-        await shared.shutdown()
+    global _live_services
+    services = await init_services()
+    if services.kg is None or services.db is None:
+        await shutdown_services(services)
         pytest.skip("Live infra not reachable")
-    await shared.kg.query("MATCH (n) DETACH DELETE n")
+    _live_services = services
+    await services.kg.query("MATCH (n) DETACH DELETE n")
     try:
-        yield tmp_path
+        yield tmp_path, services
     finally:
         try:
-            await shared.kg.query("MATCH (n) DETACH DELETE n")
+            await services.kg.query("MATCH (n) DETACH DELETE n")
         finally:
-            await shared.shutdown()
+            _live_services = None
+            await shutdown_services(services)
 
 
 class _FakeResearcher:
@@ -96,7 +102,7 @@ class _FakeMemoryAgent:
         # path actually executed. Slug includes run_id to dodge the
         # Paradigm.slug uniqueness constraint when multiple runs land in
         # the same Neo4j instance during a test session.
-        await shared.kg.query(
+        await _live_services.kg.query(
             "CREATE (p:Paradigm {slug: $s, run_id: $r})",
             {"s": f"stub-{stage}-{run_id[:8]}", "r": run_id},
         )
@@ -119,7 +125,7 @@ class _FakeMemoryAgent:
 class TestRunPipelineE2E:
     @pytest.mark.asyncio
     async def test_research_only_round_trip(self, live_infra):
-        tmp_path: Path = live_infra
+        tmp_path, services = live_infra
         run_id = str(uuid.uuid4())
 
         with (
@@ -147,7 +153,7 @@ class TestRunPipelineE2E:
 
         # The fake MemoryAgent wrote one node per stage; verify it
         # actually landed in Neo4j with the right run_id tag.
-        rows = await shared.kg.query(
+        rows = await services.kg.query(
             "MATCH (p:Paradigm {run_id: $r}) RETURN count(p) AS c",
             {"r": run_id},
         )
@@ -163,7 +169,7 @@ class TestRunPipelineE2E:
 
         from shared.models import Run
 
-        tmp_path: Path = live_infra
+        tmp_path, services = live_infra
         run_id = str(uuid.uuid4())
 
         with (
@@ -180,7 +186,7 @@ class TestRunPipelineE2E:
                 run_id=run_id,
             )
 
-        async with shared.db.get_session() as session:
+        async with services.db.get_session() as session:
             row = await session.scalar(select(Run).where(Run.id == uuid.UUID(run_id)))
         assert row is not None
         assert row.problem_description == "topic-x"
@@ -195,7 +201,7 @@ class TestRunPipelineE2E:
         with their own run_ids — verifies that ``_create_run_row`` and
         the AutoApproveFeedback's S3 listing use the runner's run_id
         rather than leaking state between calls."""
-        tmp_path: Path = live_infra
+        tmp_path, services = live_infra
         run_a = str(uuid.uuid4())
         run_b = str(uuid.uuid4())
 
@@ -222,11 +228,11 @@ class TestRunPipelineE2E:
                 run_id=run_b,
             )
 
-        rows_a = await shared.kg.query(
+        rows_a = await services.kg.query(
             "MATCH (p:Paradigm {run_id: $r}) RETURN count(p) AS c",
             {"r": run_a},
         )
-        rows_b = await shared.kg.query(
+        rows_b = await services.kg.query(
             "MATCH (p:Paradigm {run_id: $r}) RETURN count(p) AS c",
             {"r": run_b},
         )

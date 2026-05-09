@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -20,6 +20,8 @@ def test_reasoner_sub_has_correct_tools():
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     tool_names = [t["name"] for t in agent.tools]
     assert "read_file" in tool_names
@@ -75,6 +77,8 @@ async def test_reasoner_sub_run_returns_content(
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     result = await agent.run("homeostatic")
 
@@ -93,6 +97,8 @@ async def test_reasoner_sub_uses_opus_model(make_text_block, make_response):
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     await agent.run("homeostatic")
 
@@ -121,6 +127,8 @@ async def test_reasoner_sub_includes_formulation_slugs_in_message(
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=MagicMock(),
+        db=MagicMock(),
     )
     await agent.run("homeostatic", formulation_slugs=["pi-controller", "dual-process"])
 

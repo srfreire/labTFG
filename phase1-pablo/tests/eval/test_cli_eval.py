@@ -73,8 +73,9 @@ class TestEvalHelp:
         )
 
     def test_eval_pipeline_rejects_reason_without_env_spec(self):
-        # The CLI does its own pre-flight validation before calling shared.init,
-        # so this short-circuits with exit code 2 even without infra.
+        # The CLI does its own pre-flight validation before calling
+        # init_services, so this short-circuits with exit code 2 even
+        # without infra.
         result = runner.invoke(
             app, ["eval", "pipeline", "topic", "--stages", "research,formalize,reason"]
         )

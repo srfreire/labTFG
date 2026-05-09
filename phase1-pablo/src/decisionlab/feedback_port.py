@@ -24,7 +24,10 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +70,11 @@ class FeedbackPort(Protocol):
     ) -> ReviewBuildResult: ...
 
 
+# Implementations accept storage at construction. The Router constructs them
+# (or the caller does and passes in via ``feedback=``). Each adapter captures
+# storage and threads it into the underlying module functions that need it.
+
+
 # ---------------------------------------------------------------------------
 # CLIFeedback — questionary prompts
 # ---------------------------------------------------------------------------
@@ -74,6 +82,9 @@ class FeedbackPort(Protocol):
 
 class CLIFeedback:
     """Interactive feedback via questionary prompts. Default for ``decisionlab run``."""
+
+    def __init__(self, *, storage: StorageService | None = None) -> None:
+        self._storage = storage
 
     async def review_research(
         self,
@@ -94,8 +105,12 @@ class CLIFeedback:
     ) -> ReviewFormalizeResult:
         from decisionlab import feedback
 
+        if self._storage is None:
+            raise RuntimeError(
+                "CLIFeedback.review_formalize: storage was not provided at construction"
+            )
         return await feedback.review_formalize(
-            reports_dir, paradigm_slugs, run_id=run_id
+            reports_dir, paradigm_slugs, run_id=run_id, storage=self._storage
         )
 
     async def get_env_spec(self) -> Path:
@@ -126,8 +141,11 @@ class CLIFeedback:
 class WebFeedback:
     """WebSocket-based feedback. Wraps the existing ``web_feedback`` module."""
 
-    def __init__(self, emit: EmitFn) -> None:
+    def __init__(
+        self, emit: EmitFn, *, storage: StorageService | None = None
+    ) -> None:
         self._emit = emit
+        self._storage = storage
 
     async def review_research(
         self,
@@ -148,8 +166,16 @@ class WebFeedback:
     ) -> ReviewFormalizeResult:
         from decisionlab import web_feedback
 
+        if self._storage is None:
+            raise RuntimeError(
+                "WebFeedback.review_formalize: storage was not provided at construction"
+            )
         return await web_feedback.review_formalize(
-            reports_dir, paradigm_slugs, self._emit, run_id=run_id
+            reports_dir,
+            paradigm_slugs,
+            self._emit,
+            run_id=run_id,
+            storage=self._storage,
         )
 
     async def get_env_spec(self) -> Path:
@@ -198,7 +224,13 @@ class AutoApproveFeedback:
     blocks: e.g. requesting ``get_env_spec`` without a configured path.
     """
 
-    def __init__(self, *, env_spec_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        storage: StorageService | None = None,
+        env_spec_path: Path | None = None,
+    ) -> None:
+        self._storage = storage
         self._env_spec_path = env_spec_path
 
     async def review_research(
@@ -223,11 +255,9 @@ class AutoApproveFeedback:
                 return local_slugs, None
 
         try:
-            import shared
-
-            if shared.storage is None:
-                raise RuntimeError("shared.storage not initialised")
-            keys = await shared.storage.list(f"research/{run_id}/deep/")
+            if self._storage is None:
+                raise RuntimeError("storage not provided to AutoApproveFeedback")
+            keys = await self._storage.list(f"research/{run_id}/deep/")
             slugs = sorted(Path(k).stem for k in keys if k.endswith(".md"))
             return slugs, None
         except Exception as exc:
@@ -246,14 +276,17 @@ class AutoApproveFeedback:
         *,
         run_id: str,
     ) -> ReviewFormalizeResult:
-        import shared
         from decisionlab.parsing import parse_formulation_headers
 
+        if self._storage is None:
+            raise RuntimeError(
+                "AutoApproveFeedback.review_formalize: storage not provided"
+            )
         result: dict[str, list[int]] = {}
         for slug in paradigm_slugs:
             key = f"research/{run_id}/formulations/{slug}.md"
             try:
-                text = await shared.storage.get_text(key)
+                text = await self._storage.get_text(key)
             except Exception:
                 logger.warning(
                     "AutoApproveFeedback.review_formalize: %s unreadable — skipping",

@@ -14,14 +14,18 @@ from __future__ import annotations
 import json
 import uuid
 from collections import Counter
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-import shared
 from shared.models import Experiment as DBExperiment
 from simlab.environment import Event
 from simlab.loop import Registry
 from simlab.utils import group_by_agent
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 # ---------------------------------------------------------------------------
 # Helpers — data conversion and summarization
@@ -381,12 +385,16 @@ GET_EXPERIMENT_ANALYSIS_TOOL = {
 }
 
 
-def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
+def build_cross_experiment_tools(
+    *,
+    db: DatabaseService,
+    storage: StorageService,
+) -> tuple[list[dict], Registry]:
     """Build tools for querying past experiments from Postgres + S3."""
 
     async def list_past_experiments_fn(params: dict) -> str:
         limit = params.get("limit", 10)
-        async with shared.db.get_session() as session:
+        async with db.get_session() as session:
             result = await session.execute(
                 select(DBExperiment)
                 .order_by(DBExperiment.created_at.desc())
@@ -410,7 +418,7 @@ def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
 
     async def get_experiment_analysis_fn(params: dict) -> str:
         exp_id = params["experiment_id"]
-        async with shared.db.get_session() as session:
+        async with db.get_session() as session:
             result = await session.execute(
                 select(DBExperiment).where(DBExperiment.id == uuid.UUID(exp_id))
             )
@@ -421,9 +429,9 @@ def build_cross_experiment_tools() -> tuple[list[dict], Registry]:
         tracker_data = None
         analyst_data = None
         if exp.s3_tracker_key:
-            tracker_data = await shared.storage.get_text(exp.s3_tracker_key)
+            tracker_data = await storage.get_text(exp.s3_tracker_key)
         if exp.s3_analyst_key:
-            analyst_data = await shared.storage.get_text(exp.s3_analyst_key)
+            analyst_data = await storage.get_text(exp.s3_analyst_key)
         return json.dumps(
             {
                 "id": str(exp.id),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from simlab.model_loader import ModelInfo, discover_models, load_model
@@ -61,8 +61,7 @@ async def test_discover_returns_dict_keyed_by_paradigm_formulation():
     )
     _, mock_db = _mock_session_with_rows([row])
 
-    with patch("shared.db", mock_db):
-        models = await discover_models()
+    models = await discover_models(db=mock_db)
 
     assert "homeostatic-regulation/drive-reduction-rl" in models
     info = models["homeostatic-regulation/drive-reduction-rl"]
@@ -77,8 +76,7 @@ async def test_discover_models_multiple_runs():
     row2 = _make_db_row(paradigm="p2", formulation="f2", run_id=run2, class_name="M2")
     _, mock_db = _mock_session_with_rows([row1, row2])
 
-    with patch("shared.db", mock_db):
-        models = await discover_models()
+    models = await discover_models(db=mock_db)
 
     assert len(models) == 2
     assert "p1/f1" in models
@@ -90,8 +88,7 @@ async def test_discover_models_multiple_runs():
 async def test_discover_models_empty_table():
     _, mock_db = _mock_session_with_rows([])
 
-    with patch("shared.db", mock_db):
-        models = await discover_models()
+    models = await discover_models(db=mock_db)
 
     assert models == {}
 
@@ -100,8 +97,7 @@ async def test_discover_models_null_description():
     row = _make_db_row(description=None)
     _, mock_db = _mock_session_with_rows([row])
 
-    with patch("shared.db", mock_db):
-        models = await discover_models()
+    models = await discover_models(db=mock_db)
 
     info = next(iter(models.values()))
     assert info.description == ""
@@ -111,8 +107,7 @@ async def test_discover_models_null_run_id():
     row = _make_db_row(run_id=None)
     _, mock_db = _mock_session_with_rows([row])
 
-    with patch("shared.db", mock_db):
-        models = await discover_models()
+    models = await discover_models(db=mock_db)
 
     info = next(iter(models.values()))
     assert info.run_id is None
@@ -195,9 +190,9 @@ class FakeModel:
 async def test_load_model_returns_decision_model():
     info = _make_model_info()
 
-    with patch("shared.storage") as mock_storage:
-        mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
-        model = await load_model(info)
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
+    model = await load_model(info, storage=mock_storage)
 
     assert hasattr(model, "decide")
     assert hasattr(model, "update")
@@ -219,10 +214,10 @@ async def test_load_model_with_seed():
         "last_action_result": {},
     }
 
-    with patch("shared.storage") as mock_storage:
-        mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
-        m1 = await load_model(info, seed=42)
-        m2 = await load_model(info, seed=42)
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
+    m1 = await load_model(info, storage=mock_storage, seed=42)
+    m2 = await load_model(info, storage=mock_storage, seed=42)
 
     # Same seed → same random state → same initial energy and same decide() output
     assert m1.get_state() == m2.get_state()
@@ -235,10 +230,10 @@ async def test_load_model_no_model_class_raises():
     bad_source = "x = 42\n"
     info = _make_model_info(paradigm="bad", formulation="noclass", class_name="Nothing")
 
-    with patch("shared.storage") as mock_storage:
-        mock_storage.get = AsyncMock(return_value=bad_source.encode())
-        with pytest.raises(ValueError, match="No decision model class"):
-            await load_model(info)
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=bad_source.encode())
+    with pytest.raises(ValueError, match="No decision model class"):
+        await load_model(info, storage=mock_storage)
 
 
 async def test_load_model_bad_kwargs_raises():
@@ -257,7 +252,7 @@ class StrictModel:
         paradigm="strict", formulation="no-kwargs", class_name="StrictModel"
     )
 
-    with patch("shared.storage") as mock_storage:
-        mock_storage.get = AsyncMock(return_value=source_no_kwargs.encode())
-        with pytest.raises(ValueError, match="Failed to instantiate"):
-            await load_model(info, nonexistent_param=999)
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=source_no_kwargs.encode())
+    with pytest.raises(ValueError, match="Failed to instantiate"):
+        await load_model(info, storage=mock_storage, nonexistent_param=999)

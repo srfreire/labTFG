@@ -1,9 +1,21 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from decisionlab.agents.builder import Builder
 from decisionlab.domain.models import BuilderReport
+
+
+def _make_storage(*, exists=True, list_keys=None):
+    """Build a storage mock with exists/list helpers."""
+    storage = MagicMock()
+    storage.exists = AsyncMock(return_value=exists)
+    storage.list = AsyncMock(return_value=list_keys or [])
+    return storage
+
+
+def _make_db():
+    return MagicMock()
 
 
 def test_builder_construction(tmp_path):
@@ -14,6 +26,8 @@ def test_builder_construction(tmp_path):
         models_prefix="models/run-1",
         run_id="run-1",
         project_root=project_root,
+        storage=_make_storage(),
+        db=_make_db(),
     )
     assert b.client is client
     assert b.models_prefix == "models/run-1"
@@ -29,16 +43,14 @@ async def test_builder_run_collects_results(tmp_path):
         models_prefix="models/run-1",
         run_id="run-1",
         project_root=project_root,
+        storage=_make_storage(exists=True),
+        db=_make_db(),
     )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} built"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.exists = AsyncMock(return_value=True)
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -54,26 +66,25 @@ async def test_builder_run_collects_results(tmp_path):
 async def test_builder_run_discovers_specs_from_s3(tmp_path):
     client = AsyncMock()
     project_root = tmp_path / "project"
+    storage = _make_storage(
+        list_keys=[
+            "models/run-1/reasoner/paradigm-a/spec-a.json",
+            "models/run-1/reasoner/paradigm-a/spec-b.json",
+            "models/run-1/reasoner/paradigm-b/spec-c.json",
+        ]
+    )
     b = Builder(
         client=client,
         models_prefix="models/run-1",
         project_root=project_root,
+        storage=storage,
+        db=_make_db(),
     )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} content"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.list = AsyncMock(
-            return_value=[
-                "models/run-1/reasoner/paradigm-a/spec-a.json",
-                "models/run-1/reasoner/paradigm-a/spec-b.json",
-                "models/run-1/reasoner/paradigm-b/spec-c.json",
-            ]
-        )
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -91,6 +102,8 @@ async def test_builder_run_handles_partial_failure(tmp_path):
         client=client,
         models_prefix="models/run-1",
         project_root=project_root,
+        storage=_make_storage(exists=True),
+        db=_make_db(),
     )
 
     async def fake_run(spec_id, spec_path):
@@ -98,11 +111,7 @@ async def test_builder_run_handles_partial_failure(tmp_path):
             raise RuntimeError("LLM exploded")
         return f"# {spec_id} ok"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.exists = AsyncMock(return_value=True)
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -123,23 +132,20 @@ async def test_builder_run_filters_by_approved_specs(tmp_path):
         models_prefix="models/run-1",
         run_id="run-1",
         project_root=project_root,
+        storage=_make_storage(exists=True),
+        db=_make_db(),
     )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} built"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.exists = AsyncMock(return_value=True)
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
 
         report = await b.run({"alpha": ["spec1", "spec3"], "beta": []})
 
-    # Only alpha/spec1 and alpha/spec3 were built (beta had no formulations)
     assert "spec1" in report.results
     assert "spec3" in report.results
 
@@ -157,6 +163,8 @@ async def test_builder_constructs_nested_s3_paths(tmp_path):
         models_prefix="models/run-1",
         run_id="run-1",
         project_root=project_root,
+        storage=_make_storage(exists=True),
+        db=_make_db(),
     )
 
     captured_paths = []
@@ -165,11 +173,7 @@ async def test_builder_constructs_nested_s3_paths(tmp_path):
         captured_paths.append((spec_id, spec_path))
         return f"# {spec_id} built"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.exists = AsyncMock(return_value=True)
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -191,16 +195,14 @@ async def test_builder_results_keyed_by_formulation_slug(tmp_path):
         client=client,
         models_prefix="models/run-1",
         project_root=project_root,
+        storage=_make_storage(exists=True),
+        db=_make_db(),
     )
 
     async def fake_run(spec_id, spec_path):
         return f"# {spec_id} result"
 
-    with (
-        patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub,
-        patch("decisionlab.agents.builder.shared") as mock_shared,
-    ):
-        mock_shared.storage.exists = AsyncMock(return_value=True)
+    with patch("decisionlab.agents.builder.BuilderSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance

@@ -9,7 +9,7 @@ Covers:
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -23,6 +23,17 @@ from decisionlab.eval.suite import (
     run_suite,
 )
 from decisionlab.router import Stage
+from shared.services import Services
+
+
+def _services(*, kg=None, vectors=None, embeddings=None):
+    return Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=kg,
+        vectors=vectors,
+        embeddings=embeddings,
+    )
 
 # ---------------------------------------------------------------------------
 # YAML parsing
@@ -162,6 +173,7 @@ class TestRunSuite:
         ):
             result = await run_suite(
                 spec,
+                services=_services(),
                 client=AsyncMock(),
                 search=AsyncMock(),
                 skip_kg_ops=True,
@@ -194,6 +206,7 @@ class TestRunSuite:
         ):
             result = await run_suite(
                 spec,
+                services=_services(),
                 client=AsyncMock(),
                 search=AsyncMock(),
                 skip_kg_ops=True,
@@ -228,6 +241,7 @@ class TestRunSuite:
         ):
             result = await run_suite(
                 spec,
+                services=_services(),
                 client=AsyncMock(),
                 search=AsyncMock(),
                 skip_kg_ops=True,
@@ -259,13 +273,15 @@ class TestRunSuite:
                 "decisionlab.eval.suite.run_pipeline", new=AsyncMock(side_effect=_stub)
             ),
         ):
+            services = _services()
             await run_suite(
                 spec,
+                services=services,
                 client=AsyncMock(),
                 search=AsyncMock(),
                 skip_kg_ops=False,
             )
-        reset_mock.assert_awaited_once_with(confirm=True)
+        reset_mock.assert_awaited_once_with(services, confirm=True)
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +344,7 @@ class TestBudgetWatchdog:
                 u.reset()
                 result = await run_suite(
                     spec,
+                    services=_services(),
                     client=AsyncMock(),
                     search=AsyncMock(),
                     skip_kg_ops=True,
@@ -411,19 +428,15 @@ class TestDispatchSetupAction:
         seed_mock = AsyncMock(
             return_value={"nodes_created": 3, "nodes_merged": 2, "vectors_indexed": 0}
         )
-        fake_kg = object()
-        fake_shared = type(
-            "S", (), {"kg": fake_kg, "embeddings": None, "vectors": None}
-        )()
-        with (
-            patch.dict("sys.modules", {"shared": fake_shared}),
-            patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock),
-        ):
+        fake_kg = MagicMock()
+        services = _services(kg=fake_kg)
+        with patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock):
             await suite_mod._dispatch_setup_action(
                 SetupAction(
                     kind="seed_canonical_paradigms",
                     args={"fixture_path": "/tmp/canon.json"},
-                )
+                ),
+                services,
             )
         seed_mock.assert_awaited_once()
         kwargs = seed_mock.await_args.kwargs
@@ -437,32 +450,30 @@ class TestDispatchSetupAction:
         seed_mock = AsyncMock(
             return_value={"nodes_created": 0, "nodes_merged": 0, "vectors_indexed": 0}
         )
-        fake_kg = object()
-        fake_shared = type(
-            "S", (), {"kg": fake_kg, "embeddings": None, "vectors": None}
-        )()
-        with (
-            patch.dict("sys.modules", {"shared": fake_shared}),
-            patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock),
-        ):
+        fake_kg = MagicMock()
+        services = _services(kg=fake_kg)
+        with patch("decisionlab.knowledge.seed.seed_canonical_paradigms", seed_mock):
             await suite_mod._dispatch_setup_action(
-                SetupAction(kind="seed_canonical_paradigms")
+                SetupAction(kind="seed_canonical_paradigms"),
+                services,
             )
         assert seed_mock.await_args.kwargs["fixture_path"] is None
 
     @pytest.mark.asyncio
     async def test_seed_canonical_paradigms_aborts_when_kg_missing(self):
-        fake_shared = type("S", (), {"kg": None})()
-        with patch.dict("sys.modules", {"shared": fake_shared}):
-            with pytest.raises(RuntimeError, match="needs a live KG"):
-                await suite_mod._dispatch_setup_action(
-                    SetupAction(kind="seed_canonical_paradigms")
-                )
+        services = _services(kg=None)
+        with pytest.raises(RuntimeError, match="needs a live KG"):
+            await suite_mod._dispatch_setup_action(
+                SetupAction(kind="seed_canonical_paradigms"),
+                services,
+            )
 
     @pytest.mark.asyncio
     async def test_unknown_kind_raises(self):
         with pytest.raises(ValueError, match="unknown setup action kind"):
-            await suite_mod._dispatch_setup_action(SetupAction(kind="not-a-thing"))
+            await suite_mod._dispatch_setup_action(
+                SetupAction(kind="not-a-thing"), _services()
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -546,11 +557,11 @@ class TestRunSuiteSetupIntegration:
 
         call_order: list[str] = []
 
-        async def _reset(*, confirm):
+        async def _reset(services, *, confirm):
             call_order.append("reset")
             return 0
 
-        async def _dispatch(action):
+        async def _dispatch(action, services):
             call_order.append(f"setup:{action.kind}")
 
         async def _stub(topic, **kw):
@@ -565,7 +576,12 @@ class TestRunSuiteSetupIntegration:
                 new=AsyncMock(side_effect=_stub),
             ),
         ):
-            await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            await run_suite(
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+            )
 
         assert call_order == ["reset", "setup:seed_canonical_paradigms"]
 
@@ -592,7 +608,11 @@ class TestRunSuiteSetupIntegration:
             ),
         ):
             await run_suite(
-                spec, client=AsyncMock(), search=AsyncMock(), skip_kg_ops=True
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+                skip_kg_ops=True,
             )
 
         dispatch_mock.assert_not_awaited()
@@ -611,7 +631,11 @@ class TestRunSuiteSetupIntegration:
         reset_mock = AsyncMock(return_value=0)
         with patch("decisionlab.eval.kgadmin.reset", reset_mock):
             result = await run_suite(
-                spec, client=AsyncMock(), search=AsyncMock(), skip_kg_ops=False
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+                skip_kg_ops=False,
             )
 
         reset_mock.assert_not_awaited()

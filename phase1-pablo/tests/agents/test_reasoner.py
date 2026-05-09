@@ -1,9 +1,19 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from decisionlab.agents.reasoner import Reasoner
 from decisionlab.domain.models import ReasonerReport
+
+
+def _make_storage(*, list_keys=None):
+    storage = MagicMock()
+    storage.list = AsyncMock(return_value=list_keys or [])
+    return storage
+
+
+def _make_db():
+    return MagicMock()
 
 
 def test_reasoner_construction():
@@ -13,6 +23,8 @@ def test_reasoner_construction():
         research_prefix="research/run-1",
         models_prefix="models/run-1",
         run_id="run-1",
+        storage=_make_storage(),
+        db=_make_db(),
     )
     assert r.client is client
     assert r.research_prefix == "research/run-1"
@@ -26,6 +38,8 @@ async def test_reasoner_run_collects_results():
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
     )
 
     async def fake_run(slug, formulation_slugs=None):
@@ -48,25 +62,24 @@ async def test_reasoner_run_collects_results():
 @pytest.mark.asyncio
 async def test_reasoner_run_discovers_paradigms_from_s3():
     client = AsyncMock()
+    storage = _make_storage(
+        list_keys=[
+            "research/run-1/formulations/paradigm-a.md",
+            "research/run-1/formulations/paradigm-b.md",
+        ]
+    )
     r = Reasoner(
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=storage,
+        db=_make_db(),
     )
 
     async def fake_run(slug, formulation_slugs=None):
         return f"# {slug} content"
 
-    with (
-        patch("decisionlab.agents.reasoner.ReasonerSubAgent") as MockSub,
-        patch("decisionlab.agents.reasoner.shared") as mock_shared,
-    ):
-        mock_shared.storage.list = AsyncMock(
-            return_value=[
-                "research/run-1/formulations/paradigm-a.md",
-                "research/run-1/formulations/paradigm-b.md",
-            ]
-        )
+    with patch("decisionlab.agents.reasoner.ReasonerSubAgent") as MockSub:
         instance = AsyncMock()
         instance.run.side_effect = fake_run
         MockSub.return_value = instance
@@ -83,6 +96,8 @@ async def test_reasoner_run_handles_partial_failure():
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
     )
 
     async def fake_run(slug, formulation_slugs=None):
@@ -113,6 +128,8 @@ async def test_reasoner_passes_formulation_slugs_to_sub_agent():
         client=client,
         research_prefix="research/run-1",
         models_prefix="models/run-1",
+        storage=_make_storage(),
+        db=_make_db(),
     )
 
     captured_calls = []

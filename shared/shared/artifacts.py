@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
-import shared
 from shared.models import Artifact
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
 
 
 async def register_artifact(
@@ -15,9 +18,11 @@ async def register_artifact(
     content_type: str = "text/plain",
     run_id: str | None = None,
     experiment_id: str | None = None,
+    *,
+    db: DatabaseService,
 ) -> None:
     """Register an artifact in the DB. Accepts string UUIDs for convenience."""
-    async with shared.db.get_session() as session:
+    async with db.get_session() as session:
         session.add(
             Artifact(
                 id=uuid.uuid4(),

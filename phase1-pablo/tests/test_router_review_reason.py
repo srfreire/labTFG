@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from decisionlab.router import PipelineState, Router, Stage
+from shared.services import Services
 
 
 def _make_state(tmp_path: Path) -> PipelineState:
@@ -24,12 +25,21 @@ def _make_state(tmp_path: Path) -> PipelineState:
 def _make_router(state: PipelineState) -> Router:
     client = AsyncMock()
     search = MagicMock()
-    return Router(
-        client=client,
-        state=state,
-        search=search,
-        project_root=state.reports_dir.parent,
+    services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
     )
+    with patch.object(Router, "_init_memory_agent", return_value=None):
+        return Router(
+            client=client,
+            state=state,
+            search=search,
+            project_root=state.reports_dir.parent,
+            services=services,
+        )
 
 
 class TestReviewReasonFormalizerReruns:

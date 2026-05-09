@@ -4,9 +4,9 @@ Glue between the eval harness and the existing ``Router`` + ``MemoryAgent``
 infrastructure. Uses ``AutoApproveFeedback`` so REVIEW_* stages don't block
 on human input.
 
-The runner does **not** call ``shared.init`` / ``shared.shutdown`` — that
-lifecycle belongs to the suite (or the eval CLI command). This keeps the
-runner cheap to call repeatedly inside one process.
+The runner does **not** call ``init_services`` / ``shutdown_services`` —
+that lifecycle belongs to the suite (or the eval CLI command). This keeps
+the runner cheap to call repeatedly inside one process.
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
 
     from decisionlab.domain.ports import WebSearchPort
+    from shared.services import Services
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ def _topic_to_reports_dir(topic: str, run_id: str, base: Path) -> Path:
     return out
 
 
-async def _create_run_row(run_id: str, topic: str) -> None:
+async def _create_run_row(run_id: str, topic: str, services: Services) -> None:
     """Insert the Run row that the Router expects to update mid-pipeline.
 
     Mirrors what ``cli.run`` and ``server.run_pipeline`` do at startup —
@@ -101,13 +102,12 @@ async def _create_run_row(run_id: str, topic: str) -> None:
     runs created via ``cli.run`` and ``server.run_pipeline`` keep the
     ``kind='prod'`` default.
     """
-    import shared
     from shared.models import Run
 
-    if shared.db is None:
-        logger.debug("shared.db is None — skipping Run-row insert (degraded mode)")
+    if services.db is None:
+        logger.debug("services.db is None — skipping Run-row insert (degraded mode)")
         return
-    async with shared.db.get_session() as session:
+    async with services.db.get_session() as session:
         session.add(
             Run(
                 id=uuid.UUID(run_id),
@@ -123,6 +123,7 @@ async def _create_run_row(run_id: str, topic: str) -> None:
 async def run_pipeline(
     topic: str,
     *,
+    services: Services,
     stages: Iterable[Stage] = (Stage.RESEARCH,),
     env_spec_path: Path | None = None,
     project_root: Path,
@@ -189,7 +190,7 @@ async def run_pipeline(
         )
 
     reports_dir = _topic_to_reports_dir(topic, rid, reports_root)
-    await _create_run_row(rid, topic)
+    await _create_run_row(rid, topic, services)
 
     state = PipelineState(
         stage=Stage.CLASSIFY_UMBRELLA,
@@ -205,6 +206,7 @@ async def run_pipeline(
         state=state,
         search=search,
         project_root=project_root,
+        services=services,
         stop_after=stop_after,
         feedback=feedback,
     )

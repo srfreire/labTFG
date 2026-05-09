@@ -11,61 +11,67 @@ pytestmark = pytest.mark.integration
 @pytest_asyncio.fixture
 async def seeded_runs():
     """Seed three terminal runs + one running via the real DatabaseService."""
-    import shared
     from shared.models import Run
+    from shared.services import init_services, shutdown_services
 
-    await shared.init()
+    services = await init_services()
     now = datetime.now(UTC).replace(tzinfo=None)
     ids = [uuid.uuid4() for _ in range(4)]
-    async with shared.db.get_session() as s:
-        s.add_all(
-            [
-                Run(
-                    id=ids[0],
-                    problem_description="p-done",
-                    status="done",
-                    s3_prefix=f"research/{ids[0]}",
-                    artifact_count=3,
-                    created_at=now - timedelta(minutes=3),
-                ),
-                Run(
-                    id=ids[1],
-                    problem_description="p-cancel",
-                    status="cancelled",
-                    s3_prefix=f"research/{ids[1]}",
-                    artifact_count=None,
-                    created_at=now - timedelta(minutes=2),
-                ),
-                Run(
-                    id=ids[2],
-                    problem_description="p-fail",
-                    status="failed",
-                    s3_prefix=f"research/{ids[2]}",
-                    artifact_count=None,
-                    created_at=now - timedelta(minutes=1),
-                ),
-                Run(
-                    id=ids[3],
-                    problem_description="p-running",
-                    status="running",
-                    s3_prefix=f"research/{ids[3]}",
-                    created_at=now,
-                ),
-            ]
-        )
-        await s.commit()
+    try:
+        async with services.db.get_session() as s:
+            s.add_all(
+                [
+                    Run(
+                        id=ids[0],
+                        problem_description="p-done",
+                        status="done",
+                        s3_prefix=f"research/{ids[0]}",
+                        artifact_count=3,
+                        created_at=now - timedelta(minutes=3),
+                    ),
+                    Run(
+                        id=ids[1],
+                        problem_description="p-cancel",
+                        status="cancelled",
+                        s3_prefix=f"research/{ids[1]}",
+                        artifact_count=None,
+                        created_at=now - timedelta(minutes=2),
+                    ),
+                    Run(
+                        id=ids[2],
+                        problem_description="p-fail",
+                        status="failed",
+                        s3_prefix=f"research/{ids[2]}",
+                        artifact_count=None,
+                        created_at=now - timedelta(minutes=1),
+                    ),
+                    Run(
+                        id=ids[3],
+                        problem_description="p-running",
+                        status="running",
+                        s3_prefix=f"research/{ids[3]}",
+                        created_at=now,
+                    ),
+                ]
+            )
+            await s.commit()
+    finally:
+        await shutdown_services(services)
+
     yield [str(i) for i in ids]
-    # cleanup — TestClient's lifespan may have torn shared down, so re-init
-    # if needed before deleting our seeded rows.
+
+    # cleanup — TestClient's lifespan owns its own services, so spin up
+    # a fresh ``Services`` for the row deletion.
     from sqlalchemy import delete
 
-    if shared.db is None:
-        await shared.init()
-    async with shared.db.get_session() as s:
-        for rid in ids:
-            await s.execute(delete(Run).where(Run.id == rid))
-        await s.commit()
-    await shared.shutdown()
+    cleanup = await init_services()
+    try:
+        async with cleanup.db.get_session() as s:
+            for rid in ids:
+                await s.execute(delete(Run).where(Run.id == rid))
+            await s.commit()
+    finally:
+        await shutdown_services(cleanup)
 
 
 @pytest.mark.asyncio
@@ -97,16 +103,22 @@ async def test_runs_list_excludes_running_and_orders_newest_first(seeded_runs):
 
 @pytest.mark.asyncio
 async def test_trace_endpoint_returns_ndjson(seeded_runs):
-    import shared
     from decisionlab.server import app
+    from shared.services import init_services, shutdown_services
 
     run_id = seeded_runs[0]  # the 'done' run
-    # Seed a trace for this run
-    await shared.storage.put_text(
-        f"research/{run_id}/trace.jsonl",
-        '{"seq":1,"type":"run_start"}\n{"seq":2,"type":"pipeline_done"}\n',
-        content_type="application/x-ndjson",
-    )
+    # Seed a trace for this run via a transient ``Services``; the endpoint
+    # itself reads through the lifespan-owned ``Services`` inside TestClient.
+    seed_services = await init_services()
+    try:
+        await seed_services.storage.put_text(
+            f"research/{run_id}/trace.jsonl",
+            '{"seq":1,"type":"run_start"}\n{"seq":2,"type":"pipeline_done"}\n',
+            content_type="application/x-ndjson",
+        )
+    finally:
+        await shutdown_services(seed_services)
+
     try:
         with TestClient(app) as client:
             resp = client.get(f"/api/runs/{run_id}/trace")
@@ -115,10 +127,11 @@ async def test_trace_endpoint_returns_ndjson(seeded_runs):
         lines = resp.text.strip().split("\n")
         assert len(lines) == 2
     finally:
-        # TestClient's lifespan tears shared down; re-init for cleanup.
-        if shared.storage is None:
-            await shared.init()
-        await shared.storage.delete(f"research/{run_id}/trace.jsonl")
+        cleanup = await init_services()
+        try:
+            await cleanup.storage.delete(f"research/{run_id}/trace.jsonl")
+        finally:
+            await shutdown_services(cleanup)
 
 
 @pytest.mark.asyncio

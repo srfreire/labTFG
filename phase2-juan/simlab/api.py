@@ -14,26 +14,45 @@ from __future__ import annotations
 import json
 import logging
 from contextlib import asynccontextmanager
+from dataclasses import replace
 
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from shared.services import Services, init_services, shutdown_services
+from simlab.knowledge import build_writer_from_services
 from simlab.orchestrator import Orchestrator
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# Set by ``lifespan`` and read by ``websocket_chat`` to construct the
+# per-connection Orchestrator with explicit infra wiring.
+_services: Services | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import shared
+    global _services
+    services = await init_services()
+    # Phase 2 simulation memory writer — opt-in via ENABLE_KNOWLEDGE_WRITE.
+    from shared.settings import load_settings
 
-    await shared.init()
-    yield
-    await shared.shutdown()
+    settings = load_settings()
+    if settings.ENABLE_KNOWLEDGE_WRITE:
+        writer = build_writer_from_services(services)
+        if writer is not None:
+            services = replace(services, sim_memory_writer=writer)
+    _services = services
+    try:
+        yield
+    finally:
+        if _services is not None:
+            await shutdown_services(_services)
+        _services = None
 
 
 app = FastAPI(title="DecisionLab API", lifespan=lifespan)
@@ -100,7 +119,10 @@ async def websocket_chat(ws: WebSocket):
     await ws.accept()
 
     client = anthropic.AsyncAnthropic()
-    orch = Orchestrator(client=client)
+    if _services is None:
+        await ws.close(code=1011, reason="services not initialised")
+        return
+    orch = Orchestrator(client=client, services=_services)
 
     # Send initial agent states + color palette to the UI
     await ws.send_json(
@@ -238,8 +260,8 @@ async def websocket_chat(ws: WebSocket):
             if msg:
                 await ws.send_json(msg)
 
-    def patched_build():
-        tools, registry = original_build()
+    def patched_build(settings=None):
+        tools, registry = original_build(settings)
         wrapped = {}
         for tool_name, fn in registry.items():
             agent_name = TOOL_AGENT_MAP.get(tool_name)

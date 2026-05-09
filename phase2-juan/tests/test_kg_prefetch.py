@@ -11,6 +11,8 @@ import pytest
 from simlab.environment import Action, Event
 from simlab.orchestrator import prefetch_knowledge
 
+from shared.services import Services
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -22,6 +24,11 @@ _PAPERS = "## Retrieved Knowledge (3 results)\n\n### Result 1\nSmith et al. 2024
 _FORMULATIONS = (
     "## Retrieved Knowledge (2 results)\n\n### Result 1\nU(x) = x^0.88 for gains..."
 )
+
+
+def _stub_services() -> Services:
+    """A non-None Services so prefetch_knowledge proceeds past its guard."""
+    return Services(db=MagicMock(), storage=MagicMock())
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +45,9 @@ async def test_prefetch_analyst_parallel():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "analyst")
+        result = await prefetch_knowledge(
+            "prospect_theory", "analyst", services=_stub_services()
+        )
 
     assert mock_rc.call_count == 3
     assert "## Knowledge context" in result
@@ -58,7 +67,9 @@ async def test_prefetch_analyst_omits_empty_subsection():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "analyst")
+        result = await prefetch_knowledge(
+            "prospect_theory", "analyst", services=_stub_services()
+        )
 
     assert "### Postulates" in result
     assert "### Historical simulations" not in result
@@ -79,7 +90,9 @@ async def test_prefetch_reporter():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "reporter")
+        result = await prefetch_knowledge(
+            "prospect_theory", "reporter", services=_stub_services()
+        )
 
     assert mock_rc.call_count == 2
     assert "## Knowledge context" in result
@@ -105,7 +118,10 @@ async def test_prefetch_partial_failure():
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
         result = await prefetch_knowledge(
-            "prospect_theory", "analyst", on_warning=on_warning
+            "prospect_theory",
+            "analyst",
+            on_warning=on_warning,
+            services=_stub_services(),
         )
 
     on_warning.assert_called_once()
@@ -133,7 +149,10 @@ async def test_prefetch_total_failure():
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
         result = await prefetch_knowledge(
-            "prospect_theory", "analyst", on_warning=on_warning
+            "prospect_theory",
+            "analyst",
+            on_warning=on_warning,
+            services=_stub_services(),
         )
 
     assert result == ""
@@ -154,7 +173,12 @@ async def test_prefetch_disabled():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect_theory", "analyst", enabled=False)
+        result = await prefetch_knowledge(
+            "prospect_theory",
+            "analyst",
+            enabled=False,
+            services=_stub_services(),
+        )
 
     assert result == ""
     mock_rc.assert_not_called()
@@ -169,7 +193,7 @@ async def test_prefetch_no_paradigm():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("", "analyst")
+        result = await prefetch_knowledge("", "analyst", services=_stub_services())
 
     assert result == ""
     mock_rc.assert_not_called()
@@ -196,7 +220,9 @@ async def test_prefetch_architect():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        result = await prefetch_knowledge("prospect theory with 5 agents", "architect")
+        result = await prefetch_knowledge(
+            "prospect theory with 5 agents", "architect", services=_stub_services()
+        )
 
     assert mock_rc.call_count == 3
     assert "## Knowledge context" in result
@@ -278,7 +304,7 @@ async def test_analyst_knowledge_context_injected():
         return _mock_response()
 
     with patch("simlab.analyst.run_agent_loop", side_effect=fake_loop):
-        analyst = Analyst(client=MagicMock())
+        analyst = Analyst(client=MagicMock(), storage=MagicMock(), db=MagicMock())
         await analyst.run(
             "Analyze",
             "tracker data",
@@ -304,7 +330,7 @@ async def test_analyst_no_knowledge_context():
         return _mock_response()
 
     with patch("simlab.analyst.run_agent_loop", side_effect=fake_loop):
-        analyst = Analyst(client=MagicMock())
+        analyst = Analyst(client=MagicMock(), storage=MagicMock(), db=MagicMock())
         await analyst.run("Analyze", "tracker data", [_FAKE_EVENT])
 
     msg = captured["messages"][0]["content"]
@@ -324,7 +350,7 @@ async def test_reporter_knowledge_context_injected():
         return _mock_response()
 
     with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
-        reporter = Reporter(client=MagicMock())
+        reporter = Reporter(client=MagicMock(), storage=MagicMock(), db=MagicMock())
         await reporter.run(
             "Report",
             "tracker data",
@@ -352,7 +378,7 @@ async def test_reporter_no_knowledge_context():
         return _mock_response()
 
     with patch("simlab.reporter.run_agent_loop", side_effect=fake_loop):
-        reporter = Reporter(client=MagicMock())
+        reporter = Reporter(client=MagicMock(), storage=MagicMock(), db=MagicMock())
         await reporter.run(
             "Report",
             "tracker data",
@@ -380,7 +406,9 @@ async def test_prefetch_roundtrip():
         patch("simlab.recall.retrieve.retrieve_context", mock_rc),
         patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
     ):
-        knowledge_ctx = await prefetch_knowledge("prospect_theory", "analyst")
+        knowledge_ctx = await prefetch_knowledge(
+            "prospect_theory", "analyst", services=_stub_services()
+        )
 
     # Simulate what the orchestrator does: inject into analyst user message
     prompt = "Analyze patterns"

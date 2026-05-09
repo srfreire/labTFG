@@ -1,45 +1,58 @@
-"""P2-001 — happy-path test for `shared._init_sim_memory_writer`.
+"""P2-001 — happy-path test for ``simlab.knowledge.build_writer_from_services``.
 
-This test lives in phase2-juan (not shared) because it requires `simlab` to be
-importable. Shared's test suite covers the failure/short-circuit paths.
+This test lives in phase2-juan because it requires ``simlab`` to be importable.
 """
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-from simlab.knowledge import TrackerMemoryWriter
+from simlab.knowledge import TrackerMemoryWriter, build_writer_from_services
 
-import shared
-from shared.settings import Settings
+from shared.services import Services
 
 
-@pytest.fixture(autouse=True)
-def _reset_singleton():
-    shared.sim_memory_writer = None
-    yield
-    shared.sim_memory_writer = None
-
-
-def test_flag_on_with_infra_creates_tracker_memory_writer(monkeypatch):
+def test_build_writer_from_services_with_full_infra():
+    """build_writer_from_services returns a TrackerMemoryWriter when infra is up."""
     fake_vectors = SimpleNamespace()
     fake_embeddings = SimpleNamespace()
     fake_db = SimpleNamespace()
-    monkeypatch.setattr(shared, "vectors", fake_vectors, raising=False)
-    monkeypatch.setattr(shared, "embeddings", fake_embeddings, raising=False)
-    monkeypatch.setattr(shared, "db", fake_db, raising=False)
-
-    settings = Settings(
-        VOYAGE_API_KEY="v",
-        ZEROENTROPY_API_KEY="z",
-        ENABLE_KNOWLEDGE_WRITE=True,
+    services = Services(
+        db=fake_db,
+        storage=SimpleNamespace(),
+        kg=None,
+        vectors=fake_vectors,
+        embeddings=fake_embeddings,
     )
-    shared._init_sim_memory_writer(settings)
 
-    writer = shared.sim_memory_writer
+    writer = build_writer_from_services(services)
+
     assert isinstance(writer, TrackerMemoryWriter)
     # The writer holds the exact instances passed in — no new connections made.
     assert writer._vectors is fake_vectors
     assert writer._embeddings is fake_embeddings
     assert writer._db is fake_db
+
+
+def test_build_writer_returns_none_when_vectors_missing():
+    """No vectors → no writer."""
+    services = Services(
+        db=SimpleNamespace(),
+        storage=SimpleNamespace(),
+        kg=None,
+        vectors=None,
+        embeddings=SimpleNamespace(),
+    )
+    assert build_writer_from_services(services) is None
+
+
+def test_build_writer_returns_none_when_embeddings_missing():
+    """No embeddings → no writer."""
+    services = Services(
+        db=SimpleNamespace(),
+        storage=SimpleNamespace(),
+        kg=None,
+        vectors=SimpleNamespace(),
+        embeddings=None,
+    )
+    assert build_writer_from_services(services) is None

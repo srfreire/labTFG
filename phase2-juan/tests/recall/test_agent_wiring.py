@@ -6,14 +6,19 @@ that each agent's run() accepts extra_tools/extra_registry/prompt_suffix.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from simlab.recall.agent_tools import build_recall_extras
 
+from shared.services import Services
 from shared.settings import Settings
 
 _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
 _FLAG_OFF = Settings()
+
+
+def _stub_services() -> Services:
+    return Services(db=MagicMock(), storage=MagicMock())
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +28,7 @@ _FLAG_OFF = Settings()
 
 def test_build_recall_extras_returns_tool_registry_prompt():
     """Helper returns (tools, registry, prompt_section) tuple."""
-    tools, registry, prompt = build_recall_extras("architect")
+    tools, registry, prompt = build_recall_extras("architect", _stub_services())
     assert len(tools) == 1
     assert tools[0]["name"] == "retrieve_context"
     assert "retrieve_context" in registry
@@ -38,9 +43,9 @@ def test_build_recall_extras_different_prompts_per_stage():
     the architect's section, ``Postulate`` in the analyst's, and
     ``References`` in the reporter's.
     """
-    _, _, arch_prompt = build_recall_extras("architect")
-    _, _, analyst_prompt = build_recall_extras("analyst")
-    _, _, reporter_prompt = build_recall_extras("reporter")
+    _, _, arch_prompt = build_recall_extras("architect", _stub_services())
+    _, _, analyst_prompt = build_recall_extras("analyst", _stub_services())
+    _, _, reporter_prompt = build_recall_extras("reporter", _stub_services())
 
     assert "Knowledge Backbone" in arch_prompt
     assert "Postulate" in analyst_prompt
@@ -50,7 +55,7 @@ def test_build_recall_extras_different_prompts_per_stage():
 
 def test_build_recall_extras_unknown_stage_empty_prompt():
     """Unknown stage returns empty prompt section but valid tools."""
-    tools, _registry, prompt = build_recall_extras("unknown")
+    tools, _registry, prompt = build_recall_extras("unknown", _stub_services())
     assert len(tools) == 1
     assert prompt == ""
 
@@ -58,10 +63,12 @@ def test_build_recall_extras_unknown_stage_empty_prompt():
 async def test_handler_uses_stage_prefix():
     """Handler passes stage='phase2-<stage>' to retrieve_context."""
     mock_rc = AsyncMock(return_value="result")
+    services = _stub_services()
     with patch("simlab.recall.agent_tools.retrieve_context", mock_rc):
-        _, registry, _ = build_recall_extras("analyst")
+        _, registry, _ = build_recall_extras("analyst", services)
         await registry["retrieve_context"]({"query": "test"})
     mock_rc.assert_awaited_once_with(
+        services=services,
         query="test",
         namespace=None,
         top_k=5,
@@ -127,34 +134,40 @@ def _get_architect_tools(settings):
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
 
-        et, _, _ = build_recall_extras("architect")
+        et, _, _ = build_recall_extras("architect", _stub_services())
         tools += et
     return tools
 
 
 def _get_analyst_tools(settings):
     """Build the tool list the Analyst would get."""
+    from unittest.mock import MagicMock
+
     from simlab.tools import build_cross_experiment_tools, build_simulation_tools
 
     tools, _ = build_simulation_tools([], critical_events=None)
-    db_tools, _ = build_cross_experiment_tools()
+    db_tools, _ = build_cross_experiment_tools(db=MagicMock(), storage=MagicMock())
     tools += db_tools
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
 
-        et, _, _ = build_recall_extras("analyst")
+        et, _, _ = build_recall_extras("analyst", _stub_services())
         tools += et
     return tools
 
 
 def _get_reporter_tools(settings):
     """Build the tool list the Reporter would get."""
+    from unittest.mock import MagicMock
+
     from simlab.reporter import _build_tools as reporter_build_tools
 
-    tools, _ = reporter_build_tools("run-1", "exp-1")
+    tools, _ = reporter_build_tools(
+        "run-1", "exp-1", storage=MagicMock(), db=MagicMock()
+    )
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
 
-        et, _, _ = build_recall_extras("reporter")
+        et, _, _ = build_recall_extras("reporter", _stub_services())
         tools += et
     return tools

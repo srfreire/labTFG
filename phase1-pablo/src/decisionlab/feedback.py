@@ -9,13 +9,16 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import questionary
 from rich.console import Console
 from rich.markdown import Markdown
 
 from decisionlab.parsing import filter_formulations_md, parse_formulation_headers
+
+if TYPE_CHECKING:
+    from shared.storage import StorageService
 
 console = Console()
 
@@ -84,6 +87,7 @@ async def review_formalize(
     reports_dir: Path,
     paradigm_slugs: list[str],
     *,
+    storage: StorageService,
     run_id: str = "",
 ) -> dict[str, list[int]]:
     """Double-level interactive selection of formalized paradigms/formulations.
@@ -92,8 +96,6 @@ async def review_formalize(
     Also rewrites each selected paradigm's formulation file in S3 to keep
     only the chosen formulations.
     """
-    import shared
-
     console.print()
     console.rule("[bold green]Review Formalization Results")
 
@@ -111,7 +113,7 @@ async def review_formalize(
     for slug in approved_paradigms:
         s3_key = f"research/{run_id}/formulations/{slug}.md"
         try:
-            text = await shared.storage.get_text(s3_key)
+            text = await storage.get_text(s3_key)
         except Exception:
             console.print(f"[yellow]Warning: {s3_key} not found, skipping.[/yellow]")
             continue
@@ -146,7 +148,7 @@ async def review_formalize(
         # Rewrite the formulation file in S3 to keep only selected formulations
         if kept:
             filtered = filter_formulations_md(text, kept)
-            await shared.storage.put_text(s3_key, filtered)
+            await storage.put_text(s3_key, filtered)
             console.print(
                 f"  [dim]Kept {len(kept)} formulation(s), rewrote {slug}.md[/dim]"
             )

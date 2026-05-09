@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from simlab.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT, Orchestrator
 
+from shared.services import Services
 from shared.settings import Settings
 
 _FLAG_OFF = Settings()
@@ -23,7 +24,14 @@ _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
 
 
 def _make_orchestrator():
-    return Orchestrator(client=MagicMock())
+    services = Services(
+        db=MagicMock(),
+        storage=MagicMock(),
+        kg=None,
+        vectors=None,
+        embeddings=None,
+    )
+    return Orchestrator(client=MagicMock(), services=services)
 
 
 def _tool_names(tools: list[dict]) -> list[str]:
@@ -79,7 +87,8 @@ async def test_handler_calls_retrieve_context_correctly():
     )
 
     with patch("simlab.recall.retrieve_context", mock_retrieve):
-        _, registry = _make_orchestrator()._build_tools(_FLAG_ON)
+        orch = _make_orchestrator()
+        _, registry = orch._build_tools(_FLAG_ON)
         result = await registry["retrieve_context"](
             {
                 "query": "homeostatic models",
@@ -89,6 +98,7 @@ async def test_handler_calls_retrieve_context_correctly():
         )
 
     mock_retrieve.assert_awaited_once_with(
+        services=orch._services,
         query="homeostatic models",
         namespace="paradigm",
         top_k=3,
@@ -102,10 +112,12 @@ async def test_handler_uses_defaults_for_missing_params():
     mock_retrieve = AsyncMock(return_value="empty")
 
     with patch("simlab.recall.retrieve_context", mock_retrieve):
-        _, registry = _make_orchestrator()._build_tools(_FLAG_ON)
+        orch = _make_orchestrator()
+        _, registry = orch._build_tools(_FLAG_ON)
         await registry["retrieve_context"]({"query": "test"})
 
     mock_retrieve.assert_awaited_once_with(
+        services=orch._services,
         query="test",
         namespace=None,
         top_k=5,

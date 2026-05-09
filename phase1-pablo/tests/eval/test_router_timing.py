@@ -31,6 +31,7 @@ async def test_run_loop_emits_stage_timings(monkeypatch):
     router._update_run = AsyncMock()
     router.memory_agent = None
     router._stop_after = None
+    router._services = MagicMock()
     router.state = None  # set below
 
     state = MagicMock()

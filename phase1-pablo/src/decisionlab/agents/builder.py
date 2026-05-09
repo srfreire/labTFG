@@ -6,11 +6,14 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import shared
 from decisionlab.agents.builder_sub import BuilderSubAgent
 from decisionlab.domain.models import BuilderReport
+
+if TYPE_CHECKING:
+    from shared.database import DatabaseService
+    from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,8 @@ class Builder:
         *,
         client,
         models_prefix: str,
+        storage: StorageService,
+        db: DatabaseService,
         run_id: str | None = None,
         project_root: Path,
         knowledge_tool_schema: dict[str, Any] | None = None,
@@ -30,6 +35,8 @@ class Builder:
         self.models_prefix = models_prefix
         self.run_id = run_id
         self.project_root = project_root
+        self._storage = storage
+        self._db = db
         self._knowledge_tool_schema = knowledge_tool_schema
         self._knowledge_tool_handler = knowledge_tool_handler
 
@@ -52,7 +59,7 @@ class Builder:
             for paradigm, formulations in approved_specs.items():
                 for formulation in formulations:
                     key = f"{reasoner_prefix}{paradigm}/{formulation}.json"
-                    if await shared.storage.exists(key):
+                    if await self._storage.exists(key):
                         spec_files.append(
                             (
                                 paradigm,
@@ -62,7 +69,7 @@ class Builder:
                         )
         else:
             # Discovery: list all paradigm dirs, then files within each
-            keys = await shared.storage.list(reasoner_prefix)
+            keys = await self._storage.list(reasoner_prefix)
             for key in keys:
                 if key.endswith(".json"):
                     rel = key[
@@ -88,6 +95,8 @@ class Builder:
                 BuilderSubAgent(
                     client=self.client,
                     models_prefix=self.models_prefix,
+                    storage=self._storage,
+                    db=self._db,
                     run_id=self.run_id,
                     project_root=self.project_root,
                     knowledge_tool_schema=self._knowledge_tool_schema,

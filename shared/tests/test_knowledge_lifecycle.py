@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import shared
 from shared.database import DatabaseService
 from shared.knowledge_graph import KnowledgeGraph
+from shared.services import init_services, shutdown_services
 from shared.storage import StorageService
 from shared.vector_store import VectorStore
 
@@ -28,8 +28,7 @@ def _mock_core_services():
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_mock_core_services")
 async def test_graceful_degradation_neo4j():
-    """init() succeeds with warning when Neo4j is unreachable; kg is None."""
-    await shared.shutdown()
+    """init_services() succeeds with warning when Neo4j is unreachable; kg is None."""
     with (
         patch.object(
             KnowledgeGraph,
@@ -48,21 +47,20 @@ async def test_graceful_degradation_neo4j():
             new_callable=AsyncMock,
         ),
     ):
-        await shared.init()
+        services = await init_services()
         try:
-            assert shared.storage is not None
-            assert shared.db is not None
-            assert shared.kg is None
+            assert services.storage is not None
+            assert services.db is not None
+            assert services.kg is None
         finally:
             with patch.object(VectorStore, "close", new_callable=AsyncMock):
-                await shared.shutdown()
+                await shutdown_services(services)
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_mock_core_services")
 async def test_graceful_degradation_qdrant():
-    """init() succeeds with warning when Qdrant is unreachable; vectors is None."""
-    await shared.shutdown()
+    """init_services() succeeds with warning when Qdrant is unreachable; vectors is None."""
     with (
         patch.object(
             KnowledgeGraph,
@@ -81,20 +79,19 @@ async def test_graceful_degradation_qdrant():
             side_effect=Exception("qdrant down"),
         ),
     ):
-        await shared.init()
+        services = await init_services()
         try:
-            assert shared.storage is not None
-            assert shared.db is not None
-            assert shared.vectors is None
+            assert services.storage is not None
+            assert services.db is not None
+            assert services.vectors is None
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_mock_core_services")
 async def test_graceful_degradation_both():
-    """init() succeeds when both Neo4j and Qdrant are unreachable."""
-    await shared.shutdown()
+    """init_services() succeeds when both Neo4j and Qdrant are unreachable."""
     with (
         patch.object(
             KnowledgeGraph,
@@ -109,21 +106,20 @@ async def test_graceful_degradation_both():
             side_effect=Exception("qdrant down"),
         ),
     ):
-        await shared.init()
+        services = await init_services()
         try:
-            assert shared.storage is not None
-            assert shared.db is not None
-            assert shared.kg is None
-            assert shared.vectors is None
+            assert services.storage is not None
+            assert services.db is not None
+            assert services.kg is None
+            assert services.vectors is None
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_mock_core_services")
 async def test_init_connects_knowledge_services():
-    """init() wires up kg and vectors when services are available."""
-    await shared.shutdown()
+    """init_services() wires up kg and vectors when services are available."""
     with (
         patch.object(
             KnowledgeGraph,
@@ -151,19 +147,18 @@ async def test_init_connects_knowledge_services():
             new_callable=AsyncMock,
         ),
     ):
-        await shared.init()
+        services = await init_services()
         try:
-            assert isinstance(shared.kg, KnowledgeGraph)
-            assert isinstance(shared.vectors, VectorStore)
+            assert isinstance(services.kg, KnowledgeGraph)
+            assert isinstance(services.vectors, VectorStore)
         finally:
-            await shared.shutdown()
+            await shutdown_services(services)
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_mock_core_services")
 async def test_shutdown_closes_knowledge_services():
-    """shutdown() closes kg and vectors and sets to None."""
-    await shared.shutdown()
+    """shutdown_services() closes kg and vectors."""
     with (
         patch.object(
             KnowledgeGraph,
@@ -181,16 +176,14 @@ async def test_shutdown_closes_knowledge_services():
             new_callable=AsyncMock,
         ),
     ):
-        await shared.init()
+        services = await init_services()
     with (
         patch.object(KnowledgeGraph, "close", new_callable=AsyncMock) as kg_close,
         patch.object(VectorStore, "close", new_callable=AsyncMock) as vs_close,
     ):
-        await shared.shutdown()
+        await shutdown_services(services)
         kg_close.assert_awaited_once()
         vs_close.assert_awaited_once()
-    assert shared.kg is None
-    assert shared.vectors is None
 
 
 def test_vector_store_not_connected_raises():
