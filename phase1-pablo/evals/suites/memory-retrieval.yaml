@@ -1,30 +1,36 @@
-# Memory-retrieval suite: probes the populated KG with three follow-up
-# topics that overlap with paradigms already ingested by
-# `cumulative-growth.yaml`. Each topic asserts that a known canonical
-# paradigm slug surfaces (retrieval hit) and that the Paradigm node
-# count never drops below the post-cumulative-growth baseline (20),
-# i.e. dedup is preserved.
+# Memory-retrieval suite: probes a populated KG with three follow-up
+# topics that overlap with paradigms already in the canonical seed.
+# Each topic asserts that a known canonical paradigm slug surfaces
+# (retrieval hit) and that the Paradigm node count never drops below
+# the seeded baseline (10), i.e. dedup is preserved.
 #
-# Pre-condition: run `cumulative-growth.yaml` first (or have ≥20
-# Paradigm nodes seeded). `reset_kg_before: false` is critical.
+# Self-contained as of this commit: `seed_canonical_paradigms` runs
+# in `setup`, so this suite no longer depends on cumulative-growth or
+# any other suite running first. `reset_kg_before: true` keeps the run
+# deterministic.
 #
 # Cost: ~$1.5/topic research-only × 3 topics → cap at $6.
 
 name: memory-retrieval
 stages: [research]
-reset_kg_before: false
+reset_kg_before: true
+
+setup:
+  - kind: seed_canonical_paradigms
+    args: {}
+
 topics:
   - text: "Q-learning agent foraging on a grid: how do action-value
       updates trade off exploration and exploitation?"
     expect:
       research:
-        # Direct retrieval target — present in the KG from cumulative-growth.
+        # Direct retrieval target — present in the KG from the seed.
         - paradigm: reinforcement-learning
         # Diversity guard: research should still surface adjacent paradigms.
         - min_paradigms: 2
-        # Dedup guard: total Paradigm node count must not shrink below
-        # the 20 already in KG.
-        - min_nodes: { label: Paradigm, n: 20 }
+        # Dedup guard: total Paradigm count must not shrink below the
+        # canonical seed (10). Pass if no paradigms got dropped/superseded.
+        - min_nodes: { label: Paradigm, n: 10 }
 
   - text: "Loss aversion in human financial decision-making: why do
       people weight losses more heavily than equivalent gains?"
@@ -32,7 +38,7 @@ topics:
       research:
         - paradigm: prospect-theory
         - min_paradigms: 2
-        - min_nodes: { label: Paradigm, n: 20 }
+        - min_nodes: { label: Paradigm, n: 10 }
 
   - text: "Speed-accuracy tradeoff in two-alternative forced-choice
       perceptual decisions: how does evidence accumulation explain
@@ -41,7 +47,7 @@ topics:
       research:
         - paradigm: drift-diffusion-model
         - min_paradigms: 2
-        - min_nodes: { label: Paradigm, n: 20 }
+        - min_nodes: { label: Paradigm, n: 10 }
         # Graph-integrity check (executed once after the last topic):
         # postulates must still link to paradigms via BELONGS_TO.
         - relation_exists:

@@ -1,35 +1,63 @@
-# Cumulative-growth suite: 5 related topics in sequence to verify that
-# the KG actually accumulates knowledge (Memory Agent dedup working,
-# cross-paradigm relations forming) rather than treating every run as
-# isolated.
+# Cumulative-growth suite: 5 related topics in sequence, verifying that
+# the KG accumulates *the right* knowledge (canonical-slug reuse +
+# Memory Agent dedup) rather than treating every run as isolated.
+#
+# Self-contained: seeds the canonical Paradigm umbrellas before topic 1
+# runs, so MERGE-on-existing is exercised from the first topic. Each
+# topic now asserts the specific expected paradigm slug — earlier
+# revisions only asserted node count, which masked cases where the LLM
+# emitted an off-canon slug while the count still grew.
 #
 # Reset before so the deltas reflect this suite's contribution alone.
 name: cumulative-growth
 stages: [research]
 reset_kg_before: true
+
+setup:
+  - kind: seed_canonical_paradigms
+    args: {}
+
 topics:
   - text: "Reinforcement learning in foraging environments"
     expect:
       research:
         - paradigm: reinforcement-learning
-        - min_nodes: { label: Paradigm, n: 1 }
+        # Floor: the canonical seed (10) plus this topic's emission.
+        - min_nodes: { label: Paradigm, n: 10 }
+
   - text: "Prospect theory and risky decisions"
     expect:
       research:
         - paradigm: prospect-theory
-        - min_nodes: { label: Paradigm, n: 2 }
+        - min_nodes: { label: Paradigm, n: 10 }
+
   - text: "Drift-diffusion models of perceptual decisions"
     expect:
       research:
-        - min_nodes: { label: Paradigm, n: 3 }
+        - paradigm: drift-diffusion-model
+        - min_nodes: { label: Paradigm, n: 10 }
+
   - text: "Bounded rationality and satisficing heuristics"
     expect:
       research:
-        - min_nodes: { label: Paradigm, n: 4 }
+        - paradigm: bounded-rationality
+        - min_nodes: { label: Paradigm, n: 10 }
+
   - text: "Free-energy principle as a unifying decision framework"
     expect:
       research:
-        - min_nodes: { label: Paradigm, n: 5 }
-        - min_nodes: { label: Variable, n: 5 }
+        - paradigm: free-energy-principle
+        - min_nodes: { label: Paradigm, n: 10 }
+        # Variable accumulation: extracting 5 paradigms in depth should
+        # surface at least 10 distinct Variables (~2/paradigm minimum).
+        - min_nodes: { label: Variable, n: 10 }
+
+suite_assertions:
+  # Tight Paradigm growth bound: with the 10 canonical seeds in place,
+  # each topic should reuse one slug rather than mint a new one.
+  # Anything > 1.5/topic indicates non-canonical slug leakage (the
+  # failure mode documented in MEMORY_SYSTEM_REPORT.md §4.1).
+  - kg_growth_rate: { label: Paradigm, max_per_topic: 1.5 }
+
 budget:
   max_usd_total: 10.00
