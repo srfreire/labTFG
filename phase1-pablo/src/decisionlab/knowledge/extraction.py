@@ -249,6 +249,38 @@ def _fold_legacy_test_results(raw_nodes: list) -> list:
 def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
     """Convert parsed JSON dict into an ExtractionResult with validated fields."""
     raw_nodes = _fold_legacy_test_results(data.get("nodes", []))
+    # Pre-pass: defensive paradigm_slug fill-in. The LLM regularly emits
+    # a Variable inside a Paradigm batch without copying the slug down,
+    # even though the prompt tells it to. We scan raw_nodes for the
+    # batch's Paradigm slug, then patch Variables missing paradigm_slug
+    # *before* per-node validation runs — otherwise the validation would
+    # reject those Variables (paradigm_slug is required) and they'd be
+    # dropped silently when a free fill-in would have saved them.
+    paradigm_slug_for_batch: str | None = None
+    for raw in raw_nodes:
+        if not isinstance(raw, dict):
+            continue
+        if raw.get("label") != "Paradigm":
+            continue
+        props = raw.get("properties")
+        if not isinstance(props, dict):
+            continue
+        slug = props.get("slug")
+        if isinstance(slug, str):
+            paradigm_slug_for_batch = slug
+            break
+    if paradigm_slug_for_batch:
+        for raw in raw_nodes:
+            if not isinstance(raw, dict):
+                continue
+            if raw.get("label") != "Variable":
+                continue
+            props = raw.get("properties")
+            if not isinstance(props, dict):
+                continue
+            if not props.get("paradigm_slug"):
+                props["paradigm_slug"] = paradigm_slug_for_batch
+
     nodes = []
     n_dropped_invalid = 0
     drop_reasons: list[str] = []
@@ -292,23 +324,6 @@ def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
             len(raw_nodes),
             "; ".join(drop_reasons[:5]) + (" ..." if len(drop_reasons) > 5 else ""),
         )
-
-    # Defensive: if the LLM emitted a Paradigm in this batch, fill any missing
-    # paradigm_slug on Variable nodes from it. Prevents Variables from silently
-    # falling into the orphan namespace when the LLM forgets to copy the slug
-    # down (which it does despite the prompt telling it to).
-    paradigm_slug = next(
-        (
-            n.properties.get("slug")
-            for n in nodes
-            if n.label == "Paradigm" and isinstance(n.properties.get("slug"), str)
-        ),
-        None,
-    )
-    if paradigm_slug:
-        for n in nodes:
-            if n.label == "Variable" and not n.properties.get("paradigm_slug"):
-                n.properties["paradigm_slug"] = paradigm_slug
 
     relations = []
     for raw in data.get("relations", []):
