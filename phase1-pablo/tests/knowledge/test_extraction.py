@@ -906,7 +906,7 @@ def test_build_result_skips_malformed_nodes():
         "nodes": [
             {
                 "label": "Paradigm",
-                "properties": {"name": "X", "slug": "named-theory"},
+                "properties": {"name": "X", "slug": "reinforcement-learning"},
                 "natural_key": "slug",
             },  # valid
             {"label": "Bad"},  # missing properties and natural_key

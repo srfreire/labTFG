@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from decisionlab.knowledge.extraction import (
     _CANONICAL_SLUGS,
-    _NodeRaw,
+    _build_result,
     _ParadigmProps,
     _PostulateProps,
     _VariableProps,
@@ -206,72 +206,117 @@ def test_postulate_with_new_paradigm_prefix_validates():
 
 
 # ---------------------------------------------------------------------------
-# Dispatch: ``_NodeRaw.model_validator`` routes properties by ``label``.
+# Per-node validation in ``_build_result`` — invalid slug-bearing nodes are
+# dropped individually so one bad slug doesn't void an otherwise-valid batch.
 # ---------------------------------------------------------------------------
 
 
-def test_node_raw_dispatches_paradigm_validator():
-    """``_NodeRaw`` runs ``_ParadigmProps`` validation when label='Paradigm'."""
-    with pytest.raises(ValidationError):
-        _NodeRaw(
-            label="Paradigm",
-            properties={"slug": "fabricated_slug", "name": "x"},
-            natural_key="slug",
-        )
+def _bare(nodes):
+    return {"nodes": nodes, "relations": [], "facts": []}
 
 
-def test_node_raw_dispatches_variable_validator():
-    """``_NodeRaw`` runs ``_VariableProps`` validation when label='Variable'."""
-    with pytest.raises(ValidationError):
-        _NodeRaw(
-            label="Variable",
-            properties={"name": "x", "paradigm_slug": "fabricated"},
-            natural_key="name",
-        )
+def test_build_result_drops_invalid_paradigm():
+    """A Paradigm with a non-canonical slug is dropped, not raised."""
+    data = _bare(
+        [
+            {
+                "label": "Paradigm",
+                "properties": {"slug": "fabricated_slug", "name": "x"},
+                "natural_key": "slug",
+            }
+        ]
+    )
+    result = _build_result(data, stage="researcher", run_id="r1")
+    assert result.nodes == []
 
 
-def test_node_raw_dispatches_postulate_validator():
-    """``_NodeRaw`` runs ``_PostulateProps`` validation when label='Postulate'."""
-    with pytest.raises(ValidationError):
-        _NodeRaw(
-            label="Postulate",
-            properties={
-                "id": "P1",
-                "statement": "x",
-                "falsifiable": True,
-                "paradigm_slug": "reinforcement-learning",
-            },
-            natural_key="id",
-        )
+def test_build_result_drops_invalid_variable():
+    """A Variable with a non-canonical paradigm_slug is dropped."""
+    data = _bare(
+        [
+            {
+                "label": "Variable",
+                "properties": {"name": "x", "paradigm_slug": "fabricated"},
+                "natural_key": "name",
+            }
+        ]
+    )
+    result = _build_result(data, stage="researcher", run_id="r1")
+    assert result.nodes == []
 
 
-def test_node_raw_skips_dispatch_for_non_slug_labels():
+def test_build_result_drops_invalid_postulate():
+    """A Postulate with a bad id is dropped."""
+    data = _bare(
+        [
+            {
+                "label": "Postulate",
+                "properties": {
+                    "id": "P1",
+                    "statement": "x",
+                    "falsifiable": True,
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                "natural_key": "id",
+            }
+        ]
+    )
+    result = _build_result(data, stage="researcher", run_id="r1")
+    assert result.nodes == []
+
+
+def test_build_result_keeps_non_slug_labels():
     """Labels without a typed sub-validator (Author, Paper, BrainRegion,
-    Equation, Parameter, Formulation, Model) keep their dict properties
-    untouched — the canonical-set guarantee only applies to slug fields."""
-    node = _NodeRaw(
-        label="Author",
-        properties={"name": "Walter B. Cannon", "affiliation": "Harvard"},
-        natural_key="name",
+    Equation, Parameter, Formulation, Model) skip per-label validation
+    and survive — the canonical-set guarantee only applies to slug fields."""
+    data = _bare(
+        [
+            {
+                "label": "Author",
+                "properties": {"name": "Walter B. Cannon", "affiliation": "Harvard"},
+                "natural_key": "name",
+            }
+        ]
     )
-    assert node.properties["name"] == "Walter B. Cannon"
+    result = _build_result(data, stage="researcher", run_id="r1")
+    assert len(result.nodes) == 1
+    assert result.nodes[0].properties["name"] == "Walter B. Cannon"
 
 
-def test_node_raw_preserves_properties_dict_after_validation():
-    """The dispatch validator runs ``model_validate`` for type-checking but
-    leaves the underlying dict intact so ``_build_result`` still sees the
-    original keys."""
-    node = _NodeRaw(
-        label="Paradigm",
-        properties={
-            "slug": "reinforcement-learning",
-            "name": "RL",
-            "description": "Action-value learning.",
-        },
-        natural_key="slug",
+def test_build_result_keeps_valid_paradigm_drops_invalid_in_same_batch():
+    """One bad slug in a list doesn't void the rest — the regression that
+    motivated this rewrite (smoke 2026-05-09: 90+ valid nodes lost to one
+    `memory-based-foraging` slug)."""
+    data = _bare(
+        [
+            {
+                "label": "Paradigm",
+                "properties": {
+                    "slug": "reinforcement-learning",
+                    "name": "RL",
+                    "description": ".",
+                },
+                "natural_key": "slug",
+            },
+            {
+                "label": "Paradigm",
+                "properties": {"slug": "fabricated", "name": "x"},
+                "natural_key": "slug",
+            },
+            {
+                "label": "Paradigm",
+                "properties": {
+                    "slug": "prospect-theory",
+                    "name": "Prospect Theory",
+                    "description": ".",
+                },
+                "natural_key": "slug",
+            },
+        ]
     )
-    assert node.properties == {
-        "slug": "reinforcement-learning",
-        "name": "RL",
-        "description": "Action-value learning.",
+    result = _build_result(data, stage="researcher", run_id="r1")
+    assert len(result.nodes) == 2
+    assert {n.properties["slug"] for n in result.nodes} == {
+        "reinforcement-learning",
+        "prospect-theory",
     }

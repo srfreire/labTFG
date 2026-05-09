@@ -13,7 +13,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from decisionlab.config import SETTINGS
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
@@ -134,38 +134,15 @@ _LABEL_TO_PROPS: dict[str, type[BaseModel]] = {
 }
 
 
-class _NodeRaw(BaseModel):
-    label: str
-    properties: dict[str, Any] = Field(default_factory=dict)
-    natural_key: str = ""
-
-    @model_validator(mode="after")
-    def _dispatch_properties_validator(self) -> _NodeRaw:
-        """Validate ``properties`` against the typed model for this label.
-
-        Runs *after* the envelope is parsed so every field (including
-        ``label``) is available. Slug-bearing labels go through
-        ``_*Props.model_validate`` which enforces the ``ParadigmSlug``
-        Literal; other labels fall through with their dict intact.
-        """
-        sub_model = _LABEL_TO_PROPS.get(self.label)
-        if sub_model is not None:
-            sub_model.model_validate(self.properties)
-        return self
-
-
-class _RelationRaw(BaseModel):
-    from_label: str
-    from_key_value: str
-    to_label: str
-    to_key_value: str
-    rel_type: str
-    properties: dict[str, Any] = Field(default_factory=dict)
-
-
 class _Extraction(BaseModel):
-    nodes: list[_NodeRaw] = Field(default_factory=list)
-    relations: list[_RelationRaw] = Field(default_factory=list)
+    """Permissive envelope: nodes/relations stay as raw dicts so the LLM
+    emitting one bad slug among many valid nodes doesn't void the whole
+    batch. Per-label validation (``_LABEL_TO_PROPS``) is applied per-node
+    in ``_build_result``, where invalid items are logged and skipped.
+    """
+
+    nodes: list[dict[str, Any]] = Field(default_factory=list)
+    relations: list[dict[str, Any]] = Field(default_factory=list)
     facts: list[str] = Field(default_factory=list)
 
 
@@ -272,20 +249,48 @@ def _build_result(data: dict, stage: str, run_id: str) -> ExtractionResult:
     """Convert parsed JSON dict into an ExtractionResult with validated fields."""
     raw_nodes = _fold_legacy_test_results(data.get("nodes", []))
     nodes = []
+    n_dropped_invalid = 0
+    drop_reasons: list[str] = []
     for raw in raw_nodes:
         if not isinstance(raw, dict):
             continue
         label = raw.get("label")
         properties = raw.get("properties")
         natural_key = raw.get("natural_key")
-        if label and isinstance(properties, dict) and natural_key:
-            nodes.append(
-                NodeSpec(
-                    label=str(label),
-                    properties=properties,
-                    natural_key=str(natural_key),
+        if not (label and isinstance(properties, dict) and natural_key):
+            continue
+
+        # Per-label property validation. Slug-bearing labels enforce the
+        # canonical Literal here so a single bad node is dropped instead
+        # of failing the whole list at parse time (see _Extraction).
+        sub_model = _LABEL_TO_PROPS.get(str(label))
+        if sub_model is not None:
+            try:
+                sub_model.model_validate(properties)
+            except ValidationError as exc:
+                n_dropped_invalid += 1
+                drop_reasons.append(
+                    f"{label}({properties.get('slug') or properties.get('name') or '?'}): "
+                    f"{exc.error_count()} field error(s)"
                 )
+                continue
+
+        nodes.append(
+            NodeSpec(
+                label=str(label),
+                properties=properties,
+                natural_key=str(natural_key),
             )
+        )
+
+    if n_dropped_invalid:
+        logger.warning(
+            "extract[%s]: dropped %d/%d nodes failing per-label validation: %s",
+            stage,
+            n_dropped_invalid,
+            len(raw_nodes),
+            "; ".join(drop_reasons[:5]) + (" ..." if len(drop_reasons) > 5 else ""),
+        )
 
     # Defensive: if the LLM emitted a Paradigm in this batch, fill any missing
     # paradigm_slug on Variable nodes from it. Prevents Variables from silently
