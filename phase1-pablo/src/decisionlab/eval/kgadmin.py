@@ -78,8 +78,7 @@ async def stats(services: Services) -> KGStats:
     by_label = {row["label"]: int(row["n"]) for row in label_rows}
 
     type_rows = await kg.query(
-        "MATCH ()-[r]->() "
-        "RETURN type(r) AS rel_type, count(r) AS n ORDER BY n DESC"
+        "MATCH ()-[r]->() RETURN type(r) AS rel_type, count(r) AS n ORDER BY n DESC"
     )
     by_type = {row["rel_type"]: int(row["n"]) for row in type_rows}
 

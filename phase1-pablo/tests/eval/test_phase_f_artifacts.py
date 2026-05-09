@@ -32,9 +32,9 @@ def test_suite_yaml_parses():
     assert spec.stages == (Stage.RESEARCH,)
     assert spec.reset_kg_before is True
     assert len(spec.topics) == 4
-    assert any(
-        action.kind == "seed_canonical_paradigms" for action in spec.setup
-    ), "suite must seed canonical paradigms before topics run"
+    assert any(action.kind == "seed_canonical_paradigms" for action in spec.setup), (
+        "suite must seed canonical paradigms before topics run"
+    )
 
 
 def test_suite_predicates_are_registered():

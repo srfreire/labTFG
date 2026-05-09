@@ -103,9 +103,7 @@ async def save_summary_report(
     """Save the final research summary to S3. Returns the S3 key."""
     key = f"research/{run_id}/report.md"
     await storage.put_text(key, summary)
-    await _register_artifact(
-        key, "report", len(summary.encode()), run_id=run_id, db=db
-    )
+    await _register_artifact(key, "report", len(summary.encode()), run_id=run_id, db=db)
     logger.info("Saved summary report: %s", key)
     return key
 

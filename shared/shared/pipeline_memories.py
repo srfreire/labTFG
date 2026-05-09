@@ -275,7 +275,9 @@ async def get_supersession_chain(
         if current_id in seen:
             break
         seen.add(current_id)
-        result = await session.execute(select(PipelineMemory).where(PipelineMemory.id == current_id))
+        result = await session.execute(
+            select(PipelineMemory).where(PipelineMemory.id == current_id)
+        )
         mem = result.scalar_one_or_none()
         if mem is None:
             break

@@ -412,13 +412,17 @@ class TestAC7_MemoryAccessTracking:
         sim_id = str(uuid.uuid4())
         results = [
             _result(
-                "pipeline result", 0.9, "dense",
+                "pipeline result",
+                0.9,
+                "dense",
                 entity_id=pipeline_id,
                 collection="memories_dense",
                 source_kind="pipeline",
             ),
             _result(
-                "simulation result", 0.85, "dense",
+                "simulation result",
+                0.85,
+                "dense",
                 entity_id=sim_id,
                 collection="memories_dense",
                 source_kind="simulation",

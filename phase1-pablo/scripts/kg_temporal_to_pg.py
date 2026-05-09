@@ -157,8 +157,7 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
             to_label, to_key = _identity_for(row["to_props"], row["to_labels"])
 
             content = (
-                f"{from_label}.{from_key} -[{row['rel_type']}]-> "
-                f"{to_label}.{to_key}"
+                f"{from_label}.{from_key} -[{row['rel_type']}]-> {to_label}.{to_key}"
             )
             valid_from = (
                 _parse_dt(row["props"].get("valid_from"))
@@ -251,9 +250,7 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
                 try:
                     async with shared.db.get_session() as session:
                         await session.execute(
-                            sql_text(
-                                "DELETE FROM pipeline_memories WHERE id = :id"
-                            ),
+                            sql_text("DELETE FROM pipeline_memories WHERE id = :id"),
                             {"id": new_id},
                         )
                         await session.commit()

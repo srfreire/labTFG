@@ -415,9 +415,7 @@ async def test_update_memory_confidence_concurrent_corroborations(engine):
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as setup:
         run_id_local = await _make_run(setup)
-        mem = await create_memory(
-            setup, **_memory_kwargs(run_id_local, confidence=0.5)
-        )
+        mem = await create_memory(setup, **_memory_kwargs(run_id_local, confidence=0.5))
         await setup.commit()
         mem_id = mem.id
 

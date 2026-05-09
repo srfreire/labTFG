@@ -287,9 +287,7 @@ async def test_fetch_memory_temporal_meta_matches_pg(temporal_dataset):
     """``fetch_memory_temporal_meta`` returns the same row PG holds."""
     versions = temporal_dataset["versions"]
     async with shared.db.get_session() as session:
-        meta = await fetch_memory_temporal_meta(
-            session, [str(v) for v in versions]
-        )
+        meta = await fetch_memory_temporal_meta(session, [str(v) for v in versions])
     assert set(meta) == {str(v) for v in versions}
     assert meta[str(versions[3])]["valid_to"] is None
     assert meta[str(versions[0])]["valid_to"] is not None

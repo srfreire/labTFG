@@ -114,7 +114,9 @@ async def test_happy_path_single_model_two_agents():
     # 4 facts expected: 1 summary + 2 trajectories + 1 episode
     writer, m = _make_writer(embed_return=[[0.1] * 5] * 4)
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(tracker_json, ctx)
 
     assert result.skipped_reason is None
@@ -182,7 +184,9 @@ async def test_comparison_run_tags_correct_paradigm_per_fact():
     # 3 facts: 1 summary + 2 trajectories
     writer, _m = _make_writer(embed_return=[[0.1]] * 3)
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1
@@ -214,7 +218,9 @@ async def test_invalid_json_short_circuits(bad_input):
     writer, m = _make_writer()
     ctx = _context(agent_to_model={"agent_0": _model()})
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(bad_input, ctx)
 
     assert result.skipped_reason == "invalid_json"
@@ -239,7 +245,9 @@ async def test_empty_tracker_returns_no_relevant_content():
     ctx = _context(agent_to_model={"agent_0": _model()})
     tracker = {"summary": "", "trajectories": {}, "episodes": []}
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.skipped_reason == "no_relevant_content"
@@ -264,7 +272,9 @@ async def test_all_routine_episodes_returns_no_relevant_content():
             {"agent": "agent_0", "type": "exploration", "step": 2, "description": "y"},
         ],
     }
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()):
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ):
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.skipped_reason == "no_relevant_content"
@@ -294,7 +304,9 @@ async def test_qdrant_dense_failure_does_not_abort_batch():
         dense_side_effect=flaky_dense,
     )
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(tracker_json, ctx)
 
     # Writer did not abort — result reflects all 4 facts as written (PG rows kept).
@@ -326,7 +338,9 @@ async def test_voyage_failure_returns_error_skipped_reason():
     writer, m = _make_writer()
     m["emb"].embed_texts.side_effect = RuntimeError("voyage exploded")
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         result = await writer.write(tracker_json, ctx)
 
     assert result.skipped_reason is not None
@@ -367,7 +381,9 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
     # Only 1 fact survives (ghost skipped pre-embedding).
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()) as cm:
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ) as cm:
         with caplog.at_level("WARNING"):
             result = await writer.write(json.dumps(tracker), ctx)
 
@@ -395,7 +411,9 @@ async def test_sparse_upsert_receives_raw_text():
     }
     writer, m = _make_writer(embed_return=[[0.1]])
 
-    with patch("simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()):
+    with patch(
+        "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
+    ):
         result = await writer.write(json.dumps(tracker), ctx)
 
     assert result.summaries_written == 1

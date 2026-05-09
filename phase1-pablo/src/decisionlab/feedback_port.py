@@ -141,9 +141,7 @@ class CLIFeedback:
 class WebFeedback:
     """WebSocket-based feedback. Wraps the existing ``web_feedback`` module."""
 
-    def __init__(
-        self, emit: EmitFn, *, storage: StorageService | None = None
-    ) -> None:
+    def __init__(self, emit: EmitFn, *, storage: StorageService | None = None) -> None:
         self._emit = emit
         self._storage = storage
 

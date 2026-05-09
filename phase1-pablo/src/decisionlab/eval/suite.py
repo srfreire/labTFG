@@ -368,9 +368,7 @@ async def _run_seed_canonical_paradigms(
     )
 
 
-async def _run_seed_pipeline_memory(
-    args: dict[str, Any], services: Services
-) -> None:
+async def _run_seed_pipeline_memory(args: dict[str, Any], services: Services) -> None:
     """Insert a fixed `pipeline_memories` row (and its parent `runs` row) for
     deterministic temporal/lifecycle eval suites.
 
@@ -418,13 +416,18 @@ async def _run_seed_pipeline_memory(
                 f"seed_pipeline_memory: {field} must be a valid UUID, got {value!r}"
             ) from exc
 
-    required = ("id", "content", "namespace", "source_stage", "run_id",
-                "confidence", "valid_from")
+    required = (
+        "id",
+        "content",
+        "namespace",
+        "source_stage",
+        "run_id",
+        "confidence",
+        "valid_from",
+    )
     missing = [k for k in required if k not in args]
     if missing:
-        raise ValueError(
-            f"seed_pipeline_memory: missing required args {missing}"
-        )
+        raise ValueError(f"seed_pipeline_memory: missing required args {missing}")
 
     mem_id = _parse_uuid(args["id"], field="id")
     run_id = _parse_uuid(args["run_id"], field="run_id")

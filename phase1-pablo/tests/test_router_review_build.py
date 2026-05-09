@@ -43,9 +43,7 @@ def _mock_db_session():
     return mock_db, mock_session
 
 
-def _make_router(
-    state: PipelineState, *, db=None, storage=None
-) -> Router:
+def _make_router(state: PipelineState, *, db=None, storage=None) -> Router:
     client = AsyncMock()
     search = MagicMock()
     services = Services(
@@ -151,9 +149,7 @@ class TestReviewBuildReasonerReruns:
             vectors=None,
             embeddings=None,
         )
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -314,9 +310,7 @@ class TestModelRegistration:
             embeddings=None,
         )
 
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -375,9 +369,7 @@ class TestModelRegistration:
             embeddings=None,
         )
 
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert len(added_models) == 1
@@ -400,9 +392,7 @@ class TestModelRegistration:
         mock_session.add = lambda obj: added_models.append(obj)
 
         mock_storage = MagicMock()
-        mock_storage.get_text = AsyncMock(
-            side_effect=FileNotFoundError("not found")
-        )
+        mock_storage.get_text = AsyncMock(side_effect=FileNotFoundError("not found"))
         router._services = type(router._services)(
             db=mock_db,
             storage=mock_storage,
@@ -411,9 +401,7 @@ class TestModelRegistration:
             embeddings=None,
         )
 
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -455,9 +443,7 @@ class TestModelRegistration:
             embeddings=None,
         )
 
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert state.stage == Stage.DONE
@@ -498,9 +484,7 @@ class TestModelRegistration:
             embeddings=None,
         )
 
-        with patch(
-            "decisionlab.feedback.review_build", side_effect=mock_review_build
-        ):
+        with patch("decisionlab.feedback.review_build", side_effect=mock_review_build):
             await router._review_build()
 
         assert len(added_models) == 1

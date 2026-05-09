@@ -251,9 +251,7 @@ class TestGetNodeHistory:
 
         monkeypatch.setattr(kg_mod, "fetch_memory_temporal_meta", _fake_meta)
 
-        result = await kg.get_node_history(
-            "Variable", "name", "x", session=MagicMock()
-        )
+        result = await kg.get_node_history("Variable", "name", "x", session=MagicMock())
 
         assert len(result) == 1
         assert result[0]["valid_from"] is None
@@ -264,9 +262,7 @@ class TestGetNodeHistory:
     async def test_validates_label(self):
         kg, _ = _make_kg_with_session([])
         with pytest.raises(ValueError, match="Unknown label"):
-            await kg.get_node_history(
-                "FakeLabel", "name", "test", session=MagicMock()
-            )
+            await kg.get_node_history("FakeLabel", "name", "test", session=MagicMock())
 
     @pytest.mark.asyncio
     async def test_validates_key_property(self):

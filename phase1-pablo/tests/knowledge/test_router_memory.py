@@ -299,8 +299,7 @@ async def test_memory_agent_called_for_all_work_stages():
     }
 
     patches = [
-        patch.object(router, name, side_effect=fn)
-        for name, fn in handler_mocks.items()
+        patch.object(router, name, side_effect=fn) for name, fn in handler_mocks.items()
     ]
     for p in patches:
         p.start()

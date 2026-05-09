@@ -189,9 +189,7 @@ class PipelineMemory(Base):
     source_stage: Mapped[str] = mapped_column(String(100))
     run_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey(
-            "runs.id", name="pipeline_memories_run_id_fkey", ondelete="CASCADE"
-        ),
+        ForeignKey("runs.id", name="pipeline_memories_run_id_fkey", ondelete="CASCADE"),
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -229,7 +227,9 @@ class SimulationObservation(Base):
 
     __tablename__ = "simulation_observations"
     __table_args__ = (
-        Index("ix_simulation_observations_phase2_experiment_id", "phase2_experiment_id"),
+        Index(
+            "ix_simulation_observations_phase2_experiment_id", "phase2_experiment_id"
+        ),
         Index("ix_simulation_observations_paradigm", "paradigm"),
         Index("ix_simulation_observations_formulation", "formulation"),
         Index("ix_simulation_observations_phase1_run_id", "phase1_run_id"),

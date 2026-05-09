@@ -223,9 +223,7 @@ class BuilderSubAgent:
             "write_file": create_write_file(
                 models_prefix, storage=storage, db=db, run_id=run_id
             ),
-            "run_tests": create_run_tests(
-                models_prefix, project_root, storage=storage
-            ),
+            "run_tests": create_run_tests(models_prefix, project_root, storage=storage),
         }
 
         self._has_knowledge = False

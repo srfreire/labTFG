@@ -256,9 +256,7 @@ class Researcher:
 
         if run_id and storage is not None:
             self.tools.append(READ_REPORT_SCHEMA)
-            self.registry["read_report"] = create_read_report(
-                run_id, storage=storage
-            )
+            self.registry["read_report"] = create_read_report(run_id, storage=storage)
 
         self._knowledge_tool_schema = knowledge_tool_schema
         self._knowledge_tool_handler = knowledge_tool_handler

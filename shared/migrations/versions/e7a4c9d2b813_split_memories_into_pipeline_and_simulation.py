@@ -80,14 +80,10 @@ def downgrade() -> None:
         table_name="simulation_observations",
     )
     op.drop_table("simulation_observations")
-    op.drop_index(
-        "ix_pipeline_memories_ns_confidence", table_name="pipeline_memories"
-    )
+    op.drop_index("ix_pipeline_memories_ns_confidence", table_name="pipeline_memories")
     op.drop_index("ix_pipeline_memories_valid_to", table_name="pipeline_memories")
     op.drop_index("ix_pipeline_memories_confidence", table_name="pipeline_memories")
-    op.drop_index(
-        "ix_pipeline_memories_source_stage", table_name="pipeline_memories"
-    )
+    op.drop_index("ix_pipeline_memories_source_stage", table_name="pipeline_memories")
     op.drop_index("ix_pipeline_memories_run_id", table_name="pipeline_memories")
     op.drop_index("ix_pipeline_memories_namespace", table_name="pipeline_memories")
     op.drop_table("pipeline_memories")
@@ -123,12 +119,8 @@ def _create_pipeline_memories() -> None:
         sa.Column("access_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("importance", sa.Float(), nullable=False),
         sa.Column("confidence", sa.Float(), nullable=False),
-        sa.Column(
-            "corroborations", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "contradictions", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("corroborations", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("contradictions", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "valid_from",
             sa.DateTime(),
@@ -153,9 +145,7 @@ def _create_pipeline_memories() -> None:
     op.create_index(
         "ix_pipeline_memories_namespace", "pipeline_memories", ["namespace"]
     )
-    op.create_index(
-        "ix_pipeline_memories_run_id", "pipeline_memories", ["run_id"]
-    )
+    op.create_index("ix_pipeline_memories_run_id", "pipeline_memories", ["run_id"])
     op.create_index(
         "ix_pipeline_memories_source_stage",
         "pipeline_memories",
@@ -166,9 +156,7 @@ def _create_pipeline_memories() -> None:
         "pipeline_memories",
         ["confidence"],
     )
-    op.create_index(
-        "ix_pipeline_memories_valid_to", "pipeline_memories", ["valid_to"]
-    )
+    op.create_index("ix_pipeline_memories_valid_to", "pipeline_memories", ["valid_to"])
     op.create_index(
         "ix_pipeline_memories_ns_confidence",
         "pipeline_memories",
@@ -195,18 +183,14 @@ def _create_simulation_observations() -> None:
             server_default="tracker",
         ),
         sa.Column("importance", sa.Float(), nullable=False),
-        sa.Column(
-            "confidence", sa.Float(), nullable=False, server_default="0.80"
-        ),
+        sa.Column("confidence", sa.Float(), nullable=False, server_default="0.80"),
         sa.Column(
             "created_at",
             sa.DateTime(),
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.Column(
-            "phase2_experiment_id", sa.String(length=255), nullable=True
-        ),
+        sa.Column("phase2_experiment_id", sa.String(length=255), nullable=True),
         sa.Column("model_class_name", sa.String(length=255), nullable=True),
         sa.Column("paradigm", sa.String(length=255), nullable=True),
         sa.Column("formulation", sa.String(length=255), nullable=True),

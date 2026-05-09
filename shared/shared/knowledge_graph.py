@@ -264,9 +264,7 @@ class KnowledgeGraph:
         """
         valid_ids = await select_valid_memory_ids(session, as_of, namespace=namespace)
 
-        temporal_clause = (
-            "WHERE r.memory_id IS NULL OR r.memory_id IN $_valid_ids"
-        )
+        temporal_clause = "WHERE r.memory_id IS NULL OR r.memory_id IN $_valid_ids"
 
         upper = cypher.upper()
         ret_idx = upper.rfind("RETURN")

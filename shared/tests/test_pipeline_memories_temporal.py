@@ -233,9 +233,7 @@ class TestGetSupersessionChain:
     @pytest.mark.asyncio
     async def test_single_memory_no_successors(self, session, run_id):
         """A memory with no superseded_by returns a chain of length 1."""
-        mem = await create_memory(
-            session, **_mem_kwargs(run_id, content="standalone")
-        )
+        mem = await create_memory(session, **_mem_kwargs(run_id, content="standalone"))
         await session.commit()
 
         chain = await get_supersession_chain(session, mem.id)

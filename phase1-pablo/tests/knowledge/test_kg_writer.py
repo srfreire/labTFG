@@ -74,9 +74,7 @@ class _FakePGStore:
         row["valid_to"] = valid_to
         return True
 
-    async def fetch_active(
-        self, memory_ids: list[str], *, db=None
-    ) -> dict[str, dict]:
+    async def fetch_active(self, memory_ids: list[str], *, db=None) -> dict[str, dict]:
         out: dict[str, dict] = {}
         for mid_str in memory_ids:
             try:

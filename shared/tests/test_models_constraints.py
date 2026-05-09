@@ -240,9 +240,7 @@ async def test_simulation_observation_indexes_present(engine):
 
         def _list_indexes(sync_conn) -> set[str]:
             insp = inspect(sync_conn)
-            return {
-                idx["name"] for idx in insp.get_indexes("simulation_observations")
-            }
+            return {idx["name"] for idx in insp.get_indexes("simulation_observations")}
 
         names = await conn.run_sync(_list_indexes)
 

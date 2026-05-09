@@ -1249,7 +1249,9 @@ class Router:
                     expected,
                 )
                 data["formulation_id"] = formulation
-                await self._services.storage.put_text(expected, json.dumps(data, indent=2))
+                await self._services.storage.put_text(
+                    expected, json.dumps(data, indent=2)
+                )
 
     async def _validate_builder_files(
         self,
