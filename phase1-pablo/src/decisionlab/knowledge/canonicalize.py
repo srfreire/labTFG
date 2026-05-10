@@ -50,7 +50,7 @@ CANONICAL_NEW = "__NEW__"
 
 # Per-label cosine threshold for ANN candidate consideration.
 # Above τ → Sonnet verify-merge gate. Below τ → mint without LLM call.
-PARADIGM_THRESHOLD: float = 0.85
+PARADIGM_THRESHOLD: float = 0.75
 
 _ANN_TOP_K = 3
 _VERIFY_MAX_TOKENS = 1024

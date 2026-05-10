@@ -468,8 +468,12 @@ class Researcher:
                 # ``slug_hit_rate`` eval metric, which reads ``run.paradigms``.
                 if self._kg is not None and self._embeddings is not None:
                     try:
+                        # De-kebab the proposal so the embedding compares as
+                        # natural language against canonical Paradigm.name
+                        # ("td eligibility traces" vs "Reinforcement learning"
+                        # cosines closer than the kebab form does).
                         slug = await resolve_new_paradigm(
-                            name=proposal,
+                            name=proposal.replace("-", " "),
                             description=emission.definition,
                             kg=self._kg,
                             embeddings=self._embeddings,
