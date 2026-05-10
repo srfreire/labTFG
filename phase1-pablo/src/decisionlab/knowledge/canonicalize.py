@@ -50,7 +50,7 @@ CANONICAL_NEW = "__NEW__"
 
 # Per-label cosine threshold for ANN candidate consideration.
 # Above τ → Sonnet verify-merge gate. Below τ → mint without LLM call.
-PARADIGM_THRESHOLD: float = 0.65
+PARADIGM_THRESHOLD: float = 0.75
 
 _ANN_TOP_K = 3
 _VERIFY_MAX_TOKENS = 1024
@@ -119,11 +119,7 @@ async def resolve_new_paradigm(
     except ValueError:
         return minted
 
-    # Embed the definition alone — seed.py builds canonical Paradigm.embedding
-    # from `definition` only (not "name: definition"), so matching that shape
-    # keeps cosines on the same distribution. Fall back to name when the
-    # candidate has no description.
-    text = description.strip() if description and description.strip() else name.strip()
+    text = f"{name}: {description}".strip(": ").strip()
     if not text:
         return minted
 
