@@ -7,7 +7,6 @@ knowledge.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid as uuid_mod
@@ -25,7 +24,6 @@ from decisionlab.knowledge.prompts import (
     REFLECTION_SYSTEM,
     REFLECTION_USER,
 )
-from decisionlab.runtime.usage import record as record_usage
 from decisionlab.structured import (
     StructuredOutputError,
     call_structured,
@@ -71,44 +69,18 @@ class _ReflectionEmission(BaseModel):
     insights: list[str]
 
 
-async def _call_haiku(
-    client: AsyncAnthropic,
-    *,
-    system: str,
-    user: str,
-    max_tokens: int,
-) -> str:
-    """Single Haiku call. Raises on output truncation so callers can't silently
-    swallow a partial response as a JSON parse error. Streams when ``max_tokens``
-    is large enough to risk the SDK's 10-minute non-streaming guard."""
-    if max_tokens >= 8192:
-        async with client.messages.stream(
-            model=_FAST_MODEL,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        ) as stream:
-            response = await stream.get_final_message()
-    else:
-        response = await client.messages.create(
-            model=_FAST_MODEL,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-    record_usage(_FAST_MODEL, getattr(response, "usage", None))
+class _ContradictionVerdict(BaseModel):
+    """Structured shape for the contradiction-check step.
 
-    if getattr(response, "stop_reason", None) == "max_tokens":
-        usage = getattr(response, "usage", None)
-        out_tokens = getattr(usage, "output_tokens", None) if usage else None
-        raise RuntimeError(
-            f"Haiku output truncated at max_tokens={max_tokens} "
-            f"(output_tokens={out_tokens})"
-        )
+    The pre-rewrite path asked Haiku to ``Output ONLY valid JSON`` and
+    parsed the response with ``json.loads``. A response with markdown
+    fencing or any leading prose silently became ``{}`` and returned
+    ``False`` — masking real contradictions. Routing through
+    ``call_structured`` removes the parse layer entirely.
+    """
 
-    if not response.content:
-        return ""
-    return response.content[0].text
+    contradicts: bool
+    reasoning: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -433,22 +405,33 @@ async def _is_contradiction(
     text_a: str,
     text_b: str,
 ) -> bool:
-    """Use Haiku to check if two reflections contradict each other."""
+    """Use Haiku to check if two reflections contradict each other.
+
+    Routed through ``call_structured`` (forced tool-use + Pydantic
+    validation) instead of the previous ``json.loads(raw or "{}")`` path,
+    which silently fell back to ``False`` whenever Haiku wrapped its JSON
+    in a markdown fence or any leading prose. A ``StructuredOutputError``
+    surfaces in the warning log and we conservatively return ``False``
+    (status quo behavior, no longer silent). Stays on
+    ``knowledge_fast_model`` (Haiku) — binary decision, not promoted to
+    Sonnet.
+    """
     user_msg = CONTRADICTION_CHECK_USER.replace("{reflection_a}", text_a).replace(
         "{reflection_b}", text_b
     )
     try:
-        raw = await _call_haiku(
-            client,
+        verdict = await call_structured(
+            client=client,
+            messages=[{"role": "user", "content": user_msg}],
             system=CONTRADICTION_CHECK_SYSTEM,
-            user=user_msg,
+            schema=_ContradictionVerdict,
             max_tokens=_CONTRADICTION_MAX_TOKENS,
+            model=_FAST_MODEL,
         )
-        parsed = json.loads(raw or "{}")
-        return parsed.get("contradicts", False) is True
-    except Exception as exc:
+    except StructuredOutputError as exc:
         logger.warning("Contradiction check failed, assuming no contradiction: %s", exc)
         return False
+    return verdict.contradicts
 
 
 # ---------------------------------------------------------------------------

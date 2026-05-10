@@ -91,12 +91,25 @@ def _make_tool_use_response(
 def _make_client(responses: list[str]) -> AsyncMock:
     """Client that returns successive text-block responses via messages.create.
 
-    Used by the contradiction-check tests, which still go through ``_call_haiku``
-    + ``json.loads`` (not migrated by the reflection-path Phase B work).
+    Retained for any path still going through plain text + ``json.loads``.
+    The contradiction check now goes through ``call_structured`` and uses
+    ``_make_contradiction_client`` instead.
     """
     client = AsyncMock()
     client.messages.create = AsyncMock(
         side_effect=[_make_response(t) for t in responses],
+    )
+    return client
+
+
+def _make_contradiction_client(verdicts: list[dict]) -> AsyncMock:
+    """Client that returns successive ``_ContradictionVerdict`` tool_use blocks."""
+    client = AsyncMock()
+    client.messages.create = AsyncMock(
+        side_effect=[
+            _make_tool_use_response(v, tool_name="emit__ContradictionVerdict")
+            for v in verdicts
+        ],
     )
     return client
 
@@ -407,8 +420,10 @@ class TestAC3_ReflectionCorroboration:
         vector_store = AsyncMock()
         vector_store.search_dense = AsyncMock(return_value=[similar_point])
 
-        # LLM says NOT a contradiction
-        client = _make_client(['{"contradicts": false, "reasoning": "same direction"}'])
+        # LLM says NOT a contradiction (now goes through call_structured tool_use).
+        client = _make_contradiction_client(
+            [{"contradicts": False, "reasoning": "same direction"}]
+        )
 
         embedding = np.zeros(16).tolist()
         session = AsyncMock()
@@ -457,8 +472,8 @@ class TestAC3_ReflectionCorroboration:
         vector_store = AsyncMock()
         vector_store.search_dense = AsyncMock(return_value=[similar_point])
 
-        client = _make_client(
-            ['{"contradicts": true, "reasoning": "conflicting neurotransmitter"}']
+        client = _make_contradiction_client(
+            [{"contradicts": True, "reasoning": "conflicting neurotransmitter"}]
         )
 
         session = AsyncMock()
@@ -487,8 +502,11 @@ class TestAC3_ReflectionCorroboration:
         False so the corroboration path can still run."""
         from decisionlab.knowledge.consolidation import _is_contradiction
 
-        truncated = _make_response('{"contradicts": tru')
-        truncated.stop_reason = "max_tokens"
+        truncated = _make_tool_use_response(
+            {"contradicts": False, "reasoning": "ignored"},
+            tool_name="emit__ContradictionVerdict",
+            stop_reason="max_tokens",
+        )
         truncated.usage = MagicMock(output_tokens=4096)
         client = AsyncMock()
         client.messages.create = AsyncMock(return_value=truncated)
@@ -498,6 +516,35 @@ class TestAC3_ReflectionCorroboration:
 
         assert result is False
         assert any("truncated at max_tokens" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_contradiction_check_structured_error_logs_and_returns_false(
+        self, caplog
+    ):
+        """When ``call_structured`` raises ``StructuredOutputError`` (e.g. the
+        model declines to emit a tool_use block, or validation fails), the
+        contradiction check must log a warning and conservatively return
+        False — replacing the pre-fix silent ``json.loads(raw or "{}")``
+        fallback that hid every failure mode behind a quiet ``False``."""
+        from decisionlab.knowledge.consolidation import _is_contradiction
+        from decisionlab.structured import StructuredOutputError
+
+        client = AsyncMock()
+
+        async def _raise(**_kwargs):
+            raise StructuredOutputError("no tool_use block in response")
+
+        with (
+            patch(f"{_PATCH_BASE}.call_structured", side_effect=_raise) as mock_call,
+            caplog.at_level("WARNING", logger=_PATCH_BASE),
+        ):
+            result = await _is_contradiction(client, "fact A", "fact B")
+
+        assert result is False
+        mock_call.assert_called_once()
+        assert any("Contradiction check failed" in r.message for r in caplog.records), (
+            "the StructuredOutputError must surface as a warning, not be silently swallowed"
+        )
 
 
 # ---------------------------------------------------------------------------
