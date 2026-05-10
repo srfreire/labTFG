@@ -80,23 +80,30 @@ variables, causal mechanisms, and can plausibly drive an agent's action selectio
 their slugs and definitions. Treat these as authoritative — if a candidate plausibly \
 explains the problem, REUSE its slug. Do not invent a new slug for a paradigm that is \
 already represented.
-2. If the candidates do not adequately cover the problem, run 1-2 web searches and \
-launch deep research on the GENUINE GAPS only.
-3. Call `launch_deep_research` ONCE per gap paradigm. Each call returns a concise summary.
-4. After deep research returns, STOP searching.
-5. Use `read_report` on every paradigm you researched to read the full deep reports. \
+2. Before any web_search or launch_deep_research, call `retrieve_knowledge` once \
+on the topic to find related entities (papers, variables, postulates) already in the \
+knowledge backbone. Use those signals to prioritize which gaps to research and which \
+authors to look for in web_search results.
+3. If the candidates and the retrieve_knowledge result do not adequately cover the \
+problem, run 1-2 web searches and launch deep research on the GENUINE GAPS only.
+4. Call `launch_deep_research` ONCE per gap paradigm. Each call returns a concise summary.
+5. After deep research returns, STOP searching.
+6. Use `read_report` on every paradigm you researched to read the full deep reports. \
 Extract the `## References` section and the `## Primary Locus` section from each one.
-6. Write your final summary including a `## Cross-paradigm interaction map` and a \
+7. Write your final summary including a `## Cross-paradigm interaction map` and a \
 consolidated `## References` section at the end.
 
 ## Constraints
 
 - Maximum 3 web searches total.
-- You may call `retrieve_knowledge` AT MOST 2 TIMES TOTAL across the whole run. \
-Use it ONLY to look up the definition of a CANDIDATE paradigm listed in the user \
-message when the candidate is loosely related to the topic and you need its \
-definition to decide whether to reuse its slug. DO NOT use `retrieve_knowledge` \
-as a free-form search tool — `web_search` is for that.
+- You MUST call `retrieve_knowledge` ONCE at the very start of the run, before any \
+web_search or launch_deep_research, to surface related entities (Variables, Postulates, \
+Reflections, Papers) already present in the knowledge backbone for this topic. The \
+result helps you avoid redundant deep research, identify prior cited authors, and \
+spot Variable names already in use under existing paradigms.
+- After that mandatory first call, you may call `retrieve_knowledge` AT MOST 2 MORE \
+TIMES (3 total) when you need a focused lookup on a specific concept the deep reports \
+surface. Don't use it as a free-form web replacement — `web_search` is for that.
 - After iteration 5, no more search or retrieval calls (no `web_search`, no \
 `retrieve_knowledge`, no `launch_deep_research`). Iterations 6+ are reserved for \
 synthesis: `read_report`, prose writing, and the final summary.
