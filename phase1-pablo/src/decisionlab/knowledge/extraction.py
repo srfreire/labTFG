@@ -72,7 +72,8 @@ _STAGE_MODELS: dict[str, str] = {
 # unpacks the tuple into the literal's args at runtime — Pydantic still
 # validates membership the same way as a hand-written
 # ``Literal["a", "b", ...]``. ``__NEW__`` is the LLM's "doesn't fit any of
-# these" escape; routed through ``_verify_merge`` later by P1-003.
+# these" escape; routed through ``canonicalize.resolve_new_paradigm`` in
+# MemoryAgent and Researcher (issue 1) before reaching the KG.
 _CANONICAL_SLUGS: tuple[str, ...] = (
     *(p["slug"] for p in _CANONICAL),
     "__NEW__",
@@ -82,9 +83,9 @@ ParadigmSlug = Literal[_CANONICAL_SLUGS]  # type: ignore[valid-type]
 # Postulate ids are scoped by their parent paradigm slug to prevent
 # cross-paradigm collisions (e.g. RL's "P1" colliding with Prospect
 # Theory's "P1"). The regex tolerates the ``__NEW__`` escape so that an
-# extraction for an unknown paradigm still parses — P1-003 routes such
-# extractions through ``_verify_merge`` to mint or reuse a slug before
-# they reach the KG.
+# extraction for an unknown paradigm still parses —
+# ``canonicalize.canonicalize_extraction`` (issue 1) rewrites the prefix
+# to the resolved canonical slug before the writer runs.
 _POSTULATE_ID_RE = re.compile(r"^(__NEW__|[a-z0-9-]+):P\d+$")
 
 

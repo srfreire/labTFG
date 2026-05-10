@@ -12,6 +12,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
+from decisionlab.knowledge.canonicalize import canonicalize_extraction
 from decisionlab.knowledge.extraction import extract
 from decisionlab.knowledge.indexer import index_stage_output
 from decisionlab.knowledge.kg_writer import populate_kg
@@ -117,6 +118,23 @@ class MemoryAgent:
                 logger.exception("Memory Agent extraction failed for stage=%s", stage)
                 await _emit_status("failed", error=f"extraction: {exc}")
                 return self._failed_result(t0, f"extraction: {exc}")
+
+            # Step 1b: Resolve __NEW__ paradigm slugs against the existing KG
+            # before writes. Errors here are non-fatal — fall through with the
+            # raw extraction (per-label validation downstream drops orphans).
+            if self._kg is not None and self._embeddings is not None:
+                try:
+                    extraction = await canonicalize_extraction(
+                        extraction,
+                        kg=self._kg,
+                        embeddings=self._embeddings,
+                        client=self._client,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Memory Agent: canonicalize_extraction raised — "
+                        "proceeding with raw extraction"
+                    )
 
             # Step 2: Parallel KG population + embedding/indexing
             kg_result = await self._parallel_write(

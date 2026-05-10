@@ -40,6 +40,7 @@ from decisionlab.agents.deep_researcher import DeepResearcher
 from decisionlab.config import SETTINGS
 from decisionlab.domain.models import Paradigm, ResearchReport
 from decisionlab.domain.ports import WebSearchPort
+from decisionlab.knowledge.canonicalize import resolve_new_paradigm
 from decisionlab.knowledge.retrieval.tool import list_known_slugs
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.structured import DEFAULT_MODEL as _STRUCTURED_MODEL
@@ -455,7 +456,29 @@ class Researcher:
             name = ""
             if slug == "__NEW__":
                 proposal = emission.slug_proposal or ""
-                slug = _slug_from_proposal(proposal, definition=emission.definition)
+                # Try to canonicalize against existing KG Paradigms before
+                # minting. This is the integration point graded by the
+                # ``slug_hit_rate`` eval metric, which reads ``run.paradigms``.
+                if self._kg is not None and self._embeddings is not None:
+                    try:
+                        slug = await resolve_new_paradigm(
+                            name=proposal,
+                            description=emission.definition,
+                            kg=self._kg,
+                            embeddings=self._embeddings,
+                            client=self.client,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Researcher: canonicalize failed for proposal=%r — minting: %s",
+                            proposal,
+                            exc,
+                        )
+                        slug = _slug_from_proposal(
+                            proposal, definition=emission.definition
+                        )
+                else:
+                    slug = _slug_from_proposal(proposal, definition=emission.definition)
                 name = proposal or slug
             else:
                 # Reused canonical slug — keep the slug as the name placeholder
