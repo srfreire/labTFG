@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -416,8 +416,33 @@ async def run_pipeline(
 # ---------------------------------------------------------------------------
 
 
+def _filter_superseded_relations(
+    rels: list[dict], valid_memory_ids: set[str]
+) -> list[dict]:
+    """Drop relations whose ``memory_id`` isn't in *valid_memory_ids*.
+
+    Pre-P4-004 seed relations have no ``memory_id`` — they predate the
+    PG-temporal-source-of-truth and are always considered live, so they
+    pass the filter. Each input row is the dict shape produced by the
+    snapshot relations query (``{"id", "source", "target", "type",
+    "run_id", "properties"}``); ``memory_id`` is read from
+    ``properties.memory_id``.
+    """
+    out: list[dict] = []
+    for rel in rels:
+        props = rel.get("properties") or {}
+        mid = props.get("memory_id")
+        if mid is None or str(mid) in valid_memory_ids:
+            out.append(rel)
+    return out
+
+
 @app.get("/api/kg/snapshot")
-async def kg_snapshot(run_id: str | None = None) -> dict:
+async def kg_snapshot(
+    run_id: str | None = None,
+    as_of: str | None = None,
+    include_superseded: bool = False,
+) -> dict:
     """Return all nodes and active (non-superseded) relations.
 
     Each node carries ``run_count`` (cumulative MERGEs that have touched it)
@@ -427,6 +452,14 @@ async def kg_snapshot(run_id: str | None = None) -> dict:
     Neo4j elementIds of nodes the run has touched, computed by joining
     against the Postgres ``node_run_observations`` table; the frontend uses
     it to highlight new-this-run nodes.
+
+    ``as_of`` (ISO 8601, defaults to "now") and ``include_superseded``
+    (default False) control temporal filtering. Per P4-004, relation
+    validity lives in ``pipeline_memories``: we resolve the set of
+    memory_ids valid at *as_of* and drop relations whose ``r.memory_id``
+    isn't in that set. Pre-P4-004 seed relations (no ``memory_id``) are
+    always kept. Pass ``include_superseded=true`` to bypass the filter
+    and see every edge (e.g. for history views).
     """
     services = _require_services()
 
@@ -438,9 +471,9 @@ async def kg_snapshot(run_id: str | None = None) -> dict:
         "properties(n) AS props"
     )
     # Post-P4-004 the relation has no `valid_to`; temporal validity lives
-    # in `pipeline_memories`. The graph-viz endpoint shows every edge —
-    # superseded versions appear alongside their replacements until the
-    # caller adds a temporal filter via `query_at_time`.
+    # in `pipeline_memories`. We fetch every edge here and (unless the
+    # caller opts out via `include_superseded=true`) drop the rows whose
+    # `r.memory_id` isn't valid at `as_of` below.
     rels_raw = await services.kg.query(
         "MATCH (a)-[r]->(b) "
         "RETURN elementId(r) AS id, elementId(a) AS source, "
@@ -504,6 +537,36 @@ async def kg_snapshot(run_id: str | None = None) -> dict:
                 "properties": props,
             }
         )
+
+    if not include_superseded:
+        # Resolve valid memory_ids at `as_of` (defaulting to now). When PG
+        # is down we leave the relations untouched — graph-viz still works,
+        # superseded edges just remain visible until PG recovers.
+        from shared.knowledge_graph import select_valid_memory_ids
+
+        if as_of is None:
+            as_of_dt = datetime.now(UTC)
+        else:
+            try:
+                # Accept "Z" suffix (Python <3.11 fromisoformat doesn't).
+                as_of_dt = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid `as_of` (expected ISO 8601): {exc}",
+                ) from exc
+
+        if services.db is not None:
+            try:
+                async with services.db.get_session() as session:
+                    valid_ids = await select_valid_memory_ids(session, as_of_dt)
+                relations = _filter_superseded_relations(relations, set(valid_ids))
+            except Exception:
+                logger.warning(
+                    "kg_snapshot: select_valid_memory_ids failed; "
+                    "returning unfiltered relations",
+                    exc_info=True,
+                )
 
     current_run_node_ids = await _resolve_current_run_node_ids(run_id, label_key_to_id)
 

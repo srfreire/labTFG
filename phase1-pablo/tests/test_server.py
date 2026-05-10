@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from decisionlab.server import ConnectionManager, app
+from decisionlab.server import ConnectionManager, _filter_superseded_relations, app
 
 
 def test_app_exists():
@@ -140,3 +140,94 @@ def test_reset_clears_state(manager):
     assert manager.edges == []
     assert manager.current_stage is None
     assert manager.pending_review is None
+
+
+# ---------------------------------------------------------------------------
+# /api/kg/snapshot — superseded-relation filter (Issue 5)
+# ---------------------------------------------------------------------------
+
+
+def _make_rel(rid: str, memory_id: str | None) -> dict:
+    """Build a relations-dict shaped like the snapshot endpoint emits."""
+    props: dict = {}
+    if memory_id is not None:
+        props["memory_id"] = memory_id
+    return {
+        "id": rid,
+        "source": "n1",
+        "target": "n2",
+        "type": "SUPPORTS",
+        "run_id": None,
+        "properties": props,
+    }
+
+
+def test_filter_superseded_keeps_only_valid_memory_ids():
+    rels = [
+        _make_rel("e-valid", "mem-1"),
+        _make_rel("e-superseded", "mem-2"),
+        _make_rel("e-also-valid", "mem-3"),
+    ]
+    valid = {"mem-1", "mem-3"}
+
+    out = _filter_superseded_relations(rels, valid)
+
+    assert [r["id"] for r in out] == ["e-valid", "e-also-valid"]
+
+
+def test_filter_superseded_keeps_relations_without_memory_id():
+    """Pre-P4-004 seed relations have no memory_id and must pass through."""
+    rels = [
+        _make_rel("e-seed", None),
+        _make_rel("e-superseded", "mem-old"),
+    ]
+    valid = {"mem-new"}
+
+    out = _filter_superseded_relations(rels, valid)
+
+    assert [r["id"] for r in out] == ["e-seed"]
+
+
+def test_filter_superseded_empty_valid_set_drops_all_with_memory_id():
+    rels = [
+        _make_rel("e-seed", None),
+        _make_rel("e-1", "mem-1"),
+        _make_rel("e-2", "mem-2"),
+    ]
+
+    out = _filter_superseded_relations(rels, set())
+
+    assert [r["id"] for r in out] == ["e-seed"]
+
+
+def test_filter_superseded_full_valid_set_keeps_all():
+    """If valid_ids covers every memory_id, nothing is dropped — mirrors
+    the include_superseded=True semantic (everything kept).
+    """
+    rels = [
+        _make_rel("e-1", "mem-1"),
+        _make_rel("e-2", "mem-2"),
+        _make_rel("e-seed", None),
+    ]
+
+    out = _filter_superseded_relations(rels, {"mem-1", "mem-2"})
+
+    assert [r["id"] for r in out] == ["e-1", "e-2", "e-seed"]
+
+
+def test_filter_superseded_handles_missing_or_none_properties():
+    """Defensive: a row with no/None ``properties`` shouldn't crash."""
+    rels = [
+        {"id": "e-no-props", "source": "n1", "target": "n2", "type": "X"},
+        {
+            "id": "e-empty-props",
+            "source": "n1",
+            "target": "n2",
+            "type": "X",
+            "properties": None,
+        },
+    ]
+
+    out = _filter_superseded_relations(rels, set())
+
+    assert [r["id"] for r in out] == ["e-no-props", "e-empty-props"]
