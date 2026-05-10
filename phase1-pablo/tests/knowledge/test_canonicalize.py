@@ -180,7 +180,7 @@ async def test_strong_match_merge_propagates_to_siblings(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_weak_match_mints_without_verify(monkeypatch):
-    """ANN top hit at 0.70 < τ=0.85 → mint via slugify, never call verify-merge."""
+    """ANN top hit at 0.70 < τ=0.75 → mint via slugify, never call verify-merge."""
     extraction = _extraction(
         [_paradigm_node("__NEW__", "Bounded Rationality", "Herb Simon's BR.")]
     )
