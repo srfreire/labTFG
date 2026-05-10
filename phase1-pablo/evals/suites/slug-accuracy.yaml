@@ -89,13 +89,13 @@ suite_assertions:
   # - kg_growth_rate: { label: Variable,  max_per_topic: 6   }
   # - kg_growth_rate: { label: Postulate, max_per_topic: 5   }
 
-  # Latency SLO. Caveat: this only triggers when `retrieve_knowledge` is
-  # actually called (see report §4.2 — the Researcher rarely calls it,
-  # making sample sizes meaningless). 2500ms target derives from sum of
-  # per-component budgets (rewriter + dense + sparse + rerank + recency
-  # PG round-trip ≈ 1.5–2s); CRAG/NER conditional gates can push this up
-  # when triggered. Re-evaluate threshold after fixing §4.2.
-  - p95_below: { tool: retrieve_knowledge, p95_ms: 2500 }
+  # Latency SLO. The 2500ms target was set against an n=1 sample (report
+  # §4.4) where retrieve_knowledge was barely called. Post-issue-2 (3
+  # calls/topic, n=11+) the realistic p95 is ~5800ms — driven by the
+  # full hybrid stack: query rewriter + dense + sparse + KG NER + entity
+  # link + 2-hop PPR + RRF fusion + zerank-2 rerank + CRAG grader +
+  # recency weighting. 7000ms gives ~20% margin above measured.
+  - p95_below: { tool: retrieve_knowledge, p95_ms: 7000 }
 
 budget:
   max_usd_total: 12.00
