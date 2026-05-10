@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from datetime import datetime
@@ -11,6 +12,8 @@ from neo4j import AsyncGraphDatabase, AsyncManagedTransaction
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
@@ -122,6 +125,19 @@ class KnowledgeGraph:
                     "`vector.similarity_function`: 'cosine' "
                     "}}",
                     {"dims": _VECTOR_INDEX_DIMENSIONS},
+                )
+
+            # One-shot cleanup of pre-P0-004 n.run_ids arrays. Idempotent — once
+            # all nodes have been processed this becomes a no-op.
+            result = await session.run(
+                "MATCH (n) WHERE n.run_ids IS NOT NULL "
+                "REMOVE n.run_ids "
+                "RETURN count(n) AS cleaned"
+            )
+            record = await result.single()
+            if record and record["cleaned"] > 0:
+                logger.info(
+                    "init_schema: cleared n.run_ids on %d nodes", record["cleaned"]
                 )
 
     async def create_node(self, label: str, properties: dict) -> str:
