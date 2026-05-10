@@ -314,20 +314,33 @@ async def resolve_and_store(
             new_vector = await embedding_service.embed_query(merged)
             # P3-002: payload does not carry `confidence` — Postgres is the
             # single source of truth, batch-fetched at retrieval time.
+            enrichment_payload = {
+                "entity_id": str(new_mem.id),
+                "namespace": namespace,
+                "source_stage": stage,
+                "source_kind": "pipeline",
+                "run_id": run_id,
+                "importance": importance,
+                "created_at": datetime.now(UTC).isoformat(),
+                "text_preview": merged[:200],
+            }
             await vector_store.upsert_dense(
                 "memories_dense",
                 str(new_mem.id),
                 new_vector,
-                {
-                    "entity_id": str(new_mem.id),
-                    "namespace": namespace,
-                    "source_stage": stage,
-                    "source_kind": "pipeline",
-                    "run_id": run_id,
-                    "importance": importance,
-                    "created_at": datetime.now(UTC).isoformat(),
-                    "text_preview": merged[:200],
-                },
+                enrichment_payload,
+            )
+            # Sync sparse channel: without this, BM25 search returns the
+            # OLD pre-enrichment text indefinitely while dense returns the
+            # merged content — the two channels drift, hybrid retrieval
+            # surfaces stale snippets, and KG truth diverges from what
+            # downstream agents read. Mirrors indexer.index_stage_output's
+            # paired upsert_dense / upsert_sparse pattern.
+            await vector_store.upsert_sparse(
+                "memories_sparse",
+                str(new_mem.id),
+                merged,
+                enrichment_payload,
             )
             enrichments += 1
 

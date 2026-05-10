@@ -21,6 +21,7 @@ from decisionlab.knowledge.resolver import (
     _score_importance,
     resolve_and_store,
 )
+from shared.vector_store import VectorStore
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1025,3 +1026,117 @@ async def test_enrichment_null_merged_content_uses_fact():
         mock_supersede.call_args.kwargs["new_content"]
         == "a new detail about the parameter"
     )
+
+
+# ---------------------------------------------------------------------------
+# Issue 3: ENRICHMENT must sync sparse channel alongside dense
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_enrichment_syncs_sparse_channel_with_dense():
+    """ENRICHMENT supersession must upsert to BOTH ``memories_dense`` AND
+    ``memories_sparse`` so the BM25 channel does not return stale pre-merge
+    text. Dense and sparse must share the same point id so hybrid retrieval
+    treats them as the same memory.
+    """
+    existing_point = FakeScoredPoint(
+        id=str(uuid.uuid4()),
+        score=0.90,
+        payload={
+            "text_preview": "learning rate = 0.1",
+            "source_stage": "formalizer",
+            "created_at": "2026-04-10T00:00:00Z",
+            "run_id": "00000000-0000-0000-0000-000000000099",
+        },
+    )
+
+    importance_resp = json.dumps(
+        [
+            {
+                "fact": "learning rate = 0.1, sourced from Keramati 2011",
+                "importance": 7,
+                "reasoning": "specific",
+            },
+        ]
+    )
+    merged_text = "learning rate = 0.1 (sourced from Keramati 2011)"
+    conflict_resp = json.dumps(
+        {
+            "classification": "ENRICHMENT",
+            "reasoning": "New fact adds source citation to existing parameter value",
+            "merged_content": merged_text,
+        }
+    )
+    client = _make_client([importance_resp, conflict_resp])
+
+    emb = _mock_embedding_service()
+    # AsyncMock(spec=VectorStore) so we are bound to the real interface;
+    # any drift in upsert_sparse's signature surfaces here instead of
+    # silently passing.
+    vs = AsyncMock(spec=VectorStore)
+    vs.search_dense = AsyncMock(return_value=[existing_point])
+    vs.upsert_dense = AsyncMock()
+    vs.upsert_sparse = AsyncMock()
+
+    session = _mock_db_session()
+
+    extraction = _make_extraction(
+        ["learning rate = 0.1, sourced from Keramati 2011"],
+        stage="formalizer",
+    )
+
+    fake_new_mem = MagicMock()
+    fake_new_mem.id = uuid.uuid4()
+
+    with (
+        patch("decisionlab.knowledge.resolver.create_memory", new_callable=AsyncMock),
+        patch(
+            "decisionlab.knowledge.resolver.supersede_memory",
+            new_callable=AsyncMock,
+            return_value=fake_new_mem,
+        ),
+        patch(
+            "decisionlab.knowledge.resolver.update_confidence", new_callable=AsyncMock
+        ),
+    ):
+        result = await resolve_and_store(extraction, emb, vs, session, client)
+
+    assert result.enrichments == 1
+
+    # Both channels must be updated exactly once.
+    vs.upsert_dense.assert_called_once()
+    vs.upsert_sparse.assert_called_once()
+
+    # Pull the id and payload that each call received. The resolver passes
+    # positional args (collection, id, vector|text, payload) — mirror that.
+    dense_call = vs.upsert_dense.call_args
+    sparse_call = vs.upsert_sparse.call_args
+
+    dense_collection = dense_call.args[0]
+    dense_id = dense_call.args[1]
+    dense_payload = dense_call.args[3]
+
+    sparse_collection = sparse_call.args[0]
+    sparse_id = sparse_call.args[1]
+    sparse_text = sparse_call.args[2]
+    sparse_payload = sparse_call.args[3]
+
+    assert dense_collection == "memories_dense"
+    assert sparse_collection == "memories_sparse"
+
+    # Same id → dense and sparse stay in sync for hybrid retrieval.
+    assert dense_id == sparse_id == str(fake_new_mem.id)
+
+    # Sparse channel receives the merged content (not the old text).
+    assert sparse_text == merged_text
+
+    # Payload shape mirrors dense (canonical from indexer.index_stage_output).
+    assert sparse_payload == dense_payload
+    assert sparse_payload["entity_id"] == str(fake_new_mem.id)
+    assert sparse_payload["namespace"] == "formulation"
+    assert sparse_payload["source_stage"] == "formalizer"
+    assert sparse_payload["source_kind"] == "pipeline"
+    assert sparse_payload["text_preview"] == merged_text[:200]
+    # P3-002: confidence is not written to Qdrant payloads.
+    assert "confidence" not in sparse_payload
