@@ -601,6 +601,8 @@ class Orchestrator:
         self._state: dict = {}
         self._messages: list[dict] = []
         self._discovered_models: dict | None = None
+        # Per-instance chat session id for chat_messages persistence (Phase 2 sim-recall)
+        self._session_id: uuid.UUID = uuid.uuid4()
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
 
@@ -647,6 +649,7 @@ class Orchestrator:
 
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
+        turn_start = len(self._messages)
         self._messages.append({"role": "user", "content": user_message})
         settings = load_settings()
         tools, registry = self._build_tools(settings)
@@ -665,7 +668,71 @@ class Orchestrator:
 
         text = next((b.text for b in response.content if b.type == "text"), "")
         self._messages.append({"role": "assistant", "content": response.content})
+
+        if settings.ENABLE_CHAT_PERSISTENCE:
+            await self._persist_chat_turn(turn_start)
+
         return text
+
+    async def _persist_chat_turn(self, turn_start: int) -> None:
+        """Persist the messages appended in this turn to ``chat_messages``.
+
+        Swallows all errors — chat persistence must not interrupt the
+        conversation flow.
+        """
+        try:
+            from simlab.recall import persist_messages, serialize_message
+
+            tool_use_names = self._collect_tool_use_names()
+            experiment_id = self._state.get("experiment_id")
+            if isinstance(experiment_id, str):
+                try:
+                    experiment_id = uuid.UUID(experiment_id)
+                except ValueError:
+                    experiment_id = None
+
+            rows: list[dict] = []
+            for msg in self._messages[turn_start:]:
+                rows.extend(
+                    serialize_message(
+                        msg,
+                        session_id=self._session_id,
+                        experiment_id=experiment_id,
+                        tool_use_names=tool_use_names,
+                    )
+                )
+
+            if not rows or self._services.db is None:
+                return
+            async with self._services.db.get_session() as session:
+                await persist_messages(session, rows)
+        except Exception:
+            logger.warning("chat persistence failed", exc_info=True)
+
+    def _collect_tool_use_names(self) -> dict[str, str]:
+        """Walk past assistant messages to build a ``tool_use_id → name`` map."""
+        names: dict[str, str] = {}
+        for msg in self._messages:
+            if msg.get("role") != "assistant":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                block_type = getattr(block, "type", None) or (
+                    block.get("type") if isinstance(block, dict) else None
+                )
+                if block_type != "tool_use":
+                    continue
+                block_id = getattr(block, "id", None) or (
+                    block.get("id") if isinstance(block, dict) else None
+                )
+                block_name = getattr(block, "name", None) or (
+                    block.get("name") if isinstance(block, dict) else None
+                )
+                if isinstance(block_id, str) and isinstance(block_name, str):
+                    names[block_id] = block_name
+        return names
 
     async def _update_experiment(self, exp_id: str, **kwargs) -> None:
         """Update an experiment row in Postgres."""
