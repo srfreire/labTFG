@@ -234,12 +234,31 @@ function renderText(text: string, isUser: boolean) {
   return <ReactMarkdown components={mdComponents}>{text}</ReactMarkdown>
 }
 
+function Card({ color, title, children, animate, animationDelay }: {
+  color: string
+  title: string
+  children: ReactNode
+  animate?: boolean
+  animationDelay?: string
+}) {
+  const cls = `mt-3 border p-3 rounded-lg shadow-xl shadow-black/20${animate ? ' animate-card-in' : ''}`
+  return (
+    <div className={cls} style={{
+      background: 'var(--color-surface)',
+      borderColor: `color-mix(in srgb, ${color} 20%, transparent)`,
+      animationDelay,
+    }}>
+      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
 function DataCard({ card, color }: { card: { title: string; data: Record<string, unknown> }; color: string }) {
   return (
-    <div className="mt-3 border border-border p-3 rounded-lg shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: withAlpha(color, '20') }}>
-      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color }}>
-        {card.title}
-      </div>
+    <Card color={color} title={card.title}>
       <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
         {Object.entries(card.data).map(([k, v]) => (
           <div key={k} className="px-2.5 py-2 border border-border-subtle rounded-[var(--radius-md)] min-w-0">
@@ -248,17 +267,14 @@ function DataCard({ card, color }: { card: { title: string; data: Record<string,
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   )
 }
 
 function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
   if (!tracker) return null
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'color-mix(in srgb, var(--color-accent-amber) 20%, transparent)' }}>
-      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold text-accent-amber">
-        Trayectorias
-      </div>
+    <Card color="var(--color-accent-amber)" title="Trayectorias" animate>
       {Object.entries(tracker.trajectories).map(([agent, data]) => {
         const agentColor = getAgentColor(agent) || '#fbbf24'
         return (
@@ -280,16 +296,13 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
           </div>
         )
       })}
-    </div>
+    </Card>
   )
 }
 
 function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']> }) {
   return (
-    <div className="mt-3 border p-3 rounded-lg animate-card-in shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: 'color-mix(in srgb, var(--color-analyst) 20%, transparent)', animationDelay: '100ms' }}>
-      <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color: 'var(--color-analyst)' }}>
-        Análisis
-      </div>
+    <Card color="var(--color-analyst)" title="Análisis" animate animationDelay="100ms">
       {analyst.patterns.length > 0 && (
         <div className="mb-3">
           <div className="text-[10px] mb-1.5 text-text-faint">Patrones</div>
@@ -314,7 +327,7 @@ function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']>
           ))}
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
