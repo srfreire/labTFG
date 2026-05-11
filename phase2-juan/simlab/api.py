@@ -77,8 +77,10 @@ AGENTS = [
     {"name": "Reporter", "color": "#f472b6", "state_key": "pdf_path"},
 ]
 
-# Colors for simulation agents (assigned round-robin by index)
-SIM_AGENT_COLORS = ["#4ade80", "#fbbf24", "#a78bfa", "#f472b6", "#38bdf8", "#fb923c"]
+# Colors for simulation agents (assigned round-robin by index).
+# Derived from AGENTS for the first 4 slots, then extended for additional
+# in-grid agents beyond the four pipeline roles.
+SIM_AGENT_COLORS = [a["color"] for a in AGENTS] + ["#38bdf8", "#fb923c"]
 
 # Maps orchestrator tool names to agent names for real-time status updates
 TOOL_AGENT_MAP = {
