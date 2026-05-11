@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_ALLOWED_TABLES = {"experiments", "models", "runs"}
+_ALLOWED_TABLES = {"experiments", "models", "runs", "simulation_observations"}
 _MAX_LIMIT = 50
 
 _SCHEMA_PROMPT = """\
@@ -54,7 +54,19 @@ runs(id UUID PK, created_at TIMESTAMP, problem_description TEXT NOT NULL,
   status VARCHAR(50), s3_report_key VARCHAR, s3_prefix VARCHAR NOT NULL,
   artifact_count INT)
 
-Tables NOT queryable: pipeline_memories, simulation_observations, artifacts.
+simulation_observations(id UUID PK, content TEXT, namespace VARCHAR DEFAULT 'simulation',
+  memory_type VARCHAR, source_stage VARCHAR DEFAULT 'tracker', importance FLOAT,
+  confidence FLOAT DEFAULT 0.80, created_at TIMESTAMP,
+  phase2_experiment_id VARCHAR, model_class_name VARCHAR,
+  paradigm VARCHAR, formulation VARCHAR, phase1_run_id UUID FK→runs,
+  environment VARCHAR, steps INT, seed INT,
+  agent_id VARCHAR, episode_type VARCHAR, step INT, metadata JSONB)
+
+  One row per Tracker fact (summary, trajectory, episode). Join to experiments
+  via phase2_experiment_id (string, may be empty for early observations).
+  Typed columns prefer over reading metadata JSONB.
+
+Tables NOT queryable: pipeline_memories (Phase 1), artifacts.
 Only SELECT queries are allowed. Results are capped at LIMIT 50."""
 
 

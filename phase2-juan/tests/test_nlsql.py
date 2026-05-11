@@ -33,14 +33,20 @@ def test_validate_allowed_tables():
     assert error is not None
     assert "pipeline_memories" in error
 
-    sql, error = validate_sql("SELECT * FROM simulation_observations")
+    sql, error = validate_sql("SELECT * FROM artifacts")
     assert error is not None
-    assert "simulation_observations" in error
+    assert "artifacts" in error
 
 
 def test_validate_allowed_tables_pass():
     """Accepts queries on allowed tables."""
     sql, error = validate_sql("SELECT id FROM experiments")
+    assert error is None
+
+    sql, error = validate_sql(
+        "SELECT paradigm, formulation FROM simulation_observations "
+        "WHERE phase2_experiment_id = 'exp-1'"
+    )
     assert error is None
 
 
