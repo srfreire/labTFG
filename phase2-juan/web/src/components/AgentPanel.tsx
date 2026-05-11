@@ -1,6 +1,6 @@
 import { Facehash } from 'facehash'
 import type { AgentState, SimAgent } from '../types'
-import { TOOL_LABELS } from '../constants'
+import { TOOL_LABELS, withAlpha } from '../constants'
 
 interface Props {
   agents: AgentState[]
@@ -84,7 +84,7 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
   const isDone = agent.status === 'done'
   const isIdle = agent.status === 'idle'
 
-  const lineColor = isDone ? agent.color + '60' : 'var(--color-text-ghost)'
+  const lineColor = isDone ? withAlpha(agent.color, '60') : 'var(--color-text-ghost)'
 
   return (
     <div className="relative flex gap-4 transition-all duration-300" style={{ paddingBottom: isLast ? 0 : 40 }}>
@@ -162,8 +162,8 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
                 className="text-[7px] uppercase tracking-[1px] px-1.5 py-0.5 rounded-[var(--radius-sm)] flex-shrink-0"
                 style={{
                   color: agent.color,
-                  background: agent.color + '15',
-                  border: `1px solid ${agent.color}30`,
+                  background: withAlpha(agent.color, '15'),
+                  border: `1px solid ${withAlpha(agent.color, '30')}`,
                 }}
               >
                 working

@@ -7,7 +7,7 @@ import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
 import { DecisionTraceCard } from './DecisionTraceCard'
-import { FROM_COLORS, getFromColor } from '../constants'
+import { FROM_COLORS, getFromColor, withAlpha } from '../constants'
 
 function getAgentColor(text: string): string | null {
   for (const [name, color] of Object.entries(FROM_COLORS)) {
@@ -236,7 +236,7 @@ function renderText(text: string, isUser: boolean) {
 
 function DataCard({ card, color }: { card: { title: string; data: Record<string, unknown> }; color: string }) {
   return (
-    <div className="mt-3 border border-border p-3 rounded-lg shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: color + '20' }}>
+    <div className="mt-3 border border-border p-3 rounded-lg shadow-xl shadow-black/20" style={{ background: 'var(--color-surface)', borderColor: withAlpha(color, '20') }}>
       <div className="text-[10px] uppercase tracking-[1px] mb-2.5 font-semibold" style={{ color }}>
         {card.title}
       </div>
@@ -262,13 +262,13 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
       {Object.entries(tracker.trajectories).map(([agent, data]) => {
         const agentColor = getAgentColor(agent) || '#fbbf24'
         return (
-          <div key={agent} className="mb-2.5 p-2.5 border rounded-[var(--radius-md)]" style={{ borderColor: agentColor + '20' }}>
+          <div key={agent} className="mb-2.5 p-2.5 border rounded-[var(--radius-md)]" style={{ borderColor: withAlpha(agentColor, '20') }}>
             <div className="flex justify-between items-center mb-2">
               <span className="text-[12px] font-semibold" style={{ color: agentColor }}>{agent}</span>
               <span className="text-[11px] text-text-faint">{data.steps_survived} pasos</span>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <span className="text-[11px] px-2.5 py-1 border rounded-[var(--radius-md)]" style={{ borderColor: agentColor + '25', color: agentColor, background: agentColor + '08' }}>
+              <span className="text-[11px] px-2.5 py-1 border rounded-[var(--radius-md)]" style={{ borderColor: withAlpha(agentColor, '25'), color: agentColor, background: withAlpha(agentColor, '08') }}>
                 {data.resources_consumed} consumidos
               </span>
               {Object.entries(data.actions).map(([action, count]) => (

@@ -37,6 +37,14 @@ export function getFromColor(name: string): string {
   return FROM_COLORS_MAP[name.toLowerCase()] || '#fff'
 }
 
+/**
+ * Append a 2-char hex alpha byte to a 6-char hex color.
+ * e.g. withAlpha('#4ade80', '20') → '#4ade8020' (~12% opacity).
+ */
+export function withAlpha(color: string, alphaHex: string): string {
+  return color + alphaHex
+}
+
 // Re-export for places that iterate all entries (e.g. getAgentColor text matching)
 export const FROM_COLORS = FROM_COLORS_MAP
 

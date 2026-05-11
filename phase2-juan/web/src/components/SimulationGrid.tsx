@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { RotateCcw, ChevronLeft, ChevronRight, Play, Pause, Gauge } from 'lucide-react'
 import type { ReplayData, DecisionTrace, CriticalEvent } from '../types'
-import { AGENT_COLORS } from '../constants'
+import { AGENT_COLORS, withAlpha } from '../constants'
 import { ReplayTracePopover } from './ReplayTracePopover'
 
 interface Props {
@@ -307,7 +307,7 @@ export function SimulationGrid({ replay }: Props) {
             const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
             return (
               <span key={i} className="text-[8px] px-1.5 py-0.5 border border-border-subtle rounded-[var(--radius-sm)]" style={{
-                color: a.reward > 0 ? 'var(--color-accent-green-light)' : (AGENT_COLORS[agentIdx % AGENT_COLORS.length] + '80'),
+                color: a.reward > 0 ? 'var(--color-accent-green-light)' : withAlpha(AGENT_COLORS[agentIdx % AGENT_COLORS.length], '80'),
               }}>
                 {a.agent_id}: {a.action}{a.reward > 0 ? ` +${a.reward.toFixed(1)}` : ''}
               </span>
