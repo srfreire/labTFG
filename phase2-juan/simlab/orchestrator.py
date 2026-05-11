@@ -32,7 +32,7 @@ from simlab.model_loader import discover_models
 from simlab.model_loader import load_model as _load_model
 from simlab.reporter import Reporter
 from simlab.spec import spec_to_environment
-from simlab.tools import _make_serializable
+from simlab.tools import event_to_trace
 from simlab.tracker import Tracker
 
 if TYPE_CHECKING:
@@ -951,24 +951,7 @@ class Orchestrator:
             # Build decision traces indexed by step for the frontend
             traces: dict[int, list[dict]] = {}
             for e in all_events:
-                trace = {
-                    "agent_id": e.agent_id,
-                    "step": e.step,
-                    "perception": _make_serializable(e.perception)
-                    if e.perception
-                    else None,
-                    "pre_state": _make_serializable(e.pre_state)
-                    if e.pre_state
-                    else None,
-                    "post_state": _make_serializable(e.outcome.get("model_state", {})),
-                    "available_actions": e.available_actions or None,
-                    "action_chosen": {"name": e.action.name, "params": e.action.params},
-                    "outcome": {
-                        "reward": e.outcome.get("reward", 0),
-                        "action_result": e.outcome.get("action_result", {}),
-                    },
-                }
-                traces.setdefault(e.step, []).append(trace)
+                traces.setdefault(e.step, []).append(event_to_trace(e))
 
             # Save state for downstream agents
             state["events"] = all_events

@@ -63,19 +63,24 @@ def _count_actions(events: list[Event]) -> dict[str, int]:
     return dict(Counter(e.action.name for e in events))
 
 
-def _event_to_trace(e: Event) -> dict:
-    """Convert an Event to a decision-trace dict (perception → action → outcome)."""
+def event_to_trace(e: Event) -> dict:
+    """Convert an Event to a decision-trace dict (perception → action → outcome).
+
+    Canonical full-trace shape, shared by LLM-facing tools and the frontend
+    replay. Keep flat — frontend TypeScript types in web/src/types.ts mirror
+    this structure.
+    """
     return {
         "step": e.step,
         "agent_id": e.agent_id,
         "perception": _make_serializable(e.perception) if e.perception else None,
         "pre_state": _make_serializable(e.pre_state) if e.pre_state else None,
+        "post_state": _make_serializable(e.outcome.get("model_state", {})),
         "available_actions": e.available_actions or None,
         "action_chosen": {"name": e.action.name, "params": e.action.params},
         "outcome": {
-            "reward": e.outcome.get("reward"),
-            "action_result": e.outcome.get("action_result"),
-            "post_state": _make_serializable(e.outcome.get("model_state", {})),
+            "reward": e.outcome.get("reward", 0),
+            "action_result": e.outcome.get("action_result", {}),
         },
     }
 
@@ -312,7 +317,7 @@ def build_simulation_tools(
         step = params["step"]
         for e in by_agent.get(agent_id, []):
             if e.step == step:
-                return json.dumps(_event_to_trace(e))
+                return json.dumps(event_to_trace(e))
         return json.dumps({"error": f"No event for {agent_id} at step {step}"})
 
     async def compare_decision_traces(params: dict) -> str:
@@ -325,7 +330,7 @@ def build_simulation_tools(
         if not step_events:
             return json.dumps({"error": f"No events at step {step}"})
         return json.dumps(
-            {"step": step, "traces": [_event_to_trace(e) for e in step_events]}
+            {"step": step, "traces": [event_to_trace(e) for e in step_events]}
         )
 
     schemas = [
