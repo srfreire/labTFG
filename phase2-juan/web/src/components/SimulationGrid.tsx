@@ -98,15 +98,17 @@ export function SimulationGrid({ replay }: Props) {
   const gridHeight = replay.grid_height * cellSize + (replay.grid_height - 1)
 
   // Pre-compute lookup maps — O(n) instead of O(width*height*n) find() calls
-  const { resourceMap, agentMap, agentIdxMap, trailSet } = useMemo(() => {
+  const { resourceMap, agentMap, agentIdxMap, agentIdxById, trailSet } = useMemo(() => {
     const rMap = new Map<string, boolean>()
     const aMap = new Map<string, typeof frame.agents[0]>()
     const aiMap = new Map<string, number>()
+    const aiById = new Map<string, number>()
     const tSet = new Set<string>()
 
     for (const r of frame.resources) rMap.set(`${r.x},${r.y}`, true)
     for (let i = 0; i < frame.agents.length; i++) {
       const a = frame.agents[i]
+      aiById.set(a.id, i)
       if (a.alive) { aMap.set(`${a.x},${a.y}`, a); aiMap.set(`${a.x},${a.y}`, i) }
     }
     for (const [, positions] of Object.entries(trail)) {
@@ -115,7 +117,7 @@ export function SimulationGrid({ replay }: Props) {
         if (!aMap.has(key)) tSet.add(key)
       }
     }
-    return { resourceMap: rMap, agentMap: aMap, agentIdxMap: aiMap, trailSet: tSet }
+    return { resourceMap: rMap, agentMap: aMap, agentIdxMap: aiMap, agentIdxById: aiById, trailSet: tSet }
   }, [frame, trail])
 
   return (
@@ -304,7 +306,7 @@ export function SimulationGrid({ replay }: Props) {
       {frame.actions.length > 0 && (
         <div className="mt-2 flex gap-2 justify-center flex-wrap" style={{ minHeight: 24 }}>
           {frame.actions.map((a, i) => {
-            const agentIdx = frame.agents.findIndex(ag => ag.id === a.agent_id)
+            const agentIdx = agentIdxById.get(a.agent_id) ?? 0
             return (
               <span key={i} className="text-[8px] px-1.5 py-0.5 border border-border-subtle rounded-[var(--radius-sm)]" style={{
                 color: a.reward > 0 ? 'var(--color-accent-green-light)' : withAlpha(AGENT_COLORS[agentIdx % AGENT_COLORS.length], '80'),
