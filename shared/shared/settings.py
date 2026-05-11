@@ -23,6 +23,7 @@ class Settings:
     ZEROENTROPY_API_KEY: str = ""
     ENABLE_KNOWLEDGE_WRITE: bool = False
     ENABLE_KNOWLEDGE_READ: bool = False
+    ENABLE_CHAT_PERSISTENCE: bool = False
     NLSQL_MAX_S3_FETCH: int = 3
     NLSQL_MODEL: str = "anthropic/claude-haiku-4-5"
 
