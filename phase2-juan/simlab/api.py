@@ -16,13 +16,16 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import replace
+from datetime import datetime
 
 import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func, select
 from sqlalchemy import text as sql_text
 
+from shared.models import PipelineMemory
 from shared.services import Services, init_services, shutdown_services
 from simlab.knowledge import build_writer_from_services
 from simlab.orchestrator import Orchestrator
@@ -199,6 +202,98 @@ async def knowledge_graph(
         "nodes": nodes,
         "edges": edges,
         "current_run_node_ids": current_run_node_ids,
+    }
+
+
+_MEMORIES_MAX_PAGE_SIZE = 200
+_MEMORIES_DEFAULT_PAGE_SIZE = 50
+
+
+@app.get("/api/knowledge/memories")
+async def knowledge_memories(
+    namespace: str | None = None,
+    run_id: str | None = None,
+    since: str | None = None,
+    page: int = 1,
+    page_size: int = _MEMORIES_DEFAULT_PAGE_SIZE,
+) -> dict:
+    """Browse the Phase 1 ``pipeline_memories`` table for the KnowledgePanel.
+
+    Filters: ``namespace`` (paradigm/formulation/model/meta),
+    ``run_id`` (UUID), ``since`` (ISO 8601 timestamp).
+    Pagination: ``page`` (1-based), ``page_size`` (default 50, max 200).
+    Sort: newest first by ``created_at``.
+
+    503 when Postgres is unreachable.
+    """
+    if _services is None or _services.db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, _MEMORIES_MAX_PAGE_SIZE))
+
+    parsed_run_id: uuid.UUID | None = None
+    if run_id:
+        try:
+            parsed_run_id = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid run_id (expected UUID): {exc}"
+            ) from exc
+
+    parsed_since: datetime | None = None
+    if since:
+        try:
+            parsed_since = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid since (expected ISO 8601): {exc}",
+            ) from exc
+
+    filters = []
+    if namespace:
+        filters.append(PipelineMemory.namespace == namespace)
+    if parsed_run_id is not None:
+        filters.append(PipelineMemory.run_id == parsed_run_id)
+    if parsed_since is not None:
+        filters.append(PipelineMemory.created_at >= parsed_since)
+
+    items_stmt = (
+        select(PipelineMemory)
+        .where(*filters)
+        .order_by(PipelineMemory.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    count_stmt = select(func.count()).select_from(PipelineMemory).where(*filters)
+
+    try:
+        async with _services.db.get_session() as session:
+            rows = (await session.execute(items_stmt)).scalars().all()
+            total = (await session.execute(count_stmt)).scalar_one()
+    except Exception:
+        logger.warning("knowledge_memories: query failed", exc_info=True)
+        raise HTTPException(status_code=503, detail="Memories query failed")
+
+    items = [
+        {
+            "id": str(m.id),
+            "content": m.content,
+            "namespace": m.namespace,
+            "run_id": str(m.run_id),
+            "memory_type": m.memory_type,
+            "source_stage": m.source_stage,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in rows
+    ]
+
+    return {
+        "items": items,
+        "total": int(total),
+        "page": page,
+        "page_size": page_size,
     }
 
 
