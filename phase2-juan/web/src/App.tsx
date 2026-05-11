@@ -1,5 +1,8 @@
+import { useState } from 'react'
+import { Network } from 'lucide-react'
 import { AgentPanel } from './components/AgentPanel'
 import { ChatPanel } from './components/ChatPanel'
+import { KnowledgePanel } from './components/knowledge/KnowledgePanel'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useMockWebSocket } from './hooks/useMockWebSocket'
 
@@ -22,6 +25,7 @@ export default function App() {
 type ShellProps = ReturnType<typeof useWebSocket>
 
 function AppShell({ connected, agents, messages, thinking, simAgents, send }: ShellProps) {
+  const [kgOpen, setKgOpen] = useState(false)
   return (
     <div className="h-screen p-10 flex gap-8 overflow-hidden">
       {/* Sidebar — floating panel, frosted glass */}
@@ -42,6 +46,14 @@ function AppShell({ connected, agents, messages, thinking, simAgents, send }: Sh
                 mock
               </span>
             )}
+            <button
+              onClick={() => setKgOpen(v => !v)}
+              className="ml-auto p-1 rounded-[var(--radius-sm)] text-text-faint hover:text-text transition-colors"
+              title="Knowledge graph"
+              aria-pressed={kgOpen}
+            >
+              <Network size={14} />
+            </button>
           </div>
         </div>
         <AgentPanel agents={agents} simAgents={simAgents} />
@@ -51,6 +63,13 @@ function AppShell({ connected, agents, messages, thinking, simAgents, send }: Sh
       <main className="flex-1 min-h-0 flex flex-col floating-panel">
         <ChatPanel messages={messages} thinking={thinking} onSend={send} agents={agents} />
       </main>
+
+      {/* Knowledge drawer — right side, collapsible */}
+      {kgOpen && (
+        <aside className="hidden md:flex w-[420px] flex-shrink-0 min-h-0 flex-col floating-panel">
+          <KnowledgePanel onClose={() => setKgOpen(false)} />
+        </aside>
+      )}
 
       {/* Mobile agent bar — bottom floating */}
       <div className="md:hidden fixed bottom-4 left-4 right-4 flex items-center gap-2 px-4 py-2.5 floating-panel overflow-x-auto z-30">

@@ -111,3 +111,24 @@ export interface ReplayData {
   critical_events?: CriticalEvent[]
   traces?: Record<number, DecisionTrace[]>
 }
+
+// Knowledge graph — matches /api/knowledge/graph response shape
+export interface KGNode {
+  id: string
+  label: string
+  props: Record<string, unknown>
+}
+
+export interface KGEdge {
+  id: string
+  source: string
+  target: string
+  type: string
+  props: Record<string, unknown>
+}
+
+export interface KGSnapshot {
+  nodes: KGNode[]
+  edges: KGEdge[]
+  current_run_node_ids: string[]
+}

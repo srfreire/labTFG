@@ -48,6 +48,23 @@ export function withAlpha(color: string, alphaHex: string): string {
 // Re-export for places that iterate all entries (e.g. getAgentColor text matching)
 export const FROM_COLORS = FROM_COLORS_MAP
 
+// Knowledge graph — color per Cypher node label.
+// Unknown labels fall back to KG_LABEL_DEFAULT.
+export const KG_LABEL_COLORS: Record<string, string> = {
+  Paradigm: '#4ade80',
+  Postulate: '#a78bfa',
+  Formulation: '#38bdf8',
+  Model: '#fbbf24',
+  Paper: '#f472b6',
+  Author: '#fb923c',
+}
+
+export const KG_LABEL_DEFAULT = '#94a3b8'
+
+export function kgLabelColor(label: string): string {
+  return KG_LABEL_COLORS[label] ?? KG_LABEL_DEFAULT
+}
+
 // Friendly labels for internal agent tool calls
 // Keep short — must fit in 200px sidebar
 export const TOOL_LABELS: Record<string, string> = {
