@@ -723,15 +723,21 @@ class Orchestrator:
             if cb:
                 await cb("KnowledgePreFetch", f"⚠ {stage}: {message}")
 
-        # --- create_environment: calls the Architect ---
-        async def create_environment(params: dict) -> str:
-            # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
-            knowledge_ctx = await prefetch_knowledge(
-                params["description"],
-                "architect",
+        async def _get_knowledge_ctx(stage: str, hint: str) -> str:
+            """Pre-fetch KG context for an agent stage with shared wiring."""
+            return await prefetch_knowledge(
+                hint,
+                stage,
                 on_warning=_on_kg_warning,
                 enabled=settings.ENABLE_KNOWLEDGE_READ,
                 services=self._services,
+            )
+
+        # --- create_environment: calls the Architect ---
+        async def create_environment(params: dict) -> str:
+            # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
+            knowledge_ctx = await _get_knowledge_ctx(
+                "architect", params["description"]
             )
             arch = Architect(client=client)
             spec_json = await arch.run(
@@ -1063,12 +1069,8 @@ class Orchestrator:
             if "charts" not in state:
                 state["charts"] = []
             # KG pre-fetch (kg-enrichment / P1-002)
-            knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""),
-                "analyst",
-                on_warning=_on_kg_warning,
-                enabled=settings.ENABLE_KNOWLEDGE_READ,
-                services=self._services,
+            knowledge_ctx = await _get_knowledge_ctx(
+                "analyst", state.get("paradigm", "")
             )
             analyst = Analyst(
                 client=client,
@@ -1112,12 +1114,8 @@ class Orchestrator:
                 else "anthropic/claude-haiku-4-5"
             )
             # KG pre-fetch (kg-enrichment / P1-002)
-            knowledge_ctx = await prefetch_knowledge(
-                state.get("paradigm", ""),
-                "reporter",
-                on_warning=_on_kg_warning,
-                enabled=settings.ENABLE_KNOWLEDGE_READ,
-                services=self._services,
+            knowledge_ctx = await _get_knowledge_ctx(
+                "reporter", state.get("paradigm", "")
             )
             reporter = Reporter(
                 client=client,
