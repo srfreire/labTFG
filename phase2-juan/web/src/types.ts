@@ -132,3 +132,30 @@ export interface KGSnapshot {
   edges: KGEdge[]
   current_run_node_ids: string[]
 }
+
+export interface KGMemory {
+  id: string
+  content: string
+  namespace: string
+  run_id: string
+  memory_type: string
+  source_stage: string
+  created_at: string | null
+}
+
+export interface KGMemoryPage {
+  items: KGMemory[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface KGTrailStep {
+  edge: { id: string; type: string; props: Record<string, unknown> }
+  node: KGNode
+}
+
+export interface KGProvenance {
+  node: KGNode
+  trail: KGTrailStep[]
+}

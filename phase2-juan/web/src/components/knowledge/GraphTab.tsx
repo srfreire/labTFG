@@ -28,6 +28,7 @@ interface GraphTabProps {
   runId: string
   onRunIdChange: (v: string) => void
   onRefresh: () => void
+  onNodeClick: (nodeId: string) => void
 }
 
 const LAYOUT_WIDTH = 700
@@ -102,7 +103,7 @@ function layoutNodes(
   return positions
 }
 
-export function GraphTab({ data, loading, error, runId, onRunIdChange, onRefresh }: GraphTabProps) {
+export function GraphTab({ data, loading, error, runId, onRunIdChange, onRefresh, onNodeClick }: GraphTabProps) {
   const [localRunId, setLocalRunId] = useState(runId)
 
   const { flowNodes, flowEdges } = useMemo(() => {
@@ -180,6 +181,7 @@ export function GraphTab({ data, loading, error, runId, onRunIdChange, onRefresh
             nodeTypes={nodeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
+            onNodeClick={(_e, node) => onNodeClick(node.id)}
           >
             <Background color="var(--color-border-subtle)" gap={20} />
             <Controls showInteractive={false} />

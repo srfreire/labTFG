@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { KGSnapshot } from '../types'
+import { buildQuery, fetchKnowledge, type KnowledgeFetchState } from './fetchKnowledge'
 
 interface UseKnowledgeGraphArgs {
   runId?: string
@@ -7,10 +8,7 @@ interface UseKnowledgeGraphArgs {
   enabled?: boolean
 }
 
-interface UseKnowledgeGraphResult {
-  data: KGSnapshot | null
-  loading: boolean
-  error: string | null
+interface UseKnowledgeGraphResult extends KnowledgeFetchState<KGSnapshot> {
   refetch: () => void
 }
 
@@ -27,18 +25,13 @@ export function useKnowledgeGraph(
   useEffect(() => {
     if (!enabled) return
     let stale = false
-    const params = new URLSearchParams()
-    if (runId) params.set('run_id', runId)
-    if (label) params.set('label', label)
-    const url = `/api/knowledge/graph${params.toString() ? `?${params}` : ''}`
+    const url = `/api/knowledge/graph${buildQuery({ run_id: runId, label })}`
 
     async function load() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const json = (await res.json()) as KGSnapshot
+        const json = await fetchKnowledge<KGSnapshot>(url)
         if (!stale) setData(json)
       } catch (err) {
         if (!stale) setError((err as Error).message ?? 'fetch failed')

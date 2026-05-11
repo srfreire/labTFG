@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useKnowledgeGraph } from '../../hooks/useKnowledgeGraph'
 import { GraphTab } from './GraphTab'
+import { MemoriesTab } from './MemoriesTab'
+import { ProvenanceTab } from './ProvenanceTab'
 
 interface KnowledgePanelProps {
   onClose: () => void
@@ -12,10 +14,16 @@ type Tab = 'graph' | 'memories' | 'provenance'
 export function KnowledgePanel({ onClose }: KnowledgePanelProps) {
   const [tab, setTab] = useState<Tab>('graph')
   const [runId, setRunId] = useState('')
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const { data, loading, error, refetch } = useKnowledgeGraph({
     runId: runId || undefined,
     enabled: tab === 'graph',
   })
+
+  function handleNodeClick(nodeId: string) {
+    setSelectedNodeId(nodeId)
+    setTab('provenance')
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -45,19 +53,11 @@ export function KnowledgePanel({ onClose }: KnowledgePanelProps) {
             runId={runId}
             onRunIdChange={setRunId}
             onRefresh={refetch}
+            onNodeClick={handleNodeClick}
           />
         )}
-        {tab === 'memories' && (
-          <div className="p-6 text-[11px] text-text-muted">
-            Memories tab — próximamente (P7-005).
-          </div>
-        )}
-        {tab === 'provenance' && (
-          <div className="p-6 text-[11px] text-text-muted">
-            Provenance tab — próximamente (P7-005). Selecciona un nodo del Graph
-            para ver su cadena de origen.
-          </div>
-        )}
+        {tab === 'memories' && <MemoriesTab />}
+        {tab === 'provenance' && <ProvenanceTab nodeId={selectedNodeId} />}
       </div>
     </div>
   )
