@@ -77,7 +77,7 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
       {/* Critical event detail */}
       {criticalEvent?.type === 'decision_confidence_drop' && criticalEvent.data && (
         <div className="mt-1.5 text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>
-          gap Q-values: {String((criticalEvent as any).data.prev_gap)} → {String((criticalEvent as any).data.new_gap)}
+          gap Q-values: {String(criticalEvent.data.prev_gap)} → {String(criticalEvent.data.new_gap)}
         </div>
       )}
     </div>

@@ -100,6 +100,7 @@ export interface CriticalEvent {
   type: 'consumption' | 'starvation' | 'energy_spike' | 'strategy_shift' | 'decision_confidence_drop'
   severity: number
   description: string
+  data?: Record<string, unknown>
 }
 
 export interface ReplayData {
