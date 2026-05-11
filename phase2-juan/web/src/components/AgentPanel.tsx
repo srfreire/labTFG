@@ -1,6 +1,7 @@
 import { Facehash } from 'facehash'
 import type { AgentState, SimAgent } from '../types'
 import { TOOL_LABELS, withAlpha } from '../constants'
+import { Avatar } from './Avatar'
 
 interface Props {
   agents: AgentState[]
@@ -37,13 +38,7 @@ export function AgentPanel({ agents, simAgents }: Props) {
                 <div key={sa.id} className="flex items-center gap-2 animate-slide-up" style={{ animationDelay: `${200 + i * 200}ms` }}>
                   <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"
                     style={{ boxShadow: `0 0 8px ${sa.color}30` }}>
-                    <Facehash
-                      name={sa.id}
-                      size={20}
-                      variant="solid"
-                      colors={[sa.color]}
-                      showInitial={false}
-                    />
+                    <Avatar name={sa.id} color={sa.color} size={20} />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold truncate" style={{ color: sa.color }}>

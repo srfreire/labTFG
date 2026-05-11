@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { Facehash } from 'facehash'
 import ReactMarkdown from 'react-markdown'
 import { Send, FlaskConical } from 'lucide-react'
 import type { AgentState, ChatMessage } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
 import { DecisionTraceCard } from './DecisionTraceCard'
+import { Avatar } from './Avatar'
 import { FROM_COLORS, getFromColor, withAlpha } from '../constants'
 
 function getAgentColor(text: string): string | null {
@@ -123,7 +123,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
           <div className="flex gap-3 max-w-[80%] mt-5">
             <div className="flex-shrink-0 pt-1">
               <div className="w-7 h-7 rounded-full overflow-hidden">
-                <Facehash name="Orchestrator" size={28} variant="solid" colors={[orchColor]} showInitial={false} />
+                <Avatar name="Orchestrator" color={orchColor} />
               </div>
             </div>
             <div>
@@ -194,7 +194,7 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
         <div className="flex-shrink-0 pt-1 w-7">
           {!hideAvatar && (
             <div className="w-7 h-7 rounded-full overflow-hidden">
-              <Facehash name={msg.from} size={28} variant="solid" colors={[dotColor]} showInitial={false} />
+              <Avatar name={msg.from} color={dotColor} />
             </div>
           )}
         </div>
