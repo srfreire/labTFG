@@ -300,25 +300,30 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
   )
 }
 
+function PatternSection({ patterns }: { patterns: NonNullable<ChatMessage['analyst']>['patterns'] }) {
+  if (patterns.length === 0) return null
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] mb-1.5 text-text-faint">Patrones</div>
+      {patterns.map(p => (
+        <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border-faint">
+          <span className="text-[10px] px-1.5 py-0.5 flex-shrink-0 rounded-[var(--radius-sm)]" style={{
+            '--badge-color': p.type === 'anomaly' ? 'var(--color-accent-red)' : 'var(--color-analyst)',
+            background: 'color-mix(in srgb, var(--badge-color) 15%, transparent)',
+            color: 'var(--badge-color)',
+            border: '1px solid color-mix(in srgb, var(--badge-color) 20%, transparent)',
+          } as React.CSSProperties}>{p.type}</span>
+          <span className="text-[11px] leading-relaxed text-text-muted">{p.description}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AnalystCard({ analyst }: { analyst: NonNullable<ChatMessage['analyst']> }) {
   return (
     <Card color="var(--color-analyst)" title="Análisis" animate animationDelay="100ms">
-      {analyst.patterns.length > 0 && (
-        <div className="mb-3">
-          <div className="text-[10px] mb-1.5 text-text-faint">Patrones</div>
-          {analyst.patterns.map(p => (
-            <div key={p.id} className="flex items-start gap-2 py-1.5 border-b border-border-faint">
-              <span className="text-[10px] px-1.5 py-0.5 flex-shrink-0 rounded-[var(--radius-sm)]" style={{
-                '--badge-color': p.type === 'anomaly' ? 'var(--color-accent-red)' : 'var(--color-analyst)',
-                background: 'color-mix(in srgb, var(--badge-color) 15%, transparent)',
-                color: 'var(--badge-color)',
-                border: '1px solid color-mix(in srgb, var(--badge-color) 20%, transparent)',
-              } as React.CSSProperties}>{p.type}</span>
-              <span className="text-[11px] leading-relaxed text-text-muted">{p.description}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <PatternSection patterns={analyst.patterns} />
       {analyst.comparisons.length > 0 && (
         <div className="mb-3">
           <div className="text-[10px] mb-1.5 text-text-faint">Comparaciones</div>
