@@ -1,4 +1,3 @@
-import type { AgentState, ChatMessage, SimAgent } from './types'
 import { AgentPanel } from './components/AgentPanel'
 import { ChatPanel } from './components/ChatPanel'
 import { useWebSocket } from './hooks/useWebSocket'
@@ -6,29 +5,21 @@ import { useMockWebSocket } from './hooks/useMockWebSocket'
 
 const isMock = new URLSearchParams(window.location.search).has('mock')
 
-// Wrap in separate components to avoid conditional hook calls
+// Separate wrapper components are required: each calls exactly one hook,
+// keeping the Rules of Hooks intact across mock/real socket variants.
 function MockApp() {
-  const { connected, agents, messages, thinking, simAgents, send } = useMockWebSocket()
-  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} simAgents={simAgents} send={send} />
+  return <AppShell {...useMockWebSocket()} />
 }
 
 function RealApp() {
-  const { connected, agents, messages, thinking, simAgents, send } = useWebSocket()
-  return <AppShell connected={connected} agents={agents} messages={messages} thinking={thinking} simAgents={simAgents} send={send} />
+  return <AppShell {...useWebSocket()} />
 }
 
 export default function App() {
   return isMock ? <MockApp /> : <RealApp />
 }
 
-interface ShellProps {
-  connected: boolean
-  agents: AgentState[]
-  messages: ChatMessage[]
-  thinking: boolean
-  simAgents: SimAgent[]
-  send: (text: string) => void
-}
+type ShellProps = ReturnType<typeof useWebSocket>
 
 function AppShell({ connected, agents, messages, thinking, simAgents, send }: ShellProps) {
   return (
