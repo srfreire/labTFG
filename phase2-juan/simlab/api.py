@@ -13,13 +13,15 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from dataclasses import replace
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text as sql_text
 
 from shared.services import Services, init_services, shutdown_services
 from simlab.knowledge import build_writer_from_services
@@ -113,6 +115,131 @@ def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph endpoints (knowledge P7)
+# ---------------------------------------------------------------------------
+
+_NODE_KEY_PROPS = (
+    "slug",
+    "id",
+    "doi",
+    "name",
+    "title",
+    "latex",
+    "formulation_id",
+    "_synthetic_id",
+)
+
+
+@app.get("/api/knowledge/graph")
+async def knowledge_graph(
+    run_id: str | None = None,
+    label: str | None = None,
+) -> dict:
+    """KG snapshot for the Phase 2 frontend KnowledgePanel.
+
+    Returns nodes + edges from Neo4j. When ``run_id`` is provided, the
+    response also carries ``current_run_node_ids`` — Neo4j elementIds of
+    nodes touched by that run (resolved via the Postgres
+    ``node_run_observations`` table). The ``label`` filter restricts the
+    response to nodes whose primary Cypher label matches.
+
+    503 when Neo4j is unavailable or the underlying query raises.
+    """
+    if _services is None or _services.kg is None:
+        raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
+
+    try:
+        nodes_raw = await _services.kg.query(
+            "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
+            "properties(n) AS props"
+        )
+        edges_raw = await _services.kg.query(
+            "MATCH (a)-[r]->(b) "
+            "RETURN elementId(r) AS id, elementId(a) AS source, "
+            "elementId(b) AS target, type(r) AS type, properties(r) AS props"
+        )
+    except Exception:
+        logger.warning("knowledge_graph: Neo4j query failed", exc_info=True)
+        raise HTTPException(status_code=503, detail="Knowledge graph query failed")
+
+    nodes: list[dict] = []
+    label_key_to_id: dict[tuple[str, str], str] = {}
+    for n in nodes_raw:
+        props = n["props"] or {}
+        node_label = n["labels"][0] if n["labels"] else "Node"
+        if label and node_label != label:
+            continue
+        for key_prop in _NODE_KEY_PROPS:
+            val = props.get(key_prop)
+            if val is not None:
+                label_key_to_id.setdefault((node_label, str(val)), n["id"])
+        nodes.append({"id": n["id"], "label": node_label, "props": props})
+
+    kept_ids = {n["id"] for n in nodes}
+    edges = [
+        {
+            "id": r["id"],
+            "source": r["source"],
+            "target": r["target"],
+            "type": r["type"],
+            "props": r["props"] or {},
+        }
+        for r in edges_raw
+        if r["source"] in kept_ids and r["target"] in kept_ids
+    ]
+
+    current_run_node_ids = await _resolve_current_run_node_ids(
+        run_id, label_key_to_id
+    )
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "current_run_node_ids": current_run_node_ids,
+    }
+
+
+async def _resolve_current_run_node_ids(
+    run_id: str | None,
+    label_key_to_id: dict[tuple[str, str], str],
+) -> list[str]:
+    """Resolve elementIds of nodes touched by ``run_id`` via Postgres.
+
+    Empty list when no ``run_id`` is given, the value is not a UUID, or
+    Postgres is unreachable — the frontend treats that as "no highlight".
+    """
+    if not run_id or _services is None or _services.db is None:
+        return []
+    try:
+        parsed = uuid.UUID(run_id)
+    except ValueError:
+        return []
+
+    try:
+        async with _services.db.get_session() as session:
+            result = await session.execute(
+                sql_text(
+                    "SELECT label, key_value FROM node_run_observations "
+                    "WHERE run_id = :run_id"
+                ),
+                {"run_id": parsed},
+            )
+            rows = result.all()
+    except Exception:
+        logger.warning(
+            "knowledge_graph: node_run_observations lookup failed", exc_info=True
+        )
+        return []
+
+    ids: list[str] = []
+    for row in rows:
+        node_id = label_key_to_id.get((row.label, row.key_value))
+        if node_id is not None:
+            ids.append(node_id)
+    return ids
 
 
 @app.websocket("/ws")
