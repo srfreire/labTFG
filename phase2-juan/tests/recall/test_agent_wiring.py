@@ -158,13 +158,9 @@ def _get_analyst_tools(settings):
 
 def _get_reporter_tools(settings):
     """Build the tool list the Reporter would get."""
-    from unittest.mock import MagicMock
+    from simlab.reporter import COMPILE_REPORT_TOOL, READ_RESEARCH_TOOL
 
-    from simlab.reporter import _build_tools as reporter_build_tools
-
-    tools, _ = reporter_build_tools(
-        "run-1", "exp-1", storage=MagicMock(), db=MagicMock()
-    )
+    tools = [READ_RESEARCH_TOOL, COMPILE_REPORT_TOOL]
     if settings.ENABLE_KNOWLEDGE_READ:
         from simlab.recall import build_recall_extras
 

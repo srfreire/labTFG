@@ -101,134 +101,6 @@ COMPILE_REPORT_TOOL = {
 
 
 # ---------------------------------------------------------------------------
-# Tool factory
-# ---------------------------------------------------------------------------
-
-
-def _build_tools(
-    run_id: str,
-    experiment_id: str,
-    *,
-    storage: StorageService,
-    db: DatabaseService,
-) -> tuple[list[dict], Registry]:
-    """Build tool schemas and implementations for the Reporter."""
-
-    async def read_research(params: dict) -> str:
-        """Read a Phase 1 research file from S3 (path-traversal safe)."""
-        path = params["path"]
-        if ".." in path or path.startswith("/"):
-            return json.dumps({"error": f"Invalid path: {path}"})
-        key = f"research/{run_id}/{path}"
-        if not await storage.exists(key):
-            return json.dumps({"error": f"File not found: {path}"})
-        return await storage.get_text(key)
-
-    async def compile_report(params: dict) -> str:
-        """Compile LaTeX content into a PDF using tectonic."""
-        import shutil
-        import tempfile
-
-        from shared.artifacts import register_artifact
-
-        content = _fix_markdown_in_latex(params["content"])
-        # Sanitize filename: lowercase, underscores only, no path traversal
-        raw_name = params.get("filename", "report") or "report"
-        safe_name = (
-            re.sub(r"[^a-z0-9_]", "_", raw_name.lower().strip()).strip("_") or "report"
-        )
-
-        if not _TEMPLATE_PATH.exists():
-            return json.dumps(
-                {"success": False, "errors": ["LaTeX template not found"]}
-            )
-
-        # Insert content into the template
-        template = _TEMPLATE_PATH.read_text()
-        full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
-
-        # Write to temp dir for tectonic
-        tmp = tempfile.mkdtemp(prefix="report_")
-        tex_path = Path(tmp) / f"{safe_name}.tex"
-        pdf_path = Path(tmp) / f"{safe_name}.pdf"
-        tex_path.write_text(full_latex)
-
-        # Download chart PNGs from S3 to temp dir for \includegraphics
-        charts_prefix = f"experiments/{experiment_id}/charts/"
-        chart_keys = await storage.list(charts_prefix)
-        for ck in chart_keys:
-            png_data = await storage.get(ck)
-            local_name = ck.split("/")[-1]
-            (Path(tmp) / local_name).write_bytes(png_data)
-
-        try:
-            result = subprocess.run(
-                ["tectonic", str(tex_path)],
-                capture_output=True,
-                text=True,
-                timeout=120,
-                cwd=tmp,
-            )
-            if result.returncode != 0:
-                error_lines = [
-                    line
-                    for line in result.stderr.split("\n")
-                    if "error" in line.lower()
-                ]
-                shutil.rmtree(tmp, ignore_errors=True)
-                return json.dumps(
-                    {
-                        "success": False,
-                        "errors": error_lines[:10]
-                        if error_lines
-                        else [result.stderr[-500:]],
-                    }
-                )
-
-            # Upload tex and pdf to S3
-            tex_key = f"experiments/{experiment_id}/report.tex"
-            pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
-            tex_bytes = full_latex.encode()
-            pdf_bytes = pdf_path.read_bytes()
-            await storage.put(tex_key, tex_bytes, "text/x-tex")
-            await storage.put(pdf_key, pdf_bytes, "application/pdf")
-            await register_artifact(
-                tex_key,
-                "tex",
-                len(tex_bytes),
-                experiment_id=experiment_id,
-                content_type="text/x-tex",
-                db=db,
-            )
-            await register_artifact(
-                pdf_key,
-                "pdf",
-                len(pdf_bytes),
-                experiment_id=experiment_id,
-                content_type="application/pdf",
-                db=db,
-            )
-
-            shutil.rmtree(tmp, ignore_errors=True)
-            return json.dumps({"success": True, "pdf_path": pdf_key})
-        except FileNotFoundError:
-            shutil.rmtree(tmp, ignore_errors=True)
-            return json.dumps(
-                {"success": False, "errors": ["'tectonic' not installed"]}
-            )
-        except subprocess.TimeoutExpired:
-            shutil.rmtree(tmp, ignore_errors=True)
-            return json.dumps({"success": False, "errors": ["Compilation timed out"]})
-
-    schemas = [READ_RESEARCH_TOOL, COMPILE_REPORT_TOOL]
-    registry: Registry = {
-        "read_research": read_research,
-        "compile_report": compile_report,
-    }
-    return schemas, registry
-
-
-# ---------------------------------------------------------------------------
 # System prompt
 # ---------------------------------------------------------------------------
 
@@ -404,9 +276,119 @@ class Reporter:
         prompt_suffix: str = "",
         knowledge_context: str = "",
     ) -> str:
-        tools, registry = _build_tools(
-            run_id, experiment_id, storage=self._storage, db=self._db
-        )
+        storage = self._storage
+        db = self._db
+
+        async def read_research(params: dict) -> str:
+            """Read a Phase 1 research file from S3 (path-traversal safe)."""
+            path = params["path"]
+            if ".." in path or path.startswith("/"):
+                return json.dumps({"error": f"Invalid path: {path}"})
+            key = f"research/{run_id}/{path}"
+            if not await storage.exists(key):
+                return json.dumps({"error": f"File not found: {path}"})
+            return await storage.get_text(key)
+
+        async def compile_report(params: dict) -> str:
+            """Compile LaTeX content into a PDF using tectonic."""
+            import shutil
+            import tempfile
+
+            from shared.artifacts import register_artifact
+
+            content = _fix_markdown_in_latex(params["content"])
+            raw_name = params.get("filename", "report") or "report"
+            safe_name = (
+                re.sub(r"[^a-z0-9_]", "_", raw_name.lower().strip()).strip("_")
+                or "report"
+            )
+
+            if not _TEMPLATE_PATH.exists():
+                return json.dumps(
+                    {"success": False, "errors": ["LaTeX template not found"]}
+                )
+
+            template = _TEMPLATE_PATH.read_text()
+            full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
+
+            tmp = tempfile.mkdtemp(prefix="report_")
+            tex_path = Path(tmp) / f"{safe_name}.tex"
+            pdf_path = Path(tmp) / f"{safe_name}.pdf"
+            tex_path.write_text(full_latex)
+
+            # Download chart PNGs from S3 to temp dir for \includegraphics
+            charts_prefix = f"experiments/{experiment_id}/charts/"
+            chart_keys = await storage.list(charts_prefix)
+            for ck in chart_keys:
+                png_data = await storage.get(ck)
+                local_name = ck.split("/")[-1]
+                (Path(tmp) / local_name).write_bytes(png_data)
+
+            try:
+                result = subprocess.run(
+                    ["tectonic", str(tex_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=tmp,
+                )
+                if result.returncode != 0:
+                    error_lines = [
+                        line
+                        for line in result.stderr.split("\n")
+                        if "error" in line.lower()
+                    ]
+                    shutil.rmtree(tmp, ignore_errors=True)
+                    return json.dumps(
+                        {
+                            "success": False,
+                            "errors": error_lines[:10]
+                            if error_lines
+                            else [result.stderr[-500:]],
+                        }
+                    )
+
+                tex_key = f"experiments/{experiment_id}/report.tex"
+                pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
+                tex_bytes = full_latex.encode()
+                pdf_bytes = pdf_path.read_bytes()
+                await storage.put(tex_key, tex_bytes, "text/x-tex")
+                await storage.put(pdf_key, pdf_bytes, "application/pdf")
+                await register_artifact(
+                    tex_key,
+                    "tex",
+                    len(tex_bytes),
+                    experiment_id=experiment_id,
+                    content_type="text/x-tex",
+                    db=db,
+                )
+                await register_artifact(
+                    pdf_key,
+                    "pdf",
+                    len(pdf_bytes),
+                    experiment_id=experiment_id,
+                    content_type="application/pdf",
+                    db=db,
+                )
+
+                shutil.rmtree(tmp, ignore_errors=True)
+                return json.dumps({"success": True, "pdf_path": pdf_key})
+            except FileNotFoundError:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return json.dumps(
+                    {"success": False, "errors": ["'tectonic' not installed"]}
+                )
+            except subprocess.TimeoutExpired:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return json.dumps(
+                    {"success": False, "errors": ["Compilation timed out"]}
+                )
+
+        tools: list[dict] = [READ_RESEARCH_TOOL, COMPILE_REPORT_TOOL]
+        registry: Registry = {
+            "read_research": read_research,
+            "compile_report": compile_report,
+        }
 
         # Knowledge Backbone tools (sim-recall / P1-003)
         tools += extra_tools or []
