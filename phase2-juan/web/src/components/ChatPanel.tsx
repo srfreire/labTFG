@@ -276,7 +276,7 @@ function TrackerCard({ tracker }: { tracker: ChatMessage['tracker'] }) {
   return (
     <Card color="var(--color-accent-amber)" title="Trayectorias" animate>
       {Object.entries(tracker.trajectories).map(([agent, data]) => {
-        const agentColor = getAgentColor(agent) || '#fbbf24'
+        const agentColor = getAgentColor(agent) || FROM_COLORS.tracker
         return (
           <div key={agent} className="mb-2.5 p-2.5 border rounded-[var(--radius-md)]" style={{ borderColor: withAlpha(agentColor, '20') }}>
             <div className="flex justify-between items-center mb-2">
