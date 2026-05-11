@@ -1,18 +1,5 @@
 import type { AgentState } from './types'
 
-// Simulation agent colors — fallback palette, overridden at runtime by backend via WS
-// Source of truth: SIM_AGENT_COLORS in api.py
-export const AGENT_COLORS = ['#4ade80', '#fbbf24', '#a78bfa', '#f472b6', '#38bdf8', '#fb923c'] as const
-
-// Initial agent states — shared between real and mock hooks
-export const INITIAL_AGENTS: AgentState[] = [
-  { name: 'Orchestrator', status: 'idle', color: '#94a3b8' },
-  { name: 'Architect', status: 'idle', color: '#4ade80' },
-  { name: 'Tracker', status: 'idle', color: '#fbbf24' },
-  { name: 'Analyst', status: 'idle', color: '#a78bfa' },
-  { name: 'Reporter', status: 'idle', color: '#f472b6' },
-]
-
 // Chat message sender colors — canonical keys are lowercase;
 // use getFromColor() for case-insensitive lookup
 const FROM_COLORS_MAP: Record<string, string> = {
@@ -23,6 +10,27 @@ const FROM_COLORS_MAP: Record<string, string> = {
   analyst: '#a78bfa',
   reporter: '#f472b6',
 }
+
+// Pipeline agents in display order — drives the sidebar and Orchestrator first
+const PIPELINE_AGENTS = ['Orchestrator', 'Architect', 'Tracker', 'Analyst', 'Reporter'] as const
+
+// Simulation agent colors — fallback palette, overridden at runtime by backend via WS
+// Source of truth: SIM_AGENT_COLORS in api.py
+export const AGENT_COLORS = [
+  FROM_COLORS_MAP.architect,
+  FROM_COLORS_MAP.tracker,
+  FROM_COLORS_MAP.analyst,
+  FROM_COLORS_MAP.reporter,
+  '#38bdf8',
+  '#fb923c',
+] as const
+
+// Initial agent states — derived from FROM_COLORS_MAP, shared between real and mock hooks
+export const INITIAL_AGENTS: AgentState[] = PIPELINE_AGENTS.map((name) => ({
+  name,
+  status: 'idle',
+  color: FROM_COLORS_MAP[name.toLowerCase()],
+}))
 
 /** Case-insensitive color lookup for message senders. */
 export function getFromColor(name: string): string {
