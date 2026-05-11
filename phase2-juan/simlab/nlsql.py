@@ -28,7 +28,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_ALLOWED_TABLES = {"experiments", "models", "runs", "simulation_observations"}
+_ALLOWED_TABLES = {
+    "experiments",
+    "models",
+    "runs",
+    "simulation_observations",
+    "pipeline_memories",
+    "chat_messages",
+}
 _MAX_LIMIT = 50
 
 _SCHEMA_PROMPT = """\
@@ -66,7 +73,39 @@ simulation_observations(id UUID PK, content TEXT, namespace VARCHAR DEFAULT 'sim
   via phase2_experiment_id (string, may be empty for early observations).
   Typed columns prefer over reading metadata JSONB.
 
-Tables NOT queryable: pipeline_memories (Phase 1), artifacts.
+pipeline_memories(id UUID PK, content TEXT, namespace VARCHAR(50),
+  memory_type VARCHAR(50), source_stage VARCHAR(100),
+  run_id UUID FK→runs NOT NULL, created_at TIMESTAMP, updated_at TIMESTAMP,
+  last_accessed_at TIMESTAMP, access_count INT, importance FLOAT,
+  confidence FLOAT, corroborations INT, contradictions INT,
+  valid_from TIMESTAMP, valid_to TIMESTAMP, superseded_by UUID,
+  metadata JSONB)
+
+  Phase 1 pipeline memories (paradigm / formulation / model / meta
+  namespaces). Bi-temporal via valid_from / valid_to. Always tied to a
+  Phase 1 run via run_id. Use namespace to filter
+  e.g. WHERE namespace='paradigm'.
+
+  Example: "¿qué paradigmas hemos investigado?" →
+    SELECT DISTINCT content FROM pipeline_memories
+    WHERE namespace='paradigm' AND valid_to IS NULL.
+
+chat_messages(id UUID PK, session_id UUID NOT NULL,
+  experiment_id UUID FK→experiments (nullable), role VARCHAR(20),
+  content TEXT, tool_name VARCHAR(50), created_at TIMESTAMP)
+
+  One row per Anthropic content block from an Orchestrator turn.
+  role ∈ {user, assistant, tool_use, tool_result}. tool_name is set
+  on tool_use / tool_result rows. session_id groups one Orchestrator
+  instance; experiment_id links the turn to an experiment if one was
+  active.
+
+  Example: "¿qué le pregunté sobre prospect theory?" →
+    SELECT created_at, content FROM chat_messages
+    WHERE role='user' AND content ILIKE '%prospect theory%'
+    ORDER BY created_at DESC.
+
+Tables NOT queryable: artifacts, node_run_observations.
 Only SELECT queries are allowed. Results are capped at LIMIT 50."""
 
 

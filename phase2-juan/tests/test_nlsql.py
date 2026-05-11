@@ -29,13 +29,13 @@ def test_validate_select_only():
 
 def test_validate_allowed_tables():
     """Rejects queries on tables not in allowlist."""
-    sql, error = validate_sql("SELECT * FROM pipeline_memories")
-    assert error is not None
-    assert "pipeline_memories" in error
-
     sql, error = validate_sql("SELECT * FROM artifacts")
     assert error is not None
     assert "artifacts" in error
+
+    sql, error = validate_sql("SELECT * FROM pg_user LIMIT 10")
+    assert error is not None
+    assert "pg_user" in error
 
 
 def test_validate_allowed_tables_pass():
@@ -46,6 +46,27 @@ def test_validate_allowed_tables_pass():
     sql, error = validate_sql(
         "SELECT paradigm, formulation FROM simulation_observations "
         "WHERE phase2_experiment_id = 'exp-1'"
+    )
+    assert error is None
+
+
+def test_validate_chat_messages_passes():
+    """P3-001: chat_messages is in the whitelist."""
+    sql, error = validate_sql("SELECT * FROM chat_messages LIMIT 10")
+    assert error is None
+
+
+def test_validate_pipeline_memories_passes():
+    """P3-001: pipeline_memories is in the whitelist."""
+    sql, error = validate_sql("SELECT content FROM pipeline_memories LIMIT 10")
+    assert error is None
+
+
+def test_validate_join_chat_to_experiments():
+    """P3-001: chat_messages ↔ experiments join works under the whitelist."""
+    sql, error = validate_sql(
+        "SELECT c.content FROM chat_messages c "
+        "JOIN experiments e ON c.experiment_id = e.id LIMIT 5"
     )
     assert error is None
 
