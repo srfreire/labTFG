@@ -23,9 +23,15 @@ _PROMPT_SECTIONS: dict[str, str] = {
 
 A "## Knowledge context" section with paradigm facts, previous environment specs, \
 and formulations is pre-injected in your input. Use it as your primary reference \
-for designing scientifically grounded environments. If you need additional detail \
-(e.g., a specific postulate or a related paradigm), call `retrieve_context` with \
-a targeted query.
+for designing scientifically grounded environments. Call `retrieve_context` with \
+a targeted query when the pre-fetch leaves a gap, e.g.:
+
+- A postulate is named in the context but its definition is missing → \
+  `retrieve_context(query="definition of <postulate name>", namespace="paradigm")`.
+- The paradigm cites a related one you need to compare against → \
+  `retrieve_context(query="key properties of <related paradigm>", namespace="paradigm")`.
+- You need a concrete environment parameter (grid size, action set) used in a \
+  prior simulation → `retrieve_context(query="environment parameters for <paradigm>", namespace="simulation")`.
 """,
     "analyst": """
 
@@ -33,18 +39,31 @@ a targeted query.
 
 A "## Knowledge context" section with postulates, formulations, and historical \
 data is pre-injected in your input. Use it as your primary reference for \
-cross-checking. If you need deeper or more specific knowledge (e.g., a \
-particular postulate detail, a specific past experiment), call \
-`retrieve_context` with a targeted query.
+cross-checking. Call `retrieve_context` with a targeted query when the \
+observed data raises a question the pre-fetch doesn't answer, e.g.:
+
+- A behavior pattern in the trajectory isn't explained by the listed postulates → \
+  `retrieve_context(query="paradigms predicting <observed pattern>", namespace="paradigm")`.
+- You want to compare against a specific past experiment → \
+  `retrieve_context(query="simulation outcomes for <paradigm> with <condition>", namespace="simulation")`.
+- A formulation in the context has parameters whose meaning is unclear → \
+  `retrieve_context(query="parameter <name> in <formulation>", namespace="formulation")`.
 """,
     "reporter": """
 
 ## References grounding
 
 A "## Knowledge context" section with paper references and formulations is \
-pre-injected in your input. Use it for citations and equations. If you need \
-additional references or formulations not covered by the pre-fetch (e.g., a \
-related paradigm), call `retrieve_context` with a targeted query.
+pre-injected in your input. Use it for citations and equations. Call \
+`retrieve_context` with a targeted query when you need material the pre-fetch \
+didn't surface, e.g.:
+
+- You need the original paper for a specific equation → \
+  `retrieve_context(query="original publication of <equation name>", namespace="meta")`.
+- You want to cite a related paradigm in the discussion → \
+  `retrieve_context(query="seminal references for <related paradigm>", namespace="meta")`.
+- A formulation needs its full symbolic form, not just a name → \
+  `retrieve_context(query="full equation for <formulation>", namespace="formulation")`.
 """,
 }
 
