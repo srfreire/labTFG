@@ -297,6 +297,84 @@ async def knowledge_memories(
     }
 
 
+_PROVENANCE_MAX_DEPTH = 4
+_PROVENANCE_PATH_LIMIT = 25
+
+
+@app.get("/api/knowledge/provenance/{node_id}")
+async def knowledge_provenance(node_id: str) -> dict:
+    """Trail from ``node_id`` toward source ``Paper`` nodes.
+
+    Walks outgoing edges (SUPPORTS / DERIVES_FROM / AUTHORED / CITES /
+    ...) up to depth 4 toward any ``Paper`` node and returns the longest
+    such trail — the most informative provenance chain. Empty ``trail``
+    is valid: it means the node has no path to a Paper.
+
+    404 when the node does not exist. 503 when Neo4j is unavailable or
+    the underlying query raises.
+    """
+    if _services is None or _services.kg is None:
+        raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
+
+    try:
+        node_rows = await _services.kg.query(
+            "MATCH (n) WHERE elementId(n) = $id "
+            "RETURN elementId(n) AS id, labels(n) AS labels, "
+            "properties(n) AS props",
+            {"id": node_id},
+        )
+    except Exception:
+        logger.warning("knowledge_provenance: node lookup failed", exc_info=True)
+        raise HTTPException(status_code=503, detail="Knowledge graph query failed")
+
+    if not node_rows:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    n = node_rows[0]
+    node = {
+        "id": n["id"],
+        "label": (n["labels"] or ["Node"])[0],
+        "props": n["props"] or {},
+    }
+
+    try:
+        path_rows = await _services.kg.query(
+            f"MATCH path = (n)-[*1..{_PROVENANCE_MAX_DEPTH}]->(end:Paper) "
+            "WHERE elementId(n) = $id "
+            "RETURN "
+            "[r IN relationships(path) | "
+            "{id: elementId(r), type: type(r), props: properties(r)}] AS edges, "
+            "[m IN nodes(path)[1..] | "
+            "{id: elementId(m), labels: labels(m), props: properties(m)}] AS path_nodes "
+            f"ORDER BY length(path) DESC LIMIT {_PROVENANCE_PATH_LIMIT}",
+            {"id": node_id},
+        )
+    except Exception:
+        logger.warning("knowledge_provenance: path query failed", exc_info=True)
+        raise HTTPException(status_code=503, detail="Knowledge graph query failed")
+
+    trail: list[dict] = []
+    if path_rows:
+        best = path_rows[0]
+        for edge, m in zip(best["edges"], best["path_nodes"], strict=True):
+            trail.append(
+                {
+                    "edge": {
+                        "id": edge["id"],
+                        "type": edge["type"],
+                        "props": edge["props"] or {},
+                    },
+                    "node": {
+                        "id": m["id"],
+                        "label": (m["labels"] or ["Node"])[0],
+                        "props": m["props"] or {},
+                    },
+                }
+            )
+
+    return {"node": node, "trail": trail}
+
+
 async def _resolve_current_run_node_ids(
     run_id: str | None,
     label_key_to_id: dict[tuple[str, str], str],
