@@ -24,6 +24,7 @@ class Settings:
     ENABLE_KNOWLEDGE_WRITE: bool = False
     ENABLE_KNOWLEDGE_READ: bool = False
     ENABLE_CHAT_PERSISTENCE: bool = False
+    ENABLE_QUERY_HISTORY: bool = False
     NLSQL_MAX_S3_FETCH: int = 3
     NLSQL_MODEL: str = "anthropic/claude-haiku-4-5"
 

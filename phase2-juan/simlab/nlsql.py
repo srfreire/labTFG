@@ -370,3 +370,71 @@ async def query_experiments(
                 lines.append(" | ".join(str(row.get(c, "")) for c in columns))
             return "\n".join(lines)
         return "No encontré experimentos que coincidan con tu búsqueda."
+
+
+# ---------------------------------------------------------------------------
+# query_history — light path for the Orchestrator (sim-recall P3-002)
+# ---------------------------------------------------------------------------
+
+_OUT_OF_SCOPE_MARKDOWN = (
+    "> No puedo responder eso con SQL — la consulta está fuera del "
+    "alcance de `query_history`."
+)
+
+
+def _format_rows(rows: list[dict]) -> str:
+    """Format SQL rows as a chat-ready markdown table.
+
+    Empty rows → ``"> Sin resultados."``. When ``len(rows) == _MAX_LIMIT``
+    the output ends with a truncation note.
+    """
+    if not rows:
+        return "> Sin resultados."
+
+    columns = list(rows[0].keys())
+    header = "| " + " | ".join(columns) + " |"
+    sep = "| " + " | ".join(["---"] * len(columns)) + " |"
+    lines = [header, sep]
+    for row in rows:
+        cells = [str(row.get(c, "")) for c in columns]
+        lines.append("| " + " | ".join(cells) + " |")
+    out = "\n".join(lines)
+    if len(rows) == _MAX_LIMIT:
+        out += f"\n_Mostrando primeras {_MAX_LIMIT} filas._"
+    return out
+
+
+async def query_history(question: str, *, db: DatabaseService) -> str:
+    """Light NL→SQL path for the Orchestrator chat tool.
+
+    Plan → validate → execute → markdown table. No S3 fetch, no LLM
+    synthesis — returns a chat-ready markdown string.
+
+    Never raises — every error path returns a graceful markdown sentence.
+    """
+    plan = await _plan(question)
+    if plan is None:
+        return "> No pude interpretar la pregunta. Intenta reformularla."
+
+    if plan.get("error") == "out_of_scope":
+        return _OUT_OF_SCOPE_MARKDOWN
+
+    sql_raw = plan.get("sql", "")
+    if not sql_raw:
+        return _OUT_OF_SCOPE_MARKDOWN
+
+    validated_sql, error = validate_sql(sql_raw)
+    if error:
+        logger.info("query_history: validator rejected SQL: %s", error)
+        return f"> Consulta rechazada por el validador: {error}"
+
+    try:
+        rows = await _execute(validated_sql, db=db)
+    except Exception:
+        logger.warning("query_history: _execute raised", exc_info=True)
+        return "> Error al ejecutar la consulta."
+
+    if rows is None:
+        return "> Error al ejecutar la consulta."
+
+    return _format_rows(rows)
