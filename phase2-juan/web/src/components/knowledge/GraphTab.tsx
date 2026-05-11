@@ -18,8 +18,9 @@ import {
   type SimulationLinkDatum,
   type SimulationNodeDatum,
 } from 'd3-force'
-import { kgLabelColor } from '../../constants'
+import { kgLabelColor, kgNodeTitle } from '../../constants'
 import type { KGEdge, KGNode, KGSnapshot } from '../../types'
+import { Placeholder } from './Placeholder'
 
 interface GraphTabProps {
   data: KGSnapshot | null
@@ -46,7 +47,7 @@ type KGNodeData = {
 
 function KnowledgeNode({ data }: NodeProps<Node<KGNodeData>>) {
   const color = kgLabelColor(data.kgNode.label)
-  const title = pickTitle(data.kgNode)
+  const title = kgNodeTitle(data.kgNode, 8)
   return (
     <div
       className="rounded-[var(--radius-sm)] px-2 py-1 text-[10px] text-text flex flex-col items-center min-w-[80px] max-w-[140px]"
@@ -70,22 +71,14 @@ function KnowledgeNode({ data }: NodeProps<Node<KGNodeData>>) {
 
 const nodeTypes = { kg: KnowledgeNode }
 
-function pickTitle(node: KGNode): string {
-  const props = node.props || {}
-  for (const key of ['name', 'title', 'id', 'doi']) {
-    const v = props[key]
-    if (typeof v === 'string' && v) return v
-  }
-  return node.id.slice(0, 8)
-}
-
 function layoutNodes(
   nodes: KGNode[],
   edges: KGEdge[],
 ): Record<string, { x: number; y: number }> {
   const simNodes: SimNode[] = nodes.map(n => ({ id: n.id, kgNode: n }))
+  const nodeIds = new Set(simNodes.map(n => n.id))
   const simLinks: SimulationLinkDatum<SimNode>[] = edges
-    .filter(e => nodes.some(n => n.id === e.source) && nodes.some(n => n.id === e.target))
+    .filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
     .map(e => ({ source: e.source, target: e.target }))
 
   const sim = forceSimulation(simNodes)
@@ -164,12 +157,14 @@ export function GraphTab({ data, loading, error, runId, onRunIdChange, onRefresh
         )}
         {error && (
           <Placeholder
+            variant="absolute"
             title="Knowledge Graph unavailable"
             body="¿Está el backend corriendo? (`uvicorn simlab.api:app`)"
           />
         )}
         {!error && data && data.nodes.length === 0 && (
           <Placeholder
+            variant="absolute"
             title="No knowledge stored yet"
             body="Lanza un experimento para empezar a poblar el grafo."
           />
@@ -188,15 +183,6 @@ export function GraphTab({ data, loading, error, runId, onRunIdChange, onRefresh
           </ReactFlow>
         )}
       </div>
-    </div>
-  )
-}
-
-function Placeholder({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center flex-col gap-1 text-center px-6 pointer-events-none">
-      <div className="text-[13px] font-medium text-text">{title}</div>
-      <div className="text-[11px] text-text-muted">{body}</div>
     </div>
   )
 }

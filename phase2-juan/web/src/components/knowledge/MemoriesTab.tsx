@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useKnowledgeMemories } from '../../hooks/useKnowledgeMemories'
+import { Placeholder } from './Placeholder'
 
 const NAMESPACES = ['', 'paradigm', 'formulation', 'model', 'meta'] as const
 const MAX_PAGE_SIZE = 200
@@ -155,15 +156,6 @@ export function MemoriesTab() {
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Placeholder({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="h-full flex items-center justify-center flex-col gap-1 text-center px-6">
-      <div className="text-[13px] font-medium text-text">{title}</div>
-      <div className="text-[11px] text-text-muted">{body}</div>
     </div>
   )
 }

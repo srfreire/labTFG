@@ -1,6 +1,7 @@
+import { kgLabelColor, kgNodeTitle } from '../../constants'
 import { useKnowledgeProvenance } from '../../hooks/useKnowledgeProvenance'
-import { kgLabelColor } from '../../constants'
 import type { KGNode } from '../../types'
+import { Placeholder } from './Placeholder'
 
 interface ProvenanceTabProps {
   nodeId: string | null
@@ -55,8 +56,8 @@ export function ProvenanceTab({ nodeId }: ProvenanceTabProps) {
 
 function NodeRow({ node, primary = false }: { node: KGNode; primary?: boolean }) {
   const color = kgLabelColor(node.label)
-  const title = pickTitle(node)
-  const year = pickProp(node, 'year')
+  const title = kgNodeTitle(node)
+  const year = readScalar(node, 'year')
   return (
     <div
       className="rounded-[var(--radius-sm)] px-3 py-2"
@@ -75,25 +76,8 @@ function NodeRow({ node, primary = false }: { node: KGNode; primary?: boolean })
   )
 }
 
-function pickTitle(node: KGNode): string {
-  for (const key of ['name', 'title', 'id', 'doi']) {
-    const v = node.props[key]
-    if (typeof v === 'string' && v) return v
-  }
-  return node.id.slice(0, 12)
-}
-
-function pickProp(node: KGNode, key: string): string | null {
+function readScalar(node: KGNode, key: string): string | null {
   const v = node.props[key]
   if (typeof v === 'string' || typeof v === 'number') return String(v)
   return null
-}
-
-function Placeholder({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="h-full flex items-center justify-center flex-col gap-1 text-center px-6">
-      <div className="text-[13px] font-medium text-text">{title}</div>
-      <div className="text-[11px] text-text-muted">{body}</div>
-    </div>
-  )
 }

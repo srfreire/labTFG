@@ -286,7 +286,7 @@ class SimulationObservation(Base):
 
 
 class ChatMessage(Base):
-    """Chat turn row — one per Anthropic block. See sim-recall Phase 2 spec."""
+    """Chat turn row — one per Anthropic content block."""
 
     __tablename__ = "chat_messages"
     __table_args__ = (

@@ -373,7 +373,7 @@ async def query_experiments(
 
 
 # ---------------------------------------------------------------------------
-# query_history — light path for the Orchestrator (sim-recall P3-002)
+# query_history — light NL→SQL path for the Orchestrator
 # ---------------------------------------------------------------------------
 
 _OUT_OF_SCOPE_MARKDOWN = (

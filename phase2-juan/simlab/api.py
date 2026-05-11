@@ -11,6 +11,7 @@ The server creates an Orchestrator per connection and streams back:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -155,14 +156,16 @@ async def knowledge_graph(
         raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
 
     try:
-        nodes_raw = await _services.kg.query(
-            "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
-            "properties(n) AS props"
-        )
-        edges_raw = await _services.kg.query(
-            "MATCH (a)-[r]->(b) "
-            "RETURN elementId(r) AS id, elementId(a) AS source, "
-            "elementId(b) AS target, type(r) AS type, properties(r) AS props"
+        nodes_raw, edges_raw = await asyncio.gather(
+            _services.kg.query(
+                "MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
+                "properties(n) AS props"
+            ),
+            _services.kg.query(
+                "MATCH (a)-[r]->(b) "
+                "RETURN elementId(r) AS id, elementId(a) AS source, "
+                "elementId(b) AS target, type(r) AS type, properties(r) AS props"
+            ),
         )
     except Exception:
         logger.warning("knowledge_graph: Neo4j query failed", exc_info=True)
@@ -317,60 +320,52 @@ async def knowledge_provenance(node_id: str) -> dict:
         raise HTTPException(status_code=503, detail="Knowledge graph unavailable")
 
     try:
-        node_rows = await _services.kg.query(
+        rows = await _services.kg.query(
             "MATCH (n) WHERE elementId(n) = $id "
-            "RETURN elementId(n) AS id, labels(n) AS labels, "
-            "properties(n) AS props",
+            f"OPTIONAL MATCH path = (n)-[*1..{_PROVENANCE_MAX_DEPTH}]->(:Paper) "
+            "WITH n, path ORDER BY size(coalesce(relationships(path), [])) DESC "
+            f"LIMIT {_PROVENANCE_PATH_LIMIT} "
+            "WITH n, [p IN collect(path) WHERE p IS NOT NULL] AS paths "
+            "RETURN elementId(n) AS id, labels(n) AS labels, properties(n) AS props, "
+            "[p IN paths[..1] | "
+            "[r IN relationships(p) | "
+            "{id: elementId(r), type: type(r), props: properties(r)}]] AS edge_lists, "
+            "[p IN paths[..1] | "
+            "[m IN nodes(p)[1..] | "
+            "{id: elementId(m), labels: labels(m), props: properties(m)}]] AS node_lists",
             {"id": node_id},
         )
     except Exception:
-        logger.warning("knowledge_provenance: node lookup failed", exc_info=True)
+        logger.warning("knowledge_provenance: query failed", exc_info=True)
         raise HTTPException(status_code=503, detail="Knowledge graph query failed")
 
-    if not node_rows:
+    if not rows:
         raise HTTPException(status_code=404, detail="Node not found")
 
-    n = node_rows[0]
+    row = rows[0]
     node = {
-        "id": n["id"],
-        "label": (n["labels"] or ["Node"])[0],
-        "props": n["props"] or {},
+        "id": row["id"],
+        "label": (row["labels"] or ["Node"])[0],
+        "props": row["props"] or {},
     }
+    edges = row["edge_lists"][0] if row["edge_lists"] else []
+    path_nodes = row["node_lists"][0] if row["node_lists"] else []
 
-    try:
-        path_rows = await _services.kg.query(
-            f"MATCH path = (n)-[*1..{_PROVENANCE_MAX_DEPTH}]->(end:Paper) "
-            "WHERE elementId(n) = $id "
-            "RETURN "
-            "[r IN relationships(path) | "
-            "{id: elementId(r), type: type(r), props: properties(r)}] AS edges, "
-            "[m IN nodes(path)[1..] | "
-            "{id: elementId(m), labels: labels(m), props: properties(m)}] AS path_nodes "
-            f"ORDER BY length(path) DESC LIMIT {_PROVENANCE_PATH_LIMIT}",
-            {"id": node_id},
-        )
-    except Exception:
-        logger.warning("knowledge_provenance: path query failed", exc_info=True)
-        raise HTTPException(status_code=503, detail="Knowledge graph query failed")
-
-    trail: list[dict] = []
-    if path_rows:
-        best = path_rows[0]
-        for edge, m in zip(best["edges"], best["path_nodes"], strict=True):
-            trail.append(
-                {
-                    "edge": {
-                        "id": edge["id"],
-                        "type": edge["type"],
-                        "props": edge["props"] or {},
-                    },
-                    "node": {
-                        "id": m["id"],
-                        "label": (m["labels"] or ["Node"])[0],
-                        "props": m["props"] or {},
-                    },
-                }
-            )
+    trail = [
+        {
+            "edge": {
+                "id": edge["id"],
+                "type": edge["type"],
+                "props": edge["props"] or {},
+            },
+            "node": {
+                "id": m["id"],
+                "label": (m["labels"] or ["Node"])[0],
+                "props": m["props"] or {},
+            },
+        }
+        for edge, m in zip(edges, path_nodes, strict=True)
+    ]
 
     return {"node": node, "trail": trail}
 

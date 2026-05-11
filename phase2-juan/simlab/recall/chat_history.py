@@ -1,4 +1,4 @@
-"""Chat history serializer + bulk writer (sim-recall Phase 2).
+"""Chat history serializer + bulk writer.
 
 ``serialize_message`` is a pure function turning one Anthropic message
 (as it lives in ``Orchestrator._messages``) into a list of
@@ -30,7 +30,7 @@ def serialize_message(
 ) -> list[dict]:
     """Convert one Orchestrator message into 0+ chat_messages row dicts.
 
-    Mapping (matches Phase 2 spec R3):
+    Mapping:
 
     - ``{"role": "user", "content": str}`` → 1 row, role ``user``.
     - ``{"role": "user", "content": [tool_result blocks]}`` → 1 row per

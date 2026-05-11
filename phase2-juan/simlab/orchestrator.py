@@ -640,8 +640,10 @@ class Orchestrator:
         self._state: dict = {}
         self._messages: list[dict] = []
         self._discovered_models: dict | None = None
-        # Per-instance chat session id for chat_messages persistence (Phase 2 sim-recall)
+        # Per-instance chat session id for chat_messages persistence.
         self._session_id: uuid.UUID = uuid.uuid4()
+        # tool_use_id → tool name, accumulated across turns.
+        self._tool_use_names: dict[str, str] = {}
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
 
@@ -719,13 +721,16 @@ class Orchestrator:
     async def _persist_chat_turn(self, turn_start: int) -> None:
         """Persist the messages appended in this turn to ``chat_messages``.
 
-        Swallows all errors — chat persistence must not interrupt the
-        conversation flow.
+        Wraps everything in try/except so DB connection failures (which
+        happen outside ``persist_messages``'s own internal try/except,
+        e.g. ``get_session()`` raising on enter) never reach ``chat()``.
         """
         try:
             from simlab.recall import persist_messages, serialize_message
+            from simlab.recall.chat_history import _block_field
 
-            tool_use_names = self._collect_tool_use_names()
+            self._refresh_tool_use_names(turn_start, _block_field)
+
             experiment_id = self._state.get("experiment_id")
             if isinstance(experiment_id, str):
                 try:
@@ -740,7 +745,7 @@ class Orchestrator:
                         msg,
                         session_id=self._session_id,
                         experiment_id=experiment_id,
-                        tool_use_names=tool_use_names,
+                        tool_use_names=self._tool_use_names,
                     )
                 )
 
@@ -751,30 +756,21 @@ class Orchestrator:
         except Exception:
             logger.warning("chat persistence failed", exc_info=True)
 
-    def _collect_tool_use_names(self) -> dict[str, str]:
-        """Walk past assistant messages to build a ``tool_use_id → name`` map."""
-        names: dict[str, str] = {}
-        for msg in self._messages:
+    def _refresh_tool_use_names(self, turn_start: int, block_field) -> None:
+        """Incrementally update ``_tool_use_names`` with this turn's tool_use blocks."""
+        for msg in self._messages[turn_start:]:
             if msg.get("role") != "assistant":
                 continue
             content = msg.get("content")
             if not isinstance(content, list):
                 continue
             for block in content:
-                block_type = getattr(block, "type", None) or (
-                    block.get("type") if isinstance(block, dict) else None
-                )
-                if block_type != "tool_use":
+                if block_field(block, "type") != "tool_use":
                     continue
-                block_id = getattr(block, "id", None) or (
-                    block.get("id") if isinstance(block, dict) else None
-                )
-                block_name = getattr(block, "name", None) or (
-                    block.get("name") if isinstance(block, dict) else None
-                )
+                block_id = block_field(block, "id")
+                block_name = block_field(block, "name")
                 if isinstance(block_id, str) and isinstance(block_name, str):
-                    names[block_id] = block_name
-        return names
+                    self._tool_use_names[block_id] = block_name
 
     async def _update_experiment(self, exp_id: str, **kwargs) -> None:
         """Update an experiment row in Postgres."""
@@ -1340,7 +1336,7 @@ class Orchestrator:
             tools.append(RETRIEVE_CONTEXT_TOOL)
             registry["retrieve_context"] = retrieve_context_handler
 
-        # --- query_history (sim-recall P3-003) ---
+        # --- query_history ---
         if settings.ENABLE_QUERY_HISTORY:
             from simlab.nlsql import query_history as _query_history
 

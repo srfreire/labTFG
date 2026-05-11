@@ -65,6 +65,21 @@ export function kgLabelColor(label: string): string {
   return KG_LABEL_COLORS[label] ?? KG_LABEL_DEFAULT
 }
 
+const KG_NODE_TITLE_KEYS = ['name', 'title', 'id', 'doi'] as const
+
+/** Best human-readable title for a Cypher node, falling back to a slice
+ * of the elementId so the renderer always has *something* to show. */
+export function kgNodeTitle(
+  node: { id: string; props: Record<string, unknown> },
+  fallbackLen = 12,
+): string {
+  for (const key of KG_NODE_TITLE_KEYS) {
+    const v = node.props[key]
+    if (typeof v === 'string' && v) return v
+  }
+  return node.id.slice(0, fallbackLen)
+}
+
 // Friendly labels for internal agent tool calls
 // Keep short — must fit in 200px sidebar
 export const TOOL_LABELS: Record<string, string> = {
