@@ -570,6 +570,45 @@ for the number of results.
 """
 
 
+_QUERY_HISTORY_PROMPT_SECTION = """
+
+## Past Experiments & Conversations (SQL)
+
+You have access to **query_history** — a tool that translates a natural-language question \
+into a safe read-only SQL query over the user's experiments, models, pipeline memories, \
+and past chat messages, and returns a markdown table.
+
+**When to use it:**
+- When the user asks about *past* experiments, models, or runs ("¿qué experimentos he hecho con prospect theory?")
+- When the user asks what *they* said earlier ("¿qué le pregunté antes sobre …?")
+- When the user wants a count, listing, or filter over historical data
+
+Call `query_history` with a single `question` string. The tool plans the SQL via Haiku, \
+validates that it touches only the whitelisted tables, executes it read-only, and \
+returns markdown ready to drop into the chat.
+"""
+
+
+QUERY_HISTORY_TOOL = {
+    "name": "query_history",
+    "description": (
+        "Answer questions about past experiments, models, pipeline memories, and chat "
+        "history by translating the question to SQL and returning a markdown table. "
+        "Use for retrospective queries — not for live simulation state."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "Natural-language question to translate into SQL.",
+            },
+        },
+        "required": ["question"],
+    },
+}
+
+
 # ---------------------------------------------------------------------------
 # Orchestrator class
 # ---------------------------------------------------------------------------
@@ -643,9 +682,12 @@ class Orchestrator:
 
     def _build_system_prompt(self, settings: Settings) -> str:
         """Assemble the system prompt, optionally appending knowledge sections."""
+        prompt = ORCHESTRATOR_SYSTEM_PROMPT
         if settings.ENABLE_KNOWLEDGE_READ:
-            return ORCHESTRATOR_SYSTEM_PROMPT + _KNOWLEDGE_RETRIEVAL_PROMPT_SECTION
-        return ORCHESTRATOR_SYSTEM_PROMPT
+            prompt += _KNOWLEDGE_RETRIEVAL_PROMPT_SECTION
+        if settings.ENABLE_QUERY_HISTORY:
+            prompt += _QUERY_HISTORY_PROMPT_SECTION
+        return prompt
 
     async def chat(self, user_message: str) -> str:
         """Process a user message and return the orchestrator's response."""
@@ -1297,5 +1339,22 @@ class Orchestrator:
 
             tools.append(RETRIEVE_CONTEXT_TOOL)
             registry["retrieve_context"] = retrieve_context_handler
+
+        # --- query_history (sim-recall P3-003) ---
+        if settings.ENABLE_QUERY_HISTORY:
+            from simlab.nlsql import query_history as _query_history
+
+            services = self._services
+
+            async def query_history_handler(params: dict) -> str:
+                question = params.get("question", "")
+                if not question:
+                    return "> Pregunta vacía."
+                if services.db is None:
+                    return "> Base de datos no disponible."
+                return await _query_history(question, db=services.db)
+
+            tools.append(QUERY_HISTORY_TOOL)
+            registry["query_history"] = query_history_handler
 
         return tools, registry
