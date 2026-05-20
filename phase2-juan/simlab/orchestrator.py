@@ -1243,20 +1243,12 @@ class Orchestrator:
                 knowledge_context=knowledge_ctx,
                 **_recall_kwargs("reporter"),
             )
-            # Track PDF S3 keys
+            # Track PDF S3 keys — read from Reporter side-channel because the
+            # final LLM message is free-form text, not the compile_report JSON.
             if "pdf_paths" not in state:
                 state["pdf_paths"] = []
-            # Extract pdf_path (S3 key) from reporter result if present
-            try:
-                result_data = (
-                    json.loads(result) if result.strip().startswith("{") else None
-                )
-            except (json.JSONDecodeError, AttributeError):
-                result_data = None
-            if result_data and result_data.get("pdf_path"):
-                pdf_key = result_data["pdf_path"]
-                if pdf_key not in state["pdf_paths"]:
-                    state["pdf_paths"].append(pdf_key)
+            if reporter.last_pdf_key and reporter.last_pdf_key not in state["pdf_paths"]:
+                state["pdf_paths"].append(reporter.last_pdf_key)
             if state["pdf_paths"]:
                 state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):

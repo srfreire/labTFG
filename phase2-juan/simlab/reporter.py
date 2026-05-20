@@ -257,6 +257,10 @@ class Reporter:
         self.model = model
         self._storage = storage
         self._db = db
+        # Set inside compile_report when a PDF is successfully written; the
+        # Reporter's final LLM message is free-form text, so the orchestrator
+        # cannot reliably parse pdf_path back out of it.
+        self.last_pdf_key: str | None = None
 
     async def run(
         self,
@@ -278,6 +282,7 @@ class Reporter:
     ) -> str:
         storage = self._storage
         db = self._db
+        self.last_pdf_key = None
 
         async def read_research(params: dict) -> str:
             """Read a Phase 1 research file from S3 (path-traversal safe)."""
@@ -372,6 +377,7 @@ class Reporter:
                 )
 
                 shutil.rmtree(tmp, ignore_errors=True)
+                self.last_pdf_key = pdf_key
                 return json.dumps({"success": True, "pdf_path": pdf_key})
             except FileNotFoundError:
                 shutil.rmtree(tmp, ignore_errors=True)
