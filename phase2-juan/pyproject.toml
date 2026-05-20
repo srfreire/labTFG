@@ -7,7 +7,10 @@ dependencies = [
     "python-dotenv",
     "fastapi",
     "uvicorn[standard]",
-    "websockets",
+    # websockets 16.0 enforces strict server-side Origin validation, which
+    # breaks the Vite dev proxy (browser :5175 → ws :8000 mismatch → HTTP 403).
+    # Pin <16 until uvicorn exposes a flag to disable this check.
+    "websockets<16",
     "shared",
     "matplotlib>=3.9.0",
     "sqlparse>=0.5.0",
