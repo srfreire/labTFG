@@ -131,7 +131,8 @@ arch_id = box_with_label(80, 355, 260, 60, "Architect", bg=agent_bg, stroke=agen
 track_id = box_with_label(370, 355, 260, 60, "Tracker", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
 analyst_id = box_with_label(660, 355, 260, 60, "Analyst", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
 reporter_id = box_with_label(950, 355, 260, 60, "Reporter", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
-nlsql_id = box_with_label(1240, 355, 260, 60, "NL-SQL", bg="#6c3483", stroke="#a78bfa", text_color=agent_text)
+# NL-SQL is an Orchestrator-side tool (query_history), not a pipeline agent — kept in this row but visually flagged as such
+nlsql_id = box_with_label(1240, 355, 260, 60, "NL-SQL  (Orch tool: query_history)", bg="#6c3483", stroke="#a78bfa", text_color=agent_text, font_size=13)
 
 # model labels under each agent
 text(80, 420, 260, 16, "claude-haiku-4-5", size=11, color="#a78bfa")
@@ -151,8 +152,8 @@ sim_group = group_box(50, 480, 560, 280, "SIMULATION ENGINE", stroke="#e6a817", 
 
 env_id = box_with_label(80, 520, 500, 50, "Environment (Grid + Actions + Resources)",
                         bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
-loader_id = box_with_label(80, 585, 500, 50, "Model Loader (S3 → importlib → duck typing)",
-                           bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
+loader_id = box_with_label(80, 585, 500, 50, "Model Loader (Postgres → S3 → importlib → duck typing)",
+                           bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=13)
 crit_id = box_with_label(80, 650, 500, 50, "Critical Events (rule-based detector)",
                          bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
 charts_id = box_with_label(80, 715, 500, 50, "Charts (matplotlib + Recharts JSON)",
@@ -176,12 +177,13 @@ box_with_label(710, 600, 350, 40, "FactSpec → embed (Voyage-3)", bg="#a6325a",
 box_with_label(710, 650, 350, 40, "Upsert (Qdrant + Postgres)", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
 box_with_label(710, 700, 350, 40, "Sparse: BM25 native (Qdrant)", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
 
-# sim-recall (read)
+# sim-recall (read) — Phase 2 wrapper. The actual 3-layer pipeline lives in Phase 1.
 recall_group = group_box(1110, 515, 415, 225, "sim-recall (read path)", stroke="#74c7ec", bg="#0b2942", label_color="#74c7ec", opacity=50)
-box_with_label(1135, 550, 365, 40, "retrieve_context tool", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=14)
-box_with_label(1135, 600, 365, 40, "3-layer: KG + Dense + Sparse", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=14)
-box_with_label(1135, 650, 365, 40, "RRF Fusion (k=60)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=14)
-box_with_label(1135, 700, 365, 40, "CRAG Evaluator (LLM)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=14)
+box_with_label(1135, 550, 365, 40, "retrieve_context  (P2 wrapper)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
+box_with_label(1135, 600, 365, 40, "delegates to Phase 1:", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
+box_with_label(1135, 650, 365, 40, "  create_retrieve_knowledge()", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
+box_with_label(1135, 700, 365, 40, "  → 3-layer + RRF + CRAG (P1)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
+# Note: chat_history (recall/chat_history.py) persists Orchestrator messages to chat_messages
 
 # Tracker → sim-memory arrow
 arrow(500, 420, 885, 515, color="#f38ba8", sw=2, label="write facts", start_id=track_id)
@@ -253,8 +255,10 @@ text(50, 988, 500, 16, "All LLM calls via OpenRouter → Anthropic models", size
 # Pipeline flow annotation
 text(80, 445, 600, 16, "Pipeline: Architect → Simulate → Tracker → Analyst → Reporter", size=12, color="#cba6f7", align="left")
 
-# Phase 1 integration note
-text(80, 770, 400, 16, "Phase 1 models loaded via duck typing (decide/update/get_state)", size=11, color="#f9e2af", align="left")
+# Phase 1 integration note — model_loader reads Postgres models table first, then downloads .py from S3
+text(80, 770, 600, 16, "Phase 1 models registered in Postgres (models table) → loaded via duck typing from S3", size=11, color="#f9e2af", align="left")
+# chat_history note — added in P3 (recall/chat_history.py)
+text(50, 1006, 600, 16, "Orchestrator messages persisted via recall/chat_history.py → chat_messages table", size=12, color="#7f849c", align="left")
 
 # ──────────────────────────────────────────────────────────────────────
 # Output
