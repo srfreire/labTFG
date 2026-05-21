@@ -5,11 +5,24 @@ import type { ReviewReasonData } from '../../types';
 interface ReviewReasonProps {
   data: ReviewReasonData;
   onSubmit: (response: {
-    decisions: Record<string, { approved: boolean; feedback?: string }>;
+    decisions: Record<
+      string,
+      { approved?: boolean; feedback?: string; rerun_formalizer?: boolean }
+    >;
   }) => void;
 }
 
-type Decision = { approved: true } | { approved: false; feedback: string };
+type Decision =
+  | { approved: true }
+  | { approved: false; feedback: string }
+  | { rerun_formalizer: true; feedback?: string };
+type ApprovalDecision = Extract<Decision, { approved: true | false }>;
+
+function isApprovalDecision(
+  decision: Decision | undefined,
+): decision is ApprovalDecision {
+  return !!decision && 'approved' in decision;
+}
 
 export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
@@ -28,15 +41,42 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
     }));
   };
 
-  const isRejecting = (id: string) =>
-    decisions[id]?.approved === false || (!(id in decisions) && feedbackDrafts[id] !== undefined);
+  const rerunFormalizer = (id: string) => {
+    const feedback = feedbackDrafts[id]?.trim();
+    setDecisions((prev) => ({
+      ...prev,
+      [id]: feedback
+        ? { rerun_formalizer: true, feedback }
+        : { rerun_formalizer: true },
+    }));
+  };
+
+  const isRejecting = (id: string) => {
+    const decision = decisions[id];
+    return (
+      (isApprovalDecision(decision) && decision.approved === false) ||
+      (!(id in decisions) && feedbackDrafts[id] !== undefined)
+    );
+  };
 
   const allDecided = data.specs.every((s) => s.id in decisions);
 
   const handleSubmit = () => {
-    const result: Record<string, { approved: boolean; feedback?: string }> = {};
+    const result: Record<
+      string,
+      { approved?: boolean; feedback?: string; rerun_formalizer?: boolean }
+    > = {};
     for (const [id, d] of Object.entries(decisions)) {
-      result[id] = d.approved ? { approved: true } : { approved: false, feedback: (d as { feedback: string }).feedback };
+      if ('rerun_formalizer' in d) {
+        result[id] = {
+          rerun_formalizer: true,
+          ...(d.feedback ? { feedback: d.feedback } : {}),
+        };
+      } else {
+        result[id] = d.approved
+          ? { approved: true }
+          : { approved: false, feedback: d.feedback };
+      }
     }
     onSubmit({ decisions: result });
   };
@@ -50,7 +90,12 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
 
         {data.specs.map((spec) => {
           const decided = spec.id in decisions;
-          const wasApproved = decisions[spec.id]?.approved === true;
+          const decision = decisions[spec.id];
+          const wasApproved =
+            isApprovalDecision(decision) && decision.approved === true;
+          const rerunsFormalizer =
+            decision && 'rerun_formalizer' in decision;
+          const hasProblems = spec.status === 'invalid' || !!spec.problems?.length;
 
           return (
             <div
@@ -72,12 +117,35 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               </div>
 
               {/* Description */}
-              <div className="text-[13px] text-text-muted">
-                <MarkdownRenderer content={spec.description} />
-              </div>
+              {spec.description && (
+                <div className="text-[13px] text-text-muted">
+                  <MarkdownRenderer content={spec.description} />
+                </div>
+              )}
+
+              {hasProblems && (
+                <div className="border border-accent-red/25 bg-accent-red/6 p-3 text-[12px] text-text-muted rounded-lg">
+                  <span className="block text-[11px] uppercase tracking-[1px] text-accent-red mb-2">
+                    Validation problems
+                  </span>
+                  <ul className="space-y-1">
+                    {(spec.problems ?? [{ detail: 'Spec marked invalid.' }]).map(
+                      (problem, i) => (
+                        <li key={i}>
+                          {String(
+                            problem.detail ??
+                              problem.message ??
+                              JSON.stringify(problem),
+                          )}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </div>
+              )}
 
               {/* Variables */}
-              {spec.variables?.length > 0 && (
+              {!!spec.variables?.length && (
                 <div className="space-y-1">
                   <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
                     Variables
@@ -97,7 +165,7 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               )}
 
               {/* Parameters */}
-              {spec.parameters?.length > 0 && (
+              {!!spec.parameters?.length && (
                 <div className="space-y-1">
                   <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
                     Parameters
@@ -134,9 +202,13 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
               {decided ? (
                 <div
                   className="text-[12px] uppercase tracking-[1px] pt-1"
-                  style={{ color: wasApproved ? 'rgba(100,255,100,0.7)' : 'rgba(255,100,100,0.7)' }}
+                  style={{ color: wasApproved ? 'rgba(100,255,100,0.7)' : rerunsFormalizer ? 'rgba(251,191,36,0.8)' : 'rgba(255,100,100,0.7)' }}
                 >
-                  {wasApproved ? 'Aprobado' : 'Rechazado'}
+                  {wasApproved
+                    ? 'Aprobado'
+                    : rerunsFormalizer
+                      ? 'Rehacer formalización'
+                      : 'Rechazado'}
                 </div>
               ) : (
                 <div className="flex items-start gap-2 pt-1">
@@ -155,6 +227,15 @@ export default function ReviewReason({ data, onSubmit }: ReviewReasonProps) {
                   >
                     Rechazar
                   </button>
+                  {hasProblems && (
+                    <button
+                      className="text-[13px] uppercase tracking-[1px] font-medium text-[#fbbf24] px-4 py-1.5 rounded-lg bg-[#fbbf24]/6 hover:bg-[#fbbf24]/12"
+                      style={{ border: '1px solid rgba(251,191,36,0.25)' }}
+                      onClick={() => rerunFormalizer(spec.id)}
+                    >
+                      Rehacer formalización
+                    </button>
+                  )}
                 </div>
               )}
 

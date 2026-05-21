@@ -343,4 +343,14 @@ describe("useWebSocket — send while not connected", () => {
     expect(result.current.error).toBeTruthy();
     expect(result.current.error?.toLowerCase()).toContain("connect");
   });
+
+  it("does not mark the pipeline running when start could not be sent", () => {
+    const onMessage = vi.fn();
+    const { result } = renderHook(() => useWebSocket(onMessage));
+
+    act(() => result.current.startPipeline("test problem"));
+
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.currentStage).toBeNull();
+  });
 });

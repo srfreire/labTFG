@@ -120,13 +120,24 @@ class ConnectionManager:
             elif msg_type == "node_update":
                 for n in self.nodes:
                     if n["id"] == msg["id"]:
-                        n["status"] = msg["status"]
+                        if "status" in msg:
+                            n["status"] = msg["status"]
+                        if "label" in msg:
+                            n["label"] = msg["label"]
+                        if "metadata" in msg:
+                            current = n.get("metadata")
+                            if isinstance(current, dict) and isinstance(
+                                msg["metadata"], dict
+                            ):
+                                n["metadata"] = {**current, **msg["metadata"]}
+                            else:
+                                n["metadata"] = msg["metadata"]
                         break
             elif msg_type == "stage":
                 self.current_stage = msg.get("label")
             elif msg_type == "review_request":
                 self.pending_review = msg
-            elif msg_type == "graph_clear":
+            elif msg_type in {"graph_clear", "clear"}:
                 self.nodes.clear()
                 self.edges.clear()
             elif msg_type == "run_start":
@@ -148,7 +159,12 @@ class ConnectionManager:
         """
         from decisionlab.web_feedback import handle_review_response as _dispatch
 
-        _dispatch(data["stage"], data["data"])
+        stage = data.get("stage")
+        if not isinstance(stage, str):
+            raise ValueError("review_response requires a string 'stage' field")
+        _dispatch(stage, data.get("data"))
+        if self.pending_review and self.pending_review.get("stage") == stage:
+            self.pending_review = None
 
     def reset(self) -> None:
         self.nodes.clear()
@@ -354,7 +370,7 @@ async def run_pipeline(
             project_root=Path.cwd(),
             emit=emit,
             stop_after=stop_after,
-            feedback=WebFeedback(emit),
+            feedback=WebFeedback(emit, storage=services.storage),
             services=services,
         )
 

@@ -281,7 +281,7 @@ function handleServerMessage(
 /* ------------------------------------------------------------------ */
 
 interface WebSocketActions {
-  send: (msg: ClientMessage) => void;
+  send: (msg: ClientMessage) => boolean;
   startPipeline: (problem: string, untilStage?: Stage) => void;
   sendReviewResponse: (stage: Stage, data: any) => void;
   sendRouterPrompt: (message: string) => void;
@@ -321,7 +321,8 @@ export function useWebSocket(
       return;
     }
 
-    const url = `ws://${window.location.host}/ws`;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const url = `${protocol}//${window.location.host}/ws`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -388,31 +389,34 @@ export function useWebSocket(
 
   /* ---------- actions ---------- */
 
-  const send = useCallback((msg: ClientMessage) => {
+  const send = useCallback((msg: ClientMessage): boolean => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(msg));
-    } else {
-      // Surface this through the regular error channel so the consumer
-      // can show it; the previous silent console.warn lost user clicks.
-      dispatch({
-        type: "SET_ERROR",
-        message: "Cannot send: not connected to the server.",
-      });
+      return true;
     }
+    // Surface this through the regular error channel so the consumer
+    // can show it; the previous silent console.warn lost user clicks.
+    dispatch({
+      type: "SET_ERROR",
+      message: "Cannot send: not connected to the server.",
+    });
+    return false;
   }, []);
 
   const startPipeline = useCallback(
     (problem: string, untilStage?: Stage) => {
-      dispatch({ type: "START_PIPELINE" });
-      send({ type: "start", problem, until_stage: untilStage });
+      if (send({ type: "start", problem, until_stage: untilStage })) {
+        dispatch({ type: "START_PIPELINE" });
+      }
     },
     [send],
   );
 
   const sendReviewResponse = useCallback(
     (stage: Stage, data: any) => {
-      send({ type: "review_response", stage, data } as ClientMessage);
-      dispatch({ type: "CLEAR_REVIEW" });
+      if (send({ type: "review_response", stage, data } as ClientMessage)) {
+        dispatch({ type: "CLEAR_REVIEW" });
+      }
     },
     [send],
   );

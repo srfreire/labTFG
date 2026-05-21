@@ -79,6 +79,35 @@ async def test_emit_node_update_modifies_existing_node(manager, fake_ws):
 
 
 @pytest.mark.asyncio
+async def test_emit_node_update_merges_metadata_for_reconnect(manager, fake_ws):
+    await manager.connect(fake_ws)
+    await manager.emit(
+        {
+            "type": "node_add",
+            "node": {
+                "id": "n1",
+                "status": "running",
+                "label": "old",
+                "metadata": {"a": 1},
+            },
+        }
+    )
+    await manager.emit(
+        {
+            "type": "node_update",
+            "id": "n1",
+            "status": "done",
+            "label": "new",
+            "metadata": {"b": 2},
+        }
+    )
+
+    assert manager.nodes[0]["status"] == "done"
+    assert manager.nodes[0]["label"] == "new"
+    assert manager.nodes[0]["metadata"] == {"a": 1, "b": 2}
+
+
+@pytest.mark.asyncio
 async def test_emit_node_update_unknown_id_is_noop(manager, fake_ws):
     await manager.connect(fake_ws)
     await manager.emit({"type": "node_update", "id": "missing", "status": "x"})
@@ -104,11 +133,44 @@ async def test_emit_review_request_pinned_until_pipeline_done(manager, fake_ws):
 
 
 @pytest.mark.asyncio
+async def test_review_response_clears_pending_review(manager, fake_ws, monkeypatch):
+    await manager.connect(fake_ws)
+    pending = {"type": "review_request", "stage": "review_research", "data": {}}
+    await manager.emit(pending)
+
+    dispatched = []
+
+    def fake_dispatch(stage, data):
+        dispatched.append((stage, data))
+
+    monkeypatch.setattr(
+        "decisionlab.web_feedback.handle_review_response", fake_dispatch
+    )
+
+    await manager.handle_review_response(
+        {"type": "review_response", "stage": "review_research", "data": {"ok": True}}
+    )
+
+    assert dispatched == [("review_research", {"ok": True})]
+    assert manager.pending_review is None
+
+
+@pytest.mark.asyncio
 async def test_emit_graph_clear_resets_collections(manager, fake_ws):
     await manager.connect(fake_ws)
     await manager.emit({"type": "node_add", "node": {"id": "n1"}})
     await manager.emit({"type": "edge_add", "edge": {"id": "e1"}})
     await manager.emit({"type": "graph_clear"})
+    assert manager.nodes == []
+    assert manager.edges == []
+
+
+@pytest.mark.asyncio
+async def test_emit_agrex_clear_resets_collections(manager, fake_ws):
+    await manager.connect(fake_ws)
+    await manager.emit({"type": "node_add", "node": {"id": "n1"}})
+    await manager.emit({"type": "edge_add", "edge": {"id": "e1"}})
+    await manager.emit({"type": "clear"})
     assert manager.nodes == []
     assert manager.edges == []
 
