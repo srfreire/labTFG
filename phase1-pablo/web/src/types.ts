@@ -63,7 +63,7 @@ export type ServerMessage =
   | { type: "node_update"; id: string; status: "running" | "done" | "error" }
   | { type: "review_request"; stage: Stage.REVIEW_RESEARCH; data: ReviewResearchData }
   | { type: "review_request"; stage: Stage.REVIEW_FORMALIZE; data: ReviewFormalizeData }
-  | { type: "review_request"; stage: Stage.GET_ENV_SPEC; data: Record<string, never> }
+  | { type: "review_request"; stage: Stage.GET_ENV_SPEC; data: { message?: string } }
   | { type: "review_request"; stage: Stage.REVIEW_REASON; data: ReviewReasonData }
   | { type: "review_request"; stage: Stage.REVIEW_BUILD; data: ReviewBuildData }
   | { type: "rerun"; target: string; paradigm: string; reason: string }
@@ -112,11 +112,11 @@ export interface KGSnapshot {
 // Frontend -> Backend messages
 export type ClientMessage =
   | { type: "start"; problem: string; until_stage?: Stage }
-  | { type: "review_response"; stage: Stage.REVIEW_RESEARCH; data: { approved: string[] } }
+  | { type: "review_response"; stage: Stage.REVIEW_RESEARCH; data: { approved: string[]; additional?: string | null } }
   | { type: "review_response"; stage: Stage.REVIEW_FORMALIZE; data: { selected: Record<string, number[]> } }
   | { type: "review_response"; stage: Stage.GET_ENV_SPEC; data: { env_spec: Record<string, unknown> } }
-  | { type: "review_response"; stage: Stage.REVIEW_REASON; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
-  | { type: "review_response"; stage: Stage.REVIEW_BUILD; data: { decisions: Record<string, { approved: boolean; feedback?: string }> } }
+  | { type: "review_response"; stage: Stage.REVIEW_REASON; data: { decisions: Record<string, { approved?: boolean; feedback?: string; rerun_formalizer?: boolean }> } }
+  | { type: "review_response"; stage: Stage.REVIEW_BUILD; data: { decisions: Record<string, { approved?: boolean; feedback?: string; rerun_reasoner?: boolean }> } }
   | { type: "cancel" }
   | { type: "router_prompt"; message: string };
 
@@ -133,27 +133,36 @@ export interface ReviewResearchData {
 export interface ReviewFormalizeData {
   paradigms: Array<{
     slug: string;
-    title: string;
-    formulations: Array<{ id: number; content: string }>;
+    title?: string;
+    content?: string;
+    formulations: Array<{ id: number; name?: string; content: string }>;
   }>;
 }
 
 export interface ReviewReasonData {
   specs: Array<{
     id: string;
+    spec_id?: string;
     paradigm: string;
     name: string;
-    description: string;
-    variables: any[];
-    parameters: any[];
-    rules: any[];
-    decision_logic: any;
+    status?: "invalid";
+    problems?: Array<Record<string, unknown>>;
+    description?: string;
+    variables?: any[];
+    parameters?: any[];
+    rules?: any[];
+    decision_logic?: any;
+    env_mapping?: Record<string, unknown>;
+    full_spec?: Record<string, unknown>;
   }>;
 }
 
 export interface ReviewBuildData {
   models: Array<{
     slug: string;
+    paradigm?: string;
+    status?: "invalid";
+    problems?: Array<Record<string, unknown>>;
     code: string;
     test_results: string;
     passed: boolean;

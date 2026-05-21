@@ -26,9 +26,14 @@ _review_responses: dict[str, Any] = {}
 
 def handle_review_response(stage: str, data: Any) -> None:
     """Called by ``server.py`` when a ``review_response`` message arrives."""
+    if stage not in _review_events:
+        # Ignore unsolicited or stale responses (for example, a browser click
+        # racing with pipeline cancellation). Keeping them would let the next
+        # run consume the wrong human decision or hang waiting on an event that
+        # was never signalled.
+        return
     _review_responses[stage] = data
-    if stage in _review_events:
-        _review_events[stage].set()
+    _review_events[stage].set()
 
 
 async def wait_for_review(
@@ -38,14 +43,17 @@ async def wait_for_review(
 ) -> Any:
     """Emit a ``review_request`` and block until the frontend responds."""
     event = asyncio.Event()
+    _review_responses.pop(stage, None)
     _review_events[stage] = event
 
-    await emit({"type": "review_request", "stage": stage, "data": review_data})
-    await event.wait()
-
-    response = _review_responses.pop(stage)
-    del _review_events[stage]
-    return response
+    try:
+        await emit({"type": "review_request", "stage": stage, "data": review_data})
+        await event.wait()
+        return _review_responses.pop(stage)
+    finally:
+        if _review_events.get(stage) is event:
+            del _review_events[stage]
+        _review_responses.pop(stage, None)
 
 
 # ---------------------------------------------------------------------------

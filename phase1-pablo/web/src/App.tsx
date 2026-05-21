@@ -12,7 +12,13 @@ import Sidebar from "./components/Sidebar";
 import Graph from "./components/Graph";
 import DemoGraph from "./components/DemoGraph";
 import KnowledgeGraphPanel from "./components/KnowledgeGraphPanel";
-import { EnvSpecUpload } from "./components/reviews";
+import {
+  EnvSpecUpload,
+  ReviewBuild,
+  ReviewFormalize,
+  ReviewReason,
+  ReviewResearch,
+} from "./components/reviews";
 import MarkdownRenderer from "./components/shared/MarkdownRenderer";
 import CodeBlock from "./components/shared/CodeBlock";
 import { Stage } from "./types";
@@ -339,7 +345,6 @@ export default function App() {
     runId,
     startPipeline,
     sendReviewResponse,
-    sendRouterPrompt,
     cancelPipeline,
     clearError,
   } = useWebSocket((msg) => {
@@ -387,7 +392,6 @@ export default function App() {
   const [outputApprovals, setOutputApprovals] = useState<
     Record<string, boolean>
   >({});
-  const [routerPrompt, setRouterPrompt] = useState("");
   const [dismissedOutputs, setDismissedOutputs] = useState<Set<string>>(
     new Set(),
   );
@@ -418,7 +422,6 @@ export default function App() {
     setOutputApprovals({});
     setOutputIndex(0);
     setShowOutputModal(false);
-    if (!reviewStage) setRouterPrompt("");
   }, [reviewStage]);
 
   /* Clamp index */
@@ -493,41 +496,6 @@ export default function App() {
     [advanceOrClose],
   );
 
-  /* ── Continue / submit review ── */
-  const handleContinue = useCallback(() => {
-    if (!reviewRequest) return;
-
-    const items =
-      reviewRequest.data.paradigms ||
-      reviewRequest.data.specs ||
-      reviewRequest.data.models ||
-      [];
-
-    const anyRejected = stageOutputs.some(
-      (n) => outputApprovals[n.id] === false,
-    );
-
-    sendReviewResponse(reviewRequest.stage, {
-      approved: Object.fromEntries(
-        items.map((p: any) => [
-          p.slug || p.id || p.spec_id,
-          !anyRejected,
-        ]),
-      ),
-    });
-
-    setShowOutputModal(false);
-    setSelectedNode(null);
-  }, [reviewRequest, stageOutputs, outputApprovals, sendReviewResponse]);
-
-  /* ── Router prompt ── */
-  const handleSendRouterPrompt = useCallback(() => {
-    const trimmed = routerPrompt.trim();
-    if (!trimmed) return;
-    sendRouterPrompt(trimmed);
-    setRouterPrompt("");
-  }, [routerPrompt, sendRouterPrompt]);
-
   // Agrex renders directly from `replay.instance` when we hand it `replay`;
   // no separate "display" array. For idle-detection we just check whether
   // the replay has any events yet.
@@ -547,6 +515,49 @@ export default function App() {
   ).length;
 
   const isEnvSpec = reviewRequest?.stage === Stage.GET_ENV_SPEC;
+
+  const reviewPanel = useMemo(() => {
+    if (!reviewRequest || isEnvSpec) return null;
+
+    const submit = (data: unknown) => {
+      sendReviewResponse(reviewRequest.stage, data);
+      setShowOutputModal(false);
+      setSelectedNode(null);
+    };
+
+    switch (reviewRequest.stage) {
+      case Stage.REVIEW_RESEARCH:
+        return (
+          <ReviewResearch
+            data={reviewRequest.data}
+            onSubmit={(data) => submit(data)}
+          />
+        );
+      case Stage.REVIEW_FORMALIZE:
+        return (
+          <ReviewFormalize
+            data={reviewRequest.data}
+            onSubmit={(data) => submit(data)}
+          />
+        );
+      case Stage.REVIEW_REASON:
+        return (
+          <ReviewReason
+            data={reviewRequest.data}
+            onSubmit={(data) => submit(data)}
+          />
+        );
+      case Stage.REVIEW_BUILD:
+        return (
+          <ReviewBuild
+            data={reviewRequest.data}
+            onSubmit={(data) => submit(data)}
+          />
+        );
+      default:
+        return null;
+    }
+  }, [isEnvSpec, reviewRequest, sendReviewResponse]);
 
   return (
     <div className="flex h-screen w-screen">
@@ -764,15 +775,15 @@ export default function App() {
                       />
                     </div>
                   ) : (
-                    /* Normal output review mode */
+                    /* Human review mode */
                     <>
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <span className="text-[11px] uppercase tracking-[1.5px] text-text-muted">
-                            Stage Complete
+                            Human Review Required
                           </span>
                           <div className="text-[13px] text-text-muted mt-1">
-                            Review generated outputs before continuing.
+                            Review generated artifacts before continuing.
                             {stageOutputs.length > 0 && (
                               <span className="ml-[10px] text-text-faint">
                                 {reviewedCount}/{stageOutputs.length} reviewed
@@ -793,34 +804,18 @@ export default function App() {
                               View Outputs ({stageOutputs.length})
                             </button>
                           )}
-                          <button
-                            onClick={handleContinue}
-                            className="text-[12px] uppercase tracking-[1px] px-6 py-2 bg-white text-black rounded-lg font-medium cursor-pointer"
-                          >
-                            Continue →
-                          </button>
                         </div>
                       </div>
 
-                      {/* Router prompt */}
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={routerPrompt}
-                          onChange={(e) => setRouterPrompt(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSendRouterPrompt();
-                          }}
-                          placeholder="Send instructions to the router..."
-                          className="flex-1 bg-transparent border border-border-subtle text-text text-[13px] font-mono py-2 px-3 outline-none rounded-lg"
-                        />
-                        <button
-                          onClick={handleSendRouterPrompt}
-                          disabled={!routerPrompt.trim()}
-                          className="text-[12px] uppercase tracking-[1px] px-4 py-2 border border-border bg-transparent cursor-pointer rounded-lg disabled:cursor-default disabled:text-text-ghost text-text"
-                        >
-                          Send
-                        </button>
+                      <div
+                        className="overflow-hidden rounded-xl border border-border-subtle bg-black/20"
+                        style={{
+                          height: timelineCollapsed
+                            ? "min(560px, calc(100vh - 110px))"
+                            : "min(480px, calc(100vh - 200px))",
+                        }}
+                      >
+                        {reviewPanel}
                       </div>
                     </>
                   )}

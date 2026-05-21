@@ -1,11 +1,45 @@
 """Tests for web_feedback.py review stages with invalid specs/builds (P4-001, P4-002)."""
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from decisionlab import web_feedback
 from decisionlab.web_feedback import review_build, review_reason
+
+
+@pytest.fixture(autouse=True)
+def clear_review_globals():
+    web_feedback._review_events.clear()
+    web_feedback._review_responses.clear()
+    yield
+    web_feedback._review_events.clear()
+    web_feedback._review_responses.clear()
+
+
+class TestReviewResponseCoordination:
+    def test_unsolicited_response_is_ignored(self):
+        web_feedback.handle_review_response("review_research", {"approved": ["x"]})
+
+        assert web_feedback._review_events == {}
+        assert web_feedback._review_responses == {}
+
+    @pytest.mark.asyncio
+    async def test_wait_for_review_cleans_up_on_cancellation(self):
+        emit = AsyncMock()
+        task = asyncio.create_task(
+            web_feedback.wait_for_review("review_research", emit, {"paradigms": []})
+        )
+        await asyncio.sleep(0)
+
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert web_feedback._review_events == {}
+        assert web_feedback._review_responses == {}
 
 
 def _make_valid_spec(formulation_id: str, paradigm: str) -> dict:
