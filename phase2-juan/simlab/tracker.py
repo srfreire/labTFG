@@ -18,6 +18,8 @@ from simlab.tools import build_simulation_tools
 from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MAX_ITERATIONS = 8
+DEFAULT_MAX_TOKENS = 2048
 
 
 # ---------------------------------------------------------------------------
@@ -30,10 +32,10 @@ and produce structured observation logs.
 
 You have 7 tools to explore simulation data:
 - get_simulation_events: overview of all events (start here)
-- get_agent_trajectory: detailed events for one agent
+- get_agent_trajectory: events for one agent — supports detail={summary,compact,full} and from_step/to_step slicing
 - get_agent_state: internal model state at a specific step
 - list_critical_events: list automatically detected critical moments (consumption, starvation, energy spikes, strategy shifts, decision confidence drops)
-- get_event_window: get events in a window around a specific step (e.g. 10 steps before/after a critical event)
+- get_event_window: events in a window around a step (radius capped at 30; supports detail={compact,full})
 - get_decision_trace: full decision context for one agent at one step (perception, pre/post state, action chosen)
 - compare_decision_traces: compare decisions of multiple agents at the same step
 
@@ -41,13 +43,24 @@ You have 7 tools to explore simulation data:
 
 1. Call get_simulation_events to understand the overall simulation
 2. Call list_critical_events to see automatically detected moments of interest
-3. For each agent, call get_agent_trajectory to examine their behavior
-4. Use get_event_window around critical events to understand context
-5. Use get_agent_state to inspect internal state at interesting moments
-6. For critical events or surprising actions, call get_decision_trace to understand WHY
-7. When agents diverge in behavior, use compare_decision_traces to see what each perceived
-8. Identify significant episodes (behavior changes, resource events, failures)
-9. Return ONLY a valid JSON object — no markdown, no explanation
+3. For each agent, call get_agent_trajectory(detail="summary") — its fields (steps_survived, resources_consumed, actions) map 1:1 to the Output Schema's trajectories[agent] block; copy them directly
+4. If a trajectory looks interesting, call get_agent_trajectory with from_step/to_step to scan a slice in compact form
+5. Use get_event_window around critical events to understand context (compact by default)
+6. Use get_agent_state to inspect internal state at interesting moments
+7. For critical events or surprising actions, call get_decision_trace to understand WHY
+8. When agents diverge in behavior, use compare_decision_traces to see what each perceived
+9. Identify significant episodes (behavior changes, resource events, failures)
+10. Return ONLY a valid JSON object — no markdown, no explanation
+
+## Tool budget — context discipline
+
+Tool results accumulate in your context. To avoid blowing the budget on long simulations:
+- ALWAYS start an agent inspection with get_agent_trajectory(detail="summary") — never with detail="full"
+- Use detail="compact" (the default) for scanning; switch to detail="full" only on a short slice (<30 steps) when you genuinely need perception or model_state
+- Cap exploration: get_agent_trajectory(summary) for every agent is fine; detail="full" at most twice total
+- Inspect at most 3 critical windows total; keep radius <= 15 unless you have a reason
+- Use get_agent_state/get_decision_trace only for episodes you will actually report
+- Prefer a concise final JSON over exhaustive exploration
 
 ## Output schema
 
@@ -104,7 +117,7 @@ class Tracker:
         prompt: str,
         events: list[Event],
         *,
-        max_iterations: int = 15,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
         on_tool_call=None,
         critical_events: list[dict] | None = None,
     ) -> str:
@@ -124,6 +137,7 @@ class Tracker:
             tools=tools,
             messages=[{"role": "user", "content": prompt}],
             registry=registry,
+            max_tokens=DEFAULT_MAX_TOKENS,
             max_iterations=max_iterations,
             on_tool_call=on_tool_call,
         )

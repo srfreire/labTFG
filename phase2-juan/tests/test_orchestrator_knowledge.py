@@ -37,6 +37,23 @@ def _tracker_json() -> str:
     )
 
 
+def _slim_summary(*, n_critical_events: int = 0) -> dict:
+    """Slim summary dict returned by observe_simulation (full output stays in state)."""
+    return {
+        "status": "ok",
+        "summary": "Mock tracker output for testing.",
+        "n_trajectories": 1,
+        "n_episodes": 1,
+        "n_critical_events": n_critical_events,
+    }
+
+
+def _assert_slim_summary(result_json: str, *, n_critical_events: int = 0) -> None:
+    data = json.loads(result_json)
+    data.pop("_hint", None)
+    assert data == _slim_summary(n_critical_events=n_critical_events)
+
+
 def _prepopulated_state(experiment_id: str | None = None) -> dict:
     """State as it would be after a successful `run_simulation`."""
     return {
@@ -110,6 +127,7 @@ async def test_observe_simulation_invokes_writer_when_set():
 
     writer.write.assert_awaited_once()
     tracker_arg, context_arg = writer.write.await_args.args
+    # Writer receives the full tracker JSON (slim-summary is only the tool return value)
     assert tracker_arg == _tracker_json()
     # experiment_id absent → empty string via str(None or "") fallback
     assert context_arg.phase2_experiment_id == ""
@@ -118,8 +136,8 @@ async def test_observe_simulation_invokes_writer_when_set():
     assert context_arg.seed == 7
     assert "f-a_0" in context_arg.agent_to_model
     assert context_arg.agent_to_model["f-a_0"].paradigm == "p"
-    # tracker result still returned unchanged
-    assert result == _tracker_json()
+    # observe_simulation returns a slim summary; full tracker output is in state
+    _assert_slim_summary(result)
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +146,10 @@ async def test_observe_simulation_invokes_writer_when_set():
 
 
 async def test_observe_simulation_skips_when_writer_is_none():
-    # Should NOT touch any writer and must return the tracker output unchanged.
+    # Should NOT touch any writer and must return the slim summary.
     result, mock_tracker = await _run_observe(_prepopulated_state(experiment_id=None))
 
-    assert result == _tracker_json()
+    _assert_slim_summary(result)
     mock_tracker.run.assert_awaited_once()
 
 
@@ -149,5 +167,5 @@ async def test_observe_simulation_swallows_writer_exception(caplog):
             _prepopulated_state(experiment_id=None), sim_memory_writer=writer
         )
 
-    assert result == _tracker_json()
+    _assert_slim_summary(result)
     assert any("knowledge writer raised" in r.message for r in caplog.records)

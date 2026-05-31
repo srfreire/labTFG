@@ -63,6 +63,72 @@ def _count_actions(events: list[Event]) -> dict[str, int]:
     return dict(Counter(e.action.name for e in events))
 
 
+def _event_to_compact_dict(event: Event) -> dict:
+    """Compact event view — drops perception, pre_state, available_actions, model_state.
+
+    Keeps only the high-signal fields the Tracker/Analyst typically reason about
+    when scanning a trajectory: step, agent, action, reward, and the two values
+    that drive most foraging episodes (consumed flag + energy). For deep
+    introspection, callers pass detail="full" to get the original shape.
+    """
+    d = {
+        "step": event.step,
+        "agent_id": event.agent_id,
+        "action": event.action.name,
+        "reward": _coerce_reward(event.outcome.get("reward")),
+    }
+    # Preserve non-empty action params — collapsing parametric actions to bare
+    # names hides directional/target distinctions the LLM needs to reason about.
+    if event.action.params:
+        d["action_params"] = _make_serializable(event.action.params)
+    action_result = event.outcome.get("action_result") or {}
+    if "consumed" in action_result:
+        d["consumed"] = bool(action_result["consumed"])
+    model_state = event.outcome.get("model_state") or {}
+    energy = model_state.get("energy")
+    if energy is not None:
+        d["energy"] = energy
+    return d
+
+
+def _coerce_reward(value) -> float:
+    """Map missing/None rewards to 0 so aggregations never see NoneType."""
+    return value if value is not None else 0
+
+
+def _summarize_agent_events(events: list[Event], agent_id: str | None = None) -> dict:
+    """Aggregate view of an agent's trajectory — no per-step data."""
+    if not events:
+        return {"agent_id": agent_id, "steps_survived": 0, "resources_consumed": 0}
+    rewards = [_coerce_reward(e.outcome.get("reward")) for e in events]
+    energies = [
+        (e.outcome.get("model_state") or {}).get("energy")
+        for e in events
+    ]
+    energies = [e for e in energies if e is not None]
+    resources_consumed = sum(
+        1 for e in events if (e.outcome.get("action_result") or {}).get("consumed")
+    )
+    summary = {
+        "agent_id": events[0].agent_id,
+        # Names mirror the Tracker Output Schema so the LLM can copy fields 1:1.
+        "steps_survived": len(events),
+        "resources_consumed": resources_consumed,
+        "steps_range": [events[0].step, events[-1].step],
+        "actions": dict(Counter(e.action.name for e in events)),
+        "total_reward": sum(rewards),
+    }
+    if energies:
+        summary["energy"] = {
+            "min": min(energies),
+            "max": max(energies),
+            "mean": sum(energies) / len(energies),
+            "initial": energies[0],
+            "final": energies[-1],
+        }
+    return summary
+
+
 def event_to_trace(e: Event) -> dict:
     """Convert an Event to a decision-trace dict (perception → action → outcome).
 
@@ -114,13 +180,34 @@ GET_SIMULATION_EVENTS_TOOL = {
 
 GET_AGENT_TRAJECTORY_TOOL = {
     "name": "get_agent_trajectory",
-    "description": "Get all events for a specific agent, including actions, rewards, and results.",
+    "description": (
+        "Get events for a specific agent. "
+        "Default detail='compact' returns small per-step dicts (step, action, reward, energy, consumed) — "
+        "use this to scan the whole trajectory cheaply. "
+        "detail='summary' returns aggregates only (action counts, energy stats, totals) — "
+        "use this first on long simulations. "
+        "detail='full' returns full event dicts with perception and model state — "
+        "expensive; only request after slicing with from_step/to_step."
+    ),
     "input_schema": {
         "type": "object",
         "properties": {
             "agent_id": {
                 "type": "string",
                 "description": "The agent ID (e.g. 'agent_0')",
+            },
+            "detail": {
+                "type": "string",
+                "enum": ["compact", "summary", "full"],
+                "description": "Output granularity. Default 'compact'.",
+            },
+            "from_step": {
+                "type": "integer",
+                "description": "Inclusive start step (default 0).",
+            },
+            "to_step": {
+                "type": "integer",
+                "description": "Exclusive end step (default = end of simulation).",
             },
         },
         "required": ["agent_id"],
@@ -148,10 +235,10 @@ GET_AGENT_STATE_TOOL = {
 GET_EVENT_WINDOW_TOOL = {
     "name": "get_event_window",
     "description": (
-        "Get all events in a window around a specific step. "
-        "Useful for analyzing what happened before and after a critical event. "
-        "Returns events for ALL agents in the [step - radius, step + radius] range, "
-        "plus the critical event info if it matches a known critical event."
+        "Get events in a [center - radius, center + radius] window. "
+        "Default detail='compact' returns small per-step dicts; "
+        "detail='full' returns perception + model state (expensive — use only on tight windows). "
+        "radius is capped at 30; larger requests are silently clamped."
     ),
     "input_schema": {
         "type": "object",
@@ -162,16 +249,23 @@ GET_EVENT_WINDOW_TOOL = {
             },
             "radius": {
                 "type": "integer",
-                "description": "Number of steps before and after (default 10)",
+                "description": "Number of steps before and after (default 10, max 30)",
             },
             "agent_id": {
                 "type": "string",
                 "description": "Filter to a specific agent (optional)",
             },
+            "detail": {
+                "type": "string",
+                "enum": ["compact", "full"],
+                "description": "Output granularity. Default 'compact'.",
+            },
         },
         "required": ["center_step"],
     },
 }
+
+_MAX_WINDOW_RADIUS = 30
 
 LIST_CRITICAL_EVENTS_TOOL = {
     "name": "list_critical_events",
@@ -256,10 +350,23 @@ def build_simulation_tools(
         return json.dumps([_event_to_dict(e) for e in events])
 
     async def get_agent_trajectory(params: dict) -> str:
-        """Return all events for a specific agent."""
+        """Return events for one agent — compact by default, sliceable, summarizable."""
         agent_id = params["agent_id"]
+        detail = params.get("detail", "compact")
+        from_step = params.get("from_step")
+        to_step = params.get("to_step")
+
         agent_events = by_agent.get(agent_id, [])
-        return json.dumps([_event_to_dict(e) for e in agent_events])
+        if from_step is not None:
+            agent_events = [e for e in agent_events if e.step >= from_step]
+        if to_step is not None:
+            agent_events = [e for e in agent_events if e.step < to_step]
+
+        if detail == "summary":
+            return json.dumps(_summarize_agent_events(agent_events, agent_id=agent_id))
+        if detail == "full":
+            return json.dumps([_event_to_dict(e) for e in agent_events])
+        return json.dumps([_event_to_compact_dict(e) for e in agent_events])
 
     async def get_agent_state(params: dict) -> str:
         """Return the internal model state of an agent at a specific simulation step."""
@@ -275,8 +382,14 @@ def build_simulation_tools(
     async def get_event_window(params: dict) -> str:
         """Return events in a window around a center step."""
         center = params["center_step"]
-        radius = params.get("radius", 10)
+        # radius=null (LLM explicitly passing None) bypasses .get's default;
+        # treat None and negatives as the default of 10, then cap at the max.
+        raw_radius = params.get("radius")
+        if raw_radius is None or raw_radius < 0:
+            raw_radius = 10
+        radius = min(raw_radius, _MAX_WINDOW_RADIUS)
         agent_filter = params.get("agent_id")
+        detail = params.get("detail", "compact")
         start = max(0, center - radius)
         end = center + radius
 
@@ -293,11 +406,13 @@ def build_simulation_tools(
             if start <= ce["step"] <= end
             and (not agent_filter or ce["agent_id"] == agent_filter)
         ]
+        to_dict = _event_to_dict if detail == "full" else _event_to_compact_dict
         return json.dumps(
             {
                 "center_step": center,
                 "range": [start, end],
-                "events": [_event_to_dict(e) for e in window_events],
+                "radius": radius,
+                "events": [to_dict(e) for e in window_events],
                 "critical_events_in_window": window_critical,
             }
         )

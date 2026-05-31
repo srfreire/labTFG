@@ -108,6 +108,191 @@ def test_get_agent_trajectory_unknown_agent():
     assert result == []
 
 
+def test_get_agent_trajectory_compact_drops_heavy_fields():
+    """Compact mode (default) must omit perception and full model_state."""
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(registry["get_agent_trajectory"]({"agent_id": "agent_0"}))
+    )
+    sample = result[0]
+    assert "perception" not in sample
+    assert "pre_state" not in sample
+    assert "available_actions" not in sample
+    assert "outcome" not in sample  # no nested model_state blob
+    assert sample["action"] == "move_up"  # action is a string, not a dict
+    assert "energy" in sample  # energy is surfaced flat
+
+
+def test_get_agent_trajectory_compact_preserves_action_params():
+    """Parametric actions must keep their params so distinct decisions don't collapse."""
+    events = [
+        Event(
+            step=0,
+            agent_id="agent_0",
+            action=Action(name="move", params={"direction": "north"}),
+            outcome={"reward": 0.0, "action_result": {}, "model_state": {}},
+        ),
+        Event(
+            step=1,
+            agent_id="agent_0",
+            action=Action(name="move", params={}),
+            outcome={"reward": 0.0, "action_result": {}, "model_state": {}},
+        ),
+    ]
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(registry["get_agent_trajectory"]({"agent_id": "agent_0"}))
+    )
+    assert result[0]["action_params"] == {"direction": "north"}
+    assert "action_params" not in result[1]  # empty params are omitted
+
+
+def test_get_agent_trajectory_full_includes_everything():
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_agent_trajectory"](
+                {"agent_id": "agent_0", "detail": "full"}
+            )
+        )
+    )
+    assert result[0]["outcome"]["model_state"]["energy"] == 50.0
+    assert result[0]["action"] == {"name": "move_up", "params": {}}
+
+
+def test_get_agent_trajectory_summary():
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_agent_trajectory"](
+                {"agent_id": "agent_0", "detail": "summary"}
+            )
+        )
+    )
+    # Field names mirror the Tracker Output Schema for direct copy.
+    assert result["agent_id"] == "agent_0"
+    assert result["steps_survived"] == 5
+    assert result["resources_consumed"] == 0
+    assert result["steps_range"] == [0, 4]
+    assert result["actions"]["move_up"] == 3
+    assert result["actions"]["eat"] == 2
+    assert result["energy"]["initial"] == 50.0
+    assert result["energy"]["final"] == 46.0
+
+
+def test_get_agent_trajectory_summary_unknown_agent_keeps_agent_id():
+    """Empty summary must still echo the queried agent_id."""
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_agent_trajectory"](
+                {"agent_id": "ghost", "detail": "summary"}
+            )
+        )
+    )
+    assert result == {"agent_id": "ghost", "steps_survived": 0, "resources_consumed": 0}
+
+
+def test_get_agent_trajectory_summary_tolerates_none_reward():
+    """Reward stored as None must not crash the sum aggregation."""
+    events = [
+        Event(
+            step=0,
+            agent_id="agent_0",
+            action=Action(name="move"),
+            outcome={"reward": None, "action_result": {}, "model_state": {}},
+        ),
+        Event(
+            step=1,
+            agent_id="agent_0",
+            action=Action(name="eat"),
+            outcome={"reward": 1.5, "action_result": {}, "model_state": {}},
+        ),
+    ]
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_agent_trajectory"](
+                {"agent_id": "agent_0", "detail": "summary"}
+            )
+        )
+    )
+    assert result["total_reward"] == 1.5
+
+
+def test_get_agent_trajectory_slice():
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_agent_trajectory"](
+                {"agent_id": "agent_0", "from_step": 2, "to_step": 4}
+            )
+        )
+    )
+    assert [e["step"] for e in result] == [2, 3]
+
+
+def test_get_event_window_caps_radius():
+    """Radius > 30 is silently clamped to prevent context blowup."""
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_event_window"](
+                {"center_step": 2, "radius": 9999}
+            )
+        )
+    )
+    assert result["radius"] == 30
+
+
+def test_get_event_window_null_radius_uses_default():
+    """radius=null (LLM explicitly passes None) must fall back to the default."""
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_event_window"](
+                {"center_step": 2, "radius": None}
+            )
+        )
+    )
+    assert result["radius"] == 10
+
+
+def test_get_event_window_negative_radius_uses_default():
+    """Negative radius would produce an inverted/empty window; floor to default."""
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_event_window"](
+                {"center_step": 2, "radius": -5}
+            )
+        )
+    )
+    assert result["radius"] == 10
+    assert len(result["events"]) > 0  # non-empty window confirms the fix
+
+
+def test_get_event_window_compact_by_default():
+    events = _make_events()
+    _, registry = build_simulation_tools(events)
+    result = json.loads(
+        asyncio.run(
+            registry["get_event_window"]({"center_step": 2, "radius": 5})
+        )
+    )
+    # Compact events shouldn't carry perception/pre_state blobs
+    assert all("perception" not in e for e in result["events"])
+    assert all(isinstance(e["action"], str) for e in result["events"])
+
+
 def test_get_agent_state():
     events = _make_events()
     _, registry = build_simulation_tools(events)

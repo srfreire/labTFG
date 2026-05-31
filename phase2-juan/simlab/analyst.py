@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from shared.storage import StorageService
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MAX_ITERATIONS = 8
+DEFAULT_MAX_TOKENS = 3072
 
 
 # ---------------------------------------------------------------------------
@@ -34,13 +36,12 @@ You are the Analyst agent for a simulation laboratory studying decision-making p
 You receive observation logs from the Tracker and raw simulation data, then produce \
 deep behavioral analysis — not just descriptions, but interpretations and hypotheses.
 
-You have 11 tools to explore simulation data:
+You have up to 12 tools to explore simulation data and knowledge:
 - get_simulation_events: overview of all events from the CURRENT simulation
-- get_agent_trajectory: detailed events for one agent in the CURRENT simulation
+- get_agent_trajectory: events for one agent — detail={summary,compact,full} + from_step/to_step
 - get_agent_state: internal model state at a specific step (Q-values, drive, energy, error signals)
 - list_critical_events: list automatically detected critical events (consumption, starvation, energy spikes, strategy shifts, decision confidence drops)
-- get_event_window: get all events in a [step-radius, step+radius] window around a specific step — \
-perfect for analyzing what happened before and after a critical event
+- get_event_window: events in a [step-radius, step+radius] window (radius capped at 30; detail={compact,full})
 - list_past_experiments: list past experiments from the database (for cross-experiment comparison)
 - get_experiment_analysis: get tracker/analyst results from a PAST experiment by ID
 - list_state_keys: discover what internal state variables are available (CALL THIS BEFORE create_chart with state_evolution)
@@ -48,6 +49,7 @@ perfect for analyzing what happened before and after a critical event
 - get_decision_trace: full decision context at one step for one agent — perception, internal state \
 BEFORE deciding, available actions, chosen action, and outcome (reward + state AFTER)
 - compare_decision_traces: compare what multiple agents perceived and chose at the same step
+- retrieve_context (when knowledge backbone is wired): pull additional postulates/papers from the KG
 
 The Tracker's observation log is provided in the user message. Your job is to go MUCH \
 deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
@@ -55,7 +57,7 @@ deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
 ## Process
 
 1. Read the Tracker log to understand what happened on the surface
-2. Use get_agent_state at MULTIPLE steps per agent — especially at:
+2. Use get_agent_state at a small number of high-value steps — especially at:
    - The start (baseline internal state)
    - Moments of behavioral change (when an agent switches strategy)
    - Critical moments (low energy, failed foraging, successful feeding)
@@ -74,7 +76,7 @@ deeper than the Tracker — find the WHY behind behaviors, not just the WHAT.
 - DO NOT just report surface metrics. The Tracker already did that.
 - Your value is INTERPRETATION: connecting observed behavior to the underlying \
   decision-making paradigm (Q-learning, PI control, homeostatic regulation, etc.)
-- Use get_agent_state aggressively — internal state is where the interesting \
+- Use get_agent_state selectively — internal state is where the interesting \
   dynamics hide. Check Q-values, drive/impulse, error signals, energy trajectory.
 - Look for PHASE TRANSITIONS: moments where agent behavior qualitatively changes \
   (e.g., from exploring to exploiting, from active to passive, from learning to stuck)
@@ -122,8 +124,8 @@ Do not guess at causation — look at the actual pre_state.
 
 ## Chart generation — USE PROACTIVELY
 
-Generate charts to support your analysis. Do NOT wait to be asked — if you identify a pattern, \
-create the chart that proves it. Charts are included in the final PDF report.
+Generate charts to support your analysis. Do NOT wait to be asked — if you identify a strong pattern, \
+create the smallest chart set that proves it. Charts are included in the final PDF report.
 
 Workflow:
 1. Call list_state_keys FIRST to see what internal variables exist
@@ -140,7 +142,20 @@ When to create charts:
 
 You can filter by agent_ids and step_range to zoom into interesting intervals.
 Chart titles MUST be in Spanish (e.g. "Evolución de energía por agente").
-Generate at least 2-3 charts per analysis. More if the user asks for specific visualizations.
+Generate 1-2 charts per analysis by default. More only if the user asks for specific visualizations.
+
+## Tool budget — context discipline
+
+Tool results accumulate in your context. To avoid blowing the budget on long simulations:
+- ALWAYS prefer get_agent_trajectory(detail="summary") for first-pass aggregates
+- Use detail="compact" (default) to scan a slice; switch to detail="full" only on tight slices (<30 steps) and at most twice total
+- Call get_simulation_events only if the Tracker log lacks needed totals
+- Call list_state_keys once before state_evolution charts
+- Inspect at most 3 agents and at most 4 decision traces total
+- Inspect at most 3 critical windows total (radius <= 15 unless justified)
+- Avoid cross-experiment tools unless the user explicitly asks for history/comparison
+- Avoid retrieve_context unless the injected Knowledge context lacks a specific fact
+- Stop exploring once you have 2-4 strong patterns with concrete evidence
 
 ## Output schema
 
@@ -276,7 +291,7 @@ class Analyst:
         tracker_output: str,
         events: list[Event],
         *,
-        max_iterations: int = 15,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
         on_tool_call=None,
         experiment_id: str | None = None,
         charts_accumulator: list[dict] | None = None,
@@ -330,6 +345,7 @@ class Analyst:
             tools=tools,
             messages=[{"role": "user", "content": user_message}],
             registry=registry,
+            max_tokens=DEFAULT_MAX_TOKENS,
             max_iterations=max_iterations,
             on_tool_call=on_tool_call,
         )
