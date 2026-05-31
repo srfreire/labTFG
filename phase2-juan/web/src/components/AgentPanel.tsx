@@ -1,18 +1,21 @@
+import { useState } from 'react'
 import { Facehash } from 'facehash'
-import type { AgentState, SimAgent } from '../types'
+import { ChevronDown } from 'lucide-react'
+import type { AgentState, DataCard, SimAgent } from '../types'
 import { TOOL_LABELS, withAlpha } from '../constants'
 import { Avatar } from './Avatar'
 
 interface Props {
   agents: AgentState[]
   simAgents: SimAgent[]
+  envCard: DataCard | null
 }
 
 function getToolLabel(tool: string): string {
   return TOOL_LABELS[tool] || tool
 }
 
-export function AgentPanel({ agents, simAgents }: Props) {
+export function AgentPanel({ agents, simAgents, envCard }: Props) {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="px-5 py-3">
@@ -27,7 +30,6 @@ export function AgentPanel({ agents, simAgents }: Props) {
           ))}
         </div>
 
-        {/* Simulation agents */}
         {simAgents.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border-subtle">
             <div className="text-[9px] uppercase tracking-[2px] font-semibold text-text-faint mb-3">
@@ -53,6 +55,73 @@ export function AgentPanel({ agents, simAgents }: Props) {
             </div>
           </div>
         )}
+
+        {envCard && (
+          <EnvSummary card={envCard} simAgents={simAgents} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function summariseEnv(data: Record<string, string>): string {
+  const parts: string[] = []
+  const grid = data['Grid']
+  if (grid) parts.push(grid.replace(/\s+/g, ''))
+  const resources = data['Recursos']
+  if (resources) parts.push(resources)
+  const actions = data['Acciones posibles']
+  if (actions) {
+    const n = actions.split(',').filter(s => s.trim()).length
+    parts.push(`${n} acciones`)
+  }
+  return parts.join(' · ')
+}
+
+function EnvSummary({ card, simAgents }: { card: DataCard; simAgents: SimAgent[] }) {
+  const [open, setOpen] = useState(false)
+  const oneLiner = summariseEnv(card.data)
+  return (
+    <div className="mt-4 pt-4 border-t border-border-subtle">
+      <div className="text-[9px] uppercase tracking-[2px] font-semibold text-text-faint mb-2">
+        Environment
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left text-[10px] text-text-muted hover:text-text transition-colors py-1"
+        aria-expanded={open}
+      >
+        <span className="truncate font-mono">{oneLiner}</span>
+        <ChevronDown
+          size={12}
+          className="shrink-0 transition-transform"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+      <div
+        className="collapse-grid"
+        data-collapsed={!open}
+        style={{ transitionDuration: '180ms' }}
+      >
+        <div>
+          <dl className="mt-2 space-y-1.5 text-[10px] leading-snug">
+            {Object.entries(card.data).map(([k, v]) => (
+              <div key={k}>
+                <dt className="text-text-faint">{k}</dt>
+                <dd className="text-text break-words">{v}</dd>
+              </div>
+            ))}
+            {simAgents.length > 0 && (
+              <div>
+                <dt className="text-text-faint">Modelos en ejecución</dt>
+                <dd className="text-text break-words">
+                  {simAgents.map(a => a.id).join(', ')}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
       </div>
     </div>
   )
@@ -83,7 +152,6 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
 
   return (
     <div className="relative flex gap-4 transition-all duration-300" style={{ paddingBottom: isLast ? 0 : 40 }}>
-      {/* Vertical line */}
       {!isLast && (
         <div
           className="absolute left-[14px] top-[28px] transition-colors duration-500"
@@ -95,7 +163,6 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
         />
       )}
 
-      {/* Node dot + avatar */}
       <div className="relative flex-shrink-0 w-[28px] flex items-start justify-center pt-0.5">
         <div className="relative">
           <div
@@ -139,7 +206,6 @@ function PipelineNode({ agent, isLast }: { agent: AgentState; isLast: boolean })
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0 pt-0.5 overflow-hidden">
         <span
           className="text-[10px] font-semibold uppercase tracking-[1.5px] transition-colors duration-300 block truncate"

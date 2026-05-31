@@ -1,16 +1,73 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { ChatMessage, SimAgent } from '../types'
+import type { AgentState, ChatMessage, DataCard, ReplayData, SimAgent } from '../types'
 import { AGENT_COLORS, INITIAL_AGENTS } from '../constants'
+
+function isDataCard(value: unknown): value is DataCard {
+  if (!value || typeof value !== 'object') return false
+  const c = value as Partial<DataCard>
+  return typeof c.title === 'string' && !!c.data && typeof c.data === 'object'
+}
+
+type WsMessage = {
+  type?: unknown
+  agents?: unknown
+  simColors?: unknown
+  agent?: unknown
+  status?: unknown
+  tool?: unknown
+  from?: unknown
+  text?: unknown
+  card?: unknown
+  tracker?: unknown
+  analyst?: unknown
+  replay?: unknown
+  charts?: unknown
+}
+
+function isAgentStatus(value: unknown): value is AgentState['status'] {
+  return value === 'idle' || value === 'working' || value === 'done'
+}
+
+function isAgentStateArray(value: unknown): value is AgentState[] {
+  return Array.isArray(value) && value.every(item => {
+    if (!item || typeof item !== 'object') return false
+    const candidate = item as Record<string, unknown>
+    return (
+      typeof candidate.name === 'string' &&
+      typeof candidate.color === 'string' &&
+      isAgentStatus(candidate.status)
+    )
+  })
+}
+
+function isSender(value: unknown): value is ChatMessage['from'] {
+  return (
+    value === 'user' ||
+    value === 'orchestrator' ||
+    value === 'tracker' ||
+    value === 'analyst' ||
+    value === 'reporter'
+  )
+}
+
+function hasReplayFrames(value: unknown): value is ReplayData {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    Array.isArray((value as ReplayData).frames)
+  )
+}
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false)
-  const [agents, setAgents] = useState(INITIAL_AGENTS)
+  const [agents, setAgents] = useState<AgentState[]>(INITIAL_AGENTS)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [thinking, setThinking] = useState(false)
   const [simAgents, setSimAgents] = useState<SimAgent[]>([])
+  const [envCard, setEnvCard] = useState<DataCard | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const idRef = useRef(0)
-  const simColorsRef = useRef<string[]>(AGENT_COLORS)
+  const simColorsRef = useRef<string[]>([...AGENT_COLORS])
 
   useEffect(() => {
     let stopped = false
@@ -25,11 +82,25 @@ export function useWebSocket() {
       ws.onopen = () => setConnected(true)
       ws.onclose = () => {
         setConnected(false)
+        // The per-connection Orchestrator on the backend dies with this socket,
+        // so any in-flight chat() is gone. If we don't clear `thinking` and the
+        // Orchestrator's "working" state here, the merger in the `agents` case
+        // preserves them across reconnect and the input stays disabled forever.
+        setThinking(false)
+        // envCard reflects the live (post-sim) state of the dead Orchestrator;
+        // dropping it lets AppShell fall back to the chat-derived env card
+        // until the new session emits its own env_card_update.
+        setEnvCard(null)
+        setAgents(prev => prev.map(a =>
+          a.name === 'Orchestrator'
+            ? { ...a, status: 'idle', activeTool: undefined }
+            : a
+        ))
         if (!stopped) retryTimeout = setTimeout(connect, 1500)
       }
 
       ws.onmessage = (event) => {
-        let data: Record<string, unknown>
+        let data: WsMessage
         try {
           data = JSON.parse(event.data)
         } catch {
@@ -40,26 +111,42 @@ export function useWebSocket() {
         switch (data.type) {
           case 'agents':
             // Merge backend agents with local Orchestrator state
-            setAgents(prev => {
-              const orch = prev.find(a => a.name === 'Orchestrator') || { name: 'Orchestrator', status: 'idle' as const, color: '#94a3b8' }
-              return [orch, ...data.agents]
-            })
+            if (!isAgentStateArray(data.agents)) break
+            {
+              const backendAgents = data.agents
+              setAgents(prev => {
+                const orch = prev.find(a => a.name === 'Orchestrator') || { name: 'Orchestrator', status: 'idle' as const, color: '#94a3b8' }
+                return [orch, ...backendAgents]
+              })
+            }
             // Backend sends the color palette once on connect
-            if (Array.isArray(data.simColors)) simColorsRef.current = data.simColors
+            if (Array.isArray(data.simColors) && data.simColors.every(c => typeof c === 'string')) {
+              simColorsRef.current = data.simColors
+            }
             break
 
           case 'agent_status':
-            setAgents(prev => prev.map(a =>
-              a.name === data.agent
-                ? { ...a, status: data.status, activeTool: data.status === 'working' ? a.activeTool : undefined }
-                : a
-            ))
+            if (typeof data.agent !== 'string' || !isAgentStatus(data.status)) break
+            {
+              const agentName = data.agent
+              const status = data.status
+              setAgents(prev => prev.map(a =>
+                a.name === agentName
+                  ? { ...a, status, activeTool: status === 'working' ? a.activeTool : undefined }
+                  : a
+              ))
+            }
             break
 
           case 'agent_tool':
-            setAgents(prev => prev.map(a =>
-              a.name === data.agent ? { ...a, activeTool: data.tool } : a
-            ))
+            if (typeof data.agent !== 'string' || typeof data.tool !== 'string') break
+            {
+              const agentName = data.agent
+              const tool = data.tool
+              setAgents(prev => prev.map(a =>
+                a.name === agentName ? { ...a, activeTool: tool } : a
+              ))
+            }
             break
 
           case 'status': {
@@ -77,19 +164,27 @@ export function useWebSocket() {
             setThinking(false)
             const msg = {
               id: String(++idRef.current),
-              from: data.from || 'orchestrator',
-              text: data.text,
-              card: data.card,
-              tracker: data.tracker,
-              analyst: data.analyst,
-              replay: data.replay,
-              charts: data.charts,
-            }
+              from: isSender(data.from) ? data.from : 'orchestrator',
+              text: typeof data.text === 'string' ? data.text : '',
+              card: data.card as ChatMessage['card'],
+              tracker: data.tracker as ChatMessage['tracker'],
+              analyst: data.analyst as ChatMessage['analyst'],
+              replay: hasReplayFrames(data.replay) ? data.replay : undefined,
+              charts: Array.isArray(data.charts) ? data.charts as ChatMessage['charts'] : undefined,
+            } satisfies ChatMessage
             setMessages(prev => [...prev, msg])
+            // A fresh Environment Spec chat card means a new env was created;
+            // drop the live envCard (which carries the prior env's Seed/Pasos)
+            // so AppShell falls back to envCardFromMsgs until the next sim
+            // emits a new env_card_update. Without this the sidebar sticks to
+            // the old env's post-sim card while the chat already moved on.
+            if (msg.card?.title === 'Environment Spec') {
+              setEnvCard(null)
+            }
             // Extract simulation agents from replay
-            if (data.replay?.frames?.[0]?.agents) {
+            if (msg.replay?.frames?.[0]?.agents) {
               const colors = simColorsRef.current
-              const ids = data.replay.frames[0].agents.map((a: { id: string }) => a.id)
+              const ids = msg.replay.frames[0].agents.map(a => a.id)
               setSimAgents(ids.map((id: string, i: number) => ({
                 id,
                 color: colors[i % colors.length],
@@ -98,12 +193,20 @@ export function useWebSocket() {
             break
           }
 
+          case 'env_card_update':
+            // Silent sidebar refresh — backend re-emits the env card with
+            // post-run fields (seed, Pasos ejecutados) without injecting a
+            // new chat message. The chat already showed the env card once
+            // at create_environment time.
+            if (isDataCard(data.card)) setEnvCard(data.card)
+            break
+
           case 'error':
             setThinking(false)
             setMessages(prev => [...prev, {
               id: String(++idRef.current),
               from: 'orchestrator',
-              text: `Error: ${data.text}`,
+              text: `Error: ${typeof data.text === 'string' ? data.text : 'unknown error'}`,
             }])
             break
         }
@@ -125,5 +228,5 @@ export function useWebSocket() {
     setThinking(true)
   }, [])
 
-  return { connected, agents, messages, thinking, simAgents, send }
+  return { connected, agents, messages, thinking, simAgents, envCard, send }
 }

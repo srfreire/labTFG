@@ -117,8 +117,13 @@ services:
       dockerfile: phase2-juan/Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - phase2-juan/.env
     environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      # ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL / OPENROUTER_API_KEY come
+      # from env_file. Don't redeclare them here — `environment` wins over
+      # `env_file`, and an empty ${VAR:-} from the host shell would clobber
+      # the real value loaded from the .env.
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}

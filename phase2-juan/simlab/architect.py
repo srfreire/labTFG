@@ -110,7 +110,9 @@ VALIDATE_SPEC_TOOL = {
     },
 }
 
-DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
+DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+DEFAULT_MAX_ITERATIONS = 6
+DEFAULT_MAX_TOKENS = 1536
 
 
 async def _validate_spec_tool(params: dict) -> str:
@@ -142,7 +144,7 @@ class Architect:
         self,
         prompt: str,
         *,
-        max_iterations: int = 10,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
         on_tool_call=None,
         extra_tools: list[dict] | None = None,
         extra_registry: dict | None = None,
@@ -163,6 +165,7 @@ class Architect:
             tools=tools,
             messages=[{"role": "user", "content": user_content}],
             registry=registry,
+            max_tokens=DEFAULT_MAX_TOKENS,
             max_iterations=max_iterations,
             on_tool_call=on_tool_call,
         )

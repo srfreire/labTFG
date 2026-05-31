@@ -34,7 +34,6 @@ export function useMockWebSocket() {
     setAgent('Orchestrator', 'working')
     await delay(800)
 
-    // 1. Architect
     setAgent('Architect', 'working', 'validate_spec')
     setAgent('Orchestrator', 'working', 'create_environment')
     await delay(1500)
@@ -53,7 +52,6 @@ export function useMockWebSocket() {
     })
     await delay(500)
 
-    // 1.5. Predictions
     setAgent('Orchestrator', 'working', 'read_predictions')
     await delay(800)
     addMsg({
@@ -62,7 +60,6 @@ export function useMockWebSocket() {
     })
     await delay(300)
 
-    // 2. Simulation
     setAgent('Orchestrator', 'working', 'run_simulation')
     await delay(2000)
     const replay = mockReplay()
@@ -75,7 +72,6 @@ export function useMockWebSocket() {
     })
     await delay(500)
 
-    // 3. Tracker
     setAgent('Tracker', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'observe_simulation')
     await delay(800)
@@ -93,7 +89,6 @@ export function useMockWebSocket() {
     })
     await delay(500)
 
-    // 4. Analyst
     setAgent('Analyst', 'working', 'list_critical_events')
     setAgent('Orchestrator', 'working', 'analyze_results')
     await delay(500)
@@ -117,7 +112,6 @@ export function useMockWebSocket() {
     })
     await delay(500)
 
-    // 5. Reporter
     setAgent('Reporter', 'working', 'read_research')
     setAgent('Orchestrator', 'working', 'generate_report')
     await delay(1000)
@@ -130,7 +124,6 @@ export function useMockWebSocket() {
     })
     await delay(300)
 
-    // 6. Done
     setAgent('Orchestrator', 'done')
     setThinking(false)
     addMsg({
@@ -141,5 +134,5 @@ export function useMockWebSocket() {
     runningRef.current = false
   }, [addMsg, setAgent])
 
-  return { connected: true, agents, messages, thinking, simAgents, send }
+  return { connected: true, agents, messages, thinking, simAgents, envCard: null, send }
 }

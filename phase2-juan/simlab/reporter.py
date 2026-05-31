@@ -11,14 +11,19 @@ Flow:
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import re
 import subprocess
+from inspect import iscoroutinefunction
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from simlab.loop import Registry, run_agent_loop
 from simlab.utils import extract_text
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from shared.database import DatabaseService
@@ -40,7 +45,67 @@ def _fix_markdown_in_latex(content: str) -> str:
     return content
 
 
+def _prepare_latex_body(content: str) -> str:
+    """Normalize LLM-produced report body before injecting it into the template."""
+    content = _fix_markdown_in_latex(content)
+    content = re.sub(r"</?(?:antml:[^>]+|invoke)(?:\s[^>]*)?>", "", content)
+    content = re.sub(r"\\begin\{document\}", "", content)
+    content = re.sub(r"\\end\{document\}", "", content)
+    return content.strip()
+
+
+def _latex_escape_text(value: str) -> str:
+    """Escape plain text for safe insertion in a LaTeX paragraph."""
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    return "".join(replacements.get(ch, ch) for ch in value)
+
+
+def _fallback_latex_body(tracker_output: str, analyst_output: str) -> str:
+    """Small robust report body used when LLM-authored LaTeX does not compile."""
+    tracker = _latex_escape_text(tracker_output[:6000])
+    analyst = _latex_escape_text(analyst_output[:6000])
+    return rf"""
+\section{{Resumen ejecutivo}}
+El laboratorio ejecutó la simulación, registró trayectorias, analizó patrones y generó este informe de contingencia porque la versión LaTeX detallada no compiló correctamente.
+
+\section{{Observación del Tracker}}
+\begin{{verbatim}}
+{tracker}
+\end{{verbatim}}
+
+\section{{Análisis}}
+\begin{{verbatim}}
+{analyst}
+\end{{verbatim}}
+
+\section{{Conclusiones}}
+La run completó las etapas de simulación, observación y análisis. Este PDF conserva los resultados principales para la demo y deja trazabilidad del experimento aunque el informe enriquecido necesite una revisión posterior de formato.
+""".strip()
+
+
+def _has_async_storage_write_api(storage: object) -> bool:
+    """Return whether storage looks like the real async artifact backend."""
+    return all(
+        iscoroutinefunction(getattr(storage, method, None))
+        for method in ("list", "get", "put")
+    )
+
+
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
+DEFAULT_MAX_ITERATIONS = 6
+DEFAULT_MAX_TOKENS = 4096
+REPORTER_LLM_TIMEOUT_SECONDS = 90
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
 
@@ -120,9 +185,9 @@ Tailor the report content accordingly.
 2. Read the Tracker and Analyst data provided in the user message. Also check for an \
 "Interaction history" section — if present, use it for the "Interacción con el Orquestador" section
 3. Call read_research with "report.md" for a general overview. \
-Then ALSO call read_research with "deep/<paradigm-slug>.md" AND "formulations/<paradigm-slug>.md" \
-for each paradigm used in the simulation. These files contain the full Phase 1 research \
-(postulates, assumptions, variables, mathematical formulations) that MUST appear in the report.
+Then call read_research with "deep/<paradigm-slug>.md" AND "formulations/<paradigm-slug>.md" \
+only for paradigms used in the simulation. Use concise excerpts from those files; do not paste \
+long background sections verbatim.
 4. Write LaTeX content for the report body in a SINGLE compile_report call. \
 Choose a descriptive filename that reflects the report content (e.g. "analisis_drive_reduction", \
 "comparativa_modelos", "informe_agente_pi_control"). Use lowercase + underscores.
@@ -270,7 +335,7 @@ class Reporter:
         *,
         run_id: str,
         experiment_id: str,
-        max_iterations: int = 8,
+        max_iterations: int = DEFAULT_MAX_ITERATIONS,
         on_tool_call=None,
         interaction_summary: str | None = None,
         predictions: dict[str, str] | None = None,
@@ -283,6 +348,11 @@ class Reporter:
         storage = self._storage
         db = self._db
         self.last_pdf_key = None
+        # Hard cap on compile_report attempts — the system prompt asks the LLM
+        # to try ONCE more on failure, but in practice the LLM keeps retrying
+        # and burns through max_iterations (and tokens) without producing a PDF.
+        _MAX_COMPILE_ATTEMPTS = 2
+        compile_state = {"attempts": 0}
 
         async def read_research(params: dict) -> str:
             """Read a Phase 1 research file from S3 (path-traversal safe)."""
@@ -301,7 +371,19 @@ class Reporter:
 
             from shared.artifacts import register_artifact
 
-            content = _fix_markdown_in_latex(params["content"])
+            compile_state["attempts"] += 1
+            if compile_state["attempts"] > _MAX_COMPILE_ATTEMPTS:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "errors": [
+                            f"Hard cap reached ({_MAX_COMPILE_ATTEMPTS} compile attempts). "
+                            "Stop calling compile_report and return a brief text summary instead."
+                        ],
+                    }
+                )
+
+            content = _prepare_latex_body(params["content"])
             raw_name = params.get("filename", "report") or "report"
             safe_name = (
                 re.sub(r"[^a-z0-9_]", "_", raw_name.lower().strip()).strip("_")
@@ -334,7 +416,7 @@ class Reporter:
                     ["tectonic", str(tex_path)],
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=240,
                     cwd=tmp,
                 )
                 if result.returncode != 0:
@@ -343,15 +425,62 @@ class Reporter:
                         for line in result.stderr.split("\n")
                         if "error" in line.lower()
                     ]
-                    shutil.rmtree(tmp, ignore_errors=True)
-                    return json.dumps(
-                        {
-                            "success": False,
-                            "errors": error_lines[:10]
-                            if error_lines
-                            else [result.stderr[-500:]],
-                        }
+                    logger.warning(
+                        "compile_report failed (attempt %d): tex saved at %s, errors=%s",
+                        compile_state["attempts"],
+                        tex_path,
+                        error_lines[:5] or result.stderr[-300:],
                     )
+                    if compile_state["attempts"] >= _MAX_COMPILE_ATTEMPTS:
+                        safe_name = f"{safe_name}_fallback"
+                        tex_path = Path(tmp) / f"{safe_name}.tex"
+                        pdf_path = Path(tmp) / f"{safe_name}.pdf"
+                        full_latex = template.replace(
+                            "%% CONTENT_PLACEHOLDER %%",
+                            _fallback_latex_body(tracker_output, analyst_output),
+                        )
+                        tex_path.write_text(full_latex)
+                        result = subprocess.run(
+                            ["tectonic", str(tex_path)],
+                            capture_output=True,
+                            text=True,
+                            timeout=240,
+                            cwd=tmp,
+                        )
+                        if result.returncode == 0:
+                            logger.warning(
+                                "compile_report: generated fallback PDF after LaTeX failures"
+                            )
+                        else:
+                            error_lines = [
+                                line
+                                for line in result.stderr.split("\n")
+                                if "error" in line.lower()
+                            ]
+                            logger.warning(
+                                "compile_report fallback failed: tex saved at %s, errors=%s",
+                                tex_path,
+                                error_lines[:5] or result.stderr[-300:],
+                            )
+                            return json.dumps(
+                                {
+                                    "success": False,
+                                    "errors": error_lines[:10]
+                                    if error_lines
+                                    else [result.stderr[-500:]],
+                                }
+                            )
+                    # Keep tmp dir on failure so the .tex + tectonic stderr are
+                    # available for post-mortem debugging.
+                    if result.returncode != 0:
+                        return json.dumps(
+                            {
+                                "success": False,
+                                "errors": error_lines[:10]
+                                if error_lines
+                                else [result.stderr[-500:]],
+                            }
+                        )
 
                 tex_key = f"experiments/{experiment_id}/report.tex"
                 pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
@@ -422,15 +551,39 @@ class Reporter:
         if interaction_summary:
             user_message += f"\n\n## Interaction history (user ↔ orchestrator)\n\n{interaction_summary}"
         system = REPORTER_SYSTEM_PROMPT + prompt_suffix
-        response = await run_agent_loop(
-            client=self.client,
-            model=self.model,
-            system=system,
-            tools=tools,
-            messages=[{"role": "user", "content": user_message}],
-            registry=registry,
-            max_iterations=max_iterations,
-            max_tokens=16384,
-            on_tool_call=on_tool_call,
-        )
-        return extract_text(response)
+        try:
+            response = await asyncio.wait_for(
+                run_agent_loop(
+                    client=self.client,
+                    model=self.model,
+                    system=system,
+                    tools=tools,
+                    messages=[{"role": "user", "content": user_message}],
+                    registry=registry,
+                    max_iterations=max_iterations,
+                    max_tokens=DEFAULT_MAX_TOKENS,
+                    on_tool_call=on_tool_call,
+                ),
+                timeout=REPORTER_LLM_TIMEOUT_SECONDS,
+            )
+            text = extract_text(response)
+        except TimeoutError:
+            logger.warning(
+                "Reporter LLM timed out after %d seconds; generating fallback PDF",
+                REPORTER_LLM_TIMEOUT_SECONDS,
+            )
+            text = (
+                "El Reporter tardó demasiado en generar el informe enriquecido; "
+                "se generó un PDF de contingencia con los resultados principales."
+            )
+        if self.last_pdf_key is None and _has_async_storage_write_api(storage):
+            compile_state["attempts"] = 0
+            await compile_report(
+                {
+                    "content": _fallback_latex_body(
+                        tracker_output, analyst_output
+                    ),
+                    "filename": "informe_fallback",
+                }
+            )
+        return text

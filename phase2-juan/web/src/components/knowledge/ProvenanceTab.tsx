@@ -37,7 +37,9 @@ export function ProvenanceTab({ nodeId }: ProvenanceTabProps) {
       <NodeRow node={data.node} primary />
       {data.trail.length === 0 ? (
         <div className="text-[11px] text-text-faint italic">
-          Este nodo no tiene una cadena de procedencia hasta un Paper.
+          Este nodo no tiene camino hasta un Paper en el KG actual. En este dataset Models y Formulations
+          viven en un subgrafo aislado del lado de los Papers (Paper → Postulate → Paradigm); falta
+          el edge que ligue Formulation con su Postulado fuente.
         </div>
       ) : (
         data.trail.map((step, i) => (

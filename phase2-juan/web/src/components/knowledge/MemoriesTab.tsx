@@ -90,17 +90,17 @@ export function MemoriesTab() {
         {!error && data && data.items.length === 0 && (
           <Placeholder
             title="No memories yet"
-            body="Lanza un experimento para escribir memorias del pipeline."
+            body="Las memorias del pipeline las escribe Phase 1 al consolidar (researcher → reasoner → builder). Corre un experimento desde decisionlab contra este Postgres para poblarlo."
           />
         )}
         {!error && data && data.items.length > 0 && (
           <table className="w-full text-[10px] text-text-muted">
             <thead className="sticky top-0 bg-surface text-text-faint">
               <tr>
-                <th className="text-left px-2 py-1 font-normal">created_at</th>
+                <th className="text-left px-2 py-1 font-normal whitespace-nowrap">created_at</th>
                 <th className="text-left px-2 py-1 font-normal">namespace</th>
-                <th className="text-left px-2 py-1 font-normal">type</th>
-                <th className="text-left px-2 py-1 font-normal">content</th>
+                <th className="text-left px-2 py-1 font-normal">stage</th>
+                <th className="text-left px-2 py-1 font-normal w-full">content</th>
               </tr>
             </thead>
             <tbody>
@@ -110,18 +110,18 @@ export function MemoriesTab() {
                   <tr
                     key={m.id}
                     onClick={() => setExpandedId(expanded ? null : m.id)}
-                    className="border-t border-border-subtle hover:bg-[color:var(--color-surface-elevated)] cursor-pointer"
+                    className="border-t border-border-subtle hover:bg-[color:var(--color-surface-hover)] cursor-pointer"
                   >
                     <td className="px-2 py-1 align-top whitespace-nowrap">
                       {m.created_at?.slice(0, 19) ?? '—'}
                     </td>
                     <td className="px-2 py-1 align-top">{m.namespace}</td>
-                    <td className="px-2 py-1 align-top">{m.memory_type}</td>
+                    <td className="px-2 py-1 align-top whitespace-nowrap">{m.source_stage ?? '—'}</td>
                     <td className="px-2 py-1 align-top">
                       {expanded ? (
                         <div className="whitespace-pre-wrap text-text">{m.content}</div>
                       ) : (
-                        <div className="truncate max-w-[200px]">{m.content}</div>
+                        <div className="line-clamp-2 text-text-muted">{m.content}</div>
                       )}
                     </td>
                   </tr>

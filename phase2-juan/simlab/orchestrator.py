@@ -121,41 +121,51 @@ _PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
             "Paradigm facts",
             "postulates and key properties for {paradigm}",
             "paradigm",
-            5,
+            3,
         ),
         (
             "Previous environments",
             "environment specifications for {paradigm}",
             "simulation",
-            5,
+            2,
         ),
         (
             "Formulations",
             "mathematical formulations for {paradigm}",
             "formulation",
-            3,
+            2,
         ),
     ],
     "analyst": [
-        ("Postulates", "postulates for {paradigm}", "paradigm", 5),
+        ("Postulates", "postulates for {paradigm}", "paradigm", 3),
         (
             "Historical simulations",
             "previous simulation results for {paradigm}",
             "simulation",
-            5,
+            2,
         ),
         (
             "Formulations",
             "mathematical formulations and equations for {paradigm}",
             "formulation",
-            3,
+            2,
         ),
     ],
     "reporter": [
-        ("References", "papers and authors for {paradigm}", "meta", 10),
-        ("Formulations", "mathematical formulations for {paradigm}", "formulation", 3),
+        ("References", "papers and authors for {paradigm}", "meta", 5),
+        ("Formulations", "mathematical formulations for {paradigm}", "formulation", 2),
     ],
 }
+
+_PREFETCH_SECTION_CHAR_LIMIT = 1_200
+
+
+def _trim_prefetch_section(content: str) -> str:
+    """Keep auto-injected KG context useful without bloating agent prompts."""
+    normalized = content.strip()
+    if len(normalized) <= _PREFETCH_SECTION_CHAR_LIMIT:
+        return normalized
+    return normalized[: _PREFETCH_SECTION_CHAR_LIMIT - 18].rstrip() + "\n[truncated]"
 
 
 async def prefetch_knowledge(
@@ -196,7 +206,7 @@ async def prefetch_knowledge(
             )
             if result == _EMPTY_RESULT:
                 return (title, "")
-            return (title, result)
+            return (title, _trim_prefetch_section(result))
         except Exception as exc:
             logger.warning("Knowledge pre-fetch failed for %s: %s", stage, exc)
             if on_warning:
@@ -312,7 +322,7 @@ GENERATE_REPORT_TOOL = {
             "quality": {
                 "type": "string",
                 "enum": ["standard", "detailed"],
-                "description": "Report quality: 'standard' (fast, Haiku) or 'detailed' (deeper analysis, Sonnet)",
+                "description": "Report quality: 'standard' (Haiku 4.5, fast/cheap, fine for routine reports) or 'detailed' (Sonnet 4.5, deeper analysis, use when the user asks for a thorough/final/comprehensive report)",
             },
         },
     },
@@ -324,6 +334,60 @@ LIST_AVAILABLE_MODELS_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {},
+    },
+}
+
+GET_TRACKER_DETAIL_TOOL = {
+    "name": "get_tracker_detail",
+    "description": (
+        "Inspect a specific slice of the latest tracker output. "
+        "observe_simulation returns a summary to keep the conversation small; "
+        "call this when you need the raw episodes, per-agent trajectories, or "
+        "critical events to answer a follow-up question."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "part": {
+                "type": "string",
+                "enum": ["episodes", "trajectories", "critical_events"],
+                "description": "Which slice of the tracker output to return.",
+            },
+            "agent_id": {
+                "type": "string",
+                "description": "Filter to a specific agent (only used with part='trajectories'). Optional.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Max number of items to return (default 20).",
+            },
+        },
+        "required": ["part"],
+    },
+}
+
+GET_ANALYST_DETAIL_TOOL = {
+    "name": "get_analyst_detail",
+    "description": (
+        "Inspect a specific slice of the latest analyst output. "
+        "analyze_results returns a summary to keep the conversation small; "
+        "call this when you need the raw patterns or comparisons to answer "
+        "a follow-up question."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "part": {
+                "type": "string",
+                "enum": ["patterns", "comparisons"],
+                "description": "Which slice of the analyst output to return.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Max number of items to return (default 20).",
+            },
+        },
+        "required": ["part"],
     },
 }
 
@@ -385,7 +449,9 @@ ALL_TOOLS = [
     LIST_AVAILABLE_MODELS_TOOL,
     READ_PREDICTIONS_TOOL,
     OBSERVE_SIMULATION_TOOL,
+    GET_TRACKER_DETAIL_TOOL,
     ANALYZE_RESULTS_TOOL,
+    GET_ANALYST_DETAIL_TOOL,
     GENERATE_REPORT_TOOL,
     LIST_EXPERIMENTS_TOOL,
     QUERY_EXPERIMENTS_TOOL,
@@ -414,6 +480,18 @@ Can be called MULTIPLE TIMES with different focus to explore different aspects i
 8. **query_experiments** — queries the experiment database with natural language. \
 Use when the user asks about past experiments, comparisons between runs, \
 historical results, or anything that requires searching experiment data.
+
+## Tool returns are slim — query for detail
+
+`observe_simulation` and `analyze_results` return a summary (counts + a short \
+text summary), NOT the full JSON output. The full data lives in the session \
+state. When the user asks about specific episodes, trajectories, patterns, \
+or comparisons that aren't in the summary, call:
+
+- **get_tracker_detail(part=episodes|trajectories|critical_events)** — slices the latest tracker output
+- **get_analyst_detail(part=patterns|comparisons)** — slices the latest analyst output
+
+This keeps the conversation history small and lets the user drive deep dives.
 
 ## How to respond
 
@@ -466,7 +544,7 @@ what patterns/comparisons exist, what metrics are available.
    - Which charts to include?
    - Any metrics or sections to exclude?
    - Do they want multiple reports (e.g. one per agent + one comparative)?
-3. Ask about quality: estándar (fast, Haiku) or detallado (deeper, Sonnet).
+3. Ask about quality: estándar (Sonnet, demo-safe) or detallado (deeper Sonnet analysis).
 4. Call generate_report with a clear focus parameter that tells the Reporter exactly what to include/exclude.
 
 The user can request MULTIPLE reports. Each call to generate_report produces a separate PDF \
@@ -564,9 +642,10 @@ You have access to **retrieve_context** — a tool that queries the Knowledge Ba
 - Before answering questions that would benefit from grounded, factual knowledge
 - To look up what past experiments have shown about a particular paradigm
 
-Call `retrieve_context` with a natural-language query. You can optionally filter by \
-namespace ("paradigm", "formulation", "model", "simulation", "meta") and set `top_k` \
-for the number of results.
+Avoid exploratory retrieval loops. If the current conversation or tool output already \
+contains enough information, answer directly. When retrieval is needed, make one targeted \
+call with a small `top_k` (usually 3) and an optional namespace ("paradigm", \
+"formulation", "model", "simulation", "meta").
 """
 
 
@@ -705,8 +784,8 @@ class Orchestrator:
             tools=tools,
             messages=self._messages,
             registry=registry,
-            max_iterations=25,
-            max_tokens=4096,
+            max_iterations=12,
+            max_tokens=3072,
             on_tool_call=self._make_tool_callback("Orchestrator"),
         )
 
@@ -840,6 +919,19 @@ class Orchestrator:
 
         # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
+            desc = params["description"]
+            # Idempotency: the orchestrator LLM tends to re-call this in
+            # subsequent turns even after the env is finalised. Skip the
+            # Architect (and the costly LLM round-trip) when the same
+            # description has already been processed; the dedup in
+            # _send_intermediate_card handles the visual card duplication.
+            if state.get("spec") and state.get("last_create_description") == desc:
+                return json.dumps(
+                    {
+                        **state["spec"],
+                        "_note": "Environment already created with this description; reusing existing spec.",
+                    }
+                )
             # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
             knowledge_ctx = await _get_knowledge_ctx(
                 "architect", params["description"]
@@ -851,6 +943,7 @@ class Orchestrator:
                 knowledge_context=knowledge_ctx,
                 **_recall_kwargs("architect"),
             )
+            state["last_create_description"] = desc
             state["spec"] = json.loads(spec_json)
             # Reset downstream state
             state["events"] = None
@@ -887,20 +980,35 @@ class Orchestrator:
                 if m.run_id and not state.get("run_id"):
                     state["run_id"] = m.run_id
                     break
-            return json.dumps(
-                {
-                    "models": [
-                        {
-                            "key": key,
-                            "paradigm": m.paradigm,
-                            "formulation": m.formulation,
-                            "class_name": m.class_name,
-                            "description": m.description,
-                        }
-                        for key, m in self._discovered_models.items()
-                    ]
-                }
-            )
+            already_shown = state.get("models_listed", False)
+            state["models_listed"] = True
+            payload: dict = {
+                "models": [
+                    {
+                        "key": key,
+                        "paradigm": m.paradigm,
+                        "formulation": m.formulation,
+                        "class_name": m.class_name,
+                        "description": m.description,
+                    }
+                    for key, m in self._discovered_models.items()
+                ]
+            }
+            if already_shown:
+                # The catalogue was already presented to the user in an
+                # earlier turn. Without this hint, the LLM tends to re-list
+                # everything verbatim on each follow-up question — but the
+                # user CAN explicitly ask to see them again, so the hint
+                # has to leave that door open.
+                payload["_already_shown"] = True
+                payload["_hint"] = (
+                    "These models were already presented to the user in an earlier "
+                    "message. Reference the chosen model(s) by key and proceed to "
+                    "read_predictions / run_simulation. Only re-list the catalogue "
+                    "verbatim if the user explicitly asks for it (e.g. 'list the "
+                    "models again', 'remind me what models are available')."
+                )
+            return json.dumps(payload)
 
         # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
@@ -1162,7 +1270,29 @@ class Orchestrator:
                         "observe_simulation: knowledge writer raised (non-fatal)"
                     )
 
-            return result
+            # Return a slim summary to keep the orchestrator's conversation
+            # history small. Full tracker output stays in state for the UI
+            # card and for get_tracker_detail. Previously the full JSON
+            # ended up in chat history every turn, blowing the 200K window
+            # after 2-3 pipeline iterations.
+            try:
+                data = json.loads(result)
+            except (json.JSONDecodeError, TypeError):
+                return result
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "summary": data.get("summary", ""),
+                    "n_trajectories": len(data.get("trajectories", {})),
+                    "n_episodes": len(data.get("episodes", [])),
+                    "n_critical_events": len(state.get("critical_events") or []),
+                    "_hint": (
+                        "Full tracker output is in session state. "
+                        "Call get_tracker_detail(part='episodes' | "
+                        "'trajectories' | 'critical_events') to inspect."
+                    ),
+                }
+            )
 
         # --- analyze_results: calls the Analyst (can be called multiple times) ---
         async def analyze_results(params: dict) -> str:
@@ -1204,7 +1334,28 @@ class Orchestrator:
                 await self._update_experiment(
                     exp_id, s3_analyst_key=analyst_key, status="analyzed"
                 )
-            return result
+
+            # Slim return to keep conversation history small (see
+            # observe_simulation comment for rationale). Full output stays
+            # in state for the UI card and for get_analyst_detail.
+            try:
+                data = json.loads(result)
+            except (json.JSONDecodeError, TypeError):
+                return result
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "summary": data.get("summary", ""),
+                    "n_patterns": len(data.get("patterns", [])),
+                    "n_comparisons": len(data.get("comparisons", [])),
+                    "n_charts": len(state.get("_last_charts") or []),
+                    "_hint": (
+                        "Full analyst output is in session state. "
+                        "Call get_analyst_detail(part='patterns' | "
+                        "'comparisons') to inspect."
+                    ),
+                }
+            )
 
         # --- generate_report: calls the Reporter (can be called multiple times) ---
         async def generate_report(params: dict) -> str:
@@ -1213,6 +1364,9 @@ class Orchestrator:
                     {"error": "No analysis yet. Call analyze_results first."}
                 )
             quality = params.get("quality", "standard")
+            # Default Reporter model is Haiku — the report is mostly mechanical
+            # (LaTeX template + structured data from the Analyst). `detailed`
+            # lets the user opt into Sonnet for a thorough/final write-up.
             reporter_model = (
                 "anthropic/claude-sonnet-4-5"
                 if quality == "detailed"
@@ -1257,7 +1411,29 @@ class Orchestrator:
                         s3_pdf_key=state["pdf_path"],
                         status="reported",
                     )
-            return result
+                return result
+            # No PDF was produced for THIS call — every compile attempt
+            # (LLM-generated tex + fallback template) failed. The Reporter's
+            # free-form reply tends to claim success regardless, so we
+            # override it with an explicit error: the orchestrator LLM must
+            # surface the failure instead of forwarding the hopeful text.
+            logger.warning(
+                "generate_report: Reporter returned without producing a PDF "
+                "(last_pdf_key is unset). Surfacing as error to the user."
+            )
+            return json.dumps(
+                {
+                    "error": (
+                        "Report generation failed: compile_report could not "
+                        "produce a PDF. Likely cause: tectonic could not "
+                        "fetch its LaTeX bundle (network/DNS) or LaTeX "
+                        "errors exhausted the retry budget. Tell the user "
+                        "the report did NOT generate, name the likely cause "
+                        "from the focus/context, and offer to retry."
+                    ),
+                    "reporter_text": result,
+                }
+            )
 
         # --- list_experiments: shows past experiments ---
         async def list_experiments_fn(params: dict) -> str:
@@ -1284,6 +1460,104 @@ class Orchestrator:
                 default=str,
             )
 
+        # --- get_tracker_detail: query slices of the latest tracker output ---
+        async def get_tracker_detail(params: dict) -> str:
+            raw = state.get("tracker_output")
+            if not raw:
+                return json.dumps(
+                    {"error": "No tracker output. Call observe_simulation first."}
+                )
+            try:
+                data = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return json.dumps({"error": "Tracker output is not valid JSON."})
+            # Stamp the response with the experiment id so the LLM can detect
+            # when state has rolled to a newer sim between calls and avoid
+            # presenting stale slices as if they belonged to the current run.
+            exp_id = state.get("experiment_id")
+            part = params.get("part")
+            limit = int(params.get("limit", 20))
+            if part == "episodes":
+                episodes = data.get("episodes", [])
+                return json.dumps(
+                    {
+                        "experiment_id": exp_id,
+                        "episodes": episodes[:limit],
+                        "total": len(episodes),
+                    }
+                )
+            if part == "trajectories":
+                trajs = data.get("trajectories", {})
+                agent_id = params.get("agent_id")
+                if agent_id:
+                    if agent_id not in trajs:
+                        return json.dumps(
+                            {
+                                "error": f"Agent '{agent_id}' not in trajectories.",
+                                "available": list(trajs.keys()),
+                                "experiment_id": exp_id,
+                            }
+                        )
+                    return json.dumps(
+                        {"experiment_id": exp_id, agent_id: trajs[agent_id]}
+                    )
+                return json.dumps(
+                    {"experiment_id": exp_id, "trajectories": trajs}
+                )
+            if part == "critical_events":
+                crit = state.get("critical_events") or []
+                return json.dumps(
+                    {
+                        "experiment_id": exp_id,
+                        "critical_events": crit[:limit],
+                        "total": len(crit),
+                    }
+                )
+            return json.dumps(
+                {
+                    "error": (
+                        f"Unknown part '{part}'. "
+                        "Use: episodes | trajectories | critical_events."
+                    )
+                }
+            )
+
+        # --- get_analyst_detail: query slices of the latest analyst output ---
+        async def get_analyst_detail(params: dict) -> str:
+            raw = state.get("analyst_output")
+            if not raw:
+                return json.dumps(
+                    {"error": "No analyst output. Call analyze_results first."}
+                )
+            try:
+                data = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return json.dumps({"error": "Analyst output is not valid JSON."})
+            exp_id = state.get("experiment_id")
+            part = params.get("part")
+            limit = int(params.get("limit", 20))
+            if part == "patterns":
+                patterns = data.get("patterns", [])
+                return json.dumps(
+                    {
+                        "experiment_id": exp_id,
+                        "patterns": patterns[:limit],
+                        "total": len(patterns),
+                    }
+                )
+            if part == "comparisons":
+                comparisons = data.get("comparisons", [])
+                return json.dumps(
+                    {
+                        "experiment_id": exp_id,
+                        "comparisons": comparisons[:limit],
+                        "total": len(comparisons),
+                    }
+                )
+            return json.dumps(
+                {"error": f"Unknown part '{part}'. Use: patterns | comparisons."}
+            )
+
         # --- query_experiments: NL query over the experiment database ---
         async def query_experiments(params: dict) -> str:
             from simlab.nlsql import query_experiments as _query
@@ -1300,7 +1574,9 @@ class Orchestrator:
             "read_predictions": read_predictions,
             "run_simulation": run_simulation,
             "observe_simulation": observe_simulation,
+            "get_tracker_detail": get_tracker_detail,
             "analyze_results": analyze_results,
+            "get_analyst_detail": get_analyst_detail,
             "generate_report": generate_report,
             "list_experiments": list_experiments_fn,
             "query_experiments": query_experiments,
