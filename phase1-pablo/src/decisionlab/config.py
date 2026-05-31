@@ -102,13 +102,13 @@ class Settings:
                 "RESEARCHER",
                 model="anthropic/claude-sonnet-4.6",
                 max_iterations=14,
-                max_tokens=32768,
+                max_tokens=16384,
             ),
             deep_researcher=_load(
                 "DEEP_RESEARCHER",
                 model="anthropic/claude-sonnet-4.6",
                 max_iterations=7,
-                max_tokens=32768,
+                max_tokens=16384,
             ),
             deep_researcher_summary=_load(
                 "DEEP_RESEARCHER_SUMMARY",
@@ -120,7 +120,7 @@ class Settings:
                 "FORMALIZER",
                 model="anthropic/claude-opus-4.6",
                 max_iterations=5,
-                max_tokens=32768,
+                max_tokens=16384,
             ),
             reasoner=_load(
                 "REASONER",
@@ -132,7 +132,7 @@ class Settings:
                 "BUILDER",
                 model="anthropic/claude-sonnet-4.6",
                 max_iterations=25,
-                max_tokens=32768,
+                max_tokens=16384,
             ),
             knowledge_fast_model=_env_model(
                 "KNOWLEDGE_FAST", "anthropic/claude-haiku-4.5"

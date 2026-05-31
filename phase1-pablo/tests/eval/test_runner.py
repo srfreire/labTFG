@@ -9,13 +9,18 @@ Covers:
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from decisionlab.eval.runner import _validate_stages, run_pipeline
-from decisionlab.router import Stage
+from decisionlab.eval.runner import (
+    _materialize_builder_artifacts,
+    _validate_stages,
+    run_pipeline,
+)
+from decisionlab.router import PipelineState, Stage
 from shared.services import Services
 
 
@@ -65,6 +70,42 @@ class TestValidateStages:
             _validate_stages([Stage.REVIEW_BUILD])
 
 
+@pytest.mark.asyncio
+async def test_materialize_builder_artifacts_discovers_s3_when_state_specs_empty(
+    tmp_path,
+):
+    files = {
+        "models/run-1/builder/reinforcement-learning/q-learning_model.py": b"class DecisionModel: pass",
+        "models/run-1/builder/reinforcement-learning/test_q-learning.py": b"",
+    }
+
+    class Storage:
+        async def list(self, prefix):
+            assert prefix == "models/run-1/builder/"
+            return list(files)
+
+        async def exists(self, key):
+            return key in files
+
+        async def get(self, key):
+            return files[key]
+
+    state = PipelineState(
+        stage=Stage.DONE,
+        problem="topic",
+        reports_dir=tmp_path,
+        run_id="run-1",
+        approved_specs={},
+    )
+    services = type("Services", (), {"storage": Storage()})()
+
+    artifacts = await _materialize_builder_artifacts(state, services, tmp_path)
+
+    assert len(artifacts) == 1
+    assert artifacts[0].name == "reinforcement-learning-q-learning_model.py"
+    assert artifacts[0].read_bytes() == b"class DecisionModel: pass"
+
+
 # ---------------------------------------------------------------------------
 # run_pipeline
 # ---------------------------------------------------------------------------
@@ -103,6 +144,12 @@ class _CrashingRouter(_FakeRouter):
     async def run(self):
         await super().run()
         raise RuntimeError("simulated mid-pipeline crash")
+
+
+class _CancelledRouter(_FakeRouter):
+    async def run(self):
+        self.state.stage = Stage.FORMALIZE
+        raise asyncio.CancelledError
 
 
 @pytest.fixture
@@ -159,6 +206,51 @@ async def test_router_exception_is_captured(tmp_path, patch_run_row):
     assert not result.succeeded
     assert result.failed_at == Stage.DONE  # state was mutated to DONE before the crash
     assert "simulated mid-pipeline crash" in (result.error or "")
+
+
+@pytest.mark.asyncio
+async def test_external_router_cancellation_propagates(tmp_path, patch_run_row):
+    client = AsyncMock()
+    search = AsyncMock()
+    with patch("decisionlab.eval.runner.Router", _CancelledRouter):
+        with pytest.raises(asyncio.CancelledError):
+            await run_pipeline(
+                "topic",
+                services=_services(),
+                stages=[Stage.RESEARCH, Stage.FORMALIZE],
+                project_root=tmp_path,
+                client=client,
+                search=search,
+                reports_root=tmp_path / "reports",
+            )
+
+
+@pytest.mark.asyncio
+async def test_budget_marked_cancellation_returns_partial_result(
+    tmp_path,
+    patch_run_row,
+):
+    client = AsyncMock()
+    search = AsyncMock()
+    task = asyncio.current_task()
+    assert task is not None
+    task._decisionlab_budget_cancel = True
+    try:
+        with patch("decisionlab.eval.runner.Router", _CancelledRouter):
+            result = await run_pipeline(
+                "topic",
+                services=_services(),
+                stages=[Stage.RESEARCH, Stage.FORMALIZE],
+                project_root=tmp_path,
+                client=client,
+                search=search,
+                reports_root=tmp_path / "reports",
+            )
+    finally:
+        del task._decisionlab_budget_cancel
+    assert not result.succeeded
+    assert result.failed_at == Stage.FORMALIZE
+    assert result.error == "pipeline cancelled at formalize"
 
 
 @pytest.mark.asyncio

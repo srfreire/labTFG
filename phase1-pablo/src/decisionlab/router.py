@@ -22,6 +22,7 @@ from decisionlab.knowledge.retrieval.tool import (
     create_retrieve_knowledge,
 )
 from decisionlab.parsing import FORMULATION_HEADER_RE
+from decisionlab.runtime import agrex_context
 from decisionlab.runtime.tool_calls import set_stage as _set_recording_stage
 from decisionlab.tools.reports import slugify
 
@@ -237,18 +238,47 @@ class PipelineState:
         itself). Returns an empty list when state is coherent.
         """
         candidates: list[str] = []
-        for slug in self.approved_paradigms:
-            candidates.append(f"{self.research_prefix}/formulations/{slug}.md")
-        for paradigm, fids in self.selected_formulations.items():
-            for fid in fids:
-                candidates.append(
-                    f"{self.models_prefix}/reasoner/{paradigm}/{fid}.json"
-                )
-        for paradigm, fids in self.approved_specs.items():
-            for fid in fids:
-                candidates.append(
-                    f"{self.models_prefix}/builder/{paradigm}/{fid}_model.py"
-                )
+        formulation_ready_stages = {
+            Stage.MEMORY_FORMALIZE,
+            Stage.REVIEW_FORMALIZE,
+            Stage.GET_ENV_SPEC,
+            Stage.REASON,
+            Stage.MEMORY_REASON,
+            Stage.REVIEW_REASON,
+            Stage.BUILD,
+            Stage.MEMORY_BUILD,
+            Stage.REVIEW_BUILD,
+            Stage.DONE,
+        }
+        reason_ready_stages = {
+            Stage.MEMORY_REASON,
+            Stage.REVIEW_REASON,
+            Stage.BUILD,
+            Stage.MEMORY_BUILD,
+            Stage.REVIEW_BUILD,
+            Stage.DONE,
+        }
+        build_ready_stages = {
+            Stage.MEMORY_BUILD,
+            Stage.REVIEW_BUILD,
+            Stage.DONE,
+        }
+
+        if self.stage in formulation_ready_stages:
+            for slug in self.approved_paradigms:
+                candidates.append(f"{self.research_prefix}/formulations/{slug}.md")
+        if self.stage in reason_ready_stages:
+            for paradigm, fids in self.selected_formulations.items():
+                for fid in fids:
+                    candidates.append(
+                        f"{self.models_prefix}/reasoner/{paradigm}/{fid}.json"
+                    )
+        if self.stage in build_ready_stages:
+            for paradigm, fids in self.approved_specs.items():
+                for fid in fids:
+                    candidates.append(
+                        f"{self.models_prefix}/builder/{paradigm}/{fid}_model.py"
+                    )
 
         missing: list[str] = []
         for key in candidates:
@@ -349,11 +379,106 @@ class Router:
         )
         self._tracer: agrex.Tracer | None = None
         self._trace_local_path: Path | None = None
+        self._trace_nodes: set[str] = set()
+        self._trace_edges: set[str] = set()
         # In-memory mirror of `_record_memory_result` payloads, keyed by stage
         # name ("researcher"/"formalizer"/"reasoner"/"builder"). Lets in-process
         # callers (e.g. the eval runner) read per-stage memory results without
         # round-tripping the database.
         self.memory_results: dict[str, dict] = {}
+
+    @staticmethod
+    def _trace_id(*parts: str) -> str:
+        raw = ":".join(str(p) for p in parts if p is not None)
+        return raw.replace("/", ":").replace(" ", "-")
+
+    async def _trace_last(self) -> None:
+        if self._tracer is None:
+            return
+        events = self._tracer.events()
+        if events:
+            await self._send_event(events[-1])
+
+    async def _trace_node_once(
+        self,
+        node_type: str,
+        node_id: str,
+        label: str,
+        *,
+        parent: str | None = None,
+        status: str = "done",
+        metadata: dict | None = None,
+    ) -> None:
+        if self._tracer is None or node_id in self._trace_nodes:
+            return
+        self._trace_nodes.add(node_id)
+        if node_type == "agent":
+            self._tracer.agent(
+                node_id, label, parent=parent, status=status, metadata=metadata
+            )
+        elif node_type == "sub_agent":
+            self._tracer.sub_agent(
+                node_id, label, parent=parent, status=status, metadata=metadata
+            )
+        elif node_type == "tool":
+            self._tracer.tool(
+                node_id, label, parent=parent, status=status, metadata=metadata
+            )
+        elif node_type == "file":
+            self._tracer.file(
+                node_id, label, parent=parent, status=status, metadata=metadata
+            )
+        else:
+            self._tracer.node(
+                {
+                    "id": node_id,
+                    "type": node_type,
+                    "label": label,
+                    "parentId": parent,
+                    "status": status,
+                    "metadata": metadata or {},
+                }
+            )
+        await self._trace_last()
+
+    async def _trace_edge_once(
+        self,
+        source: str,
+        target: str,
+        *,
+        edge_type: str = "relates",
+        label: str | None = None,
+    ) -> None:
+        if self._tracer is None:
+            return
+        edge_id = self._trace_id("edge", source, edge_type, target)
+        if edge_id in self._trace_edges:
+            return
+        self._trace_edges.add(edge_id)
+        self._tracer.edge(
+            id=edge_id, source=source, target=target, type=edge_type, label=label
+        )
+        await self._trace_last()
+
+    async def _trace_file_artifact(
+        self,
+        key: str,
+        *,
+        parent: str,
+        artifact_type: str,
+        label: str | None = None,
+    ) -> str:
+        node_id = self._trace_id("file", key)
+        await self._trace_node_once(
+            "file",
+            node_id,
+            label or Path(key).name,
+            parent=parent,
+            status="done",
+            metadata={"s3_key": key, "artifact_type": artifact_type},
+        )
+        await self._trace_edge_once(parent, node_id, edge_type="writes", label="writes")
+        return node_id
 
     def _knowledge_tool_kwargs(self, stage: str) -> dict:
         """Return keyword args for knowledge tool injection into an agent.
@@ -490,6 +615,124 @@ class Router:
             agents.append({"name": "memory_agent", "color": "#22d3ee"})
         await self._send_event({"type": "agents", "agents": agents})
 
+    async def _trace_research_artifacts(self) -> None:
+        prefix = self.state.research_prefix
+        await self._trace_file_artifact(
+            f"{prefix}/report.md", parent="researcher", artifact_type="report"
+        )
+        keys = await self._services.storage.list(f"{prefix}/deep/")
+        for key in sorted(k for k in keys if k.endswith(".md")):
+            slug = Path(key).stem
+            sub_id = self._trace_id("deep_researcher", slug)
+            await self._trace_node_once(
+                "sub_agent",
+                sub_id,
+                f"DeepResearcher: {slug}",
+                parent="researcher",
+                status="done",
+                metadata={"paradigm": slug},
+            )
+            await self._trace_edge_once(
+                "researcher", sub_id, edge_type="launches", label="launches"
+            )
+            await self._trace_file_artifact(
+                key, parent=sub_id, artifact_type="deep_report"
+            )
+
+    async def _trace_formalization_artifacts(self) -> None:
+        prefix = f"{self.state.research_prefix}/formulations/"
+        keys = await self._services.storage.list(prefix)
+        for key in sorted(k for k in keys if k.endswith(".md")):
+            slug = Path(key).stem
+            sub_id = self._trace_id("formalizer", slug)
+            await self._trace_node_once(
+                "sub_agent",
+                sub_id,
+                f"FormalizerSubAgent: {slug}",
+                parent="formalizer",
+                status="done",
+                metadata={"paradigm": slug},
+            )
+            await self._trace_edge_once(
+                "formalizer", sub_id, edge_type="launches", label="launches"
+            )
+            await self._trace_file_artifact(
+                key, parent=sub_id, artifact_type="formulation"
+            )
+
+    async def _trace_selected_formulations(self) -> None:
+        for paradigm, formulations in sorted(self.state.selected_formulations.items()):
+            for formulation in formulations:
+                node_id = self._trace_id("formulation", paradigm, formulation)
+                await self._trace_node_once(
+                    "artifact",
+                    node_id,
+                    formulation,
+                    parent=self._trace_id("formalizer", paradigm),
+                    status="done",
+                    metadata={
+                        "artifact_type": "formulation_selection",
+                        "paradigm": paradigm,
+                        "formulation": formulation,
+                    },
+                )
+
+    async def _trace_env_spec_artifact(self) -> None:
+        await self._trace_file_artifact(
+            f"{self.state.research_prefix}/env_spec.json",
+            parent="reasoner",
+            artifact_type="env_spec",
+        )
+
+    async def _trace_reasoner_artifacts(self) -> None:
+        for paradigm, formulations in sorted(self.state.selected_formulations.items()):
+            for formulation in formulations:
+                sub_id = self._trace_id("reasoner", paradigm, formulation)
+                await self._trace_node_once(
+                    "sub_agent",
+                    sub_id,
+                    f"ReasonerSubAgent: {formulation}",
+                    parent="reasoner",
+                    status="done",
+                    metadata={"paradigm": paradigm, "formulation": formulation},
+                )
+                await self._trace_edge_once(
+                    "reasoner", sub_id, edge_type="launches", label="launches"
+                )
+                key = (
+                    f"{self.state.models_prefix}/reasoner/{paradigm}/{formulation}.json"
+                )
+                await self._trace_file_artifact(
+                    key, parent=sub_id, artifact_type="reasoner_spec"
+                )
+
+    async def _trace_builder_artifacts(self) -> None:
+        for paradigm, formulations in sorted(self.state.approved_specs.items()):
+            for formulation in formulations:
+                sub_id = self._trace_id("builder", paradigm, formulation)
+                await self._trace_node_once(
+                    "sub_agent",
+                    sub_id,
+                    f"BuilderSubAgent: {formulation}",
+                    parent="builder",
+                    status="done",
+                    metadata={"paradigm": paradigm, "formulation": formulation},
+                )
+                await self._trace_edge_once(
+                    "builder", sub_id, edge_type="launches", label="launches"
+                )
+                base = f"{self.state.models_prefix}/builder/{paradigm}"
+                await self._trace_file_artifact(
+                    f"{base}/{formulation}_model.py",
+                    parent=sub_id,
+                    artifact_type="model",
+                )
+                await self._trace_file_artifact(
+                    f"{base}/test_{formulation}.py",
+                    parent=sub_id,
+                    artifact_type="test",
+                )
+
     # -- DB helpers -----------------------------------------------------------
 
     async def _update_run(self, **values) -> None:
@@ -531,6 +774,22 @@ class Router:
             self.state.stage = review_stage
             return
 
+        memory_node_id = self._trace_id("memory_agent", agent_name)
+        await self._trace_node_once(
+            "sub_agent",
+            memory_node_id,
+            f"MemoryAgent: {agent_name}",
+            parent=_MEMORY_AGENT_STAGE_NAMES[work_stage],
+            status="running",
+            metadata={"source_stage": agent_name},
+        )
+        await self._trace_edge_once(
+            _MEMORY_AGENT_STAGE_NAMES[work_stage],
+            memory_node_id,
+            edge_type="extracts",
+            label="extracts",
+        )
+
         payload: dict
         try:
             output = await self._collect_stage_output(work_stage)
@@ -558,7 +817,52 @@ class Router:
             payload = {"status": "failed", "error": str(exc)}
 
         await self._record_memory_result(agent_name, payload)
+        if payload.get("status") == "ok":
+            await self._trace_memory_outputs(memory_node_id, agent_name, payload)
+            self._tracer.done(memory_node_id, metadata=payload)
+        else:
+            self._tracer.error(
+                memory_node_id, error=payload.get("error"), metadata=payload
+            )
+        await self._trace_last()
         self.state.stage = review_stage
+
+    async def _trace_memory_outputs(
+        self, memory_node_id: str, agent_name: str, payload: dict
+    ) -> None:
+        kg_node = self._trace_id("memory_output", agent_name, "kg")
+        await self._trace_node_once(
+            "artifact",
+            kg_node,
+            f"KG writes: {agent_name}",
+            parent=memory_node_id,
+            status="done",
+            metadata={
+                "nodes_created": payload.get("nodes_created", 0),
+                "nodes_merged": payload.get("nodes_merged", 0),
+                "relations_created": payload.get("relations_created", 0),
+            },
+        )
+        await self._trace_edge_once(
+            memory_node_id, kg_node, edge_type="writes", label="KG"
+        )
+
+        facts_node = self._trace_id("memory_output", agent_name, "facts")
+        await self._trace_node_once(
+            "artifact",
+            facts_node,
+            f"Memories: {agent_name}",
+            parent=memory_node_id,
+            status="done",
+            metadata={
+                "facts_stored": payload.get("facts_stored", 0),
+                "duplicates_skipped": payload.get("duplicates_skipped", 0),
+                "conflicts_resolved": payload.get("conflicts_resolved", 0),
+            },
+        )
+        await self._trace_edge_once(
+            memory_node_id, facts_node, edge_type="indexes", label="indexes"
+        )
 
     async def _record_memory_result(self, agent_name: str, payload: dict) -> None:
         """Merge a per-stage Memory Agent result into runs.memory_results.
@@ -707,9 +1011,11 @@ class Router:
         }
 
         self._init_trace(self.state.run_id)
+        trace_tokens = agrex_context.bind(self._tracer, self.emit)
         try:
             await self._run_loop(handlers)
         finally:
+            agrex_context.reset(trace_tokens)
             await self._finalize_trace(self.state.run_id)
 
     async def _run_loop(self, handlers: dict) -> None:
@@ -738,9 +1044,29 @@ class Router:
                 # which is exactly the marker kind we want.
                 self._tracer.marker(current_stage.value, color="#fbbf24")
                 await self._send_event(self._tracer.events()[-1])
+                review_id = self._trace_id("human_review", current_stage.value)
+                parent = {
+                    Stage.REVIEW_RESEARCH: "researcher",
+                    Stage.REVIEW_FORMALIZE: "formalizer",
+                    Stage.REVIEW_REASON: "reasoner",
+                    Stage.REVIEW_BUILD: "builder",
+                }[current_stage]
+                await self._trace_node_once(
+                    "tool",
+                    review_id,
+                    current_stage.value,
+                    parent=parent,
+                    status="running",
+                    metadata={"hitl": True, "stage": current_stage.value},
+                )
 
             async with record_stage(current_stage.value):
                 await handler()
+
+            if current_stage in _REVIEW_STAGES:
+                review_id = self._trace_id("human_review", current_stage.value)
+                self._tracer.done(review_id)
+                await self._trace_last()
 
             # Stuck-stage detection: work-stage handlers swallow agent failures
             # and return without advancing `state.stage`. Without this, a
@@ -856,6 +1182,7 @@ class Router:
             return  # stay at current stage
         # Cache the in-memory text so the Memory Agent doesn't round-trip S3.
         self._stage_outputs[Stage.RESEARCH] = report.summary
+        await self._trace_research_artifacts()
         self._tracer.done("researcher")
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.RESEARCH)
@@ -891,6 +1218,19 @@ class Router:
                 continue
             # No more additions — store approved slugs
             self.state.approved_paradigms = approved
+            for slug in approved:
+                paradigm_id = self._trace_id("paradigm", slug)
+                await self._trace_node_once(
+                    "artifact",
+                    paradigm_id,
+                    slug,
+                    parent="researcher",
+                    status="done",
+                    metadata={"artifact_type": "approved_paradigm", "slug": slug},
+                )
+                await self._trace_edge_once(
+                    "researcher", paradigm_id, edge_type="approves", label="approves"
+                )
             await self.state.save(self._services)
             break
         self.state.stage = Stage.FORMALIZE
@@ -917,6 +1257,7 @@ class Router:
             self._tracer.error("formalizer", error=exc)
             await self._send_event(self._tracer.events()[-1])
             return
+        await self._trace_formalization_artifacts()
         self._tracer.done("formalizer")
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.FORMALIZE)
@@ -932,6 +1273,7 @@ class Router:
             selected,
             self._services,
         )
+        await self._trace_selected_formulations()
         await self.state.save(self._services)
         from decisionlab.tools.reports import generate_tree_map
 
@@ -946,6 +1288,17 @@ class Router:
             s3_key = f"research/{self.state.run_id}/env_spec.json"
             await self._services.storage.put_text(s3_key, env_spec_data)
             self.state.env_spec_path = Path(s3_key)  # transitional
+            await self._trace_node_once(
+                "tool",
+                "env_spec_input",
+                "Environment spec input",
+                parent="formalizer",
+                status="done",
+                metadata={"hitl": True, "s3_key": s3_key},
+            )
+            await self._trace_file_artifact(
+                s3_key, parent="env_spec_input", artifact_type="env_spec"
+            )
         except Exception as exc:
             self.console.print(f"[bold red]env_spec setup failed: {exc}[/bold red]")
             logger.exception("env_spec setup failed")
@@ -981,6 +1334,7 @@ class Router:
             self._tracer.error("reasoner", error=exc)
             await self._send_event(self._tracer.events()[-1])
             return
+        await self._trace_reasoner_artifacts()
         self._tracer.done("reasoner")
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.REASON)
@@ -1000,6 +1354,21 @@ class Router:
                     for paradigm, fids in self.state.selected_formulations.items()
                     if any(f in approved_set for f in fids)
                 }
+                for paradigm, fids in self.state.approved_specs.items():
+                    for fid in fids:
+                        spec_id = self._trace_id("approved_spec", paradigm, fid)
+                        await self._trace_node_once(
+                            "artifact",
+                            spec_id,
+                            fid,
+                            parent=self._trace_id("reasoner", paradigm, fid),
+                            status="done",
+                            metadata={
+                                "artifact_type": "approved_spec",
+                                "paradigm": paradigm,
+                                "formulation": fid,
+                            },
+                        )
                 break
 
             # Re-run Formalizer → Reasoner for paradigms with invalid formulations
@@ -1099,6 +1468,7 @@ class Router:
             self._tracer.error("builder", error=exc)
             await self._send_event(self._tracer.events()[-1])
             return
+        await self._trace_builder_artifacts()
         self._tracer.done("builder")
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.BUILD)

@@ -128,7 +128,12 @@ Relation types to extract:
 - MEASURES: Variable → BrainRegion (the brain region/system the variable measures)
 
 Facts: produce one atomic fact per postulate (what it claims), one per variable \
-(its role in the paradigm). Each fact must be a single, self-contained statement.\
+(its role in the paradigm). Each fact must be a single, self-contained statement.
+
+Hard output limits: emit at most 2 Paradigm nodes, 8 Author nodes, 8 Paper nodes, \
+8 BrainRegion nodes, 12 Variable nodes, 12 Postulate nodes, 24 relations, and \
+24 facts. Prefer the items most directly relevant to the requested grid-foraging \
+agent and omit peripheral paradigms when the report covers more than one.\
 """
 
 RESEARCHER_USER = (
@@ -150,7 +155,7 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
-- Equation: properties={{latex, plaintext, type}}. natural_key="plaintext". \
+- Equation: properties={{latex, plaintext, type}}. natural_key="latex". \
 Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
 - Variable: properties={{name, description, type, range, unit, paradigm_slug}}. natural_key="name". \
 Extract from ### Variables tables. Type is the Type column value. \

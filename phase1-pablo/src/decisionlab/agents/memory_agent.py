@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
@@ -34,6 +35,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 EmitFn = Callable[[dict], Awaitable[None]]
+_EXTRACTION_TIMEOUT_SECONDS = float(
+    os.getenv("DECISIONLAB_MEMORY_EXTRACTION_TIMEOUT_SECONDS", "240")
+)
 
 
 def _zero_kg() -> KGWriteResult:
@@ -113,7 +117,16 @@ class MemoryAgent:
 
             # Step 1: Extract entities, relations, facts
             try:
-                extraction = await extract(stage, stage_output, run_id, self._client)
+                extraction = await asyncio.wait_for(
+                    extract(stage, stage_output, run_id, self._client),
+                    timeout=_EXTRACTION_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
+                logger.exception(
+                    "Memory Agent extraction timed out for stage=%s", stage
+                )
+                await _emit_status("failed", error="extraction: timed out")
+                return self._failed_result(t0, "extraction: timed out")
             except Exception as exc:
                 logger.exception("Memory Agent extraction failed for stage=%s", stage)
                 await _emit_status("failed", error=f"extraction: {exc}")

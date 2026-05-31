@@ -78,12 +78,8 @@ async def test_builder_sub_run_returns_content(
     )
     resp5 = make_response("end_turn", [final_text])
 
-    # Builder runs at 32k → streaming path in run_agent_loop.
-    from tests.agents.conftest import StreamCM
-
-    queue = iter([resp1, resp2, resp3, resp4, resp5])
     client = AsyncMock()
-    client.messages.stream = MagicMock(side_effect=lambda **_kw: StreamCM(next(queue)))
+    client.messages.create = AsyncMock(side_effect=[resp1, resp2, resp3, resp4, resp5])
 
     agent = BuilderSubAgent(
         client=client,
@@ -161,6 +157,5 @@ async def test_builder_sub_uses_sonnet_model(
 
     from decisionlab.config import SETTINGS
 
-    # Builder is at 32k → uses messages.stream
-    call_kwargs = client.messages.stream.call_args
+    call_kwargs = client.messages.create.call_args
     assert call_kwargs.kwargs["model"] == SETTINGS.builder.model

@@ -10,6 +10,7 @@ whole topic without any actionable signal in the trace.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_MAX_TOKENS = 32768
+_MAX_TOKENS = int(os.getenv("DECISIONLAB_EXTRACTION_MAX_TOKENS", "16384"))
 
 _STAGE_PROMPTS: dict[str, tuple[str, str]] = {
     "researcher": (RESEARCHER_SYSTEM, RESEARCHER_USER),

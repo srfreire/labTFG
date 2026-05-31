@@ -73,6 +73,28 @@ async def test_read_file_missing_file(mock_storage):
 
 
 @pytest.mark.asyncio
+async def test_read_file_uses_fallback_prefix_after_primary_miss(
+    s3_store, mock_storage
+):
+    s3_store["fallback-prefix/reasoner/model.json"] = '{"ok": true}'
+    fn = create_read_file(
+        "primary-prefix",
+        storage=mock_storage,
+        fallback_prefixes=("fallback-prefix",),
+    )
+
+    result = await fn({"path": "reasoner/model.json"})
+
+    assert result == '{"ok": true}'
+    assert mock_storage.get_text.await_args_list[0].args == (
+        "primary-prefix/reasoner/model.json",
+    )
+    assert mock_storage.get_text.await_args_list[1].args == (
+        "fallback-prefix/reasoner/model.json",
+    )
+
+
+@pytest.mark.asyncio
 async def test_read_file_path_traversal(mock_storage):
     fn = create_read_file("my-prefix", storage=mock_storage)
     with pytest.raises(ValueError, match="Invalid path"):

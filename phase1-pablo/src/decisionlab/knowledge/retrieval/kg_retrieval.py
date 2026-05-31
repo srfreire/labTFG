@@ -73,7 +73,7 @@ _LABEL_NAME_PROP: dict[str, str] = {
     "BrainRegion": "name",
     "Author": "name",
     "Paper": "title",
-    "Equation": "plaintext",
+    "Equation": "latex",
     "Parameter": "name",
 }
 

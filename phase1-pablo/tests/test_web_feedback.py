@@ -262,3 +262,44 @@ class TestWebReviewBuildInvalidBuilds:
 
         assert "pi-controller" in approved
         assert len(reasoner_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_domain_error_terms_do_not_mark_build_failed(self, tmp_path):
+        """RL summaries can mention TD error while all tests pass."""
+        build_results = {
+            "td-learning": "Uses TD error for updates. All 18 tests pass.",
+        }
+        emit = AsyncMock()
+
+        with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
+            mock_wait.return_value = {
+                "decisions": {"td-learning": {"approved": True}},
+            }
+            approved, _rejections, reasoner_reruns = await review_build(
+                tmp_path,
+                build_results,
+                emit,
+            )
+
+        payload = mock_wait.call_args[0][2]
+        assert payload["models"][0]["passed"] is True
+        assert "td-learning" in approved
+        assert len(reasoner_reruns) == 0
+
+    @pytest.mark.asyncio
+    async def test_traceback_marks_build_failed(self, tmp_path):
+        build_results = {"broken-model": "Traceback: SyntaxError in generated model."}
+        emit = AsyncMock()
+
+        with patch("decisionlab.web_feedback.wait_for_review") as mock_wait:
+            mock_wait.return_value = {
+                "decisions": {"broken-model": {"rerun_reasoner": True}},
+            }
+            await review_build(
+                tmp_path,
+                build_results,
+                emit,
+            )
+
+        payload = mock_wait.call_args[0][2]
+        assert payload["models"][0]["passed"] is False

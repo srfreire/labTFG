@@ -1,5 +1,7 @@
+import agrex
 import pytest
 
+from decisionlab.runtime import agrex_context
 from decisionlab.runtime.dispatcher import dispatch_tools
 
 
@@ -79,3 +81,38 @@ async def test_dispatch_unknown_tool_returns_error():
     assert results[0]["is_error"] is True
     assert "Unknown tool" in results[0]["content"]
     assert "nonexistent" in results[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_traces_tool_node_when_agrex_context_bound():
+    async def read_file(params: dict) -> str:
+        return f"read {params['path']}"
+
+    emitted: list[dict] = []
+
+    async def emit(event: dict) -> None:
+        emitted.append(event)
+
+    tracer = agrex.create_tracer()
+    tokens = agrex_context.bind(tracer, emit)
+    parent_token = agrex_context.set_parent("reasoner:test-spec")
+    try:
+        calls = [
+            FakeToolCall(
+                id="t1",
+                name="read_file",
+                input={"path": "reasoner/p/spec.json"},
+            )
+        ]
+        await dispatch_tools(calls, {"read_file": read_file})
+    finally:
+        agrex_context.reset_parent(parent_token)
+        agrex_context.reset(tokens)
+
+    assert [e["type"] for e in emitted] == ["node_add", "node_update"]
+    node = emitted[0]["node"]
+    assert node["type"] == "tool"
+    assert node["label"] == "read_file"
+    assert node["parentId"] == "reasoner:test-spec"
+    assert node["metadata"]["path"] == "reasoner/p/spec.json"
+    assert emitted[1]["status"] == "done"

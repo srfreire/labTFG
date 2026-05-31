@@ -209,7 +209,11 @@ class ReasonerSubAgent:
         # read from research prefix (deep reports, formulations, env_spec)
         # write to models prefix (reasoner specs)
         self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
-            "read_file": create_read_file(research_prefix, storage=storage),
+            "read_file": create_read_file(
+                research_prefix,
+                storage=storage,
+                fallback_prefixes=(models_prefix,),
+            ),
             "write_file": create_write_file(
                 models_prefix, storage=storage, db=db, run_id=run_id
             ),

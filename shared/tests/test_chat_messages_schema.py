@@ -19,8 +19,15 @@ def test_chat_message_import_and_columns():
     from shared.models import ChatMessage
 
     cols = {c.name: c for c in ChatMessage.__table__.columns}
-    assert {"id", "session_id", "experiment_id", "role", "content", "tool_name",
-            "created_at"} <= set(cols)
+    assert {
+        "id",
+        "session_id",
+        "experiment_id",
+        "role",
+        "content",
+        "tool_name",
+        "created_at",
+    } <= set(cols)
     assert cols["id"].primary_key
     assert not cols["session_id"].nullable
     assert cols["experiment_id"].nullable

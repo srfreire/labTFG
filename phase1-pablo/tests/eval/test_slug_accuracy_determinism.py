@@ -165,10 +165,16 @@ class TestSlugAccuracyDeterminism:
             new=AsyncMock(side_effect=stub),
         ):
             first = await run_suite(
-                spec_no_budget, client=AsyncMock(), search=AsyncMock()
+                spec_no_budget,
+                services=live_eval_kg,
+                client=AsyncMock(),
+                search=AsyncMock(),
             )
             second = await run_suite(
-                spec_no_budget, client=AsyncMock(), search=AsyncMock()
+                spec_no_budget,
+                services=live_eval_kg,
+                client=AsyncMock(),
+                search=AsyncMock(),
             )
 
         assert first.error is None, first.error
@@ -227,7 +233,9 @@ class TestSlugAccuracyDeterminism:
             "decisionlab.eval.suite.run_pipeline",
             new=AsyncMock(side_effect=_noop_stub),
         ):
-            result = await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            result = await run_suite(
+                spec, services=live_eval_kg, client=AsyncMock(), search=AsyncMock()
+            )
 
         assert result.error is None
         # Canonical fixture has 10 entries and the stub doesn't add any

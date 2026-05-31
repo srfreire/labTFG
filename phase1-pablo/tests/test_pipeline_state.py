@@ -1,5 +1,7 @@
 """Tests for PipelineState and Stage enum."""
 
+import pytest
+
 from decisionlab.router import PipelineState, Stage
 
 
@@ -112,3 +114,53 @@ class TestS3PrefixHelpers:
             run_id="abc-123",
         )
         assert state.models_prefix == "models/abc-123"
+
+
+class TestMissingArtifacts:
+    @pytest.mark.asyncio
+    async def test_formalize_stage_does_not_require_future_formulation_files(
+        self, tmp_path
+    ):
+        checked: list[str] = []
+
+        class Storage:
+            async def exists(self, key):
+                checked.append(key)
+                return False
+
+        services = type("Services", (), {"storage": Storage()})()
+        state = PipelineState(
+            stage=Stage.FORMALIZE,
+            problem="test",
+            reports_dir=tmp_path,
+            run_id="run-1",
+            approved_paradigms=["reinforcement-learning"],
+        )
+        assert await state._missing_artifacts(services) == []
+        assert checked == []
+
+    @pytest.mark.asyncio
+    async def test_ready_stages_validate_only_existing_stage_artifacts(self, tmp_path):
+        checked: list[str] = []
+
+        class Storage:
+            async def exists(self, key):
+                checked.append(key)
+                return False
+
+        services = type("Services", (), {"storage": Storage()})()
+        state = PipelineState(
+            stage=Stage.BUILD,
+            problem="test",
+            reports_dir=tmp_path,
+            run_id="run-1",
+            approved_paradigms=["reinforcement-learning"],
+            selected_formulations={"reinforcement-learning": ["q-learning"]},
+            approved_specs={"reinforcement-learning": ["q-learning"]},
+        )
+        missing = await state._missing_artifacts(services)
+        assert missing == [
+            "research/run-1/formulations/reinforcement-learning.md",
+            "models/run-1/reasoner/reinforcement-learning/q-learning.json",
+        ]
+        assert checked == missing

@@ -18,7 +18,7 @@ import os
 import re
 import time
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -83,6 +83,9 @@ class SuiteSpec:
     reports_root: Path
     topics: tuple[TopicSpec, ...]
     max_usd_total: float | None
+    approved_paradigms: tuple[str, ...] = ()
+    max_paradigms: int | None = None
+    max_formulations_per_paradigm: int | None = None
     source_path: Path | None = None
     suite_assertions: tuple[dict[str, Any], ...] = ()
     setup: tuple[SetupAction, ...] = ()
@@ -133,6 +136,22 @@ class SuiteSpec:
         max_usd = budget.get("max_usd_total")
         max_usd = float(max_usd) if max_usd is not None else None
 
+        approve = raw.get("approve") or {}
+        if not isinstance(approve, dict):
+            raise ValueError(
+                f"suite {raw.get('name', '?')!r}: approve must be a mapping"
+            )
+        raw_approved_paradigms = approve.get("paradigms") or []
+        if not isinstance(raw_approved_paradigms, list) or not all(
+            isinstance(slug, str) for slug in raw_approved_paradigms
+        ):
+            raise ValueError(
+                f"suite {raw.get('name', '?')!r}: approve.paradigms must be "
+                "a list of strings"
+            )
+        max_paradigms = approve.get("max_paradigms")
+        max_formulations = approve.get("max_formulations_per_paradigm")
+
         raw_suite_assertions = raw.get("suite_assertions") or []
         if not isinstance(raw_suite_assertions, list):
             raise ValueError(
@@ -151,6 +170,11 @@ class SuiteSpec:
             reports_root=Path(raw.get("reports_root", "evals/runs")).expanduser(),
             topics=tuple(topics),
             max_usd_total=max_usd,
+            approved_paradigms=tuple(raw_approved_paradigms),
+            max_paradigms=int(max_paradigms) if max_paradigms is not None else None,
+            max_formulations_per_paradigm=int(max_formulations)
+            if max_formulations is not None
+            else None,
             source_path=path,
             suite_assertions=suite_assertions,
             setup=setup,
@@ -564,6 +588,15 @@ async def _run_seed_pipeline_memory(args: dict[str, Any], services: Services) ->
 class BudgetExhaustedError(RuntimeError):
     """Raised by the watchdog when ``estimate_usd(usage)`` exceeds the cap."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        partial_result: PipelineRunResult | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.partial_result = partial_result
+
 
 async def _run_with_budget(
     coro_factory,
@@ -587,11 +620,21 @@ async def _run_with_budget(
                 await asyncio.wait_for(asyncio.shield(task), timeout=check_interval)
             cost = estimate_usd(usage_module.snapshot())
             if cost > max_usd:
+                task._decisionlab_budget_cancel = True
                 task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await task
+                partial_result = None
+                try:
+                    partial_result = await task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    logger.exception(
+                        "Budget watchdog: cancelled task raised before "
+                        "returning a partial result"
+                    )
                 raise BudgetExhaustedError(
-                    f"estimated ${cost:.2f} > cap ${max_usd:.2f}"
+                    f"estimated ${cost:.2f} > cap ${max_usd:.2f}",
+                    partial_result=partial_result,
                 )
         return task.result()
     finally:
@@ -668,6 +711,9 @@ async def run_suite(
                 search=search,
                 reports_root=spec.reports_root,
                 reset_usage=False,  # accumulate across topics for budget tracking
+                approved_paradigms=spec.approved_paradigms or None,
+                max_paradigms=spec.max_paradigms,
+                max_formulations_per_paradigm=(spec.max_formulations_per_paradigm),
             )
 
         try:
@@ -682,14 +728,19 @@ async def run_suite(
                 "Suite %r: budget exhausted on topic %r: %s", spec.name, topic.text, exc
             )
             budget_exhausted = True
-            # Synthesize a partial result so the topic still appears in the report.
-            pipeline_result = PipelineRunResult(
-                run_id="<budget-exhausted>",
-                topic=topic.text,
-                stages_run=spec.stages,
-                failed_at=Stage.RESEARCH,
-                error=str(exc),
-            )
+            if exc.partial_result is None:
+                # Synthesize a partial result so the topic still appears.
+                pipeline_result = PipelineRunResult(
+                    run_id="<budget-exhausted>",
+                    topic=topic.text,
+                    stages_run=spec.stages,
+                    failed_at=Stage.RESEARCH,
+                    error=str(exc),
+                )
+            else:
+                prior = exc.partial_result.error
+                error = f"{prior}; budget exhausted: {exc}" if prior else str(exc)
+                pipeline_result = replace(exc.partial_result, error=error)
 
         # Run assertions for each stage that has any.
         assertions_per_stage: dict[str, list[AssertionOutcome]] = {}

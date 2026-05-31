@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -437,7 +438,7 @@ class Researcher:
                 messages=[{"role": "user", "content": emission_user}],
                 system=_EMISSION_SYSTEM_PROMPT,
                 schema=ResearcherOutput,
-                max_tokens=8192,
+                max_tokens=int(os.getenv("DECISIONLAB_STRUCTURED_MAX_TOKENS", "16384")),
                 model=_STRUCTURED_MODEL,
             )
         except (StructuredOutputError, Exception) as exc:

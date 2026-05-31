@@ -42,6 +42,7 @@ from shared.knowledge_graph import (
     select_valid_memory_ids,
 )
 from shared.models import PipelineMemory, Run
+from shared.services import init_services, shutdown_services
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -52,14 +53,18 @@ _PARADIGM_SLUG = "p4004-temporal-consistency"
 @pytest_asyncio.fixture
 async def shared_infra():
     """Bring up real shared infra and require KG + DB to be wired."""
-    await shared.init()
+    services = await init_services()
+    shared.kg = services.kg
+    shared.db = services.db
     if shared.kg is None or shared.db is None:
-        await shared.shutdown()
+        await shutdown_services(services)
         pytest.skip("docker-compose Neo4j/Postgres unavailable")
     try:
         yield shared
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
+        shared.kg = None
+        shared.db = None
 
 
 async def _seed_paradigm() -> None:

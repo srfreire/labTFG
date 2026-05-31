@@ -70,9 +70,8 @@ class _StreamCM:
 
 def _make_client(responses: list) -> MagicMock:
     """Create a client wiring both ``messages.create`` and ``messages.stream``
-    against a shared queue. Extraction runs at max_tokens=32768 so it routes
-    through ``messages.stream``; lower-token structured calls would route
-    through ``messages.create``. The shared queue covers either path.
+    against a shared queue. Extraction normally runs below the streaming
+    threshold; tests can still cover either path through the shared queue.
 
     Each ``responses`` entry is either a JSON string / dict (wrapped via
     ``_make_response``) or an already-built mock response.
@@ -824,8 +823,7 @@ async def test_max_tokens_truncation_raises_immediately():
     client = _make_client([truncated])
     with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
         await extract("researcher", "report text", "run-1", client)
-    # Extraction's _MAX_TOKENS=32768 routes via messages.stream
-    assert client.messages.stream.call_count == 1
+    assert client.messages.create.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -887,9 +885,8 @@ async def test_extract_resolves_model_per_stage(stage, tier):
     client = _make_client([_EMPTY_EXTRACTION])
     await extract(stage, "irrelevant body", "run-1", client)
 
-    # _MAX_TOKENS=32768 routes through ``messages.stream``.
-    client.messages.stream.assert_called_once()
-    assert client.messages.stream.call_args.kwargs["model"] == expected
+    client.messages.create.assert_awaited_once()
+    assert client.messages.create.call_args.kwargs["model"] == expected
 
 
 def test_stage_models_dict_covers_all_stages():

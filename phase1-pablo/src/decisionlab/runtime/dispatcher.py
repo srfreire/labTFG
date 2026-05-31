@@ -6,6 +6,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from decisionlab.runtime.agrex_context import trace_tool_done, trace_tool_start
 from decisionlab.runtime.tool_calls import record as record_tool_call
 
 logger = logging.getLogger(__name__)
@@ -16,10 +17,12 @@ Registry = dict[str, ToolFunction]
 
 async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str, Any]]:
     async def run_one(call) -> dict[str, Any]:
+        trace_id = await trace_tool_start(call.name, call.input)
         if call.name not in registry:
             msg = f"Unknown tool '{call.name}'. Available: {list(registry)}"
             logger.error(msg)
             record_tool_call(call.name, call.input, succeeded=False, duration_ms=0.0)
+            await trace_tool_done(trace_id, succeeded=False, error=msg)
             return {
                 "type": "tool_result",
                 "tool_use_id": call.id,
@@ -33,6 +36,7 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
             result = await registry[call.name](call.input)
             logger.info("Tool '%s' returned (%d chars)", call.name, len(result))
             succeeded = True
+            await trace_tool_done(trace_id, succeeded=True)
             return {"type": "tool_result", "tool_use_id": call.id, "content": result}
         except Exception as e:
             logger.error(
@@ -41,6 +45,9 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
                 call.id,
                 type(e).__name__,
                 e,
+            )
+            await trace_tool_done(
+                trace_id, succeeded=False, error=f"{type(e).__name__}: {e}"
             )
             return {
                 "type": "tool_result",

@@ -9,6 +9,7 @@ from decisionlab.tools.reports import (
     READ_REPORT_SCHEMA,
     create_read_report,
     generate_tree_map,
+    sanitize_markdown_artifact,
     slugify,
 )
 from shared.services import Services
@@ -26,6 +27,11 @@ def test_slugify():
     assert slugify("a   b") == "a-b"
     assert slugify("") == ""
     assert slugify("/ leading /") == "leading"
+
+
+def test_sanitize_markdown_artifact_strips_scratch_before_h1():
+    text = "I have enough context now.\n\n# Final Report\n\nBody\n"
+    assert sanitize_markdown_artifact(text) == "# Final Report\n\nBody\n"
 
 
 def _make_storage_mock(files: dict[str, str] | None = None) -> MagicMock:

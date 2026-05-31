@@ -81,6 +81,11 @@ def set_stage(stage: Stage | str) -> None:
     _STAGE_VAR.set(value)
 
 
+def current_stage() -> str:
+    """Return the stage label bound to the current context."""
+    return _STAGE_VAR.get()
+
+
 def record(
     name: str,
     args: object,

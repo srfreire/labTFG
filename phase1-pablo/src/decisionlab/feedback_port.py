@@ -144,6 +144,7 @@ class WebFeedback:
     def __init__(self, emit: EmitFn, *, storage: StorageService | None = None) -> None:
         self._emit = emit
         self._storage = storage
+        self._run_id: str = ""
 
     async def review_research(
         self,
@@ -153,7 +154,13 @@ class WebFeedback:
     ) -> ReviewResearchResult:
         from decisionlab import web_feedback
 
-        return await web_feedback.review_research(reports_dir, self._emit)
+        self._run_id = run_id
+        return await web_feedback.review_research(
+            reports_dir,
+            self._emit,
+            run_id=run_id,
+            storage=self._storage,
+        )
 
     async def review_formalize(
         self,
@@ -184,7 +191,12 @@ class WebFeedback:
     async def review_reason(self, reports_dir: Path) -> ReviewReasonResult:
         from decisionlab import web_feedback
 
-        return await web_feedback.review_reason(reports_dir, self._emit)
+        return await web_feedback.review_reason(
+            reports_dir,
+            self._emit,
+            run_id=self._run_id,
+            storage=self._storage,
+        )
 
     async def review_build(
         self,
@@ -227,9 +239,88 @@ class AutoApproveFeedback:
         *,
         storage: StorageService | None = None,
         env_spec_path: Path | None = None,
+        run_id: str | None = None,
+        approved_paradigms: list[str] | None = None,
+        max_paradigms: int | None = None,
+        max_formulations_per_paradigm: int | None = None,
     ) -> None:
         self._storage = storage
         self._env_spec_path = env_spec_path
+        self._run_id = run_id
+        self._approved_paradigms = approved_paradigms
+        self._max_paradigms = max_paradigms
+        self._max_formulations_per_paradigm = max_formulations_per_paradigm
+
+    def _limit_paradigms(self, discovered: list[str]) -> list[str]:
+        if self._approved_paradigms is None:
+            approved = discovered
+        else:
+            discovered_set = set(discovered)
+            approved = [
+                slug for slug in self._approved_paradigms if slug in discovered_set
+            ]
+            missing = [
+                slug for slug in self._approved_paradigms if slug not in discovered_set
+            ]
+            if missing:
+                logger.warning(
+                    "AutoApproveFeedback: requested paradigm(s) not discovered: %s",
+                    missing,
+                )
+        if self._max_paradigms is not None:
+            approved = approved[: self._max_paradigms]
+        return approved
+
+    async def _ensure_approved_deep_reports(
+        self,
+        discovered: list[str],
+        *,
+        run_id: str,
+    ) -> list[str]:
+        """Create fallback deep reports for allowlisted slugs missing in S3.
+
+        Eval approval can intentionally pin canonical paradigms. The Researcher
+        may still skip launching a dedicated deep report for an anchored
+        paradigm, so use report.md as a fallback source instead of letting the
+        downstream Formalizer fail on a missing deep/{slug}.md.
+        """
+        if self._approved_paradigms is None or self._storage is None:
+            return discovered
+        discovered_set = set(discovered)
+        missing = [
+            slug for slug in self._approved_paradigms if slug not in discovered_set
+        ]
+        if not missing:
+            return discovered
+        try:
+            summary = await self._storage.get_text(f"research/{run_id}/report.md")
+        except Exception:
+            logger.warning(
+                "AutoApproveFeedback: requested paradigm(s) not discovered and "
+                "report.md is unavailable for fallback: %s",
+                missing,
+            )
+            return discovered
+
+        out = list(discovered)
+        for slug in missing:
+            title = slug.replace("-", " ").title()
+            key = f"research/{run_id}/deep/{slug}.md"
+            fallback = (
+                f"# {title} — Deep Research\n\n"
+                "Fallback report synthesized from the Researcher summary because "
+                "this canonical paradigm was explicitly allowlisted for eval "
+                "approval.\n\n"
+                f"{summary.strip()}\n"
+            )
+            await self._storage.put_text(key, fallback)
+            out.append(slug)
+            logger.warning(
+                "AutoApproveFeedback: synthesized fallback deep report for "
+                "allowlisted paradigm %s",
+                slug,
+            )
+        return sorted(set(out))
 
     async def review_research(
         self,
@@ -250,14 +341,19 @@ class AutoApproveFeedback:
         if deep_dir.is_dir():
             local_slugs = sorted(p.stem for p in deep_dir.glob("*.md"))
             if local_slugs:
-                return local_slugs, None
+                local_slugs = await self._ensure_approved_deep_reports(
+                    local_slugs,
+                    run_id=run_id,
+                )
+                return self._limit_paradigms(local_slugs), None
 
         try:
             if self._storage is None:
                 raise RuntimeError("storage not provided to AutoApproveFeedback")
             keys = await self._storage.list(f"research/{run_id}/deep/")
             slugs = sorted(Path(k).stem for k in keys if k.endswith(".md"))
-            return slugs, None
+            slugs = await self._ensure_approved_deep_reports(slugs, run_id=run_id)
+            return self._limit_paradigms(slugs), None
         except Exception as exc:
             logger.warning(
                 "AutoApproveFeedback.review_research: S3 listing failed (%s) "
@@ -294,6 +390,8 @@ class AutoApproveFeedback:
                 continue
             headers = parse_formulation_headers(text)
             result[slug] = [h[0] for h in headers]
+            if self._max_formulations_per_paradigm is not None:
+                result[slug] = result[slug][: self._max_formulations_per_paradigm]
         return result
 
     async def get_env_spec(self) -> Path:
@@ -317,6 +415,24 @@ class AutoApproveFeedback:
         reasoner_dir = reports_dir / "reasoner"
         approved: list[str] = []
         if not reasoner_dir.is_dir():
+            if self._storage is None or self._run_id is None:
+                return approved, [], []
+            keys = await self._storage.list(f"models/{self._run_id}/reasoner/")
+            for key in sorted(keys):
+                if not key.endswith(".json") or "/reasoner/" not in key:
+                    continue
+                try:
+                    data = json.loads(await self._storage.get_text(key))
+                except Exception:
+                    logger.warning(
+                        "AutoApproveFeedback.review_reason: unreadable spec %s "
+                        "from S3 — skipping",
+                        key,
+                    )
+                    continue
+                if data.get("status") == "invalid":
+                    continue
+                approved.append(data.get("formulation_id", Path(key).stem))
             return approved, [], []
         for spec_file in sorted(reasoner_dir.glob("*.json")):
             try:

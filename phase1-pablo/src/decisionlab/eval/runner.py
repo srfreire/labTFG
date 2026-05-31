@@ -11,6 +11,7 @@ the runner cheap to call repeatedly inside one process.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 import uuid
@@ -42,6 +43,27 @@ _STAGE_ORDER: tuple[Stage, ...] = (
     Stage.REASON,
     Stage.BUILD,
 )
+
+
+async def _snapshot_existing_paradigms(services: Services) -> dict[str, str]:
+    """Capture canonical Paradigm creation times before a pipeline mutates KG."""
+    kg = getattr(services, "kg", None)
+    if kg is None:
+        return {}
+    try:
+        rows = await kg.query(
+            "MATCH (p:Paradigm) "
+            "WHERE p.slug IS NOT NULL "
+            "RETURN p.slug AS slug, p.created_at AS created_at"
+        )
+    except Exception:
+        logger.warning("Could not snapshot existing Paradigms", exc_info=True)
+        return {}
+    return {
+        str(row["slug"]): str(row["created_at"])
+        for row in rows
+        if row.get("slug") and row.get("created_at")
+    }
 
 
 def _validate_stages(stages: Iterable[Stage]) -> tuple[Stage, ...]:
@@ -120,6 +142,60 @@ async def _create_run_row(run_id: str, topic: str, services: Services) -> None:
         await session.commit()
 
 
+async def _materialize_builder_artifacts(
+    state: PipelineState,
+    services: Services,
+    reports_dir: Path,
+) -> tuple[Path, ...]:
+    """Copy S3 builder outputs into the local eval directory for assertions."""
+    keys: list[tuple[str, str, str]] = []
+    for paradigm, fids in state.approved_specs.items():
+        for fid in fids:
+            keys.append(
+                (
+                    paradigm,
+                    f"{fid}_model.py",
+                    f"{state.models_prefix}/builder/{paradigm}/{fid}_model.py",
+                )
+            )
+    if not keys:
+        prefix = f"{state.models_prefix}/builder/"
+        try:
+            discovered = await services.storage.list(prefix)
+        except Exception:
+            logger.warning("Unable to list builder artifacts under %s", prefix)
+            discovered = []
+        for key in discovered:
+            if not key.endswith("_model.py"):
+                continue
+            rel = key.removeprefix(prefix)
+            parts = rel.split("/")
+            if len(parts) != 2:
+                continue
+            keys.append((parts[0], parts[1], key))
+
+    out: list[Path] = []
+    seen: set[Path] = set()
+    for paradigm, filename, key in keys:
+        try:
+            if not await services.storage.exists(key):
+                continue
+            data = await services.storage.get(key)
+        except Exception:
+            logger.warning(
+                "Unable to materialize builder artifact %s", key, exc_info=True
+            )
+            continue
+        dest = reports_dir / "builder" / f"{paradigm}-{filename}"
+        if dest in seen:
+            continue
+        seen.add(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        out.append(dest)
+    return tuple(out)
+
+
 async def run_pipeline(
     topic: str,
     *,
@@ -132,6 +208,9 @@ async def run_pipeline(
     reports_root: Path = Path("evals/runs"),
     run_id: str | None = None,
     reset_usage: bool = True,
+    approved_paradigms: Iterable[str] | None = None,
+    max_paradigms: int | None = None,
+    max_formulations_per_paradigm: int | None = None,
 ) -> PipelineRunResult:
     """Drive one topic through a contiguous prefix of pipeline stages.
 
@@ -173,6 +252,7 @@ async def run_pipeline(
         usage_module.reset()
 
     started_at_iso = datetime.now(UTC).isoformat()
+    preexisting_paradigms = await _snapshot_existing_paradigms(services)
     tool_call_log = _start_tool_call_recording()
     timing_log = start_timing()
 
@@ -185,6 +265,7 @@ async def run_pipeline(
             topic=topic,
             stages_run=(),
             started_at=started_at_iso,
+            preexisting_paradigms=preexisting_paradigms,
             tool_call_log=tuple(tool_call_log),
             timing=timing_log,
         )
@@ -199,7 +280,14 @@ async def run_pipeline(
         run_id=rid,
     )
     feedback = AutoApproveFeedback(
-        storage=services.storage, env_spec_path=env_spec_path
+        storage=services.storage,
+        env_spec_path=env_spec_path,
+        run_id=rid,
+        approved_paradigms=list(approved_paradigms)
+        if approved_paradigms is not None
+        else None,
+        max_paradigms=max_paradigms,
+        max_formulations_per_paradigm=max_formulations_per_paradigm,
     )
     stop_after = stages_run[-1]
 
@@ -218,6 +306,12 @@ async def run_pipeline(
     error: str | None = None
     try:
         await router.run()
+    except asyncio.CancelledError:
+        task = asyncio.current_task()
+        if task is None or not getattr(task, "_decisionlab_budget_cancel", False):
+            raise
+        failed_at = state.stage
+        error = f"pipeline cancelled at {state.stage.value}"
     except Exception as exc:
         logger.exception(
             "run_pipeline crashed at stage=%s for topic=%r", state.stage, topic
@@ -240,10 +334,10 @@ async def run_pipeline(
     reasoner_specs = tuple(
         fid for fids in state.selected_formulations.values() for fid in fids
     )
-    builder_artifacts = tuple(
-        project_root / f"{rid}-{paradigm}-{fid}-model.py"
-        for paradigm, fids in state.approved_specs.items()
-        for fid in fids
+    builder_artifacts = await _materialize_builder_artifacts(
+        state,
+        services,
+        reports_dir,
     )
 
     return PipelineRunResult(
@@ -261,5 +355,6 @@ async def run_pipeline(
         error=error,
         tool_call_log=tuple(tool_call_log),
         started_at=started_at_iso,
+        preexisting_paradigms=preexisting_paradigms,
         timing=timing_log,
     )

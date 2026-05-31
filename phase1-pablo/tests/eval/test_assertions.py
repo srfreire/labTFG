@@ -24,6 +24,8 @@ def _result(
     formulations=(),
     builder_artifacts=(),
     succeeded=True,
+    started_at="2026-01-01T00:00:00+00:00",
+    preexisting_paradigms=None,
 ) -> PipelineRunResult:
     return PipelineRunResult(
         run_id="r1",
@@ -34,6 +36,8 @@ def _result(
         builder_artifacts=builder_artifacts,
         failed_at=None if succeeded else Stage.RESEARCH,
         error=None if succeeded else "boom",
+        started_at=started_at,
+        preexisting_paradigms=preexisting_paradigms or {},
     )
 
 
@@ -178,6 +182,43 @@ class TestMinNodes:
         assert not out.passed
 
 
+class TestParadigmReused:
+    @pytest.mark.asyncio
+    async def test_pass_when_live_kg_created_before_run(self):
+        ctx = _ctx(started_at="2026-01-02T00:00:00+00:00")
+        with patch(
+            "decisionlab.eval.assertions.kg_query",
+            new=AsyncMock(return_value=[{"created_at": "2026-01-01T00:00:00+00:00"}]),
+        ):
+            out = await run_assertion({"paradigm_reused": "rl"}, ctx)
+        assert out.passed
+        assert "live KG" in out.detail
+
+    @pytest.mark.asyncio
+    async def test_pass_when_run_start_snapshot_has_paradigm(self):
+        ctx = _ctx(
+            started_at="2026-01-02T00:00:00+00:00",
+            preexisting_paradigms={"rl": "2026-01-01T00:00:00+00:00"},
+        )
+        with patch(
+            "decisionlab.eval.assertions.kg_query",
+            new=AsyncMock(return_value=[]),
+        ):
+            out = await run_assertion({"paradigm_reused": "rl"}, ctx)
+        assert out.passed
+        assert "run-start KG snapshot" in out.detail
+
+    @pytest.mark.asyncio
+    async def test_fail_when_paradigm_created_after_run_start(self):
+        ctx = _ctx(started_at="2026-01-01T00:00:00+00:00")
+        with patch(
+            "decisionlab.eval.assertions.kg_query",
+            new=AsyncMock(return_value=[{"created_at": "2026-01-02T00:00:00+00:00"}]),
+        ):
+            out = await run_assertion({"paradigm_reused": "rl"}, ctx)
+        assert not out.passed
+
+
 class TestRelationExists:
     @pytest.mark.asyncio
     async def test_pass_when_count_positive(self):
@@ -230,6 +271,23 @@ class NotADecisionModel:
         return p
 """
 
+_ACTION_OBJECT_MODULE = """
+from dataclasses import dataclass
+
+@dataclass
+class Action:
+    name: str
+    params: dict
+
+class FakeModel:
+    def decide(self, perception):
+        return Action(name="move_up", params={})
+    def update(self, *args, **kwargs):
+        pass
+    def get_state(self):
+        return {}
+"""
+
 
 class TestModuleImports:
     @pytest.mark.asyncio
@@ -262,6 +320,22 @@ class TestDecideReturnsAction:
     async def test_pass_when_action_shaped(self, tmp_path):
         path = tmp_path / "rl_model.py"
         path.write_text(_BUILDER_MODULE)
+        ctx = _ctx(builder_artifacts=(path,))
+        out = await run_assertion(
+            {
+                "decide_returns_action": {
+                    "spec_id": "rl",
+                    "perception": {"x": 0, "y": 0},
+                }
+            },
+            ctx,
+        )
+        assert out.passed
+
+    @pytest.mark.asyncio
+    async def test_pass_when_action_object(self, tmp_path):
+        path = tmp_path / "rl_model.py"
+        path.write_text(_ACTION_OBJECT_MODULE)
         ctx = _ctx(builder_artifacts=(path,))
         out = await run_assertion(
             {

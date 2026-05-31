@@ -72,6 +72,10 @@ class TestSuiteSpecFromYaml:
             "        - module_imports: rl-q-learning\n"
             "budget:\n"
             "  max_usd_total: 25.50\n"
+            "approve:\n"
+            "  paradigms: [reinforcement-learning, optimal-foraging-theory]\n"
+            "  max_paradigms: 2\n"
+            "  max_formulations_per_paradigm: 2\n"
         )
         spec = SuiteSpec.from_yaml(path)
         assert spec.stages == (
@@ -83,6 +87,12 @@ class TestSuiteSpecFromYaml:
         assert spec.reset_kg_before is True
         assert spec.env_spec_path == env.resolve()
         assert spec.max_usd_total == 25.50
+        assert spec.approved_paradigms == (
+            "reinforcement-learning",
+            "optimal-foraging-theory",
+        )
+        assert spec.max_paradigms == 2
+        assert spec.max_formulations_per_paradigm == 2
         topic = spec.topics[0]
         assert topic.expect["research"][0] == {"paradigm": "rl"}
         assert topic.expect["build"][0] == {"module_imports": "rl-q-learning"}
@@ -184,6 +194,42 @@ class TestRunSuite:
         assert [t.topic for t in result.topic_results] == ["alpha", "beta"]
         assert not result.budget_exhausted
         assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_forwards_approval_limits_to_runner(self, tmp_path, patch_kgadmin):
+        spec_path = tmp_path / "approve.yaml"
+        spec_path.write_text(
+            "name: s\n"
+            "topics: [alpha]\n"
+            "approve:\n"
+            "  paradigms: [reinforcement-learning, optimal-foraging-theory]\n"
+            "  max_paradigms: 2\n"
+            "  max_formulations_per_paradigm: 2\n"
+        )
+        spec = SuiteSpec.from_yaml(spec_path)
+        captured: dict = {}
+
+        async def _stub(topic, **kw):
+            captured.update(kw)
+            return _fake_pipeline_result(topic)
+
+        with patch(
+            "decisionlab.eval.suite.run_pipeline", new=AsyncMock(side_effect=_stub)
+        ):
+            await run_suite(
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+                skip_kg_ops=True,
+            )
+
+        assert captured["approved_paradigms"] == (
+            "reinforcement-learning",
+            "optimal-foraging-theory",
+        )
+        assert captured["max_paradigms"] == 2
+        assert captured["max_formulations_per_paradigm"] == 2
 
     @pytest.mark.asyncio
     async def test_assertions_evaluated_per_stage(self, tmp_path, patch_kgadmin):

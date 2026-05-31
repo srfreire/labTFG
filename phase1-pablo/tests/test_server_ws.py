@@ -21,6 +21,7 @@ import pytest
 from starlette.testclient import TestClient
 
 import decisionlab.server as server_mod
+from decisionlab import web_feedback
 from decisionlab.server import ConnectionManager, app, manager
 
 # ---------------------------------------------------------------------------
@@ -223,6 +224,70 @@ def test_reconnect_during_review_returns_snapshot_then_prompt(monkeypatch):
     state_sync = frames[1]
     assert any(n["id"] == "n1" for n in state_sync["nodes"])
     assert state_sync["stage"] == "research"
+
+
+def test_hitl_review_response_roundtrip_unblocks_pipeline(monkeypatch):
+    """A real WS ``review_response`` frame must reach the coroutine waiting
+    inside ``web_feedback.wait_for_review``.
+
+    This is the core HITL contract: the pipeline emits a prompt, the frontend
+    answers over the same socket, and the agent pipeline continues.
+    """
+
+    stages = [
+        "review_research",
+        "review_formalize",
+        "get_env_spec",
+        "review_reason",
+        "review_build",
+    ]
+
+    async def fake_pipeline(problem: str, emit, until_stage: Any = None) -> None:
+        del problem, until_stage
+        await emit({"type": "run_start", "run_id": "hitl-test-run"})
+        for stage in stages:
+            response = await web_feedback.wait_for_review(
+                stage,
+                emit,
+                {"prompt": stage},
+            )
+            await emit(
+                {
+                    "type": "hitl_ack",
+                    "stage": stage,
+                    "response": response,
+                }
+            )
+
+    monkeypatch.setattr(server_mod, "run_pipeline", fake_pipeline)
+
+    with TestClient(app) as client, client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "start", "problem": "test hitl"})
+
+        run_start = ws.receive_json()
+        assert run_start == {"type": "run_start", "run_id": "hitl-test-run"}
+
+        for stage in stages:
+            prompt = ws.receive_json()
+            assert prompt["type"] == "review_request"
+            assert prompt["stage"] == stage
+            assert prompt["data"] == {"prompt": stage}
+
+            payload = {"approved": [stage], "selected": {stage: [1]}}
+            ws.send_json(
+                {
+                    "type": "review_response",
+                    "stage": stage,
+                    "data": payload,
+                }
+            )
+
+            ack = ws.receive_json()
+            assert ack == {
+                "type": "hitl_ack",
+                "stage": stage,
+                "response": payload,
+            }
 
 
 # ---------------------------------------------------------------------------

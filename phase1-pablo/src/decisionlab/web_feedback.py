@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -73,6 +74,26 @@ def _discover_paradigm_slugs(reports_dir: Path) -> list[str]:
     return sorted(p.stem for p in deep_dir.glob("*.md"))
 
 
+_BUILD_FAILURE_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"\btraceback\b",
+        r"\b(assertionerror|syntaxerror|modulenotfounderror|importerror)\b",
+        r"\bpytest\s+failed\b",
+        r"\btests?\s+failed\b",
+        r"\bfailed\s+tests?\b",
+        r"\bfailed:\s*[1-9]",
+        r"\b[1-9]\d*\s+failed\b",
+    )
+)
+
+
+def _build_summary_passed(content: str) -> bool:
+    """Classify builder summaries without treating domain terms as failures."""
+    lower = content.lower()
+    return not any(pattern.search(lower) for pattern in _BUILD_FAILURE_PATTERNS)
+
+
 # ---------------------------------------------------------------------------
 # REVIEW_RESEARCH
 # ---------------------------------------------------------------------------
@@ -81,6 +102,9 @@ def _discover_paradigm_slugs(reports_dir: Path) -> list[str]:
 async def review_research(
     reports_dir: Path,
     emit: Callable[[dict], Awaitable[None]],
+    *,
+    storage: StorageService | None = None,
+    run_id: str = "",
 ) -> tuple[list[str], str | None]:
     """WebSocket review of research results.
 
@@ -106,6 +130,24 @@ async def review_research(
                 "content": content,
             }
         )
+    if not paradigms_data and storage is not None and run_id:
+        keys = await storage.list(f"research/{run_id}/deep/")
+        for key in sorted(k for k in keys if k.endswith(".md")):
+            slug = Path(key).stem
+            try:
+                content = await storage.get_text(key)
+            except Exception:
+                content = ""
+            title = slug.replace("-", " ").title()
+            summary = content[:200].rsplit(".", 1)[0] + "." if content else ""
+            paradigms_data.append(
+                {
+                    "slug": slug,
+                    "title": title,
+                    "summary": summary,
+                    "content": content,
+                }
+            )
 
     response = await wait_for_review(
         "review_research",
@@ -237,6 +279,9 @@ async def get_env_spec(
 async def review_reason(
     reports_dir: Path,
     emit: Callable[[dict], Awaitable[None]],
+    *,
+    storage: StorageService | None = None,
+    run_id: str = "",
 ) -> tuple[list[str], list[tuple[str, str, str]], list[str]]:
     """WebSocket review of reasoner JSON specs.
 
@@ -252,34 +297,15 @@ async def review_reason(
             except (json.JSONDecodeError, OSError):
                 continue
 
-            spec_id = data.get("formulation_id", spec_file.stem)
-            paradigm = data.get("paradigm", "unknown")
-
-            if data.get("status") == "invalid":
-                specs_data.append(
-                    {
-                        "id": spec_id,
-                        "spec_id": spec_id,
-                        "paradigm": paradigm,
-                        "name": spec_id,
-                        "status": "invalid",
-                        "problems": data.get("problems", []),
-                        "full_spec": data,
-                    }
-                )
-            else:
-                specs_data.append(
-                    {
-                        "id": spec_id,
-                        "spec_id": spec_id,
-                        "paradigm": paradigm,
-                        "name": data.get("name", spec_file.stem),
-                        "description": data.get("description", ""),
-                        "variables": data.get("variables", []),
-                        "env_mapping": data.get("env_mapping", {}),
-                        "full_spec": data,
-                    }
-                )
+            specs_data.append(_reason_spec_payload(data, spec_file.stem))
+    elif storage is not None and run_id:
+        keys = await storage.list(f"models/{run_id}/reasoner/")
+        for key in sorted(k for k in keys if k.endswith(".json")):
+            try:
+                data = json.loads(await storage.get_text(key))
+            except Exception:
+                continue
+            specs_data.append(_reason_spec_payload(data, Path(key).stem))
 
     response = await wait_for_review(
         "review_reason",
@@ -309,6 +335,33 @@ async def review_reason(
         else:
             rejections.append((spec_id, paradigm, decision.get("feedback", "")))
     return approved, rejections, formalizer_reruns
+
+
+def _reason_spec_payload(data: dict, fallback_id: str) -> dict:
+    spec_id = data.get("formulation_id", fallback_id)
+    paradigm = data.get("paradigm", "unknown")
+
+    if data.get("status") == "invalid":
+        return {
+            "id": spec_id,
+            "spec_id": spec_id,
+            "paradigm": paradigm,
+            "name": spec_id,
+            "status": "invalid",
+            "problems": data.get("problems", []),
+            "full_spec": data,
+        }
+
+    return {
+        "id": spec_id,
+        "spec_id": spec_id,
+        "paradigm": paradigm,
+        "name": data.get("name", fallback_id),
+        "description": data.get("description", ""),
+        "variables": data.get("variables", []),
+        "env_mapping": data.get("env_mapping", {}),
+        "full_spec": data,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -353,16 +406,12 @@ async def review_build(
 
     # Add valid builds
     for slug, content in build_results.items():
-        lower = content.lower()
-        has_issues = any(
-            w in lower for w in ("error", "fail", "traceback", "exception")
-        )
         models_data.append(
             {
                 "slug": slug,
                 "code": content,
                 "test_results": content,
-                "passed": not has_issues,
+                "passed": _build_summary_passed(content),
             }
         )
 

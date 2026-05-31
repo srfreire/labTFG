@@ -393,13 +393,18 @@ async def _paradigm_reused(ctx: AssertionContext, slug: str) -> AssertionOutcome
         {"slug": slug},
         services=ctx.services,
     )
-    if not rows:
+    source = "live KG"
+    if rows:
+        paradigm_at = rows[0].get("created_at")
+    else:
+        paradigm_at = ctx.result.preexisting_paradigms.get(slug)
+        source = "run-start KG snapshot"
+    if not paradigm_at:
         return AssertionOutcome(
             name="paradigm_reused",
             passed=False,
             detail=f"paradigm {slug!r} not in KG",
         )
-    paradigm_at = rows[0].get("created_at")
     if not isinstance(paradigm_at, str):
         return AssertionOutcome(
             name="paradigm_reused",
@@ -411,7 +416,7 @@ async def _paradigm_reused(ctx: AssertionContext, slug: str) -> AssertionOutcome
         name="paradigm_reused",
         passed=passed,
         detail=(
-            f"paradigm {slug!r}: created_at={paradigm_at} "
+            f"paradigm {slug!r}: created_at={paradigm_at} ({source}) "
             f"{'<' if passed else '>='} run.started_at={started_at}"
         ),
     )
@@ -501,14 +506,15 @@ async def _module_imports(ctx: AssertionContext, spec_id: str) -> AssertionOutco
 @register("decide_returns_action")
 async def _decide_returns_action(ctx: AssertionContext, args: dict) -> AssertionOutcome:
     """Pass when ``module.<Class>().decide(perception)`` returns a value
-    that looks like an Action (string or dict with a 'kind'/'name' key).
+    that looks like an Action (string, dict, or object with a 'kind'/'name'
+    field).
 
     YAML::
 
         decide_returns_action:
           spec_id: rl-q-learning
           perception: { x: 0, y: 0, grid_width: 5, grid_height: 5,
-                        step: 0, resources: [], last_action_result: null }
+                        step: 0, resources: {food: []}, last_action_result: null }
     """
     spec_id = args.get("spec_id")
     perception = args.get("perception", {})
@@ -555,8 +561,11 @@ async def _decide_returns_action(ctx: AssertionContext, args: dict) -> Assertion
             passed=False,
             detail=f"decide() raised: {exc!r}",
         )
-    looks_like_action = isinstance(action, str) or (
-        isinstance(action, dict) and ("kind" in action or "name" in action)
+    looks_like_action = (
+        isinstance(action, str)
+        or (isinstance(action, dict) and ("kind" in action or "name" in action))
+        or isinstance(getattr(action, "kind", None), str)
+        or isinstance(getattr(action, "name", None), str)
     )
     return AssertionOutcome(
         name="decide_returns_action",

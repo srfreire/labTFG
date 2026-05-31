@@ -132,14 +132,17 @@ class TestCLIFeedbackDelegation:
 class TestWebFeedbackDelegation:
     @pytest.mark.asyncio
     async def test_review_research_passes_emit(self, tmp_path):
+        from unittest.mock import MagicMock
+
         emit = AsyncMock()
-        web = WebFeedback(emit)
+        storage = MagicMock()
+        web = WebFeedback(emit, storage=storage)
         with patch(
             "decisionlab.web_feedback.review_research",
             new=AsyncMock(return_value=([], None)),
         ) as mock:
             await web.review_research(tmp_path, run_id="r1")
-        mock.assert_awaited_once_with(tmp_path, emit)
+        mock.assert_awaited_once_with(tmp_path, emit, run_id="r1", storage=storage)
 
     @pytest.mark.asyncio
     async def test_review_formalize_passes_emit_and_run_id(self, tmp_path):
@@ -221,6 +224,63 @@ class TestAutoApproveResearch:
         assert approved == []
         assert additional is None
 
+    @pytest.mark.asyncio
+    async def test_filters_and_limits_discovered_slugs(self, tmp_path):
+        _make_research_dir(
+            tmp_path,
+            ["optimal-foraging-theory", "reinforcement-learning", "prospect-theory"],
+        )
+        auto = AutoApproveFeedback(
+            approved_paradigms=[
+                "reinforcement-learning",
+                "optimal-foraging-theory",
+            ],
+            max_paradigms=1,
+        )
+        approved, additional = await auto.review_research(tmp_path, run_id="r1")
+        assert approved == ["reinforcement-learning"]
+        assert additional is None
+
+    @pytest.mark.asyncio
+    async def test_synthesizes_missing_allowlisted_deep_report_from_summary(
+        self, tmp_path
+    ):
+        writes: dict[str, str] = {}
+
+        async def fake_list(prefix):
+            assert prefix == "research/run-x/deep/"
+            return ["research/run-x/deep/optimal-foraging-theory.md"]
+
+        async def fake_get_text(key):
+            assert key == "research/run-x/report.md"
+            return "# Summary\n\nQ-learning belongs to reinforcement learning."
+
+        async def fake_put_text(key, text):
+            writes[key] = text
+
+        storage = type(
+            "S",
+            (),
+            {
+                "list": staticmethod(fake_list),
+                "get_text": staticmethod(fake_get_text),
+                "put_text": staticmethod(fake_put_text),
+            },
+        )()
+        auto = AutoApproveFeedback(
+            storage=storage,
+            approved_paradigms=[
+                "reinforcement-learning",
+                "optimal-foraging-theory",
+            ],
+        )
+        approved, additional = await auto.review_research(tmp_path, run_id="run-x")
+        assert approved == ["reinforcement-learning", "optimal-foraging-theory"]
+        assert additional is None
+        key = "research/run-x/deep/reinforcement-learning.md"
+        assert key in writes
+        assert "Q-learning belongs to reinforcement learning" in writes[key]
+
 
 class TestAutoApproveFormalize:
     @pytest.mark.asyncio
@@ -248,6 +308,25 @@ class TestAutoApproveFormalize:
         auto = AutoApproveFeedback(storage=storage)
         result = await auto.review_formalize(tmp_path, ["missing"], run_id="r1")
         assert result == {"missing": []}
+
+    @pytest.mark.asyncio
+    async def test_limits_formulations_per_paradigm(self, tmp_path):
+        sample = (
+            "## Formulation 1: First\n"
+            "## Formulation 2: Second\n"
+            "## Formulation 3: Third\n"
+        )
+
+        async def fake_get_text(_key):
+            return sample
+
+        storage = type("S", (), {"get_text": staticmethod(fake_get_text)})()
+        auto = AutoApproveFeedback(
+            storage=storage,
+            max_formulations_per_paradigm=2,
+        )
+        result = await auto.review_formalize(tmp_path, ["foo"], run_id="r1")
+        assert result == {"foo": [1, 2]}
 
 
 class TestAutoApproveEnvSpec:
@@ -280,6 +359,73 @@ class TestAutoApproveEnvSpec:
 
 
 class TestAutoApproveReason:
+    @pytest.mark.asyncio
+    async def test_falls_back_to_s3_reasoner_specs(self, tmp_path):
+        objects = {
+            "models/run-x/reasoner/rl/q-learning.json": json.dumps(
+                {"formulation_id": "q-learning", "status": "valid"}
+            ),
+            "models/run-x/reasoner/oft/foraging.json": json.dumps(
+                {"formulation_id": "foraging"}
+            ),
+        }
+
+        async def fake_list(prefix):
+            assert prefix == "models/run-x/reasoner/"
+            return [
+                "models/run-x/reasoner/rl/q-learning.json",
+                "models/run-x/reasoner/oft/foraging.json",
+                "models/run-x/reasoner/ignored.txt",
+            ]
+
+        async def fake_get_text(key):
+            return objects[key]
+
+        storage = type(
+            "S",
+            (),
+            {
+                "list": staticmethod(fake_list),
+                "get_text": staticmethod(fake_get_text),
+            },
+        )()
+        auto = AutoApproveFeedback(storage=storage, run_id="run-x")
+        approved, rejections, reruns = await auto.review_reason(tmp_path)
+        assert approved == ["foraging", "q-learning"]
+        assert rejections == []
+        assert reruns == []
+
+    @pytest.mark.asyncio
+    async def test_s3_reasoner_fallback_skips_invalid_specs(self, tmp_path):
+        objects = {
+            "models/run-x/reasoner/rl/ok.json": json.dumps(
+                {"formulation_id": "ok", "status": "valid"}
+            ),
+            "models/run-x/reasoner/rl/bad.json": json.dumps(
+                {"formulation_id": "bad", "status": "invalid"}
+            ),
+        }
+
+        async def fake_list(_prefix):
+            return list(objects)
+
+        async def fake_get_text(key):
+            return objects[key]
+
+        storage = type(
+            "S",
+            (),
+            {
+                "list": staticmethod(fake_list),
+                "get_text": staticmethod(fake_get_text),
+            },
+        )()
+        auto = AutoApproveFeedback(storage=storage, run_id="run-x")
+        approved, rejections, reruns = await auto.review_reason(tmp_path)
+        assert approved == ["ok"]
+        assert rejections == []
+        assert reruns == []
+
     @pytest.mark.asyncio
     async def test_skips_invalid_specs_keeps_valid(self, tmp_path):
         _make_reasoner_dir(

@@ -6,6 +6,9 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
+from botocore.exceptions import ClientError
+
+from decisionlab.tools.reports import sanitize_markdown_artifact
 from shared.artifacts import register_artifact
 
 if TYPE_CHECKING:
@@ -58,7 +61,16 @@ def create_read_file(
     s3_prefix: str,
     *,
     storage: StorageService,
+    fallback_prefixes: tuple[str, ...] = (),
 ) -> Callable[[dict], Awaitable[str]]:
+    def is_missing_object(exc: Exception) -> bool:
+        if isinstance(exc, FileNotFoundError):
+            return True
+        if isinstance(exc, ClientError):
+            code = exc.response.get("Error", {}).get("Code")
+            return code in {"404", "NoSuchKey", "NotFound"}
+        return False
+
     async def read_file(params: dict) -> str:
         if "path" not in params:
             raise ValueError("read_file requires 'path' parameter")
@@ -66,8 +78,21 @@ def create_read_file(
         # Path traversal guard
         if ".." in path or path.startswith("/"):
             raise ValueError(f"Invalid path: {path}")
-        key = f"{s3_prefix}/{path}"
-        return await storage.get_text(key)
+        prefixes = (s3_prefix, *fallback_prefixes)
+        first_missing: Exception | None = None
+        for prefix in prefixes:
+            key = f"{prefix}/{path}"
+            try:
+                return await storage.get_text(key)
+            except Exception as exc:
+                if not is_missing_object(exc):
+                    raise
+                if first_missing is None:
+                    first_missing = exc
+                continue
+        if first_missing is not None:
+            raise first_missing
+        raise FileNotFoundError(path)
 
     return read_file
 
@@ -88,6 +113,8 @@ def create_write_file(
         content = params["content"]
         if ".." in path or path.startswith("/"):
             raise ValueError(f"Invalid path: {path}")
+        if path.endswith(".md"):
+            content = sanitize_markdown_artifact(content)
         key = f"{s3_prefix}/{path}"
         await storage.put_text(key, content)
         if run_id:

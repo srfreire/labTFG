@@ -54,22 +54,14 @@ async def test_deep_researcher_run_returns_summary():
     summary_response = MagicMock()
     summary_response.content = [summary_block]
 
-    # Loop runs at 32k → stream; summary at 300 tokens → create.
-    # streaming_client wires both paths against a shared queue.
-    from tests.agents.conftest import StreamCM
-
     client = AsyncMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: StreamCM(loop_response)
-    )
-    client.messages.create = AsyncMock(return_value=summary_response)
+    client.messages.create = AsyncMock(side_effect=[loop_response, summary_response])
 
     dr = DeepResearcher(client=client, search=MockWebSearch())
     result = await dr.run("Homeostatic regulation")
 
     assert "Homeostatic" in result
-    assert client.messages.stream.call_count == 1
-    assert client.messages.create.call_count == 1
+    assert client.messages.create.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -89,13 +81,8 @@ async def test_deep_researcher_saves_report_to_s3():
     summary_response = MagicMock()
     summary_response.content = [summary_block]
 
-    from tests.agents.conftest import StreamCM
-
     client = AsyncMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: StreamCM(loop_response)
-    )
-    client.messages.create = AsyncMock(return_value=summary_response)
+    client.messages.create = AsyncMock(side_effect=[loop_response, summary_response])
 
     storage = MagicMock()
     db = MagicMock()
@@ -131,18 +118,14 @@ async def test_deep_researcher_empty_report_returns_early():
     loop_response.stop_reason = "end_turn"
     loop_response.content = [text_block]
 
-    from tests.agents.conftest import StreamCM
-
     client = AsyncMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: StreamCM(loop_response)
-    )
+    client.messages.create = AsyncMock(return_value=loop_response)
 
     dr = DeepResearcher(client=client, search=MockWebSearch())
     result = await dr.run("Empty paradigm")
 
     assert "No results found" in result
-    assert client.messages.stream.call_count == 1
+    assert client.messages.create.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -156,12 +139,8 @@ async def test_deep_researcher_empty_report_no_s3_save():
     loop_response.stop_reason = "end_turn"
     loop_response.content = [text_block]
 
-    from tests.agents.conftest import StreamCM
-
     client = AsyncMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: StreamCM(loop_response)
-    )
+    client.messages.create = AsyncMock(return_value=loop_response)
 
     dr = DeepResearcher(client=client, search=MockWebSearch(), run_id="run-1")
 
@@ -183,14 +162,10 @@ async def test_deep_researcher_summary_fallback_on_api_error():
     loop_response.stop_reason = "end_turn"
     loop_response.content = [text_block]
 
-    # Loop streams (32k) → loop_response; summary creates (300) → API error.
-    from tests.agents.conftest import StreamCM
-
     client = AsyncMock()
-    client.messages.stream = MagicMock(
-        side_effect=lambda **_kw: StreamCM(loop_response)
+    client.messages.create = AsyncMock(
+        side_effect=[loop_response, Exception("API error")]
     )
-    client.messages.create = AsyncMock(side_effect=Exception("API error"))
 
     dr = DeepResearcher(client=client, search=MockWebSearch())
     result = await dr.run("Failing paradigm")

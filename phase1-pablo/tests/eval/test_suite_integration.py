@@ -100,7 +100,9 @@ class TestSuiteAgainstLiveKG:
             "decisionlab.eval.suite.run_pipeline",
             new=AsyncMock(side_effect=_stub),
         ):
-            result = await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            result = await run_suite(
+                spec, services=live_infra, client=AsyncMock(), search=AsyncMock()
+            )
 
         # Pre-stats should be 0 (we wiped right before).
         assert result.pre_stats is not None
@@ -138,7 +140,9 @@ class TestSuiteAgainstLiveKG:
             "decisionlab.eval.suite.run_pipeline",
             new=AsyncMock(side_effect=_stub_that_writes),
         ):
-            result = await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            result = await run_suite(
+                spec, services=live_infra, client=AsyncMock(), search=AsyncMock()
+            )
 
         assert result.pre_stats.total_nodes == 1
         assert result.post_stats.total_nodes == 2  # 1 existing + 1 written by stub
@@ -173,7 +177,9 @@ class TestSuiteAgainstLiveKG:
             "decisionlab.eval.suite.run_pipeline",
             new=AsyncMock(side_effect=_stub_writes_paradigms),
         ):
-            result = await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            result = await run_suite(
+                spec, services=live_infra, client=AsyncMock(), search=AsyncMock()
+            )
 
         topic_result = result.topic_results[0]
         # We wrote 3 Paradigm nodes; the assertion checks ≥ 2.
@@ -209,7 +215,9 @@ class TestSuiteAgainstLiveKG:
             "decisionlab.eval.suite.run_pipeline",
             new=AsyncMock(side_effect=_stub),
         ):
-            result = await run_suite(spec, client=AsyncMock(), search=AsyncMock())
+            result = await run_suite(
+                spec, services=live_infra, client=AsyncMock(), search=AsyncMock()
+            )
 
         topic_result = result.topic_results[0]
         assert not topic_result.assertions["research"][0].passed

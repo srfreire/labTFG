@@ -56,6 +56,17 @@ def slugify(name: str) -> str:
     return hyphenated.strip("-")
 
 
+_MARKDOWN_TITLE_RE = re.compile(r"(?m)^#\s+")
+
+
+def sanitize_markdown_artifact(content: str) -> str:
+    """Trim assistant scratch text before the first Markdown H1."""
+    match = _MARKDOWN_TITLE_RE.search(content)
+    if match and match.start() > 0:
+        content = content[match.start() :]
+    return content.strip() + "\n"
+
+
 def create_read_report(
     run_id: str,
     *,
@@ -85,6 +96,7 @@ async def save_deep_report(
     """Save a deep research report to S3. Returns the S3 key."""
     slug = slugify(paradigm)
     key = f"research/{run_id}/deep/{slug}.md"
+    content = sanitize_markdown_artifact(content)
     await storage.put_text(key, content)
     await _register_artifact(
         key, "deep_report", len(content.encode()), run_id=run_id, db=db
@@ -102,6 +114,7 @@ async def save_summary_report(
 ) -> str:
     """Save the final research summary to S3. Returns the S3 key."""
     key = f"research/{run_id}/report.md"
+    summary = sanitize_markdown_artifact(summary)
     await storage.put_text(key, summary)
     await _register_artifact(key, "report", len(summary.encode()), run_id=run_id, db=db)
     logger.info("Saved summary report: %s", key)

@@ -81,7 +81,6 @@ async def test_researcher_run_returns_research_report(streaming_client):
 
     response = _make_response("end_turn", [text_block])
 
-    # Researcher runs at max_tokens=32k → streaming path in run_agent_loop.
     client = streaming_client(response)
 
     r = Researcher(client=client, search=MockWebSearch())
@@ -110,12 +109,9 @@ async def test_researcher_accumulates_deep_reports(streaming_client):
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
 
-    # Both Researcher's own loop and DeepResearcher's loop run at 32k → stream.
-    # The DeepResearcher summary call (300 tokens) still uses create.
-    #   stream: [tool_response, deep_loop_response, final_response]
-    #   create: [deep_summary_response]
-    client = streaming_client([tool_response, deep_loop_response, final_response])
-    client.messages.create.side_effect = [deep_summary_response]
+    client = streaming_client(
+        [tool_response, deep_loop_response, deep_summary_response, final_response]
+    )
 
     r = Researcher(client=client, search=MockWebSearch())
     report = await r.run("food intake")
@@ -142,8 +138,9 @@ async def test_researcher_populates_paradigms_from_deep_reports(streaming_client
     deep_summary_response = MagicMock()
     deep_summary_response.content = [deep_summary_text]
 
-    client = streaming_client([tool_response, deep_loop_response, final_response])
-    client.messages.create.side_effect = [deep_summary_response]
+    client = streaming_client(
+        [tool_response, deep_loop_response, deep_summary_response, final_response]
+    )
 
     with (
         patch(

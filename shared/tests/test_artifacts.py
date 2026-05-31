@@ -117,6 +117,29 @@ async def test_register_artifact_no_links(session, db_global):
 
 
 @pytest.mark.asyncio
+async def test_register_artifact_duplicate_key_updates_metadata(session, db_global):
+    """Re-registering the same S3 key updates metadata instead of failing."""
+    s3_key = f"artifacts/rewrite-{uuid.uuid4()}.txt"
+    await register_artifact(
+        s3_key=s3_key,
+        artifact_type="model",
+        size_bytes=10,
+        db=db_global,
+    )
+    await register_artifact(
+        s3_key=s3_key,
+        artifact_type="test",
+        size_bytes=20,
+        db=db_global,
+    )
+
+    result = await session.execute(select(Artifact).where(Artifact.s3_key == s3_key))
+    fetched = result.scalar_one()
+    assert fetched.artifact_type == "test"
+    assert fetched.size_bytes == 20
+
+
+@pytest.mark.asyncio
 async def test_register_artifact_string_uuids_converted(session, db_global):
     """run_id/experiment_id may be passed as strings; they're converted to UUID."""
     run = Run(problem_description="conv", s3_prefix="r/")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -368,6 +369,41 @@ async def test_extract_failure_returns_empty_result(
     m_idx.assert_not_awaited()
     m_resolve.assert_not_awaited()
     assert result.nodes_created == 0
+
+
+@pytest.mark.asyncio
+async def test_extract_timeout_returns_failed_result(
+    mock_client, mock_kg, mock_vectors, mock_embeddings, mock_db, monkeypatch
+):
+    """A hung extraction call must not block the pipeline indefinitely."""
+    import decisionlab.agents.memory_agent as memory_agent
+    from decisionlab.agents.memory_agent import MemoryAgent
+
+    async def _never_returns(*args, **kwargs):
+        await asyncio.sleep(10)
+
+    agent = MemoryAgent(
+        client=mock_client,
+        kg=mock_kg,
+        vector_store=mock_vectors,
+        embedding_service=mock_embeddings,
+        db=mock_db,
+    )
+
+    monkeypatch.setattr(memory_agent, "_EXTRACTION_TIMEOUT_SECONDS", 0.01)
+    with (
+        patch(f"{_PATCH_BASE}.extract", side_effect=_never_returns),
+        _patch_populate_kg(_make_kg_result()) as m_kg,
+        _patch_index(_make_index_result()) as m_idx,
+        _patch_resolve(_make_resolution_result()) as m_resolve,
+    ):
+        result = await agent.run("researcher", "text", "run-1")
+
+    m_kg.assert_not_awaited()
+    m_idx.assert_not_awaited()
+    m_resolve.assert_not_awaited()
+    assert result.failed
+    assert result.error == "extraction: timed out"
     assert result.facts_stored == 0
 
 

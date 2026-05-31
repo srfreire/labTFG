@@ -78,7 +78,13 @@ class _FakeResearcher:
             from decisionlab.tools.reports import save_deep_report
 
             for slug, content in deep_reports.items():
-                await save_deep_report(self.run_id, slug, content)
+                await save_deep_report(
+                    self.run_id,
+                    slug,
+                    content,
+                    storage=_live_services.storage,
+                    db=_live_services.db,
+                )
         return ResearchReport(
             paradigms=[
                 Paradigm(id="rl", name="Reinforcement learning", description=""),
@@ -134,6 +140,7 @@ class TestRunPipelineE2E:
         ):
             result = await run_pipeline(
                 "Foraging in uncertain environments",
+                services=services,
                 stages=[Stage.RESEARCH],
                 project_root=tmp_path,
                 client=MagicMock(),
@@ -178,6 +185,7 @@ class TestRunPipelineE2E:
         ):
             await run_pipeline(
                 "topic-x",
+                services=services,
                 stages=[Stage.RESEARCH],
                 project_root=tmp_path,
                 client=MagicMock(),
@@ -211,6 +219,7 @@ class TestRunPipelineE2E:
         ):
             await run_pipeline(
                 "topic-a",
+                services=services,
                 stages=[Stage.RESEARCH],
                 project_root=tmp_path,
                 client=MagicMock(),
@@ -220,6 +229,7 @@ class TestRunPipelineE2E:
             )
             await run_pipeline(
                 "topic-b",
+                services=services,
                 stages=[Stage.RESEARCH],
                 project_root=tmp_path,
                 client=MagicMock(),

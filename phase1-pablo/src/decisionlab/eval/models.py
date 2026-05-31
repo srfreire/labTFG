@@ -46,6 +46,10 @@ class PipelineRunResult:
     # ``paradigm_reused`` to distinguish "this run minted the node" from
     # "this run hit an existing node".
     started_at: str = ""
+    # Snapshot of Paradigm.slug -> created_at taken immediately before the
+    # router starts. KG assertions can use this if the live graph changes
+    # before assertion evaluation.
+    preexisting_paradigms: dict[str, str] = field(default_factory=dict)
     # Per-stage durations captured by ``eval.timing.record_stage`` while the
     # router was running. ``None`` for legacy callers that construct a
     # ``PipelineRunResult`` without going through ``run_pipeline``.
