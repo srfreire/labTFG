@@ -28,6 +28,9 @@ WORKDIR /app
 # Copy shared package first (dependency layer)
 COPY shared/ /app/shared/
 
+# Copy Phase 1 modules used by Phase 2 recall/retrieval enrichment.
+COPY phase1-pablo/src/ /app/phase1-pablo/src/
+
 # Copy Phase 2 source
 COPY phase2-juan/ /app/phase2-juan/
 
@@ -52,7 +55,8 @@ COPY --from=tectonic-builder /usr/local/cargo/bin/tectonic /usr/local/bin/tecton
 WORKDIR /app
 COPY --from=builder /app /app
 
-ENV PATH="/app/phase2-juan/.venv/bin:$PATH"
+ENV PATH="/app/phase2-juan/.venv/bin:$PATH" \
+    PYTHONPATH="/app/phase1-pablo/src"
 
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "simlab.api:app", "--host", "0.0.0.0", "--port", "8000"]
