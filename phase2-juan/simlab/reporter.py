@@ -12,10 +12,12 @@ Flow:
 from __future__ import annotations
 
 import asyncio
+from io import BytesIO
 import json
 import logging
 import re
 import subprocess
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,8 +39,6 @@ def _fix_markdown_in_latex(content: str) -> str:
     """Convert Markdown remnants to valid LaTeX"""
     # **bold** → \textbf{bold}
     content = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", content)
-    # *italic* → \textit{italic}
-    content = re.sub(r"\*(.+?)\*", r"\\textit{\1}", content)
     # `code` → \texttt{code}
     content = re.sub(r"`([^`]+)`", r"\\texttt{\1}", content)
     return content
@@ -47,10 +47,148 @@ def _fix_markdown_in_latex(content: str) -> str:
 def _prepare_latex_body(content: str) -> str:
     """Normalize LLM-produced report body before injecting it into the template."""
     content = _fix_markdown_in_latex(content)
-    content = re.sub(r"</?(?:antml:[^>]+|invoke)(?:\s[^>]*)?>", "", content)
+    content = _flatten_text_commands(content)
+    content = re.sub(r"(?m)^.*(?:antml:parameter|</?invoke\b).*$", "", content)
+    content = re.sub(r"\\(?:begin|end)\{content\}", "", content)
+    content = re.sub(
+        r"\$\$(.*?\\tag\{[^{}]+\}.*?)\$\$",
+        lambda match: "\\begin{equation}\n"
+        + match.group(1).strip()
+        + "\n\\end{equation}",
+        content,
+        flags=re.DOTALL,
+    )
+    content = _strip_unbalanced_text_commands(content)
+    content = _wrap_table_rows_starting_with_brackets(content)
+    content = _escape_unmatched_closing_braces(content)
     content = re.sub(r"\\begin\{document\}", "", content)
     content = re.sub(r"\\end\{document\}", "", content)
     return content.strip()
+
+
+def _escape_unmatched_closing_braces(content: str) -> str:
+    """Escape stray closing braces from raw model/debug text."""
+    return "\n".join(
+        _escape_unmatched_closing_braces_in_line(line)
+        for line in content.splitlines()
+    )
+
+
+def _escape_unmatched_closing_braces_in_line(content: str) -> str:
+    balance = 0
+    output: list[str] = []
+    for index, char in enumerate(content):
+        if char == "{":
+            balance += 1
+            output.append(char)
+        elif char == "}":
+            if index > 0 and content[index - 1] == "\\":
+                output.append(char)
+            elif balance > 0:
+                balance -= 1
+                output.append(char)
+            else:
+                output.append(r"\}")
+        else:
+            output.append(char)
+    return "".join(output)
+
+
+def _strip_unbalanced_text_commands(content: str) -> str:
+    """Drop fragile inline styling on lines whose braces are already broken."""
+    fixed_lines = []
+    for line in content.splitlines():
+        brace_delta = _unescaped_brace_delta(line)
+        if (
+            re.search(r"\\text(?:bf|it|tt)\{", line)
+            and brace_delta > 0
+        ):
+            line = re.sub(r"\\text(?:bf|it|tt)\{", "", line)
+        fixed_lines.append(line)
+    return "\n".join(fixed_lines)
+
+
+def _flatten_text_commands(content: str) -> str:
+    """Preserve text while removing fragile inline LaTeX styling commands."""
+    previous = None
+    while previous != content:
+        previous = content
+        content = re.sub(r"\\text(?:bf|it|tt)\{([^{}]*)\}", r"\1", content)
+    return re.sub(r"\\text(?:bf|it|tt)\{", "", content)
+
+
+def _wrap_table_rows_starting_with_brackets(content: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        indent, cell = match.groups()
+        return f"{indent}{{{cell}}} &"
+
+    return re.sub(r"(?m)^(\s*)(\[[^\n&]+])\s*&", replace, content)
+
+
+def _unescaped_brace_delta(text: str) -> int:
+    delta = 0
+    for index, char in enumerate(text):
+        if index > 0 and text[index - 1] == "\\":
+            continue
+        if char == "{":
+            delta += 1
+        elif char == "}":
+            delta -= 1
+    return delta
+
+
+def _latex_body_to_plain_text(content: str) -> str:
+    """Best-effort text extraction for the standard PDF fallback."""
+    text = content
+    text = re.sub(r"\\(?:sub)*section\*?\{([^{}]*)\}", r"\n\n\1\n", text)
+    text = re.sub(r"\\(?:textbf|textit|texttt)\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\\includegraphics(?:\[[^\]]*\])?\{[^{}]*\}", "", text)
+    text = re.sub(r"\\(?:begin|end)\{[^{}]*\}", "\n", text)
+    text = re.sub(r"\\\\", "\n", text)
+    text = re.sub(r"\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{([^{}]*)\})?", r"\1", text)
+    text = text.replace(r"\_", "_").replace(r"\%", "%").replace(r"\&", "&")
+    text = re.sub(r"[{}$]", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip() or "Informe generado en formato estándar."
+
+
+def _build_standard_pdf(content: str, title: str) -> bytes:
+    """Render a simple local PDF when LaTeX compilation is unavailable."""
+    from matplotlib.backends.backend_pdf import PdfPages
+    import matplotlib.pyplot as plt
+
+    plain = _latex_body_to_plain_text(content)
+    wrapped_lines: list[str] = []
+    for paragraph in plain.splitlines():
+        if not paragraph.strip():
+            wrapped_lines.append("")
+            continue
+        wrapped_lines.extend(textwrap.wrap(paragraph, width=92) or [""])
+
+    lines_per_page = 42
+    pages = [
+        wrapped_lines[i : i + lines_per_page]
+        for i in range(0, len(wrapped_lines), lines_per_page)
+    ] or [["Informe generado en formato estándar."]]
+
+    buffer = BytesIO()
+    with PdfPages(buffer) as pdf:
+        for page_number, page_lines in enumerate(pages, start=1):
+            fig = plt.figure(figsize=(8.27, 11.69))
+            fig.text(0.08, 0.95, title, fontsize=16, weight="bold", va="top")
+            fig.text(
+                0.08,
+                0.90,
+                "\n".join(page_lines),
+                fontsize=10,
+                va="top",
+                family="monospace",
+                linespacing=1.35,
+            )
+            fig.text(0.92, 0.04, str(page_number), fontsize=9, ha="right")
+            pdf.savefig(fig, bbox_inches="tight")
+            plt.close(fig)
+    return buffer.getvalue()
 
 
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
@@ -389,6 +527,24 @@ class Reporter:
                 local_name = ck.split("/")[-1]
                 (Path(tmp) / local_name).write_bytes(png_data)
 
+            async def store_standard_pdf(errors: list[str]) -> str:
+                logger.warning(
+                    "compile_report using standard PDF fallback "
+                    "(attempt %d): %s",
+                    compile_state["attempts"],
+                    errors[:3],
+                )
+                fallback_content = (
+                    "\\section{Aviso de compilación}\n"
+                    "La compilación LaTeX detallada no se pudo completar. "
+                    "Este PDF usa un formato estándar con el contenido del informe.\n\n"
+                    + content
+                )
+                pdf_bytes = _build_standard_pdf(
+                    fallback_content, f"DecisionLab - {safe_name}"
+                )
+                return await store_outputs(pdf_bytes)
+
             try:
                 result = subprocess.run(
                     ["tectonic", str(tex_path)],
@@ -412,10 +568,16 @@ class Reporter:
                     # Keep tmp dir on failure so the .tex + tectonic stderr are
                     # available for post-mortem debugging.
                     if result.returncode != 0:
+                        pdf_key = await store_standard_pdf(
+                            error_lines[:10] if error_lines else [result.stderr[-500:]]
+                        )
+                        shutil.rmtree(tmp, ignore_errors=True)
                         return json.dumps(
                             {
-                                "success": False,
-                                "errors": error_lines[:10]
+                                "success": True,
+                                "pdf_path": pdf_key,
+                                "fallback": "standard",
+                                "warnings": error_lines[:10]
                                 if error_lines
                                 else [result.stderr[-500:]],
                             }
@@ -426,14 +588,26 @@ class Reporter:
                 shutil.rmtree(tmp, ignore_errors=True)
                 return json.dumps({"success": True, "pdf_path": pdf_key})
             except FileNotFoundError:
+                pdf_key = await store_standard_pdf(["'tectonic' not installed"])
                 shutil.rmtree(tmp, ignore_errors=True)
                 return json.dumps(
-                    {"success": False, "errors": ["'tectonic' not installed"]}
+                    {
+                        "success": True,
+                        "pdf_path": pdf_key,
+                        "fallback": "standard",
+                        "warnings": ["'tectonic' not installed"],
+                    }
                 )
             except subprocess.TimeoutExpired:
+                pdf_key = await store_standard_pdf(["Compilation timed out"])
                 shutil.rmtree(tmp, ignore_errors=True)
                 return json.dumps(
-                    {"success": False, "errors": ["Compilation timed out"]}
+                    {
+                        "success": True,
+                        "pdf_path": pdf_key,
+                        "fallback": "standard",
+                        "warnings": ["Compilation timed out"],
+                    }
                 )
 
         tools: list[dict] = [READ_RESEARCH_TOOL, COMPILE_REPORT_TOOL]
