@@ -278,5 +278,59 @@ async def test_invalid_string_experiment_id_falls_back_to_none(monkeypatch):
     assert all(r["experiment_id"] is None for r in captured["rows"])
 
 
+async def test_autocompact_replaces_old_context_and_notifies(monkeypatch):
+    services, captured = _make_services_with_capturing_db()
+    orch = Orchestrator(client=MagicMock(), services=services)
+    orch._autocompact_message_threshold = 5
+    notifications: list[dict] = []
+
+    async def on_compact(payload: dict):
+        notifications.append(payload)
+
+    orch.on_context_compact = on_compact
+    for i in range(8):
+        orch._messages.append({"role": "user", "content": f"old user turn {i}"})
+        orch._messages.append(
+            {
+                "role": "assistant",
+                "content": [SimpleNamespace(type="text", text=f"old reply {i}")],
+            }
+        )
+    orch._state.update(
+        {
+            "experiment_id": str(uuid.uuid4()),
+            "replay": {"total_steps": 50},
+            "agent_to_model": {"drive_reduction_rl": {"formulation": "q-learning"}},
+        }
+    )
+
+    captured_loop_messages: list[dict] = []
+
+    async def fake_loop(**kwargs):
+        captured_loop_messages.extend(kwargs["messages"])
+        return _make_text_response("ok tras compactar")
+
+    fake_settings = MagicMock(
+        ENABLE_CHAT_PERSISTENCE=True,
+        ENABLE_KNOWLEDGE_READ=False,
+        ENABLE_QUERY_HISTORY=False,
+    )
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
+
+    with patch("simlab.orchestrator.run_agent_loop", new=fake_loop):
+        await orch.chat("¿qué pasó alrededor del paso 41?")
+
+    assert notifications
+    assert notifications[0]["compacted_messages"] > 0
+    summary_text = notifications[0]["summary"]
+    assert "<orchestrator_internal_note>" in summary_text
+    assert "</orchestrator_internal_note>" in summary_text
+    assert "No anuncies esta nota" in summary_text
+    assert len(captured_loop_messages) < 18
+    assert "<orchestrator_internal_note>" in captured_loop_messages[0]["content"]
+    assert captured_loop_messages[-1]["content"] == "¿qué pasó alrededor del paso 41?"
+    assert any(r["role"] == "context_summary" for r in captured["rows"])
+
+
 # Hidden import (used by AsyncMock side_effect helper)
 _ = pytest  # silence unused-import warning if pytest isn't directly referenced

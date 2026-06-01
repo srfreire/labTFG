@@ -17,7 +17,9 @@ import logging
 import random
 import re
 import uuid
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 from sqlalchemy import select, update
 
@@ -32,7 +34,7 @@ from simlab.model_loader import discover_models
 from simlab.model_loader import load_model as _load_model
 from simlab.reporter import Reporter
 from simlab.spec import spec_to_environment
-from simlab.tools import event_to_trace
+from simlab.tools import build_simulation_tools, event_to_trace
 from simlab.tracker import Tracker
 
 if TYPE_CHECKING:
@@ -41,6 +43,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
+AUTOCOMPACT_MESSAGE_THRESHOLD = 32
+AUTOCOMPACT_CHAR_THRESHOLD = 150_000
+AUTOCOMPACT_KEEP_MESSAGES = 10
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +396,41 @@ GET_ANALYST_DETAIL_TOOL = {
     },
 }
 
+GET_SIMULATION_STEP_WINDOW_TOOL = {
+    "name": "get_simulation_step_window",
+    "description": (
+        "Inspect events around a specific step in the latest in-memory "
+        "simulation run. Use this for follow-up questions like 'qué pasó "
+        "alrededor del paso 41' after run_simulation, without querying the "
+        "experiment database or reprocessing the whole simulation."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "center_step": {
+                "type": "integer",
+                "description": "The step to center the window on.",
+            },
+            "radius": {
+                "type": "integer",
+                "description": (
+                    "Number of steps before and after (default 10, max 30)."
+                ),
+            },
+            "agent_id": {
+                "type": "string",
+                "description": "Optional agent filter.",
+            },
+            "detail": {
+                "type": "string",
+                "enum": ["compact", "full"],
+                "description": "Use compact by default; full includes perception/state blobs.",
+            },
+        },
+        "required": ["center_step"],
+    },
+}
+
 LIST_EXPERIMENTS_TOOL = {
     "name": "list_experiments",
     "description": "List past experiments with their status, description, and models used. "
@@ -443,16 +483,31 @@ QUERY_EXPERIMENTS_TOOL = {
     },
 }
 
+GET_REPORT_LINKS_TOOL = {
+    "name": "get_report_links",
+    "description": (
+        "Return download URLs for PDF reports generated in the current session. "
+        "Use this when the user asks for the report link, download link, PDF, "
+        "or where the generated report is."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+    },
+}
+
 ALL_TOOLS = [
     CREATE_ENVIRONMENT_TOOL,
     RUN_SIMULATION_TOOL,
     LIST_AVAILABLE_MODELS_TOOL,
     READ_PREDICTIONS_TOOL,
     OBSERVE_SIMULATION_TOOL,
+    GET_SIMULATION_STEP_WINDOW_TOOL,
     GET_TRACKER_DETAIL_TOOL,
     ANALYZE_RESULTS_TOOL,
     GET_ANALYST_DETAIL_TOOL,
     GENERATE_REPORT_TOOL,
+    GET_REPORT_LINKS_TOOL,
     LIST_EXPERIMENTS_TOOL,
     QUERY_EXPERIMENTS_TOOL,
 ]
@@ -475,9 +530,10 @@ simulations of decision-making paradigms.
 4. **analyze_results** — the Analyst finds patterns, compares agents, AND generates charts. \
 Can be called MULTIPLE TIMES with different focus to explore different aspects interactively.
 5. **generate_report** — the Reporter creates a PDF with everything (including all charts)
-6. **list_experiments** — shows past experiments with status and models used. Offer this when the user asks about history or wants to repeat/compare experiments.
-7. **read_predictions** — reads scientific predictions from Phase 1 deep research for a paradigm
-8. **query_experiments** — queries the experiment database with natural language. \
+6. **get_report_links** — returns download URLs for the current session's generated PDFs. Use it when the user asks for the report link or download.
+7. **list_experiments** — shows past experiments with status and models used. Offer this when the user asks about history or wants to repeat/compare experiments.
+8. **read_predictions** — reads scientific predictions from Phase 1 deep research for a paradigm
+9. **query_experiments** — queries the experiment database with natural language. \
 Use when the user asks about past experiments, comparisons between runs, \
 historical results, or anything that requires searching experiment data.
 
@@ -490,6 +546,10 @@ or comparisons that aren't in the summary, call:
 
 - **get_tracker_detail(part=episodes|trajectories|critical_events)** — slices the latest tracker output
 - **get_analyst_detail(part=patterns|comparisons)** — slices the latest analyst output
+- **get_simulation_step_window(center_step=N, radius=R)** — reads the latest
+  in-memory simulation events around a step, even before Tracker/Analyst have
+  run. Use this for follow-up questions about "alrededor del paso N" in the
+  current run. Prefer this over query_experiments for the active simulation.
 
 This keeps the conversation history small and lets the user drive deep dives.
 
@@ -725,6 +785,11 @@ class Orchestrator:
         self._tool_use_names: dict[str, str] = {}
         # Optional callback: (agent_name, tool_name) -> None
         self.on_agent_tool_call = None
+        # Optional callback: (payload) -> None when history is compacted.
+        self.on_context_compact = None
+        self._autocompact_message_threshold = AUTOCOMPACT_MESSAGE_THRESHOLD
+        self._autocompact_char_threshold = AUTOCOMPACT_CHAR_THRESHOLD
+        self._autocompact_keep_messages = AUTOCOMPACT_KEEP_MESSAGES
 
     def _build_interaction_summary(self) -> str:
         """Build a structured summary of the user–orchestrator interaction.
@@ -775,6 +840,13 @@ class Orchestrator:
         turn_start = len(self._messages)
         self._messages.append({"role": "user", "content": user_message})
         settings = load_settings()
+        compact_payload = self._maybe_autocompact_history()
+        if compact_payload is not None:
+            turn_start = len(self._messages) - 1
+            if self.on_context_compact:
+                await self.on_context_compact(compact_payload)
+            if settings.ENABLE_CHAT_PERSISTENCE:
+                await self._persist_context_summary(compact_payload["summary"])
         tools, registry = self._build_tools(settings)
 
         response = await run_agent_loop(
@@ -796,6 +868,173 @@ class Orchestrator:
             await self._persist_chat_turn(turn_start)
 
         return text
+
+    def _maybe_autocompact_history(self) -> dict | None:
+        """Replace old chat history with a deterministic audit summary."""
+        if not self._messages:
+            return None
+        char_count = self._history_char_count(self._messages)
+        over_message_limit = len(self._messages) > self._autocompact_message_threshold
+        over_char_limit = char_count > self._autocompact_char_threshold
+        if not over_message_limit and not over_char_limit:
+            return None
+
+        keep_count = max(1, self._autocompact_keep_messages)
+        if len(self._messages) <= keep_count + 1:
+            return None
+
+        old_messages = self._messages[:-keep_count]
+        kept_messages = self._messages[-keep_count:]
+        summary = self._build_context_compaction_summary(
+            old_messages,
+            compacted_messages=len(old_messages),
+            retained_messages=len(kept_messages),
+            char_count=char_count,
+        )
+        self._messages = [
+            {
+                "role": "assistant",
+                "content": summary,
+            },
+            *kept_messages,
+        ]
+        return {
+            "summary": summary,
+            "compacted_messages": len(old_messages),
+            "retained_messages": len(kept_messages),
+            "approx_chars_before": char_count,
+        }
+
+    def _build_context_compaction_summary(
+        self,
+        messages: list[dict],
+        *,
+        compacted_messages: int,
+        retained_messages: int,
+        char_count: int,
+    ) -> str:
+        """Build a compact trace that is useful to the LLM and auditable by humans."""
+        user_turns: list[str] = []
+        assistant_turns: list[str] = []
+        tool_calls: list[str] = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "user" and isinstance(content, str):
+                text = content.strip()
+                if text:
+                    user_turns.append(text[:180])
+            elif role == "assistant":
+                text, tools = self._summarize_assistant_content(content)
+                if text:
+                    assistant_turns.append(text[:180])
+                tool_calls.extend(tools)
+
+        state_lines = self._build_state_summary_lines()
+        lines = [
+            "<orchestrator_internal_note>",
+            "Notas internas — resumen del contexto previo de esta misma conversación.",
+            "Continúa respondiendo al último mensaje del usuario con normalidad.",
+            "No anuncies esta nota ni ofrezcas reiniciar la conversación: no hubo fallo, solo se liberó memoria del historial.",
+            "",
+            f"Turnos resumidos: {compacted_messages}. Turnos recientes conservados: {retained_messages}.",
+        ]
+        if state_lines:
+            lines.append("Estado activo del pipeline:")
+            lines.extend(f"- {line}" for line in state_lines)
+        if user_turns:
+            lines.append("Peticiones recientes del usuario:")
+            lines.extend(f"- {text}" for text in user_turns[-8:])
+        if assistant_turns:
+            lines.append("Tus respuestas recientes:")
+            lines.extend(f"- {text}" for text in assistant_turns[-6:])
+        if tool_calls:
+            lines.append("Herramientas que ya invocaste:")
+            lines.append("- " + ", ".join(tool_calls[-16:]))
+        if self._state.get("events"):
+            lines.append(
+                "Recordatorio operativo: no repitas run_simulation salvo petición explícita; "
+                "para inspeccionar pasos concretos usa get_simulation_step_window."
+            )
+        lines.append("</orchestrator_internal_note>")
+        return "\n".join(lines)
+
+    def _build_state_summary_lines(self) -> list[str]:
+        lines: list[str] = []
+        if self._state.get("experiment_id"):
+            lines.append(f"experiment_id={self._state['experiment_id']}")
+        if self._state.get("seed") is not None:
+            lines.append(f"seed={self._state['seed']}")
+        replay = self._state.get("replay") or {}
+        if replay:
+            lines.append(f"pasos_simulados={replay.get('total_steps', '?')}")
+        if self._state.get("agent_to_model"):
+            agents = ", ".join(sorted(self._state["agent_to_model"].keys()))
+            lines.append(f"agentes={agents}")
+        completed = [
+            name
+            for key, name in [
+                ("spec", "environment"),
+                ("events", "simulation"),
+                ("tracker_output", "tracker"),
+                ("analyst_output", "analyst"),
+                ("pdf_path", "reporter"),
+            ]
+            if self._state.get(key)
+        ]
+        if completed:
+            lines.append(f"pipeline_completado={', '.join(completed)}")
+        return lines
+
+    def _summarize_assistant_content(self, content) -> tuple[str, list[str]]:
+        if isinstance(content, str):
+            return content.strip(), []
+        if not isinstance(content, list):
+            return "", []
+        texts: list[str] = []
+        tools: list[str] = []
+        for block in content:
+            block_type = getattr(block, "type", None)
+            if isinstance(block, dict):
+                block_type = block.get("type")
+            if block_type == "text":
+                text = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
+                if text and str(text).strip():
+                    texts.append(str(text).strip())
+            elif block_type == "tool_use":
+                name = block.get("name") if isinstance(block, dict) else getattr(block, "name", None)
+                if name:
+                    tools.append(str(name))
+        return " ".join(texts), tools
+
+    def _history_char_count(self, messages: list[dict]) -> int:
+        try:
+            return len(json.dumps(messages, default=str, ensure_ascii=False))
+        except (TypeError, ValueError):
+            return sum(len(str(m)) for m in messages)
+
+    async def _persist_context_summary(self, summary: str) -> None:
+        try:
+            from simlab.recall import persist_messages, serialize_message
+
+            experiment_id = self._state.get("experiment_id")
+            if isinstance(experiment_id, str):
+                try:
+                    experiment_id = uuid.UUID(experiment_id)
+                except ValueError:
+                    experiment_id = None
+            rows = serialize_message(
+                {"role": "context_summary", "content": summary},
+                session_id=self._session_id,
+                experiment_id=experiment_id,
+                tool_use_names=self._tool_use_names,
+            )
+            if not rows or self._services.db is None:
+                return
+            async with self._services.db.get_session() as session:
+                await persist_messages(session, rows)
+        except Exception:
+            logger.warning("context summary persistence failed", exc_info=True)
 
     async def _persist_chat_turn(self, turn_start: int) -> None:
         """Persist the messages appended in this turn to ``chat_messages``.
@@ -1401,9 +1640,12 @@ class Orchestrator:
             # final LLM message is free-form text, not the compile_report JSON.
             if "pdf_paths" not in state:
                 state["pdf_paths"] = []
-            if reporter.last_pdf_key and reporter.last_pdf_key not in state["pdf_paths"]:
+            if (
+                reporter.last_pdf_key
+                and reporter.last_pdf_key not in state["pdf_paths"]
+            ):
                 state["pdf_paths"].append(reporter.last_pdf_key)
-            if state["pdf_paths"]:
+            if reporter.last_pdf_key:
                 state["pdf_path"] = state["pdf_paths"][-1]
                 if state.get("experiment_id"):
                     await self._update_experiment(
@@ -1522,6 +1764,44 @@ class Orchestrator:
                 }
             )
 
+        # --- get_simulation_step_window: live window over latest run events ---
+        async def get_simulation_step_window(params: dict) -> str:
+            events = state.get("events")
+            if not events:
+                return json.dumps(
+                    {
+                        "error": (
+                            "No simulation events in the current session. "
+                            "Call run_simulation first."
+                        )
+                    }
+                )
+
+            _, sim_registry = build_simulation_tools(
+                events,
+                critical_events=state.get("critical_events"),
+            )
+            raw = await sim_registry["get_event_window"](params)
+            try:
+                data = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return raw
+
+            return json.dumps(
+                {
+                    "experiment_id": state.get("experiment_id"),
+                    "center_step": data.get("center_step"),
+                    "step_range": data.get("range"),
+                    "radius": data.get("radius"),
+                    "events": data.get("events", []),
+                    "critical_events": data.get("critical_events_in_window", []),
+                    "_hint": (
+                        "This is a bounded window over the latest in-memory "
+                        "simulation, not a database history query."
+                    ),
+                }
+            )
+
         # --- get_analyst_detail: query slices of the latest analyst output ---
         async def get_analyst_detail(params: dict) -> str:
             raw = state.get("analyst_output")
@@ -1568,16 +1848,42 @@ class Orchestrator:
                 storage=self._services.storage,
             )
 
+        # --- get_report_links: current-session report download URLs ---
+        async def get_report_links(params: dict) -> str:
+            reports = []
+            for key in state.get("pdf_paths") or []:
+                filename = PurePosixPath(key).name or "report.pdf"
+                reports.append(
+                    {
+                        "key": key,
+                        "filename": filename,
+                        "download_url": (
+                            f"/api/reports/download?key={quote(key, safe='')}"
+                        ),
+                    }
+                )
+            if not reports:
+                return json.dumps(
+                    {
+                        "error": (
+                            "No report PDF has been generated in the current session."
+                        )
+                    }
+                )
+            return json.dumps({"reports": reports})
+
         registry: Registry = {
             "create_environment": create_environment,
             "list_available_models": list_available_models,
             "read_predictions": read_predictions,
             "run_simulation": run_simulation,
             "observe_simulation": observe_simulation,
+            "get_simulation_step_window": get_simulation_step_window,
             "get_tracker_detail": get_tracker_detail,
             "analyze_results": analyze_results,
             "get_analyst_detail": get_analyst_detail,
             "generate_report": generate_report,
+            "get_report_links": get_report_links,
             "list_experiments": list_experiments_fn,
             "query_experiments": query_experiments,
         }
