@@ -17,6 +17,7 @@ export function KnowledgePanel({ onClose }: KnowledgePanelProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const { data, loading, error, refetch } = useKnowledgeGraph({
     runId: runId || undefined,
+    scope: 'overview',
     enabled: tab === 'graph',
   })
 

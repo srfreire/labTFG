@@ -31,7 +31,9 @@ const AXIS_STROKE = 'rgba(255,255,255,0.3)'
 const AXIS_TICK = { fontSize: 10, fill: 'rgba(255,255,255,0.4)' }
 const GRID_STROKE = 'rgba(255,255,255,0.06)'
 
-function axisLabel(value: string, position: string, extra?: Record<string, unknown>) {
+type AxisLabelPosition = 'insideBottom' | 'insideLeft'
+
+function axisLabel(value: string, position: AxisLabelPosition, extra?: Record<string, unknown>) {
   return { value, position, fontSize: 10, fill: 'rgba(255,255,255,0.4)', ...extra }
 }
 

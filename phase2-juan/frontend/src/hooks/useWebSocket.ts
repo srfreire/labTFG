@@ -23,6 +23,9 @@ type WsMessage = {
   replay?: unknown
   charts?: unknown
   reports?: unknown
+  summary?: unknown
+  compactedMessages?: unknown
+  retainedMessages?: unknown
 }
 
 function isAgentStatus(value: unknown): value is AgentState['status'] {
@@ -200,6 +203,20 @@ export function useWebSocket() {
                 color: colors[i % colors.length],
               })))
             }
+            break
+          }
+
+          case 'context_compacted': {
+            setMessages(prev => [...prev, {
+              id: String(++idRef.current),
+              from: 'orchestrator',
+              text: typeof data.text === 'string' ? data.text : 'Contexto compactado.',
+              contextSummary: {
+                summary: typeof data.summary === 'string' ? data.summary : '',
+                compactedMessages: typeof data.compactedMessages === 'number' ? data.compactedMessages : 0,
+                retainedMessages: typeof data.retainedMessages === 'number' ? data.retainedMessages : 0,
+              },
+            }])
             break
           }
 

@@ -17,7 +17,8 @@ phase1-pablo/                              — Phase 1: agent pipeline
   examples/sample-run/builder/             — Generated model files (*_model.py + tests)
 phase2-juan/                               — Phase 2: virtual lab
   simlab/                                  — Python package (environment, agents, API, CLI)
-  web/                                     — React frontend (dashboard + chat)
+  backend/                                 — Backend deployment config (Docker/Railway)
+  frontend/                                — React frontend (dashboard + chat)
   docs/DESIGN.md                           — Virtual lab design doc
 docs/                                      — Reference documents (Denis Yamunaque's TFM)
 ```
@@ -57,7 +58,7 @@ cd phase2-juan && uv run simlab
 
 # Web UI
 uvicorn simlab.api:app --port 8000    # backend
-cd web && npm run dev                  # frontend (Vite → localhost:5173)
+cd frontend && npm run dev             # frontend (Vite → localhost:5173)
 ```
 
 Requires: `.env` in `phase2-juan/` with `OPENROUTER_API_KEY` and the standard

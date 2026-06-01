@@ -11,11 +11,18 @@ export interface ChatMessage {
   text: string
   card?: DataCard
   reports?: ReportArtifact[]
+  contextSummary?: ContextSummary
   tracker?: TrackerData
   analyst?: AnalystData
   replay?: ReplayData
   charts?: ChartSpec[]
   traces?: DecisionTrace[]
+}
+
+export interface ContextSummary {
+  summary: string
+  compactedMessages: number
+  retainedMessages: number
 }
 
 export interface ReportArtifact {

@@ -1,0 +1,42 @@
+server {
+    listen ${PORT};
+    listen [::]:${PORT};
+
+    # nginx-alpine's 15-local-resolvers.envsh populates NGINX_LOCAL_RESOLVERS
+    # from /etc/resolv.conf so we can resolve Railway's *.railway.internal at
+    # request time instead of failing at config load.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=on;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # WebSocket proxy — assign upstream via variable so resolver runs per-request
+    location /ws {
+        set $upstream_ws "${BACKEND_HOST}:${BACKEND_PORT}";
+        proxy_pass http://$upstream_ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+
+    # API proxy
+    location /api/ {
+        set $upstream_api "${BACKEND_HOST}:${BACKEND_PORT}";
+        proxy_pass http://$upstream_api;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Health check proxy
+    location /health {
+        set $upstream_health "${BACKEND_HOST}:${BACKEND_PORT}";
+        proxy_pass http://$upstream_health;
+    }
+}

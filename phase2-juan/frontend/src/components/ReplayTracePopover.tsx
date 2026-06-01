@@ -28,7 +28,6 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
       borderColor: criticalEvent ? 'color-mix(in srgb, var(--color-accent-green) 25%, transparent)' : 'var(--color-border-subtle)',
       boxShadow: 'var(--shadow-popover)',
     }}>
-      {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <span className="text-[11px] font-semibold" style={{ color: 'var(--color-accent-green-light)' }}>{trace.agent_id}</span>
         <div className="flex items-center gap-2">
@@ -41,7 +40,6 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
         </div>
       </div>
 
-      {/* Q-value bars */}
       {qValues ? (
         <div className="flex flex-col gap-1 mb-2.5">
           {Object.entries(qValues).sort(([, a], [, b]) => b - a).map(([action, val]) => {
@@ -64,7 +62,6 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
         <div className="text-[10px] mb-2.5 text-text-faint italic">Sin Q-values (control directo)</div>
       )}
 
-      {/* Context row */}
       {deltas.length > 0 && (
         <div className="flex gap-2.5 flex-wrap px-2 py-1.5 rounded text-[10px]" style={{ background: 'var(--color-surface-hover)' }}>
           {deltas.map(d => (
@@ -74,7 +71,6 @@ export function ReplayTracePopover({ trace, criticalEvent, onClose }: Props) {
         </div>
       )}
 
-      {/* Critical event detail */}
       {criticalEvent?.type === 'decision_confidence_drop' && criticalEvent.data && (
         <div className="mt-1.5 text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>
           gap Q-values: {String(criticalEvent.data.prev_gap)} → {String(criticalEvent.data.new_gap)}

@@ -19,8 +19,8 @@ phase2-juan/test_output/
 *.pdf
 
 # Phase 2 — Web
-phase2-juan/web/node_modules/
-phase2-juan/web/dist/
+phase2-juan/frontend/node_modules/
+phase2-juan/frontend/dist/
 
 # Docs
 **/docs/specs/
@@ -29,6 +29,8 @@ phase2-juan/web/dist/
 # Logs
 *.log
 npm-debug.log*
-phase2-juan/web/test-results/
+phase2-juan/frontend/test-results/
 tutor-*.png
 0[0-9]-*.png
+.codegraph/
+.tmp-playwright/

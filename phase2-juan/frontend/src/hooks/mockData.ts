@@ -1,10 +1,4 @@
-/**
- * Static mock data generators for useMockWebSocket.
- * Separated to keep the hook itself readable.
- */
 import type { ReplayData, TrackerData, AnalystData, ChartSpec, CriticalEvent, DecisionTrace } from '../types'
-
-// --- Energy formulas (shared between charts and replay traces) ---
 
 function energyA(step: number): number {
   return Math.max(0, 80 - step * 3 + Math.sin(step * 0.5) * 20 + (step === 8 ? -40 : 0) + (step === 9 ? 45 : 0))
@@ -13,8 +7,6 @@ function energyA(step: number): number {
 function energyB(step: number): number {
   return 70 + Math.sin(step * 0.3) * 8
 }
-
-// --- Generators ---
 
 export function mockCriticalEvents(): CriticalEvent[] {
   return [

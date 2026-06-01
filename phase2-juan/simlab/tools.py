@@ -133,7 +133,7 @@ def event_to_trace(e: Event) -> dict:
     """Convert an Event to a decision-trace dict (perception → action → outcome).
 
     Canonical full-trace shape, shared by LLM-facing tools and the frontend
-    replay. Keep flat — frontend TypeScript types in web/src/types.ts mirror
+    replay. Keep flat — frontend TypeScript types in frontend/src/types.ts mirror
     this structure.
     """
     return {

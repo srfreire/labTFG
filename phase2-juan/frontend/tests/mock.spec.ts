@@ -68,6 +68,23 @@ test.describe('DecisionLab Mock Mode', () => {
     await expect(page.getByText('Agentes', { exact: true })).toBeVisible()
   })
 
+  test('keeps only the latest replay player visible after multiple runs', async ({ page }) => {
+    await page.goto('/?mock')
+    const firstRun = page.getByRole('button', {
+      name: 'Ejecuta una run corta con drive_reduction_rl',
+    })
+    await expect(firstRun).toBeVisible()
+    await firstRun.click()
+    await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 45_000 })
+
+    await page.getByPlaceholder('Describe un paradigma de decisión...').fill('lanza otra simulación')
+    await page.getByRole('button').last().click()
+    await expect(page.getByText('¿Quieres explorar algo más?')).toHaveCount(2, { timeout: 45_000 })
+
+    await expect(page.getByRole('main').getByText('Simulación', { exact: true })).toHaveCount(1)
+    await expect(page.getByText('Step 1 / 30')).toHaveCount(1)
+  })
+
   test('decision traces — cards in chat and popover in replay', async ({ page }) => {
     await page.goto('/?mock')
     await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()

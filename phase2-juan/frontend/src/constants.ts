@@ -1,7 +1,5 @@
 import type { AgentState } from './types'
 
-// Chat message sender colors — canonical keys are lowercase;
-// use getFromColor() for case-insensitive lookup
 const FROM_COLORS_MAP: Record<string, string> = {
   user: 'rgba(255,255,255,0.5)',
   orchestrator: '#94a3b8',
@@ -11,7 +9,6 @@ const FROM_COLORS_MAP: Record<string, string> = {
   reporter: '#f472b6',
 }
 
-// Pipeline agents in display order — drives the sidebar and Orchestrator first
 const PIPELINE_AGENTS = ['Orchestrator', 'Architect', 'Tracker', 'Analyst', 'Reporter'] as const
 
 // Simulation agent colors — fallback palette, overridden at runtime by backend via WS
@@ -25,7 +22,6 @@ export const AGENT_COLORS = [
   '#fb923c',
 ] as const
 
-// Initial agent states — derived from FROM_COLORS_MAP, shared between real and mock hooks
 export const INITIAL_AGENTS: AgentState[] = PIPELINE_AGENTS.map((name) => ({
   name,
   status: 'idle',
@@ -45,7 +41,6 @@ export function withAlpha(color: string, alphaHex: string): string {
   return color + alphaHex
 }
 
-// Re-export for places that iterate all entries (e.g. getAgentColor text matching)
 export const FROM_COLORS = FROM_COLORS_MAP
 
 // Knowledge graph — color per Cypher node label.
@@ -57,6 +52,10 @@ export const KG_LABEL_COLORS: Record<string, string> = {
   Model: '#fbbf24',
   Paper: '#f472b6',
   Author: '#fb923c',
+  BrainRegion: '#22c55e',
+  Equation: '#60a5fa',
+  Variable: '#c084fc',
+  Parameter: '#94a3b8',
 }
 
 export const KG_LABEL_DEFAULT = '#94a3b8'
@@ -83,17 +82,14 @@ export function kgNodeTitle(
 // Friendly labels for internal agent tool calls
 // Keep short — must fit in 200px sidebar
 export const TOOL_LABELS: Record<string, string> = {
-  // Orchestrator tools
   create_environment: 'Creando entorno',
   run_simulation: 'Simulando',
   list_available_models: 'Buscando modelos',
   observe_simulation: 'Observando',
   analyze_results: 'Analizando',
   generate_report: 'Generando informe',
-  // Architect
   validate_spec: 'Validando spec',
   read_predictions: 'Leyendo predicciones',
-  // Tracker & Analyst
   get_simulation_events: 'Leyendo eventos',
   get_agent_trajectory: 'Trayectoria',
   get_agent_state: 'Estado agente',
@@ -105,7 +101,6 @@ export const TOOL_LABELS: Record<string, string> = {
   create_chart: 'Generando gráfica',
   list_past_experiments: 'Historial',
   get_experiment_analysis: 'Comparando',
-  // Reporter
   read_research: 'Investigación',
   compile_report: 'Compilando PDF',
 }

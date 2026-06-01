@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Download, Send, FlaskConical } from 'lucide-react'
+import { Download, Send, FlaskConical, FileClock } from 'lucide-react'
 import type { AgentState, ChatMessage, ReportArtifact } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
@@ -25,9 +25,9 @@ function StrongWithColor(props: { children?: ReactNode }) {
 const mdComponents = { strong: StrongWithColor }
 
 const EXAMPLE_PROMPTS = [
-  'Simula el dilema del prisionero con 3 agentes',
-  'Compara Q-Learning vs Random en entorno de supervivencia',
-  'Crea un entorno de recolección de recursos 10x10',
+  'Ejecuta una run corta con drive_reduction_rl',
+  'Compara drive_reduction_rl con pi_negative_feedback',
+  'Analiza un entorno de forrajeo con recursos limitados',
 ]
 
 interface Props {
@@ -35,13 +35,14 @@ interface Props {
   thinking: boolean
   onSend: (text: string) => void
   agents: AgentState[]
+  connected: boolean
 }
 
-export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
+export function ChatPanel({ messages, thinking, onSend, agents, connected }: Props) {
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const workingAgents = agents.filter(a => a.status === 'working')
-  const busy = thinking || workingAgents.length > 0
+  const busy = !connected || thinking || workingAgents.length > 0
   const isEmpty = messages.length === 0 && !thinking
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
   }
 
   const placeholder = busy
-    ? `Esperando por ${workingAgents.map(a => a.name).join(', ')}...`
+    ? connected ? `Esperando por ${workingAgents.map(a => a.name).join(', ')}...` : 'Conectando con el laboratorio...'
     : 'Describe un paradigma de decisión...'
 
   const inputForm = (
@@ -105,6 +106,7 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
 
   // Active chat state
   const orchColor = getFromColor('orchestrator')
+  const latestReplayMessageId = [...messages].reverse().find(msg => msg.replay)?.id
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -115,7 +117,11 @@ export function ChatPanel({ messages, thinking, onSend, agents }: Props) {
           const spacing = i === 0 ? '' : sameAuthor ? 'mt-5' : 'mt-6'
           return (
             <div key={msg.id} className={spacing}>
-              <MessageBubble msg={msg} hideAvatar={sameAuthor} />
+              <MessageBubble
+                msg={msg}
+                hideAvatar={sameAuthor}
+                showReplay={!msg.replay || msg.id === latestReplayMessageId}
+              />
             </div>
           )
         })}
@@ -158,7 +164,7 @@ function MessageInput({ input, setInput, onSubmit, placeholder, busy, compact }:
         value={input}
         onChange={e => setInput(e.target.value)}
         placeholder={placeholder}
-        disabled={compact && busy}
+        disabled={busy}
         className={`flex-1 bg-transparent border border-text-ghost text-text text-[15px] ${compact ? 'py-3' : 'py-3.5'} px-5 outline-none rounded-xl transition-colors duration-150 focus:border-text-dim disabled:opacity-40 disabled:cursor-not-allowed`}
         autoFocus
       />
@@ -173,7 +179,11 @@ function MessageInput({ input, setInput, onSubmit, placeholder, busy, compact }:
   )
 }
 
-function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boolean }) {
+function MessageBubble({ msg, hideAvatar, showReplay = true }: {
+  msg: ChatMessage
+  hideAvatar?: boolean
+  showReplay?: boolean
+}) {
   const isUser = msg.from === 'user'
   const dotColor = getFromColor(msg.from)
 
@@ -207,6 +217,7 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
         )}
         <div className="px-4 py-3 text-[15px] leading-[1.6] msg-content" style={bubbleStyle}>
           {msg.text && renderText(msg.text, isUser)}
+          {msg.contextSummary && <ContextSummaryCard summary={msg.contextSummary} />}
           {msg.card && <DataCard card={msg.card} color={dotColor} />}
           {msg.reports && msg.reports.length > 0 && <ReportLinks reports={msg.reports} color={dotColor} />}
           {msg.tracker && <TrackerCard tracker={msg.tracker} />}
@@ -214,7 +225,7 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
           {msg.charts && msg.charts.map(chart => (
             <ChartCard key={chart.id} spec={chart} />
           ))}
-          {msg.replay && <SimulationGrid replay={msg.replay} />}
+          {showReplay && msg.replay && <SimulationGrid replay={msg.replay} />}
           {msg.traces && msg.traces.length > 0 && (
             <div className={`mt-3 flex gap-2.5 ${msg.traces.length > 1 ? 'overflow-x-auto' : ''}`}>
               {msg.traces.map((trace, i) => (
@@ -227,6 +238,21 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
         </div>
       </div>
     </div>
+  )
+}
+
+function ContextSummaryCard({ summary }: { summary: NonNullable<ChatMessage['contextSummary']> }) {
+  return (
+    <details className="mt-3 rounded-lg border border-border-subtle bg-bg/60 p-3">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-[11px] font-medium text-text-muted">
+        <FileClock size={14} />
+        <span>{summary.compactedMessages} mensajes resumidos</span>
+        <span className="text-text-faint">· {summary.retainedMessages} recientes conservados</span>
+      </summary>
+      <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-border-faint bg-black/20 p-3 text-[11px] leading-relaxed text-text-dim">
+        {summary.summary}
+      </pre>
+    </details>
   )
 }
 

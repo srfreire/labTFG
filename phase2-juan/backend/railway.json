@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "phase2-juan/backend/Dockerfile",
+    "watchPatterns": [
+      "phase2-juan/backend/**",
+      "phase2-juan/simlab/**",
+      "phase2-juan/pyproject.toml",
+      "phase2-juan/uv.lock",
+      "shared/**"
+    ]
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 120,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}

@@ -56,7 +56,7 @@ test.describe('DecisionLab E2E', () => {
     await expect(sidebar.getByText('Completado')).toHaveCount(4, { timeout: 600_000 })
 
     // Verify data cards appeared
-    await expect(page.getByText('Trayectorias')).toBeVisible()
+    await expect(page.getByText('Trayectorias', { exact: true })).toBeVisible()
     await expect(page.getByText('Análisis')).toBeVisible()
   })
 

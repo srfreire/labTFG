@@ -26,7 +26,6 @@ export function DecisionTraceCard({ trace }: Props) {
 
   return (
     <div className="font-mono text-[11px] text-text-dim rounded-lg border border-border-subtle p-3.5 bg-surface">
-      {/* Header */}
       <div className="flex justify-between items-center mb-2.5">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-[0.5px]" style={{ color: 'var(--color-accent-green-light)' }}>
@@ -39,7 +38,6 @@ export function DecisionTraceCard({ trace }: Props) {
         <span className="text-[10px] text-text-faint">{trace.agent_id} · step {trace.step}</span>
       </div>
 
-      {/* Pre / Post columns */}
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <div className="rounded-md p-2.5 bg-surface-hover">
           <div className="text-[9px] uppercase tracking-[1px] mb-1.5" style={{ color: 'var(--color-accent-amber)' }}>Pre-decisión</div>
@@ -72,7 +70,6 @@ export function DecisionTraceCard({ trace }: Props) {
         </div>
       </div>
 
-      {/* Q-value pills */}
       {qValues ? (
         <div className="mb-1.5">
           <div className="text-[9px] uppercase tracking-[1px] text-text-faint mb-1.5">Alternativas (Q-values)</div>
@@ -94,12 +91,11 @@ export function DecisionTraceCard({ trace }: Props) {
         <div className="text-[9px] text-text-faint italic mb-1.5">Sin Q-values (control directo)</div>
       )}
 
-      {/* Result footer */}
       <div className="pt-2 border-t border-border-subtle text-[10px]">
         <span style={{ color: trace.outcome.reward > 0 ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)', fontWeight: 600 }}>
           reward: {trace.outcome.reward > 0 ? '+' : ''}{trace.outcome.reward}
         </span>
-        {trace.outcome.action_result?.consumed && (
+        {trace.outcome.action_result.consumed === true && (
           <><span className="text-text-faint mx-1">·</span><span className="text-text-dim">consumed {String((trace.outcome.action_result as Record<string,unknown>).resource_type || 'resource')}</span></>
         )}
       </div>

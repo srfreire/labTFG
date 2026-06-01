@@ -18,10 +18,14 @@ const CRITICAL_COLORS: Record<string, string> = {
 }
 
 export function SimulationGrid({ replay }: Props) {
+  const replayKey = `${replay.grid_width}x${replay.grid_height}:${replay.total_steps}:${replay.frames.length}`
+  return <SimulationGridInner key={replayKey} replay={replay} />
+}
+
+function SimulationGridInner({ replay }: Props) {
   const [currentStep, setCurrentStep] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speedIdx, setSpeedIdx] = useState(1)
-  const [trail, setTrail] = useState<Record<string, { x: number; y: number }[]>>({})
   const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
   const [activeTrace, setActiveTrace] = useState<{ traces: DecisionTrace[]; criticalEvent?: CriticalEvent } | null>(null)
@@ -35,29 +39,21 @@ export function SimulationGrid({ replay }: Props) {
       map.set(ce.step, existing)
     }
     return map
-  }, [replay.critical_events])
-
-  // Reset state when replay changes
-  useEffect(() => {
-    setCurrentStep(0)
-    setPlaying(false)
-    setTrail({})
   }, [replay])
 
   const frame = replay.frames[currentStep]
   const speed = SPEEDS[speedIdx]
 
-  // Build trail history
-  useEffect(() => {
-    if (!frame) return
-    setTrail(prev => {
-      const next = { ...prev }
-      for (const agent of frame.agents) {
+  const trail = useMemo(() => {
+    const next: Record<string, { x: number; y: number }[]> = {}
+    const start = Math.max(0, currentStep - TRAIL_LENGTH + 1)
+    for (const pastFrame of replay.frames.slice(start, currentStep + 1)) {
+      for (const agent of pastFrame.agents) {
         const history = next[agent.id] || []
-        next[agent.id] = [...history.slice(-(TRAIL_LENGTH - 1)), { x: agent.x, y: agent.y }]
+        next[agent.id] = [...history, { x: agent.x, y: agent.y }]
       }
-      return next
-    })
+    }
+    return next
   }, [currentStep, replay.frames])
 
   // Playback — adaptive speed: slower at critical events
@@ -86,12 +82,10 @@ export function SimulationGrid({ replay }: Props) {
   const togglePlay = useCallback(() => setPlaying(p => !p), [])
   const stepBack = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.max(0, s - 1)) }, [])
   const stepForward = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.min(replay.total_steps - 1, s + 1)) }, [replay.total_steps])
-  const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setTrail({}); setActiveTrace(null) }, [])
+  const reset = useCallback(() => { setPlaying(false); setCurrentStep(0); setActiveTrace(null) }, [])
   const cycleSpeed = useCallback(() => setSpeedIdx(i => (i + 1) % SPEEDS.length), [])
 
   const controlBtn = 'flex items-center text-[9px] px-2 py-1.5 border border-border rounded-[var(--radius-sm)] text-text-dim hover:bg-surface-hover hover:text-text-muted transition-colors duration-150 cursor-pointer'
-
-  if (!frame) return null
 
   const cellSize = Math.min(28, Math.floor(300 / Math.max(replay.grid_width, replay.grid_height)))
   const gridWidth = replay.grid_width * cellSize + (replay.grid_width - 1)
@@ -100,16 +94,18 @@ export function SimulationGrid({ replay }: Props) {
   // Pre-compute lookup maps — O(n) instead of O(width*height*n) find() calls
   const { resourceMap, agentMap, agentIdxMap, agentIdxById, trailSet } = useMemo(() => {
     const rMap = new Map<string, boolean>()
-    const aMap = new Map<string, typeof frame.agents[0]>()
+    const aMap = new Map<string, NonNullable<typeof frame>['agents'][0]>()
     const aiMap = new Map<string, number>()
     const aiById = new Map<string, number>()
     const tSet = new Set<string>()
 
-    for (const r of frame.resources) rMap.set(`${r.x},${r.y}`, true)
-    for (let i = 0; i < frame.agents.length; i++) {
-      const a = frame.agents[i]
-      aiById.set(a.id, i)
-      if (a.alive) { aMap.set(`${a.x},${a.y}`, a); aiMap.set(`${a.x},${a.y}`, i) }
+    if (frame) {
+      for (const r of frame.resources) rMap.set(`${r.x},${r.y}`, true)
+      for (let i = 0; i < frame.agents.length; i++) {
+        const a = frame.agents[i]
+        aiById.set(a.id, i)
+        if (a.alive) { aMap.set(`${a.x},${a.y}`, a); aiMap.set(`${a.x},${a.y}`, i) }
+      }
     }
     for (const [, positions] of Object.entries(trail)) {
       for (const p of positions) {
@@ -120,9 +116,10 @@ export function SimulationGrid({ replay }: Props) {
     return { resourceMap: rMap, agentMap: aMap, agentIdxMap: aiMap, agentIdxById: aiById, trailSet: tSet }
   }, [frame, trail])
 
+  if (!frame) return null
+
   return (
     <div className="mt-3 border border-border p-3 rounded-lg" style={{ background: 'var(--color-bg)' }}>
-      {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-[8px] uppercase tracking-[1px] text-text-dim">
           Simulación
@@ -132,7 +129,6 @@ export function SimulationGrid({ replay }: Props) {
         </span>
       </div>
 
-      {/* Grid */}
       <div
         className="mx-auto"
         style={{
@@ -195,7 +191,6 @@ export function SimulationGrid({ replay }: Props) {
         )}
       </div>
 
-      {/* Controls */}
       <div className="flex items-center justify-center gap-2 mt-2">
         <button onClick={reset} className={controlBtn}><RotateCcw size={12} /></button>
         <button onClick={stepBack} className={controlBtn}><ChevronLeft size={14} /></button>
@@ -208,12 +203,10 @@ export function SimulationGrid({ replay }: Props) {
         </button>
       </div>
 
-      {/* Critical events timeline */}
       {replay.critical_events && replay.critical_events.length > 0 && (
         <div className="mt-2">
           <div className="text-[8px] uppercase tracking-[1px] text-text-dim mb-1">Eventos críticos</div>
           <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-            {/* Current position indicator */}
             <div
               className="absolute top-0 h-full transition-all duration-150"
               style={{
@@ -222,7 +215,6 @@ export function SimulationGrid({ replay }: Props) {
                 background: 'var(--color-text-dim)',
               }}
             />
-            {/* Critical event markers */}
             {replay.critical_events.map((ce, i) => (
               <button
                 key={i}
@@ -248,7 +240,6 @@ export function SimulationGrid({ replay }: Props) {
               />
             ))}
           </div>
-          {/* Current step's critical events */}
           {criticalByStep.has(currentStep) && (
             <div className="flex gap-1.5 flex-wrap mt-1.5">
               {criticalByStep.get(currentStep)!.map((ce, i) => (
@@ -279,7 +270,6 @@ export function SimulationGrid({ replay }: Props) {
         </div>
       )}
 
-      {/* Agent legend — bottom left */}
       {frame.agents.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">
           <div className="text-[8px] uppercase tracking-[1px] text-text-dim">Agentes</div>
@@ -302,7 +292,6 @@ export function SimulationGrid({ replay }: Props) {
         </div>
       )}
 
-      {/* Step actions summary */}
       {frame.actions.length > 0 && (
         <div className="mt-2 flex gap-2 justify-center flex-wrap" style={{ minHeight: 24 }}>
           {frame.actions.map((a, i) => {
