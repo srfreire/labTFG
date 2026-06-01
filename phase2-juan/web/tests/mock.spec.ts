@@ -18,14 +18,14 @@ test.describe('DecisionLab Mock Mode', () => {
     await expect(page.getByRole('heading', { name: 'DecisionLab' })).toBeVisible()
 
     // Trigger mock pipeline
-    await page.getByText('Simula el dilema del prisionero con 3 agentes').click()
+    await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
 
     // Wait for pipeline to complete (final continuation prompt)
     await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
 
     // Environment spec card appeared
     await expect(page.getByText('Environment Spec')).toBeVisible()
-    await expect(page.getByText('food ×6', { exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText('food ×6', { exact: true })).toBeVisible()
 
     // Predictions appeared
     await expect(page.getByText('regulación homeostática')).toBeVisible()
@@ -47,10 +47,11 @@ test.describe('DecisionLab Mock Mode', () => {
     await expect(page.getByText('Evolución Q-values por acción (drive_reduction_rl)')).toBeVisible()
 
     // Reporter message
-    await expect(page.getByText('analisis_homeostatic_regulation.pdf')).toBeVisible()
+    await expect(page.getByText('experiments/mock/analisis_homeostatic_regulation.pdf')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Descargar PDF analisis_homeostatic_regulation.pdf' })).toBeVisible()
 
     // Simulation agents in sidebar
-    await expect(page.getByRole('complementary').getByText('pi_negative_feedback')).toBeVisible()
+    await expect(page.getByRole('complementary').getByText('pi_negative_feedback', { exact: true })).toBeVisible()
 
     // All pipeline agents completed
     const completedBadges = page.getByRole('complementary').getByText('Completado')
@@ -59,7 +60,7 @@ test.describe('DecisionLab Mock Mode', () => {
 
   test('replay step indicator visible', async ({ page }) => {
     await page.goto('/?mock')
-    await page.getByText('Simula el dilema del prisionero con 3 agentes').click()
+    await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
     await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
 
     // Step indicator and Agentes legend visible
@@ -69,7 +70,7 @@ test.describe('DecisionLab Mock Mode', () => {
 
   test('decision traces — cards in chat and popover in replay', async ({ page }) => {
     await page.goto('/?mock')
-    await page.getByText('Simula el dilema del prisionero con 3 agentes').click()
+    await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
     await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
 
     // Decision Trace cards appear in chat (from Analyst message)

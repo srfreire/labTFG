@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Send, FlaskConical } from 'lucide-react'
-import type { AgentState, ChatMessage } from '../types'
+import { Download, Send, FlaskConical } from 'lucide-react'
+import type { AgentState, ChatMessage, ReportArtifact } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
 import { DecisionTraceCard } from './DecisionTraceCard'
@@ -208,6 +208,7 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
         <div className="px-4 py-3 text-[15px] leading-[1.6] msg-content" style={bubbleStyle}>
           {msg.text && renderText(msg.text, isUser)}
           {msg.card && <DataCard card={msg.card} color={dotColor} />}
+          {msg.reports && msg.reports.length > 0 && <ReportLinks reports={msg.reports} color={dotColor} />}
           {msg.tracker && <TrackerCard tracker={msg.tracker} />}
           {msg.analyst && <AnalystCard analyst={msg.analyst} />}
           {msg.charts && msg.charts.map(chart => (
@@ -225,6 +226,35 @@ function MessageBubble({ msg, hideAvatar }: { msg: ChatMessage; hideAvatar?: boo
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ReportLinks({ reports, color }: { reports: ReportArtifact[]; color: string }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {reports.map(report => {
+        const href = `/api/reports/download?key=${encodeURIComponent(report.key)}`
+        return (
+          <a
+            key={report.key}
+            href={href}
+            download={report.filename}
+            aria-label={`Descargar PDF ${report.filename}`}
+            title={`Descargar ${report.filename}`}
+            className="min-h-11 inline-flex items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-text transition-[background-color,color,transform,box-shadow] duration-150 ease-out hover:bg-white/8 hover:text-white active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{
+              color,
+              background: `color-mix(in srgb, ${color} 12%, transparent)`,
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 24%, transparent)`,
+              outlineColor: color,
+            }}
+          >
+            <Download size={15} strokeWidth={2} aria-hidden="true" />
+            <span className="max-w-[240px] truncate">{report.filename}</span>
+          </a>
+        )
+      })}
     </div>
   )
 }

@@ -18,10 +18,12 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import datetime
+from pathlib import PurePosixPath
 
 import anthropic
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
 from sqlalchemy import text as sql_text
@@ -119,6 +121,66 @@ def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+def _report_filename(key: str) -> str:
+    return PurePosixPath(key).name or "report.pdf"
+
+
+def _validate_report_key(key: str) -> None:
+    path = PurePosixPath(key)
+    if (
+        key.startswith("/")
+        or ".." in path.parts
+        or len(path.parts) < 3
+        or path.parts[0] != "experiments"
+        or path.suffix.lower() != ".pdf"
+    ):
+        raise HTTPException(status_code=400, detail="Invalid report key")
+
+
+def _build_reporter_message(state: dict) -> dict | None:
+    paths = state.get("pdf_paths")
+    if not paths:
+        return None
+    if len(paths) == 1:
+        text = f"El **Reporter** ha generado el informe PDF: `{paths[0]}`."
+    else:
+        pdf_list = "\n".join(f"- `{p}`" for p in paths)
+        text = f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}"
+    return {
+        "type": "message",
+        "from": "orchestrator",
+        "text": text,
+        "reports": [
+            {"key": path, "filename": _report_filename(path)}
+            for path in paths
+        ],
+    }
+
+
+@app.get("/api/reports/download")
+async def download_report_pdf(key: str):
+    _validate_report_key(key)
+    if _services is None or getattr(_services, "storage", None) is None:
+        raise HTTPException(status_code=503, detail="Storage service unavailable")
+
+    try:
+        data = await _services.storage.get(key)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Report not found") from exc
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code")
+        if code in {"404", "NoSuchKey", "NotFound"}:
+            raise HTTPException(status_code=404, detail="Report not found") from exc
+        raise
+
+    filename = _report_filename(key).replace('"', "")
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -581,15 +643,7 @@ async def websocket_chat(ws: WebSocket):
         return msg
 
     def _reporter_card(state: dict) -> dict | None:
-        paths = state.get("pdf_paths")
-        if not paths:
-            return None
-        if len(paths) == 1:
-            text = f"El **Reporter** ha generado el informe PDF: `{paths[0]}`."
-        else:
-            pdf_list = "\n".join(f"- `{p}`" for p in paths)
-            text = f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}"
-        return {"type": "message", "from": "orchestrator", "text": text}
+        return _build_reporter_message(state)
 
     _CARD_BUILDERS = {
         "create_environment": _env_card,

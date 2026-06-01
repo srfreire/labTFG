@@ -10,11 +10,17 @@ export interface ChatMessage {
   from: 'user' | 'orchestrator' | 'tracker' | 'analyst' | 'reporter'
   text: string
   card?: DataCard
+  reports?: ReportArtifact[]
   tracker?: TrackerData
   analyst?: AnalystData
   replay?: ReplayData
   charts?: ChartSpec[]
   traces?: DecisionTrace[]
+}
+
+export interface ReportArtifact {
+  key: string
+  filename: string
 }
 
 export interface ChartSpec {

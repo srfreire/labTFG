@@ -120,7 +120,11 @@ export function useMockWebSocket() {
     setAgent('Reporter', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Reporter** ha generado el informe PDF: `output/analisis_homeostatic_regulation.pdf`.',
+      text: 'El **Reporter** ha generado el informe PDF: `experiments/mock/analisis_homeostatic_regulation.pdf`.',
+      reports: [{
+        key: 'experiments/mock/analisis_homeostatic_regulation.pdf',
+        filename: 'analisis_homeostatic_regulation.pdf',
+      }],
     })
     await delay(300)
 

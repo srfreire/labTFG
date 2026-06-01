@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { AgentState, ChatMessage, DataCard, ReplayData, SimAgent } from '../types'
+import type { AgentState, ChatMessage, DataCard, ReplayData, ReportArtifact, SimAgent } from '../types'
 import { AGENT_COLORS, INITIAL_AGENTS } from '../constants'
 
 function isDataCard(value: unknown): value is DataCard {
@@ -22,6 +22,7 @@ type WsMessage = {
   analyst?: unknown
   replay?: unknown
   charts?: unknown
+  reports?: unknown
 }
 
 function isAgentStatus(value: unknown): value is AgentState['status'] {
@@ -56,6 +57,14 @@ function hasReplayFrames(value: unknown): value is ReplayData {
     typeof value === 'object' &&
     Array.isArray((value as ReplayData).frames)
   )
+}
+
+function isReportArray(value: unknown): value is ReportArtifact[] {
+  return Array.isArray(value) && value.every(item => {
+    if (!item || typeof item !== 'object') return false
+    const candidate = item as Record<string, unknown>
+    return typeof candidate.key === 'string' && typeof candidate.filename === 'string'
+  })
 }
 
 export function useWebSocket() {
@@ -171,6 +180,7 @@ export function useWebSocket() {
               analyst: data.analyst as ChatMessage['analyst'],
               replay: hasReplayFrames(data.replay) ? data.replay : undefined,
               charts: Array.isArray(data.charts) ? data.charts as ChatMessage['charts'] : undefined,
+              reports: isReportArray(data.reports) ? data.reports : undefined,
             } satisfies ChatMessage
             setMessages(prev => [...prev, msg])
             // A fresh Environment Spec chat card means a new env was created;
