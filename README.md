@@ -26,6 +26,8 @@ Usuario: "comportamiento alimentario"
     → Builder (implementa DecisionModel .py + tests)
 ```
 
+Apoyado por un **Knowledge Backbone** (Neo4j + Qdrant + Postgres) que persiste paradigmas, formulaciones y memorias entre runs y nutre a los agentes con contexto relevante via 3-layer retrieval (KG traversal + dense + sparse + RRF + reranking + CRAG).
+
 ### Fase 2 — Infraestructura de simulacion (Juan)
 
 Plataforma para ejecutar, observar, analizar y documentar el comportamiento de los agentes:
@@ -35,8 +37,10 @@ DecisionModels (Fase 1)
     → Architect (configura environment)
     → Tracker (registra eventos y trayectorias)
     → Analyst (identifica patrones)
-    → Reporter (genera informes)
+    → Reporter (genera informes PDF via LaTeX)
 ```
+
+Coordinados por un **Orchestrator** con chat interactivo. Los agentes consultan el Knowledge Backbone (`retrieve_context`) para contrastar patrones observados contra postulados conocidos, y persisten observaciones de simulacion como memorias re-utilizables en runs futuros.
 
 ---
 
@@ -44,66 +48,74 @@ DecisionModels (Fase 1)
 
 ```
 phase1-pablo/                          — Fase 1: pipeline de modelado
-  src/decisionlab/                     — Paquete principal
-    models/protocol.py                 — Protocol DecisionModel, Action, Perception
-    agents/                            — Researcher, Reasoner, Builder (placeholder)
+  src/decisionlab/
+    agents/                            — Researcher, Reasoner, Builder, Formalizer
+    knowledge/                         — Memory Agent, KG extraction, 3-layer retrieval, CRAG
+    models/                            — Protocol DecisionModel, Action, Perception
     tools/                             — web_search, semantic_scholar, file_io, code_runner
+    runtime/                           — Loop agentico y dispatcher de tools
     router.py                          — Orquestador del pipeline
     cli.py                             — Punto de entrada CLI
-  examples/denis/                      — Modelos de ejemplo (del paper de referencia)
-    homeostatic.py                     — Modelo homeostatico (EDOs fisiologicas)
-    hedonic.py                         — Modelo hedonico (Q-Learning)
-    integrated.py                      — Modelo integrado (4 modos de combinacion)
+  evals/                               — Suite de evaluacion (latencia, calidad retrieval)
   tests/                               — Tests unitarios e integracion
 
 phase2-juan/                           — Fase 2: laboratorio virtual
-  simlab/                              — Paquete principal
-    environment.py                     — Environment, Agent, Resource, Event, ModelAdapter
+  simlab/
+    environment.py                     — Environment, Agent, Resource, Event
     spec.py                            — Validacion y conversion de JSON specs
     architect.py                       — Architect agent (genera specs de environment)
     tracker.py                         — Tracker agent (observa simulaciones)
     analyst.py                         — Analyst agent (identifica patrones)
     reporter.py                        — Reporter agent (genera informes PDF)
-    tools.py                           — Tools compartidas (simulation data access)
-    utils.py                           — Utilidades compartidas
-    runtime/                           — Loop agentico y dispatcher de tools
+    orchestrator.py                    — Pipeline coordinator + chat interactivo
+    model_loader.py                    — Carga dinamica de modelos generados por Fase 1
+    knowledge/                         — TrackerMemoryWriter (sim observations → KG)
+    recall/                            — retrieve_context tool sobre Knowledge Backbone
+    nlsql.py                           — NL→SQL sobre experiments, models, memories, simulation_observations
+    charts.py, critical_events.py      — Cards y visualizaciones para la UI
+    api.py                             — FastAPI + WebSocket backend
+    loop.py                            — Agent loop y dispatcher
     templates/                         — Plantilla LaTeX para informes
+  backend/                             — Config de despliegue backend (Docker/Railway)
+  frontend/                            — Frontend React + Vite + Tailwind
   tests/                               — Tests unitarios e integracion
-  docs/DESIGN.md                       — Diseno de la arquitectura
+  docs/specs/                          — Specs de diseno por fase
 
-docs/                                  — Documentos de referencia
-  TFM_v_FINAL.pdf                      — Paper de referencia (TFM Denis)
-  RESUMEN_TFM_Denis.md                 — Resumen del paper de referencia
-  survival_metabolicModel_behave_clean_Denis.py  — Script de ejemplo del paper
+shared/                                — Storage compartido (Postgres, MinIO, Neo4j, Qdrant)
+docker-compose.yml                     — Stack completo: postgres, minio, qdrant, neo4j, web
+docs/                                  — Documentos de referencia (TFM Denis, knowledge-architecture)
 ```
 
 ---
 
 ## Punto de integracion
 
-Las dos fases se conectan a traves del **Protocol** `DecisionModel` — una interfaz con tres metodos: `decide()`, `update()` y `get_state()`.
+Las dos fases se conectan a traves de:
 
-La Fase 1 implementa modelos concretos con tipos propios (percepciones tipadas como dataclass). La Fase 2 usa duck typing con percepciones como `dict`, permitiendo que el Environment ejecute cualquier paradigma sin depender del codigo de la Fase 1.
+1. **Protocol `DecisionModel`** — interfaz con tres metodos (`decide()`, `update()`, `get_state()`). La Fase 1 implementa modelos concretos con tipos propios; la Fase 2 usa duck typing con percepciones como `dict`. Sin adaptador.
+2. **Knowledge Backbone compartido** — Neo4j + Qdrant + Postgres. La Fase 1 escribe paradigmas y formulaciones; la Fase 2 lee contexto via `retrieve_context` y escribe observaciones de simulacion.
 
 ---
 
 ## Setup
 
-Requiere Python 3.12+ y [uv](https://docs.astral.sh/uv/).
+Requiere Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 20+ y Docker.
 
 ```bash
-# Fase 1
-cd phase1-pablo
-uv sync
+# 1. Servicios compartidos (Postgres, MinIO, Neo4j, Qdrant)
+docker compose up -d
 
-# Fase 2 (backend)
+# 2. Fase 1
+cd phase1-pablo && uv sync && cd ..
+
+# 3. Fase 2 (backend)
 cd phase2-juan
 uv sync
-cp .env.example .env  # Configurar OPENROUTER_API_KEY
+cp .env.example .env   # configurar OPENROUTER_API_KEY (y opcionalmente VOYAGE_API_KEY)
+cd ..
 
-# Fase 2 (frontend)
-cd phase2-juan/web
-npm install
+# 4. Fase 2 (frontend)
+cd phase2-juan/frontend && npm install
 ```
 
 ## Uso
@@ -114,14 +126,26 @@ cd phase2-juan && uv run simlab
 
 # Web UI
 cd phase2-juan && uv run uvicorn simlab.api:app --port 8000   # backend
-cd phase2-juan/web && npm run dev                              # frontend → localhost:5173
+cd phase2-juan/frontend && npm run dev                         # frontend → localhost:5173
+```
+
+Si el puerto 8000 esta ocupado, levanta el backend en otro puerto y pasalo al frontend via env:
+
+```bash
+uv run uvicorn simlab.api:app --port 8100
+VITE_API_PORT=8100 npm run dev
 ```
 
 ## Tests
 
 ```bash
-# Fase 2
+# Fase 2 — Python
 cd phase2-juan && uv run pytest tests/ -v
+
+# Fase 2 — Playwright (e2e + mock)
+cd phase2-juan/frontend && npx playwright test
+# Si tu backend no esta en 8000:
+PLAYWRIGHT_BASE_URL=http://localhost:5175 npx playwright test
 
 # Fase 1
 cd phase1-pablo && uv run pytest tests/ -v
@@ -136,7 +160,12 @@ cd phase1-pablo && uv run pytest tests/ -v
 | Lenguaje | Python 3.12+ (uv) |
 | LLM | Claude via OpenRouter (Anthropic SDK) |
 | Backend | FastAPI + WebSocket |
-| Frontend | React + Vite + Tailwind CSS |
+| Frontend | React 19 + Vite + Tailwind CSS v4 |
 | Tests | pytest + Playwright (e2e) |
-| Datos | JSON en memoria |
+| Persistencia relacional | Postgres 17 |
+| Object store | MinIO (S3-compatible) |
+| Knowledge graph | Neo4j 5 (HippoRAG PPR) |
+| Vector + sparse search | Qdrant (dense + BM25 nativo) |
+| Reranker / embeddings | Voyage AI (opcional, degrada graciosamente) |
 | Informes | LaTeX (tectonic) → PDF |
+| Orquestacion | Docker Compose |

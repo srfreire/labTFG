@@ -1,268 +1,290 @@
 #!/usr/bin/env python3
-"""Generate the Phase 2 architecture Excalidraw diagram."""
+"""Phase 2 architecture — minimalist + technical.
+
+Rules:
+  - Title at TOP of every box. Content as separate text below. Never bind
+    multi-line content to a container (Excalidraw clips it).
+  - Arrows go vertical or short-diagonal only. No diagonal labels in the
+    middle of empty space — labels sit just above the arrow's midpoint.
+  - Generous vertical spacing between layers so labels never collide.
+  - Color encodes role; legend explains.
+"""
 
 import json
 import uuid
 
 elements = []
 
+
 def uid():
     return uuid.uuid4().hex[:16]
 
-def rect(x, y, w, h, stroke="#6c6f85", bg="#transparent", fill="solid", sw=2, rough=0, opacity=100, radius=8):
+
+def rect(x, y, w, h, stroke, bg, sw=2, radius=8):
     rid = uid()
     elements.append({
         "id": rid, "type": "rectangle",
         "x": x, "y": y, "width": w, "height": h,
         "strokeColor": stroke, "backgroundColor": bg,
-        "fillStyle": fill, "strokeWidth": sw, "roughness": rough,
-        "opacity": opacity, "angle": 0, "groupIds": [],
+        "fillStyle": "solid", "strokeWidth": sw, "roughness": 0,
+        "opacity": 100, "angle": 0, "groupIds": [],
         "roundness": {"type": 3, "value": radius},
         "boundElements": [], "locked": False,
         "updated": 1, "link": None,
     })
     return rid
 
-def text(x, y, w, h, txt, size=20, color="#e6e6e6", family=1, align="center", valign="middle", container=None, bold=False):
-    tid = uid()
-    el = {
-        "id": tid, "type": "text",
+
+def text(x, y, w, h, txt, size=14, color="#e6e6e6", align="left"):
+    elements.append({
+        "id": uid(), "type": "text",
         "x": x, "y": y, "width": w, "height": h,
         "text": txt, "originalText": txt,
-        "fontSize": size, "fontFamily": family,
-        "textAlign": align, "verticalAlign": valign,
+        "fontSize": size, "fontFamily": 1,
+        "textAlign": align, "verticalAlign": "top",
         "strokeColor": color, "backgroundColor": "transparent",
         "fillStyle": "solid", "strokeWidth": 1, "roughness": 0,
         "opacity": 100, "angle": 0, "groupIds": [],
         "roundness": None, "boundElements": [],
         "locked": False, "updated": 1, "link": None,
         "autoResize": True, "lineHeight": 1.25,
-    }
-    if container:
-        el["containerId"] = container
-    elements.append(el)
-    return tid
+    })
 
-def box_with_label(x, y, w, h, label, stroke="#6c6f85", bg="#7c3aed", text_color="#e6e6e6", font_size=18):
-    """Rectangle with centered text inside."""
-    rid = rect(x, y, w, h, stroke=stroke, bg=bg)
-    tid = text(x + 10, y + h//2 - font_size//2, w - 20, font_size + 6, label,
-               size=font_size, color=text_color, container=rid)
-    # link them
-    for el in elements:
-        if el["id"] == rid:
-            el["boundElements"].append({"id": tid, "type": "text"})
-    return rid
 
-def arrow(x1, y1, x2, y2, color="#a6adc8", sw=2, label=None, start_id=None, end_id=None):
-    aid = uid()
-    dx = x2 - x1
-    dy = y2 - y1
-    el = {
-        "id": aid, "type": "arrow",
+def arrow(x1, y1, x2, y2, color="#a6adc8", sw=2):
+    dx, dy = x2 - x1, y2 - y1
+    elements.append({
+        "id": uid(), "type": "arrow",
         "x": x1, "y": y1, "width": abs(dx), "height": abs(dy),
         "strokeColor": color, "backgroundColor": "transparent",
         "fillStyle": "solid", "strokeWidth": sw, "roughness": 0,
         "opacity": 100, "angle": 0, "groupIds": [],
-        "roundness": {"type": 2},
-        "boundElements": [],
+        "roundness": {"type": 2}, "boundElements": [],
         "points": [[0, 0], [dx, dy]],
         "startArrowhead": None, "endArrowhead": "arrow",
         "locked": False, "updated": 1, "link": None,
-    }
-    if start_id:
-        el["startBinding"] = {"elementId": start_id, "focus": 0, "gap": 4}
-    if end_id:
-        el["endBinding"] = {"elementId": end_id, "focus": 0, "gap": 4}
-    elements.append(el)
+    })
 
-    if label:
-        mid_x = x1 + dx // 2
-        mid_y = y1 + dy // 2
-        text(mid_x - 60, mid_y - 16, 120, 20, label, size=13, color=color, align="center")
 
-    return aid
+def simple_box(x, y, w, h, label, stroke, bg, color, size=16):
+    rect(x, y, w, h, stroke=stroke, bg=bg)
+    text(x, y + h // 2 - size // 2 - 2, w, size + 6,
+         label, size=size, color=color, align="center")
 
-def group_box(x, y, w, h, label, stroke="#585b70", bg="#313244", label_color="#cdd6f4", opacity=40):
-    """Large grouping rectangle with label at top-left."""
-    rid = rect(x, y, w, h, stroke=stroke, bg=bg, opacity=opacity, sw=1)
-    text(x + 15, y + 8, len(label) * 11, 22, label, size=16, color=label_color, bold=True)
-    return rid
 
-# ──────────────────────────────────────────────────────────────────────
-# Title
-# ──────────────────────────────────────────────────────────────────────
-text(440, 15, 720, 40, "SimLab — Virtual Lab Architecture", size=32, color="#cdd6f4")
+def agent_box(x, y, name, model):
+    rect(x, y, 260, 74, stroke="#a78bfa", bg="#7c3aed")
+    text(x, y + 10, 260, 22, name, size=16, color="#ffffff", align="center")
+    text(x, y + 42, 260, 16, model, size=11, color="#ddd6fe", align="center")
 
-# ──────────────────────────────────────────────────────────────────────
-# USER INTERFACE
-# ──────────────────────────────────────────────────────────────────────
-group_box(500, 70, 600, 100, "USER INTERFACE", stroke="#7f849c", bg="#45475a", label_color="#bac2de")
 
-cli_id = box_with_label(540, 100, 220, 50, "CLI (Typer)", bg="#585b70", stroke="#7f849c", text_color="#cdd6f4")
-web_id = box_with_label(840, 100, 220, 50, "Web UI (React + Vite)", bg="#585b70", stroke="#7f849c", text_color="#cdd6f4", font_size=15)
+def info_box(x, y, w, h, title, lines, stroke, bg, title_color, line_color,
+             title_size=18, line_size=12, title_align="center"):
+    """Rectangle + title + left-aligned content lines, all unbound."""
+    rect(x, y, w, h, stroke=stroke, bg=bg)
+    text(x, y + 12, w, title_size + 4, title,
+         size=title_size, color=title_color, align=title_align)
+    for i, line in enumerate(lines):
+        text(x + 16, y + 16 + (title_size + 14) + i * (line_size + 6),
+             w - 32, line_size + 6, line,
+             size=line_size, color=line_color, align="left")
 
-# ──────────────────────────────────────────────────────────────────────
-# ORCHESTRATOR
-# ──────────────────────────────────────────────────────────────────────
-orch_id = box_with_label(530, 210, 540, 65, "ORCHESTRATOR  (claude-sonnet-4-5)", bg="#1e66f5", stroke="#89b4fa", text_color="#ffffff", font_size=20)
 
-# arrows user → orchestrator
-arrow(650, 150, 700, 210, color="#a6adc8", start_id=cli_id, end_id=orch_id)
-arrow(950, 150, 900, 210, color="#a6adc8", start_id=web_id, end_id=orch_id)
+# ── Palette ──────────────────────────────────────────────────────────
+GREY        = ("#7f849c", "#585b70")
+BLUE_STROKE = "#89b4fa"
+BLUE_BG     = "#1e66f5"
+AMBER_S, AMBER_B = "#f9e2af", "#b87a00"
+GREEN_S, GREEN_B = "#a6e3a1", "#04b575"
+STORE_S, STORE_B = "#a6e3a1", "#166534"
 
-# ──────────────────────────────────────────────────────────────────────
-# WebSocket API (between orchestrator and web)
-# ──────────────────────────────────────────────────────────────────────
-text(1075, 130, 160, 18, "WebSocket /ws", size=13, color="#89b4fa")
-text(1075, 148, 200, 18, "(FastAPI → real-time)", size=11, color="#7f849c")
+W_DATA  = "#f9e2af"   # simulation data
+W_WRITE = "#f38ba8"   # KG write
+W_READ  = "#74c7ec"   # KG read
+W_PIPE  = "#cba6f7"   # pipeline / delegation
 
-# ──────────────────────────────────────────────────────────────────────
-# PIPELINE AGENTS
-# ──────────────────────────────────────────────────────────────────────
-agents_group = group_box(50, 310, 1500, 130, "PIPELINE AGENTS", stroke="#7c3aed", bg="#2e1065", label_color="#c4b5fd")
 
-# Agent colors: purple
-agent_bg = "#7c3aed"
-agent_stroke = "#a78bfa"
-agent_text = "#ffffff"
+# ── Title ────────────────────────────────────────────────────────────
+text(360, 20, 760, 40, "SimLab — Arquitectura de la Fase 2",
+     size=28, color="#cdd6f4", align="center")
 
-arch_id = box_with_label(80, 355, 260, 60, "Architect", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
-track_id = box_with_label(370, 355, 260, 60, "Tracker", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
-analyst_id = box_with_label(660, 355, 260, 60, "Analyst", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
-reporter_id = box_with_label(950, 355, 260, 60, "Reporter", bg=agent_bg, stroke=agent_stroke, text_color=agent_text)
-# NL-SQL is an Orchestrator-side tool (query_history), not a pipeline agent — kept in this row but visually flagged as such
-nlsql_id = box_with_label(1240, 355, 260, 60, "NL-SQL  (Orch tool: query_history)", bg="#6c3483", stroke="#a78bfa", text_color=agent_text, font_size=13)
+# ── User row (y=90) ──────────────────────────────────────────────────
+simple_box(220, 90, 240, 50, "CLI (Typer)", *GREY, "#cdd6f4")
+simple_box(1020, 90, 240, 50, "Web UI (React + Vite)", *GREY, "#cdd6f4", size=14)
 
-# model labels under each agent
-text(80, 420, 260, 16, "claude-haiku-4-5", size=11, color="#a78bfa")
-text(370, 420, 260, 16, "claude-sonnet-4-5", size=11, color="#a78bfa")
-text(660, 420, 260, 16, "claude-sonnet-4-5", size=11, color="#a78bfa")
-text(950, 420, 260, 16, "claude-haiku-4-5", size=11, color="#a78bfa")
-text(1240, 420, 260, 16, "claude-haiku-4-5", size=11, color="#a78bfa")
+# ── Orchestrator (y=210) ─────────────────────────────────────────────
+simple_box(430, 210, 620, 64, "Orchestrator  ·  chat + tool dispatch",
+           BLUE_STROKE, BLUE_BG, "#ffffff", size=18)
+text(430, 282, 620, 14,
+     "WebSocket /ws (FastAPI)   ·   tool query_history (NL→SQL → Postgres)",
+     size=11, color=BLUE_STROKE, align="center")
 
-# Orchestrator → agents arrows
-for agent_id, ax in [(arch_id, 210), (track_id, 500), (analyst_id, 790), (reporter_id, 1080), (nlsql_id, 1370)]:
-    arrow(800, 275, ax, 355, color="#89b4fa", sw=1, start_id=orch_id, end_id=agent_id)
+# User → Orchestrator
+arrow(340, 140, 600, 210, "#a6adc8")
+arrow(1140, 140, 880, 210, "#a6adc8")
 
-# ──────────────────────────────────────────────────────────────────────
-# SIMULATION ENGINE (left)
-# ──────────────────────────────────────────────────────────────────────
-sim_group = group_box(50, 480, 560, 280, "SIMULATION ENGINE", stroke="#e6a817", bg="#3d2800", label_color="#f9e2af")
+# ── Pipeline agents row (y=360) ──────────────────────────────────────
+AY = 360
+agent_box(80,   AY, "Architect", "claude-haiku-4-5")
+agent_box(400,  AY, "Tracker",   "claude-sonnet-4-5")
+agent_box(720,  AY, "Analyst",   "claude-sonnet-4-5")
+agent_box(1040, AY, "Reporter",  "claude-haiku-4-5")
 
-env_id = box_with_label(80, 520, 500, 50, "Environment (Grid + Actions + Resources)",
-                        bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
-loader_id = box_with_label(80, 585, 500, 50, "Model Loader (Postgres → S3 → importlib → duck typing)",
-                           bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=13)
-crit_id = box_with_label(80, 650, 500, 50, "Critical Events (rule-based detector)",
-                         bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
-charts_id = box_with_label(80, 715, 500, 50, "Charts (matplotlib + Recharts JSON)",
-                           bg="#b87a00", stroke="#f9e2af", text_color="#1e1e2e", font_size=15)
+# Orchestrator → Architect (single delegation arrow)
+arrow(740, 274, 210, AY, color=W_PIPE, sw=2)
+text(420, 296, 280, 16, "delega pipeline secuencial",
+     size=11, color=W_PIPE, align="center")
 
-# Architect → Environment
-arrow(210, 415, 210, 520, color="#f9e2af", label="JSON spec", start_id=arch_id, end_id=env_id)
+# Horizontal pipeline between agents (y center = AY+37)
+PIPE_Y = AY + 37
+for x_from, x_to in [(340, 400), (660, 720), (980, 1040)]:
+    arrow(x_from, PIPE_Y, x_to, PIPE_Y, color=W_PIPE, sw=2)
 
-# Environment → Tracker (events)
-arrow(580, 545, 500, 420, color="#f9e2af", label="events")
+# ── Layer row (y=510) ────────────────────────────────────────────────
+LY = 510
+info_box(
+    80, LY, 600, 150,
+    "Simulation Engine",
+    [
+        "•  Environment  (grid + actions + resources)",
+        "•  Model Loader  (Postgres → S3 → importlib, duck typing con Fase 1)",
+        "•  Critical Events detector  +  Charts (matplotlib / Recharts)",
+        "•  Eventos emitidos al Tracker (subscribe)",
+    ],
+    AMBER_S, AMBER_B, "#1e1e2e", "#1e1e2e",
+)
 
-# ──────────────────────────────────────────────────────────────────────
-# KNOWLEDGE LAYER (right)
-# ──────────────────────────────────────────────────────────────────────
-kg_group = group_box(660, 480, 890, 280, "KNOWLEDGE LAYER", stroke="#04b575", bg="#002b1a", label_color="#a6e3a1")
+info_box(
+    720, LY, 600, 150,
+    "Knowledge Backbone",
+    [
+        "•  Write (sim-memory):  TrackerMemoryWriter → Voyage-3 → Qdrant + Postgres",
+        "•  Read·push (kg-enrichment):  Orchestrator prefetch_knowledge → '## Knowledge context'",
+        "•  Read·pull (sim-recall):  agent tool retrieve_context — 3-layer KG · dense · BM25 · RRF · CRAG",
+        "•  Consumers: Architect · Analyst · Reporter  ·  flags ENABLE_KNOWLEDGE_READ / WRITE",
+    ],
+    GREEN_S, GREEN_B, "#ffffff", "#e6e6e6",
+)
 
-# sim-memory (write)
-mem_group = group_box(685, 515, 400, 225, "sim-memory (write path)", stroke="#f38ba8", bg="#3b1528", label_color="#f38ba8", opacity=50)
-box_with_label(710, 550, 350, 40, "TrackerMemoryWriter", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
-box_with_label(710, 600, 350, 40, "FactSpec → embed (Voyage-3)", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
-box_with_label(710, 650, 350, 40, "Upsert (Qdrant + Postgres)", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
-box_with_label(710, 700, 350, 40, "Sparse: BM25 native (Qdrant)", bg="#a6325a", stroke="#f38ba8", text_color="#ffffff", font_size=14)
+# Architect → Sim Engine (vertical)
+arrow(210, AY + 74, 210, LY, color=W_DATA, sw=2)
+text(60, AY + 92, 140, 16, "JSON spec  →",
+     size=11, color=W_DATA, align="right")
 
-# sim-recall (read) — Phase 2 wrapper. The actual 3-layer pipeline lives in Phase 1.
-recall_group = group_box(1110, 515, 415, 225, "sim-recall (read path)", stroke="#74c7ec", bg="#0b2942", label_color="#74c7ec", opacity=50)
-box_with_label(1135, 550, 365, 40, "retrieve_context  (P2 wrapper)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
-box_with_label(1135, 600, 365, 40, "delegates to Phase 1:", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
-box_with_label(1135, 650, 365, 40, "  create_retrieve_knowledge()", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
-box_with_label(1135, 700, 365, 40, "  → 3-layer + RRF + CRAG (P1)", bg="#1a6694", stroke="#74c7ec", text_color="#ffffff", font_size=13)
-# Note: chat_history (recall/chat_history.py) persists Orchestrator messages to chat_messages
+# Tracker → Knowledge write (short diagonal) — NEW: sim-memory
+arrow(530, AY + 74, 820, LY, color=W_WRITE, sw=4)
+text(610, AY + 78, 180, 16, "write facts",
+     size=11, color=W_WRITE, align="center")
 
-# Tracker → sim-memory arrow
-arrow(500, 420, 885, 515, color="#f38ba8", sw=2, label="write facts", start_id=track_id)
+# Knowledge → Reporter read — covers both push (prefetch) and pull (tool) — NEW: kg-enrichment + sim-recall
+arrow(1220, LY, 1170, AY + 74, color=W_READ, sw=4)
+text(1230, AY + 86, 220, 16, "←  prefetch (push)",
+     size=11, color=W_READ, align="left")
+text(1230, AY + 102, 220, 16, "←  retrieve_context (pull)",
+     size=11, color=W_READ, align="left")
 
-# sim-recall → Architect, Analyst, Reporter (dashed-style arrows)
-arrow(1317, 550, 1080, 420, color="#74c7ec", sw=1, label="retrieve_context")
-arrow(1317, 550, 790, 420, color="#74c7ec", sw=1)
-arrow(1317, 550, 210, 420, color="#74c7ec", sw=1)
 
-# ──────────────────────────────────────────────────────────────────────
-# STORAGE LAYER (bottom)
-# ──────────────────────────────────────────────────────────────────────
-storage_group = group_box(50, 800, 1500, 170, "STORAGE LAYER", stroke="#04b575", bg="#002b1a", label_color="#a6e3a1")
+# ── Storage row (y=700) ──────────────────────────────────────────────
+SY = 700
+STORE_BOXES = [
+    (80,   "PostgreSQL", ["experiments · models · runs",
+                          "chat_messages",
+                          "simulation_observations",
+                          "pipeline_memories"]),
+    (400,  "MinIO (S3)", ["events.json · replay.json",
+                          "tracker · analyst dumps",
+                          "PDF reports",
+                          "modelos .py (Fase 1)"]),
+    (720,  "Qdrant",     ["memories_dense (1024d, Voyage-3)",
+                          "memories_sparse (BM25 nativo)",
+                          "shared P1 + P2 (source_kind)"]),
+    (1040, "Neo4j",      ["Entities / Relations",
+                          "Provenance (run_ids)",
+                          "Temporal edges",
+                          "Native vector index"]),
+]
+for x, name, desc_lines in STORE_BOXES:
+    info_box(x, SY, 260, 130, name, desc_lines,
+             STORE_S, STORE_B, "#ffffff", "#e6e6e6",
+             title_size=15, line_size=10)
 
-# PostgreSQL
-pg_id = box_with_label(80, 845, 320, 100,
-    "PostgreSQL\n─────────\nexperiments / models / runs\nsimulation_observations (P2)\npipeline_memories (P1)\nnode_run_observations",
-    bg="#166534", stroke="#a6e3a1", text_color="#e6e6e6", font_size=12)
+# Sim Engine → storage (Postgres + MinIO)
+arrow(220, LY + 150, 220, SY, color=W_DATA, sw=1)
+arrow(540, LY + 150, 540, SY, color=W_DATA, sw=1)
+text(100, LY + 158, 540, 16, "artifacts (runs · events · PDFs)",
+     size=11, color=W_DATA, align="center")
 
-# MinIO / S3
-s3_id = box_with_label(430, 845, 320, 100,
-    "MinIO / S3\n─────────\nevents.json\nreplay.json\ntracker / analyst\nPDF reports\nmodel .py files",
-    bg="#166534", stroke="#a6e3a1", text_color="#e6e6e6", font_size=13)
+# Knowledge → storage (Qdrant + Neo4j)
+arrow(860, LY + 150, 860, SY, color=W_READ, sw=1)
+arrow(1180, LY + 150, 1180, SY, color=W_READ, sw=1)
+text(800, LY + 158, 540, 16, "vectores + grafo de conocimiento",
+     size=11, color=W_READ, align="center")
 
-# Qdrant
-qd_id = box_with_label(780, 845, 320, 100,
-    "Qdrant\n─────────\nmemories_dense (1024d)\nmemories_sparse (BM25 IDF)\n\nP1+P2 share, source_kind tag",
-    bg="#166534", stroke="#a6e3a1", text_color="#e6e6e6", font_size=12)
+# ── Legend (y=850) ───────────────────────────────────────────────────
+LGY = 850
+text(80, LGY, 1240, 16,
+     "Capas:   gris = interfaz   ·   azul = orquestador   ·   morado = agentes "
+     "  ·   ámbar = motor de simulación   ·   verde = knowledge / storage",
+     size=12, color="#9399b2", align="left")
+text(80, LGY + 22, 1240, 16,
+     "Flechas:   lavanda = delegación pipeline   ·   ámbar = datos de simulación "
+     "  ·   rosa = write KG   ·   cyan = read KG",
+     size=12, color="#9399b2", align="left")
+text(80, LGY + 44, 1240, 16,
+     "Integración Fase 1:   .py duck-typed (DecisionModel)   ·   "
+     "Knowledge compartido vía source_kind tag en Qdrant",
+     size=12, color="#9399b2", align="left")
 
-# Neo4j
-neo_id = box_with_label(1130, 845, 320, 100,
-    "Neo4j\n─────────\nEntities / Relations\nProvenance (run_ids)\nTemporal edges\nNative vector index",
-    bg="#166534", stroke="#a6e3a1", text_color="#e6e6e6", font_size=12)
 
-# ──────────────────────────────────────────────────────────────────────
-# Arrows: agents/engine → storage
-# ──────────────────────────────────────────────────────────────────────
+# ── NEW since last tutor review ──────────────────────────────────────
+NEW_COLOR = "#fbbf24"        # amber yellow
+NEW_BG    = "#3d2800"        # dark amber bg
 
-# Simulation engine → S3 (events, replay)
-arrow(330, 765, 590, 845, color="#f9e2af", sw=1, label="write artifacts")
+# Numbered markers placed inline next to the relevant existing labels
+MARKERS = ["①", "②", "③", "④"]
 
-# Simulation engine → Postgres (experiments)
-arrow(200, 765, 240, 845, color="#f9e2af", sw=1)
 
-# sim-memory → Qdrant
-arrow(885, 740, 940, 845, color="#f38ba8", sw=1, label="embeddings")
+def new_marker(x, y, n):
+    text(x, y, 22, 18, MARKERS[n - 1], size=15, color=NEW_COLOR, align="center")
 
-# sim-memory → Postgres (simulation_observations)
-arrow(885, 740, 240, 845, color="#f38ba8", sw=1, label="typed obs rows")
 
-# sim-recall → Neo4j (Cypher)
-arrow(1317, 740, 1290, 845, color="#74c7ec", sw=1, label="Cypher + PPR")
+# ①  sim-memory       — inline with "write facts" label
+new_marker(584, 436, 1)
 
-# sim-recall → Qdrant (ANN search)
-arrow(1317, 740, 940, 845, color="#74c7ec", sw=1, label="ANN search")
+# ③  kg-enrichment    — inline with "← prefetch (push)" label
+new_marker(1206, 444, 3)
 
-# Reporter → S3 (PDF)
-arrow(1080, 420, 590, 845, color="#cba6f7", sw=1, label="PDF")
+# ②  sim-recall        — inline with "← retrieve_context (pull)" label
+new_marker(1206, 462, 2)
 
-# NL-SQL → Postgres
-arrow(1370, 420, 240, 845, color="#cba6f7", sw=1, label="SQL queries")
+# ④  nlsql              — at the end of Orchestrator subtitle, right of "query_history"
+new_marker(1055, 282, 4)
 
-# ──────────────────────────────────────────────────────────────────────
-# Annotations
-# ──────────────────────────────────────────────────────────────────────
-text(50, 970, 500, 16, "Knowledge infra optional (ENABLE_KNOWLEDGE_READ/WRITE)", size=12, color="#7f849c", align="left")
-text(50, 988, 500, 16, "All LLM calls via OpenRouter → Anthropic models", size=12, color="#7f849c", align="left")
+# Panel at the bottom explaining each marker
+PY = 925
+rect(70, PY, 1260, 120, stroke=NEW_COLOR, bg=NEW_BG, sw=2)
+text(86, PY + 12, 1240, 22,
+     "Nuevo desde la última revisión del tutor",
+     size=15, color=NEW_COLOR, align="left")
+text(86, PY + 40, 1240, 16,
+     "①   sim-memory        —   Tracker escribe observaciones tipadas al KG "
+     "(Voyage-3 embed → Qdrant + Postgres, BM25 nativo)",
+     size=12, color="#e6e6e6", align="left")
+text(86, PY + 58, 1240, 16,
+     "②   sim-recall          —   Agentes consultan KG vía retrieve_context (pull)   ·   "
+     "chat_messages persistido entre sesiones   ·   query_history light path",
+     size=12, color="#e6e6e6", align="left")
+text(86, PY + 76, 1240, 16,
+     "③   kg-enrichment    —   Orchestrator prefetch_knowledge inyecta "
+     "'## Knowledge context' en los prompts de Architect/Analyst/Reporter (push)",
+     size=12, color="#e6e6e6", align="left")
+text(86, PY + 94, 1240, 16,
+     "④   nlsql                  —   Tool Orchestrator-side: NL→SQL sobre experiments · "
+     "models · simulation_observations · pipeline_memories · chat_messages",
+     size=12, color="#e6e6e6", align="left")
 
-# Pipeline flow annotation
-text(80, 445, 600, 16, "Pipeline: Architect → Simulate → Tracker → Analyst → Reporter", size=12, color="#cba6f7", align="left")
 
-# Phase 1 integration note — model_loader reads Postgres models table first, then downloads .py from S3
-text(80, 770, 600, 16, "Phase 1 models registered in Postgres (models table) → loaded via duck typing from S3", size=11, color="#f9e2af", align="left")
-# chat_history note — added in P3 (recall/chat_history.py)
-text(50, 1006, 600, 16, "Orchestrator messages persisted via recall/chat_history.py → chat_messages table", size=12, color="#7f849c", align="left")
-
-# ──────────────────────────────────────────────────────────────────────
-# Output
-# ──────────────────────────────────────────────────────────────────────
+# ── Output ───────────────────────────────────────────────────────────
 diagram = {
     "type": "excalidraw",
     "version": 2,
@@ -276,7 +298,6 @@ diagram = {
     "files": {},
 }
 
-out_path = "architecture.excalidraw"
-with open(out_path, "w") as f:
+with open("architecture.excalidraw", "w") as f:
     json.dump(diagram, f, indent=2)
-print(f"Written {len(elements)} elements to {out_path}")
+print(f"Written {len(elements)} elements")

@@ -1,6 +1,6 @@
 # Knowledge Backbone — Phase Breakdown
 
-> Status: current | Created: 2026-04-14 | Last updated: 2026-04-14
+> Status: current | Created: 2026-04-14 | Last updated: 2026-05-11
 > References: [general.md](general.md)
 
 ## Phases
@@ -35,9 +35,11 @@
   - Issues: P6-001, P6-002
   - Heats: schema (P6-001, P6-002)
 
-- [ ] **Phase 7: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, cross-run knowledge diff.
+- [x] **Phase 7: Frontend Knowledge Visualization** — Interactive knowledge graph explorer in Phase 2's web UI, provenance trail viewer, memory inspector, highlight-by-run filter (full side-by-side cross-run diff deferred).
   - Dependencies: Phase 6
-  - Estimated issues: ~5 (future phase, not forged now)
+  - Issues: P7-001, P7-002, P7-003, P7-004, P7-005
+  - Heats: backend (P7-001 ∥ P7-002 ∥ P7-003) → frontend (P7-004 → P7-005)
+  - Spec: [phase-7-frontend-knowledge.md](phase-7-frontend-knowledge.md)
 
 ## Parallelism
 
