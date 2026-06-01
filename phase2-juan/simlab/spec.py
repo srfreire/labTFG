@@ -24,6 +24,24 @@ REQUIRED_EFFECT_FIELDS: dict[str, list[str]] = {
 }
 
 
+def _canonicalize_spec(spec: dict) -> dict:
+    """Accept Phase 1 and Phase 2 spec key names without mutating input."""
+    result = dict(spec)
+    if "actions" not in result and "available_actions" in result:
+        result["actions"] = result["available_actions"]
+    if "resources" not in result and "resource_types" in result:
+        resource_types = result["resource_types"]
+        if isinstance(resource_types, dict):
+            result["resources"] = [
+                {"type": rtype, **config}
+                for rtype, config in resource_types.items()
+                if isinstance(config, dict)
+            ]
+        else:
+            result["resources"] = resource_types
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Spec validation
 # ---------------------------------------------------------------------------
@@ -35,6 +53,7 @@ def validate_spec_dict(spec: dict) -> list[str]:
     Returns a list of error strings. Empty list = valid spec.
     Checks: required keys, types, uniqueness, and cross-references.
     """
+    spec = _canonicalize_spec(spec)
     errors: list[str] = []
 
     # 1. Top-level required keys
@@ -177,6 +196,7 @@ def spec_to_environment(spec: dict, seed: int | None = None) -> Environment:
     errors = validate_spec_dict(spec)
     if errors:
         raise ValueError(f"Invalid spec: {'; '.join(errors)}")
+    spec = _canonicalize_spec(spec)
 
     actions = [
         ActionRule(name=a["name"], effect=_parse_effect(a["effect"]))

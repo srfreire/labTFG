@@ -187,6 +187,29 @@ class FakeModel:
 '''
 
 
+MODEL_SOURCE_WITH_INTERNAL_RNG = '''\
+"""A model that keeps its own RNG."""
+import random
+
+class InternalRngModel:
+    def __init__(self, seed=None):
+        self.rng = random.Random(seed)
+        self.state = {"energy": self.rng.uniform(0, 100)}
+
+    def decide(self, perception):
+        class Action:
+            name = self.rng.choice(["stay", "move_up", "move_down"])
+            params = {}
+        return Action()
+
+    def update(self, action, reward, new_perception):
+        pass
+
+    def get_state(self):
+        return self.state
+'''
+
+
 async def test_load_model_returns_decision_model():
     info = _make_model_info()
 
@@ -224,6 +247,27 @@ async def test_load_model_with_seed():
     a1 = m1.decide(perception)
     a2 = m2.decide(perception)
     assert a1.name == a2.name
+
+
+async def test_load_model_with_seed_supports_models_that_create_internal_rng():
+    info = _make_model_info(class_name="InternalRngModel")
+    perception = {
+        "x": 0,
+        "y": 0,
+        "grid_width": 8,
+        "grid_height": 8,
+        "step": 0,
+        "resources": {},
+        "last_action_result": {},
+    }
+
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=MODEL_SOURCE_WITH_INTERNAL_RNG.encode())
+    m1 = await load_model(info, storage=mock_storage, seed=42)
+    m2 = await load_model(info, storage=mock_storage, seed=42)
+
+    assert m1.get_state() == m2.get_state()
+    assert m1.decide(perception).name == m2.decide(perception).name
 
 
 async def test_load_model_no_model_class_raises():

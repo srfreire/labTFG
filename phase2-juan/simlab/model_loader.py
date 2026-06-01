@@ -28,6 +28,20 @@ logger = logging.getLogger(__name__)
 _tmp_dirs: list[str] = []
 
 
+class _SeededRandomModule:
+    """Small module-like random proxy backed by a per-model RNG."""
+
+    Random = random.Random
+
+    def __init__(self, seed: int) -> None:
+        self._rng = random.Random(seed)
+
+    def __getattr__(self, name: str):
+        if hasattr(self._rng, name):
+            return getattr(self._rng, name)
+        return getattr(random, name)
+
+
 # ---------------------------------------------------------------------------
 # Model metadata
 # ---------------------------------------------------------------------------
@@ -111,8 +125,9 @@ async def load_model(
     """Download a model from S3 and instantiate it.
 
     The model source is written to a temp directory and loaded as a module.
-    If seed is provided, the module's `random` attribute is replaced with
-    a newly-seeded Random instance for reproducibility.
+    If seed is provided, the module's `random` attribute is replaced with a
+    module-like proxy backed by a newly-seeded Random instance. Models with an
+    explicit constructor ``seed`` parameter receive that same seed.
     """
     model_bytes = await storage.get(model_info.s3_model_key)
     tmp_dir = tempfile.mkdtemp(prefix="model_")
@@ -131,7 +146,7 @@ async def load_model(
     spec.loader.exec_module(mod)
 
     if seed is not None and hasattr(mod, "random"):
-        mod.random = random.Random(seed)
+        mod.random = _SeededRandomModule(seed)
 
     model_class: type | None = None
     for _name, obj in inspect.getmembers(mod, inspect.isclass):
@@ -147,8 +162,17 @@ async def load_model(
     if model_class is None:
         raise ValueError(f"No decision model class found in {model_info.s3_model_key}")
 
+    init_kwargs = kwargs
+    if seed is not None:
+        try:
+            signature = inspect.signature(model_class)
+        except (TypeError, ValueError):
+            signature = None
+        if signature and "seed" in signature.parameters and "seed" not in kwargs:
+            init_kwargs = kwargs | {"seed": seed}
+
     try:
-        return model_class(**kwargs)
+        return model_class(**init_kwargs)
     except TypeError as e:
         raise ValueError(
             f"Failed to instantiate {model_info.paradigm}/{model_info.formulation}: {e}"

@@ -21,12 +21,29 @@ VALID_SPEC = {
     ],
 }
 
+PHASE1_STYLE_SPEC = {
+    "grid": {"width": 10, "height": 10},
+    "available_actions": VALID_SPEC["actions"],
+    "resource_types": {
+        "food": {
+            "properties": {"palatability": [0.1, 1.0]},
+            "count": 5,
+            "regenerate": True,
+        }
+    },
+}
+
 
 # --- Task 1: Happy path ---
 
 
 def test_valid_spec_returns_no_errors():
     errors = validate_spec_dict(VALID_SPEC)
+    assert errors == []
+
+
+def test_phase1_style_spec_returns_no_errors():
+    errors = validate_spec_dict(PHASE1_STYLE_SPEC)
     assert errors == []
 
 
@@ -136,6 +153,13 @@ def test_spec_to_environment_converts_ranges_to_tuples():
     rule = env._resource_rules["food"]
     assert isinstance(rule.properties["palatability"], tuple)
     assert rule.properties["palatability"] == (0.1, 1.0)
+
+
+def test_spec_to_environment_accepts_phase1_style_spec():
+    env = spec_to_environment(PHASE1_STYLE_SPEC, seed=42)
+    assert "move_up" in env._action_registry
+    assert "eat" in env._action_registry
+    assert len(env._resources) == 5
 
 
 def test_spec_to_environment_noop_effect():
