@@ -201,8 +201,11 @@ _AXIS_LABELS = {
 # Matplotlib chart generation (for PDF reports)
 # ---------------------------------------------------------------------------
 
-# Professional style matching a clean academic look
-_MPL_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"]
+# Professional style matching a clean academic report.
+_MPL_COLORS = ["#2563eb", "#059669", "#7c3aed", "#dc2626", "#d97706", "#0891b2"]
+_MPL_BG = "#fbfbf8"
+_MPL_GRID = "#d8d6ce"
+_MPL_TEXT = "#202124"
 
 
 def _generate_chart_image(spec: dict) -> bytes | None:
@@ -217,7 +220,19 @@ def _generate_chart_image(spec: dict) -> bytes | None:
 
     from io import BytesIO
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    plt.rcParams.update(
+        {
+            "font.family": "DejaVu Sans",
+            "axes.titlesize": 15,
+            "axes.labelsize": 11,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+        }
+    )
+
+    fig, ax = plt.subplots(figsize=(9.5, 5.6))
+    fig.patch.set_facecolor(_MPL_BG)
+    ax.set_facecolor(_MPL_BG)
     chart_type = spec["type"]
     series = spec["series"]
 
@@ -230,10 +245,20 @@ def _generate_chart_image(spec: dict) -> bytes | None:
                 ys,
                 label=s["name"],
                 color=_MPL_COLORS[i % len(_MPL_COLORS)],
-                linewidth=1.4,
+                linewidth=2.2,
+                marker="o" if len(xs) <= 40 else None,
+                markersize=3.6,
+                markeredgewidth=0,
             )
         if len(series) > 1:
-            ax.legend(fontsize=9, framealpha=0.9)
+            ax.legend(
+                fontsize=9,
+                frameon=True,
+                facecolor="white",
+                edgecolor="#e5e1d8",
+                framealpha=0.96,
+                loc="best",
+            )
 
     elif chart_type == "bar":
         if not series:
@@ -253,11 +278,19 @@ def _generate_chart_image(spec: dict) -> bytes | None:
                 width,
                 label=s["name"],
                 color=_MPL_COLORS[i % len(_MPL_COLORS)],
+                edgecolor="white",
+                linewidth=0.8,
             )
         ax.set_xticks(x)
-        ax.set_xticklabels(categories, rotation=30, ha="right", fontsize=8)
+        ax.set_xticklabels(categories, rotation=24, ha="right", fontsize=9)
         if len(series) > 1:
-            ax.legend(fontsize=9)
+            ax.legend(
+                fontsize=9,
+                frameon=True,
+                facecolor="white",
+                edgecolor="#e5e1d8",
+                framealpha=0.96,
+            )
 
     elif chart_type == "heatmap":
         for i, s in enumerate(series):
@@ -268,19 +301,45 @@ def _generate_chart_image(spec: dict) -> bytes | None:
                 vals,
                 label=s["name"],
                 color=_MPL_COLORS[i % len(_MPL_COLORS)],
-                alpha=0.8,
+                alpha=0.92,
+                edgecolor="white",
+                linewidth=0.7,
             )
         if len(series) > 1:
-            ax.legend(fontsize=9)
+            ax.legend(
+                fontsize=9,
+                frameon=True,
+                facecolor="white",
+                edgecolor="#e5e1d8",
+                framealpha=0.96,
+            )
 
-    ax.set_title(spec.get("title", ""), fontsize=11, fontweight="bold")
-    ax.set_xlabel(spec.get("x_label", ""), fontsize=9)
-    ax.set_ylabel(spec.get("y_label", ""), fontsize=9)
-    ax.tick_params(labelsize=8)
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
+    ax.set_title(
+        spec.get("title", ""),
+        fontweight="bold",
+        color=_MPL_TEXT,
+        loc="left",
+        pad=14,
+    )
+    ax.set_xlabel(spec.get("x_label", ""), color="#44403c", labelpad=8)
+    ax.set_ylabel(spec.get("y_label", ""), color="#44403c", labelpad=8)
+    ax.tick_params(colors="#57534e", length=0)
+    ax.grid(True, axis="y", color=_MPL_GRID, alpha=0.75, linewidth=0.8)
+    ax.grid(False, axis="x")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#d6d3cc")
+    ax.spines["bottom"].set_color("#d6d3cc")
+    ax.margins(x=0.02)
+    fig.tight_layout(pad=1.6)
     buf = BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    fig.savefig(
+        buf,
+        format="png",
+        dpi=220,
+        bbox_inches="tight",
+        facecolor=fig.get_facecolor(),
+    )
     plt.close(fig)
     buf.seek(0)
     return buf.read()

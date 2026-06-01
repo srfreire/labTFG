@@ -16,7 +16,6 @@ import json
 import logging
 import re
 import subprocess
-from inspect import iscoroutinefunction
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -52,54 +51,6 @@ def _prepare_latex_body(content: str) -> str:
     content = re.sub(r"\\begin\{document\}", "", content)
     content = re.sub(r"\\end\{document\}", "", content)
     return content.strip()
-
-
-def _latex_escape_text(value: str) -> str:
-    """Escape plain text for safe insertion in a LaTeX paragraph."""
-    replacements = {
-        "\\": r"\textbackslash{}",
-        "&": r"\&",
-        "%": r"\%",
-        "$": r"\$",
-        "#": r"\#",
-        "_": r"\_",
-        "{": r"\{",
-        "}": r"\}",
-        "~": r"\textasciitilde{}",
-        "^": r"\textasciicircum{}",
-    }
-    return "".join(replacements.get(ch, ch) for ch in value)
-
-
-def _fallback_latex_body(tracker_output: str, analyst_output: str) -> str:
-    """Small robust report body used when LLM-authored LaTeX does not compile."""
-    tracker = _latex_escape_text(tracker_output[:6000])
-    analyst = _latex_escape_text(analyst_output[:6000])
-    return rf"""
-\section{{Resumen ejecutivo}}
-El laboratorio ejecutó la simulación, registró trayectorias, analizó patrones y generó este informe de contingencia porque la versión LaTeX detallada no compiló correctamente.
-
-\section{{Observación del Tracker}}
-\begin{{verbatim}}
-{tracker}
-\end{{verbatim}}
-
-\section{{Análisis}}
-\begin{{verbatim}}
-{analyst}
-\end{{verbatim}}
-
-\section{{Conclusiones}}
-La run completó las etapas de simulación, observación y análisis. Este PDF conserva los resultados principales para la demo y deja trazabilidad del experimento aunque el informe enriquecido necesite una revisión posterior de formato.
-""".strip()
-
-
-def _has_async_storage_write_api(storage: object) -> bool:
-    """Return whether storage looks like the real async artifact backend."""
-    return all(
-        iscoroutinefunction(getattr(storage, method, None))
-        for method in ("list", "get", "put")
-    )
 
 
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
@@ -403,6 +354,33 @@ class Reporter:
             pdf_path = Path(tmp) / f"{safe_name}.pdf"
             tex_path.write_text(full_latex)
 
+            async def store_outputs(
+                pdf_bytes: bytes, *, content_type: str = "application/pdf"
+            ) -> str:
+                tex_key = f"experiments/{experiment_id}/report.tex"
+                pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
+                tex_bytes = full_latex.encode()
+                await storage.put(tex_key, tex_bytes, "text/x-tex")
+                await storage.put(pdf_key, pdf_bytes, content_type)
+                await register_artifact(
+                    tex_key,
+                    "tex",
+                    len(tex_bytes),
+                    experiment_id=experiment_id,
+                    content_type="text/x-tex",
+                    db=db,
+                )
+                await register_artifact(
+                    pdf_key,
+                    "pdf",
+                    len(pdf_bytes),
+                    experiment_id=experiment_id,
+                    content_type=content_type,
+                    db=db,
+                )
+                self.last_pdf_key = pdf_key
+                return pdf_key
+
             # Download chart PNGs from S3 to temp dir for \includegraphics
             charts_prefix = f"experiments/{experiment_id}/charts/"
             chart_keys = await storage.list(charts_prefix)
@@ -431,45 +409,6 @@ class Reporter:
                         tex_path,
                         error_lines[:5] or result.stderr[-300:],
                     )
-                    if compile_state["attempts"] >= _MAX_COMPILE_ATTEMPTS:
-                        safe_name = f"{safe_name}_fallback"
-                        tex_path = Path(tmp) / f"{safe_name}.tex"
-                        pdf_path = Path(tmp) / f"{safe_name}.pdf"
-                        full_latex = template.replace(
-                            "%% CONTENT_PLACEHOLDER %%",
-                            _fallback_latex_body(tracker_output, analyst_output),
-                        )
-                        tex_path.write_text(full_latex)
-                        result = subprocess.run(
-                            ["tectonic", str(tex_path)],
-                            capture_output=True,
-                            text=True,
-                            timeout=240,
-                            cwd=tmp,
-                        )
-                        if result.returncode == 0:
-                            logger.warning(
-                                "compile_report: generated fallback PDF after LaTeX failures"
-                            )
-                        else:
-                            error_lines = [
-                                line
-                                for line in result.stderr.split("\n")
-                                if "error" in line.lower()
-                            ]
-                            logger.warning(
-                                "compile_report fallback failed: tex saved at %s, errors=%s",
-                                tex_path,
-                                error_lines[:5] or result.stderr[-300:],
-                            )
-                            return json.dumps(
-                                {
-                                    "success": False,
-                                    "errors": error_lines[:10]
-                                    if error_lines
-                                    else [result.stderr[-500:]],
-                                }
-                            )
                     # Keep tmp dir on failure so the .tex + tectonic stderr are
                     # available for post-mortem debugging.
                     if result.returncode != 0:
@@ -482,31 +421,9 @@ class Reporter:
                             }
                         )
 
-                tex_key = f"experiments/{experiment_id}/report.tex"
-                pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
-                tex_bytes = full_latex.encode()
-                pdf_bytes = pdf_path.read_bytes()
-                await storage.put(tex_key, tex_bytes, "text/x-tex")
-                await storage.put(pdf_key, pdf_bytes, "application/pdf")
-                await register_artifact(
-                    tex_key,
-                    "tex",
-                    len(tex_bytes),
-                    experiment_id=experiment_id,
-                    content_type="text/x-tex",
-                    db=db,
-                )
-                await register_artifact(
-                    pdf_key,
-                    "pdf",
-                    len(pdf_bytes),
-                    experiment_id=experiment_id,
-                    content_type="application/pdf",
-                    db=db,
-                )
+                pdf_key = await store_outputs(pdf_path.read_bytes())
 
                 shutil.rmtree(tmp, ignore_errors=True)
-                self.last_pdf_key = pdf_key
                 return json.dumps({"success": True, "pdf_path": pdf_key})
             except FileNotFoundError:
                 shutil.rmtree(tmp, ignore_errors=True)
@@ -569,21 +486,13 @@ class Reporter:
             text = extract_text(response)
         except TimeoutError:
             logger.warning(
-                "Reporter LLM timed out after %d seconds; generating fallback PDF",
+                "Reporter LLM timed out after %d seconds without generating a PDF",
                 REPORTER_LLM_TIMEOUT_SECONDS,
             )
             text = (
                 "El Reporter tardó demasiado en generar el informe enriquecido; "
-                "se generó un PDF de contingencia con los resultados principales."
+                "no se generó ningún PDF."
             )
-        if self.last_pdf_key is None and _has_async_storage_write_api(storage):
-            compile_state["attempts"] = 0
-            await compile_report(
-                {
-                    "content": _fallback_latex_body(
-                        tracker_output, analyst_output
-                    ),
-                    "filename": "informe_fallback",
-                }
-            )
+        if self.last_pdf_key and self.last_pdf_key not in text:
+            text = f"{text}\n\nPDF generado: `{self.last_pdf_key}`"
         return text
