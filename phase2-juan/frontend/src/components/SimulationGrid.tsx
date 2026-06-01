@@ -12,6 +12,7 @@ const SPEEDS = [0.5, 1, 2, 4]
 const CRITICAL_COLORS: Record<string, string> = {
   consumption: 'var(--color-accent-green)',
   starvation: 'var(--color-accent-red)',
+  death: 'var(--color-accent-red)',
   energy_spike: 'var(--color-accent-amber)',
   strategy_shift: 'var(--color-analyst)',
   decision_confidence_drop: 'var(--color-accent-cyan)',

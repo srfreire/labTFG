@@ -98,6 +98,31 @@ def _detect_energy_events(
     return result
 
 
+def _detect_death(events: list[Event]) -> list[CriticalEvent]:
+    """Detect agents terminated by the simulation engine."""
+    result = []
+    for e in events:
+        action_result = e.outcome.get("action_result", {})
+        if not action_result.get("terminated"):
+            continue
+        reason = action_result.get("termination_reason", "unknown")
+        energy = e.outcome.get("model_state", {}).get("energy")
+        data = {"termination_reason": reason}
+        if isinstance(energy, (int, float)):
+            data["energy"] = energy
+        result.append(
+            CriticalEvent(
+                step=e.step,
+                agent_id=e.agent_id,
+                type="death",
+                severity=1.0,
+                description=f"{e.agent_id} terminó la simulación: {reason}",
+                data=data,
+            )
+        )
+    return result
+
+
 def _detect_strategy_shift(events: list[Event], window: int = 5) -> list[CriticalEvent]:
     """Detect when an agent's dominant action changes over a sliding window."""
     result = []
@@ -190,6 +215,7 @@ def detect_critical_events(events: list[Event]) -> list[CriticalEvent]:
     critical = []
     critical.extend(_detect_consumption(events))
     critical.extend(_detect_energy_events(events))
+    critical.extend(_detect_death(events))
     critical.extend(_detect_strategy_shift(events))
     critical.extend(_detect_decision_confidence_drop(events))
     critical.sort(key=lambda ce: (ce.step, ce.agent_id))

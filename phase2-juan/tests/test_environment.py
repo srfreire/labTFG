@@ -71,6 +71,20 @@ class _LearningModel:
         return {"counter": self.counter}
 
 
+class _EnergyDepletingModel:
+    def __init__(self, energy: float = 1.0):
+        self.energy = energy
+
+    def decide(self, perception: dict) -> Action:
+        return Action("move")
+
+    def update(self, action, reward, new_perception):
+        self.energy += reward
+
+    def get_state(self) -> dict:
+        return {"energy": self.energy}
+
+
 # --- Helpers ---
 
 
@@ -327,6 +341,33 @@ def test_run_n_steps():
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay()))
     events = env.run(10)
     assert len(events) == 10
+
+
+def test_run_stops_when_agent_energy_depletes():
+    env = Environment(
+        5,
+        5,
+        actions=[ActionRule("move", MoveEffect(dx=1, dy=0, reward=-1.0))],
+        resources=[],
+    )
+    env.add_agent(
+        Agent(
+            id="a1",
+            position=Position(0, 0),
+            decision_model=_EnergyDepletingModel(energy=1.0),
+        )
+    )
+
+    events = env.run(10)
+
+    assert len(events) == 1
+    assert env.is_finished()
+    assert env.get_state()["agents"][0]["alive"] is False
+    assert events[0].outcome["model_state"]["energy"] == 0.0
+    assert events[0].outcome["action_result"] == {
+        "terminated": True,
+        "termination_reason": "energy_depleted",
+    }
 
 
 def test_is_finished():

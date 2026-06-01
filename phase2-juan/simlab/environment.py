@@ -347,6 +347,11 @@ class Environment:
             for k, v in model.get_state().items()
         }
 
+    def _agent_should_die(self, model_state: dict) -> bool:
+        """Return True when a model exposes depleted energy."""
+        energy = model_state.get("energy")
+        return isinstance(energy, (int, float)) and energy <= 0
+
     def step(self) -> list[Event]:
         """Advance one simulation step.
 
@@ -379,6 +384,14 @@ class Environment:
             new_perception = self._build_perception(agent)
             new_perception["last_action_result"] = action_result
             agent.decision_model.update(action, reward, new_perception)
+            model_state = self._snapshot_model_state(agent.decision_model)
+            if self._agent_should_die(model_state):
+                agent.alive = False
+                action_result = {
+                    **action_result,
+                    "terminated": True,
+                    "termination_reason": "energy_depleted",
+                }
 
             # 5. Record the event (with full decision trace)
             event = Event(
@@ -388,7 +401,7 @@ class Environment:
                 outcome={
                     "action_result": action_result,
                     "reward": reward,
-                    "model_state": self._snapshot_model_state(agent.decision_model),
+                    "model_state": model_state,
                 },
                 perception=perception,
                 pre_state=pre_state,

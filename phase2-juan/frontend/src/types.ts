@@ -110,7 +110,7 @@ export interface SimAgent {
 export interface CriticalEvent {
   step: number
   agent_id: string
-  type: 'consumption' | 'starvation' | 'energy_spike' | 'strategy_shift' | 'decision_confidence_drop'
+  type: 'consumption' | 'starvation' | 'death' | 'energy_spike' | 'strategy_shift' | 'decision_confidence_drop'
   severity: number
   description: string
   data?: Record<string, unknown>
