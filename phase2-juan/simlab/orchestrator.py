@@ -48,6 +48,22 @@ AUTOCOMPACT_CHAR_THRESHOLD = 150_000
 AUTOCOMPACT_KEEP_MESSAGES = 10
 
 
+def _simulation_request_signature(spec: dict, params: dict) -> str:
+    """Stable signature for a simulation request.
+
+    Used to make run_simulation idempotent when the LLM repeats the exact
+    same tool call in a later turn.
+    """
+    payload = {
+        "spec": spec,
+        "steps": params.get("steps"),
+        "seed": params.get("seed"),
+        "num_agents": params.get("num_agents", 1),
+        "model_ids": params.get("model_ids") or [],
+    }
+    return json.dumps(payload, sort_keys=True, default=str)
+
+
 # ---------------------------------------------------------------------------
 # Knowledge-Backbone wiring helpers (sim-memory / P2-002)
 # ---------------------------------------------------------------------------
@@ -1314,6 +1330,21 @@ class Orchestrator:
                         "error": "No environment created yet. Call create_environment first."
                     }
                 )
+            signature = _simulation_request_signature(state["spec"], params)
+            if state.get("replay") and state.get("last_run_signature") == signature:
+                replay = state["replay"]
+                return json.dumps(
+                    {
+                        "_reused": True,
+                        "agents": len(replay["frames"][0]["agents"])
+                        if replay.get("frames")
+                        else 0,
+                        "steps": replay.get("total_steps", 0),
+                        "total_events": len(state.get("events") or []),
+                        "models": state.get("models_used", []),
+                        "note": "Simulation already exists for these parameters; reusing current run.",
+                    }
+                )
 
             env = spec_to_environment(state["spec"], seed=params.get("seed"))
             num_agents = params.get("num_agents", 1)
@@ -1426,6 +1457,8 @@ class Orchestrator:
             state["analyst_output"] = None
             state["agent_to_model"] = agent_to_model
             state["seed"] = params.get("seed")
+            state["last_run_signature"] = signature
+            state["models_used"] = models_used
             # Store paradigm name for KG pre-fetch (kg-enrichment / P1-002)
             if agent_to_model:
                 first = next(iter(agent_to_model.values()))

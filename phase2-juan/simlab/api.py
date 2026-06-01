@@ -739,6 +739,13 @@ async def websocket_chat(ws: WebSocket):
                 # query would re-push it for no reason.
                 async def _sim_wrapper(params, _tool=tool_name, _fn=fn):
                     result = await _fn(params)
+                    if _tool == "run_simulation":
+                        try:
+                            payload = json.loads(result)
+                        except (json.JSONDecodeError, TypeError):
+                            payload = {}
+                        if payload.get("_reused"):
+                            return result
                     await _send_intermediate_card(_tool)
                     if _tool == "run_simulation":
                         refreshed = _env_card(orch._state)
