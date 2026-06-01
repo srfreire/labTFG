@@ -111,7 +111,7 @@ test.describe('Knowledge Panel — Memories tab (P7-005)', () => {
 
     // Match table cell, not the <option> in the select
     await expect(page.locator('td', { hasText: 'paradigm' })).toBeVisible()
-    await expect(page.getByText('semantic')).toBeVisible()
+    await expect(page.getByText('researcher')).toBeVisible()
     await expect(page.getByText(/1 memories/)).toBeVisible()
 
     // Click the row to expand the full content
@@ -230,6 +230,6 @@ test.describe('Knowledge Panel — Provenance tab (P7-005)', () => {
     await page.getByTitle('Knowledge graph').click()
     await page.getByText('P1').click()
 
-    await expect(page.getByText(/no tiene una cadena de procedencia/i)).toBeVisible()
+    await expect(page.getByText(/no tiene camino hasta un Paper/i)).toBeVisible()
   })
 })
