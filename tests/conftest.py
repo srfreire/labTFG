@@ -11,6 +11,7 @@ tables between runs and wiping managed Qdrant collections.
 from __future__ import annotations
 
 import uuid
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -42,9 +43,19 @@ from shared.database import DatabaseService
 from shared.knowledge_graph import KnowledgeGraph
 from shared.models import Base
 from shared.services import Services, init_services, shutdown_services
-from shared.settings import Settings, load_settings
+from shared.settings import Settings, derive_test_postgres_dsn, load_settings
 from shared.storage import StorageService
 from shared.vector_store import VectorStore
+
+if "LABTFG_TEST_POSTGRES_DSN" in os.environ:
+    os.environ["POSTGRES_DSN"] = os.environ["LABTFG_TEST_POSTGRES_DSN"]
+elif os.environ.get("LABTFG_ALLOW_DESTRUCTIVE_TEST_DB") != "1":
+    os.environ["POSTGRES_DSN"] = derive_test_postgres_dsn(
+        os.environ.get(
+            "POSTGRES_DSN",
+            "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg",
+        )
+    )
 
 # ---------------------------------------------------------------------------
 # Settings / DSNs

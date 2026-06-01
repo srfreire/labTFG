@@ -1,6 +1,11 @@
 """Tests for shared.settings module."""
 
-from shared.settings import Settings, load_settings
+from shared.settings import (
+    Settings,
+    derive_sync_postgres_dsn,
+    derive_test_postgres_dsn,
+    load_settings,
+)
 
 _SETTINGS_ENV_VARS = (
     "MINIO_ENDPOINT",
@@ -35,7 +40,7 @@ def test_defaults(monkeypatch):
     assert "labtfg" in s.POSTGRES_DSN
     assert s.NEO4J_URI == "bolt://localhost:7687"
     assert s.NEO4J_USER == "neo4j"
-    assert s.NEO4J_PASSWORD == "labtfg-neo4j"
+    assert s.NEO4J_PASSWORD == "labtfg00"
     assert s.QDRANT_URL == "http://localhost:6333"
     assert s.VOYAGE_API_KEY == ""
     assert s.ZEROENTROPY_API_KEY == ""
@@ -54,6 +59,28 @@ def test_env_override(monkeypatch):
     assert s.QDRANT_URL == "http://qdrant:6333"
     # Non-overridden fields keep defaults
     assert s.MINIO_BUCKET == "labtfg"
+
+
+def test_derive_test_postgres_dsn_replaces_database_name():
+    dsn = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg"
+
+    assert derive_test_postgres_dsn(dsn) == (
+        "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg_test"
+    )
+
+
+def test_derive_test_postgres_dsn_is_idempotent():
+    dsn = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg_test"
+
+    assert derive_test_postgres_dsn(dsn) == dsn
+
+
+def test_derive_sync_postgres_dsn_uses_installed_driver():
+    dsn = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg_test"
+
+    assert derive_sync_postgres_dsn(dsn) == (
+        "postgresql+psycopg://labtfg:labtfg@localhost:5432/labtfg_test"
+    )
 
 
 def test_frozen():

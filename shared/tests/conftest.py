@@ -1,13 +1,15 @@
-"""Shared test configuration — loads .env for integration tests."""
+"""Shared test guardrails.
 
-from pathlib import Path
+Integration tests in this package create/drop all ORM tables. Route them to a
+dedicated sibling test database by default so a local demo database survives a
+full pytest run.
+"""
+
+from __future__ import annotations
+
 import os
 
-from dotenv import load_dotenv
 from shared.settings import derive_test_postgres_dsn
-
-# Load .env from project root (phase2-juan/)
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 if "LABTFG_TEST_POSTGRES_DSN" in os.environ:
     os.environ["POSTGRES_DSN"] = os.environ["LABTFG_TEST_POSTGRES_DSN"]

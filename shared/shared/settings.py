@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, fields
+from urllib.parse import urlsplit, urlunsplit
 
 _BOOL_TRUE = frozenset({"1", "true", "yes", "on"})
 
@@ -17,7 +18,7 @@ class Settings:
     POSTGRES_DSN: str = "postgresql+asyncpg://labtfg:labtfg@localhost:5432/labtfg"
     NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "labtfg-neo4j"
+    NEO4J_PASSWORD: str = "labtfg00"
     QDRANT_URL: str = "http://localhost:6333"
     VOYAGE_API_KEY: str = ""
     ZEROENTROPY_API_KEY: str = ""
@@ -32,6 +33,29 @@ class Settings:
 def _parse_bool(raw: str) -> bool:
     """Permissive bool parsing — accepts '1', 'true', 'yes', 'on' (case-insensitive)."""
     return raw.strip().lower() in _BOOL_TRUE
+
+
+def derive_test_postgres_dsn(dsn: str) -> str:
+    """Return a DSN that targets a sibling ``*_test`` database."""
+    parts = urlsplit(dsn)
+    db_name = parts.path.rsplit("/", 1)[-1]
+    if db_name.endswith("_test"):
+        return dsn
+    test_path = parts.path.removesuffix(db_name) + f"{db_name}_test"
+    return urlunsplit((parts.scheme, parts.netloc, test_path, parts.query, parts.fragment))
+
+
+def derive_sync_postgres_dsn(dsn: str) -> str:
+    """Return a SQLAlchemy sync DSN using the installed psycopg driver."""
+    parts = urlsplit(dsn)
+    scheme = parts.scheme
+    if scheme == "postgresql+asyncpg":
+        scheme = "postgresql+psycopg"
+    elif scheme == "postgres":
+        scheme = "postgresql+psycopg"
+    elif scheme == "postgresql":
+        scheme = "postgresql+psycopg"
+    return urlunsplit((scheme, parts.netloc, parts.path, parts.query, parts.fragment))
 
 
 def load_settings() -> Settings:

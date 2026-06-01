@@ -118,10 +118,11 @@ def test_alembic_upgrade_creates_table_and_indexes(tmp_path):
     """``alembic upgrade head`` applies cleanly and creates the table + 3 indexes."""
     from sqlalchemy import create_engine, inspect
 
-    from shared.settings import load_settings
+    from shared.settings import derive_sync_postgres_dsn, load_settings
 
-    sync_dsn = load_settings().POSTGRES_DSN.replace("+asyncpg", "")
+    sync_dsn = derive_sync_postgres_dsn(load_settings().POSTGRES_DSN)
     engine = create_engine(sync_dsn)
+    _reset_public_schema(engine)
 
     _alembic_upgrade("head")
 
@@ -140,10 +141,11 @@ def test_alembic_upgrade_creates_table_and_indexes(tmp_path):
 def test_alembic_downgrade_drops_table():
     from sqlalchemy import create_engine, inspect
 
-    from shared.settings import load_settings
+    from shared.settings import derive_sync_postgres_dsn, load_settings
 
-    sync_dsn = load_settings().POSTGRES_DSN.replace("+asyncpg", "")
+    sync_dsn = derive_sync_postgres_dsn(load_settings().POSTGRES_DSN)
     engine = create_engine(sync_dsn)
+    _reset_public_schema(engine)
 
     _alembic_upgrade("head")
     _alembic_downgrade("-1")
@@ -154,6 +156,14 @@ def test_alembic_downgrade_drops_table():
 
     # Restore head for subsequent tests
     _alembic_upgrade("head")
+
+
+def _reset_public_schema(engine) -> None:
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
 
 
 def _alembic_upgrade(target: str) -> None:
