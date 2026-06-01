@@ -57,6 +57,17 @@ def serialize_message(
         return _serialize_assistant(
             content, session_id=session_id, experiment_id=experiment_id
         )
+    if role == "context_summary":
+        if not isinstance(content, str) or not content.strip():
+            return []
+        return [
+            _row(
+                session_id=session_id,
+                experiment_id=experiment_id,
+                role="context_summary",
+                content=content,
+            )
+        ]
     return []
 
 

@@ -8,6 +8,7 @@ function returns a "0 results" stub without touching any external service.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from collections.abc import Callable
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _EMPTY_RESULT = "## Retrieved Knowledge (0 results)\n\nNo results found."
+_RETRIEVE_CONTEXT_TIMEOUT_SECONDS = 20
 
 # ── Anthropic tool schema (R3) ──────────────────────────────────────────
 
@@ -86,7 +88,7 @@ async def retrieve_context(
 
         from decisionlab.knowledge.retrieval.tool import create_retrieve_knowledge
 
-        client = AsyncAnthropic()  # reads ANTHROPIC_API_KEY from env
+        client = AsyncAnthropic(timeout=120.0)  # reads ANTHROPIC_API_KEY from env
         handler = create_retrieve_knowledge(
             kg=services.kg,
             vector_store=services.vectors,
@@ -102,7 +104,15 @@ async def retrieve_context(
             params["namespace"] = namespace
         if as_of is not None:
             params["as_of"] = as_of
-        return await handler(params)
+        return await asyncio.wait_for(
+            handler(params), timeout=_RETRIEVE_CONTEXT_TIMEOUT_SECONDS
+        )
+    except TimeoutError:
+        logger.warning(
+            "retrieve_context timed out after %ss — returning empty result",
+            _RETRIEVE_CONTEXT_TIMEOUT_SECONDS,
+        )
+        return _EMPTY_RESULT
     except Exception:
         logger.exception("retrieve_context failed — returning empty result")
         return _EMPTY_RESULT

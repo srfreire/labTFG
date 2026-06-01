@@ -71,3 +71,17 @@ def test_explicit_small_limit_preserved():
     sql, error = validate_sql("SELECT id FROM experiments LIMIT 5")
     assert error is None
     assert "LIMIT 5" in sql
+
+
+def test_models_used_uuid_cast_is_rejected():
+    stmt = (
+        "SELECT m.paradigm FROM models m "
+        "LEFT JOIN experiments e "
+        "ON m.id = ANY(string_to_array(e.models_used::text, ',')::uuid[])"
+    )
+
+    sql, error = validate_sql(stmt)
+
+    assert sql == ""
+    assert error is not None
+    assert "models_used es JSONB" in error

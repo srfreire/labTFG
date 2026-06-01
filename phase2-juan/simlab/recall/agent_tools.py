@@ -23,8 +23,9 @@ _PROMPT_SECTIONS: dict[str, str] = {
 
 A "## Knowledge context" section with paradigm facts, previous environment specs, \
 and formulations is pre-injected in your input. Use it as your primary reference \
-for designing scientifically grounded environments. Call `retrieve_context` with \
-a targeted query when the pre-fetch leaves a gap, e.g.:
+for designing scientifically grounded environments. Do not call `retrieve_context` \
+unless the user request cannot be answered from the injected context. When you do, \
+use one targeted query, e.g.:
 
 - A postulate is named in the context but its definition is missing → \
   `retrieve_context(query="definition of <postulate name>", namespace="paradigm")`.
@@ -39,8 +40,9 @@ a targeted query when the pre-fetch leaves a gap, e.g.:
 
 A "## Knowledge context" section with postulates, formulations, and historical \
 data is pre-injected in your input. Use it as your primary reference for \
-cross-checking. Call `retrieve_context` with a targeted query when the \
-observed data raises a question the pre-fetch doesn't answer, e.g.:
+cross-checking. Do not call `retrieve_context` unless the observed data raises \
+a specific question the pre-fetch doesn't answer. When you do, use one targeted \
+query, e.g.:
 
 - A behavior pattern in the trajectory isn't explained by the listed postulates → \
   `retrieve_context(query="paradigms predicting <observed pattern>", namespace="paradigm")`.
@@ -54,9 +56,9 @@ observed data raises a question the pre-fetch doesn't answer, e.g.:
 ## References grounding
 
 A "## Knowledge context" section with paper references and formulations is \
-pre-injected in your input. Use it for citations and equations. Call \
-`retrieve_context` with a targeted query when you need material the pre-fetch \
-didn't surface, e.g.:
+pre-injected in your input. Use it for citations and equations. Do not call \
+`retrieve_context` unless a required citation/equation is missing. When you do, \
+use one targeted query, e.g.:
 
 - You need the original paper for a specific equation → \
   `retrieve_context(query="original publication of <equation name>", namespace="meta")`.
@@ -92,7 +94,7 @@ def build_recall_extras(
             services=services,
             query=query,
             namespace=params.get("namespace"),
-            top_k=params.get("top_k", 5),
+            top_k=params.get("top_k", 3),
             stage=full_stage,
         )
 

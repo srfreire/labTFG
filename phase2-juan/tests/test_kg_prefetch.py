@@ -59,6 +59,24 @@ async def test_prefetch_analyst_parallel():
 
 
 @pytest.mark.asyncio
+async def test_prefetch_analyst_uses_small_context_budget():
+    """Analyst pre-fetch should stay cheap: few results and bounded prompt text."""
+    long_result = "## Retrieved Knowledge (1 results)\n\n" + ("x" * 8_000)
+    mock_rc = AsyncMock(side_effect=[long_result, long_result, long_result])
+
+    with (
+        patch("simlab.recall.retrieve.retrieve_context", mock_rc),
+        patch("simlab.recall.retrieve._EMPTY_RESULT", _EMPTY),
+    ):
+        result = await prefetch_knowledge(
+            "prospect_theory", "analyst", services=_stub_services()
+        )
+
+    assert [call.kwargs["top_k"] for call in mock_rc.call_args_list] == [3, 2, 2]
+    assert len(result) < 5_000
+
+
+@pytest.mark.asyncio
 async def test_prefetch_analyst_omits_empty_subsection():
     """If one query returns empty, its subsection is omitted."""
     mock_rc = AsyncMock(side_effect=[_POSTULATES, _EMPTY, _FORMULATIONS])

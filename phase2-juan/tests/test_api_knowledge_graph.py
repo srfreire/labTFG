@@ -14,9 +14,16 @@ def _stub_kg(nodes: list[dict], edges: list[dict]) -> MagicMock:
     """Build a fake Neo4j client whose ``query`` returns canned nodes/edges."""
     kg = MagicMock()
 
-    async def query(cypher: str) -> list[dict]:
+    async def query(cypher: str, params: dict | None = None) -> list[dict]:
         if "MATCH (n) RETURN elementId" in cypher:
             return nodes
+        if "MATCH (n) WHERE any" in cypher:
+            labels = set((params or {}).get("labels", []))
+            return [
+                node
+                for node in nodes
+                if node.get("labels") and node["labels"][0] in labels
+            ]
         return edges
 
     kg.query = query
@@ -144,6 +151,29 @@ async def test_label_filter_keeps_only_matching_nodes(monkeypatch):
     assert body["nodes"][0]["label"] == "Paradigm"
     # Edge pointing to a filtered-out node must be dropped too
     assert body["edges"] == []
+
+
+async def test_scope_overview_keeps_only_scientific_summary_nodes(monkeypatch):
+    nodes = [
+        {"id": "n1", "labels": ["Paradigm"], "props": {"name": "a"}},
+        {"id": "n2", "labels": ["Model"], "props": {"slug": "m"}},
+        {"id": "n3", "labels": ["Equation"], "props": {"latex": "x+y"}},
+        {"id": "n4", "labels": ["Postulate"], "props": {"id": "P1"}},
+    ]
+    edges = [
+        {"id": "e1", "source": "n1", "target": "n2", "type": "REL", "props": {}},
+        {"id": "e2", "source": "n2", "target": "n3", "type": "REL", "props": {}},
+    ]
+    _set_services(monkeypatch, kg=_stub_kg(nodes, edges))
+
+    body = await knowledge_graph(scope="overview")
+
+    assert [node["label"] for node in body["nodes"]] == [
+        "Paradigm",
+        "Model",
+        "Postulate",
+    ]
+    assert [edge["id"] for edge in body["edges"]] == ["e1"]
 
 
 # ---------------------------------------------------------------------------

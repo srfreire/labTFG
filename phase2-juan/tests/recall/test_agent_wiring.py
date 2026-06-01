@@ -71,7 +71,7 @@ async def test_handler_uses_stage_prefix():
         services=services,
         query="test",
         namespace=None,
-        top_k=5,
+        top_k=3,
         stage="phase2-analyst",
     )
 

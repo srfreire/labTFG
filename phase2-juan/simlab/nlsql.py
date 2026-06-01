@@ -49,6 +49,11 @@ experiments(id UUID PK, created_at TIMESTAMP, updated_at TIMESTAMP,
 
   status lifecycle: created → simulated → tracked → analyzed → reported
   models_used: JSON array of model keys e.g. ["prospect-theory/cumulative-pt"]
+  IMPORTANT: models_used is NOT an array of model UUIDs. Do not cast it to
+  uuid[] and do not compare it directly to models.id. To relate experiments to
+  models, expand the JSON array with jsonb_array_elements_text(e.models_used)
+  and compare against textual model keys such as
+  m.paradigm || '/' || m.formulation.
   spec: JSON with grid_width, grid_height, actions, resources, effects
 
 models(id UUID PK, class_name VARCHAR, paradigm VARCHAR NOT NULL,
@@ -70,7 +75,11 @@ simulation_observations(id UUID PK, content TEXT, namespace VARCHAR DEFAULT 'sim
   agent_id VARCHAR, episode_type VARCHAR, step INT, metadata JSONB)
 
   One row per Tracker fact (summary, trajectory, episode). Join to experiments
-  via phase2_experiment_id (string, may be empty for early observations).
+  via phase2_experiment_id (VARCHAR, may be empty for early observations).
+  IMPORTANT: experiments.id is UUID but phase2_experiment_id is VARCHAR.
+  Cast the UUID side when joining:
+    ON e.id::text = so.phase2_experiment_id
+  Never write `e.id = so.phase2_experiment_id` directly — Postgres rejects it.
   Typed columns prefer over reading metadata JSONB.
 
 pipeline_memories(id UUID PK, content TEXT, namespace VARCHAR(50),
@@ -95,10 +104,11 @@ chat_messages(id UUID PK, session_id UUID NOT NULL,
   content TEXT, tool_name VARCHAR(50), created_at TIMESTAMP)
 
   One row per Anthropic content block from an Orchestrator turn.
-  role ∈ {user, assistant, tool_use, tool_result}. tool_name is set
-  on tool_use / tool_result rows. session_id groups one Orchestrator
-  instance; experiment_id links the turn to an experiment if one was
-  active.
+  role ∈ {user, assistant, tool_use, tool_result, context_summary}.
+  tool_name is set on tool_use / tool_result rows. context_summary rows
+  are deterministic autocompact audit snapshots. session_id groups one
+  Orchestrator instance; experiment_id links the turn to an experiment if
+  one was active.
 
   Example: "¿qué le pregunté sobre prospect theory?" →
     SELECT created_at, content FROM chat_messages
@@ -120,12 +130,9 @@ def validate_sql(sql: str) -> tuple[str, str | None]:
 
     stmt = parsed[0]
 
-    # Must be SELECT
     if stmt.get_type() != "SELECT":
         return ("", "Solo se permiten consultas SELECT.")
 
-    # Check tables — extract identifiers from the SQL
-    # Use a simple regex approach: find words after FROM and JOIN keywords
     table_pattern = r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
     found_tables = {
         m.group(1).lower() for m in re.finditer(table_pattern, sql, re.IGNORECASE)
@@ -138,10 +145,14 @@ def validate_sql(sql: str) -> tuple[str, str | None]:
             f"Tablas no permitidas: {', '.join(sorted(disallowed))}. Solo: {', '.join(sorted(_ALLOWED_TABLES))}.",
         )
 
-    # Enforce LIMIT
+    if _INVALID_MODELS_USED_UUID_CAST.search(sql):
+        return (
+            "",
+            "models_used es JSONB con claves textuales de modelo; usa jsonb_array_elements_text(models_used), no casts a uuid[].",
+        )
+
     validated = sql.rstrip().rstrip(";")
 
-    # Check for existing LIMIT
     limit_match = re.search(r"\bLIMIT\s+(\d+)", validated, re.IGNORECASE)
     if limit_match:
         current_limit = int(limit_match.group(1))
@@ -165,7 +176,7 @@ async def _plan(question: str) -> dict | None:
     JSON parsing fails.
     """
     settings = load_settings()
-    client = anthropic.AsyncAnthropic()
+    client = anthropic.AsyncAnthropic(timeout=120.0)
     system = (
         _SCHEMA_PROMPT + "\n\n"
         "You translate natural language questions about experiments into SQL queries. "
@@ -275,9 +286,8 @@ async def _synthesize(
 ) -> str:
     """Produce a natural language answer from query results via a second LLM call."""
     settings = load_settings()
-    client = anthropic.AsyncAnthropic()
+    client = anthropic.AsyncAnthropic(timeout=120.0)
 
-    # Build a compact text table of results
     if rows:
         columns = list(rows[0].keys())
         header = " | ".join(columns)
@@ -289,7 +299,6 @@ async def _synthesize(
     else:
         table_text = "(sin resultados)"
 
-    # Build S3 snippets section
     s3_section = ""
     if s3_data:
         snippets = []
@@ -329,7 +338,6 @@ async def query_experiments(
     """
     settings = load_settings()
 
-    # 1. Plan
     plan = await _plan(question)
     if plan is None:
         return "No pude interpretar la pregunta. Intenta reformularla."
@@ -337,12 +345,10 @@ async def query_experiments(
     sql_raw = plan.get("sql", "")
     fetch_types: list[str] = plan.get("fetch_s3") or []
 
-    # 2. Validate
     validated_sql, error = validate_sql(sql_raw)
     if error:
         return error
 
-    # 3. Execute
     rows = await _execute(validated_sql, db=db)
     if rows is None:
         return "Error al ejecutar la consulta."
@@ -352,12 +358,10 @@ async def query_experiments(
 
     capped = len(rows) == _MAX_LIMIT
 
-    # 4. Fetch S3
     s3_data = await _fetch_s3(
         rows, fetch_types, settings.NLSQL_MAX_S3_FETCH, storage=storage
     )
 
-    # 5. Synthesize
     try:
         return await _synthesize(question, rows, s3_data, capped)
     except Exception:
@@ -379,6 +383,11 @@ async def query_experiments(
 _OUT_OF_SCOPE_MARKDOWN = (
     "> No puedo responder eso con SQL — la consulta está fuera del "
     "alcance de `query_history`."
+)
+
+_INVALID_MODELS_USED_UUID_CAST = re.compile(
+    r"models_used[\s\S]{0,120}::\s*uuid\s*\[\]",
+    re.IGNORECASE,
 )
 
 

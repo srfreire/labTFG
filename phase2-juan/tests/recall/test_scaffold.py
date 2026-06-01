@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
@@ -91,6 +92,31 @@ async def test_retrieve_context_exception_returns_empty(caplog):
 
     assert result == _EMPTY
     assert any("retrieve_context failed" in r.message for r in caplog.records)
+
+
+async def test_retrieve_context_timeout_returns_empty(caplog, monkeypatch):
+    """A slow retrieval backend must not block agent turns indefinitely."""
+
+    async def slow_handler(_params):
+        await asyncio.sleep(0.05)
+        return "late"
+
+    services = _make_services(vectors=MagicMock())
+    settings = Settings(ENABLE_KNOWLEDGE_READ=True)
+
+    monkeypatch.setattr("simlab.recall.retrieve._RETRIEVE_CONTEXT_TIMEOUT_SECONDS", 0.01)
+    with (
+        patch("simlab.recall.retrieve.load_settings", return_value=settings),
+        patch(
+            "decisionlab.knowledge.retrieval.tool.create_retrieve_knowledge",
+            return_value=slow_handler,
+        ),
+        caplog.at_level("WARNING", logger="simlab.recall.retrieve"),
+    ):
+        result = await retrieve_context(services=services, query="test")
+
+    assert result == _EMPTY
+    assert any("retrieve_context timed out" in r.message for r in caplog.records)
 
 
 # ── Tool schema ─────────────────────────────────────────────────────────

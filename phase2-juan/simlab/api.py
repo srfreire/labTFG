@@ -542,6 +542,22 @@ async def websocket_chat(ws: WebSocket):
 
     orch.on_agent_tool_call = _on_agent_tool
 
+    async def _on_context_compact(payload: dict):
+        await safe_send(
+            {
+                "type": "context_compacted",
+                "text": (
+                    "Contexto compactado: se resumieron "
+                    f"{payload.get('compacted_messages', 0)} mensajes anteriores."
+                ),
+                "summary": payload.get("summary", ""),
+                "compactedMessages": payload.get("compacted_messages", 0),
+                "retainedMessages": payload.get("retained_messages", 0),
+            }
+        )
+
+    orch.on_context_compact = _on_context_compact
+
     # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
     original_build = orch._build_tools
 

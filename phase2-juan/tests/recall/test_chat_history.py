@@ -147,6 +147,19 @@ def test_unknown_role_yields_no_rows():
     assert rows == []
 
 
+def test_context_summary_role_serializes_as_audit_row():
+    rows = serialize_message(
+        {"role": "context_summary", "content": "Contexto compactado: 12 mensajes"},
+        session_id=SID,
+        experiment_id=EID,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["role"] == "context_summary"
+    assert rows[0]["content"] == "Contexto compactado: 12 mensajes"
+    assert rows[0]["tool_name"] is None
+
+
 # ---------------------------------------------------------------------------
 # AC5 — persist_messages bulk-inserts in one round-trip
 # ---------------------------------------------------------------------------
