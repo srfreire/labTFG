@@ -793,18 +793,24 @@ class Reporter:
             + broken_body
         )
         try:
-            response = await self.client.messages.create(
-                model="anthropic/claude-sonnet-4-5",
-                system=(
-                    "Eres un asistente experto en LaTeX/tectonic. "
-                    "Lee con cuidado los errores y el contexto antes de actuar. "
-                    "Devuelves SOLO el cuerpo LaTeX corregido, sin explicaciones "
-                    "ni bloques de código markdown."
+            response = await asyncio.wait_for(
+                self.client.messages.create(
+                    model="anthropic/claude-haiku-4-5",
+                    system=(
+                        "Eres un asistente experto en LaTeX/tectonic. "
+                        "Lee con cuidado los errores y el contexto antes de actuar. "
+                        "Devuelves SOLO el cuerpo LaTeX corregido, sin explicaciones "
+                        "ni bloques de código markdown."
+                    ),
+                    tools=[],
+                    messages=[{"role": "user", "content": repair_prompt}],
+                    max_tokens=8000,
                 ),
-                tools=[],
-                messages=[{"role": "user", "content": repair_prompt}],
-                max_tokens=12000,
+                timeout=60,
             )
+        except (TimeoutError, asyncio.TimeoutError) as exc:
+            logger.warning("LaTeX repair LLM call timed out: %s", exc)
+            return None
         except Exception as exc:
             logger.warning("LaTeX repair LLM call failed: %s", exc)
             return None

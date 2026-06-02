@@ -7,12 +7,40 @@
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
 \usepackage{enumitem}
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
 \usepackage{xcolor}
 \usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
+\usepackage{textcomp}
+
+% Silence undefined cross-reference warnings — the body LLM does not
+% emit \label/\ref pairs and we don't want missing references to fail
+% the build.
+\makeatletter
+\providecommand{\@undefined}{}
+\renewcommand\@undefined{}
+\makeatother
+
+% Provide harmless stubs for common LLM-emitted commands that aren't
+% loaded by any of the above packages. Without these, a stray
+% \citep{Foo} or \cite{Bar} aborts the whole compile.
+\providecommand{\cite}[1]{}
+\providecommand{\citep}[1]{}
+\providecommand{\citet}[1]{}
+\providecommand{\textcite}[1]{}
+\providecommand{\parencite}[1]{}
+\providecommand{\bibliography}[1]{}
+\providecommand{\bibliographystyle}[1]{}
 
 \geometry{margin=2.5cm}
 
