@@ -194,6 +194,7 @@ def _build_standard_pdf(content: str, title: str) -> bytes:
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 DEFAULT_MAX_ITERATIONS = 6
 DEFAULT_MAX_TOKENS = 4096
+SECTION_MAX_TOKENS = 1200
 REPORTER_LLM_TIMEOUT_SECONDS = 90
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
@@ -415,6 +416,214 @@ class Reporter:
         # Reporter's final LLM message is free-form text, so the orchestrator
         # cannot reliably parse pdf_path back out of it.
         self.last_pdf_key: str | None = None
+
+    async def _compile_and_store_report(
+        self,
+        *,
+        content: str,
+        filename: str,
+        experiment_id: str,
+    ) -> tuple[str, str]:
+        """Compile sanitized LaTeX body and store the resulting PDF."""
+        import shutil
+        import tempfile
+
+        from shared.artifacts import register_artifact
+
+        storage = self._storage
+        db = self._db
+        safe_name = (
+            re.sub(r"[^a-z0-9_]", "_", filename.lower().strip()).strip("_")
+            or "report"
+        )
+        content = _prepare_latex_body(content)
+
+        template = _TEMPLATE_PATH.read_text()
+        full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
+
+        tmp = tempfile.mkdtemp(prefix="report_")
+        tex_path = Path(tmp) / f"{safe_name}.tex"
+        pdf_path = Path(tmp) / f"{safe_name}.pdf"
+        tex_path.write_text(full_latex)
+
+        tex_key = f"experiments/{experiment_id}/report.tex"
+        pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
+
+        charts_prefix = f"experiments/{experiment_id}/charts/"
+        chart_keys = await storage.list(charts_prefix)
+        for ck in chart_keys:
+            png_data = await storage.get(ck)
+            local_name = ck.split("/")[-1]
+            (Path(tmp) / local_name).write_bytes(png_data)
+
+        async def store_outputs(pdf_bytes: bytes, content_type: str) -> str:
+            tex_bytes = full_latex.encode()
+            await storage.put(tex_key, tex_bytes, "text/x-tex")
+            await storage.put(pdf_key, pdf_bytes, content_type)
+            await register_artifact(
+                tex_key,
+                "tex",
+                len(tex_bytes),
+                experiment_id=experiment_id,
+                content_type="text/x-tex",
+                db=db,
+            )
+            await register_artifact(
+                pdf_key,
+                "pdf",
+                len(pdf_bytes),
+                experiment_id=experiment_id,
+                content_type=content_type,
+                db=db,
+            )
+            self.last_pdf_key = pdf_key
+            return pdf_key
+
+        try:
+            result = subprocess.run(
+                ["tectonic", str(tex_path)],
+                capture_output=True,
+                text=True,
+                timeout=240,
+                cwd=tmp,
+            )
+            if result.returncode == 0:
+                key = await store_outputs(pdf_path.read_bytes(), "application/pdf")
+                shutil.rmtree(tmp, ignore_errors=True)
+                return key, "latex"
+
+            error_lines = [
+                line for line in result.stderr.split("\n") if "error" in line.lower()
+            ]
+            logger.warning(
+                "sectioned report compile failed: tex saved at %s, errors=%s",
+                tex_path,
+                error_lines[:5] or result.stderr[-300:],
+            )
+            fallback_content = (
+                "Aviso de compilación\n\n"
+                "La compilación LaTeX detallada no se pudo completar. "
+                "Este PDF usa un formato estándar con el contenido del informe.\n\n"
+                + content
+            )
+            key = await store_outputs(
+                _build_standard_pdf(fallback_content, f"DecisionLab - {safe_name}"),
+                "application/pdf",
+            )
+            shutil.rmtree(tmp, ignore_errors=True)
+            return key, "standard"
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            fallback_content = (
+                "Aviso de compilación\n\n"
+                f"No se pudo ejecutar Tectonic ({type(exc).__name__}). "
+                "Este PDF usa un formato estándar con el contenido del informe.\n\n"
+                + content
+            )
+            key = await store_outputs(
+                _build_standard_pdf(fallback_content, f"DecisionLab - {safe_name}"),
+                "application/pdf",
+            )
+            shutil.rmtree(tmp, ignore_errors=True)
+            return key, "standard"
+
+    async def _generate_sectioned_report(
+        self,
+        *,
+        prompt: str,
+        tracker_output: str,
+        analyst_output: str,
+        experiment_id: str,
+        user_message: str,
+        charts: list[dict] | None,
+        prompt_suffix: str,
+    ) -> str:
+        """Generate bounded LaTeX sections and compile one assembled report."""
+        sections = [
+            (
+                "Resumen ejecutivo",
+                "Resume objetivo, resultado principal, estado final y hallazgo critico.",
+            ),
+            (
+                "Entorno y modelo",
+                "Describe entorno, modelo usado, contrato de decision y variables relevantes.",
+            ),
+            (
+                "Resultados de simulacion",
+                "Explica metricas, trayectoria, energia, recompensas y eventos observados.",
+            ),
+            (
+                "Analisis del comportamiento",
+                "Interpreta patrones, Q-table o politica, y relacion con la teoria.",
+            ),
+            (
+                "Conclusiones y recomendaciones",
+                "Lista conclusiones accionables y siguientes experimentos recomendados.",
+            ),
+        ]
+
+        chart_lines = []
+        for chart in charts or []:
+            if chart.get("image_path"):
+                filename = chart["image_path"].split("/")[-1]
+                title = chart.get("title", filename)
+                chart_lines.append(
+                    "\\begin{figure}[h]\n"
+                    "\\centering\n"
+                    f"\\includegraphics[width=0.9\\textwidth]{{{filename}}}\n"
+                    f"\\caption{{{_prepare_latex_body(title)}}}\n"
+                    "\\end{figure}"
+                )
+
+        section_bodies = []
+        section_system = (
+            REPORTER_SYSTEM_PROMPT
+            + prompt_suffix
+            + "\n\nReturn ONLY LaTeX body for the requested section. "
+            "Do not call tools. Do not include preamble, document, table of contents, "
+            "or wrapper tags. Keep the section under 450 words."
+        )
+        compact_context = user_message[:12000]
+        for title, instruction in sections:
+            response = await self.client.messages.create(
+                model=self.model,
+                system=section_system,
+                tools=[],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Write section: {title}\n"
+                            f"Instruction: {instruction}\n\n"
+                            f"User report request:\n{prompt}\n\n"
+                            f"Experiment context:\n{compact_context}"
+                        ),
+                    }
+                ],
+                max_tokens=SECTION_MAX_TOKENS,
+                cache_control={"type": "ephemeral"},
+            )
+            body = _prepare_latex_body(extract_text(response))
+            section_bodies.append(f"\\section{{{title}}}\n\n{body}")
+
+        if chart_lines:
+            section_bodies.append("\\section{Graficos}\n\n" + "\n\n".join(chart_lines))
+
+        content = "\n\n".join(section_bodies)
+        pdf_key, mode = await self._compile_and_store_report(
+            content=content,
+            filename="informe_final",
+            experiment_id=experiment_id,
+        )
+        quality_note = (
+            "LaTeX detallado por secciones"
+            if mode == "latex"
+            else "formato estándar por fallo de compilación LaTeX"
+        )
+        return (
+            f"PDF generado: `{pdf_key}`\n\n"
+            f"Modo: {quality_note}.\n\n"
+            "El informe se generó por secciones para evitar agotar tokens."
+        )
 
     async def run(
         self,
@@ -642,6 +851,32 @@ class Reporter:
         if interaction_summary:
             user_message += f"\n\n## Interaction history (user ↔ orchestrator)\n\n{interaction_summary}"
         system = REPORTER_SYSTEM_PROMPT + prompt_suffix
+
+        try:
+            return await asyncio.wait_for(
+                self._generate_sectioned_report(
+                    prompt=prompt,
+                    tracker_output=tracker_output,
+                    analyst_output=analyst_output,
+                    experiment_id=experiment_id,
+                    user_message=user_message,
+                    charts=charts,
+                    prompt_suffix=prompt_suffix,
+                ),
+                timeout=REPORTER_LLM_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            logger.warning(
+                "Sectioned Reporter timed out after %d seconds; using fallback PDF",
+                REPORTER_LLM_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Sectioned Reporter failed with %s: %s; falling back to legacy flow",
+                type(exc).__name__,
+                exc,
+                exc_info=True,
+            )
 
         async def store_deterministic_standard_pdf(reason: str) -> str:
             from shared.artifacts import register_artifact

@@ -1,9 +1,35 @@
 from types import SimpleNamespace
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from simlab.reporter import Reporter, _prepare_latex_body
+
+
+class _FakeMessages:
+    def __init__(self):
+        self.calls = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        section_name = kwargs["messages"][0]["content"].splitlines()[0].replace(
+            "Write section: ", ""
+        )
+        return SimpleNamespace(
+            stop_reason="end_turn",
+            content=[
+                SimpleNamespace(
+                    type="text",
+                    text=f"Contenido generado para {section_name}.",
+                )
+            ],
+        )
+
+
+class _FakeClient:
+    def __init__(self):
+        self.messages = _FakeMessages()
 
 
 def test_prepare_latex_body_strips_tool_wrappers_and_document_end():
@@ -92,6 +118,42 @@ def test_prepare_latex_body_wraps_table_rows_starting_with_brackets():
     out = _prepare_latex_body(body)
 
     assert "{[4, 'here']} & stay" in out
+
+
+@pytest.mark.asyncio
+async def test_reporter_generates_report_in_sections_without_legacy_loop():
+    storage = AsyncMock()
+    storage.list.return_value = []
+    db = MagicMock()
+    client = _FakeClient()
+
+    def fake_compile(args, **kwargs):
+        tex_path = Path(kwargs["cwd"]) / "informe_final.pdf"
+        tex_path.write_bytes(b"%PDF sectioned")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    with (
+        patch("simlab.reporter.run_agent_loop", new=AsyncMock()) as legacy_loop,
+        patch("simlab.reporter.subprocess.run", side_effect=fake_compile),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=client, storage=storage, db=db)
+        out = await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": ["analyst"]}',
+            run_id="run-1",
+            experiment_id="exp-sectioned",
+        )
+
+    assert legacy_loop.await_count == 0
+    assert len(client.messages.calls) == 5
+    assert all(call["max_tokens"] == 1200 for call in client.messages.calls)
+    assert reporter.last_pdf_key == "experiments/exp-sectioned/informe_final.pdf"
+    assert "por secciones" in out
+    pdf_upload = storage.put.await_args_list[1].args
+    assert pdf_upload[0] == "experiments/exp-sectioned/informe_final.pdf"
+    assert pdf_upload[1].startswith(b"%PDF")
 
 
 @pytest.mark.asyncio
