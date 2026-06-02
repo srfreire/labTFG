@@ -80,6 +80,7 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null)
   const idRef = useRef(0)
   const simColorsRef = useRef<string[]>([...AGENT_COLORS])
+  const pendingSendsRef = useRef<string[]>([])
 
   useEffect(() => {
     let stopped = false
@@ -91,7 +92,13 @@ export function useWebSocket() {
       const ws = new WebSocket(`${protocol}//${window.location.host}/ws`)
       wsRef.current = ws
 
-      ws.onopen = () => setConnected(true)
+      ws.onopen = () => {
+        setConnected(true)
+        const pending = pendingSendsRef.current.splice(0)
+        for (const text of pending) {
+          ws.send(JSON.stringify({ message: text }))
+        }
+      }
       ws.onclose = () => {
         setConnected(false)
         // The per-connection Orchestrator on the backend dies with this socket,
@@ -245,14 +252,20 @@ export function useWebSocket() {
   }, [])
 
   const send = useCallback((text: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const ws = wsRef.current
     setMessages(prev => [...prev, {
       id: String(++idRef.current),
       from: 'user',
-      text,
+      text: trimmed,
     }])
-    wsRef.current.send(JSON.stringify({ message: text }))
     setThinking(true)
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingSendsRef.current.push(trimmed)
+      return
+    }
+    ws.send(JSON.stringify({ message: trimmed }))
   }, [])
 
   return { connected, agents, messages, thinking, simAgents, envCard, send }

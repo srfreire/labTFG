@@ -93,8 +93,11 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
           {EXAMPLE_PROMPTS.map(prompt => (
             <button
               key={prompt}
-              onClick={() => { onSend(prompt) }}
-              className="text-[12px] px-3.5 py-2 border border-border-subtle rounded-lg text-text-dim hover:text-text-muted hover:border-border hover:bg-surface-hover transition-colors duration-150 cursor-pointer"
+              onClick={() => {
+                if (!busy) onSend(prompt)
+              }}
+              disabled={busy}
+              className="text-[12px] px-3.5 py-2 border border-border-subtle rounded-lg text-text-dim hover:text-text-muted hover:border-border hover:bg-surface-hover transition-colors duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-text-dim disabled:hover:border-border-subtle disabled:hover:bg-transparent"
             >
               {prompt}
             </button>
