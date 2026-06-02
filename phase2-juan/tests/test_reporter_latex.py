@@ -340,10 +340,24 @@ async def test_sectioned_compile_falls_back_to_standard_pdf_when_repair_also_fai
         )
 
     assert reporter.last_pdf_key == "experiments/exp-repair-fails/informe_final.pdf"
-    pdf_upload = storage.put.await_args_list[1].args
-    # Standard matplotlib PDF — not the simulated tectonic output
-    assert pdf_upload[1].startswith(b"%PDF")
-    assert pdf_upload[2] == "application/pdf"
+    # When repair also fails we now persist the broken tex for debugging, so
+    # find the PDF upload by key instead of by index.
+    pdf_uploads = [
+        call.args
+        for call in storage.put.await_args_list
+        if call.args[0].endswith(".pdf")
+    ]
+    assert len(pdf_uploads) == 1
+    assert pdf_uploads[0][0] == "experiments/exp-repair-fails/informe_final.pdf"
+    assert pdf_uploads[0][1].startswith(b"%PDF")
+    assert pdf_uploads[0][2] == "application/pdf"
+    # The post-repair broken tex should have been uploaded
+    tex_uploads = [
+        call.args[0]
+        for call in storage.put.await_args_list
+        if call.args[0].endswith(".tex")
+    ]
+    assert any("broken_after_repair" in k for k in tex_uploads)
 
 
 @pytest.mark.asyncio

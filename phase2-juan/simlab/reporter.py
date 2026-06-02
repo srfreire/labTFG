@@ -629,7 +629,9 @@ class Reporter:
                 error_lines[:5] or result.stderr[-300:],
             )
 
-            repaired = await self._repair_latex(content, error_lines, tex_path)
+            repaired = await self._repair_latex(
+                content, error_lines, tex_path, stderr=result.stderr
+            )
             if repaired and repaired != content:
                 result2 = run_tectonic(repaired)
                 if result2.returncode == 0:
@@ -645,8 +647,45 @@ class Reporter:
                         line
                         for line in result2.stderr.split("\n")
                         if "error" in line.lower()
-                    ][:5],
+                    ][:10],
                 )
+                # Persist the broken tex (post-repair) so we can inspect what
+                # the Sonnet repair pass actually produced.
+                try:
+                    broken_key = (
+                        f"experiments/{experiment_id}/report.broken_after_repair.tex"
+                    )
+                    await storage.put(
+                        broken_key, latest_full_latex.encode(), "text/x-tex"
+                    )
+                    logger.info("Broken (post-repair) tex saved to %s", broken_key)
+                except Exception as upload_exc:
+                    logger.warning(
+                        "Failed to upload broken tex: %s", upload_exc
+                    )
+            else:
+                # The repair model returned nothing or returned identical content.
+                # Still persist the original broken tex for inspection.
+                try:
+                    broken_key = (
+                        f"experiments/{experiment_id}/report.broken_pre_repair.tex"
+                    )
+                    await storage.put(
+                        broken_key, latest_full_latex.encode(), "text/x-tex"
+                    )
+                    logger.info("Broken (pre-repair) tex saved to %s", broken_key)
+                except Exception as upload_exc:
+                    logger.warning(
+                        "Failed to upload broken tex: %s", upload_exc
+                    )
+
+            # Log the raw stderr tail in full so we can see WHICH command was
+            # undefined or which sequence broke. Without this it's impossible
+            # to debug from outside the container.
+            logger.warning(
+                "tectonic stderr tail (last 1500 chars):\n%s",
+                result.stderr[-1500:],
+            )
 
             fallback_content = (
                 "Aviso de compilación\n\n"
@@ -679,9 +718,12 @@ class Reporter:
         broken_body: str,
         error_lines: list[str],
         tex_path: Path,
+        stderr: str = "",
     ) -> str | None:
-        """Ask the LLM to fix LaTeX errors. Returns repaired body or None."""
-        if not error_lines:
+        """Ask a more capable model to fix LaTeX errors. Returns repaired body
+        or None. Uses Sonnet regardless of self.model: production has shown
+        Haiku can't reliably identify which control sequence is undefined."""
+        if not error_lines and not stderr:
             return None
 
         context_snippet = ""
@@ -695,10 +737,10 @@ class Reporter:
                 lines = tex_path.read_text().splitlines()
                 wanted: set[int] = set()
                 for n in line_nums:
-                    for ln in range(max(1, n - 3), min(len(lines), n + 3) + 1):
+                    for ln in range(max(1, n - 10), min(len(lines), n + 10) + 1):
                         wanted.add(ln)
                 context_snippet = "\n".join(
-                    f"L{ln}: {lines[ln - 1]}" for ln in sorted(wanted)
+                    f"L{ln:>4}: {lines[ln - 1]}" for ln in sorted(wanted)
                 )
         except Exception:
             context_snippet = ""
@@ -709,10 +751,29 @@ class Reporter:
             "Mantén las mismas \\section{} y el mismo contenido textual; "
             "no añadas explicaciones, preamble, \\begin{document}, \\end{document} ni "
             "marcadores de fence (```).\n\n"
+            "Paquetes disponibles en el template (NO uses comandos de otros paquetes):\n"
+            "- fontspec, babel(spanish), geometry, hyperref, booktabs, longtable,\n"
+            "  enumitem, amsmath, xcolor, graphicx, fancyhdr, titlesec\n"
+            "Comandos NO disponibles (causan 'Undefined control sequence'):\n"
+            "- amssymb (\\mathbb, \\square, \\triangle, \\leftrightarrows...)\n"
+            "- mathtools (\\coloneqq, \\xrightarrow...)\n"
+            "- siunitx (\\SI, \\si, \\num...)\n"
+            "- algorithm/algorithmic (\\begin{algorithm}, \\State...)\n"
+            "- biblatex/natbib (\\cite, \\citep, \\textcite...)\n"
+            "- listings (\\begin{lstlisting}, \\lstinline)\n"
+            "Si encuentras alguno, sustitúyelo por texto plano o por equivalente de "
+            "amsmath (p.ej. \\to en vez de \\xrightarrow, \\R o $\\mathbb{R}$ -> 'R').\n\n"
             "Errores reportados por tectonic:\n"
-            + "\n".join(error_lines[:10])
+            + "\n".join(error_lines[:15])
             + (
-                "\n\nContexto alrededor de las líneas con error:\n" + context_snippet
+                "\n\nSalida cruda de tectonic (últimas 600 chars):\n"
+                + stderr[-600:]
+                if stderr
+                else ""
+            )
+            + (
+                "\n\nContexto alrededor de las líneas con error (±10):\n"
+                + context_snippet
                 if context_snippet
                 else ""
             )
@@ -725,21 +786,24 @@ class Reporter:
             "- No uses \\cite{} \\ref{} \\label{} (no hay bibtex ni cross-refs).\n"
             "- Balancea todas las llaves { }.\n"
             "- Si hay \\includegraphics, usa solo el nombre del PNG (chart_1.png), "
-            "sin ruta.\n\n"
+            "sin ruta.\n"
+            "- Si un comando es desconocido y no estás 100% seguro de que está en "
+            "los paquetes listados arriba, elimínalo o sustituyelo por texto plano.\n\n"
             "LaTeX a corregir (entrega solo el cuerpo corregido):\n"
             + broken_body
         )
         try:
             response = await self.client.messages.create(
-                model=self.model,
+                model="anthropic/claude-sonnet-4-5",
                 system=(
-                    "Eres un asistente de reparación de LaTeX. "
+                    "Eres un asistente experto en LaTeX/tectonic. "
+                    "Lee con cuidado los errores y el contexto antes de actuar. "
                     "Devuelves SOLO el cuerpo LaTeX corregido, sin explicaciones "
                     "ni bloques de código markdown."
                 ),
                 tools=[],
                 messages=[{"role": "user", "content": repair_prompt}],
-                max_tokens=8192,
+                max_tokens=12000,
             )
         except Exception as exc:
             logger.warning("LaTeX repair LLM call failed: %s", exc)
