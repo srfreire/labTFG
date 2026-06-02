@@ -803,9 +803,16 @@ class Reporter:
         section_system = (
             REPORTER_SYSTEM_PROMPT
             + prompt_suffix
-            + "\n\nReturn ONLY LaTeX body for the requested section. "
-            "Do not call tools. Do not include preamble, document, table of contents, "
-            "or wrapper tags. Keep the section under 450 words."
+            + "\n\nReturn ONLY the LaTeX body content for the requested section. "
+            "The section heading (\\section{Title}) is added by the orchestrator — "
+            "do NOT include it yourself; start directly with the section's content "
+            "(paragraphs, \\subsection{}, itemize, tables...). "
+            "Do not call tools. Do not include preamble, \\begin{document}, "
+            "\\tableofcontents, or wrapper tags. "
+            "Wrap every math expression in $...$; never use \\(...\\) or $$...$$. "
+            "Escape \\_  \\%  \\&  \\#  \\$ outside math. "
+            "Do not use \\cite{}, \\ref{}, \\label{}. "
+            "Keep the section under 450 words."
         )
         compact_context = user_message[:12000]
 
@@ -850,6 +857,12 @@ class Reporter:
                     cache_control={"type": "ephemeral"},
                 )
             body = _prepare_latex_body(_llm_latex_text(response))
+            # The LLM often re-emits its own \section{...} despite the prompt;
+            # drop a leading section header so we don't get duplicate entries
+            # in the table of contents.
+            body = re.sub(
+                r"^\s*\\section\*?\{[^{}]*\}\s*", "", body, count=1
+            )
             return f"\\section{{{title}}}\n\n{body}"
 
         # Run sections concurrently — they are independent, and sequential
