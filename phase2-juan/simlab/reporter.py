@@ -642,6 +642,42 @@ class Reporter:
         if interaction_summary:
             user_message += f"\n\n## Interaction history (user ↔ orchestrator)\n\n{interaction_summary}"
         system = REPORTER_SYSTEM_PROMPT + prompt_suffix
+
+        async def store_deterministic_standard_pdf(reason: str) -> str:
+            from shared.artifacts import register_artifact
+
+            pdf_key = f"experiments/{experiment_id}/informe_estandar.pdf"
+            fallback_content = "\n\n".join(
+                [
+                    "Aviso de generación",
+                    (
+                        "El Reporter no completó el informe LaTeX detallado "
+                        f"({reason}). Este PDF estándar conserva los datos "
+                        "disponibles del experimento."
+                    ),
+                    "Instrucción de reporte",
+                    prompt,
+                    "Observación del Tracker",
+                    tracker_output,
+                    "Hallazgos del Analyst",
+                    analyst_output,
+                ]
+            )
+            pdf_bytes = _build_standard_pdf(
+                fallback_content, "DecisionLab - informe_estandar"
+            )
+            await storage.put(pdf_key, pdf_bytes, "application/pdf")
+            await register_artifact(
+                pdf_key,
+                "pdf",
+                len(pdf_bytes),
+                experiment_id=experiment_id,
+                content_type="application/pdf",
+                db=db,
+            )
+            self.last_pdf_key = pdf_key
+            return pdf_key
+
         try:
             response = await asyncio.wait_for(
                 run_agent_loop(
@@ -658,14 +694,29 @@ class Reporter:
                 timeout=REPORTER_LLM_TIMEOUT_SECONDS,
             )
             text = extract_text(response)
+            if (
+                not self.last_pdf_key
+                and getattr(response, "stop_reason", None) == "max_tokens"
+            ):
+                pdf_key = await store_deterministic_standard_pdf(
+                    "el modelo agotó el presupuesto de tokens"
+                )
+                text = (
+                    f"{text}\n\nEl informe detallado agotó el presupuesto de "
+                    f"tokens. PDF generado en formato estándar con los datos disponibles: "
+                    f"`{pdf_key}`"
+                )
         except TimeoutError:
             logger.warning(
                 "Reporter LLM timed out after %d seconds without generating a PDF",
                 REPORTER_LLM_TIMEOUT_SECONDS,
             )
+            pdf_key = await store_deterministic_standard_pdf(
+                "el modelo tardó demasiado"
+            )
             text = (
                 "El Reporter tardó demasiado en generar el informe enriquecido; "
-                "no se generó ningún PDF."
+                f"PDF generado en formato estándar con los datos disponibles: `{pdf_key}`"
             )
         if self.last_pdf_key and self.last_pdf_key not in text:
             text = f"{text}\n\nPDF generado: `{self.last_pdf_key}`"

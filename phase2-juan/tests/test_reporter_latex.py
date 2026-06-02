@@ -122,7 +122,7 @@ async def test_reporter_does_not_claim_pdf_when_llm_skips_compile():
 
 
 @pytest.mark.asyncio
-async def test_reporter_timeout_does_not_upload_fake_pdf():
+async def test_reporter_timeout_uploads_standard_pdf_fallback():
     storage = AsyncMock()
     db = MagicMock()
 
@@ -144,8 +144,40 @@ async def test_reporter_timeout_does_not_upload_fake_pdf():
         )
 
     assert "tardó demasiado" in out
-    assert reporter.last_pdf_key is None
-    storage.put.assert_not_called()
+    assert reporter.last_pdf_key == "experiments/exp-timeout/informe_estandar.pdf"
+    pdf_upload = storage.put.await_args.args
+    assert pdf_upload[0] == "experiments/exp-timeout/informe_estandar.pdf"
+    assert pdf_upload[1].startswith(b"%PDF")
+    assert "PDF generado" in out
+
+
+@pytest.mark.asyncio
+async def test_reporter_max_tokens_uploads_standard_pdf_fallback():
+    storage = AsyncMock()
+    db = MagicMock()
+    response = SimpleNamespace(
+        stop_reason="max_tokens",
+        content=[SimpleNamespace(type="text", text="Informe parcial sin tool call")],
+    )
+
+    with (
+        patch("simlab.reporter.run_agent_loop", new=AsyncMock(return_value=response)),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=MagicMock(), storage=storage, db=db)
+        out = await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": ["analyst"]}',
+            run_id="run-1",
+            experiment_id="exp-max-tokens",
+        )
+
+    assert reporter.last_pdf_key == "experiments/exp-max-tokens/informe_estandar.pdf"
+    pdf_upload = storage.put.await_args.args
+    assert pdf_upload[0] == "experiments/exp-max-tokens/informe_estandar.pdf"
+    assert pdf_upload[1].startswith(b"%PDF")
+    assert "PDF generado" in out
 
 
 @pytest.mark.asyncio
