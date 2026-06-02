@@ -27,9 +27,39 @@ class _FakeMessages:
         )
 
 
-class _FakeClient:
+class _RetryFakeMessages:
     def __init__(self):
-        self.messages = _FakeMessages()
+        self.calls = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        section_name = kwargs["messages"][0]["content"].splitlines()[0].replace(
+            "Write section: ", ""
+        )
+        if section_name == "Resumen ejecutivo" and len(self.calls) == 1:
+            return SimpleNamespace(
+                stop_reason="max_tokens",
+                content=[
+                    SimpleNamespace(
+                        type="text",
+                        text="Resumen parcial cortado por tokens.",
+                    )
+                ],
+            )
+        return SimpleNamespace(
+            stop_reason="end_turn",
+            content=[
+                SimpleNamespace(
+                    type="text",
+                    text=f"Contenido final para {section_name}.",
+                )
+            ],
+        )
+
+
+class _FakeClient:
+    def __init__(self, messages=None):
+        self.messages = messages or _FakeMessages()
 
 
 def test_prepare_latex_body_strips_tool_wrappers_and_document_end():
@@ -148,12 +178,45 @@ async def test_reporter_generates_report_in_sections_without_legacy_loop():
 
     assert legacy_loop.await_count == 0
     assert len(client.messages.calls) == 5
-    assert all(call["max_tokens"] == 1200 for call in client.messages.calls)
+    assert all(call["max_tokens"] == 2500 for call in client.messages.calls)
     assert reporter.last_pdf_key == "experiments/exp-sectioned/informe_final.pdf"
     assert "por secciones" in out
     pdf_upload = storage.put.await_args_list[1].args
     assert pdf_upload[0] == "experiments/exp-sectioned/informe_final.pdf"
     assert pdf_upload[1].startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_reporter_retries_section_when_generation_hits_max_tokens():
+    storage = AsyncMock()
+    storage.list.return_value = []
+    db = MagicMock()
+    messages = _RetryFakeMessages()
+    client = _FakeClient(messages)
+
+    def fake_compile(args, **kwargs):
+        pdf_path = Path(kwargs["cwd"]) / "informe_final.pdf"
+        pdf_path.write_bytes(b"%PDF retried section")
+        return SimpleNamespace(returncode=0, stderr="")
+
+    with (
+        patch("simlab.reporter.subprocess.run", side_effect=fake_compile),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=client, storage=storage, db=db)
+        await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": ["analyst"]}',
+            run_id="run-1",
+            experiment_id="exp-section-retry",
+        )
+
+    assert len(messages.calls) == 6
+    retry_prompt = messages.calls[1]["messages"][0]["content"]
+    assert "Retry the same section" in retry_prompt
+    assert all(call["max_tokens"] == 2500 for call in messages.calls)
+    assert reporter.last_pdf_key == "experiments/exp-section-retry/informe_final.pdf"
 
 
 @pytest.mark.asyncio

@@ -194,7 +194,7 @@ def _build_standard_pdf(content: str, title: str) -> bytes:
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 DEFAULT_MAX_ITERATIONS = 6
 DEFAULT_MAX_TOKENS = 4096
-SECTION_MAX_TOKENS = 1200
+SECTION_MAX_TOKENS = 2500
 REPORTER_LLM_TIMEOUT_SECONDS = 90
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
@@ -584,24 +584,45 @@ class Reporter:
         )
         compact_context = user_message[:12000]
         for title, instruction in sections:
+            section_prompt = (
+                f"Write section: {title}\n"
+                f"Instruction: {instruction}\n\n"
+                f"User report request:\n{prompt}\n\n"
+                f"Experiment context:\n{compact_context}"
+            )
             response = await self.client.messages.create(
                 model=self.model,
                 system=section_system,
                 tools=[],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Write section: {title}\n"
-                            f"Instruction: {instruction}\n\n"
-                            f"User report request:\n{prompt}\n\n"
-                            f"Experiment context:\n{compact_context}"
-                        ),
-                    }
-                ],
+                messages=[{"role": "user", "content": section_prompt}],
                 max_tokens=SECTION_MAX_TOKENS,
                 cache_control={"type": "ephemeral"},
             )
+            if getattr(response, "stop_reason", None) == "max_tokens":
+                logger.warning(
+                    "Reporter section '%s' hit max_tokens; retrying with compact prompt",
+                    title,
+                )
+                response = await self.client.messages.create(
+                    model=self.model,
+                    system=section_system,
+                    tools=[],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Write section: {title}\n"
+                                "Retry the same section. Be concise and complete. "
+                                "Use short paragraphs and bullet lists when useful.\n\n"
+                                f"Instruction: {instruction}\n\n"
+                                f"Tracker:\n{tracker_output[:5000]}\n\n"
+                                f"Analyst:\n{analyst_output[:5000]}"
+                            ),
+                        }
+                    ],
+                    max_tokens=SECTION_MAX_TOKENS,
+                    cache_control={"type": "ephemeral"},
+                )
             body = _prepare_latex_body(extract_text(response))
             section_bodies.append(f"\\section{{{title}}}\n\n{body}")
 
