@@ -307,3 +307,32 @@ async def test_query_experiments_no_results():
         )
 
     assert "No encontré" in answer
+
+
+@pytest.mark.asyncio
+async def test_query_experiments_rejects_non_string_sql_plan():
+    """Planner shape errors return a friendly rejection instead of raising."""
+    from simlab.nlsql import query_experiments
+
+    with (
+        patch(
+            "simlab.nlsql._plan",
+            new=AsyncMock(
+                return_value={
+                    "sql": ["SELECT id FROM experiments"],
+                    "fetch_s3": [],
+                    "reasoning": "bad planner shape",
+                }
+            ),
+        ),
+        patch("simlab.nlsql._execute", new=AsyncMock()) as execute,
+    ):
+        answer = await query_experiments(
+            "dame el experimento reciente",
+            db=MagicMock(),
+            storage=MagicMock(),
+        )
+
+    assert "Consulta rechazada" in answer
+    assert "SQL debe ser texto" in answer
+    execute.assert_not_called()

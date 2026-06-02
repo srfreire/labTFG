@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from simlab.reporter import Reporter, _prepare_latex_body
+from simlab.reporter import Reporter, _build_standard_report_text, _prepare_latex_body
 
 
 class _FakeMessages:
@@ -148,6 +148,48 @@ def test_prepare_latex_body_wraps_table_rows_starting_with_brackets():
     out = _prepare_latex_body(body)
 
     assert "{[4, 'here']} & stay" in out
+
+
+def test_build_standard_report_text_formats_json_instead_of_dumping_it():
+    tracker = """
+{
+  "summary": "Agente sobrevivió 50 pasos.",
+  "trajectories": {
+    "drive-reduction-rl": {
+      "steps_survived": 50,
+      "resources_consumed": 1,
+      "actions": {"stay": 17, "eat": 1}
+    }
+  },
+  "episodes": [
+    {"type": "starvation", "step": 49, "description": "Colapso energético."}
+  ]
+}
+"""
+    analyst = """
+{
+  "patterns": [
+    {"id": "P1", "description": "Fallo homeostático.", "evidence": "Drive subió."}
+  ],
+  "comparisons": [
+    {"metric": "alimentación", "insight": "Eat casi nunca se ejecutó."}
+  ]
+}
+"""
+
+    text = _build_standard_report_text(
+        reason="test",
+        prompt="Informe comparativo",
+        tracker_output=tracker,
+        analyst_output=analyst,
+    )
+
+    assert "Trayectorias" in text
+    assert "drive-reduction-rl: 50 pasos, 1 recursos consumidos" in text
+    assert "Patrones identificados" in text
+    assert "P1: Fallo homeostático." in text
+    assert '"trajectories"' not in text
+    assert '"patterns"' not in text
 
 
 @pytest.mark.asyncio

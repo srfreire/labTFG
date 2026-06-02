@@ -124,6 +124,9 @@ def validate_sql(sql: str) -> tuple[str, str | None]:
 
     Returns ``(validated_sql, None)`` on success, or ``("", error_message)`` on failure.
     """
+    if not isinstance(sql, str):
+        return ("", "> Consulta rechazada: SQL debe ser texto.")
+
     parsed = sqlparse.parse(sql)
     if len(parsed) != 1:
         return ("", "Query must be exactly one SQL statement.")

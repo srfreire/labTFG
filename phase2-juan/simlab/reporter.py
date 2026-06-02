@@ -182,13 +182,104 @@ def _build_standard_pdf(content: str, title: str) -> bytes:
                 "\n".join(page_lines),
                 fontsize=10,
                 va="top",
-                family="monospace",
                 linespacing=1.35,
             )
             fig.text(0.92, 0.04, str(page_number), fontsize=9, ha="right")
             pdf.savefig(fig, bbox_inches="tight")
             plt.close(fig)
     return buffer.getvalue()
+
+
+def _loads_json_object(raw: str) -> dict:
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _build_standard_report_text(
+    *,
+    reason: str,
+    prompt: str,
+    tracker_output: str,
+    analyst_output: str,
+) -> str:
+    """Build a readable standard report instead of dumping raw JSON."""
+    tracker = _loads_json_object(tracker_output)
+    analyst = _loads_json_object(analyst_output)
+    sections = [
+        "Aviso de generación",
+        (
+            "El Reporter no completó el informe LaTeX detallado "
+            f"({reason}). Este PDF estándar conserva los hallazgos principales "
+            "en formato legible."
+        ),
+        "Solicitud",
+        prompt,
+    ]
+
+    summary = tracker.get("summary")
+    if summary:
+        sections.extend(["Resumen del experimento", str(summary)])
+
+    trajectories = tracker.get("trajectories")
+    if isinstance(trajectories, dict) and trajectories:
+        lines = []
+        for agent, data in trajectories.items():
+            if not isinstance(data, dict):
+                continue
+            actions = data.get("actions") if isinstance(data.get("actions"), dict) else {}
+            action_text = ", ".join(f"{k}: {v}" for k, v in actions.items())
+            lines.append(
+                f"- {agent}: {data.get('steps_survived', 'n/d')} pasos, "
+                f"{data.get('resources_consumed', 'n/d')} recursos consumidos"
+                + (f". Acciones: {action_text}." if action_text else ".")
+            )
+        if lines:
+            sections.extend(["Trayectorias", "\n".join(lines)])
+
+    episodes = tracker.get("episodes")
+    if isinstance(episodes, list) and episodes:
+        lines = []
+        for ep in episodes[:8]:
+            if not isinstance(ep, dict):
+                continue
+            label = ep.get("type", "episodio")
+            step = ep.get("step") or ep.get("steps")
+            step_text = f" paso(s) {step}" if step is not None else ""
+            lines.append(f"- {label}{step_text}: {ep.get('description', '')}")
+        sections.extend(["Episodios clave", "\n".join(lines)])
+
+    patterns = analyst.get("patterns")
+    if isinstance(patterns, list) and patterns:
+        lines = []
+        for pattern in patterns[:8]:
+            if not isinstance(pattern, dict):
+                continue
+            pid = pattern.get("id", "Patrón")
+            lines.append(f"- {pid}: {pattern.get('description', '')}")
+            evidence = pattern.get("evidence")
+            if evidence:
+                lines.append(f"  Evidencia: {evidence}")
+        sections.extend(["Patrones identificados", "\n".join(lines)])
+
+    comparisons = analyst.get("comparisons")
+    if isinstance(comparisons, list) and comparisons:
+        lines = []
+        for comp in comparisons[:6]:
+            if not isinstance(comp, dict):
+                continue
+            metric = comp.get("metric", "comparación")
+            lines.append(f"- {metric}: {comp.get('insight', '')}")
+        sections.extend(["Comparaciones", "\n".join(lines)])
+
+    if not tracker and tracker_output:
+        sections.extend(["Observación del Tracker", tracker_output])
+    if not analyst and analyst_output:
+        sections.extend(["Hallazgos del Analyst", analyst_output])
+
+    return "\n\n".join(section for section in sections if section)
 
 
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
@@ -903,21 +994,11 @@ class Reporter:
             from shared.artifacts import register_artifact
 
             pdf_key = f"experiments/{experiment_id}/informe_estandar.pdf"
-            fallback_content = "\n\n".join(
-                [
-                    "Aviso de generación",
-                    (
-                        "El Reporter no completó el informe LaTeX detallado "
-                        f"({reason}). Este PDF estándar conserva los datos "
-                        "disponibles del experimento."
-                    ),
-                    "Instrucción de reporte",
-                    prompt,
-                    "Observación del Tracker",
-                    tracker_output,
-                    "Hallazgos del Analyst",
-                    analyst_output,
-                ]
+            fallback_content = _build_standard_report_text(
+                reason=reason,
+                prompt=prompt,
+                tracker_output=tracker_output,
+                analyst_output=analyst_output,
             )
             pdf_bytes = _build_standard_pdf(
                 fallback_content, "DecisionLab - informe_estandar"
