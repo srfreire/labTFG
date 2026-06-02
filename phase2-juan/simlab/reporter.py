@@ -286,7 +286,10 @@ DEFAULT_MODEL = "anthropic/claude-haiku-4-5"
 DEFAULT_MAX_ITERATIONS = 6
 DEFAULT_MAX_TOKENS = 4096
 SECTION_MAX_TOKENS = 2500
-REPORTER_LLM_TIMEOUT_SECONDS = 90
+# Sections run concurrently, so the wall-clock cost is roughly max(section_time)
+# + tectonic compile. We still leave headroom for cold containers where tectonic
+# has to download its LaTeX bundle on first run (~30-60s).
+REPORTER_LLM_TIMEOUT_SECONDS = 240
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
 
@@ -665,7 +668,6 @@ class Reporter:
                     "\\end{figure}"
                 )
 
-        section_bodies = []
         section_system = (
             REPORTER_SYSTEM_PROMPT
             + prompt_suffix
@@ -674,7 +676,8 @@ class Reporter:
             "or wrapper tags. Keep the section under 450 words."
         )
         compact_context = user_message[:12000]
-        for title, instruction in sections:
+
+        async def generate_section(title: str, instruction: str) -> str:
             section_prompt = (
                 f"Write section: {title}\n"
                 f"Instruction: {instruction}\n\n"
@@ -715,7 +718,15 @@ class Reporter:
                     cache_control={"type": "ephemeral"},
                 )
             body = _prepare_latex_body(extract_text(response))
-            section_bodies.append(f"\\section{{{title}}}\n\n{body}")
+            return f"\\section{{{title}}}\n\n{body}"
+
+        # Run sections concurrently — they are independent, and sequential
+        # execution blew past REPORTER_LLM_TIMEOUT_SECONDS in production.
+        section_bodies = list(
+            await asyncio.gather(
+                *(generate_section(title, instruction) for title, instruction in sections)
+            )
+        )
 
         if chart_lines:
             section_bodies.append("\\section{Graficos}\n\n" + "\n\n".join(chart_lines))
