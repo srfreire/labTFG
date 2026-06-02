@@ -518,7 +518,13 @@ class Reporter:
         filename: str,
         experiment_id: str,
     ) -> tuple[str, str]:
-        """Compile sanitized LaTeX body and store the resulting PDF."""
+        """Compile sanitized LaTeX body and store the resulting PDF.
+
+        On compile failure, attempt a single LLM-driven repair pass before
+        falling back to the matplotlib standard PDF. The repair is what
+        rescues otherwise-decent reports from sporadic math/escape mistakes
+        in the LLM output (e.g. "$ never closed", stray %, _ outside math).
+        """
         import shutil
         import tempfile
 
@@ -533,12 +539,10 @@ class Reporter:
         content = _prepare_latex_body(content)
 
         template = _TEMPLATE_PATH.read_text()
-        full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
 
         tmp = tempfile.mkdtemp(prefix="report_")
         tex_path = Path(tmp) / f"{safe_name}.tex"
         pdf_path = Path(tmp) / f"{safe_name}.pdf"
-        tex_path.write_text(full_latex)
 
         tex_key = f"experiments/{experiment_id}/report.tex"
         pdf_key = f"experiments/{experiment_id}/{safe_name}.pdf"
@@ -550,8 +554,10 @@ class Reporter:
             local_name = ck.split("/")[-1]
             (Path(tmp) / local_name).write_bytes(png_data)
 
+        latest_full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", content)
+
         async def store_outputs(pdf_bytes: bytes, content_type: str) -> str:
-            tex_bytes = full_latex.encode()
+            tex_bytes = latest_full_latex.encode()
             await storage.put(tex_key, tex_bytes, "text/x-tex")
             await storage.put(pdf_key, pdf_bytes, content_type)
             await register_artifact(
@@ -573,14 +579,20 @@ class Reporter:
             self.last_pdf_key = pdf_key
             return pdf_key
 
-        try:
-            result = subprocess.run(
+        def run_tectonic(body: str) -> subprocess.CompletedProcess:
+            nonlocal latest_full_latex
+            latest_full_latex = template.replace("%% CONTENT_PLACEHOLDER %%", body)
+            tex_path.write_text(latest_full_latex)
+            return subprocess.run(
                 ["tectonic", str(tex_path)],
                 capture_output=True,
                 text=True,
                 timeout=240,
                 cwd=tmp,
             )
+
+        try:
+            result = run_tectonic(content)
             if result.returncode == 0:
                 key = await store_outputs(pdf_path.read_bytes(), "application/pdf")
                 shutil.rmtree(tmp, ignore_errors=True)
@@ -590,10 +602,29 @@ class Reporter:
                 line for line in result.stderr.split("\n") if "error" in line.lower()
             ]
             logger.warning(
-                "sectioned report compile failed: tex saved at %s, errors=%s",
-                tex_path,
+                "sectioned report compile failed: errors=%s; attempting LLM repair",
                 error_lines[:5] or result.stderr[-300:],
             )
+
+            repaired = await self._repair_latex(content, error_lines, tex_path)
+            if repaired and repaired != content:
+                result2 = run_tectonic(repaired)
+                if result2.returncode == 0:
+                    key = await store_outputs(
+                        pdf_path.read_bytes(), "application/pdf"
+                    )
+                    shutil.rmtree(tmp, ignore_errors=True)
+                    logger.info("LaTeX repair pass succeeded")
+                    return key, "latex"
+                logger.warning(
+                    "repaired compile still failing: errors=%s",
+                    [
+                        line
+                        for line in result2.stderr.split("\n")
+                        if "error" in line.lower()
+                    ][:5],
+                )
+
             fallback_content = (
                 "Aviso de compilación\n\n"
                 "La compilación LaTeX detallada no se pudo completar. "
@@ -619,6 +650,84 @@ class Reporter:
             )
             shutil.rmtree(tmp, ignore_errors=True)
             return key, "standard"
+
+    async def _repair_latex(
+        self,
+        broken_body: str,
+        error_lines: list[str],
+        tex_path: Path,
+    ) -> str | None:
+        """Ask the LLM to fix LaTeX errors. Returns repaired body or None."""
+        if not error_lines:
+            return None
+
+        context_snippet = ""
+        try:
+            line_nums = {
+                int(m.group(1))
+                for line in error_lines
+                if (m := re.search(r":(\d+):", line))
+            }
+            if line_nums and tex_path.exists():
+                lines = tex_path.read_text().splitlines()
+                wanted: set[int] = set()
+                for n in line_nums:
+                    for ln in range(max(1, n - 3), min(len(lines), n + 3) + 1):
+                        wanted.add(ln)
+                context_snippet = "\n".join(
+                    f"L{ln}: {lines[ln - 1]}" for ln in sorted(wanted)
+                )
+        except Exception:
+            context_snippet = ""
+
+        repair_prompt = (
+            "El siguiente cuerpo LaTeX falló al compilar con tectonic. "
+            "Devuelve EXACTAMENTE el mismo contenido pero con los errores corregidos. "
+            "Mantén las mismas \\section{} y el mismo contenido textual; "
+            "no añadas explicaciones, preamble, \\begin{document}, \\end{document} ni "
+            "marcadores de fence (```).\n\n"
+            "Errores reportados por tectonic:\n"
+            + "\n".join(error_lines[:10])
+            + (
+                "\n\nContexto alrededor de las líneas con error:\n" + context_snippet
+                if context_snippet
+                else ""
+            )
+            + "\n\nReglas obligatorias para la corrección:\n"
+            "- TODA expresión matemática debe ir entre $...$ (inline) o "
+            "\\begin{equation}...\\end{equation} (display).\n"
+            "- NO uses \\(...\\) ni $$...$$ (este template no los acepta).\n"
+            "- Fuera de math, escapa: \\_  \\%  \\&  \\#  \\$.\n"
+            "- _ y ^ solo aparecen dentro de math mode.\n"
+            "- No uses \\cite{} \\ref{} \\label{} (no hay bibtex ni cross-refs).\n"
+            "- Balancea todas las llaves { }.\n"
+            "- Si hay \\includegraphics, usa solo el nombre del PNG (chart_1.png), "
+            "sin ruta.\n\n"
+            "LaTeX a corregir (entrega solo el cuerpo corregido):\n"
+            + broken_body
+        )
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                system=(
+                    "Eres un asistente de reparación de LaTeX. "
+                    "Devuelves SOLO el cuerpo LaTeX corregido, sin explicaciones "
+                    "ni bloques de código markdown."
+                ),
+                tools=[],
+                messages=[{"role": "user", "content": repair_prompt}],
+                max_tokens=8192,
+            )
+        except Exception as exc:
+            logger.warning("LaTeX repair LLM call failed: %s", exc)
+            return None
+
+        fixed = extract_text(response).strip()
+        if not fixed:
+            return None
+        fixed = re.sub(r"^```(?:latex|tex)?\s*", "", fixed)
+        fixed = re.sub(r"\s*```\s*$", "", fixed)
+        return _prepare_latex_body(fixed)
 
     async def _generate_sectioned_report(
         self,
