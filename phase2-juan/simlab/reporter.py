@@ -628,6 +628,29 @@ class Reporter:
                 "sectioned report compile failed: errors=%s; attempting LLM repair",
                 error_lines[:5] or result.stderr[-300:],
             )
+            # Print the actual failing line(s) from the tex so we can see
+            # WHICH control sequence is undefined — otherwise the LLM repair
+            # is flying blind too.
+            try:
+                source_lines = latest_full_latex.splitlines()
+                shown_lines: set[int] = set()
+                for err in error_lines[:10]:
+                    m = re.search(r":(\d+):", err)
+                    if not m:
+                        continue
+                    n = int(m.group(1))
+                    for ln in range(max(1, n - 1), min(len(source_lines), n + 1) + 1):
+                        shown_lines.add(ln)
+                if shown_lines:
+                    snippet = "\n".join(
+                        f"L{ln:>4}: {source_lines[ln - 1]}"
+                        for ln in sorted(shown_lines)
+                    )
+                    logger.warning(
+                        "tex content around failing lines:\n%s", snippet
+                    )
+            except Exception as snippet_exc:
+                logger.warning("Could not extract failing line: %s", snippet_exc)
 
             repaired = await self._repair_latex(
                 content, error_lines, tex_path, stderr=result.stderr

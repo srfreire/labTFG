@@ -23,14 +23,6 @@
 \usepackage{titlesec}
 \usepackage{textcomp}
 
-% Silence undefined cross-reference warnings — the body LLM does not
-% emit \label/\ref pairs and we don't want missing references to fail
-% the build.
-\makeatletter
-\providecommand{\@undefined}{}
-\renewcommand\@undefined{}
-\makeatother
-
 % Provide harmless stubs for common LLM-emitted commands that aren't
 % loaded by any of the above packages. Without these, a stray
 % \citep{Foo} or \cite{Bar} aborts the whole compile.
