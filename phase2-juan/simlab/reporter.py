@@ -24,6 +24,29 @@ from typing import TYPE_CHECKING
 from simlab.loop import Registry, run_agent_loop
 from simlab.utils import extract_text
 
+
+def _llm_latex_text(response) -> str:
+    """Return the first text block from a Claude API response, unchanged.
+
+    Unlike ``simlab.utils.extract_text`` this does NOT run the
+    ``strip_markdown_fences`` JSON heuristic, which corrupts LaTeX by
+    keeping only the substring between the first ``{`` and the last ``}``.
+    Only fence stripping (``` blocks) is applied here.
+    """
+    text = next((b.text for b in response.content if b.type == "text"), None)
+    if not text or not text.strip():
+        raise RuntimeError(
+            "LLM produced no text output "
+            f"(stop_reason={getattr(response, 'stop_reason', None)})"
+        )
+    stripped = text.strip()
+    match = re.match(
+        r"^```(?:latex|tex)?\s*\n(.*?)\n```\s*$", stripped, re.DOTALL
+    )
+    if match:
+        return match.group(1).strip()
+    return stripped
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -722,7 +745,7 @@ class Reporter:
             logger.warning("LaTeX repair LLM call failed: %s", exc)
             return None
 
-        fixed = extract_text(response).strip()
+        fixed = _llm_latex_text(response)
         if not fixed:
             return None
         fixed = re.sub(r"^```(?:latex|tex)?\s*", "", fixed)
@@ -826,7 +849,7 @@ class Reporter:
                     max_tokens=SECTION_MAX_TOKENS,
                     cache_control={"type": "ephemeral"},
                 )
-            body = _prepare_latex_body(extract_text(response))
+            body = _prepare_latex_body(_llm_latex_text(response))
             return f"\\section{{{title}}}\n\n{body}"
 
         # Run sections concurrently — they are independent, and sequential

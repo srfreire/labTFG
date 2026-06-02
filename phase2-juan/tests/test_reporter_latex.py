@@ -229,6 +229,124 @@ async def test_reporter_generates_report_in_sections_without_legacy_loop():
 
 
 @pytest.mark.asyncio
+async def test_sectioned_compile_falls_back_to_llm_repair_then_succeeds():
+    """If tectonic fails once, the Reporter asks the LLM to fix the LaTeX
+    and re-compiles before falling back to the matplotlib standard PDF."""
+    storage = AsyncMock()
+    storage.list.return_value = []
+    db = MagicMock()
+
+    class _RepairClient:
+        def __init__(self):
+            self.messages = self
+            self.calls = []
+
+        async def create(self, **kwargs):
+            self.calls.append(kwargs)
+            content = kwargs["messages"][0]["content"]
+            # Section calls have "Write section:" prefix; repair has "falló al compilar"
+            if "compilar" in content:
+                text = r"\section{Resumen}Cuerpo reparado."
+            else:
+                text = r"\section{Resumen}Cuerpo $bad math"
+            return SimpleNamespace(
+                stop_reason="end_turn",
+                content=[SimpleNamespace(type="text", text=text)],
+            )
+
+    client = _RepairClient()
+    compile_attempts = {"count": 0}
+
+    def fake_compile(args, **kwargs):
+        compile_attempts["count"] += 1
+        tex_path = Path(kwargs["cwd"]) / "informe_final.tex"
+        tex_text = tex_path.read_text() if tex_path.exists() else ""
+        if compile_attempts["count"] == 1:
+            return SimpleNamespace(
+                returncode=1,
+                stderr="error: informe_final.tex:50: Missing $ inserted\nerror: halted",
+            )
+        # Repair attempt succeeded
+        pdf_path = Path(kwargs["cwd"]) / "informe_final.pdf"
+        pdf_path.write_bytes(b"%PDF repaired ok")
+        assert "reparado" in tex_text
+        return SimpleNamespace(returncode=0, stderr="")
+
+    with (
+        patch("simlab.reporter.subprocess.run", side_effect=fake_compile),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=client, storage=storage, db=db)
+        await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": ["analyst"]}',
+            run_id="run-1",
+            experiment_id="exp-repair",
+        )
+
+    # 5 sections + 1 repair = 6 LLM calls
+    assert len(client.calls) == 6
+    assert compile_attempts["count"] == 2
+    assert reporter.last_pdf_key == "experiments/exp-repair/informe_final.pdf"
+    pdf_upload = storage.put.await_args_list[1].args
+    assert pdf_upload[1] == b"%PDF repaired ok"
+
+
+@pytest.mark.asyncio
+async def test_sectioned_compile_falls_back_to_standard_pdf_when_repair_also_fails():
+    """When the LLM repair attempt still produces uncompilable LaTeX, we
+    finally fall back to the matplotlib standard PDF."""
+    storage = AsyncMock()
+    storage.list.return_value = []
+    db = MagicMock()
+
+    class _BadRepairClient:
+        def __init__(self):
+            self.messages = self
+            self.calls = []
+
+        async def create(self, **kwargs):
+            self.calls.append(kwargs)
+            return SimpleNamespace(
+                stop_reason="end_turn",
+                content=[
+                    SimpleNamespace(
+                        type="text",
+                        text=r"\section{Resumen}Cuerpo $unbalanced.",
+                    )
+                ],
+            )
+
+    client = _BadRepairClient()
+
+    def fake_compile(args, **kwargs):
+        return SimpleNamespace(
+            returncode=1,
+            stderr="error: informe_final.tex:50: Missing $ inserted",
+        )
+
+    with (
+        patch("simlab.reporter.subprocess.run", side_effect=fake_compile),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=client, storage=storage, db=db)
+        await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": ["analyst"]}',
+            run_id="run-1",
+            experiment_id="exp-repair-fails",
+        )
+
+    assert reporter.last_pdf_key == "experiments/exp-repair-fails/informe_final.pdf"
+    pdf_upload = storage.put.await_args_list[1].args
+    # Standard matplotlib PDF — not the simulated tectonic output
+    assert pdf_upload[1].startswith(b"%PDF")
+    assert pdf_upload[2] == "application/pdf"
+
+
+@pytest.mark.asyncio
 async def test_reporter_retries_section_when_generation_hits_max_tokens():
     storage = AsyncMock()
     storage.list.return_value = []
