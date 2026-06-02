@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 import simlab.api as api_module
 from fastapi import HTTPException
-from simlab.api import _build_reporter_message, download_report_pdf
+from simlab.api import _build_report_artifacts, download_report_pdf
 
 
 def _set_services(monkeypatch, *, storage=None):
@@ -60,36 +60,25 @@ async def test_download_report_pdf_maps_missing_object_to_404(monkeypatch):
     assert exc.value.status_code == 404
 
 
-def test_build_reporter_message_includes_download_metadata():
-    msg = _build_reporter_message(
-        {
-            "pdf_paths": [
-                "experiments/exp-1/analisis_final.pdf",
-                "experiments/exp-1/comparativa_modelos.pdf",
-            ]
-        }
+def test_build_report_artifacts_extracts_filenames():
+    artifacts = _build_report_artifacts(
+        [
+            "experiments/exp-1/analisis_final.pdf",
+            "experiments/exp-1/comparativa_modelos.pdf",
+        ]
     )
 
-    assert msg == {
-        "type": "message",
-        "from": "orchestrator",
-        "text": (
-            "El **Reporter** ha generado **2 informes** PDF:\n"
-            "- `experiments/exp-1/analisis_final.pdf`\n"
-            "- `experiments/exp-1/comparativa_modelos.pdf`"
-        ),
-        "reports": [
-            {
-                "key": "experiments/exp-1/analisis_final.pdf",
-                "filename": "analisis_final.pdf",
-            },
-            {
-                "key": "experiments/exp-1/comparativa_modelos.pdf",
-                "filename": "comparativa_modelos.pdf",
-            },
-        ],
-    }
+    assert artifacts == [
+        {
+            "key": "experiments/exp-1/analisis_final.pdf",
+            "filename": "analisis_final.pdf",
+        },
+        {
+            "key": "experiments/exp-1/comparativa_modelos.pdf",
+            "filename": "comparativa_modelos.pdf",
+        },
+    ]
 
 
-def test_build_reporter_message_returns_none_without_paths():
-    assert _build_reporter_message({}) is None
+def test_build_report_artifacts_empty():
+    assert _build_report_artifacts([]) == []

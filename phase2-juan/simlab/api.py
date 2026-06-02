@@ -139,24 +139,8 @@ def _validate_report_key(key: str) -> None:
         raise HTTPException(status_code=400, detail="Invalid report key")
 
 
-def _build_reporter_message(state: dict) -> dict | None:
-    paths = state.get("pdf_paths")
-    if not paths:
-        return None
-    if len(paths) == 1:
-        text = f"El **Reporter** ha generado el informe PDF: `{paths[0]}`."
-    else:
-        pdf_list = "\n".join(f"- `{p}`" for p in paths)
-        text = f"El **Reporter** ha generado **{len(paths)} informes** PDF:\n{pdf_list}"
-    return {
-        "type": "message",
-        "from": "orchestrator",
-        "text": text,
-        "reports": [
-            {"key": path, "filename": _report_filename(path)}
-            for path in paths
-        ],
-    }
+def _build_report_artifacts(paths: list[str]) -> list[dict]:
+    return [{"key": p, "filename": _report_filename(p)} for p in paths]
 
 
 @app.get("/api/reports/download")
@@ -658,15 +642,11 @@ async def websocket_chat(ws: WebSocket):
             msg["charts"] = charts
         return msg
 
-    def _reporter_card(state: dict) -> dict | None:
-        return _build_reporter_message(state)
-
     _CARD_BUILDERS = {
         "create_environment": _env_card,
         "run_simulation": _sim_card,
         "observe_simulation": _tracker_card,
         "analyze_results": _analyst_card,
-        "generate_report": _reporter_card,
     }
 
     # Per-session signatures of env cards already emitted. ONLY env cards
@@ -776,8 +756,11 @@ async def websocket_chat(ws: WebSocket):
             await safe_send({"type": "status", "status": "thinking"})
 
             try:
+                pdf_paths_before = list(orch._state.get("pdf_paths") or [])
                 response = await orch.chat(user_text)
                 state = orch._state
+                pdf_paths_after = list(state.get("pdf_paths") or [])
+                new_pdf_paths = pdf_paths_after[len(pdf_paths_before):]
 
                 # Send updated agent states
                 agents_state = _build_agent_states(state)
@@ -799,13 +782,14 @@ async def websocket_chat(ws: WebSocket):
                 # Send the orchestrator's final text response
                 # Data cards were already sent in streaming via _send_intermediate_card
                 if response.strip():
-                    await safe_send(
-                        {
-                            "type": "message",
-                            "from": "orchestrator",
-                            "text": response,
-                        }
-                    )
+                    final_msg: dict = {
+                        "type": "message",
+                        "from": "orchestrator",
+                        "text": response,
+                    }
+                    if new_pdf_paths:
+                        final_msg["reports"] = _build_report_artifacts(new_pdf_paths)
+                    await safe_send(final_msg)
                 await safe_send({"type": "status", "status": "done"})
 
             except WebSocketDisconnect:
