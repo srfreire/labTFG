@@ -3,10 +3,13 @@
 __pycache__/
 *.pyc
 *.egg-info/
+node_modules/
 .pytest_cache/
 .superpowers/
 .worktrees/
 .playwright-mcp/
+.demo-runtime/
+exports/
 
 # Phase 1
 phase1-pablo/outputs/
