@@ -842,7 +842,8 @@ class MockConnectionManager:
         elif msg_type == "node_update":
             for n in self.nodes:
                 if n["id"] == msg["id"]:
-                    n["status"] = msg["status"]
+                    if "status" in msg:
+                        n["status"] = msg["status"]
                     # When a billable node completes, enrich the outgoing
                     # update with endedAt + synthetic tokens/cost and
                     # mirror them onto our in-memory node so state_sync
@@ -859,6 +860,10 @@ class MockConnectionManager:
                         msg["metadata"] = md
                         merged = dict(n.get("metadata") or {})
                         merged.update(md)
+                        n["metadata"] = merged
+                    elif "metadata" in msg:
+                        merged = dict(n.get("metadata") or {})
+                        merged.update(msg["metadata"])
                         n["metadata"] = merged
                     break
         elif msg_type == "stage":

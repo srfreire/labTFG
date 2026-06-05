@@ -412,21 +412,25 @@ class Router:
         if self._tracer is None or node_id in self._trace_nodes:
             return
         self._trace_nodes.add(node_id)
+        node_metadata = dict(metadata or {})
+        if status == "running":
+            node_metadata.setdefault("startedAt", agrex_context.now_ms())
+        metadata_arg = node_metadata or None
         if node_type == "agent":
             self._tracer.agent(
-                node_id, label, parent=parent, status=status, metadata=metadata
+                node_id, label, parent=parent, status=status, metadata=metadata_arg
             )
         elif node_type == "sub_agent":
             self._tracer.sub_agent(
-                node_id, label, parent=parent, status=status, metadata=metadata
+                node_id, label, parent=parent, status=status, metadata=metadata_arg
             )
         elif node_type == "tool":
             self._tracer.tool(
-                node_id, label, parent=parent, status=status, metadata=metadata
+                node_id, label, parent=parent, status=status, metadata=metadata_arg
             )
         elif node_type == "file":
             self._tracer.file(
-                node_id, label, parent=parent, status=status, metadata=metadata
+                node_id, label, parent=parent, status=status, metadata=metadata_arg
             )
         else:
             self._tracer.node(
@@ -436,7 +440,7 @@ class Router:
                     "label": label,
                     "parentId": parent,
                     "status": status,
-                    "metadata": metadata or {},
+                    "metadata": metadata_arg or {},
                 }
             )
         await self._trace_last()
@@ -819,10 +823,15 @@ class Router:
         await self._record_memory_result(agent_name, payload)
         if payload.get("status") == "ok":
             await self._trace_memory_outputs(memory_node_id, agent_name, payload)
-            self._tracer.done(memory_node_id, metadata=payload)
+            self._tracer.done(
+                memory_node_id,
+                metadata={**payload, "endedAt": agrex_context.now_ms()},
+            )
         else:
             self._tracer.error(
-                memory_node_id, error=payload.get("error"), metadata=payload
+                memory_node_id,
+                error=payload.get("error"),
+                metadata={**payload, "endedAt": agrex_context.now_ms()},
             )
         await self._trace_last()
         self.state.stage = review_stage
@@ -1065,7 +1074,9 @@ class Router:
 
             if current_stage in _REVIEW_STAGES:
                 review_id = self._trace_id("human_review", current_stage.value)
-                self._tracer.done(review_id)
+                self._tracer.done(
+                    review_id, metadata={"endedAt": agrex_context.now_ms()}
+                )
                 await self._trace_last()
 
             # Stuck-stage detection: work-stage handlers swallow agent failures
@@ -1156,7 +1167,11 @@ class Router:
         from decisionlab.agents.researcher import Researcher
 
         self.console.print("[bold]Running Researcher...[/bold]")
-        self._tracer.agent("researcher", "Researcher")
+        self._tracer.agent(
+            "researcher",
+            "Researcher",
+            metadata={"startedAt": agrex_context.now_ms()},
+        )
         await self._send_event(self._tracer.events()[-1])
         try:
             r = Researcher(
@@ -1177,13 +1192,20 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Researcher failed: {exc}[/bold red]")
             logger.exception("Researcher failed")
-            self._tracer.error("researcher", error=exc)
+            self._tracer.error(
+                "researcher",
+                error=exc,
+                metadata={
+                    "endedAt": agrex_context.now_ms(),
+                    "error_type": type(exc).__name__,
+                },
+            )
             await self._send_event(self._tracer.events()[-1])
             return  # stay at current stage
         # Cache the in-memory text so the Memory Agent doesn't round-trip S3.
         self._stage_outputs[Stage.RESEARCH] = report.summary
         await self._trace_research_artifacts()
-        self._tracer.done("researcher")
+        self._tracer.done("researcher", metadata={"endedAt": agrex_context.now_ms()})
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.RESEARCH)
 
@@ -1239,7 +1261,12 @@ class Router:
         from decisionlab.agents.formalizer import Formalizer
 
         self.console.print("[bold]Running Formalizer...[/bold]")
-        self._tracer.agent("formalizer", "Formalizer", parent="researcher")
+        self._tracer.agent(
+            "formalizer",
+            "Formalizer",
+            parent="researcher",
+            metadata={"startedAt": agrex_context.now_ms()},
+        )
         await self._send_event(self._tracer.events()[-1])
         try:
             f = Formalizer(
@@ -1254,11 +1281,18 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Formalizer failed: {exc}[/bold red]")
             logger.exception("Formalizer failed")
-            self._tracer.error("formalizer", error=exc)
+            self._tracer.error(
+                "formalizer",
+                error=exc,
+                metadata={
+                    "endedAt": agrex_context.now_ms(),
+                    "error_type": type(exc).__name__,
+                },
+            )
             await self._send_event(self._tracer.events()[-1])
             return
         await self._trace_formalization_artifacts()
-        self._tracer.done("formalizer")
+        self._tracer.done("formalizer", metadata={"endedAt": agrex_context.now_ms()})
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.FORMALIZE)
 
@@ -1314,7 +1348,12 @@ class Router:
             f"[bold]Running Reasoner for {n_formulations} formulation(s) "
             f"across {len(selected)} paradigm(s)...[/bold]"
         )
-        self._tracer.agent("reasoner", "Reasoner", parent="formalizer")
+        self._tracer.agent(
+            "reasoner",
+            "Reasoner",
+            parent="formalizer",
+            metadata={"startedAt": agrex_context.now_ms()},
+        )
         await self._send_event(self._tracer.events()[-1])
         try:
             r = Reasoner(
@@ -1331,11 +1370,18 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Reasoner failed: {exc}[/bold red]")
             logger.exception("Reasoner failed")
-            self._tracer.error("reasoner", error=exc)
+            self._tracer.error(
+                "reasoner",
+                error=exc,
+                metadata={
+                    "endedAt": agrex_context.now_ms(),
+                    "error_type": type(exc).__name__,
+                },
+            )
             await self._send_event(self._tracer.events()[-1])
             return
         await self._trace_reasoner_artifacts()
-        self._tracer.done("reasoner")
+        self._tracer.done("reasoner", metadata={"endedAt": agrex_context.now_ms()})
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.REASON)
 
@@ -1447,7 +1493,12 @@ class Router:
 
         n_specs = sum(len(fs) for fs in self.state.approved_specs.values())
         self.console.print(f"[bold]Running Builder for {n_specs} spec(s)...[/bold]")
-        self._tracer.agent("builder", "Builder", parent="reasoner")
+        self._tracer.agent(
+            "builder",
+            "Builder",
+            parent="reasoner",
+            metadata={"startedAt": agrex_context.now_ms()},
+        )
         await self._send_event(self._tracer.events()[-1])
         try:
             b = Builder(
@@ -1465,11 +1516,18 @@ class Router:
         except Exception as exc:
             self.console.print(f"[bold red]Builder failed: {exc}[/bold red]")
             logger.exception("Builder failed")
-            self._tracer.error("builder", error=exc)
+            self._tracer.error(
+                "builder",
+                error=exc,
+                metadata={
+                    "endedAt": agrex_context.now_ms(),
+                    "error_type": type(exc).__name__,
+                },
+            )
             await self._send_event(self._tracer.events()[-1])
             return
         await self._trace_builder_artifacts()
-        self._tracer.done("builder")
+        self._tracer.done("builder", metadata={"endedAt": agrex_context.now_ms()})
         await self._send_event(self._tracer.events()[-1])
         self.state.stage = self._next_after_work(Stage.BUILD)
 

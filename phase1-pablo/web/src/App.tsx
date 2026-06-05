@@ -53,6 +53,84 @@ function nodeDisplayLabel(node: AgrexNode): string {
   return typeof meta.displayLabel === "string" ? meta.displayLabel : node.label;
 }
 
+function numberMeta(meta: Record<string, unknown>, key: string): number | undefined {
+  const value = meta[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(seconds >= 10 ? 1 : 2)} s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = Math.round(seconds % 60);
+  return `${minutes}m ${String(rest).padStart(2, "0")}s`;
+}
+
+function formatTokens(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
+  return String(tokens);
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}
+
+function stringifyDetail(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-[82px] rounded-lg border border-border-subtle bg-white/[0.03] px-2.5 py-2">
+      <div className="text-[10px] uppercase tracking-[1px] text-text-faint">
+        {label}
+      </div>
+      <div className="mt-1 text-[13px] text-text tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+function DetailCode({
+  title,
+  value,
+  language = "json",
+}: {
+  title: string;
+  value: unknown;
+  language?: string;
+}) {
+  if (value === undefined || value === null || value === "") return null;
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] uppercase tracking-[1px] text-text-faint mb-1.5">
+        {title}
+      </div>
+      <CodeBlock code={stringifyDetail(value)} language={language} />
+    </div>
+  );
+}
+
+const DETAIL_METADATA_HIDDEN = new Set([
+  "args",
+  "input",
+  "output",
+  "content",
+  "error",
+  "startedAt",
+  "endedAt",
+  "tokens",
+  "cost",
+  "duration_ms",
+]);
+
 function NodeDetail({
   node,
   onClose,
@@ -63,6 +141,21 @@ function NodeDetail({
   const meta = nodeMetadata(node);
   const kind = node.type;
   const displayLabel = nodeDisplayLabel(node);
+  const startedAt = numberMeta(meta, "startedAt");
+  const endedAt = numberMeta(meta, "endedAt");
+  const durationMs =
+    numberMeta(meta, "duration_ms") ??
+    (startedAt !== undefined && endedAt !== undefined
+      ? Math.max(0, endedAt - startedAt)
+      : undefined);
+  const tokens = numberMeta(meta, "tokens");
+  const cost = numberMeta(meta, "cost");
+  const llmCalls = numberMeta(meta, "llm_calls");
+  const resultChars = numberMeta(meta, "result_chars");
+  const errorValue = meta.error;
+  const extraMetadata = Object.entries(meta).filter(
+    ([key]) => !DETAIL_METADATA_HIDDEN.has(key),
+  );
 
   let content: React.ReactNode = null;
 
@@ -118,18 +211,18 @@ function NodeDetail({
       );
       break;
     case "tool":
-      if (meta.args) {
+      if (meta.args !== undefined || meta.output !== undefined) {
         content = (
-          <CodeBlock
-            code={JSON.stringify(meta.args, null, 2)}
-            language="json"
-          />
+          <>
+            <DetailCode title="Args" value={meta.args} />
+            <DetailCode title="Output" value={meta.output} language="text" />
+          </>
         );
       }
       break;
   }
 
-  if (!content) {
+  if (!content && extraMetadata.length === 0 && !errorValue) {
     content = (
       <div className="text-[13px] text-text-dim">No details available.</div>
     );
@@ -156,7 +249,65 @@ function NodeDetail({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-3">{content}</div>
+      <div className="flex-1 overflow-y-auto p-3">
+        {(durationMs !== undefined ||
+          tokens !== undefined ||
+          cost !== undefined ||
+          llmCalls !== undefined ||
+          resultChars !== undefined) && (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {durationMs !== undefined && (
+              <DetailMetric label="Time" value={formatDuration(durationMs)} />
+            )}
+            {tokens !== undefined && (
+              <DetailMetric label="Tokens" value={formatTokens(tokens)} />
+            )}
+            {cost !== undefined && (
+              <DetailMetric label="Cost" value={formatCost(cost)} />
+            )}
+            {llmCalls !== undefined && (
+              <DetailMetric label="LLM calls" value={String(llmCalls)} />
+            )}
+            {resultChars !== undefined && (
+              <DetailMetric label="Result" value={`${resultChars} chars`} />
+            )}
+          </div>
+        )}
+
+        {errorValue !== undefined && (
+          <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5">
+            <div className="text-[10px] uppercase tracking-[1px] text-red-200/80 mb-1.5">
+              Error
+            </div>
+            <pre className="m-0 whitespace-pre-wrap break-words text-[12px] leading-5 text-red-50/90 font-mono">
+              {stringifyDetail(errorValue)}
+            </pre>
+          </div>
+        )}
+
+        {content}
+
+        {extraMetadata.length > 0 && (
+          <div className="mt-3">
+            <div className="text-[10px] uppercase tracking-[1px] text-text-faint mb-1.5">
+              Metadata
+            </div>
+            <div className="space-y-1.5 text-[12px]">
+              {extraMetadata.map(([key, value]) => (
+                <div
+                  key={key}
+                  className="grid grid-cols-[112px_minmax(0,1fr)] gap-2"
+                >
+                  <span className="text-text-faint">{key}</span>
+                  <span className="min-w-0 break-words text-text-muted">
+                    {typeof value === "string" ? value : stringifyDetail(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

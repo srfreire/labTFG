@@ -48,10 +48,11 @@ class _Meter:
     def record(self, model: str, usage: Any) -> None:
         if usage is None:
             return
-        input_tokens = _as_int(getattr(usage, "input_tokens", 0))
-        output_tokens = _as_int(getattr(usage, "output_tokens", 0))
-        cache_creation = _as_int(getattr(usage, "cache_creation_input_tokens", 0))
-        cache_read = _as_int(getattr(usage, "cache_read_input_tokens", 0))
+        data = usage_as_dict(usage)
+        input_tokens = data["input_tokens"]
+        output_tokens = data["output_tokens"]
+        cache_creation = data["cache_creation_input_tokens"]
+        cache_read = data["cache_read_input_tokens"]
         with self.lock:
             totals = self.totals.setdefault(model, _ModelTotals())
             totals.input_tokens += input_tokens
@@ -104,10 +105,56 @@ _COUNTERS = _Counters()
 
 def record(model: str, usage: Any) -> None:
     _METER.record(model, usage)
+    if usage is None:
+        return
+    data = usage_as_dict(usage)
+    tokens = total_tokens(data)
+    cost = estimate_usage_usd(model, data)
+    try:
+        from decisionlab.runtime import agrex_context
+
+        agrex_context.record_llm_usage(
+            model,
+            data,
+            tokens=tokens,
+            cost=cost,
+        )
+    except Exception:
+        logger.debug("Could not attach LLM usage to agrex trace", exc_info=True)
 
 
 def snapshot() -> dict[str, dict[str, int]]:
     return _METER.snapshot()
+
+
+def usage_as_dict(usage: Any) -> dict[str, int]:
+    """Return the Anthropic usage fields this project accounts for."""
+    return {
+        "input_tokens": _as_int(getattr(usage, "input_tokens", 0)),
+        "output_tokens": _as_int(getattr(usage, "output_tokens", 0)),
+        "cache_creation_input_tokens": _as_int(
+            getattr(usage, "cache_creation_input_tokens", 0)
+        ),
+        "cache_read_input_tokens": _as_int(
+            getattr(usage, "cache_read_input_tokens", 0)
+        ),
+    }
+
+
+def total_tokens(usage: dict[str, int]) -> int:
+    return (
+        usage.get("input_tokens", 0)
+        + usage.get("output_tokens", 0)
+        + usage.get("cache_creation_input_tokens", 0)
+        + usage.get("cache_read_input_tokens", 0)
+    )
+
+
+def estimate_usage_usd(model: str, usage: dict[str, int]) -> float:
+    """Estimate cost for one model usage record using the eval rates table."""
+    from decisionlab.eval.cost import estimate_usd
+
+    return estimate_usd({model: usage})
 
 
 def reset() -> None:

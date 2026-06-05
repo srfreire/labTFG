@@ -60,7 +60,13 @@ export type ServerMessage =
   | { type: "marker"; ts: number; kind: string; label?: string; color?: string }
   | { type: "node_add"; node: GraphNode }
   | { type: "edge_add"; edge: GraphEdge }
-  | { type: "node_update"; id: string; status: "running" | "done" | "error" }
+  | {
+      type: "node_update";
+      id: string;
+      status?: "running" | "done" | "error";
+      label?: string;
+      metadata?: Record<string, unknown>;
+    }
   | { type: "review_request"; stage: Stage.REVIEW_RESEARCH; data: ReviewResearchData }
   | { type: "review_request"; stage: Stage.REVIEW_FORMALIZE; data: ReviewFormalizeData }
   | { type: "review_request"; stage: Stage.GET_ENV_SPEC; data: { message?: string } }
