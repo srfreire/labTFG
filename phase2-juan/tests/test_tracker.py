@@ -153,9 +153,7 @@ def test_get_agent_trajectory_full_includes_everything():
     _, registry = build_simulation_tools(events)
     result = json.loads(
         asyncio.run(
-            registry["get_agent_trajectory"](
-                {"agent_id": "agent_0", "detail": "full"}
-            )
+            registry["get_agent_trajectory"]({"agent_id": "agent_0", "detail": "full"})
         )
     )
     assert result[0]["outcome"]["model_state"]["energy"] == 50.0
@@ -189,9 +187,7 @@ def test_get_agent_trajectory_summary_unknown_agent_keeps_agent_id():
     _, registry = build_simulation_tools(events)
     result = json.loads(
         asyncio.run(
-            registry["get_agent_trajectory"](
-                {"agent_id": "ghost", "detail": "summary"}
-            )
+            registry["get_agent_trajectory"]({"agent_id": "ghost", "detail": "summary"})
         )
     )
     assert result == {"agent_id": "ghost", "steps_survived": 0, "resources_consumed": 0}
@@ -242,11 +238,7 @@ def test_get_event_window_caps_radius():
     events = _make_events()
     _, registry = build_simulation_tools(events)
     result = json.loads(
-        asyncio.run(
-            registry["get_event_window"](
-                {"center_step": 2, "radius": 9999}
-            )
-        )
+        asyncio.run(registry["get_event_window"]({"center_step": 2, "radius": 9999}))
     )
     assert result["radius"] == 30
 
@@ -256,11 +248,7 @@ def test_get_event_window_null_radius_uses_default():
     events = _make_events()
     _, registry = build_simulation_tools(events)
     result = json.loads(
-        asyncio.run(
-            registry["get_event_window"](
-                {"center_step": 2, "radius": None}
-            )
-        )
+        asyncio.run(registry["get_event_window"]({"center_step": 2, "radius": None}))
     )
     assert result["radius"] == 10
 
@@ -270,11 +258,7 @@ def test_get_event_window_negative_radius_uses_default():
     events = _make_events()
     _, registry = build_simulation_tools(events)
     result = json.loads(
-        asyncio.run(
-            registry["get_event_window"](
-                {"center_step": 2, "radius": -5}
-            )
-        )
+        asyncio.run(registry["get_event_window"]({"center_step": 2, "radius": -5}))
     )
     assert result["radius"] == 10
     assert len(result["events"]) > 0  # non-empty window confirms the fix
@@ -284,9 +268,7 @@ def test_get_event_window_compact_by_default():
     events = _make_events()
     _, registry = build_simulation_tools(events)
     result = json.loads(
-        asyncio.run(
-            registry["get_event_window"]({"center_step": 2, "radius": 5})
-        )
+        asyncio.run(registry["get_event_window"]({"center_step": 2, "radius": 5}))
     )
     # Compact events shouldn't carry perception/pre_state blobs
     assert all("perception" not in e for e in result["events"])

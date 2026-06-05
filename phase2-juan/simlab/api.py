@@ -267,9 +267,7 @@ async def knowledge_graph(
         if r["source"] in kept_ids and r["target"] in kept_ids
     ]
 
-    current_run_node_ids = await _resolve_current_run_node_ids(
-        run_id, label_key_to_id
-    )
+    current_run_node_ids = await _resolve_current_run_node_ids(run_id, label_key_to_id)
 
     return {
         "nodes": nodes,
@@ -520,9 +518,7 @@ async def websocket_chat(ws: WebSocket):
 
     # Wire up internal tool call notifications
     async def _on_agent_tool(agent_name: str, tool_name: str):
-        await safe_send(
-            {"type": "agent_tool", "agent": agent_name, "tool": tool_name}
-        )
+        await safe_send({"type": "agent_tool", "agent": agent_name, "tool": tool_name})
 
     orch.on_agent_tool_call = _on_agent_tool
 
@@ -555,8 +551,7 @@ async def websocket_chat(ws: WebSocket):
         data: dict[str, str] = {
             "Grid": f"{spec['grid']['width']} × {spec['grid']['height']}",
             "Acciones posibles": ", ".join(
-                a["name"] if isinstance(a, dict) else str(a)
-                for a in spec["actions"]
+                a["name"] if isinstance(a, dict) else str(a) for a in spec["actions"]
             ),
             "Recursos": resources,
         }
@@ -760,7 +755,7 @@ async def websocket_chat(ws: WebSocket):
                 response = await orch.chat(user_text)
                 state = orch._state
                 pdf_paths_after = list(state.get("pdf_paths") or [])
-                new_pdf_paths = pdf_paths_after[len(pdf_paths_before):]
+                new_pdf_paths = pdf_paths_after[len(pdf_paths_before) :]
 
                 # Send updated agent states
                 agents_state = _build_agent_states(state)

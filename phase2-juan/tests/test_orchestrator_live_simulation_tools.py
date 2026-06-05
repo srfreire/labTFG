@@ -47,9 +47,7 @@ async def test_get_simulation_step_window_reads_latest_run_without_tracker():
     _, registry = orch._build_tools()
 
     result = json.loads(
-        await registry["get_simulation_step_window"](
-            {"center_step": 2, "radius": 1}
-        )
+        await registry["get_simulation_step_window"]({"center_step": 2, "radius": 1})
     )
 
     assert result["experiment_id"] == "exp-live"

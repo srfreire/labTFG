@@ -100,9 +100,7 @@ async def test_run_id_populates_current_run_node_ids(monkeypatch):
         db=_stub_db_with_observations([("Paradigm", "homeostatic")]),
     )
 
-    body = await knowledge_graph(
-        run_id="00000000-0000-0000-0000-000000000001"
-    )
+    body = await knowledge_graph(run_id="00000000-0000-0000-0000-000000000001")
 
     assert body["current_run_node_ids"] == ["elem_n1"]
 
@@ -140,9 +138,7 @@ async def test_label_filter_keeps_only_matching_nodes(monkeypatch):
         {"id": "n1", "labels": ["Paradigm"], "props": {"name": "a"}},
         {"id": "n2", "labels": ["Postulate"], "props": {"id": "P1"}},
     ]
-    edges = [
-        {"id": "e1", "source": "n1", "target": "n2", "type": "REL", "props": {}}
-    ]
+    edges = [{"id": "e1", "source": "n1", "target": "n2", "type": "REL", "props": {}}]
     _set_services(monkeypatch, kg=_stub_kg(nodes, edges))
 
     body = await knowledge_graph(label="Paradigm")

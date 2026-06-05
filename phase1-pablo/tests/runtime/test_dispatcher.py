@@ -115,4 +115,38 @@ async def test_dispatch_traces_tool_node_when_agrex_context_bound():
     assert node["label"] == "read_file"
     assert node["parentId"] == "reasoner:test-spec"
     assert node["metadata"]["path"] == "reasoner/p/spec.json"
+    assert isinstance(node["metadata"]["startedAt"], int)
+    assert node["metadata"]["tool_name"] == "read_file"
     assert emitted[1]["status"] == "done"
+    assert isinstance(emitted[1]["metadata"]["endedAt"], int)
+    assert emitted[1]["metadata"]["duration_ms"] >= 0
+    assert emitted[1]["metadata"]["output"] == "read reasoner/p/spec.json"
+    assert emitted[1]["metadata"]["result_chars"] == len("read reasoner/p/spec.json")
+
+
+@pytest.mark.asyncio
+async def test_dispatch_traces_structured_error_metadata_when_tool_raises():
+    async def bad_tool(params: dict) -> str:
+        raise ValueError(f"bad {params['x']}")
+
+    emitted: list[dict] = []
+
+    async def emit(event: dict) -> None:
+        emitted.append(event)
+
+    tracer = agrex.create_tracer()
+    tokens = agrex_context.bind(tracer, emit)
+    parent_token = agrex_context.set_parent("builder")
+    try:
+        calls = [FakeToolCall(id="t1", name="bad_tool", input={"x": 3})]
+        await dispatch_tools(calls, {"bad_tool": bad_tool})
+    finally:
+        agrex_context.reset_parent(parent_token)
+        agrex_context.reset(tokens)
+
+    update = emitted[-1]
+    assert update["status"] == "error"
+    assert update["metadata"]["error_type"] == "ValueError"
+    assert update["metadata"]["duration_ms"] >= 0
+    assert update["metadata"]["error"]["name"] == "ValueError"
+    assert update["metadata"]["error"]["message"] == "bad 3"

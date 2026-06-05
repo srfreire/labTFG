@@ -102,13 +102,9 @@ def test_user_tool_result_blocks_yield_tool_result_rows():
 def test_user_tool_result_unknown_tool_use_id_yields_null_tool_name():
     msg = {
         "role": "user",
-        "content": [
-            {"type": "tool_result", "tool_use_id": "missing", "content": "x"}
-        ],
+        "content": [{"type": "tool_result", "tool_use_id": "missing", "content": "x"}],
     }
-    rows = serialize_message(
-        msg, session_id=SID, experiment_id=None, tool_use_names={}
-    )
+    rows = serialize_message(msg, session_id=SID, experiment_id=None, tool_use_names={})
     assert len(rows) == 1
     assert rows[0]["tool_name"] is None
 

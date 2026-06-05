@@ -104,7 +104,9 @@ async def test_retrieve_context_timeout_returns_empty(caplog, monkeypatch):
     services = _make_services(vectors=MagicMock())
     settings = Settings(ENABLE_KNOWLEDGE_READ=True)
 
-    monkeypatch.setattr("simlab.recall.retrieve._RETRIEVE_CONTEXT_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(
+        "simlab.recall.retrieve._RETRIEVE_CONTEXT_TIMEOUT_SECONDS", 0.01
+    )
     with (
         patch("simlab.recall.retrieve.load_settings", return_value=settings),
         patch(

@@ -22,7 +22,7 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
             msg = f"Unknown tool '{call.name}'. Available: {list(registry)}"
             logger.error(msg)
             record_tool_call(call.name, call.input, succeeded=False, duration_ms=0.0)
-            await trace_tool_done(trace_id, succeeded=False, error=msg)
+            await trace_tool_done(trace_id, succeeded=False, error=msg, duration_ms=0.0)
             return {
                 "type": "tool_result",
                 "tool_use_id": call.id,
@@ -31,12 +31,19 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
             }
         t0 = time.monotonic_ns()
         succeeded = False
+        duration_ms: float | None = None
         try:
             logger.info("Calling tool '%s'", call.name)
             result = await registry[call.name](call.input)
             logger.info("Tool '%s' returned (%d chars)", call.name, len(result))
             succeeded = True
-            await trace_tool_done(trace_id, succeeded=True)
+            duration_ms = (time.monotonic_ns() - t0) / 1_000_000
+            await trace_tool_done(
+                trace_id,
+                succeeded=True,
+                output=result,
+                duration_ms=duration_ms,
+            )
             return {"type": "tool_result", "tool_use_id": call.id, "content": result}
         except Exception as e:
             logger.error(
@@ -46,8 +53,12 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
                 type(e).__name__,
                 e,
             )
+            duration_ms = (time.monotonic_ns() - t0) / 1_000_000
             await trace_tool_done(
-                trace_id, succeeded=False, error=f"{type(e).__name__}: {e}"
+                trace_id,
+                succeeded=False,
+                error=e,
+                duration_ms=duration_ms,
             )
             return {
                 "type": "tool_result",
@@ -56,7 +67,8 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
                 "is_error": True,
             }
         finally:
-            duration_ms = (time.monotonic_ns() - t0) / 1_000_000
+            if duration_ms is None:
+                duration_ms = (time.monotonic_ns() - t0) / 1_000_000
             record_tool_call(
                 call.name, call.input, succeeded=succeeded, duration_ms=duration_ms
             )

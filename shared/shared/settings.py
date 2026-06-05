@@ -42,18 +42,16 @@ def derive_test_postgres_dsn(dsn: str) -> str:
     if db_name.endswith("_test"):
         return dsn
     test_path = parts.path.removesuffix(db_name) + f"{db_name}_test"
-    return urlunsplit((parts.scheme, parts.netloc, test_path, parts.query, parts.fragment))
+    return urlunsplit(
+        (parts.scheme, parts.netloc, test_path, parts.query, parts.fragment)
+    )
 
 
 def derive_sync_postgres_dsn(dsn: str) -> str:
     """Return a SQLAlchemy sync DSN using the installed psycopg driver."""
     parts = urlsplit(dsn)
     scheme = parts.scheme
-    if scheme == "postgresql+asyncpg":
-        scheme = "postgresql+psycopg"
-    elif scheme == "postgres":
-        scheme = "postgresql+psycopg"
-    elif scheme == "postgresql":
+    if scheme == "postgresql+asyncpg" or scheme == "postgres" or scheme == "postgresql":
         scheme = "postgresql+psycopg"
     return urlunsplit((scheme, parts.netloc, parts.path, parts.query, parts.fragment))
 

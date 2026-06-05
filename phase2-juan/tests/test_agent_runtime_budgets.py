@@ -9,7 +9,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from simlab.environment import Action, Event
 
 
@@ -73,7 +72,9 @@ async def test_architect_uses_small_generation_budget():
 
     async def fake_loop(**kwargs):
         captured.update(kwargs)
-        return _mock_response('{"grid": {"width": 1, "height": 1}, "actions": [], "resources": []}')
+        return _mock_response(
+            '{"grid": {"width": 1, "height": 1}, "actions": [], "resources": []}'
+        )
 
     with patch("simlab.architect.run_agent_loop", side_effect=fake_loop):
         architect = Architect(client=MagicMock())

@@ -1,9 +1,8 @@
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from simlab.reporter import Reporter, _build_standard_report_text, _prepare_latex_body
 
 
@@ -13,8 +12,10 @@ class _FakeMessages:
 
     async def create(self, **kwargs):
         self.calls.append(kwargs)
-        section_name = kwargs["messages"][0]["content"].splitlines()[0].replace(
-            "Write section: ", ""
+        section_name = (
+            kwargs["messages"][0]["content"]
+            .splitlines()[0]
+            .replace("Write section: ", "")
         )
         return SimpleNamespace(
             stop_reason="end_turn",
@@ -33,8 +34,10 @@ class _RetryFakeMessages:
 
     async def create(self, **kwargs):
         self.calls.append(kwargs)
-        section_name = kwargs["messages"][0]["content"].splitlines()[0].replace(
-            "Write section: ", ""
+        section_name = (
+            kwargs["messages"][0]["content"]
+            .splitlines()[0]
+            .replace("Write section: ", "")
         )
         if section_name == "Resumen ejecutivo" and len(self.calls) == 1:
             return SimpleNamespace(

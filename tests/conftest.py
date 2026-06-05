@@ -10,8 +10,8 @@ tables between runs and wiping managed Qdrant collections.
 
 from __future__ import annotations
 
-import uuid
 import os
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 

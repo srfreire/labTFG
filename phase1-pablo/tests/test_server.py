@@ -108,6 +108,35 @@ async def test_emit_node_update_merges_metadata_for_reconnect(manager, fake_ws):
 
 
 @pytest.mark.asyncio
+async def test_emit_metadata_only_node_update_merges_for_reconnect(manager, fake_ws):
+    await manager.connect(fake_ws)
+    await manager.emit(
+        {
+            "type": "node_add",
+            "node": {
+                "id": "n1",
+                "status": "running",
+                "metadata": {"startedAt": 100},
+            },
+        }
+    )
+    await manager.emit(
+        {
+            "type": "node_update",
+            "id": "n1",
+            "metadata": {"tokens": 1200, "cost": 0.004},
+        }
+    )
+
+    assert manager.nodes[0]["status"] == "running"
+    assert manager.nodes[0]["metadata"] == {
+        "startedAt": 100,
+        "tokens": 1200,
+        "cost": 0.004,
+    }
+
+
+@pytest.mark.asyncio
 async def test_emit_node_update_unknown_id_is_noop(manager, fake_ws):
     await manager.connect(fake_ws)
     await manager.emit({"type": "node_update", "id": "missing", "status": "x"})
