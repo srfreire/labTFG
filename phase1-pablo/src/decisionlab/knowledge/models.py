@@ -76,6 +76,18 @@ class KGWriteResult:
 
 
 @dataclass
+class KGHealthResult:
+    """Summary of the post-memory KG health pass."""
+
+    checked_nodes: int
+    isolated_before: int
+    isolated_after: int
+    global_isolated_after: int
+    inferred_relations_created: int
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
 class IndexResult:
     """Summary of an indexing operation."""
 
@@ -112,6 +124,11 @@ class MemoryAgentResult:
     """True when an unrecoverable error zeroed this result. ``error`` carries the message."""
 
     error: str | None = None
+    kg_errors: list[str] = field(default_factory=list)
+    """Recoverable KG write errors, such as relation endpoints that could not resolve."""
+
+    kg_health: KGHealthResult | None = None
+    """Post-write health/repair summary for KG readability."""
 
 
 @dataclass

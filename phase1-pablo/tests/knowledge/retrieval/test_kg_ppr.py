@@ -57,6 +57,9 @@ async def test_ppr_passes_variable_intent_types():
 
     params = kg.query.call_args_list[1].args[1]
     assert "MEASURES" in params["allowed_types"]
+    assert "MODULATES" in params["allowed_types"]
+    assert "USES_VARIABLE" in params["allowed_types"]
+    assert "HAS_PARAMETER" in params["allowed_types"]
 
 
 def test_score_damps_high_degree_more_than_low_degree():
@@ -80,6 +83,9 @@ def test_types_for_intent_known_intents():
     var = _types_for_intent("variable")
     assert "EXTENDS" in para
     assert "MEASURES" in var
+    assert "MODULATES" in var
+    assert "USES_VARIABLE" in var
+    assert "HAS_PARAMETER" in var
     # The two intents should be distinct sets.
     assert set(para) != set(var)
 

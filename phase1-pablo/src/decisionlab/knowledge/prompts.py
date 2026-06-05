@@ -123,6 +123,9 @@ empirically tested.
 
 Relation types to extract:
 - BELONGS_TO: Postulate → Paradigm (the paradigm the postulate belongs to)
+- BELONGS_TO: Paper → Paradigm (the paradigm a cited paper supports or contextualizes)
+- BELONGS_TO: Author → Paradigm (a foundational author associated with the paradigm)
+- BELONGS_TO: BrainRegion → Paradigm (a neural region/system discussed for the paradigm)
 - AUTHORED: Author → Paper (authorship)
 - SUPPORTS: Paper → Postulate (with properties: confidence 0-1, quote)
 - MEASURES: Variable → BrainRegion (the brain region/system the variable measures)
@@ -155,8 +158,9 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
-- Equation: properties={{latex, plaintext, type}}. natural_key="latex". \
-Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections.
+- Equation: properties={{latex, plaintext, type, paradigm_slug, formulation_id}}. natural_key="latex". \
+Type is one of: ODE, algebraic, probabilistic. Extract from ### Equations sections. \
+formulation_id must be the slugified formulation heading name.
 - Variable: properties={{name, description, type, range, unit, paradigm_slug}}. natural_key="name". \
 Extract from ### Variables tables. Type is the Type column value. \
 description is a 1-sentence semantic explanation of the variable's role in this \
@@ -167,14 +171,18 @@ formulation's narrative. \
 paradigm_slug must be the slug of the Paradigm whose formalization this document \
 describes (the Researcher upstream sets it; if absent, derive from the document's \
 paradigm name).
-- Parameter: properties={{name, default_value, source, range}}. natural_key="name". \
-Extract from ### Parameters tables. default_value should be a number or string.
-- Formulation: properties={{id, name, type, description}}. natural_key="id". \
-Id is inferred from the formulation heading (e.g., "Formulation 1"). \
+- Parameter: properties={{name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="name". \
+Extract from ### Parameters tables. name must be the mathematical symbol, \
+display_name must be the human-readable Name column, and formulation_id must be \
+the slugified formulation heading name. default_value should be a number or string.
+- Formulation: properties={{id, name, type, description, paradigm_slug}}. natural_key="id". \
+Id is the slugified formulation heading name, not "Formulation 1". \
 Type is the approach (e.g., "ODE-based control", "Q-learning MDP").
 
 Relation types to extract:
 - USES_EQUATION: Formulation → Equation (which equations each formulation uses)
+- USES_VARIABLE: Formulation → Variable (which variables appear in the formulation)
+- HAS_PARAMETER: Formulation → Parameter (which parameters configure the formulation)
 - MODULATES: Variable → Variable (with properties: direction="positive"|"negative", \
 equation_ref). Extract from equations where one variable influences another.
 
@@ -201,13 +209,17 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
-- Parameter: properties={{name, default_value, source, range}}. natural_key="name". \
-Extract from the "parameters" array. Use the default from the spec (may differ from \
-the formalizer's defaults — the reasoner has validated/updated them).
-- Formulation: properties={{id, name, type, description}}. natural_key="id". \
-Extract from formulation_id and name fields.
+- Parameter: properties={{name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="name". \
+Extract from the "parameters" array. name must be the "symbol" value; \
+display_name must be the descriptive "name" field. Use the default from the spec \
+(may differ from the formalizer's defaults — the reasoner has validated/updated them).
+- Formulation: properties={{id, name, type, description, paradigm_slug}}. natural_key="id". \
+Extract id from formulation_id and name from the name field. paradigm_slug must \
+be copied exactly from the spec's top-level paradigm field.
 
 Relation types to extract:
+- BELONGS_TO: Formulation → Paradigm (the paradigm this formulation belongs to)
+- HAS_PARAMETER: Formulation → Parameter (the validated parameters used by this formulation)
 - DERIVES_FROM: Parameter → Postulate. properties={{derivation_chain}}. \
 For each parameter, trace which postulate justifies it by examining the "source" \
 field and "rules" array (rules reference source_postulate). The derivation_chain \

@@ -55,6 +55,9 @@ _ALLOWED_REL_TYPES = frozenset(
         "DERIVES_FROM",
         "IMPLEMENTS",
         "USES_EQUATION",
+        "USES_VARIABLE",
+        "HAS_PARAMETER",
+        "GOVERNS",
         "BELONGS_TO",
         "CITES",
     ]

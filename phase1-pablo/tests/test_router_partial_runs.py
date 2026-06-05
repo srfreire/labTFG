@@ -128,7 +128,7 @@ async def test_stop_after_research_terminates_after_review(services_fixture):
             router.state.stage = router._next_after_work(Stage.RESEARCH)
 
         async def mock_review_research():
-            router.state.stage = Stage.FORMALIZE  # natural next stage
+            router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
 
         formalize_called = False
 
@@ -171,7 +171,7 @@ async def test_partial_run_persists_final_stage_and_memory_results(services_fixt
             router.state.stage = router._next_after_work(Stage.RESEARCH)
 
         async def mock_review_research():
-            router.state.stage = Stage.FORMALIZE
+            router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
@@ -210,7 +210,7 @@ async def test_memory_failure_persists_error_and_keeps_run_alive(services_fixtur
             router.state.stage = router._next_after_work(Stage.RESEARCH)
 
         async def mock_review_research():
-            router.state.stage = Stage.FORMALIZE
+            router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),
@@ -249,7 +249,7 @@ async def test_partial_run_uploads_agrex_trace_artifact(services_fixture):
             router.state.stage = router._next_after_work(Stage.RESEARCH)
 
         async def mock_review_research():
-            router.state.stage = Stage.FORMALIZE
+            router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
 
         with (
             patch.object(router, "_do_research", side_effect=mock_research),

@@ -7,8 +7,8 @@ import logging
 import tempfile
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -43,10 +43,7 @@ EmitFn = Callable[[dict], Awaitable[None]]
 # ---------------------------------------------------------------------------
 
 
-# Inheriting from (str, Enum) instead of StrEnum keeps Pyright's `.value`
-# inference well-typed at downstream callsites (see server.py: stop_after
-# resolution). UP042 prefers StrEnum but breaks `Stage.X.value` typing.
-class Stage(str, Enum):  # noqa: UP042
+class Stage(StrEnum):
     CLASSIFY_UMBRELLA = "classify_umbrella"
     RESEARCH = "research"
     MEMORY_RESEARCH = "memory_research"
@@ -72,10 +69,9 @@ _MEMORY_AGENT_STAGE_NAMES = {
     Stage.BUILD: "builder",
 }
 
-# Mapping work stage → its dedicated MEMORY_X stage. Each work handler
-# advances to MEMORY_X when memory infra is available; the loop then runs
-# the matching _memory_<stage> handler which awaits the Memory Agent
-# synchronously before yielding to the REVIEW_X stage.
+# Mapping work stage → its dedicated MEMORY_X stage. Review handlers advance
+# to MEMORY_X when memory infra is available, so the backbone only records
+# accepted output rather than raw candidates.
 _MEMORY_STAGE_OF = {
     Stage.RESEARCH: Stage.MEMORY_RESEARCH,
     Stage.FORMALIZE: Stage.MEMORY_FORMALIZE,
@@ -87,12 +83,21 @@ _MEMORY_STAGE_OF = {
 # handlers to look up the right output text and agent name).
 _WORK_STAGE_OF_MEMORY = {v: k for k, v in _MEMORY_STAGE_OF.items()}
 
-# Mapping MEMORY_X → the REVIEW_X it transitions into when finished.
-_REVIEW_AFTER_MEMORY = {
+# Mapping MEMORY_X → the REVIEW_X that gates the work stage.
+_REVIEW_STAGE_OF_MEMORY = {
     Stage.MEMORY_RESEARCH: Stage.REVIEW_RESEARCH,
     Stage.MEMORY_FORMALIZE: Stage.REVIEW_FORMALIZE,
     Stage.MEMORY_REASON: Stage.REVIEW_REASON,
     Stage.MEMORY_BUILD: Stage.REVIEW_BUILD,
+}
+
+# Mapping MEMORY_X → the next pipeline stage after accepted output has been
+# committed to memory/KG.
+_NEXT_AFTER_MEMORY = {
+    Stage.MEMORY_RESEARCH: Stage.FORMALIZE,
+    Stage.MEMORY_FORMALIZE: Stage.GET_ENV_SPEC,
+    Stage.MEMORY_REASON: Stage.BUILD,
+    Stage.MEMORY_BUILD: Stage.DONE,
 }
 
 # Work stages that emit a `tracer.stage(...)` timeline event (memory and
@@ -373,7 +378,7 @@ class Router:
             raise ValueError(f"stop_after must be a work stage, got {stop_after!r}")
         self._stop_after: Stage | None = stop_after
         self._stop_after_review: Stage | None = (
-            _REVIEW_AFTER_MEMORY[_MEMORY_STAGE_OF[stop_after]]
+            _REVIEW_STAGE_OF_MEMORY[_MEMORY_STAGE_OF[stop_after]]
             if stop_after is not None
             else None
         )
@@ -756,26 +761,31 @@ class Router:
     # -- memory agent ---------------------------------------------------------
 
     def _next_after_work(self, work_stage: Stage) -> Stage:
-        """Stage to transition to after a work handler succeeds. Goes through
-        the MEMORY_X interstitial when memory infra is up; otherwise straight
-        to REVIEW_X (memory tick is a no-op in degraded mode)."""
+        """Stage to transition to after a work handler succeeds."""
         memory_stage = _MEMORY_STAGE_OF[work_stage]
+        return _REVIEW_STAGE_OF_MEMORY[memory_stage]
+
+    def _next_after_review(self, review_stage: Stage) -> Stage:
+        """Stage to transition to after a review accepts output."""
+        memory_stage = {
+            review: memory for memory, review in _REVIEW_STAGE_OF_MEMORY.items()
+        }[review_stage]
         if self.memory_agent is None:
-            return _REVIEW_AFTER_MEMORY[memory_stage]
+            return _NEXT_AFTER_MEMORY[memory_stage]
         return memory_stage
 
     async def _run_memory_stage(self, memory_stage: Stage) -> None:
         """Body of every _memory_<stage> handler. Awaits the Memory Agent
         synchronously, persists the per-stage result (or error) on the run
-        row, then advances to the matching REVIEW_X. Failures never block
+        row, then advances to the next pipeline stage. Failures never block
         the pipeline — they're recorded for post-hoc inspection via the
         runs.memory_results JSONB column."""
         work_stage = _WORK_STAGE_OF_MEMORY[memory_stage]
-        review_stage = _REVIEW_AFTER_MEMORY[memory_stage]
+        next_stage = _NEXT_AFTER_MEMORY[memory_stage]
         agent_name = _MEMORY_AGENT_STAGE_NAMES[work_stage]
 
         if self.memory_agent is None:
-            self.state.stage = review_stage
+            self.state.stage = next_stage
             return
 
         memory_node_id = self._trace_id("memory_agent", agent_name)
@@ -813,6 +823,11 @@ class Router:
             }
             if result.error:
                 payload["error"] = result.error
+            if result.kg_errors:
+                payload["kg_errors"] = result.kg_errors
+                payload["kg_error_count"] = len(result.kg_errors)
+            if result.kg_health is not None:
+                payload["kg_health"] = asdict(result.kg_health)
         except Exception as exc:
             logger.exception(
                 "Memory Agent failed for stage=%s — continuing pipeline",
@@ -834,7 +849,7 @@ class Router:
                 metadata={**payload, "endedAt": agrex_context.now_ms()},
             )
         await self._trace_last()
-        self.state.stage = review_stage
+        self.state.stage = next_stage
 
     async def _trace_memory_outputs(
         self, memory_node_id: str, agent_name: str, payload: dict
@@ -948,12 +963,22 @@ class Router:
         models = self.state.models_prefix
 
         if stage == Stage.RESEARCH:
-            key = f"{prefix}/report.md"
-            try:
-                text = await self._services.storage.get_text(key)
-            except Exception:
-                logger.warning("Could not read research report from %s", key)
-                return ""
+            parts: list[str] = []
+            if self.state.approved_paradigms:
+                for slug in self.state.approved_paradigms:
+                    key = f"{prefix}/deep/{slug}.md"
+                    try:
+                        parts.append(await self._services.storage.get_text(key))
+                    except Exception:
+                        logger.warning("Could not read approved deep report %s", key)
+            if not parts:
+                key = f"{prefix}/report.md"
+                try:
+                    parts.append(await self._services.storage.get_text(key))
+                except Exception:
+                    logger.warning("Could not read research report from %s", key)
+                    return ""
+            text = "\n\n".join(parts)
             self._stage_outputs[stage] = text
             return text
 
@@ -971,7 +996,8 @@ class Router:
 
         if stage == Stage.REASON:
             parts = []
-            for paradigm, fids in self.state.selected_formulations.items():
+            scope = self.state.approved_specs or self.state.selected_formulations
+            for paradigm, fids in scope.items():
                 for fid in fids:
                     key = f"{models}/reasoner/{paradigm}/{fid}.json"
                     try:
@@ -1102,7 +1128,17 @@ class Router:
                 self._stop_after_review is not None
                 and current_stage == self._stop_after_review
             ):
-                self.state.stage = Stage.DONE
+                memory_stage = {
+                    review: memory for memory, review in _REVIEW_STAGE_OF_MEMORY.items()
+                }.get(current_stage)
+                if self.memory_agent is None or self.state.stage != memory_stage:
+                    self.state.stage = Stage.DONE
+            elif self._stop_after_review is not None:
+                memory_stage = {
+                    review: memory for memory, review in _REVIEW_STAGE_OF_MEMORY.items()
+                }.get(self._stop_after_review)
+                if current_stage == memory_stage:
+                    self.state.stage = Stage.DONE
 
             await self.state.save(self._services)
             await self._update_run(status=self.state.stage.value)
@@ -1255,7 +1291,7 @@ class Router:
                 )
             await self.state.save(self._services)
             break
-        self.state.stage = Stage.FORMALIZE
+        self.state.stage = self._next_after_review(Stage.REVIEW_RESEARCH)
 
     async def _do_formalize(self) -> None:
         from decisionlab.agents.formalizer import Formalizer
@@ -1312,7 +1348,7 @@ class Router:
         from decisionlab.tools.reports import generate_tree_map
 
         await generate_tree_map(self.state, self._services)
-        self.state.stage = Stage.GET_ENV_SPEC
+        self.state.stage = self._next_after_review(Stage.REVIEW_FORMALIZE)
 
     async def _get_env_spec(self) -> None:
         try:
@@ -1486,7 +1522,7 @@ class Router:
                     logger.exception("Reasoner re-run failed for %s", paradigm_slug)
             # Loop back to let user review again
             continue
-        self.state.stage = Stage.BUILD
+        self.state.stage = self._next_after_review(Stage.REVIEW_REASON)
 
     async def _do_build(self) -> None:
         from decisionlab.agents.builder import Builder
@@ -1541,7 +1577,7 @@ class Router:
             )
             if not rejections and not reasoner_reruns:
                 await self._register_approved_models()
-                self.state.stage = Stage.DONE
+                self.state.stage = self._next_after_review(Stage.REVIEW_BUILD)
                 return
 
             # Re-run Reasoner → Builder for paradigms with invalid builds

@@ -153,11 +153,15 @@ async def test_memory_agent_called_after_research():
         router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
+        router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
+
+    async def mock_formalize():
         router.state.stage = Stage.DONE
 
     with (
         patch.object(router, "_do_research", side_effect=mock_research),
         patch.object(router, "_review_research", side_effect=mock_review),
+        patch.object(router, "_do_formalize", side_effect=mock_formalize),
     ):
         await router.run()
 
@@ -250,11 +254,15 @@ async def test_memory_agent_skipped_on_handler_failure():
         router.state.stage = router._next_after_work(Stage.RESEARCH)
 
     async def mock_review():
+        router.state.stage = router._next_after_review(Stage.REVIEW_RESEARCH)
+
+    async def mock_formalize():
         router.state.stage = Stage.DONE
 
     with (
         patch.object(router, "_do_research", side_effect=mock_research_fail),
         patch.object(router, "_review_research", side_effect=mock_review),
+        patch.object(router, "_do_formalize", side_effect=mock_formalize),
     ):
         await router.run()
 
@@ -288,14 +296,18 @@ async def test_memory_agent_called_for_all_work_stages():
 
     handler_mocks = {
         "_do_research": make_work(Stage.RESEARCH),
-        "_review_research": make_advance(Stage.FORMALIZE),
+        "_review_research": make_advance(
+            router._next_after_review(Stage.REVIEW_RESEARCH)
+        ),
         "_do_formalize": make_work(Stage.FORMALIZE),
-        "_review_formalize": make_advance(Stage.GET_ENV_SPEC),
+        "_review_formalize": make_advance(
+            router._next_after_review(Stage.REVIEW_FORMALIZE)
+        ),
         "_get_env_spec": make_advance(Stage.REASON),
         "_do_reason": make_work(Stage.REASON),
-        "_review_reason": make_advance(Stage.BUILD),
+        "_review_reason": make_advance(router._next_after_review(Stage.REVIEW_REASON)),
         "_do_build": make_work(Stage.BUILD),
-        "_review_build": make_advance(Stage.DONE),
+        "_review_build": make_advance(router._next_after_review(Stage.REVIEW_BUILD)),
     }
 
     patches = [

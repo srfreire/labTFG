@@ -238,7 +238,11 @@ class FakeNeo4jStore:
         self.relations.append(
             {
                 "rid": rid,
+                "from_label": from_label,
+                "from_key": from_key,
                 "from_val": from_val,
+                "to_label": to_label,
+                "to_key": to_key,
                 "to_val": to_val,
                 "rel_type": rel_type,
                 "props": props,
@@ -436,6 +440,123 @@ async def test_ac1_creates_relations():
     assert result.relations_created == 4
     assert result.relations_superseded == 0
     assert result.errors == []
+
+
+@pytest.mark.asyncio
+async def test_relation_endpoint_aliases_paper_title_to_doi():
+    """Paper nodes are keyed by DOI, but extractor relations may use titles."""
+    kg = FakeKnowledgeGraph()
+    extraction = _research_extraction()
+    extraction.relations[2].from_key_value = "The Wisdom of the Body"
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.errors == []
+    support = next(r for r in kg.store.relations if r["rel_type"] == "SUPPORTS")
+    assert support["from_key"] == "doi"
+    assert support["from_val"] == "10.1234/twotb"
+
+
+@pytest.mark.asyncio
+async def test_relation_endpoint_aliases_variable_name_to_composite_id():
+    """Variable display names should resolve to the paradigm-scoped id."""
+    kg = FakeKnowledgeGraph()
+    extraction = _research_extraction()
+    extraction.relations[3].from_key_value = "ghrelin"
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.errors == []
+    measures = next(r for r in kg.store.relations if r["rel_type"] == "MEASURES")
+    assert measures["from_key"] == "id"
+    assert measures["from_val"] == "homeostatic-regulation:ghrelin"
+
+
+@pytest.mark.asyncio
+async def test_relation_endpoint_aliases_equation_plaintext_to_latex():
+    """Equation nodes are keyed by latex, but formalizer edges may use plaintext."""
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Formulation",
+                properties={"id": "f1", "name": "Formulation 1"},
+                natural_key="id",
+            ),
+            NodeSpec(
+                label="Equation",
+                properties={
+                    "latex": "e(t) = s - A(t)",
+                    "plaintext": "error = setpoint minus energy",
+                    "type": "algebraic",
+                },
+                natural_key="plaintext",
+            ),
+        ],
+        relations=[
+            RelationSpec(
+                from_label="Formulation",
+                from_key_value="f1",
+                to_label="Equation",
+                to_key_value="error = setpoint minus energy",
+                rel_type="USES_EQUATION",
+            )
+        ],
+        facts=[],
+        stage="formalizer",
+        run_id="run-1",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.errors == []
+    edge = kg.store.relations[0]
+    assert edge["to_key"] == "latex"
+    assert edge["to_val"] == "e(t) = s - A(t)"
+
+
+@pytest.mark.asyncio
+async def test_relation_endpoint_aliases_scoped_postulate_suffix_when_unambiguous():
+    """A local P1 relation can resolve to a scoped Postulate id in the same batch."""
+    kg = FakeKnowledgeGraph()
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={"slug": "reinforcement-learning", "name": "RL"},
+                natural_key="slug",
+            ),
+            NodeSpec(
+                label="Postulate",
+                properties={
+                    "id": "reinforcement-learning:P1",
+                    "statement": "RPE drives learning",
+                    "falsifiable": True,
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                natural_key="id",
+            ),
+        ],
+        relations=[
+            RelationSpec(
+                from_label="Postulate",
+                from_key_value="P1",
+                to_label="Paradigm",
+                to_key_value="reinforcement-learning",
+                rel_type="BELONGS_TO",
+            )
+        ],
+        facts=[],
+        stage="researcher",
+        run_id="run-1",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.errors == []
+    edge = kg.store.relations[0]
+    assert edge["from_key"] == "id"
+    assert edge["from_val"] == "reinforcement-learning:P1"
 
 
 @pytest.mark.asyncio

@@ -330,6 +330,42 @@ async def test_get_neighbors_direction(kg: KnowledgeGraph):
     assert len(incoming) == 0
 
 
+@pytest.mark.asyncio
+async def test_create_relation_accepts_formulation_readability_types(
+    kg: KnowledgeGraph,
+):
+    """Schema accepts relation types that keep formulations readable."""
+    await kg.create_node("Formulation", {"id": "f-readable", "name": "Readable"})
+    await kg.create_node(
+        "Variable",
+        {"id": "readable:x", "name": "x", "paradigm_slug": "readable"},
+    )
+    await kg.create_node("Parameter", {"name": "alpha", "default_value": 0.1})
+
+    await kg.create_relation(
+        "Formulation",
+        "id",
+        "f-readable",
+        "Variable",
+        "id",
+        "readable:x",
+        "USES_VARIABLE",
+    )
+    await kg.create_relation(
+        "Formulation",
+        "id",
+        "f-readable",
+        "Parameter",
+        "name",
+        "alpha",
+        "HAS_PARAMETER",
+    )
+
+    neighbors = await kg.get_neighbors("Formulation", "id", "f-readable")
+    names = {n.get("name") for n in neighbors}
+    assert {"x", "alpha"} <= names
+
+
 # -- Validation & error handling -----------------------------------------------
 
 

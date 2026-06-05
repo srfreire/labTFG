@@ -31,7 +31,13 @@ _SIMILARITY_THRESHOLD = 0.75
 # vs. variable). Filtering trims hub-bridging edges that drag in
 # unrelated regions of the graph.
 _PARADIGM_INTENT_TYPES = ("SUPPORTS", "CONTRADICTS", "EXTENDS", "BELONGS_TO")
-_VARIABLE_INTENT_TYPES = ("MEASURES", "HAS_PARAMETER", "GOVERNS")
+_VARIABLE_INTENT_TYPES = (
+    "MEASURES",
+    "MODULATES",
+    "USES_VARIABLE",
+    "HAS_PARAMETER",
+    "GOVERNS",
+)
 
 
 def _types_for_intent(intent: str) -> tuple[str, ...]:

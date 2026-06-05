@@ -16,8 +16,10 @@ from typing import TYPE_CHECKING
 from decisionlab.knowledge.canonicalize import canonicalize_extraction
 from decisionlab.knowledge.extraction import extract
 from decisionlab.knowledge.indexer import index_stage_output
+from decisionlab.knowledge.kg_health import repair_kg_health
 from decisionlab.knowledge.kg_writer import populate_kg
 from decisionlab.knowledge.models import (
+    KGHealthResult,
     KGWriteResult,
     MemoryAgentResult,
     ResolutionResult,
@@ -153,6 +155,7 @@ class MemoryAgent:
             kg_result = await self._parallel_write(
                 extraction, stage, stage_output, run_id
             )
+            kg_health = await self._repair_kg_health(extraction)
 
             # Step 3: Conflict resolution + memory persistence
             res_result = await self._resolve(extraction)
@@ -167,10 +170,13 @@ class MemoryAgent:
                 duplicates_skipped=res_result.duplicates_skipped,
                 conflicts_resolved=res_result.contradictions,
                 duration_ms=int((time.monotonic() - t0) * 1000),
+                kg_errors=kg_result.errors,
+                kg_health=kg_health,
             )
             logger.info(
                 "Memory Agent [%s]: %d nodes (+%d merged), %d relations, "
-                "%d facts stored, %d dups skipped, %d conflicts — %dms",
+                "%d facts stored, %d dups skipped, %d conflicts, %d KG errors, "
+                "%d health repairs — %dms",
                 stage,
                 result.nodes_created,
                 result.nodes_merged,
@@ -178,6 +184,8 @@ class MemoryAgent:
                 result.facts_stored,
                 result.duplicates_skipped,
                 result.conflicts_resolved,
+                len(result.kg_errors),
+                kg_health.inferred_relations_created if kg_health else 0,
                 result.duration_ms,
             )
             return result
@@ -248,6 +256,16 @@ class MemoryAgent:
                 logger.error("Indexing failed: %s", r, exc_info=r)
 
         return kg_result
+
+    async def _repair_kg_health(self, extraction) -> KGHealthResult | None:
+        """Run the deterministic post-KG readability repair pass."""
+        if self._kg is None:
+            return None
+        try:
+            return await repair_kg_health(extraction, self._kg)
+        except Exception:
+            logger.exception("Memory Agent KG health pass failed")
+            return None
 
     async def _resolve(self, extraction) -> ResolutionResult:
         """Run conflict resolution if all required infra is available."""

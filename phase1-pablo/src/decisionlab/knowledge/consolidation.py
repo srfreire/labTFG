@@ -104,8 +104,9 @@ async def consolidate(
       3. Apply time decay to all stale memories
       4. Prune memories with low confidence, zero access, and age > 90 days
 
-    When *kg* is provided, generated reflections are also written to the
-    knowledge graph as Reflection nodes so graph-traversal retrievers see them.
+    Reflections remain in Postgres + vector memory. They are not mirrored into
+    Neo4j unless a future semantic linker can attach them to concrete KG nodes;
+    standalone Reflection nodes make graph traversal less readable.
     """
     t0 = time.monotonic()
 
@@ -305,28 +306,6 @@ async def _generate_reflections(
                     "text_preview": reflection.content[:200],
                 },
             )
-
-            # Mirror the reflection into the KG so graph traversals can reach
-            # cross-run synthesis. Failures are non-fatal — vectors + Postgres
-            # remain the source of truth.
-            if kg is not None:
-                try:
-                    await kg.create_node(
-                        "Reflection",
-                        {
-                            "id": point_id,
-                            "content": reflection.content,
-                            "run_id": run_id,
-                            "source_memory_ids": source_ids,
-                            "created_at": datetime.now(UTC).isoformat(),
-                        },
-                    )
-                except Exception:
-                    logger.warning(
-                        "Failed to mirror reflection %s to KG",
-                        point_id,
-                        exc_info=True,
-                    )
 
             # Cross-run: compare against existing reflections
             corroborated = await _check_cross_run_reflections(

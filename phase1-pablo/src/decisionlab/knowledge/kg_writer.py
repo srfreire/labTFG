@@ -323,10 +323,40 @@ _TEMPORAL_KEYS = frozenset(
         "confidence",
     }
 )
+_MISSING = object()
 
 # Property names tried, in priority order, when the LLM-declared natural_key is
 # missing from `properties`. Covers the common identifier vocabulary.
 _FALLBACK_KEY_NAMES = ("slug", "id", "doi", "url", "name", "title")
+_ENDPOINT_ALIAS_PROPS = (
+    "slug",
+    "id",
+    "doi",
+    "url",
+    "name",
+    "title",
+    "formulation_id",
+    "latex",
+    "plaintext",
+    "symbol",
+    "display_name",
+)
+_ENDPOINT_LOOKUP_PROPS: dict[str, tuple[tuple[str, str], ...]] = {
+    "Paper": (("title", "doi"), ("title", "title"), ("doi", "doi")),
+    "Variable": (("name", "id"), ("id", "id")),
+    "Equation": (
+        ("plaintext", "latex"),
+        ("plaintext", "plaintext"),
+        ("latex", "latex"),
+    ),
+    "Parameter": (
+        ("display_name", "name"),
+        ("symbol", "name"),
+        ("name", "name"),
+    ),
+    "Model": (("formulation_id", "formulation_id"),),
+}
+_EndpointMap = dict[tuple[str, str], tuple[str, object] | None]
 
 
 def _validate_natural_key(
@@ -456,6 +486,84 @@ def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
     return "_synthetic_id", synthetic_value
 
 
+def _add_endpoint_alias(
+    endpoint_key_map: _EndpointMap,
+    *,
+    label: str,
+    alias_value: object,
+    key_name: str,
+    key_value: object,
+) -> None:
+    """Register one relation-endpoint alias for a node.
+
+    LLM extractors often emit relations against a display key (Paper.title,
+    Variable.name, Equation.plaintext) while the writer canonicalizes the node
+    to a schema key (Paper.doi, Variable.id, Equation.latex).  The map lets the
+    relation loop translate those display keys back to the actual MERGE key.
+    If the same alias points to multiple canonical nodes, mark it ambiguous and
+    force the relation to fail instead of silently connecting to the wrong node.
+    """
+    if alias_value is None or alias_value == "":
+        return
+
+    alias_key = (label, str(alias_value))
+    canonical = (key_name, key_value)
+    existing = endpoint_key_map.get(alias_key, _MISSING)
+    if existing is _MISSING:
+        endpoint_key_map[alias_key] = canonical
+    elif existing != canonical:
+        endpoint_key_map[alias_key] = None
+
+
+def _register_endpoint_aliases(
+    endpoint_key_map: _EndpointMap,
+    *,
+    label: str,
+    properties: dict,
+    key_name: str,
+    key_value: object,
+) -> None:
+    """Register canonical and display aliases for one written node."""
+    _add_endpoint_alias(
+        endpoint_key_map,
+        label=label,
+        alias_value=key_value,
+        key_name=key_name,
+        key_value=key_value,
+    )
+    for prop in _ENDPOINT_ALIAS_PROPS:
+        if prop in properties:
+            _add_endpoint_alias(
+                endpoint_key_map,
+                label=label,
+                alias_value=properties.get(prop),
+                key_name=key_name,
+                key_value=key_value,
+            )
+
+    if label == "Variable":
+        name = properties.get("name")
+        if isinstance(name, str):
+            _add_endpoint_alias(
+                endpoint_key_map,
+                label=label,
+                alias_value=slugify(name),
+                key_name=key_name,
+                key_value=key_value,
+            )
+
+    if label == "Postulate":
+        postulate_id = properties.get("id")
+        if isinstance(postulate_id, str) and ":" in postulate_id:
+            _add_endpoint_alias(
+                endpoint_key_map,
+                label=label,
+                alias_value=postulate_id.rsplit(":", 1)[1],
+                key_name=key_name,
+                key_value=key_value,
+            )
+
+
 async def populate_kg(
     extraction: ExtractionResult,
     kg: KnowledgeGraph,
@@ -489,9 +597,11 @@ async def populate_kg(
     }
     errors: list[str] = []
 
-    # Map (label, key_value) → key_property_name built during node processing,
-    # so relation lookups use the extraction's natural key, not the schema default.
+    # Map (label, relation_key_value) → (canonical_key_property, canonical_value)
+    # built during node processing, so relation lookups can use display keys
+    # emitted by extraction while still matching the actual MERGE identity.
     node_key_map: dict[tuple[str, str], str] = {}
+    endpoint_key_map: _EndpointMap = {}
 
     # Slug-like nodes successfully written this batch — embeddings are
     # written to `n.embedding` after the node loop so the native Neo4j
@@ -588,6 +698,13 @@ async def populate_kg(
             continue
 
         node_key_map[(node.label, str(key_value))] = key_name
+        _register_endpoint_aliases(
+            endpoint_key_map,
+            label=node.label,
+            properties=node.properties,
+            key_name=key_name,
+            key_value=key_value,
+        )
         if record and record["was_created"]:
             counters["nodes_created"] += 1
         else:
@@ -635,25 +752,37 @@ async def populate_kg(
             errors.append(f"Relation: invalid rel_type '{rel.rel_type}'")
             continue
 
-        from_key = _resolve_key(rel.from_label, rel.from_key_value, node_key_map, kg)
-        to_key = _resolve_key(rel.to_label, rel.to_key_value, node_key_map, kg)
-        if from_key is None or to_key is None:
+        from_endpoint = await _resolve_endpoint(
+            rel.from_label,
+            rel.from_key_value,
+            endpoint_key_map,
+            kg,
+        )
+        to_endpoint = await _resolve_endpoint(
+            rel.to_label,
+            rel.to_key_value,
+            endpoint_key_map,
+            kg,
+        )
+        if from_endpoint is None or to_endpoint is None:
             errors.append(
                 f"Relation {rel.rel_type}: cannot resolve key for "
                 f"{rel.from_label}={rel.from_key_value!r} or "
                 f"{rel.to_label}={rel.to_key_value!r}"
             )
             continue
+        from_key, from_value = from_endpoint
+        to_key, to_value = to_endpoint
 
         # Step 1: enumerate existing relations matching this identity.
         existing_rels = await _list_existing_relations(
             kg=kg,
             from_label=rel.from_label,
             from_key=from_key,
-            from_value=rel.from_key_value,
+            from_value=from_value,
             to_label=rel.to_label,
             to_key=to_key,
-            to_value=rel.to_key_value,
+            to_value=to_value,
             rel_type=rel.rel_type,
         )
 
@@ -693,10 +822,10 @@ async def populate_kg(
                 stage=extraction.stage,
                 content=_relation_content(
                     from_label=rel.from_label,
-                    from_key_value=rel.from_key_value,
+                    from_key_value=from_value,
                     rel_type=rel.rel_type,
                     to_label=rel.to_label,
-                    to_key_value=rel.to_key_value,
+                    to_key_value=to_value,
                 ),
                 confidence=relation_confidence,
                 importance=stage_importance,
@@ -715,7 +844,9 @@ async def populate_kg(
             tx,
             rel=rel,
             from_key=from_key,
+            from_value=from_value,
             to_key=to_key,
+            to_value=to_value,
             kg_props=kg_props,
         ):
             create_cypher = (
@@ -727,8 +858,8 @@ async def populate_kg(
             create_result = await tx.run(
                 create_cypher,
                 {
-                    "from_val": rel.from_key_value,
-                    "to_val": rel.to_key_value,
+                    "from_val": from_value,
+                    "to_val": to_value,
                     "props": kg_props,
                 },
             )
@@ -756,8 +887,10 @@ async def populate_kg(
         if outcome == "missing_endpoint":
             errors.append(
                 f"Relation {rel.rel_type}: endpoint not found — "
-                f"{rel.from_label}.{from_key}={rel.from_key_value!r} or "
-                f"{rel.to_label}.{to_key}={rel.to_key_value!r}"
+                f"{rel.from_label}.{from_key}={from_value!r} "
+                f"(from {rel.from_key_value!r}) or "
+                f"{rel.to_label}.{to_key}={to_value!r} "
+                f"(from {rel.to_key_value!r})"
             )
             if new_memory_id is not None:
                 await _close_memory(new_memory_id, valid_to=valid_from_dt, db=db)
@@ -811,18 +944,81 @@ async def populate_kg(
     return KGWriteResult(**counters, errors=errors)
 
 
+async def _resolve_endpoint(
+    label: str,
+    key_value: str,
+    endpoint_key_map: _EndpointMap,
+    kg: KnowledgeGraph,
+) -> tuple[str, object] | None:
+    """Determine which Neo4j property/value to match a relation endpoint on.
+
+    First checks aliases populated during this extraction. This covers display
+    keys such as ``Paper.title`` and ``Variable.name`` after the node was
+    canonicalized to ``Paper.doi`` or ``Variable.id``. Then it probes existing
+    nodes for labels with known display/canonical key pairs. If no alias is
+    found, falls back to the schema's unique key for cross-extraction references.
+    """
+    lookup_key = (label, str(key_value))
+    mapped = endpoint_key_map.get(lookup_key, _MISSING)
+    if mapped is None:
+        return None
+    if mapped is not _MISSING:
+        return mapped
+
+    looked_up = await _lookup_existing_endpoint(label, key_value, kg)
+    if looked_up is not None:
+        return looked_up
+
+    try:
+        return kg.unique_key_for(label), key_value
+    except ValueError:
+        return None
+
+
+async def _lookup_existing_endpoint(
+    label: str,
+    key_value: str,
+    kg: KnowledgeGraph,
+) -> tuple[str, object] | None:
+    """Resolve cross-extraction endpoint aliases already present in Neo4j.
+
+    This intentionally returns a match only when exactly one node is found. For
+    example, a bare ``Variable.name`` that exists under multiple paradigms is
+    ambiguous and should fail rather than attach an edge to the wrong concept.
+    """
+    lookup_props = _ENDPOINT_LOOKUP_PROPS.get(label, ())
+    if not lookup_props:
+        return None
+
+    for alias_prop, canonical_prop in lookup_props:
+        if not _SAFE_IDENT.match(alias_prop) or not _SAFE_IDENT.match(canonical_prop):
+            continue
+        rows = await kg.query(
+            f"MATCH (n:{label} {{{alias_prop}: $value}}) "
+            f"RETURN n.{canonical_prop} AS key_value "
+            "LIMIT 2",
+            {"value": key_value},
+        )
+        values = [
+            row.get("key_value")
+            for row in rows
+            if row.get("key_value") is not None and row.get("key_value") != ""
+        ]
+        if len(values) == 1:
+            return canonical_prop, values[0]
+        if len(values) > 1:
+            return None
+
+    return None
+
+
 def _resolve_key(
     label: str,
     key_value: str,
     node_key_map: dict[tuple[str, str], str],
     kg: KnowledgeGraph,
 ) -> str | None:
-    """Determine which Neo4j property to match a relation endpoint on.
-
-    First checks the node_key_map (populated during node processing for this
-    extraction). Falls back to the schema's unique key for cross-extraction
-    references.
-    """
+    """Backward-compatible key-name helper for older tests/imports."""
     mapped = node_key_map.get((label, key_value))
     if mapped is not None:
         return mapped

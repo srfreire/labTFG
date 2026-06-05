@@ -722,6 +722,63 @@ async def test_extract_formalizer_produces_uses_equation_relations():
     assert "MODULATES" in rel_types
 
 
+def test_build_result_enriches_formalizer_markdown_scope():
+    markdown = """# Reinforcement Learning — Mathematical Formulations
+
+## Formulation 1: Tabular Q-Learning with ε-Greedy Exploration
+**Approach**: Algebraic temporal-difference learning.
+
+### Variables
+| Symbol | Name | Description | Type |
+|--------|------|-------------|------|
+| $Q(s,a)$ | Action-value estimate | Expected discounted return | Learned |
+
+### Parameters
+| Symbol | Name | Default | Source |
+|--------|------|---------|--------|
+| $\\alpha$ | Learning rate | 0.1 | Sutton & Barto |
+
+### Equations
+
+**Eq. 1 — Q-value update:**
+`Q(s_t, a_t) ← Q(s_t, a_t) + α · δ_t`
+$$Q(s_t, a_t) \\leftarrow Q(s_t, a_t) + \\alpha\\,\\delta_t \\tag{1}$$
+"""
+
+    result = _build_result(
+        {"nodes": [], "relations": [], "facts": []},
+        "formalizer",
+        "run-1",
+        source_text=markdown,
+    )
+
+    formulation_id = "tabular-q-learning-with-greedy-exploration"
+    assert any(
+        n.label == "Formulation" and n.properties["id"] == formulation_id
+        for n in result.nodes
+    )
+    assert any(
+        n.label == "Parameter"
+        and n.properties["name"] == "α"
+        and n.properties["formulation_id"] == formulation_id
+        for n in result.nodes
+    )
+    assert any(
+        r.from_label == "Formulation"
+        and r.from_key_value == formulation_id
+        and r.rel_type == "HAS_PARAMETER"
+        and r.to_label == "Parameter"
+        and r.to_key_value == "α"
+        for r in result.relations
+    )
+    assert any(
+        r.from_key_value == formulation_id
+        and r.rel_type == "USES_EQUATION"
+        and r.to_label == "Equation"
+        for r in result.relations
+    )
+
+
 # ---------------------------------------------------------------------------
 # AC3: Reasoner extraction
 # ---------------------------------------------------------------------------
@@ -740,6 +797,105 @@ async def test_extract_reasoner_produces_derives_from():
         assert rel.from_label == "Parameter"
         assert rel.to_label == "Postulate"
         assert "derivation_chain" in rel.properties
+
+
+@pytest.mark.asyncio
+async def test_extract_reasoner_links_formulation_to_paradigm_from_spec():
+    """Reasoner specs deterministically create Formulation -> Paradigm edges."""
+    client = _make_client([REASONER_RESPONSE])
+    source_spec = json.dumps(
+        {
+            "formulation_id": "homeostatic-regulation_drive_reduction_rl",
+            "paradigm": "reinforcement-learning",
+            "name": "Drive-Reduction RL",
+            "description": "Reasoner spec for a grid-world agent.",
+        }
+    )
+
+    result = await extract("reasoner", source_spec, "run-1", client)
+
+    assert any(
+        n.label == "Paradigm" and n.properties.get("slug") == "reinforcement-learning"
+        for n in result.nodes
+    )
+    formulation = next(
+        n
+        for n in result.nodes
+        if n.label == "Formulation"
+        and n.properties.get("id") == "homeostatic-regulation_drive_reduction_rl"
+    )
+    assert formulation.properties["paradigm_slug"] == "reinforcement-learning"
+    assert any(
+        r.from_label == "Formulation"
+        and r.from_key_value == "homeostatic-regulation_drive_reduction_rl"
+        and r.rel_type == "BELONGS_TO"
+        and r.to_label == "Paradigm"
+        and r.to_key_value == "reinforcement-learning"
+        for r in result.relations
+    )
+    derives_to = {
+        r.to_key_value for r in result.relations if r.rel_type == "DERIVES_FROM"
+    }
+    assert "reinforcement-learning:P1" in derives_to
+    assert "reinforcement-learning:P6" in derives_to
+    assert "P1" not in derives_to
+
+
+def test_build_result_normalizes_reasoner_parameter_aliases_to_symbols():
+    spec = json.dumps(
+        {
+            "formulation_id": "bayesian-forager",
+            "paradigm": "optimal-foraging-theory",
+            "parameters": [
+                {
+                    "symbol": "mu_0",
+                    "name": "prior_mean_patch_quality",
+                    "default": 4.0,
+                    "source": "P5",
+                }
+            ],
+        }
+    )
+    data = {
+        "nodes": [
+            {
+                "label": "Parameter",
+                "properties": {
+                    "name": "prior_mean_patch_quality",
+                    "default_value": 4.0,
+                    "source": "P5",
+                },
+                "natural_key": "name",
+            }
+        ],
+        "relations": [
+            {
+                "from_label": "Parameter",
+                "from_key_value": "prior_mean_patch_quality",
+                "to_label": "Postulate",
+                "to_key_value": "P5",
+                "rel_type": "DERIVES_FROM",
+                "properties": {"derivation_chain": "source references P5"},
+            }
+        ],
+        "facts": [],
+    }
+
+    result = _build_result(data, "reasoner", "run-1", source_text=spec)
+
+    assert any(
+        n.label == "Parameter"
+        and n.properties["name"] == "mu_0"
+        and n.properties["display_name"] == "prior_mean_patch_quality"
+        for n in result.nodes
+    )
+    assert any(
+        r.from_label == "Parameter"
+        and r.from_key_value == "mu_0"
+        and r.to_key_value == "optimal-foraging-theory:P5"
+        and r.rel_type == "DERIVES_FROM"
+        for r in result.relations
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +1045,65 @@ async def test_extract_resolves_model_per_stage(stage, tier):
     assert client.messages.create.call_args.kwargs["model"] == expected
 
 
+@pytest.mark.asyncio
+async def test_extract_splits_concatenated_formalizer_documents():
+    """Formalizer memory extraction handles one markdown document per call."""
+    client = _make_client(
+        [
+            {
+                "nodes": [
+                    {
+                        "label": "Formulation",
+                        "properties": {
+                            "id": "reinforcement-learning:f1",
+                            "name": "RL",
+                            "type": "MDP",
+                            "description": "Q-learning formulation",
+                        },
+                        "natural_key": "id",
+                    }
+                ],
+                "relations": [],
+                "facts": ["RL formulation uses action values."],
+            },
+            {
+                "nodes": [
+                    {
+                        "label": "Formulation",
+                        "properties": {
+                            "id": "optimal-foraging-theory:f1",
+                            "name": "OFT",
+                            "type": "threshold",
+                            "description": "Patch-leaving formulation",
+                        },
+                        "natural_key": "id",
+                    }
+                ],
+                "relations": [],
+                "facts": ["OFT formulation uses patch thresholds."],
+            },
+        ]
+    )
+    text = (
+        "# Reinforcement Learning — Mathematical Formulations\n\n"
+        "## Formulation 1\nbody\n\n"
+        "# Optimal Foraging Theory — Mathematical Formulations\n\n"
+        "## Formulation 1\nbody"
+    )
+
+    result = await extract("formalizer", text, "run-1", client)
+
+    assert client.messages.create.await_count == 2
+    assert [node.properties["id"] for node in result.nodes] == [
+        "reinforcement-learning:f1",
+        "optimal-foraging-theory:f1",
+    ]
+    assert result.facts == [
+        "RL formulation uses action values.",
+        "OFT formulation uses patch thresholds.",
+    ]
+
+
 def test_stage_models_dict_covers_all_stages():
     """``_STAGE_MODELS`` carries an entry for every prompted stage so a
     ``KeyError`` cannot leak through ``extract``."""
@@ -951,6 +1166,46 @@ def test_build_result_skips_empty_facts():
     }
     result = _build_result(data, "researcher", "run-1")
     assert result.facts == ["valid fact", "another fact"]
+
+
+def test_build_result_builder_keeps_only_model_nodes_and_implements_relations():
+    """Builder extraction should not mint duplicate Formulation nodes."""
+    data = {
+        "nodes": [
+            {
+                "label": "Model",
+                "properties": {"formulation_id": "fid-a", "class_name": "A"},
+                "natural_key": "formulation_id",
+            },
+            {
+                "label": "Formulation",
+                "properties": {"formulation_id": "fid-a"},
+                "natural_key": "fid-a",
+            },
+        ],
+        "relations": [
+            {
+                "from_label": "Model",
+                "from_key_value": "fid-a",
+                "to_label": "Formulation",
+                "to_key_value": "fid-a",
+                "rel_type": "IMPLEMENTS",
+            },
+            {
+                "from_label": "Model",
+                "from_key_value": "fid-a",
+                "to_label": "Paradigm",
+                "to_key_value": "reinforcement-learning",
+                "rel_type": "BELONGS_TO",
+            },
+        ],
+        "facts": [],
+    }
+
+    result = _build_result(data, "builder", "run-1")
+
+    assert [node.label for node in result.nodes] == ["Model"]
+    assert [rel.rel_type for rel in result.relations] == ["IMPLEMENTS"]
 
 
 # ---------------------------------------------------------------------------
@@ -1089,3 +1344,48 @@ async def test_output_text_with_curly_braces():
 
     assert isinstance(result, ExtractionResult)
     assert len(result.nodes) > 0
+
+
+@pytest.mark.asyncio
+async def test_extract_accepts_json_encoded_list_fields():
+    """Builder tool payloads sometimes stringify list fields; unwrap them."""
+    payload = {
+        "nodes": json.dumps(
+            [
+                {
+                    "label": "Model",
+                    "properties": {
+                        "formulation_id": "tabular-q-learning",
+                        "class_name": "TabularQLearningModel",
+                        "passed": True,
+                        "failure_reason": None,
+                    },
+                    "natural_key": "formulation_id",
+                }
+            ]
+        )
+        + "\n}",
+        "relations": json.dumps(
+            [
+                {
+                    "from_label": "Model",
+                    "from_key_value": "tabular-q-learning",
+                    "to_label": "Formulation",
+                    "to_key_value": "tabular-q-learning",
+                    "rel_type": "IMPLEMENTS",
+                }
+            ]
+        ),
+        "facts": json.dumps(["TabularQLearningModel passes its generated tests."]),
+    }
+    client = _make_client([payload])
+
+    result = await extract(
+        "builder", "class TabularQLearningModel: ...", "run-1", client
+    )
+
+    assert len(result.nodes) == 1
+    assert result.nodes[0].label == "Model"
+    assert len(result.relations) == 1
+    assert result.relations[0].rel_type == "IMPLEMENTS"
+    assert result.facts == ["TabularQLearningModel passes its generated tests."]
