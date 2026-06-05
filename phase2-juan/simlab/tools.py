@@ -101,10 +101,7 @@ def _summarize_agent_events(events: list[Event], agent_id: str | None = None) ->
     if not events:
         return {"agent_id": agent_id, "steps_survived": 0, "resources_consumed": 0}
     rewards = [_coerce_reward(e.outcome.get("reward")) for e in events]
-    energies = [
-        (e.outcome.get("model_state") or {}).get("energy")
-        for e in events
-    ]
+    energies = [(e.outcome.get("model_state") or {}).get("energy") for e in events]
     energies = [e for e in energies if e is not None]
     resources_consumed = sum(
         1 for e in events if (e.outcome.get("action_result") or {}).get("consumed")

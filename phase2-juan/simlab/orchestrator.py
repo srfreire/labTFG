@@ -1014,11 +1014,19 @@ class Orchestrator:
             if isinstance(block, dict):
                 block_type = block.get("type")
             if block_type == "text":
-                text = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
+                text = (
+                    block.get("text")
+                    if isinstance(block, dict)
+                    else getattr(block, "text", "")
+                )
                 if text and str(text).strip():
                     texts.append(str(text).strip())
             elif block_type == "tool_use":
-                name = block.get("name") if isinstance(block, dict) else getattr(block, "name", None)
+                name = (
+                    block.get("name")
+                    if isinstance(block, dict)
+                    else getattr(block, "name", None)
+                )
                 if name:
                     tools.append(str(name))
         return " ".join(texts), tools
@@ -1188,9 +1196,7 @@ class Orchestrator:
                     }
                 )
             # KG pre-fetch — use description as paradigm hint (kg-enrichment / P2-001)
-            knowledge_ctx = await _get_knowledge_ctx(
-                "architect", params["description"]
-            )
+            knowledge_ctx = await _get_knowledge_ctx("architect", params["description"])
             arch = Architect(client=client)
             spec_json = await arch.run(
                 params["description"],
@@ -1776,9 +1782,7 @@ class Orchestrator:
                     return json.dumps(
                         {"experiment_id": exp_id, agent_id: trajs[agent_id]}
                     )
-                return json.dumps(
-                    {"experiment_id": exp_id, "trajectories": trajs}
-                )
+                return json.dumps({"experiment_id": exp_id, "trajectories": trajs})
             if part == "critical_events":
                 crit = state.get("critical_events") or []
                 return json.dumps(

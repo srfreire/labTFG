@@ -1,7 +1,6 @@
 import io
 
 import matplotlib.image as mpimg
-
 from simlab.charts import _generate_chart_image
 
 

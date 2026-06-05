@@ -1,9 +1,10 @@
 """Shared test configuration — loads .env for integration tests."""
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
+
 from shared.settings import derive_test_postgres_dsn
 
 # Load .env from project root (phase2-juan/)

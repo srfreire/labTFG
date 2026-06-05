@@ -12,12 +12,12 @@ Flow:
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
 import json
 import logging
 import re
 import subprocess
 import textwrap
+from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,12 +40,11 @@ def _llm_latex_text(response) -> str:
             f"(stop_reason={getattr(response, 'stop_reason', None)})"
         )
     stripped = text.strip()
-    match = re.match(
-        r"^```(?:latex|tex)?\s*\n(.*?)\n```\s*$", stripped, re.DOTALL
-    )
+    match = re.match(r"^```(?:latex|tex)?\s*\n(.*?)\n```\s*$", stripped, re.DOTALL)
     if match:
         return match.group(1).strip()
     return stripped
+
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +74,9 @@ def _prepare_latex_body(content: str) -> str:
     content = re.sub(r"\\(?:begin|end)\{content\}", "", content)
     content = re.sub(
         r"\$\$(.*?\\tag\{[^{}]+\}.*?)\$\$",
-        lambda match: "\\begin{equation}\n"
-        + match.group(1).strip()
-        + "\n\\end{equation}",
+        lambda match: (
+            "\\begin{equation}\n" + match.group(1).strip() + "\n\\end{equation}"
+        ),
         content,
         flags=re.DOTALL,
     )
@@ -92,8 +91,7 @@ def _prepare_latex_body(content: str) -> str:
 def _escape_unmatched_closing_braces(content: str) -> str:
     """Escape stray closing braces from raw model/debug text."""
     return "\n".join(
-        _escape_unmatched_closing_braces_in_line(line)
-        for line in content.splitlines()
+        _escape_unmatched_closing_braces_in_line(line) for line in content.splitlines()
     )
 
 
@@ -122,10 +120,7 @@ def _strip_unbalanced_text_commands(content: str) -> str:
     fixed_lines = []
     for line in content.splitlines():
         brace_delta = _unescaped_brace_delta(line)
-        if (
-            re.search(r"\\text(?:bf|it|tt)\{", line)
-            and brace_delta > 0
-        ):
+        if re.search(r"\\text(?:bf|it|tt)\{", line) and brace_delta > 0:
             line = re.sub(r"\\text(?:bf|it|tt)\{", "", line)
         fixed_lines.append(line)
     return "\n".join(fixed_lines)
@@ -177,8 +172,8 @@ def _latex_body_to_plain_text(content: str) -> str:
 
 def _build_standard_pdf(content: str, title: str) -> bytes:
     """Render a simple local PDF when LaTeX compilation is unavailable."""
-    from matplotlib.backends.backend_pdf import PdfPages
     import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
 
     plain = _latex_body_to_plain_text(content)
     wrapped_lines: list[str] = []
@@ -252,7 +247,9 @@ def _build_standard_report_text(
         for agent, data in trajectories.items():
             if not isinstance(data, dict):
                 continue
-            actions = data.get("actions") if isinstance(data.get("actions"), dict) else {}
+            actions = (
+                data.get("actions") if isinstance(data.get("actions"), dict) else {}
+            )
             action_text = ", ".join(f"{k}: {v}" for k, v in actions.items())
             lines.append(
                 f"- {agent}: {data.get('steps_survived', 'n/d')} pasos, "
@@ -556,8 +553,7 @@ class Reporter:
         storage = self._storage
         db = self._db
         safe_name = (
-            re.sub(r"[^a-z0-9_]", "_", filename.lower().strip()).strip("_")
-            or "report"
+            re.sub(r"[^a-z0-9_]", "_", filename.lower().strip()).strip("_") or "report"
         )
         content = _prepare_latex_body(content)
 
@@ -646,9 +642,7 @@ class Reporter:
                         f"L{ln:>4}: {source_lines[ln - 1]}"
                         for ln in sorted(shown_lines)
                     )
-                    logger.warning(
-                        "tex content around failing lines:\n%s", snippet
-                    )
+                    logger.warning("tex content around failing lines:\n%s", snippet)
             except Exception as snippet_exc:
                 logger.warning("Could not extract failing line: %s", snippet_exc)
 
@@ -658,9 +652,7 @@ class Reporter:
             if repaired and repaired != content:
                 result2 = run_tectonic(repaired)
                 if result2.returncode == 0:
-                    key = await store_outputs(
-                        pdf_path.read_bytes(), "application/pdf"
-                    )
+                    key = await store_outputs(pdf_path.read_bytes(), "application/pdf")
                     shutil.rmtree(tmp, ignore_errors=True)
                     logger.info("LaTeX repair pass succeeded")
                     return key, "latex"
@@ -683,9 +675,7 @@ class Reporter:
                     )
                     logger.info("Broken (post-repair) tex saved to %s", broken_key)
                 except Exception as upload_exc:
-                    logger.warning(
-                        "Failed to upload broken tex: %s", upload_exc
-                    )
+                    logger.warning("Failed to upload broken tex: %s", upload_exc)
             else:
                 # The repair model returned nothing or returned identical content.
                 # Still persist the original broken tex for inspection.
@@ -698,9 +688,7 @@ class Reporter:
                     )
                     logger.info("Broken (pre-repair) tex saved to %s", broken_key)
                 except Exception as upload_exc:
-                    logger.warning(
-                        "Failed to upload broken tex: %s", upload_exc
-                    )
+                    logger.warning("Failed to upload broken tex: %s", upload_exc)
 
             # Log the raw stderr tail in full so we can see WHICH command was
             # undefined or which sequence broke. Without this it's impossible
@@ -789,8 +777,7 @@ class Reporter:
             "Errores reportados por tectonic:\n"
             + "\n".join(error_lines[:15])
             + (
-                "\n\nSalida cruda de tectonic (últimas 600 chars):\n"
-                + stderr[-600:]
+                "\n\nSalida cruda de tectonic (últimas 600 chars):\n" + stderr[-600:]
                 if stderr
                 else ""
             )
@@ -812,8 +799,7 @@ class Reporter:
             "sin ruta.\n"
             "- Si un comando es desconocido y no estás 100% seguro de que está en "
             "los paquetes listados arriba, elimínalo o sustituyelo por texto plano.\n\n"
-            "LaTeX a corregir (entrega solo el cuerpo corregido):\n"
-            + broken_body
+            "LaTeX a corregir (entrega solo el cuerpo corregido):\n" + broken_body
         )
         try:
             response = await asyncio.wait_for(
@@ -953,16 +939,17 @@ class Reporter:
             # The LLM often re-emits its own \section{...} despite the prompt;
             # drop a leading section header so we don't get duplicate entries
             # in the table of contents.
-            body = re.sub(
-                r"^\s*\\section\*?\{[^{}]*\}\s*", "", body, count=1
-            )
+            body = re.sub(r"^\s*\\section\*?\{[^{}]*\}\s*", "", body, count=1)
             return f"\\section{{{title}}}\n\n{body}"
 
         # Run sections concurrently — they are independent, and sequential
         # execution blew past REPORTER_LLM_TIMEOUT_SECONDS in production.
         section_bodies = list(
             await asyncio.gather(
-                *(generate_section(title, instruction) for title, instruction in sections)
+                *(
+                    generate_section(title, instruction)
+                    for title, instruction in sections
+                )
             )
         )
 
@@ -1099,8 +1086,7 @@ class Reporter:
 
             async def store_standard_pdf(errors: list[str]) -> str:
                 logger.warning(
-                    "compile_report using standard PDF fallback "
-                    "(attempt %d): %s",
+                    "compile_report using standard PDF fallback (attempt %d): %s",
                     compile_state["attempts"],
                     errors[:3],
                 )

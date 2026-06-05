@@ -122,9 +122,7 @@ async def seeded_db():
 
 async def test_query_history_over_experiments(seeded_db):
     sql = "SELECT description, status FROM experiments ORDER BY description"
-    with patch(
-        "simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})
-    ):
+    with patch("simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})):
         out = await query_history("dame todos los experimentos", db=seeded_db)
 
     assert "| description | status |" in out
@@ -133,13 +131,8 @@ async def test_query_history_over_experiments(seeded_db):
 
 
 async def test_query_history_over_chat_messages(seeded_db):
-    sql = (
-        "SELECT role, content FROM chat_messages WHERE role='user' "
-        "ORDER BY content"
-    )
-    with patch(
-        "simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})
-    ):
+    sql = "SELECT role, content FROM chat_messages WHERE role='user' ORDER BY content"
+    with patch("simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})):
         out = await query_history("¿qué le pregunté?", db=seeded_db)
 
     assert "| role | content |" in out
@@ -152,12 +145,8 @@ async def test_query_history_over_pipeline_memories(seeded_db):
         "SELECT namespace, content FROM pipeline_memories "
         "WHERE namespace='paradigm' ORDER BY content"
     )
-    with patch(
-        "simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})
-    ):
-        out = await query_history(
-            "qué paradigmas hemos investigado", db=seeded_db
-        )
+    with patch("simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})):
+        out = await query_history("qué paradigmas hemos investigado", db=seeded_db)
 
     assert "| namespace | content |" in out
     # both paradigms should be visible
@@ -173,8 +162,9 @@ async def test_query_history_over_pipeline_memories(seeded_db):
 async def test_query_history_out_of_scope_skips_db(seeded_db):
     plan_mock = AsyncMock(return_value={"error": "out_of_scope"})
     execute_mock = AsyncMock()
-    with patch("simlab.nlsql._plan", new=plan_mock), patch(
-        "simlab.nlsql._execute", new=execute_mock
+    with (
+        patch("simlab.nlsql._plan", new=plan_mock),
+        patch("simlab.nlsql._execute", new=execute_mock),
     ):
         out = await query_history("¿qué hora es?", db=seeded_db)
 

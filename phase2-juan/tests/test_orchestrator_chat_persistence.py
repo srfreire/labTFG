@@ -68,9 +68,7 @@ async def test_flag_off_does_not_persist(monkeypatch):
     fake_settings = MagicMock(
         ENABLE_CHAT_PERSISTENCE=False, ENABLE_KNOWLEDGE_READ=False
     )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     with patch(
         "simlab.orchestrator.run_agent_loop",
@@ -91,12 +89,8 @@ async def test_flag_on_persists_user_and_assistant_rows(monkeypatch):
     services, captured = _make_services_with_capturing_db()
     orch = Orchestrator(client=MagicMock(), services=services)
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     with patch(
         "simlab.orchestrator.run_agent_loop",
@@ -121,12 +115,8 @@ async def test_flag_on_persists_tool_use_blocks_from_response(monkeypatch):
     services, captured = _make_services_with_capturing_db()
     orch = Orchestrator(client=MagicMock(), services=services)
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     response = _make_response(
         [
@@ -168,12 +158,8 @@ async def test_experiment_id_is_snapshotted(monkeypatch):
     services, captured = _make_services_with_capturing_db()
     orch = Orchestrator(client=MagicMock(), services=services)
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     # First turn — no experiment yet
     with patch(
@@ -212,12 +198,8 @@ async def test_persist_failure_does_not_propagate(monkeypatch, caplog):
 
     orch = Orchestrator(client=MagicMock(), services=services)
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     with patch(
         "simlab.orchestrator.run_agent_loop",
@@ -241,12 +223,8 @@ async def test_string_experiment_id_is_coerced_to_uuid(monkeypatch):
     exp_id = uuid.uuid4()
     orch._state["experiment_id"] = str(exp_id)
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     with patch(
         "simlab.orchestrator.run_agent_loop",
@@ -262,12 +240,8 @@ async def test_invalid_string_experiment_id_falls_back_to_none(monkeypatch):
     orch = Orchestrator(client=MagicMock(), services=services)
     orch._state["experiment_id"] = "not-a-uuid"
 
-    fake_settings = MagicMock(
-        ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False
-    )
-    monkeypatch.setattr(
-        "simlab.orchestrator.load_settings", lambda: fake_settings
-    )
+    fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
+    monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
 
     with patch(
         "simlab.orchestrator.run_agent_loop",

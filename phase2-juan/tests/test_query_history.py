@@ -48,9 +48,14 @@ async def test_query_history_happy_path():
         {"id": "b", "role": "assistant", "content": "hello"},
         {"id": "c", "role": "user", "content": "bye"},
     ]
-    with patch.object(
-        nlsql, "_plan", new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"})
-    ), patch.object(nlsql, "_execute", new=AsyncMock(return_value=rows)):
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
+        ),
+        patch.object(nlsql, "_execute", new=AsyncMock(return_value=rows)),
+    ):
         out = await query_history("¿qué dije?", db=MagicMock())
 
     assert "| id | role | content |" in out
@@ -66,8 +71,9 @@ async def test_query_history_happy_path():
 async def test_query_history_out_of_scope_skips_execute():
     plan = AsyncMock(return_value={"error": "out_of_scope", "reason": "no SQL"})
     execute = AsyncMock(return_value=[])
-    with patch.object(nlsql, "_plan", new=plan), patch.object(
-        nlsql, "_execute", new=execute
+    with (
+        patch.object(nlsql, "_plan", new=plan),
+        patch.object(nlsql, "_execute", new=execute),
     ):
         out = await query_history("¿qué hora es?", db=MagicMock())
 
@@ -77,9 +83,10 @@ async def test_query_history_out_of_scope_skips_execute():
 
 async def test_query_history_empty_sql_treated_as_out_of_scope():
     """When the planner returns no SQL string, treat as out-of-scope."""
-    with patch.object(
-        nlsql, "_plan", new=AsyncMock(return_value={"sql": ""})
-    ), patch.object(nlsql, "_execute", new=AsyncMock()) as execute:
+    with (
+        patch.object(nlsql, "_plan", new=AsyncMock(return_value={"sql": ""})),
+        patch.object(nlsql, "_execute", new=AsyncMock()) as execute,
+    ):
         out = await query_history("?", db=MagicMock())
 
     assert "alcance" in out
@@ -92,12 +99,15 @@ async def test_query_history_empty_sql_treated_as_out_of_scope():
 
 
 async def test_query_history_execute_raises_returns_graceful_markdown():
-    with patch.object(
-        nlsql,
-        "_plan",
-        new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
-    ), patch.object(
-        nlsql, "_execute", new=AsyncMock(side_effect=RuntimeError("DB down"))
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
+        ),
+        patch.object(
+            nlsql, "_execute", new=AsyncMock(side_effect=RuntimeError("DB down"))
+        ),
     ):
         out = await query_history("anything", db=MagicMock())
 
@@ -106,11 +116,14 @@ async def test_query_history_execute_raises_returns_graceful_markdown():
 
 async def test_query_history_execute_returns_none_yields_error_markdown():
     """_execute returning None (its internal error path) → graceful message."""
-    with patch.object(
-        nlsql,
-        "_plan",
-        new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
-    ), patch.object(nlsql, "_execute", new=AsyncMock(return_value=None)):
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
+        ),
+        patch.object(nlsql, "_execute", new=AsyncMock(return_value=None)),
+    ):
         out = await query_history("anything", db=MagicMock())
 
     assert "Error al ejecutar" in out
@@ -122,11 +135,14 @@ async def test_query_history_execute_returns_none_yields_error_markdown():
 
 
 async def test_query_history_empty_rows_returns_sin_resultados():
-    with patch.object(
-        nlsql,
-        "_plan",
-        new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
-    ), patch.object(nlsql, "_execute", new=AsyncMock(return_value=[])):
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "SELECT * FROM chat_messages"}),
+        ),
+        patch.object(nlsql, "_execute", new=AsyncMock(return_value=[])),
+    ):
         out = await query_history("anything", db=MagicMock())
 
     assert out == "> Sin resultados."
@@ -139,11 +155,14 @@ async def test_query_history_empty_rows_returns_sin_resultados():
 
 async def test_query_history_at_max_limit_appends_truncation_note():
     rows = [{"id": str(i)} for i in range(_MAX_LIMIT)]
-    with patch.object(
-        nlsql,
-        "_plan",
-        new=AsyncMock(return_value={"sql": "SELECT id FROM chat_messages"}),
-    ), patch.object(nlsql, "_execute", new=AsyncMock(return_value=rows)):
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "SELECT id FROM chat_messages"}),
+        ),
+        patch.object(nlsql, "_execute", new=AsyncMock(return_value=rows)),
+    ):
         out = await query_history("anything", db=MagicMock())
 
     assert out.endswith(f"_Mostrando primeras {_MAX_LIMIT} filas._")
@@ -157,11 +176,14 @@ async def test_query_history_at_max_limit_appends_truncation_note():
 async def test_query_history_validator_rejection_returns_markdown():
     """When the planner produces a disallowed query, the validator's
     reason surfaces inside the markdown — no stack trace."""
-    with patch.object(
-        nlsql,
-        "_plan",
-        new=AsyncMock(return_value={"sql": "DELETE FROM chat_messages"}),
-    ), patch.object(nlsql, "_execute", new=AsyncMock()) as execute:
+    with (
+        patch.object(
+            nlsql,
+            "_plan",
+            new=AsyncMock(return_value={"sql": "DELETE FROM chat_messages"}),
+        ),
+        patch.object(nlsql, "_execute", new=AsyncMock()) as execute,
+    ):
         out = await query_history("borra todo", db=MagicMock())
 
     assert out.startswith("> Consulta rechazada")
