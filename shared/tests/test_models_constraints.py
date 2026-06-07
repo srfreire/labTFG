@@ -226,9 +226,11 @@ async def test_pipeline_memory_indexes_present(engine):
         "ix_pipeline_memories_namespace",
         "ix_pipeline_memories_run_id",
         "ix_pipeline_memories_source_stage",
+        "ix_pipeline_memories_content_hash",
         "ix_pipeline_memories_confidence",
         "ix_pipeline_memories_valid_to",
         "ix_pipeline_memories_ns_confidence",
+        "uq_pipeline_memories_live_fact_key",
     }
     assert expected.issubset(names)
 

@@ -382,6 +382,7 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
     from sqlalchemy import func, select
 
     from shared.models import Artifact, NodeRunObservation, Run
+    from shared.models import Model as RegisteredModel
     from shared.models import PipelineMemory as Memory
 
     if services.db is None:
@@ -389,7 +390,8 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
             "services.db is None — cannot prune without a Postgres connection"
         )
 
-    cutoff = datetime.now(UTC) - delta
+    # Run.created_at is stored as naive UTC in Postgres.
+    cutoff = (datetime.now(UTC) - delta).replace(tzinfo=None)
 
     async with services.db.get_session() as session:
         run_ids = (
@@ -408,6 +410,7 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
                 "older_than": str(delta),
                 "dry_run": dry_run,
                 "runs_deleted": 0,
+                "models_deleted": 0,
                 "memories_cascaded": 0,
                 "artifacts_cascaded": 0,
                 "node_run_observations_cascaded": 0,
@@ -428,6 +431,13 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
                 .where(Artifact.run_id.in_(run_ids))
             )
         ).scalar_one()
+        models_count = (
+            await session.execute(
+                select(func.count())
+                .select_from(RegisteredModel)
+                .where(RegisteredModel.run_id.in_(run_ids))
+            )
+        ).scalar_one()
         observations_count = (
             await session.execute(
                 select(func.count())
@@ -437,6 +447,11 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
         ).scalar_one()
 
         if not dry_run:
+            await session.execute(
+                RegisteredModel.__table__.delete().where(
+                    RegisteredModel.run_id.in_(run_ids)
+                )
+            )
             await session.execute(Run.__table__.delete().where(Run.id.in_(run_ids)))
             await session.commit()
 
@@ -445,6 +460,7 @@ async def _prune_eval_runs(delta: timedelta, *, dry_run: bool, services) -> dict
             "older_than": str(delta),
             "dry_run": dry_run,
             "runs_deleted": len(run_ids),
+            "models_deleted": models_count,
             "memories_cascaded": memories_count,
             "artifacts_cascaded": artifacts_count,
             "node_run_observations_cascaded": observations_count,
@@ -491,6 +507,35 @@ def cli_kg_stats(
             for rt, n in sorted(s.by_type.items(), key=lambda x: -x[1]):
                 t.add_row(rt, str(n))
             console.print(t)
+
+    _run(_factory)
+
+
+@kg_app.command("audit")
+def cli_kg_audit(
+    run_id: str | None = typer.Option(
+        None, "--run-id", help="Restrict node-observation audit to one run UUID."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit JSON (for piping)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+):
+    """Report KG readability/idempotency health metrics."""
+    _setup_logging(verbose)
+
+    async def _factory(services):
+        audit = await _kg_audit(services, run_id=run_id)
+        if as_json:
+            console.print_json(json.dumps(audit, default=str))
+            return
+
+        t = Table(title="KG Audit")
+        t.add_column("Metric")
+        t.add_column("Value", justify="right")
+        for key, value in audit.items():
+            if isinstance(value, list | dict):
+                value = json.dumps(value, default=str)
+            t.add_row(key, str(value))
+        console.print(t)
 
     _run(_factory)
 
@@ -614,6 +659,176 @@ def cli_kg_query(
         console.print_json(json.dumps(rows, default=str))
 
     _run(_factory)
+
+
+_AUDIT_NODE_KEY_PROPS = (
+    "slug",
+    "id",
+    "doi",
+    "name",
+    "title",
+    "latex",
+    "url",
+    "formulation_id",
+    "_synthetic_id",
+)
+_AUDIT_RELATION_IGNORED_PROPS = {
+    "valid_from",
+    "valid_to",
+    "run_id",
+    "created_at",
+    "updated_at",
+    "superseded_by",
+    "memory_id",
+    "confidence",
+    "source",
+    "source_stage",
+    "reason",
+    "evidence",
+    "identity_hash",
+}
+
+
+async def _kg_audit(services, *, run_id: str | None = None) -> dict:
+    node_rows = await services.kg.query(
+        "MATCH (n) "
+        "RETURN elementId(n) AS id, labels(n) AS labels, properties(n) AS props, "
+        "COUNT { (n)--() } AS degree"
+    )
+    rel_rows = await services.kg.query(
+        "MATCH (a)-[r]->(b) "
+        "RETURN elementId(a) AS source, elementId(b) AS target, "
+        "type(r) AS type, properties(r) AS props"
+    )
+
+    node_key_index: set[tuple[str, str]] = set()
+    paradigm_slugs: set[str] = set()
+    formulation_locals: dict[str, set[str]] = {}
+    scoped_prefixes: set[str] = set()
+    isolated = 0
+    degree1 = 0
+
+    for row in node_rows:
+        labels = row.get("labels") or []
+        label = str(labels[0]) if labels else "Node"
+        props = row.get("props") or {}
+        degree = int(row.get("degree") or 0)
+        isolated += int(degree == 0)
+        degree1 += int(degree == 1)
+
+        for prop in _AUDIT_NODE_KEY_PROPS:
+            value = props.get(prop)
+            if value not in (None, ""):
+                node_key_index.add((label, str(value)))
+
+        if label == "Paradigm" and props.get("slug"):
+            paradigm_slugs.add(str(props["slug"]))
+
+        if label == "Formulation":
+            local = props.get("local_id") or str(props.get("id", "")).rsplit(":", 1)[-1]
+            if local:
+                formulation_locals.setdefault(str(local), set()).add(
+                    str(props.get("id", ""))
+                )
+
+        for prop in ("id", "formulation_id"):
+            prefix = _scoped_prefix(props.get(prop))
+            if prefix and prefix != "orphan":
+                scoped_prefixes.add(prefix)
+
+    duplicate_groups = 0
+    duplicate_relations = 0
+    relation_identities: dict[tuple, int] = {}
+    memoryless_nonseed = 0
+    for row in rel_rows:
+        props = row.get("props") or {}
+        rel_type = str(row.get("type") or "")
+        semantic_props = {
+            k: v for k, v in props.items() if k not in _AUDIT_RELATION_IGNORED_PROPS
+        }
+        identity = (
+            row.get("source"),
+            rel_type,
+            row.get("target"),
+            json.dumps(semantic_props, sort_keys=True, default=str),
+        )
+        relation_identities[identity] = relation_identities.get(identity, 0) + 1
+        if props.get("memory_id") is None and rel_type != "PART_OF":
+            memoryless_nonseed += 1
+
+    for count in relation_identities.values():
+        if count > 1:
+            duplicate_groups += 1
+            duplicate_relations += count - 1
+
+    split_formulations = {
+        local: sorted(ids)
+        for local, ids in formulation_locals.items()
+        if len({fid.split(":", 1)[0] for fid in ids if ":" in fid}) > 1
+    }
+
+    observation_misses = await _kg_observation_misses(
+        services,
+        node_key_index=node_key_index,
+        run_id=run_id,
+    )
+
+    return {
+        "nodes_total": len(node_rows),
+        "relations_total": len(rel_rows),
+        "isolated_nodes": isolated,
+        "degree1_nodes": degree1,
+        "duplicate_relation_groups": duplicate_groups,
+        "duplicate_relation_excess": duplicate_relations,
+        "memoryless_nonseed_relations": memoryless_nonseed,
+        "split_formulation_locals": split_formulations,
+        "scoped_prefixes_without_paradigm": sorted(scoped_prefixes - paradigm_slugs),
+        "node_observation_misses": observation_misses,
+    }
+
+
+def _scoped_prefix(value: object) -> str | None:
+    text = str(value or "")
+    if ":" not in text:
+        return None
+    prefix = text.split(":", 1)[0]
+    return prefix or None
+
+
+async def _kg_observation_misses(
+    services,
+    *,
+    node_key_index: set[tuple[str, str]],
+    run_id: str | None,
+) -> int | None:
+    if services.db is None:
+        return None
+
+    from sqlalchemy import text as sql_text
+
+    params: dict = {}
+    where = ""
+    if run_id:
+        import uuid as uuid_mod
+
+        params["run_id"] = uuid_mod.UUID(run_id)
+        where = "WHERE run_id = :run_id"
+
+    async with services.db.get_session() as session:
+        rows = (
+            await session.execute(
+                sql_text(
+                    "SELECT DISTINCT label, key_value "
+                    "FROM node_run_observations "
+                    f"{where}"
+                ),
+                params,
+            )
+        ).all()
+
+    return sum(
+        1 for row in rows if (str(row.label), str(row.key_value)) not in node_key_index
+    )
 
 
 # ---------------------------------------------------------------------------

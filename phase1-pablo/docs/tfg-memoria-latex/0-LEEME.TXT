@@ -1,0 +1,54 @@
+----------------------------------------------------------------------------------------
+MODELO LATEX PARA EL TRABAJO DE FIN DE GRADO
+
+Esta carpeta parte del modelo oficial GrEI/USC:
+
+  GrEI_TFG_Modelo_B_Memoria.zip
+
+El fichero principal de la memoria es:
+
+  traballo.tex
+
+La plantilla original incluía ejemplos en gallego. En esta copia se ha dejado
+la memoria en castellano, con:
+
+  \usepackage[spanish]{babel}
+  \usepackage[utf8]{inputenc}
+
+Los capítulos ya no son ejemplos genéricos: están adaptados al sistema real de
+la fase 1 del TFG de Pablo Pazos Parada.
+
+----------------------------------------------------------------------------------------
+COMPILACIÓN
+
+Opción recomendada:
+
+  pdflatex traballo.tex
+  pdflatex traballo.tex
+
+La segunda ejecución actualiza índice, referencias cruzadas, lista de figuras y
+lista de tablas.
+
+También se mantienen los ficheros:
+
+  caratula.tex      Carátula auxiliar.
+  presentacion.tex  Presentación Beamer inicial.
+
+----------------------------------------------------------------------------------------
+FIGURAS
+
+La carpeta figuras conserva los logos y recursos originales del modelo. Las
+inclusiones usan nombres sin extensión, por ejemplo:
+
+  \includegraphics{figuras/logo_usc}
+
+Así LaTeX puede escoger PDF con pdflatex o EPS con la ruta clásica latex/dvipdf.
+
+----------------------------------------------------------------------------------------
+NOTA
+
+La bibliografía técnica ampliada previa a la redacción está en:
+
+  ../formal-documentation/06-literature-to-cite.md
+
+----------------------------------------------------------------------------------------

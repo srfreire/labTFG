@@ -38,8 +38,9 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-import shared
 from shared.knowledge_graph import KG_RELATION_NAMESPACE
+from shared.pipeline_memories import memory_content_hash
+from shared.services import init_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def _parse_uuid(value: object) -> uuid.UUID | None:
         return None
 
 
-async def _scan_legacy_relations() -> list[dict]:
+async def _scan_legacy_relations(kg) -> list[dict]:
     """Return every relation that still carries legacy temporal props.
 
     A relation qualifies when it has neither ``memory_id`` nor any of
@@ -86,9 +87,6 @@ async def _scan_legacy_relations() -> list[dict]:
     legacy temporal prop. Pure seed edges (no memory_id, no temporal
     props) are skipped: they're timeless canonical truth.
     """
-    if shared.kg is None:
-        raise RuntimeError("shared.init() did not bring up the KG")
-
     cypher = (
         "MATCH (a)-[r]->(b) "
         "WHERE r.memory_id IS NULL AND ("
@@ -101,7 +99,7 @@ async def _scan_legacy_relations() -> list[dict]:
         "labels(b) AS to_labels, properties(b) AS to_props, "
         "properties(r) AS props"
     )
-    return await shared.kg.query(cypher)
+    return await kg.query(cypher)
 
 
 def _identity_for(node_props: dict, labels: list[str]) -> tuple[str, str]:
@@ -119,12 +117,12 @@ def _identity_for(node_props: dict, labels: list[str]) -> tuple[str, str]:
     return label, "<unknown>"
 
 
-async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
+async def _backfill(services, *, dry_run: bool) -> tuple[int, int, int]:
     """Drive the migration. Returns (seen, migrated, skipped)."""
-    if shared.db is None:
-        raise RuntimeError("shared.init() did not bring up shared.db")
+    if services.kg is None:
+        raise RuntimeError("init_services() did not bring up the KG")
 
-    rows = await _scan_legacy_relations()
+    rows = await _scan_legacy_relations(services.kg)
     seen = len(rows)
     migrated = 0
     skipped = 0
@@ -193,21 +191,23 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
                 continue
 
             try:
-                async with shared.db.get_session() as session:
+                async with services.db.get_session() as session:
                     await session.execute(
                         sql_text(
                             "INSERT INTO pipeline_memories "
-                            "(id, content, namespace, memory_type, source_stage, "
-                            "run_id, importance, confidence, valid_from, valid_to, "
-                            "metadata) "
-                            "VALUES (:id, :content, :namespace, 'semantic', "
-                            "'kg_temporal_backfill', :run_id, :importance, "
+                            "(id, content, content_hash, namespace, memory_type, "
+                            "source_stage, run_id, importance, confidence, "
+                            "valid_from, valid_to, metadata) "
+                            "VALUES (:id, :content, :content_hash, :namespace, "
+                            "'semantic', 'kg_temporal_backfill', "
+                            ":run_id, :importance, "
                             ":confidence, :valid_from, :valid_to, "
                             "CAST(:metadata AS JSONB))"
                         ),
                         {
                             "id": new_id,
                             "content": content,
+                            "content_hash": memory_content_hash(content),
                             "namespace": KG_RELATION_NAMESPACE,
                             "run_id": run_uuid,
                             "importance": _DEFAULT_IMPORTANCE,
@@ -231,7 +231,7 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
                 # SET memory_id and REMOVE the legacy temporal props in one
                 # write so a crash between the two leaves no orphaned PG row
                 # without a Neo4j join key.
-                await shared.kg.query(
+                await services.kg.query(
                     "MATCH ()-[r]->() WHERE elementId(r) = $rid "
                     "SET r.memory_id = $memory_id "
                     "REMOVE r.valid_from, r.valid_to, r.run_id, "
@@ -248,7 +248,7 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
                 # Roll back the PG row so a re-run can pick this rid up
                 # cleanly via the WHERE r.memory_id IS NULL filter.
                 try:
-                    async with shared.db.get_session() as session:
+                    async with services.db.get_session() as session:
                         await session.execute(
                             sql_text("DELETE FROM pipeline_memories WHERE id = :id"),
                             {"id": new_id},
@@ -269,9 +269,9 @@ async def _backfill(*, dry_run: bool) -> tuple[int, int, int]:
 
 
 async def main(*, dry_run: bool) -> None:
-    await shared.init()
+    services = await init_services()
     try:
-        seen, migrated, skipped = await _backfill(dry_run=dry_run)
+        seen, migrated, skipped = await _backfill(services, dry_run=dry_run)
         logger.info(
             "kg_temporal_to_pg: seen=%d migrated=%d skipped=%d (dry_run=%s)",
             seen,
@@ -280,7 +280,7 @@ async def main(*, dry_run: bool) -> None:
             dry_run,
         )
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
 
 
 if __name__ == "__main__":

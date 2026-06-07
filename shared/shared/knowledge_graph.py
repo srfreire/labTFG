@@ -36,9 +36,9 @@ _SCHEMA: dict[str, _SchemaEntry] = {
     "Author": {"unique_key": "name", "indexes": []},
     "Paper": {"unique_key": "doi", "indexes": []},
     "Postulate": {"unique_key": "id", "indexes": []},
-    "Formulation": {"unique_key": "id", "indexes": []},
-    "Parameter": {"unique_key": "name", "indexes": []},
-    "Model": {"unique_key": "formulation_id", "indexes": []},
+    "Formulation": {"unique_key": "id", "indexes": ["local_id", "paradigm_slug"]},
+    "Parameter": {"unique_key": "id", "indexes": ["name", "formulation_id"]},
+    "Model": {"unique_key": "formulation_id", "indexes": ["local_formulation_id"]},
     "Reflection": {"unique_key": "id", "indexes": []},
     "RollupReflection": {"unique_key": "id", "indexes": ["month"]},
 }
@@ -104,6 +104,10 @@ class KnowledgeGraph:
     async def init_schema(self) -> None:
         """Create uniqueness constraints, indexes, and vector indexes. Idempotent."""
         async with self._driver.session() as session:
+            # Pre-scoped-ID schema used Parameter.name as the unique key, which
+            # collapses symbols like "alpha" across formulations. Drop it before
+            # creating the global Parameter.id constraint.
+            await session.run("DROP CONSTRAINT uniq_Parameter_name IF EXISTS")
             for label, info in _SCHEMA.items():
                 key_prop = info["unique_key"]
                 extra_indexes = info["indexes"]

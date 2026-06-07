@@ -24,7 +24,7 @@ from decisionlab.knowledge.retrieval.vector_retrieval import vector_retrieve
 from decisionlab.runtime.usage import increment_counter
 from shared.database import DatabaseService
 from shared.embedding import EmbeddingService
-from shared.knowledge_graph import KnowledgeGraph
+from shared.knowledge_graph import KnowledgeGraph, vector_index_name
 from shared.pipeline_memories import touch_memory
 from shared.vector_store import VectorStore
 
@@ -171,14 +171,16 @@ async def list_known_slugs(
     nodes — structured KG output, not parsed markdown.
 
     Ranking order:
-      1. When the vector store + embedding service are wired, run a dense
-         retrieval over ``namespace=paradigm`` to score candidate slugs by
-         relevance to the query, then hydrate definitions from the KG.
-      2. When vector infra is unavailable (degraded mode, tests), fall back
-         to a plain ``MATCH (p:Paradigm) ... LIMIT $k`` — order is whatever
-         the KG returns, but the helper still produces something rather
-         than empty.
-      3. KG missing → empty list (preserves the Researcher's "no candidates
+      1. When embeddings are available, query Neo4j's native
+         ``Paradigm.embedding`` vector index so learned KG-only paradigms can
+         be discovered and ranked.
+      2. Merge in any Qdrant paradigm payload hits carrying ``metadata.slug``.
+      3. If the ranked set is short, top up from plain KG ``Paradigm`` nodes.
+         Partial Qdrant seed hits must not suppress this KG top-up.
+      4. When vector infra is unavailable (degraded mode, tests), fall back
+         to plain KG nodes — order is whatever the KG returns, but the helper
+         still produces something rather than empty.
+      5. KG missing → empty list (preserves the Researcher's "no candidates
          → __NEW__ for everything" fallback).
 
     Paradigm-only today; other namespaces don't have a comparable slug
@@ -192,8 +194,61 @@ async def list_known_slugs(
 
     if kg is None:
         return []
+    if top_k <= 0:
+        return []
 
-    candidate_slugs: list[str] = []
+    ranked: dict[str, tuple[float, int]] = {}
+    desc_by_slug: dict[str, str] = {}
+    insert_order = 0
+
+    def add_candidate(
+        slug: object,
+        *,
+        score: float,
+        description: object | None = None,
+    ) -> None:
+        nonlocal insert_order
+        if not isinstance(slug, str):
+            return
+        cleaned = slug.strip()
+        if not cleaned:
+            return
+        if description is not None:
+            desc_by_slug[cleaned] = str(description or "")
+        if cleaned not in ranked:
+            ranked[cleaned] = (score, insert_order)
+            insert_order += 1
+            return
+        current_score, order = ranked[cleaned]
+        if score > current_score:
+            ranked[cleaned] = (score, order)
+
+    if embeddings is not None:
+        try:
+            query_vec = await embeddings.embed_query(query)
+            rows = await kg.query(
+                "CALL db.index.vector.queryNodes($index_name, $k, $vector) "
+                "YIELD node, score "
+                "WHERE 'Paradigm' IN labels(node) AND node.slug IS NOT NULL "
+                "RETURN node.slug AS slug, node.name AS name, "
+                "node.description AS description, score "
+                "ORDER BY score DESC",
+                {
+                    "index_name": vector_index_name("Paradigm"),
+                    "k": top_k * 2,
+                    "vector": query_vec,
+                },
+            )
+        except Exception as exc:
+            logger.warning("list_known_slugs: KG vector query failed: %s", exc)
+        else:
+            for row in rows or []:
+                add_candidate(
+                    row.get("slug"),
+                    score=float(row.get("score") or 0.0),
+                    description=row.get("description"),
+                )
+
     if vectors is not None and embeddings is not None:
         try:
             dense, sparse = await vector_retrieve(
@@ -206,47 +261,72 @@ async def list_known_slugs(
         except Exception as exc:
             logger.warning("list_known_slugs: vector_retrieve failed: %s", exc)
             dense, sparse = [], []
-        seen: set[str] = set()
         for h in sorted(dense + sparse, key=lambda r: r.score, reverse=True):
-            slug = h.metadata.get("slug")
-            if not slug or slug in seen:
-                continue
-            seen.add(slug)
-            candidate_slugs.append(slug)
-            if len(candidate_slugs) >= top_k:
-                break
+            add_candidate(h.metadata.get("slug"), score=h.score)
 
-    if not candidate_slugs:
-        # Degraded path — return the first top_k Paradigm nodes from the KG
-        # in whatever order it gives them.
-        rows = await kg.query(
-            "MATCH (p:Paradigm) "
-            "RETURN p.slug AS slug, p.name AS name, p.description AS description "
-            "LIMIT $k",
-            {"k": top_k},
+    if len(ranked) < top_k:
+        exclude = list(ranked)
+        try:
+            rows = await kg.query(
+                "MATCH (p:Paradigm) "
+                "WHERE p.slug IS NOT NULL AND NOT (p.slug IN $exclude) "
+                "RETURN p.slug AS slug, p.name AS name, p.description AS description "
+                "LIMIT $k",
+                {"exclude": exclude, "k": top_k - len(ranked)},
+            )
+        except Exception as exc:
+            logger.warning("list_known_slugs: KG top-up query failed: %s", exc)
+            rows = []
+        for row in rows or []:
+            add_candidate(
+                row.get("slug"),
+                score=-1.0,
+                description=row.get("description"),
+            )
+
+    candidate_slugs = [
+        slug
+        for slug, _ in sorted(
+            ranked.items(),
+            key=lambda item: (-item[1][0], item[1][1]),
         )
-        return [(r["slug"], r.get("description") or "") for r in rows]
+    ][:top_k]
+    if not candidate_slugs:
+        return []
 
-    rows = await kg.query(
-        "MATCH (p:Paradigm) WHERE p.slug IN $slugs "
-        "RETURN p.slug AS slug, p.description AS description",
-        {"slugs": candidate_slugs},
-    )
-    desc_by_slug = {r["slug"]: (r.get("description") or "") for r in rows}
+    try:
+        rows = await kg.query(
+            "MATCH (p:Paradigm) WHERE p.slug IN $slugs "
+            "RETURN p.slug AS slug, p.description AS description",
+            {"slugs": candidate_slugs},
+        )
+    except Exception as exc:
+        logger.warning("list_known_slugs: KG hydration query failed: %s", exc)
+        rows = []
+    for row in rows or []:
+        slug = row.get("slug")
+        if isinstance(slug, str) and slug:
+            desc_by_slug[slug] = row.get("description") or ""
     return [(s, desc_by_slug.get(s, "")) for s in candidate_slugs]
 
 
 def _source_kind_of(metadata: dict) -> str:
-    """Return ``"pipeline"`` or ``"simulation"`` for a retrieval result.
+    """Return ``"pipeline"``, ``"simulation"``, or ``"seed"``.
 
     Reads the ``source_kind`` Qdrant payload field added in P4-003. Falls
     back to inferring from ``namespace`` for legacy points written before
     the field landed (anything in namespace ``simulation`` is a Phase 2
-    observation; everything else is a Phase 1 pipeline memory).
+    observation; canonical seed points are explicitly marked by source_stage
+    or run_id; everything else is a Phase 1 pipeline memory).
     """
     raw = metadata.get("source_kind")
     if raw in ("pipeline", "simulation"):
         return raw  # type: ignore[return-value]
+    if (
+        metadata.get("source_stage") == "seed"
+        or metadata.get("run_id") == "canonical-paradigms-seed"
+    ):
+        return "seed"
     return "simulation" if metadata.get("namespace") == "simulation" else "pipeline"
 
 
@@ -280,7 +360,7 @@ async def _track_memory_access(
 
     async with db.get_session() as session:
         try:
-            await touch_memory(session, memory_ids)
+            touched = await touch_memory(session, memory_ids)
             await session.commit()
         except Exception as exc:
             logger.warning(
@@ -288,7 +368,7 @@ async def _track_memory_access(
             )
             return
 
-    logger.info("touch_memory.batch_size=%d", len(memory_ids))
+    logger.info("touch_memory.batch_size=%d", touched)
 
 
 # Recency decay rates per namespace, applied as decay**days_old.
@@ -343,6 +423,8 @@ def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
     for r in results:
         if "memories" not in r.metadata.get("collection", ""):
             continue
+        if _source_kind_of(r.metadata) not in ("pipeline", "simulation"):
+            continue
         entity_id = r.metadata.get("entity_id") or r.metadata.get("memory_id")
         if not entity_id:
             continue
@@ -354,19 +436,25 @@ def _collect_memory_ids(results: list[RetrievalResult]) -> list[uuid.UUID]:
 
 
 async def _fetch_confidences(
-    memory_ids: list[uuid.UUID], db: DatabaseService | None
+    memory_ids: list[uuid.UUID],
+    db: DatabaseService | None,
+    *,
+    as_of: datetime | None = None,
 ) -> dict[uuid.UUID, float]:
-    """Batched SELECT across both memory tables for live confidences.
+    """Batched SELECT across both memory tables for valid confidences.
 
     Queries ``pipeline_memories`` and ``simulation_observations`` in a
     single round-trip via ``UNION``; an id is in at most one table by
     construction (UUIDs are unique across both tables since each is
     minted at write time).
 
+    Current mode keeps only live ``pipeline_memories`` rows. ``as_of`` mode
+    applies the temporal validity window. Simulation observations are
+    write-once, so only their creation time matters in ``as_of`` mode.
+
     Returns an empty map when there are no memory IDs, when ``db`` is
-    unwired, or when the DB raises. Callers fall back to a 1.0 factor
-    so a degraded PG never silently kills a retrieve — failures are
-    logged at WARNING instead.
+    unwired, or when the DB raises. Callers keep seed/non-memory results;
+    PG-governed memory hits without a matching row are treated as invalid.
     """
     if not memory_ids:
         return {}
@@ -378,9 +466,13 @@ async def _fetch_confidences(
         )
         return {}
 
-    from sqlalchemy import select, union
+    from sqlalchemy import or_, select, union
 
     from shared.models import PipelineMemory, SimulationObservation
+
+    as_of_naive = None
+    if as_of is not None:
+        as_of_naive = as_of.replace(tzinfo=None) if as_of.tzinfo else as_of
 
     # ``union`` (not ``union_all``) — by construction each UUID lives in at
     # most one table, but a stray duplicate from a botched
@@ -391,10 +483,24 @@ async def _fetch_confidences(
         PipelineMemory.id.label("id"),
         PipelineMemory.confidence.label("confidence"),
     ).where(PipelineMemory.id.in_(memory_ids))
+    if as_of_naive is None:
+        pipeline_q = pipeline_q.where(PipelineMemory.valid_to.is_(None))
+    else:
+        pipeline_q = pipeline_q.where(
+            PipelineMemory.valid_from <= as_of_naive,
+            or_(
+                PipelineMemory.valid_to.is_(None),
+                PipelineMemory.valid_to > as_of_naive,
+            ),
+        )
+
     sim_q = select(
         SimulationObservation.id.label("id"),
         SimulationObservation.confidence.label("confidence"),
     ).where(SimulationObservation.id.in_(memory_ids))
+    if as_of_naive is not None:
+        sim_q = sim_q.where(SimulationObservation.created_at <= as_of_naive)
+
     stmt = union(pipeline_q, sim_q)
 
     try:
@@ -403,17 +509,55 @@ async def _fetch_confidences(
             return {row.id: row.confidence for row in result.all()}
     except Exception as exc:
         logger.warning(
-            "_fetch_confidences: PG fetch failed for %d ids, defaulting to "
-            "confidence_factor=1.0: %s",
+            "_fetch_confidences: PG fetch failed for %d ids; governed memory "
+            "hits will be filtered when lifecycle enforcement is active: %s",
             len(memory_ids),
             exc,
         )
         return {}
 
 
+def _memory_uuid(result: RetrievalResult) -> uuid.UUID | None:
+    entity_id = result.metadata.get("entity_id") or result.metadata.get("memory_id")
+    try:
+        return uuid.UUID(str(entity_id))
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_pg_governed_memory(result: RetrievalResult) -> bool:
+    return "memories" in result.metadata.get("collection", "") and _source_kind_of(
+        result.metadata
+    ) in ("pipeline", "simulation")
+
+
+async def _filter_memory_lifecycle(
+    results: list[RetrievalResult],
+    db: DatabaseService | None,
+    *,
+    as_of: datetime | None = None,
+) -> list[RetrievalResult]:
+    """Drop PG-governed memory hits that are missing or not valid."""
+    if db is None:
+        return results
+
+    conf_map = await _fetch_confidences(_collect_memory_ids(results), db, as_of=as_of)
+    filtered: list[RetrievalResult] = []
+    for result in results:
+        if not _is_pg_governed_memory(result):
+            filtered.append(result)
+            continue
+        memory_id = _memory_uuid(result)
+        if memory_id is not None and memory_id in conf_map:
+            filtered.append(result)
+    return filtered
+
+
 async def _apply_recency_weighting(
     results: list[RetrievalResult],
     db: DatabaseService | None,
+    *,
+    as_of: datetime | None = None,
 ) -> list[RetrievalResult]:
     """Apply recency and confidence-based score weighting.
 
@@ -431,10 +575,18 @@ async def _apply_recency_weighting(
     Returns a new list re-sorted by final_score descending.
     """
     now = datetime.now(UTC)
-    conf_map = await _fetch_confidences(_collect_memory_ids(results), db)
+    conf_map = await _fetch_confidences(_collect_memory_ids(results), db, as_of=as_of)
     weighted: list[RetrievalResult] = []
 
     for r in results:
+        memory_id = _memory_uuid(r)
+        if (
+            db is not None
+            and _is_pg_governed_memory(r)
+            and (memory_id is None or memory_id not in conf_map)
+        ):
+            continue
+
         created_at = _result_created_at(r)
         recency_factor = 1.0
         decay_rate = _decay_rate_for(r.metadata.get("namespace"))
@@ -444,12 +596,8 @@ async def _apply_recency_weighting(
             recency_factor = decay_rate**days_old
 
         confidence_factor = 1.0
-        entity_id = r.metadata.get("entity_id") or r.metadata.get("memory_id")
-        if entity_id and "memories" in r.metadata.get("collection", ""):
-            try:
-                pg_confidence = conf_map.get(uuid.UUID(str(entity_id)))
-            except (ValueError, TypeError):
-                pg_confidence = None
+        if memory_id and _is_pg_governed_memory(r):
+            pg_confidence = conf_map.get(memory_id)
             if pg_confidence is not None:
                 confidence_factor = max(0.0, min(1.0, float(pg_confidence)))
 
@@ -556,6 +704,16 @@ def create_retrieve_knowledge(
                 dense_results, sparse_results = await vector_retrieve(
                     query, embedding_service, vector_store, filters=filters
                 )
+                dense_results = await _filter_memory_lifecycle(
+                    dense_results,
+                    db,
+                    as_of=as_of,
+                )
+                sparse_results = await _filter_memory_lifecycle(
+                    sparse_results,
+                    db,
+                    as_of=as_of,
+                )
             else:
                 dense_results, sparse_results = [], []
 
@@ -570,7 +728,13 @@ def create_retrieve_knowledge(
                 increment_counter("ner.skipped")
             else:
                 kg_results = await kg_retrieve(
-                    query, kg, embedding_service, client, vectors=vector_store
+                    query,
+                    kg,
+                    embedding_service,
+                    client,
+                    vectors=vector_store,
+                    db=db,
+                    as_of=as_of,
                 )
                 increment_counter("ner.evaluated")
 
@@ -630,7 +794,11 @@ def create_retrieve_knowledge(
 
             # Apply recency weighting (P5-001) — async since P3-002 because
             # it batch-fetches `memories.confidence` from Postgres.
-            weighted_results = await _apply_recency_weighting(crag_result.results, db)
+            weighted_results = await _apply_recency_weighting(
+                crag_result.results,
+                db,
+                as_of=as_of,
+            )
 
             # Apply temporal filter when as_of is specified (P5-004)
             final_results = _apply_temporal_filter(weighted_results, as_of)

@@ -155,6 +155,34 @@ def _mock_db_session() -> AsyncMock:
     return session
 
 
+@pytest.fixture(autouse=True)
+def _hydrate_candidates_from_payload(monkeypatch):
+    """Unit tests predate PG hydration; make vector hits look PG-live."""
+
+    async def _fake_hydrate(candidates, *, run_id, db_session):
+        hydrated = []
+        for candidate in candidates:
+            payload = candidate.get("payload", {})
+            memory = MagicMock()
+            memory.id = uuid.UUID(candidate["id"])
+            memory.content = payload.get("text_preview", "")
+            memory.source_stage = payload.get("source_stage", "unknown")
+            memory.created_at = payload.get("created_at", "unknown")
+            try:
+                memory.run_id = uuid.UUID(str(payload.get("run_id")))
+            except (TypeError, ValueError):
+                memory.run_id = uuid.uuid4()
+            if run_id is not None and memory.run_id == run_id:
+                continue
+            hydrated.append({**candidate, "id": str(memory.id), "memory": memory})
+        return hydrated
+
+    monkeypatch.setattr(
+        "decisionlab.knowledge.resolver._hydrate_live_candidates",
+        _fake_hydrate,
+    )
+
+
 # ---------------------------------------------------------------------------
 # AC1: Importance scoring — meaningful facts score high, trivial ones low
 # ---------------------------------------------------------------------------

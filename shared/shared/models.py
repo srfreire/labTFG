@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -175,15 +176,27 @@ class PipelineMemory(Base):
         Index("ix_pipeline_memories_namespace", "namespace"),
         Index("ix_pipeline_memories_run_id", "run_id"),
         Index("ix_pipeline_memories_source_stage", "source_stage"),
+        Index("ix_pipeline_memories_content_hash", "content_hash"),
         Index("ix_pipeline_memories_confidence", "confidence"),
         Index("ix_pipeline_memories_valid_to", "valid_to"),
         Index("ix_pipeline_memories_ns_confidence", "namespace", "confidence"),
+        Index(
+            "uq_pipeline_memories_live_fact_key",
+            "run_id",
+            "source_stage",
+            "namespace",
+            "memory_type",
+            "content_hash",
+            unique=True,
+            postgresql_where=text("valid_to IS NULL AND content_hash IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(String(32), nullable=True)
     namespace: Mapped[str] = mapped_column(String(50))
     memory_type: Mapped[str] = mapped_column(String(50))
     source_stage: Mapped[str] = mapped_column(String(100))

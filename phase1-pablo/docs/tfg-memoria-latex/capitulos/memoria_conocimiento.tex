@@ -1,0 +1,182 @@
+\chapter{Sistema de memoria y conocimiento}
+
+\section{Propósito}
+
+La memoria convierte ejecuciones aisladas en un sistema acumulativo. Sin ella,
+cada ejecución vuelve a investigar los mismos paradigmas y puede repetir errores
+ya detectados. Con ella, los resultados aceptados se transforman en conocimiento
+recuperable.
+
+La arquitectura combina cuatro tipos de almacenamiento:
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+                 Artefacto aceptado
+                         |
+        +----------------+----------------+
+        |                |                |
+        v                v                v
+      MinIO          PostgreSQL         Memoria
+   bytes reales      ciclo de vida      KG + vectores
+                                      Neo4j + Qdrant
+\end{verbatim}
+\caption{Separación de responsabilidades de almacenamiento.}
+\end{figure}
+
+\section{MemoryAgent}
+
+MemoryAgent no es un agente conversacional libre. Es una tubería determinista
+que usa modelos de lenguaje para extracción estructurada y juicio, pero mantiene
+el control de flujo en código.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+MemoryAgent.run(stage, output, run_id)
+  |
+  +-- 1. Extraer nodos, relaciones y hechos
+  +-- 2. Canonicalizar slugs de paradigmas
+  +-- 3. Escribir grafo en Neo4j
+  +-- 4. Indexar hechos en Qdrant
+  +-- 5. Resolver duplicados y conflictos
+  +-- 6. Persistir ciclo de vida en PostgreSQL
+\end{verbatim}
+\caption{Flujo interno de MemoryAgent.}
+\end{figure}
+
+La entrada de memoria siempre procede de artefactos aceptados. Esto protege el
+sistema frente a borradores incorrectos y facilita explicar la memoria como
+base de conocimiento curada.
+
+\section{Modelo de extracción}
+
+Cada etapa aceptada se convierte en una estructura validada:
+
+\begin{lstlisting}[language=Python]
+ExtractionResult(
+    nodes=[NodeSpec(...), ...],
+    relations=[RelationSpec(...), ...],
+    facts=["atomic memory fact", ...],
+    stage="researcher|formalizer|reasoner|builder",
+    run_id="..."
+)
+\end{lstlisting}
+
+La extracción usa salidas estructuradas y validación Pydantic. Las etiquetas y
+slugs relevantes se comparan con vocabulario canónico. Si aparece un paradigma
+nuevo, se usa un proceso de verificación antes de crear un nodo.
+
+\section{Grafo de conocimiento}
+
+Neo4j almacena identidad y relaciones científicas. Entre las etiquetas
+principales se incluyen:
+
+\begin{verbatim}
+Paradigm, Paper, Author, Variable, Postulate,
+Formulation, Parameter, Model, Reflection
+\end{verbatim}
+
+Y entre las relaciones:
+
+\begin{verbatim}
+SUPPORTS, CONTRADICTS, EXTENDS, MEASURES,
+DERIVES_FROM, IMPLEMENTS, USES_VARIABLE,
+HAS_PARAMETER, BELONGS_TO, CITES
+\end{verbatim}
+
+El grafo no almacena toda la verdad temporal. Las relaciones pueden enlazar a
+una memoria mediante \texttt{memory\_id}, pero la confianza, validez temporal y
+supersesión se mantienen en PostgreSQL.
+
+\section{Memoria relacional}
+
+La tabla \texttt{pipeline\_memories} conserva el ciclo de vida de los hechos.
+Cada memoria incluye contenido, namespace, etapa de origen, importancia,
+confianza, recuentos de corroboración y contradicción, accesos, intervalos de
+validez y puntero de supersesión.
+
+\begin{verbatim}
+nuevo hecho
+  -> no duplicado: crear memoria
+  -> duplicado: omitir
+  -> corroboracion: subir confianza
+  -> contradiccion: bajar confianza y crear meta-memoria
+  -> enriquecimiento: superseder memoria anterior
+\end{verbatim}
+
+Este diseño separa topología y ciclo de vida. Neo4j responde a preguntas de
+relación; PostgreSQL decide qué conocimiento sigue vigente.
+
+\section{Qdrant: recuperación densa y dispersa}
+
+Qdrant contiene dos colecciones:
+
+\begin{itemize}
+\item \texttt{memories\_dense}: embeddings densos para similitud semántica.
+\item \texttt{memories\_sparse}: BM25 nativo para coincidencia léxica.
+\end{itemize}
+
+El sistema no indexa fragmentos brutos de artefactos. Indexa hechos extraídos.
+Los artefactos completos permanecen en MinIO. Esta decisión reduce ruido y
+mantiene la recuperación enfocada en conocimiento aceptado.
+
+\section{Herramienta de recuperación}
+
+Los agentes acceden a la memoria mediante \texttt{retrieve\_knowledge}. La
+herramienta combina varias señales:
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Consulta del agente
+  -> reescritura de consulta
+  -> recuperacion densa en Qdrant
+  -> recuperacion BM25 en Qdrant
+  -> recuperacion local en Neo4j
+  -> fusion RRF
+  -> reranking
+  -> CRAG si la confianza es baja
+  -> contexto formateado para el agente
+\end{verbatim}
+\caption{Pipeline de recuperación de conocimiento.}
+\end{figure}
+
+La recuperación de grafo empieza extrayendo entidades de la consulta. Después se
+enlazan por coincidencia exacta o por índice vectorial de Neo4j y se recorren
+vecinos locales. Se usa recorrido acotado para controlar coste y latencia.
+
+\section{Corrección de recuperación}
+
+Cuando los resultados recuperados son claramente fuertes, el sistema evita
+trabajo adicional. Cuando son dudosos, CRAG clasifica su calidad:
+
+\begin{verbatim}
+todos correctos          -> usar contexto interno
+mezcla correcta/erronea  -> conservar solo correctos
+ambiguedad               -> complementar con web
+todos incorrectos        -> fallback web
+evaluador no disponible  -> devolver con advertencia
+\end{verbatim}
+
+Esta etapa evita que la memoria se convierta en una fuente de sesgo silencioso.
+Es especialmente relevante en un sistema que almacena formulaciones y decisiones
+técnicas de ejecuciones anteriores.
+
+\section{Decisiones clave}
+
+Las decisiones principales de la arquitectura de memoria son:
+
+\begin{itemize}
+\item Guardar solo artefactos aceptados tras revisión humana.
+\item Mantener artefactos completos en MinIO y hechos recuperables en Qdrant.
+\item Usar Neo4j para identidad relacional, no para ciclo de vida temporal.
+\item Usar PostgreSQL como fuente de verdad para confianza y validez.
+\item Combinar recuperación densa, BM25 y grafo en lugar de elegir un único
+método.
+\item Activar corrección solo cuando la confianza recuperada no es suficiente.
+\end{itemize}
+
+El resultado es una memoria más compleja que un vector store plano, pero más
+adecuada para un sistema científico que debe justificar de dónde procede cada
+afirmación.

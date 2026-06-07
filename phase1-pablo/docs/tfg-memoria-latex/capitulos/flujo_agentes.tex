@@ -1,0 +1,142 @@
+\chapter{Flujo de agentes}
+
+\section{Cadena cognitiva}
+
+El sistema transforma progresivamente una descripción ambigua en un artefacto
+ejecutable. Cada etapa reduce un tipo distinto de incertidumbre.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Problema natural
+  -> paradigmas cientificos
+  -> formulaciones matematicas
+  -> especificaciones JSON adaptadas
+  -> codigo Python + tests
+\end{verbatim}
+\caption{Cadena cognitiva del pipeline.}
+\end{figure}
+
+\section{Clasificación inicial}
+
+Antes de investigar, el sistema intenta asociar el problema a un paraguas
+canónico de paradigmas. Esta etapa evita que conceptos equivalentes se almacenen
+con nombres distintos. Por ejemplo, una variante de aprendizaje por diferencia
+temporal puede pertenecer al paraguas de aprendizaje por refuerzo.
+
+Si el clasificador falla, el sistema degrada de forma segura: continúa con la
+investigación sin bloquear la ejecución.
+
+\section{Investigación}
+
+El Researcher combina conocimiento interno y búsqueda externa. Primero consulta
+paradigmas conocidos en la memoria. Después usa búsqueda web o académica para
+cubrir huecos. Cuando detecta un paradigma relevante, lanza un DeepResearcher
+especializado.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Researcher
+  |
+  +-- retrieve_knowledge
+  +-- web_search / search_papers
+  +-- launch_deep_research(paradigma A)
+  +-- launch_deep_research(paradigma B)
+  |
+  v
+report.md + deep/{paradigm}.md
+\end{verbatim}
+\caption{Estructura de la etapa de investigación.}
+\end{figure}
+
+El informe profundo incluye fundamentos, postulados, variables, predicciones,
+conceptos clave y referencias. El Researcher sintetiza resultados, pero la
+información completa queda guardada como artefacto para etapas posteriores.
+
+\section{Formalización}
+
+El Formalizer lanza un subagente por paradigma aprobado. Cada subagente genera
+dos o tres formulaciones matemáticas realmente diferentes. No basta con cambiar
+nombres: deben existir diferencias estructurales, como una regla de aprendizaje,
+una utilidad probabilística o una política umbral.
+
+Cada formulación contiene variables, parámetros, ecuaciones, lógica de decisión
+y comparación con alternativas. La salida sigue siendo textual, pero ya está
+orientada a implementación.
+
+\section{Especificación del entorno}
+
+El Reasoner necesita conocer el entorno de simulación. Por eso el pipeline
+introduce un artefacto \texttt{env\_spec.json} que define acciones disponibles,
+percepciones, recursos, restricciones y fuentes de recompensa.
+
+Este archivo funciona como contrato entre ciencia y simulación:
+
+\begin{verbatim}
+Formulacion matematica + env_spec.json
+        |
+        v
+Especificacion implementable
+\end{verbatim}
+
+\section{Razonamiento de implementación}
+
+El Reasoner adapta cada formulación seleccionada al entorno. Su salida es una
+especificación JSON que el Builder puede convertir en código. Además de describir
+variables y parámetros, debe mapear cada elemento a percepciones y acciones
+observables.
+
+La etapa valida que:
+
+\begin{itemize}
+\item las variables usadas estén definidas;
+\item las ecuaciones no sean circularmente incoherentes;
+\item las acciones existan en el entorno;
+\item los valores por defecto sean razonables;
+\item la lógica de decisión pueda implementarse.
+\end{itemize}
+
+Cuando una formulación no es implementable, el sistema escribe un informe de
+validación en lugar de una especificación falsa.
+
+\section{Construcción}
+
+El Builder transforma especificaciones aprobadas en código Python y tests. Cada
+subagente escribe un archivo de modelo y un archivo de pruebas. Después ejecuta
+las pruebas con \texttt{uv run pytest}.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+spec.json
+   |
+   v
+BuilderSubAgent
+   |
+   +-- formulation_model.py
+   +-- test_formulation.py
+   |
+   v
+uv run pytest
+\end{verbatim}
+\caption{Construcción y validación ejecutable.}
+\end{figure}
+
+La salida aceptada se registra como modelo disponible para el laboratorio. La
+fase 2 puede cargarlo porque respeta el contrato \texttt{DecisionModel}.
+
+\section{Revisión humana}
+
+La revisión humana aparece después de las etapas que cambian el significado del
+trabajo: investigación, formalización, razonamiento y construcción. El usuario
+puede aprobar, rechazar o pedir reejecución. Esta intervención no sustituye a
+las pruebas, pero cubre criterios científicos que un test unitario no puede
+medir.
+
+\begin{verbatim}
+Salida de agente -> revision humana -> memoria -> siguiente etapa
+\end{verbatim}
+
+Esta decisión es importante: la memoria persistente representa conocimiento
+aceptado, no todos los intentos del modelo.

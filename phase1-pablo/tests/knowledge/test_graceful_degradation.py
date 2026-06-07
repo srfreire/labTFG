@@ -406,11 +406,6 @@ class TestMemoryAgentMidRunDegradation:
                 side_effect=ConnectionError("Neo4j crashed"),
             ),
             patch(
-                f"{_MEMORY_AGENT_MODULE}.index_stage_output",
-                new_callable=AsyncMock,
-                side_effect=ConnectionError("Qdrant crashed"),
-            ),
-            patch(
                 f"{_MEMORY_AGENT_MODULE}.resolve_and_store",
                 new_callable=AsyncMock,
                 side_effect=ConnectionError("DB crashed"),
@@ -452,7 +447,6 @@ class TestMemoryAgentMidRunDegradation:
         from decisionlab.agents.memory_agent import MemoryAgent
         from decisionlab.knowledge.models import (
             ExtractionResult,
-            IndexResult,
             KGWriteResult,
             MemoryAgentResult,
             NodeSpec,
@@ -505,13 +499,6 @@ class TestMemoryAgentMidRunDegradation:
                     nodes_merged=0,
                     relations_created=0,
                     relations_superseded=0,
-                ),
-            ),
-            patch(
-                f"{_MEMORY_AGENT_MODULE}.index_stage_output",
-                new_callable=AsyncMock,
-                return_value=IndexResult(
-                    artifacts_indexed=1, facts_indexed=0, total_chunks=1
                 ),
             ),
             patch(
@@ -633,12 +620,11 @@ class TestPartialDegradation:
         assert "temporarily unavailable" not in result.lower()
 
     @pytest.mark.asyncio
-    async def test_memory_agent_partial_neo4j_down_indexing_works(self):
-        """Neo4j down: Memory Agent skips KG but indexing still runs."""
+    async def test_memory_agent_partial_neo4j_down_resolve_works(self):
+        """Neo4j down: Memory Agent skips KG but resolver still runs."""
         from decisionlab.agents.memory_agent import MemoryAgent
         from decisionlab.knowledge.models import (
             ExtractionResult,
-            IndexResult,
             NodeSpec,
             ResolutionResult,
         )
@@ -675,8 +661,6 @@ class TestPartialDegradation:
         mock_db.get_session = _get_session
         agent._db = mock_db
 
-        idx_result = IndexResult(artifacts_indexed=3, facts_indexed=1, total_chunks=4)
-
         with (
             patch(
                 f"{_MEMORY_AGENT_MODULE}.extract",
@@ -689,11 +673,6 @@ class TestPartialDegradation:
                 side_effect=ConnectionError("Neo4j crashed"),
             ),
             patch(
-                f"{_MEMORY_AGENT_MODULE}.index_stage_output",
-                new_callable=AsyncMock,
-                return_value=idx_result,
-            ) as m_idx,
-            patch(
                 f"{_MEMORY_AGENT_MODULE}.resolve_and_store",
                 new_callable=AsyncMock,
                 return_value=ResolutionResult(
@@ -704,12 +683,11 @@ class TestPartialDegradation:
                     contradictions=0,
                     sonnet_calls=0,
                 ),
-            ),
+            ) as m_resolve,
         ):
             result = await agent.run("researcher", "output text", "run-1")
 
-        # Indexing still ran despite KG failure
-        m_idx.assert_awaited_once()
+        m_resolve.assert_awaited_once()
         # KG results zeroed, but facts_stored from resolution
         assert result.nodes_created == 0
         assert result.facts_stored == 1

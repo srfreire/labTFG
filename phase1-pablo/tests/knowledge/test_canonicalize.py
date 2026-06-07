@@ -46,7 +46,7 @@ def _paradigm_node(slug: str, name: str, description: str = "") -> NodeSpec:
     return NodeSpec(
         label="Paradigm",
         properties={"slug": slug, "name": name, "description": description},
-        natural_key=slug,
+        natural_key="slug",
     )
 
 
@@ -54,7 +54,7 @@ def _variable_node(name: str, paradigm_slug: str) -> NodeSpec:
     return NodeSpec(
         label="Variable",
         properties={"name": name, "paradigm_slug": paradigm_slug},
-        natural_key=name,
+        natural_key="name",
     )
 
 
@@ -67,7 +67,7 @@ def _postulate_node(pid: str, paradigm_slug: str) -> NodeSpec:
             "falsifiable": True,
             "paradigm_slug": paradigm_slug,
         },
-        natural_key=pid,
+        natural_key="id",
     )
 
 
@@ -168,7 +168,7 @@ async def test_strong_match_merge_propagates_to_siblings(monkeypatch):
     paradigm = next(n for n in result.nodes if n.label == "Paradigm")
     variable = next(n for n in result.nodes if n.label == "Variable")
     assert paradigm.properties["slug"] == "reinforcement-learning"
-    assert paradigm.natural_key == "reinforcement-learning"
+    assert paradigm.natural_key == "slug"
     assert variable.properties["paradigm_slug"] == "reinforcement-learning"
     # Relation endpoint also remapped
     assert result.relations[0].to_key_value == "reinforcement-learning"
@@ -208,7 +208,7 @@ async def test_weak_match_mints_without_verify(monkeypatch):
     )
     paradigm = next(n for n in result.nodes if n.label == "Paradigm")
     assert paradigm.properties["slug"] == "bounded-rationality"
-    assert paradigm.natural_key == "bounded-rationality"
+    assert paradigm.natural_key == "slug"
 
 
 # ---- 4. strong-match but verdict says MINT_NEW -----------------------------
@@ -340,7 +340,7 @@ async def test_postulate_prefix_remapped_to_canonical(monkeypatch):
     paradigm = next(n for n in result.nodes if n.label == "Paradigm")
     assert paradigm.properties["slug"] == "free-energy-principle"
     assert postulate.properties["id"] == "free-energy-principle:P1"
-    assert postulate.natural_key == "free-energy-principle:P1"
+    assert postulate.natural_key == "id"
     assert postulate.properties["paradigm_slug"] == "free-energy-principle"
     rel = result.relations[0]
     assert rel.from_key_value == "free-energy-principle:P1"

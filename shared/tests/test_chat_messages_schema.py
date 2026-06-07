@@ -148,7 +148,9 @@ def test_alembic_downgrade_drops_table():
     _reset_public_schema(engine)
 
     _alembic_upgrade("head")
-    _alembic_downgrade("-1")
+    # Newer migrations can sit above chat_messages; downgrade to the parent
+    # revision explicitly instead of assuming chat_messages is the head.
+    _alembic_downgrade("e7a4c9d2b813")
 
     with engine.connect() as conn:
         insp = inspect(conn)

@@ -12,14 +12,16 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pydantic import BaseModel
 
+import decisionlab.structured as structured
 from decisionlab.knowledge.extraction import (
     _build_result,
     _fold_legacy_test_results,
     extract,
 )
 from decisionlab.knowledge.models import ExtractionResult
-from decisionlab.structured import StructuredOutputError
+from decisionlab.structured import StructuredOutputError, call_structured
 
 # ---------------------------------------------------------------------------
 # Helpers: build mock structured responses
@@ -752,7 +754,7 @@ $$Q(s_t, a_t) \\leftarrow Q(s_t, a_t) + \\alpha\\,\\delta_t \\tag{1}$$
         source_text=markdown,
     )
 
-    formulation_id = "tabular-q-learning-with-greedy-exploration"
+    formulation_id = "reinforcement-learning:tabular-q-learning-with-greedy-exploration"
     assert any(
         n.label == "Formulation" and n.properties["id"] == formulation_id
         for n in result.nodes
@@ -761,6 +763,7 @@ $$Q(s_t, a_t) \\leftarrow Q(s_t, a_t) + \\alpha\\,\\delta_t \\tag{1}$$
         n.label == "Parameter"
         and n.properties["name"] == "α"
         and n.properties["formulation_id"] == formulation_id
+        and n.properties["id"] == f"{formulation_id}:alpha"
         for n in result.nodes
     )
     assert any(
@@ -768,7 +771,7 @@ $$Q(s_t, a_t) \\leftarrow Q(s_t, a_t) + \\alpha\\,\\delta_t \\tag{1}$$
         and r.from_key_value == formulation_id
         and r.rel_type == "HAS_PARAMETER"
         and r.to_label == "Parameter"
-        and r.to_key_value == "α"
+        and r.to_key_value == f"{formulation_id}:alpha"
         for r in result.relations
     )
     assert any(
@@ -822,12 +825,14 @@ async def test_extract_reasoner_links_formulation_to_paradigm_from_spec():
         n
         for n in result.nodes
         if n.label == "Formulation"
-        and n.properties.get("id") == "homeostatic-regulation_drive_reduction_rl"
+        and n.properties.get("id")
+        == "reinforcement-learning:homeostatic-regulation-drive-reduction-rl"
     )
     assert formulation.properties["paradigm_slug"] == "reinforcement-learning"
     assert any(
         r.from_label == "Formulation"
-        and r.from_key_value == "homeostatic-regulation_drive_reduction_rl"
+        and r.from_key_value
+        == "reinforcement-learning:homeostatic-regulation-drive-reduction-rl"
         and r.rel_type == "BELONGS_TO"
         and r.to_label == "Paradigm"
         and r.to_key_value == "reinforcement-learning"
@@ -891,7 +896,7 @@ def test_build_result_normalizes_reasoner_parameter_aliases_to_symbols():
     )
     assert any(
         r.from_label == "Parameter"
-        and r.from_key_value == "mu_0"
+        and r.from_key_value == "optimal-foraging-theory:bayesian-forager:mu-0"
         and r.to_key_value == "optimal-foraging-theory:P5"
         and r.rel_type == "DERIVES_FROM"
         for r in result.relations
@@ -994,6 +999,41 @@ async def test_no_tool_use_block_raises():
     client = _make_client([text_only])
     with pytest.raises(StructuredOutputError, match="no tool_use block"):
         await extract("researcher", "report text", "run-1", client)
+
+
+@pytest.mark.asyncio
+async def test_call_structured_retries_transient_api_parse_failure(monkeypatch):
+    class _TinyPayload(BaseModel):
+        value: int
+
+    block = MagicMock()
+    block.type = "tool_use"
+    block.name = "emit__TinyPayload"
+    block.input = {"value": 7}
+
+    response = MagicMock()
+    response.content = [block]
+    response.stop_reason = "end_turn"
+    response.usage = None
+
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.create = AsyncMock(
+        side_effect=[json.JSONDecodeError("bad", "invalid", 0), response]
+    )
+
+    monkeypatch.setattr(structured, "_STRUCTURED_MAX_ATTEMPTS", 2)
+    monkeypatch.setattr(structured.asyncio, "sleep", AsyncMock())
+
+    result = await call_structured(
+        client=client,
+        messages=[{"role": "user", "content": "return value"}],
+        system="system",
+        schema=_TinyPayload,
+    )
+
+    assert result.value == 7
+    assert client.messages.create.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -1104,6 +1144,66 @@ async def test_extract_splits_concatenated_formalizer_documents():
     ]
 
 
+@pytest.mark.asyncio
+async def test_extract_splits_formalizer_document_by_formulation_section():
+    """Formalizer extraction keeps each formulation section below output budget."""
+    client = _make_client(
+        [
+            {
+                "nodes": [
+                    {
+                        "label": "Formulation",
+                        "properties": {
+                            "id": "q-learning",
+                            "name": "Q-learning",
+                            "type": "model",
+                            "description": "First formulation",
+                            "paradigm_slug": "reinforcement-learning",
+                        },
+                        "natural_key": "id",
+                    }
+                ],
+                "relations": [],
+                "facts": ["First formulation extracted."],
+            },
+            {
+                "nodes": [
+                    {
+                        "label": "Formulation",
+                        "properties": {
+                            "id": "actor-critic",
+                            "name": "Actor-critic",
+                            "type": "model",
+                            "description": "Second formulation",
+                            "paradigm_slug": "reinforcement-learning",
+                        },
+                        "natural_key": "id",
+                    }
+                ],
+                "relations": [],
+                "facts": ["Second formulation extracted."],
+            },
+        ]
+    )
+    text = (
+        "# Reinforcement Learning — Mathematical Formulations\n\n"
+        "## Formulation 1: Q-learning\nbody\n\n"
+        "## Formulation 2: Actor-critic\nbody"
+    )
+
+    result = await extract("formalizer", text, "run-1", client)
+
+    assert client.messages.create.await_count == 2
+    assert [node.properties["id"] for node in result.nodes] == [
+        "reinforcement-learning:q-learning",
+        "reinforcement-learning:actor-critic",
+    ]
+    assert result.facts == [
+        "First formulation extracted.",
+        "Second formulation extracted.",
+    ]
+
+
 def test_stage_models_dict_covers_all_stages():
     """``_STAGE_MODELS`` carries an entry for every prompted stage so a
     ``KeyError`` cannot leak through ``extract``."""
@@ -1206,6 +1306,59 @@ def test_build_result_builder_keeps_only_model_nodes_and_implements_relations():
 
     assert [node.label for node in result.nodes] == ["Model"]
     assert [rel.rel_type for rel in result.relations] == ["IMPLEMENTS"]
+
+
+def test_build_result_builder_enriches_model_scope_from_artifact_header():
+    data = {
+        "nodes": [
+            {
+                "label": "Model",
+                "properties": {
+                    "formulation_id": "mvt-threshold",
+                    "class_name": "MvtThresholdModel",
+                    "passed": True,
+                },
+                "natural_key": "formulation_id",
+            }
+        ],
+        "relations": [
+            {
+                "from_label": "Model",
+                "from_key_value": "mvt-threshold",
+                "to_label": "Formulation",
+                "to_key_value": "mvt-threshold",
+                "rel_type": "IMPLEMENTS",
+            }
+        ],
+        "facts": [],
+    }
+    source_text = "\n".join(
+        [
+            "## Builder artifact",
+            "Paradigm: optimal-foraging-theory",
+            "Formulation: mvt-threshold",
+            "",
+            "class MvtThresholdModel: ...",
+        ]
+    )
+
+    result = _build_result(data, "builder", "run-1", source_text=source_text)
+
+    model = next(node for node in result.nodes if node.label == "Model")
+    assert model.properties["paradigm_slug"] == "optimal-foraging-theory"
+    assert model.properties["formulation_id"] == "optimal-foraging-theory:mvt-threshold"
+    assert any(
+        node.label == "Formulation"
+        and node.properties["id"] == "optimal-foraging-theory:mvt-threshold"
+        for node in result.nodes
+    )
+    assert any(
+        rel.from_label == "Model"
+        and rel.rel_type == "IMPLEMENTS"
+        and rel.to_label == "Formulation"
+        and rel.to_key_value == "optimal-foraging-theory:mvt-threshold"
+        for rel in result.relations
+    )
 
 
 # ---------------------------------------------------------------------------

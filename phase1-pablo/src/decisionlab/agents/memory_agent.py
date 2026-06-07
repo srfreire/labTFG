@@ -15,11 +15,20 @@ from typing import TYPE_CHECKING
 
 from decisionlab.knowledge.canonicalize import canonicalize_extraction
 from decisionlab.knowledge.extraction import extract
-from decisionlab.knowledge.indexer import index_stage_output
-from decisionlab.knowledge.kg_health import repair_kg_health
+from decisionlab.knowledge.graph_review import review_written_graph
+from decisionlab.knowledge.ids import (
+    align_to_approved_formulations,
+    materialize_structural_relations,
+    normalize_extraction_ids,
+    prune_relationless_leaf_nodes,
+    prune_to_approved_context,
+    prune_unresolvable_relations,
+)
+from decisionlab.knowledge.kg_health import audit_kg_health
 from decisionlab.knowledge.kg_writer import populate_kg
 from decisionlab.knowledge.models import (
     KGHealthResult,
+    KGReviewResult,
     KGWriteResult,
     MemoryAgentResult,
     ResolutionResult,
@@ -38,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 EmitFn = Callable[[dict], Awaitable[None]]
 _EXTRACTION_TIMEOUT_SECONDS = float(
-    os.getenv("DECISIONLAB_MEMORY_EXTRACTION_TIMEOUT_SECONDS", "240")
+    os.getenv("DECISIONLAB_MEMORY_EXTRACTION_TIMEOUT_SECONDS", "900")
 )
 
 
@@ -83,6 +92,8 @@ class MemoryAgent:
         stage_output: str,
         run_id: str,
         emit: EmitFn | None = None,
+        approved_paradigms: list[str] | tuple[str, ...] | set[str] | None = None,
+        approved_specs: dict[str, list[str] | tuple[str, ...] | set[str]] | None = None,
     ) -> MemoryAgentResult:
         """Run the full memory pipeline for one stage's output.
 
@@ -151,13 +162,56 @@ class MemoryAgent:
                         "proceeding with raw extraction"
                     )
 
-            # Step 2: Parallel KG population + embedding/indexing
-            kg_result = await self._parallel_write(
-                extraction, stage, stage_output, run_id
+            # Step 1c: deterministic identity normalization and context pruning.
+            align_to_approved_formulations(
+                extraction,
+                approved_specs=approved_specs,
             )
-            kg_health = await self._repair_kg_health(extraction)
+            normalize_extraction_ids(extraction)
+            prune_to_approved_context(
+                extraction,
+                approved_paradigms=approved_paradigms,
+                approved_specs=approved_specs,
+            )
 
-            # Step 3: Conflict resolution + memory persistence
+            # Step 2: deterministic graph structure. This is not LLM review:
+            # it materializes ownership edges implied by scoped IDs/properties
+            # before Neo4j sees the batch.
+            normalize_extraction_ids(extraction)
+            before_prune = len(extraction.nodes)
+            prune_relationless_leaf_nodes(extraction)
+            pruned = before_prune - len(extraction.nodes)
+            if pruned:
+                logger.info(
+                    "Memory Agent [%s]: pruned %d relationless literature node(s)",
+                    stage,
+                    pruned,
+                )
+            before_relations = len(extraction.relations)
+            prune_unresolvable_relations(extraction)
+            pruned_relations = before_relations - len(extraction.relations)
+            if pruned_relations:
+                logger.info(
+                    "Memory Agent [%s]: pruned %d unresolvable relation(s)",
+                    stage,
+                    pruned_relations,
+                )
+            materialize_structural_relations(extraction)
+            prune_unresolvable_relations(extraction)
+
+            # Step 3: KG population. Fact vectors are indexed by the resolver
+            # after PG memory rows exist, so Qdrant and Postgres share ids.
+            kg_result = await self._write_kg(extraction)
+            kg_review = await self._review_graph(
+                stage=stage,
+                run_id=run_id,
+                stage_output=stage_output,
+                approved_paradigms=approved_paradigms,
+                approved_specs=approved_specs,
+            )
+            kg_health = await self._audit_kg_health(extraction)
+
+            # Step 4: Conflict resolution + memory persistence
             res_result = await self._resolve(extraction)
 
             await _emit_status("done")
@@ -172,11 +226,12 @@ class MemoryAgent:
                 duration_ms=int((time.monotonic() - t0) * 1000),
                 kg_errors=kg_result.errors,
                 kg_health=kg_health,
+                kg_review=kg_review,
             )
             logger.info(
                 "Memory Agent [%s]: %d nodes (+%d merged), %d relations, "
                 "%d facts stored, %d dups skipped, %d conflicts, %d KG errors, "
-                "%d health repairs — %dms",
+                "%d graph review corrections, %d health repairs — %dms",
                 stage,
                 result.nodes_created,
                 result.nodes_merged,
@@ -185,6 +240,7 @@ class MemoryAgent:
                 result.duplicates_skipped,
                 result.conflicts_resolved,
                 len(result.kg_errors),
+                kg_review.corrections_applied if kg_review else 0,
                 kg_health.inferred_relations_created if kg_health else 0,
                 result.duration_ms,
             )
@@ -197,74 +253,67 @@ class MemoryAgent:
 
     # -- internal helpers ----------------------------------------------------
 
-    async def _parallel_write(
+    async def _write_kg(
         self,
         extraction,
-        stage: str,
-        stage_output: str,
-        run_id: str,
     ) -> KGWriteResult:
-        """Run KG population and embedding/indexing in parallel.
-
-        Returns the KG result (zeroed if KG is unavailable or fails).
-        Indexing errors are logged but do not affect the return value.
-        """
+        """Run KG population, zeroing the result if KG is unavailable/fails."""
         do_kg = self._kg is not None
-        do_idx = self._vectors is not None and self._embeddings is not None
 
-        if not do_kg and not do_idx:
+        if not do_kg:
             return _zero_kg()
 
-        # Build named tasks so results can be identified without index tracking
-        coros: dict[str, asyncio.Task] = {}
-        if do_kg:
-            coros["kg"] = asyncio.create_task(
-                populate_kg(
-                    extraction,
-                    self._kg,
-                    db=self._db,
-                    embeddings=self._embeddings,
-                    vectors=self._vectors,
-                )
+        try:
+            return await populate_kg(
+                extraction,
+                self._kg,
+                db=self._db,
+                embeddings=self._embeddings,
+                vectors=self._vectors,
             )
-        if do_idx:
-            coros["idx"] = asyncio.create_task(
-                index_stage_output(
-                    stage,
-                    stage_output,
-                    extraction,
-                    self._embeddings,
-                    self._vectors,
-                    run_id,
-                )
+        except Exception as exc:
+            logger.error("KG population failed: %s", exc, exc_info=exc)
+            return _zero_kg()
+
+    async def _review_graph(
+        self,
+        *,
+        stage: str,
+        run_id: str,
+        stage_output: str,
+        approved_paradigms,
+        approved_specs,
+    ) -> KGReviewResult | None:
+        """Run post-write graph review against the persisted graph."""
+        if self._kg is None or self._db is None:
+            return None
+        try:
+            return await review_written_graph(
+                stage=stage,
+                run_id=run_id,
+                stage_output=stage_output,
+                kg=self._kg,
+                db=self._db,
+                client=self._client,
+                approved_paradigms=approved_paradigms,
+                approved_specs=approved_specs,
+            )
+        except Exception:
+            logger.exception("Memory Agent graph review failed")
+            return KGReviewResult(
+                corrections_applied=0,
+                failed=True,
+                error="graph review failed",
             )
 
-        results = await asyncio.gather(*coros.values(), return_exceptions=True)
-        named = dict(zip(coros, results, strict=False))
-
-        kg_result = _zero_kg()
-        if "kg" in named:
-            r = named["kg"]
-            if isinstance(r, BaseException):
-                logger.error("KG population failed: %s", r, exc_info=r)
-            else:
-                kg_result = r
-
-        if "idx" in named:
-            r = named["idx"]
-            if isinstance(r, BaseException):
-                logger.error("Indexing failed: %s", r, exc_info=r)
-
-        return kg_result
-
-    async def _repair_kg_health(self, extraction) -> KGHealthResult | None:
-        """Run the deterministic post-KG readability repair pass."""
+    async def _audit_kg_health(self, extraction) -> KGHealthResult | None:
+        """Run post-write KG readability audit without repairs."""
         if self._kg is None:
             return None
         try:
-            return await repair_kg_health(extraction, self._kg)
+            return await audit_kg_health(extraction, self._kg)
         except Exception:
-            logger.exception("Memory Agent KG health pass failed")
+            logger.exception("Memory Agent KG health audit failed")
             return None
 
     async def _resolve(self, extraction) -> ResolutionResult:

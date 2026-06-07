@@ -103,7 +103,7 @@ class _FakeMemoryAgent:
     def __init__(self, **kw):
         pass
 
-    async def run(self, stage: str, output: str, run_id: str, emit=None):
+    async def run(self, stage: str, output: str, run_id: str, emit=None, **_context):
         # Write distinctive nodes so the test can prove the integration
         # path actually executed. Slug includes run_id to dodge the
         # Paradigm.slug uniqueness constraint when multiple runs land in

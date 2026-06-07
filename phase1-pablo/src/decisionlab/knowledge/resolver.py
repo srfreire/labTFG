@@ -25,7 +25,7 @@ from decisionlab.knowledge.prompts import (
 )
 from decisionlab.structured import StructuredOutputError, call_structured
 from shared.pipeline_memories import (
-    create_memory,
+    create_memory_once,
     supersede_memory,
     update_confidence,
 )
@@ -35,9 +35,14 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from shared.embedding import EmbeddingService
+    from shared.models import PipelineMemory
     from shared.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+# Backwards-compatible module alias for tests and old patch points. This is
+# intentionally the idempotent helper, not the raw insert helper.
+create_memory = create_memory_once
 
 # Tiered model selection: importance scoring is mechanical 1–10 rating →
 # Haiku (knowledge_fast_model). Conflict classification needs to reason
@@ -142,6 +147,151 @@ async def _find_duplicates(
     ]
 
 
+async def _hydrate_live_candidates(
+    candidates: list[dict],
+    *,
+    run_id: uuid_mod.UUID | None,
+    db_session: AsyncSession,
+) -> list[dict]:
+    """Keep only candidates whose vector id maps to a live PG memory row."""
+    if not candidates:
+        return []
+
+    from sqlalchemy import select
+
+    from shared.models import PipelineMemory
+
+    ids: list[uuid_mod.UUID] = []
+    id_by_candidate: dict[int, uuid_mod.UUID] = {}
+    for idx, candidate in enumerate(candidates):
+        raw_id = candidate.get("payload", {}).get("entity_id") or candidate.get("id")
+        try:
+            memory_id = uuid_mod.UUID(str(raw_id))
+        except (TypeError, ValueError):
+            continue
+        ids.append(memory_id)
+        id_by_candidate[idx] = memory_id
+
+    if not ids:
+        return []
+
+    stmt = select(PipelineMemory).where(
+        PipelineMemory.id.in_(ids),
+        PipelineMemory.valid_to.is_(None),
+    )
+    rows = (await db_session.execute(stmt)).scalars().all()
+    by_id = {row.id: row for row in rows}
+
+    live: list[dict] = []
+    for idx, candidate in enumerate(candidates):
+        memory_id = id_by_candidate.get(idx)
+        if memory_id is None:
+            continue
+        memory = by_id.get(memory_id)
+        if memory is None:
+            logger.debug(
+                "Dropping orphan vector candidate without live PG row: %s", memory_id
+            )
+            continue
+        if run_id is not None and memory.run_id == run_id:
+            continue
+        live.append({**candidate, "id": str(memory.id), "memory": memory})
+
+    return live
+
+
+async def _index_pipeline_memory(
+    memory: PipelineMemory,
+    *,
+    embedding_service: EmbeddingService,
+    vector_store: VectorStore,
+    content: str | None = None,
+    namespace: str | None = None,
+    source_stage: str | None = None,
+    run_id: uuid_mod.UUID | str | None = None,
+    importance: float | None = None,
+) -> None:
+    """Upsert dense+sparse vectors using the PG memory id as Qdrant id."""
+    text = content if content is not None else str(getattr(memory, "content", ""))
+    vector = await embedding_service.embed_query(text)
+    created_at = getattr(memory, "created_at", None) or datetime.now(UTC)
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+    payload = {
+        "entity_id": str(memory.id),
+        "namespace": namespace or str(getattr(memory, "namespace", "")),
+        "source_stage": source_stage or str(getattr(memory, "source_stage", "")),
+        "source_kind": "pipeline",
+        "run_id": str(run_id if run_id is not None else getattr(memory, "run_id", "")),
+        "importance": (
+            importance if importance is not None else getattr(memory, "importance", 5.0)
+        ),
+        "created_at": created_at.isoformat(),
+        "text_preview": text[:200],
+    }
+    content_hash = getattr(memory, "content_hash", None)
+    if content_hash:
+        payload["content_hash"] = str(content_hash)
+    await vector_store.upsert_dense(
+        "memories_dense",
+        str(memory.id),
+        vector,
+        payload,
+    )
+    await vector_store.upsert_sparse(
+        "memories_sparse",
+        str(memory.id),
+        text,
+        payload,
+    )
+
+
+async def _create_or_reuse_fact_memory(
+    db_session: AsyncSession,
+    *,
+    content: str,
+    namespace: str,
+    memory_type: str,
+    source_stage: str,
+    run_id: uuid_mod.UUID,
+    importance: float,
+    confidence: float,
+    embedding_service: EmbeddingService,
+    vector_store: VectorStore,
+) -> bool:
+    """Persist a fact idempotently and index it under its PG id.
+
+    Returns True when a new row was inserted, False when an existing live row
+    was reused. Both paths upsert vectors so crash/resume after PG commit but
+    before Qdrant indexing self-heals on retry.
+    """
+    created_result = await create_memory(
+        db_session,
+        content=content,
+        namespace=namespace,
+        memory_type=memory_type,
+        source_stage=source_stage,
+        run_id=run_id,
+        importance=importance,
+        confidence=confidence,
+    )
+    if isinstance(created_result, tuple):
+        memory, created = created_result
+    else:
+        memory, created = created_result, True
+    await _index_pipeline_memory(
+        memory,
+        embedding_service=embedding_service,
+        vector_store=vector_store,
+        content=content,
+        namespace=namespace,
+        source_stage=source_stage,
+        run_id=run_id,
+        importance=importance,
+    )
+    return created
+
+
 class _ConflictClassification(BaseModel):
     classification: (
         str  # "DUPLICATE" | "CORROBORATION" | "ENRICHMENT" | "CONTRADICTION"
@@ -230,6 +380,8 @@ async def resolve_and_store(
     stage = extraction.stage
     run_id = extraction.run_id
     run_uuid = uuid_mod.UUID(run_id) if run_id else None
+    if run_uuid is None:
+        raise ValueError("resolve_and_store requires a UUID run_id")
 
     namespace = _STAGE_NAMESPACE.get(stage, "paradigm")
     memory_type = _STAGE_MEMORY_TYPE.get(stage, "semantic")
@@ -255,9 +407,14 @@ async def resolve_and_store(
             embedding_service,
             vector_store,
         )
+        candidates = await _hydrate_live_candidates(
+            candidates,
+            run_id=run_uuid,
+            db_session=db_session,
+        )
 
         if not candidates:
-            await create_memory(
+            created = await _create_or_reuse_fact_memory(
                 db_session,
                 content=fact,
                 namespace=namespace,
@@ -266,15 +423,23 @@ async def resolve_and_store(
                 run_id=run_uuid,
                 importance=importance,
                 confidence=confidence,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
             )
-            memories_created += 1
+            if created:
+                memories_created += 1
+            else:
+                duplicates_skipped += 1
             continue
 
         # Step 3: Conflict classification — fast-path obvious duplicates,
         # call Sonnet only on genuinely ambiguous matches.
         best = max(candidates, key=lambda c: c["score"])
         best_id = uuid_mod.UUID(best["id"])
-        existing_text = best["payload"].get("text_preview", "")
+        best_memory = best.get("memory")
+        existing_text = getattr(best_memory, "content", None) or best["payload"].get(
+            "text_preview", ""
+        )
 
         if _is_obvious_duplicate(best["score"], fact, existing_text):
             label = "DUPLICATE"
@@ -282,8 +447,12 @@ async def resolve_and_store(
         else:
             classification = await _classify_conflict(
                 existing_content=existing_text,
-                existing_stage=best["payload"].get("source_stage", "unknown"),
-                existing_timestamp=best["payload"].get("created_at", "unknown"),
+                existing_stage=getattr(best_memory, "source_stage", None)
+                or best["payload"].get("source_stage", "unknown"),
+                existing_timestamp=str(
+                    getattr(best_memory, "created_at", None)
+                    or best["payload"].get("created_at", "unknown")
+                ),
                 new_content=fact,
                 new_stage=stage,
                 client=client,
@@ -311,43 +480,22 @@ async def resolve_and_store(
                 importance=importance,
                 confidence=confidence,
             )
-            new_vector = await embedding_service.embed_query(merged)
-            # P3-002: payload does not carry `confidence` — Postgres is the
-            # single source of truth, batch-fetched at retrieval time.
-            enrichment_payload = {
-                "entity_id": str(new_mem.id),
-                "namespace": namespace,
-                "source_stage": stage,
-                "source_kind": "pipeline",
-                "run_id": run_id,
-                "importance": importance,
-                "created_at": datetime.now(UTC).isoformat(),
-                "text_preview": merged[:200],
-            }
-            await vector_store.upsert_dense(
-                "memories_dense",
-                str(new_mem.id),
-                new_vector,
-                enrichment_payload,
-            )
-            # Sync sparse channel: without this, BM25 search returns the
-            # OLD pre-enrichment text indefinitely while dense returns the
-            # merged content — the two channels drift, hybrid retrieval
-            # surfaces stale snippets, and KG truth diverges from what
-            # downstream agents read. Mirrors indexer.index_stage_output's
-            # paired upsert_dense / upsert_sparse pattern.
-            await vector_store.upsert_sparse(
-                "memories_sparse",
-                str(new_mem.id),
-                merged,
-                enrichment_payload,
+            await _index_pipeline_memory(
+                new_mem,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
+                content=merged,
+                namespace=namespace,
+                source_stage=stage,
+                run_id=run_uuid,
+                importance=importance,
             )
             enrichments += 1
 
         elif label == "CONTRADICTION":
-            old_content = best["payload"].get("text_preview", "?")
+            old_content = existing_text or "?"
             await update_confidence(db_session, best_id, contradict=True)
-            await supersede_memory(
+            new_mem = await supersede_memory(
                 db_session,
                 old_id=best_id,
                 new_content=fact,
@@ -358,12 +506,22 @@ async def resolve_and_store(
                 importance=importance,
                 confidence=confidence,
             )
-            await create_memory(
+            await _index_pipeline_memory(
+                new_mem,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
+                content=fact,
+                namespace=namespace,
+                source_stage=stage,
+                run_id=run_uuid,
+                importance=importance,
+            )
+            meta_content = (
+                f"Run {run_id} contradicted memory {best_id}: {old_content} → {fact}"
+            )
+            meta_result = await create_memory(
                 db_session,
-                content=(
-                    f"Run {run_id} contradicted memory {best_id}: "
-                    f"{old_content} → {fact}"
-                ),
+                content=meta_content,
                 namespace="meta",
                 memory_type="episodic",
                 source_stage="memory_agent",
@@ -371,13 +529,24 @@ async def resolve_and_store(
                 importance=3.0,
                 confidence=1.0,
             )
+            meta = meta_result[0] if isinstance(meta_result, tuple) else meta_result
+            await _index_pipeline_memory(
+                meta,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
+                content=meta_content,
+                namespace="meta",
+                source_stage="memory_agent",
+                run_id=run_uuid,
+                importance=3.0,
+            )
             contradictions += 1
 
         else:
             logger.warning(
                 "Unknown classification '%s' for fact -- storing as new", label
             )
-            await create_memory(
+            created = await _create_or_reuse_fact_memory(
                 db_session,
                 content=fact,
                 namespace=namespace,
@@ -386,8 +555,13 @@ async def resolve_and_store(
                 run_id=run_uuid,
                 importance=importance,
                 confidence=confidence,
+                embedding_service=embedding_service,
+                vector_store=vector_store,
             )
-            memories_created += 1
+            if created:
+                memories_created += 1
+            else:
+                duplicates_skipped += 1
 
     return ResolutionResult(
         memories_created=memories_created,

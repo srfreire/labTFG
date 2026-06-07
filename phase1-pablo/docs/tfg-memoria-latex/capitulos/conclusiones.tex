@@ -1,0 +1,63 @@
+\chapter{Conclusiones}
+
+\section{Conclusiones principales}
+
+El trabajo demuestra que es viable estructurar la generación de modelos de
+decisión como un pipeline de agentes especializados. La clave no es usar un
+modelo de lenguaje de forma monolítica, sino dividir el proceso en etapas con
+artefactos claros, revisión humana y validación ejecutable.
+
+Las contribuciones principales son:
+
+\begin{itemize}
+\item Un Router determinista que coordina investigación, formalización,
+razonamiento, construcción y memoria.
+\item Un flujo de artefactos persistente que permite reanudar ejecuciones y
+auditar decisiones.
+\item Un contrato de modelos autocontenidos compatible con simulación dinámica.
+\item Un sistema de memoria que combina PostgreSQL, MinIO, Neo4j y Qdrant.
+\item Un mecanismo de recuperación híbrida con búsqueda densa, BM25, grafo,
+fusión RRF y corrección tipo CRAG.
+\item Una separación clara entre creatividad del modelo, control de sistema y
+validación humana.
+\end{itemize}
+
+\section{Lecciones aprendidas}
+
+La primera lección es que la memoria debe tener criterio de entrada. Guardar todo
+lo que produce un modelo aumenta ruido y puede degradar ejecuciones futuras. Por
+eso la arquitectura almacena conocimiento después de revisión.
+
+La segunda es que la recuperación no puede depender de un único método. En un
+dominio científico, nombres exactos, símbolos, autores y relaciones importan
+tanto como similitud semántica. De ahí la combinación de BM25, embeddings y
+grafo.
+
+La tercera es que el código generado necesita pruebas, no solo validación textual.
+Un modelo puede producir una explicación convincente y, aun así, escribir una
+implementación que no respete el contrato de simulación.
+
+\section{Trabajo futuro}
+
+Las líneas futuras más relevantes son:
+
+\begin{itemize}
+\item Ampliar el catálogo de paradigmas de decisión y añadir referencias
+específicas por experimento.
+\item Mejorar métricas cuantitativas de calidad: precisión de slugs,
+formulaciones válidas, tasa de tests superados y utilidad de memoria recuperada.
+\item Añadir comparaciones sistemáticas entre modelos generados en entornos
+equivalentes.
+\item Extender la memoria con consultas temporales más ricas sobre la evolución
+de formulaciones y modelos.
+\item Integrar mejor la explicación de decisiones del modelo en los informes de
+la fase 2.
+\end{itemize}
+
+\section{Cierre}
+
+La fase 1 aporta la capa generativa del laboratorio virtual. Su valor está en
+convertir conocimiento científico en modelos ejecutables manteniendo control
+sobre las decisiones intermedias. Esta combinación de agentes, memoria y pruebas
+ofrece una base sólida para estudiar paradigmas de decisión dentro de un entorno
+de simulación reproducible.

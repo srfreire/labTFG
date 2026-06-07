@@ -28,7 +28,7 @@ import argparse
 import asyncio
 import logging
 
-import shared
+from shared.services import init_services, shutdown_services
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,11 @@ DROP_COLLECTIONS = (
 )
 
 
-async def _drop(*, dry_run: bool) -> None:
-    if shared.vectors is None:
-        raise RuntimeError("shared.init() did not bring up the VectorStore")
+async def _drop(services, *, dry_run: bool) -> None:
+    if services.vectors is None:
+        raise RuntimeError("init_services() did not bring up the VectorStore")
 
-    client = shared.vectors._c()
+    client = services.vectors._c()
     existing = {c.name for c in (await client.get_collections()).collections}
 
     for name in DROP_COLLECTIONS:
@@ -59,11 +59,11 @@ async def _drop(*, dry_run: bool) -> None:
 
 
 async def _main(*, dry_run: bool) -> None:
-    await shared.init()
+    services = await init_services()
     try:
-        await _drop(dry_run=dry_run)
+        await _drop(services, dry_run=dry_run)
     finally:
-        await shared.shutdown()
+        await shutdown_services(services)
 
 
 def _parse_args() -> argparse.Namespace:

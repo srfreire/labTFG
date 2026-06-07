@@ -7,17 +7,32 @@ have their own helper in :mod:`shared.simulation_observations`.
 
 from __future__ import annotations
 
+import hashlib
+import inspect
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.models import PipelineMemory
 
 _CONFIDENCE_CAP = 1.0
 _CONFIDENCE_FLOOR = 0.1
+_NORMALIZE_RE = re.compile(r"\s+")
+
+
+def normalize_memory_content(content: str) -> str:
+    """Return the canonical text form used for fact idempotency."""
+    return _NORMALIZE_RE.sub(" ", content.strip().lower())
+
+
+def memory_content_hash(content: str) -> str:
+    """Stable hash for a normalized memory fact."""
+    return hashlib.md5(normalize_memory_content(content).encode()).hexdigest()
 
 
 async def update_memory_confidence(
@@ -52,10 +67,74 @@ async def update_memory_confidence(
 
 async def create_memory(session: AsyncSession, **kwargs: object) -> PipelineMemory:
     """Create and persist a new PipelineMemory row."""
+    if kwargs.get("content_hash") is None and isinstance(kwargs.get("content"), str):
+        kwargs["content_hash"] = memory_content_hash(kwargs["content"])
     memory = PipelineMemory(**kwargs)
     session.add(memory)
     await session.flush()
     return memory
+
+
+async def create_memory_once(
+    session: AsyncSession,
+    **kwargs: object,
+) -> tuple[PipelineMemory, bool]:
+    """Create a live memory row, or return the existing same-run fact.
+
+    Returns ``(memory, created)``. The database partial unique index owns the
+    idempotency invariant, so retry/concurrent runs cannot create duplicate
+    live facts for the same run/stage/namespace/type/content hash.
+    """
+    content = kwargs.get("content")
+    if not isinstance(content, str):
+        raise TypeError("create_memory_once requires string content")
+
+    content_hash = kwargs.get("content_hash")
+    if content_hash is None:
+        content_hash = memory_content_hash(content)
+        kwargs["content_hash"] = content_hash
+
+    memory_id = kwargs.get("id") or uuid.uuid4()
+    kwargs["id"] = memory_id
+
+    stmt = (
+        pg_insert(PipelineMemory)
+        .values(**kwargs)
+        .on_conflict_do_nothing(
+            index_elements=[
+                PipelineMemory.run_id,
+                PipelineMemory.source_stage,
+                PipelineMemory.namespace,
+                PipelineMemory.memory_type,
+                PipelineMemory.content_hash,
+            ],
+            index_where=and_(
+                PipelineMemory.valid_to.is_(None),
+                PipelineMemory.content_hash.is_not(None),
+            ),
+        )
+        .returning(PipelineMemory.id)
+    )
+    result = await session.execute(stmt)
+    inserted_id = result.scalar_one_or_none()
+
+    if inserted_id is not None:
+        await session.flush()
+        created = await session.get(PipelineMemory, inserted_id)
+        if created is None:  # defensive; returning id from INSERT should exist
+            raise RuntimeError(f"inserted PipelineMemory {inserted_id} not found")
+        return created, True
+
+    existing_stmt = select(PipelineMemory).where(
+        PipelineMemory.run_id == kwargs["run_id"],
+        PipelineMemory.source_stage == kwargs["source_stage"],
+        PipelineMemory.namespace == kwargs["namespace"],
+        PipelineMemory.memory_type == kwargs["memory_type"],
+        PipelineMemory.content_hash == content_hash,
+        PipelineMemory.valid_to.is_(None),
+    )
+    existing = (await session.execute(existing_stmt)).scalar_one()
+    return existing, False
 
 
 async def get_memories(
@@ -101,16 +180,25 @@ async def touch_memory(
     stmt = (
         update(PipelineMemory)
         .where(PipelineMemory.id.in_(ids))
+        .where(PipelineMemory.valid_to.is_(None))
         .values(
             last_accessed_at=func.now(),
             access_count=PipelineMemory.access_count + 1,
         )
+        .returning(PipelineMemory.id)
     )
-    await session.execute(stmt)
-    for mid in ids:
+    result = await session.execute(stmt)
+    scalars = result.scalars()
+    if inspect.isawaitable(scalars):
+        scalars = await scalars
+    rows = scalars.all()
+    if inspect.isawaitable(rows):
+        rows = await rows
+    touched_ids = list(rows)
+    for mid in touched_ids:
         await update_memory_confidence(session, mid, delta=0.02)
     await session.flush()
-    return len(ids)
+    return len(touched_ids)
 
 
 async def supersede_memory(
@@ -120,6 +208,8 @@ async def supersede_memory(
     **kwargs: object,
 ) -> PipelineMemory:
     """Mark an existing memory as superseded and create a replacement."""
+    if kwargs.get("content_hash") is None:
+        kwargs["content_hash"] = memory_content_hash(new_content)
     new_memory = PipelineMemory(content=new_content, **kwargs)
     session.add(new_memory)
     await session.flush()

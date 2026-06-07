@@ -10,9 +10,17 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from decisionlab.knowledge.ids import (
+    normalize_extraction_ids,
+    scoped_formulation_id,
+    scoped_parameter_id,
+    scoped_variable_id,
+    split_scoped_id,
+)
 from decisionlab.knowledge.models import ExtractionResult, KGWriteResult
 from decisionlab.tools.reports import slugify
 from shared.knowledge_graph import KG_RELATION_NAMESPACE, KnowledgeGraph
+from shared.pipeline_memories import memory_content_hash
 
 if TYPE_CHECKING:
     from shared.database import DatabaseService
@@ -99,13 +107,18 @@ def _relation_content(
     rel_type: str,
     to_label: str,
     to_key_value: str | int,
+    semantic_props: dict | None = None,
 ) -> str:
     """Stable text encoding of a relation identity triple.
 
     Used as ``pipeline_memories.content`` so the row is human-readable in
     SQL inspection and survives the JSONB round-trip without ambiguity.
     """
-    return f"{from_label}.{from_key_value} -[{rel_type}]-> {to_label}.{to_key_value}"
+    base = f"{from_label}.{from_key_value} -[{rel_type}]-> {to_label}.{to_key_value}"
+    if not semantic_props:
+        return base
+    props = json.dumps(semantic_props, sort_keys=True, ensure_ascii=False, default=str)
+    return f"{base} {props}"
 
 
 async def _create_relation_memory(
@@ -129,6 +142,7 @@ async def _create_relation_memory(
         return None
 
     new_id = uuid.uuid4()
+    content_hash = memory_content_hash(content)
     naive_valid_from = (
         valid_from.replace(tzinfo=None) if valid_from.tzinfo is not None else valid_from
     )
@@ -140,15 +154,17 @@ async def _create_relation_memory(
             await session.execute(
                 sql_text(
                     "INSERT INTO pipeline_memories "
-                    "(id, content, namespace, memory_type, source_stage, "
+                    "(id, content, content_hash, namespace, memory_type, source_stage, "
                     "run_id, importance, confidence, valid_from, metadata) "
-                    "VALUES (:id, :content, :namespace, :memory_type, :stage, "
+                    "VALUES (:id, :content, :content_hash, :namespace, "
+                    ":memory_type, :stage, "
                     ":run_id, :importance, :confidence, :valid_from, "
                     "CAST(:metadata AS JSONB))"
                 ),
                 {
                     "id": new_id,
                     "content": content,
+                    "content_hash": content_hash,
                     "namespace": KG_RELATION_NAMESPACE,
                     "memory_type": "semantic",
                     "stage": stage[:100] if stage else "kg_writer",
@@ -162,12 +178,68 @@ async def _create_relation_memory(
             await session.commit()
         return new_id
     except Exception as exc:
+        reused = await _fetch_existing_relation_memory_id(
+            run_id=run_id,
+            stage=stage,
+            content_hash=content_hash,
+            db=db,
+        )
+        if reused is not None:
+            return reused
         logger.warning(
             "kg_writer: pipeline_memories insert failed (non-fatal) "
             "content=%r run_id=%s: %s",
             content,
             run_id,
             exc,
+        )
+        return None
+
+
+async def _fetch_existing_relation_memory_id(
+    *,
+    run_id: uuid.UUID,
+    stage: str,
+    content_hash: str,
+    db: DatabaseService | None,
+) -> uuid.UUID | None:
+    """Return an existing live relation-memory id for an idempotent insert."""
+    if db is None:
+        return None
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        async with db.get_session() as session:
+            row = (
+                await session.execute(
+                    sql_text(
+                        "SELECT id FROM pipeline_memories "
+                        "WHERE run_id = :run_id "
+                        "  AND source_stage = :stage "
+                        "  AND namespace = :namespace "
+                        "  AND memory_type = :memory_type "
+                        "  AND content_hash = :content_hash "
+                        "  AND valid_to IS NULL "
+                        "ORDER BY created_at ASC "
+                        "LIMIT 1"
+                    ),
+                    {
+                        "run_id": run_id,
+                        "stage": stage[:100] if stage else "kg_writer",
+                        "namespace": KG_RELATION_NAMESPACE,
+                        "memory_type": "semantic",
+                        "content_hash": content_hash,
+                    },
+                )
+            ).first()
+            if row is None:
+                return None
+            return uuid.UUID(str(row.id))
+    except Exception:
+        logger.debug(
+            "kg_writer: existing relation-memory lookup failed",
+            exc_info=True,
         )
         return None
 
@@ -302,11 +374,19 @@ _SAFE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 # Hard ceiling on natural-key length. Real slugs/names sit well under this;
 # anything longer is almost certainly a hash, full statement, or LLM blob
 # accidentally promoted to a key.
-_MAX_KEY_VALUE_LEN = 80
+_MAX_KEY_VALUE_LEN = 160
 
 # Labels whose natural key is a human-readable identifier (slug, name, id).
 _SLUG_LIKE_LABELS = frozenset(
-    {"Paradigm", "Variable", "Postulate", "Formulation", "Model", "BrainRegion"}
+    {
+        "Paradigm",
+        "Variable",
+        "Postulate",
+        "Formulation",
+        "Model",
+        "Parameter",
+        "BrainRegion",
+    }
 )
 
 # Relation properties that are temporal metadata — excluded from content comparison.
@@ -323,7 +403,20 @@ _TEMPORAL_KEYS = frozenset(
         "confidence",
     }
 )
+_RELATION_PROVENANCE_KEYS = frozenset(
+    {
+        "source",
+        "source_stage",
+        "reason",
+        "evidence",
+        "identity_hash",
+    }
+)
+_RELATION_IDENTITY_IGNORED_KEYS = _TEMPORAL_KEYS | _RELATION_PROVENANCE_KEYS
 _MISSING = object()
+_NODE_LIFECYCLE_KEYS = frozenset(
+    {"created_at", "updated_at", "last_run_at", "run_count", "embedding"}
+)
 
 # Property names tried, in priority order, when the LLM-declared natural_key is
 # missing from `properties`. Covers the common identifier vocabulary.
@@ -350,13 +443,133 @@ _ENDPOINT_LOOKUP_PROPS: dict[str, tuple[tuple[str, str], ...]] = {
         ("latex", "latex"),
     ),
     "Parameter": (
+        ("id", "id"),
+        ("display_name", "id"),
+        ("symbol", "id"),
+        ("name", "id"),
         ("display_name", "name"),
         ("symbol", "name"),
         ("name", "name"),
     ),
+    "Formulation": (("id", "id"), ("local_id", "id"), ("name", "id")),
     "Model": (("formulation_id", "formulation_id"),),
 }
 _EndpointMap = dict[tuple[str, str], tuple[str, object] | None]
+
+
+def _node_create_props(properties: dict, *, now: str) -> dict:
+    """Properties for a newly-created node.
+
+    Incoming lifecycle-ish values are ignored so a stale extraction cannot set
+    timestamps/counts. Neo4j's MERGE pattern still writes the natural key.
+    """
+    semantic_props = _sanitize_neo4j_props(
+        {k: v for k, v in properties.items() if k not in _NODE_LIFECYCLE_KEYS}
+    )
+    return {
+        **semantic_props,
+        "created_at": now,
+        "run_count": 1,
+        "last_run_at": now,
+    }
+
+
+def _sanitize_neo4j_props(properties: dict) -> dict:
+    """Return properties Neo4j can store without dropping the whole entity."""
+    sanitized: dict = {}
+    for key, value in properties.items():
+        clean = _sanitize_neo4j_value(value)
+        if clean is _DROP_PROPERTY:
+            continue
+        sanitized[key] = clean
+    return sanitized
+
+
+def _relation_semantic_props(properties: dict) -> dict:
+    """Properties that change the meaning/version of a relation."""
+    return _sanitize_neo4j_props(
+        {
+            k: v
+            for k, v in properties.items()
+            if k not in _RELATION_IDENTITY_IGNORED_KEYS
+        }
+    )
+
+
+def _relation_identity_hash(
+    *,
+    from_label: str,
+    from_value: object,
+    rel_type: str,
+    to_label: str,
+    to_value: object,
+    semantic_props: dict,
+) -> str:
+    payload = {
+        "from_label": from_label,
+        "from_value": str(from_value),
+        "rel_type": rel_type,
+        "to_label": to_label,
+        "to_value": str(to_value),
+        "semantic_props": semantic_props,
+    }
+    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha1(encoded.encode("utf-8")).hexdigest()
+
+
+_DROP_PROPERTY = object()
+
+
+def _sanitize_neo4j_value(value: object) -> object:
+    if value is None:
+        return _DROP_PROPERTY
+    if isinstance(value, str | bool | int | float):
+        return value
+    if isinstance(value, list | tuple | set):
+        cleaned = [
+            item
+            for raw_item in value
+            if (item := _sanitize_neo4j_scalar(raw_item)) is not _DROP_PROPERTY
+        ]
+        return cleaned
+    return _DROP_PROPERTY
+
+
+def _sanitize_neo4j_scalar(value: object) -> object:
+    if value is None:
+        return _DROP_PROPERTY
+    if isinstance(value, str | bool | int | float):
+        return value
+    return _DROP_PROPERTY
+
+
+def _node_match_semantic_props(properties: dict) -> dict:
+    """Safe semantic props that may be filled if absent on an existing node.
+
+    Existing semantic properties are deliberately not overwritten. The Cypher
+    generated from this dict uses ``coalesce(n.key, value)``.
+    """
+    return _sanitize_neo4j_props(
+        {
+            k: v
+            for k, v in properties.items()
+            if isinstance(k, str)
+            and k not in _NODE_LIFECYCLE_KEYS
+            and _SAFE_IDENT.match(k)
+            and v is not None
+        }
+    )
+
+
+def _node_match_set_clause(properties: dict) -> tuple[str, dict]:
+    """Return additional ON MATCH SET clauses + params for missing props."""
+    clauses: list[str] = []
+    params: dict = {}
+    for idx, key in enumerate(sorted(properties)):
+        param_name = f"match_prop_{idx}"
+        clauses.append(f"n.`{key}` = coalesce(n.`{key}`, ${param_name})")
+        params[param_name] = properties[key]
+    return ", ".join(clauses), params
 
 
 def _validate_natural_key(
@@ -419,22 +632,85 @@ def _resolve_natural_key(node, kg=None) -> tuple[str, object] | None:
     something to bind to. Returning None means the node has neither a label
     nor any property to hash — effectively unrecoverable.
 
-    Variable nodes get a composite ``id = {paradigm_slug}:{slugify(name)}``
-    so the same name under two paradigms cannot collide. Bypasses the
-    schema/declared/fallback chain entirely: the canonical id is always
-    derived here, even if ``id`` was already set on the incoming node.
+    Scoped labels bypass the schema/declared/fallback chain. Their canonical
+    IDs are always derived here, even if an incoming extraction carried a stale
+    local key.
     """
     if node.label == "Variable":
-        name = node.properties.get("name") or ""
-        paradigm = node.properties.get("paradigm_slug") or ""
-        slug_name = slugify(name) if isinstance(name, str) else ""
-        if not slug_name:
+        name = node.properties.get("name")
+        if not isinstance(name, str):
             return None
-        if paradigm:
-            return ("id", f"{slugify(paradigm)}:{slug_name}")
-        # Orphan: still scope it under a fixed namespace so it can't collide
-        # with a real paradigm-scoped variable.
-        return ("id", f"orphan:{slug_name}")
+        variable_id = scoped_variable_id(
+            name,
+            paradigm_slug=node.properties.get("paradigm_slug"),
+            formulation_id=node.properties.get("formulation_id"),
+        )
+        if not variable_id:
+            return None
+        _scope, local_id = split_scoped_id(variable_id)
+        if local_id.startswith("h-"):
+            return None
+        formulation_id = node.properties.get("formulation_id")
+        if formulation_id:
+            scoped_form_id, local_formulation_id = scoped_formulation_id(
+                formulation_id,
+                paradigm_slug=node.properties.get("paradigm_slug"),
+            )
+            if scoped_form_id:
+                node.properties["formulation_id"] = scoped_form_id
+                node.properties.setdefault("local_formulation_id", local_formulation_id)
+        node.properties["id"] = variable_id
+        node.properties.setdefault("local_id", local_id)
+        return ("id", variable_id)
+
+    if node.label == "Formulation":
+        scoped_id, local_id = scoped_formulation_id(
+            node.properties.get("id") or node.properties.get("formulation_id"),
+            paradigm_slug=node.properties.get("paradigm_slug"),
+            name=node.properties.get("name"),
+        )
+        if not scoped_id:
+            return None
+        node.properties["id"] = scoped_id
+        node.properties.setdefault("local_id", local_id)
+        return ("id", scoped_id)
+
+    if node.label == "Model":
+        formulation_id = node.properties.get("formulation_id")
+        if formulation_id:
+            scoped_id, local_id = scoped_formulation_id(
+                formulation_id,
+                paradigm_slug=node.properties.get("paradigm_slug"),
+            )
+            if not scoped_id:
+                return None
+            node.properties["formulation_id"] = scoped_id
+            node.properties.setdefault("local_formulation_id", local_id)
+            node.properties.setdefault("id", scoped_id)
+            return ("formulation_id", scoped_id)
+
+    if node.label == "Parameter":
+        formulation_id = node.properties.get("formulation_id")
+        if formulation_id:
+            scoped_id, local_id = scoped_formulation_id(
+                formulation_id,
+                paradigm_slug=node.properties.get("paradigm_slug"),
+            )
+            if not scoped_id:
+                return None
+            node.properties["formulation_id"] = scoped_id
+            node.properties.setdefault("local_formulation_id", local_id)
+        param_id = scoped_parameter_id(
+            node.properties.get("name")
+            or node.properties.get("symbol")
+            or node.properties.get("display_name"),
+            formulation_id=node.properties.get("formulation_id"),
+            paradigm_slug=node.properties.get("paradigm_slug"),
+        )
+        if not param_id:
+            return None
+        node.properties["id"] = param_id
+        return ("id", param_id)
 
     schema_key: str | None = None
     if kg is not None:
@@ -564,6 +840,114 @@ def _register_endpoint_aliases(
             )
 
 
+async def _resolve_orphan_formulation_ids(
+    extraction: ExtractionResult,
+    kg: KnowledgeGraph,
+) -> None:
+    """Attach local builder/formulation IDs to existing scoped KG IDs.
+
+    Artifact IDs are intentionally local because they double as filenames.
+    Neo4j IDs are label-wide, so the KG representation scopes Formulations as
+    ``<paradigm>:<local>``. If an incoming batch lacks the paradigm and exactly
+    one existing Formulation has that local id, use the existing global id.
+    Ambiguous or missing matches stay under ``orphan:`` and fail visibly later.
+    """
+    orphan_ids = sorted(_collect_orphan_formulation_ids(extraction))
+    if not orphan_ids:
+        return
+
+    aliases: dict[str, str] = {}
+    for orphan_id in orphan_ids:
+        _scope, local_id = split_scoped_id(orphan_id)
+        if not local_id:
+            continue
+        resolved = await _lookup_unique_formulation_id_by_local_id(kg, local_id)
+        if resolved is None or resolved == orphan_id:
+            continue
+        aliases[orphan_id] = resolved
+        aliases[local_id] = resolved
+
+    if not aliases:
+        return
+
+    for node in extraction.nodes:
+        props = node.properties
+        if node.label == "Formulation":
+            raw_id = props.get("id")
+            if isinstance(raw_id, str) and raw_id in aliases:
+                props["id"] = aliases[raw_id]
+                scope, local_id = split_scoped_id(aliases[raw_id])
+                if scope:
+                    props["paradigm_slug"] = scope
+                props.setdefault("local_id", local_id)
+
+        raw_fid = props.get("formulation_id")
+        if isinstance(raw_fid, str) and raw_fid in aliases:
+            props["formulation_id"] = aliases[raw_fid]
+            scope, local_id = split_scoped_id(aliases[raw_fid])
+            if scope:
+                props["paradigm_slug"] = scope
+            props.setdefault("local_formulation_id", local_id)
+            if node.label == "Model" and props.get("id") == raw_fid:
+                props["id"] = aliases[raw_fid]
+
+    for rel in extraction.relations:
+        if rel.from_key_value in aliases:
+            rel.from_key_value = aliases[rel.from_key_value]
+        if rel.to_key_value in aliases:
+            rel.to_key_value = aliases[rel.to_key_value]
+
+    normalize_extraction_ids(extraction)
+
+
+def _collect_orphan_formulation_ids(extraction: ExtractionResult) -> set[str]:
+    values: set[str] = set()
+
+    def add(value: object) -> None:
+        if not isinstance(value, str):
+            return
+        scope, local_id = split_scoped_id(value)
+        if scope == "orphan" and local_id:
+            values.add(value)
+
+    for node in extraction.nodes:
+        if node.label == "Formulation":
+            add(node.properties.get("id"))
+        if node.label in {"Equation", "Variable", "Parameter", "Model"}:
+            add(node.properties.get("formulation_id"))
+
+    for rel in extraction.relations:
+        if rel.from_label in {"Formulation", "Model"}:
+            add(rel.from_key_value)
+        if rel.to_label == "Formulation":
+            add(rel.to_key_value)
+
+    return values
+
+
+async def _lookup_unique_formulation_id_by_local_id(
+    kg: KnowledgeGraph,
+    local_id: str,
+) -> str | None:
+    rows = await kg.query(
+        "MATCH (f:Formulation) "
+        "WHERE f.local_id = $local_id "
+        "   OR f.id = $local_id "
+        "   OR f.id ENDS WITH $scoped_suffix "
+        "RETURN f.id AS id "
+        "LIMIT 2",
+        {"local_id": local_id, "scoped_suffix": f":{local_id}"},
+    )
+    ids = {
+        row.get("id")
+        for row in rows
+        if isinstance(row.get("id"), str) and row.get("id")
+    }
+    if len(ids) == 1:
+        return next(iter(ids))
+    return None
+
+
 async def populate_kg(
     extraction: ExtractionResult,
     kg: KnowledgeGraph,
@@ -586,6 +970,9 @@ async def populate_kg(
     non-temporal properties, it is superseded (``valid_to`` set) and a
     new one created.
     """
+    normalize_extraction_ids(extraction)
+    await _resolve_orphan_formulation_ids(extraction, kg)
+
     now = datetime.now(UTC).isoformat()
     run_id = extraction.run_id
 
@@ -657,19 +1044,23 @@ async def populate_kg(
             # interleave reads — the loser retries the whole tx work fn.
             # Cross-pipeline concurrent write throughput is single-digit
             # in this project, so the simple `coalesce(...) + 1` is safe.
-            create_props = {
-                **{k: v for k, v in node.properties.items() if k != "updated_at"},
-                "created_at": now,
-                "run_count": 1,
-                "last_run_at": now,
-            }
-            update_props = {**node.properties, "updated_at": now, "last_run_at": now}
+            create_props = _node_create_props(node.properties, now=now)
+            match_props = _node_match_semantic_props(node.properties)
+            semantic_set_clause, semantic_set_params = _node_match_set_clause(
+                match_props
+            )
+            match_set_clause = (
+                "n.updated_at = $now, "
+                "n.last_run_at = $now, "
+                "n.run_count = coalesce(n.run_count, 0) + 1"
+            )
+            if semantic_set_clause:
+                match_set_clause = f"{match_set_clause}, {semantic_set_clause}"
 
             cypher = (
                 f"MERGE (n:{node.label} {{{key_name}: $key_value}}) "
                 f"ON CREATE SET n += $create_props "
-                f"ON MATCH SET n += $update_props, "
-                f"n.run_count = coalesce(n.run_count, 0) + 1 "
+                f"ON MATCH SET {match_set_clause} "
                 f"RETURN n.updated_at IS NULL AS was_created"
             )
             result = await tx.run(
@@ -677,7 +1068,9 @@ async def populate_kg(
                 {
                     "key_value": key_value,
                     "create_props": create_props,
-                    "update_props": update_props,
+                    "match_props": match_props,
+                    "now": now,
+                    **semantic_set_params,
                 },
             )
             return await result.single()
@@ -757,12 +1150,14 @@ async def populate_kg(
             rel.from_key_value,
             endpoint_key_map,
             kg,
+            key_name=rel.from_key,
         )
         to_endpoint = await _resolve_endpoint(
             rel.to_label,
             rel.to_key_value,
             endpoint_key_map,
             kg,
+            key_name=rel.to_key,
         )
         if from_endpoint is None or to_endpoint is None:
             errors.append(
@@ -786,16 +1181,16 @@ async def populate_kg(
             rel_type=rel.rel_type,
         )
 
-        new_content_props = {
-            k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS
-        }
+        stored_relation_props = _sanitize_neo4j_props(
+            {k: v for k, v in rel.properties.items() if k not in _TEMPORAL_KEYS}
+        )
+        new_semantic_props = _relation_semantic_props(stored_relation_props)
 
         # Idempotency: if any existing relation has the same content (modulo
-        # temporal/memory_id/confidence), skip without writing. Works in
-        # both PG-available and PG-unavailable modes.
+        # temporal/provenance metadata), skip without writing. Works in both
+        # PG-available and PG-unavailable modes.
         if any(
-            {k: v for k, v in er["props"].items() if k not in _TEMPORAL_KEYS}
-            == new_content_props
+            _relation_semantic_props(er["props"]) == new_semantic_props
             for er in existing_rels
         ):
             continue
@@ -826,17 +1221,27 @@ async def populate_kg(
                     rel_type=rel.rel_type,
                     to_label=rel.to_label,
                     to_key_value=to_value,
+                    semantic_props=new_semantic_props,
                 ),
                 confidence=relation_confidence,
                 importance=stage_importance,
-                properties=new_content_props,
+                properties=stored_relation_props,
                 valid_from=valid_from_dt,
                 db=db,
             )
 
         # Step 3: create the Neo4j relation. Identity props + memory_id
         # (when present); no temporal metadata.
-        kg_props: dict = dict(new_content_props)
+        identity_hash = _relation_identity_hash(
+            from_label=rel.from_label,
+            from_value=from_value,
+            rel_type=rel.rel_type,
+            to_label=rel.to_label,
+            to_value=to_value,
+            semantic_props=new_semantic_props,
+        )
+        kg_props: dict = dict(stored_relation_props)
+        kg_props["identity_hash"] = identity_hash
         if new_memory_id is not None:
             kg_props["memory_id"] = str(new_memory_id)
 
@@ -848,23 +1253,34 @@ async def populate_kg(
             to_key=to_key,
             to_value=to_value,
             kg_props=kg_props,
+            identity_hash=identity_hash,
         ):
-            create_cypher = (
+            marker = str(uuid.uuid4())
+            memory_id = kg_props.get("memory_id")
+            merge_cypher = (
                 f"MATCH (a:{rel.from_label} {{{from_key}: $from_val}}), "
                 f"(b:{rel.to_label} {{{to_key}: $to_val}}) "
-                f"CREATE (a)-[r:{rel.rel_type} $props]->(b) "
-                f"RETURN elementId(r) AS rid"
+                f"MERGE (a)-[r:{rel.rel_type} {{identity_hash: $identity_hash}}]->(b) "
+                "ON CREATE SET r += $props, r._merge_marker = $marker "
+                "WITH r, coalesce(r._merge_marker, '') = $marker AS created "
+                "REMOVE r._merge_marker "
+                "RETURN elementId(r) AS rid, created"
             )
-            create_result = await tx.run(
-                create_cypher,
+            merge_result = await tx.run(
+                merge_cypher,
                 {
                     "from_val": from_value,
                     "to_val": to_value,
                     "props": kg_props,
+                    "identity_hash": identity_hash,
+                    "marker": marker,
+                    "memory_id": memory_id,
                 },
             )
-            create_record = await create_result.single()
-            return "missing_endpoint" if create_record is None else "created"
+            merge_record = await merge_result.single()
+            if merge_record is None:
+                return "missing_endpoint"
+            return "created" if merge_record["created"] else "merged"
 
         try:
             outcome = await kg.execute_write(_rel_work)
@@ -892,6 +1308,10 @@ async def populate_kg(
                 f"{rel.to_label}.{to_key}={to_value!r} "
                 f"(from {rel.to_key_value!r})"
             )
+            if new_memory_id is not None:
+                await _close_memory(new_memory_id, valid_to=valid_from_dt, db=db)
+            continue
+        if outcome == "merged":
             if new_memory_id is not None:
                 await _close_memory(new_memory_id, valid_to=valid_from_dt, db=db)
             continue
@@ -949,6 +1369,8 @@ async def _resolve_endpoint(
     key_value: str,
     endpoint_key_map: _EndpointMap,
     kg: KnowledgeGraph,
+    *,
+    key_name: str | None = None,
 ) -> tuple[str, object] | None:
     """Determine which Neo4j property/value to match a relation endpoint on.
 
@@ -958,6 +1380,11 @@ async def _resolve_endpoint(
     nodes for labels with known display/canonical key pairs. If no alias is
     found, falls back to the schema's unique key for cross-extraction references.
     """
+    if key_name:
+        if not _SAFE_IDENT.match(key_name):
+            return None
+        return key_name, key_value
+
     lookup_key = (label, str(key_value))
     mapped = endpoint_key_map.get(lookup_key, _MISSING)
     if mapped is None:

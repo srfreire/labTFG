@@ -263,8 +263,7 @@ async def canonicalize_extraction(
         for n in new_paradigms:
             minted = slugify(n.properties.get("name", "")) or "unnamed"
             n.properties["slug"] = minted
-            if n.natural_key == CANONICAL_NEW:
-                n.natural_key = minted
+            n.natural_key = "slug"
         return extraction
 
     if len(new_paradigms) == 1:
@@ -277,8 +276,7 @@ async def canonicalize_extraction(
             client=client,
         )
         p.properties["slug"] = canonical
-        if p.natural_key == CANONICAL_NEW:
-            p.natural_key = canonical
+        p.natural_key = "slug"
         return _remap_new_to_canonical(extraction, canonical)
 
     # No ``__NEW__`` Paradigm but Variables/Postulates carry
@@ -312,8 +310,7 @@ def _remap_new_to_canonical(
             if isinstance(pid, str) and pid.startswith(f"{CANONICAL_NEW}:"):
                 new_id = canonical + pid[len(CANONICAL_NEW) :]
                 n.properties["id"] = new_id
-                if n.natural_key == pid:
-                    n.natural_key = new_id
+                n.natural_key = "id"
         new_nodes.append(n)
 
     new_relations: list[RelationSpec] = []

@@ -1,0 +1,117 @@
+\chapter{Estado del arte}
+
+\section{Modelos de lenguaje con herramientas}
+
+Los modelos de lenguaje modernos pueden resolver tareas complejas, pero su
+utilidad aumenta cuando se les permite actuar sobre herramientas externas.
+ReAct propone intercalar razonamiento y acciones para que el modelo consulte
+fuentes externas, actualice planes y produzca trayectorias más interpretables
+\cite{yao2023react}. Toolformer estudia la capacidad de los modelos para decidir
+cuándo llamar APIs externas y cómo incorporar sus resultados \cite{schick2023toolformer}.
+
+El sistema desarrollado adopta este patrón de forma controlada. Los agentes no
+modifican libremente el entorno: reciben herramientas tipadas, como búsqueda web,
+lectura y escritura de artefactos, recuperación de conocimiento o ejecución de
+pruebas. El enrutador mantiene la responsabilidad de decidir qué etapa se
+ejecuta y cuándo se acepta su resultado.
+
+\section{Flujos multiagente}
+
+Otra línea de trabajo relevante es la descomposición de tareas en agentes
+especializados. AutoGen presenta un marco para construir aplicaciones con
+múltiples agentes conversables, herramientas y participación humana
+\cite{wu2023autogen}. ChatDev aplica la idea al desarrollo de software mediante
+agentes especializados en diseño, codificación y prueba \cite{qian2024chatdev}.
+
+El pipeline de esta memoria comparte la motivación de especialización, pero no
+se basa en una conversación abierta entre agentes. La coordinación se realiza con
+una máquina de estados explícita. Esta decisión reduce flexibilidad, pero mejora
+trazabilidad y repetibilidad.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Multiagente conversacional       Pipeline de esta memoria
+--------------------------       ------------------------
+Agente <-> Agente                Router -> Agente
+Agente <-> Usuario               Revision humana
+Control emergente                Estados explicitos
+Historial conversacional         Artefactos versionados
+\end{verbatim}
+\caption{Diferencia entre conversación multiagente y pipeline orquestado.}
+\end{figure}
+
+\section{Recuperación aumentada}
+
+Retrieval-Augmented Generation (RAG) combina memoria paramétrica del modelo con
+memoria no paramétrica recuperada de una fuente externa \cite{lewis2020rag}.
+Este enfoque es especialmente relevante cuando el sistema necesita conocimiento
+actualizable, trazable o específico de un dominio.
+
+La recuperación puede ser densa, basada en embeddings, o dispersa, basada en
+coincidencia léxica. Dense Passage Retrieval muestra la utilidad de recuperar
+pasajes mediante representaciones densas aprendidas \cite{karpukhin2020dpr}.
+BM25 representa una base clásica y robusta para búsqueda textual probabilística
+\cite{robertson2009bm25}. En el sistema implementado se usan ambas vías porque
+resuelven problemas distintos: la búsqueda densa captura similitud semántica y
+BM25 captura nombres, autores, símbolos, DOIs y términos exactos.
+
+Cuando existen varios rankings, una técnica sencilla y efectiva es Reciprocal
+Rank Fusion, que combina listas ordenadas sin necesidad de entrenamiento
+\cite{cormack2009rrf}. Esta idea se usa para fusionar resultados densos,
+lexicales y de grafo.
+
+\section{RAG correctivo y reflexivo}
+
+Un riesgo de RAG es inyectar contexto irrelevante o desactualizado. Self-RAG
+plantea que la recuperación no debe ser indiscriminada y que el sistema debe
+reflexionar sobre la utilidad de los pasajes recuperados \cite{asai2023selfrag}.
+CRAG añade un evaluador de recuperación y acciones correctivas, incluyendo
+búsqueda web cuando el corpus interno no contiene suficiente evidencia
+\cite{yan2024crag}.
+
+La arquitectura desarrollada adopta una variante práctica: cuando la confianza
+de los resultados internos es alta, se evita trabajo extra; cuando es ambigua o
+baja, se activa una clasificación correctiva y, si procede, una búsqueda web.
+
+\section{Memoria a largo plazo y grafos}
+
+Los agentes generativos de Park et al. almacenan experiencias, las sintetizan en
+reflexiones y las recuperan dinámicamente para planificar comportamiento
+\cite{park2023generativeagents}. MemoryBank propone memoria persistente con
+actualización, importancia y olvido inspirado en la curva de Ebbinghaus
+\cite{zhong2023memorybank}. MemGPT aborda el problema de la ventana de contexto
+limitada mediante una memoria jerárquica gestionada fuera del prompt inmediato
+\cite{packer2023memgpt}.
+
+Para representar relaciones científicas, los grafos de conocimiento ofrecen un
+modelo explícito de entidades y relaciones \cite{hogan2021knowledgegraphs}.
+GraphRAG usa un grafo como índice sobre corpus privados para responder preguntas
+globales \cite{edge2024graphrag}. HippoRAG combina LLMs, grafos de conocimiento
+y Personalized PageRank para construir una memoria a largo plazo inspirada en el
+hipocampo \cite{gutierrez2024hipporag}; Topic-sensitive PageRank es un
+antecedente clásico de ranking sensible al contexto \cite{haveliwala2002topicsensitive}.
+
+El sistema de esta memoria no replica exactamente GraphRAG ni HippoRAG. Sí adopta
+su idea central: la memoria útil para agentes no debe ser solo una lista plana de
+chunks, sino una combinación de hechos recuperables, entidades y relaciones.
+
+\section{Generación de código y validación}
+
+La generación automática de programas desde lenguaje natural se estudia en
+trabajos como Codex y HumanEval \cite{chen2021codex} y Program Synthesis with
+Large Language Models \cite{austin2021programsynthesis}. Estos trabajos muestran
+que la corrección funcional debe evaluarse ejecutando el código, no solo leyendo
+la respuesta del modelo.
+
+SWE-agent refuerza la importancia de diseñar interfaces adecuadas para agentes
+de software, incluyendo edición de archivos, navegación del repositorio y
+ejecución de pruebas \cite{yang2024sweagent}. PICARD, aunque aplicado a
+text-to-SQL, muestra el valor de restringir salidas para evitar estructuras
+inválidas \cite{scholak2021picard}. Self-Refine y Reflexion aportan antecedentes
+para refinar salidas mediante feedback y memoria verbal sin actualizar pesos
+\cite{madaan2023selfrefine,shinn2023reflexion}.
+
+En este trabajo, la validación se reparte en tres niveles: schemas y modelos
+Pydantic para estructuras, revisión humana para decisiones científicas y tests
+ejecutables para los modelos generados.

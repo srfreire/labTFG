@@ -6,10 +6,12 @@ to verify each step of the pipeline without live services.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from decisionlab.knowledge.retrieval import kg_retrieval as kg_module
 from decisionlab.knowledge.retrieval.kg_retrieval import (
     _collect_passages,
     _cosine_similarity,
@@ -468,6 +470,49 @@ class TestKgRetrieve:
         # Scores should be sorted descending
         scores = [r.score for r in results]
         assert scores == sorted(scores, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_passes_lifecycle_options_to_ppr(self, monkeypatch):
+        mock_rewrite = AsyncMock(return_value=MagicMock(keywords=[]))
+        mock_extract = AsyncMock(
+            return_value=[{"name": "dopamine", "type": "variable"}]
+        )
+        mock_link = AsyncMock(
+            return_value=[_LinkedEntity("4:dopa", "Variable", "dopamine", 1.0)]
+        )
+        mock_ppr = AsyncMock(
+            return_value=[
+                _ScoredNode(
+                    "4:dopa",
+                    ["Variable"],
+                    {"name": "dopamine"},
+                    1.0,
+                    [],
+                )
+            ]
+        )
+        monkeypatch.setattr(kg_module, "_rewrite", mock_rewrite)
+        monkeypatch.setattr(kg_module, "_extract_entities", mock_extract)
+        monkeypatch.setattr(kg_module, "_link_entities", mock_link)
+        monkeypatch.setattr(kg_module, "_ppr_traverse", mock_ppr)
+
+        db_session = MagicMock()
+        as_of = datetime(2026, 4, 10, tzinfo=UTC)
+
+        results = await kg_retrieve(
+            "dopamine",
+            MagicMock(),
+            MagicMock(),
+            AsyncMock(),
+            vectors=None,
+            db_session=db_session,
+            as_of=as_of,
+        )
+
+        assert len(results) == 1
+        kwargs = mock_ppr.await_args.kwargs
+        assert kwargs["db_session"] is db_session
+        assert kwargs["as_of"] == as_of
 
     @pytest.mark.asyncio
     async def test_multi_hop_discovery(self):

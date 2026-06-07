@@ -1,0 +1,28 @@
+\pagestyle{plain}
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+
+Este Trabajo de Fin de Grado desarrolla la primera fase de un laboratorio
+virtual para estudiar paradigmas de toma de decisiones humanas mediante agentes
+inteligentes. La contribución principal es un pipeline que transforma una
+descripción en lenguaje natural en modelos de decisión ejecutables en Python.
+Para ello se divide el problema en etapas especializadas: investigación
+científica, formalización matemática, adaptación al entorno de simulación y
+generación de código validado mediante pruebas.
+
+El sistema se apoya en un enrutador determinista con revisión humana entre
+etapas, almacenamiento de artefactos en MinIO, metadatos y ciclo de vida en
+PostgreSQL, memoria semántica en Qdrant y un grafo de conocimiento en Neo4j. La
+arquitectura de memoria almacena solo artefactos aceptados, combina recuperación
+densa, BM25 y recorrido de grafo, y aplica mecanismos de corrección para evitar
+que conocimiento irrelevante o desactualizado condicione nuevas ejecuciones.
+
+El resultado de la fase es un conjunto de modelos compatibles con un contrato
+simple de simulación: \texttt{decide}, \texttt{update} y \texttt{get\_state}.
+Esta separación permite que la segunda fase del proyecto cargue dinámicamente
+los modelos generados sin depender de una jerarquía rígida de clases.
+
+\vspace{0.5cm}
+\noindent{\bf Palabras clave:} agentes inteligentes, modelos de decisión,
+generación de código, recuperación aumentada, memoria a largo plazo, grafos de
+conocimiento, simulación.

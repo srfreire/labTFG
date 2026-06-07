@@ -36,6 +36,12 @@ class RelationSpec:
 
     properties: dict = field(default_factory=dict)
 
+    from_key: str | None = None
+    """Canonical key property for the source endpoint after normalization."""
+
+    to_key: str | None = None
+    """Canonical key property for the target endpoint after normalization."""
+
 
 @dataclass
 class ExtractionResult:
@@ -88,6 +94,16 @@ class KGHealthResult:
 
 
 @dataclass
+class KGReviewResult:
+    """Summary of the post-write graph reviewer pass."""
+
+    corrections_applied: int
+    warnings: list[str] = field(default_factory=list)
+    failed: bool = False
+    error: str | None = None
+
+
+@dataclass
 class IndexResult:
     """Summary of an indexing operation."""
 
@@ -129,6 +145,9 @@ class MemoryAgentResult:
 
     kg_health: KGHealthResult | None = None
     """Post-write health/repair summary for KG readability."""
+
+    kg_review: KGReviewResult | None = None
+    """Post-write graph review/correction summary."""
 
 
 @dataclass

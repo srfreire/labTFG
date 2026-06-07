@@ -105,6 +105,59 @@ def _make_memory_result(**overrides) -> MemoryAgentResult:
 
 
 @pytest.mark.asyncio
+async def test_collect_research_output_prefers_approved_deep_reports_over_cache():
+    storage = _make_storage()
+    storage.get_text = AsyncMock(
+        side_effect=lambda key: {
+            "research/run-1/deep/prospect-theory.md": "# Prospect Theory\n\nApproved",
+            "research/run-1/deep/q-learning.md": "# Q Learning\n\nApproved",
+            "research/run-1/report.md": "# Summary\n\nCached alternative",
+        }[key]
+    )
+    router = _make_router(services=_make_services(storage=storage))
+    router.state.run_id = "run-1"
+    router.state.approved_paradigms = ["prospect-theory", "q-learning"]
+    router._stage_outputs[Stage.RESEARCH] = "# Summary\n\nCached"
+
+    output = await router._collect_stage_output(Stage.RESEARCH)
+
+    assert output == "# Prospect Theory\n\nApproved\n\n# Q Learning\n\nApproved"
+    assert [call.args[0] for call in storage.get_text.await_args_list] == [
+        "research/run-1/deep/prospect-theory.md",
+        "research/run-1/deep/q-learning.md",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_collect_build_output_includes_artifact_scope_header():
+    storage = _make_storage()
+    storage.get_text = AsyncMock(return_value="class MvtThresholdModel: ...")
+    router = _make_router(services=_make_services(storage=storage))
+    router.state.run_id = "run-1"
+    router.state.approved_specs = {"optimal-foraging-theory": ["mvt-threshold"]}
+
+    output = await router._collect_stage_output(Stage.BUILD)
+
+    assert "## Builder artifact" in output
+    assert "Paradigm: optimal-foraging-theory" in output
+    assert "Formulation: mvt-threshold" in output
+    assert "class MvtThresholdModel" in output
+
+
+@pytest.mark.asyncio
+async def test_collect_research_output_uses_cache_when_no_paradigm_approved():
+    storage = _make_storage()
+    router = _make_router(services=_make_services(storage=storage))
+    router.state.approved_paradigms = []
+    router._stage_outputs[Stage.RESEARCH] = "# Summary\n\nCached"
+
+    output = await router._collect_stage_output(Stage.RESEARCH)
+
+    assert output == "# Summary\n\nCached"
+    storage.get_text.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_router_has_memory_agent_attribute():
     """Router should have memory_agent attribute (defaults to None when no infra)."""
     router = _make_router()
@@ -168,6 +221,8 @@ async def test_memory_agent_called_after_research():
     assert memory_agent.run.await_count >= 1
     first_call = memory_agent.run.call_args_list[0]
     assert first_call.args[0] == "researcher"
+    assert "approved_paradigms" in first_call.kwargs
+    assert "approved_specs" in first_call.kwargs
 
 
 @pytest.mark.asyncio
@@ -327,6 +382,14 @@ async def test_memory_agent_called_for_all_work_stages():
     assert "reasoner" in called_stages
     assert "builder" in called_stages
     assert memory_agent.run.await_count == 4
+    assert all(
+        call.kwargs["approved_paradigms"] == ["test-paradigm"]
+        for call in memory_agent.run.call_args_list
+    )
+    assert all(
+        call.kwargs["approved_specs"] == {"test-paradigm": ["f01"]}
+        for call in memory_agent.run.call_args_list
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ import pytest
 
 from decisionlab.knowledge.models import (
     ExtractionResult,
-    IndexResult,
+    KGReviewResult,
     KGWriteResult,
     MemoryAgentResult,
     NodeSpec,
@@ -50,10 +50,6 @@ def _make_kg_result(created: int = 2, merged: int = 1) -> KGWriteResult:
         relations_created=1,
         relations_superseded=0,
     )
-
-
-def _make_index_result() -> IndexResult:
-    return IndexResult(artifacts_indexed=5, facts_indexed=2, total_chunks=7)
 
 
 def _make_resolution_result(
@@ -111,6 +107,16 @@ def mock_emit():
     return AsyncMock()
 
 
+@pytest.fixture(autouse=True)
+def mock_graph_review():
+    with patch(
+        f"{_PATCH_BASE}.review_written_graph",
+        new_callable=AsyncMock,
+        return_value=KGReviewResult(corrections_applied=0),
+    ) as mocked:
+        yield mocked
+
+
 # ---------------------------------------------------------------------------
 # Patch targets (all in the memory_agent module namespace)
 # ---------------------------------------------------------------------------
@@ -130,14 +136,6 @@ def _patch_populate_kg(result):
     )
 
 
-def _patch_index(result):
-    return patch(
-        f"{_PATCH_BASE}.index_stage_output",
-        new_callable=AsyncMock,
-        return_value=result,
-    )
-
-
 def _patch_resolve(result):
     return patch(
         f"{_PATCH_BASE}.resolve_and_store",
@@ -153,14 +151,19 @@ def _patch_resolve(result):
 
 @pytest.mark.asyncio
 async def test_run_calls_all_subsystems(
-    mock_client, mock_kg, mock_vectors, mock_embeddings, mock_db, mock_emit
+    mock_client,
+    mock_kg,
+    mock_vectors,
+    mock_embeddings,
+    mock_db,
+    mock_emit,
+    mock_graph_review,
 ):
-    """AC1/AC2: A full run calls extract, KG, index, and resolve."""
+    """AC1/AC2: A full run calls extract, KG, graph review, and resolve."""
     from decisionlab.agents.memory_agent import MemoryAgent
 
     extraction = _make_extraction()
     kg_result = _make_kg_result()
-    idx_result = _make_index_result()
     res_result = _make_resolution_result()
 
     agent = MemoryAgent(
@@ -174,7 +177,6 @@ async def test_run_calls_all_subsystems(
     with (
         _patch_extract(extraction) as m_extract,
         _patch_populate_kg(kg_result) as m_kg,
-        _patch_index(idx_result) as m_idx,
         _patch_resolve(res_result) as m_resolve,
     ):
         result = await agent.run(
@@ -183,7 +185,7 @@ async def test_run_calls_all_subsystems(
 
     m_extract.assert_awaited_once()
     m_kg.assert_awaited_once()
-    m_idx.assert_awaited_once()
+    mock_graph_review.assert_awaited_once()
     m_resolve.assert_awaited_once()
 
     assert isinstance(result, MemoryAgentResult)
@@ -194,6 +196,87 @@ async def test_run_calls_all_subsystems(
     assert result.duplicates_skipped == 0
     assert result.conflicts_resolved == 0
     assert result.duration_ms >= 0
+
+
+@pytest.mark.asyncio
+async def test_run_normalizes_ids_even_when_review_fails(
+    mock_client,
+    mock_kg,
+    mock_vectors,
+    mock_embeddings,
+    mock_db,
+    mock_graph_review,
+):
+    """Graph review failure must not affect pre-write identity normalization."""
+    from decisionlab.agents.memory_agent import MemoryAgent
+
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Formulation",
+                properties={
+                    "id": "q-learning",
+                    "name": "Q-learning",
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                natural_key="id",
+            ),
+            NodeSpec(
+                label="Parameter",
+                properties={
+                    "name": "alpha",
+                    "formulation_id": "q-learning",
+                },
+                natural_key="name",
+            ),
+        ],
+        relations=[
+            RelationSpec(
+                from_label="Formulation",
+                from_key_value="q-learning",
+                to_label="Parameter",
+                to_key_value="alpha",
+                rel_type="HAS_PARAMETER",
+            )
+        ],
+        facts=[],
+        stage="formalizer",
+        run_id="run-1",
+    )
+    captured: dict[str, ExtractionResult] = {}
+
+    async def _capture_kg(incoming, *_args, **_kwargs):
+        captured["extraction"] = incoming
+        return _make_kg_result()
+
+    mock_graph_review.side_effect = RuntimeError("review unavailable")
+
+    agent = MemoryAgent(
+        client=mock_client,
+        kg=mock_kg,
+        vector_store=mock_vectors,
+        embedding_service=mock_embeddings,
+        db=mock_db,
+    )
+
+    with (
+        _patch_extract(extraction),
+        patch(
+            f"{_PATCH_BASE}.populate_kg",
+            new_callable=AsyncMock,
+            side_effect=_capture_kg,
+        ),
+        _patch_resolve(_make_resolution_result()),
+    ):
+        await agent.run("formalizer", "text", "run-1")
+
+    normalized = captured["extraction"]
+    formulation_id = "reinforcement-learning:q-learning"
+    parameter_id = f"{formulation_id}:alpha"
+    assert normalized.nodes[0].properties["id"] == formulation_id
+    assert normalized.nodes[1].properties["id"] == parameter_id
+    assert normalized.relations[0].from_key_value == formulation_id
+    assert normalized.relations[0].to_key_value == parameter_id
 
 
 @pytest.mark.asyncio
@@ -214,7 +297,6 @@ async def test_run_emits_status_messages(
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(_make_kg_result()),
-        _patch_index(_make_index_result()),
         _patch_resolve(_make_resolution_result()),
     ):
         await agent.run("researcher", "text", "run-1", emit=mock_emit)
@@ -230,7 +312,7 @@ async def test_run_emits_status_messages(
 
 @pytest.mark.asyncio
 async def test_skips_kg_when_none(mock_client, mock_vectors, mock_embeddings, mock_db):
-    """AC4 partial: KG population skipped when kg=None, but extraction and indexing still run."""
+    """AC4 partial: KG population skipped when kg=None, resolve still runs."""
     from decisionlab.agents.memory_agent import MemoryAgent
 
     agent = MemoryAgent(
@@ -244,22 +326,20 @@ async def test_skips_kg_when_none(mock_client, mock_vectors, mock_embeddings, mo
     with (
         _patch_extract(_make_extraction()) as m_extract,
         _patch_populate_kg(_make_kg_result()) as m_kg,
-        _patch_index(_make_index_result()) as m_idx,
         _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
 
     m_extract.assert_awaited_once()
     m_kg.assert_not_awaited()
-    m_idx.assert_awaited_once()
     m_resolve.assert_awaited_once()
     assert result.nodes_created == 0
     assert result.nodes_merged == 0
 
 
 @pytest.mark.asyncio
-async def test_skips_indexing_when_vectors_none(mock_client, mock_kg, mock_db):
-    """AC4 partial: Indexing skipped when vector_store or embedding_service is None."""
+async def test_skips_resolve_when_vectors_none(mock_client, mock_kg, mock_db):
+    """AC4 partial: resolve skipped when vector_store or embedding_service is None."""
     from decisionlab.agents.memory_agent import MemoryAgent
 
     agent = MemoryAgent(
@@ -273,12 +353,10 @@ async def test_skips_indexing_when_vectors_none(mock_client, mock_kg, mock_db):
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(_make_kg_result()),
-        _patch_index(_make_index_result()) as m_idx,
         _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
 
-    m_idx.assert_not_awaited()
     # resolve also requires vector_store and embedding_service
     m_resolve.assert_not_awaited()
     assert result.facts_stored == 0
@@ -302,7 +380,6 @@ async def test_skips_resolve_when_db_none(
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(_make_kg_result()),
-        _patch_index(_make_index_result()),
         _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
@@ -329,7 +406,6 @@ async def test_run_no_emit_callback(
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(_make_kg_result()),
-        _patch_index(_make_index_result()),
         _patch_resolve(_make_resolution_result()),
     ):
         result = await agent.run("researcher", "text", "run-1", emit=None)
@@ -359,14 +435,12 @@ async def test_extract_failure_returns_empty_result(
             side_effect=RuntimeError("LLM down"),
         ),
         _patch_populate_kg(_make_kg_result()) as m_kg,
-        _patch_index(_make_index_result()) as m_idx,
         _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
 
     # Should not proceed to downstream steps
     m_kg.assert_not_awaited()
-    m_idx.assert_not_awaited()
     m_resolve.assert_not_awaited()
     assert result.nodes_created == 0
 
@@ -394,13 +468,11 @@ async def test_extract_timeout_returns_failed_result(
     with (
         patch(f"{_PATCH_BASE}.extract", side_effect=_never_returns),
         _patch_populate_kg(_make_kg_result()) as m_kg,
-        _patch_index(_make_index_result()) as m_idx,
         _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
 
     m_kg.assert_not_awaited()
-    m_idx.assert_not_awaited()
     m_resolve.assert_not_awaited()
     assert result.failed
     assert result.error == "extraction: timed out"
@@ -408,10 +480,10 @@ async def test_extract_timeout_returns_failed_result(
 
 
 @pytest.mark.asyncio
-async def test_kg_failure_does_not_block_indexing(
+async def test_kg_failure_does_not_block_resolve(
     mock_client, mock_kg, mock_vectors, mock_embeddings, mock_db
 ):
-    """AC5: If KG population fails, indexing still completes (parallel gather catches)."""
+    """AC5: If KG population fails, resolver still runs."""
     from decisionlab.agents.memory_agent import MemoryAgent
 
     agent = MemoryAgent(
@@ -430,13 +502,11 @@ async def test_kg_failure_does_not_block_indexing(
             new_callable=AsyncMock,
             side_effect=RuntimeError("Neo4j down"),
         ),
-        _patch_index(_make_index_result()) as m_idx,
-        _patch_resolve(_make_resolution_result()),
+        _patch_resolve(_make_resolution_result()) as m_resolve,
     ):
         result = await agent.run("researcher", "text", "run-1")
 
-    # Indexing should still have run
-    m_idx.assert_awaited_once()
+    m_resolve.assert_awaited_once()
     # KG results should be zeroed
     assert result.nodes_created == 0
     assert result.nodes_merged == 0
@@ -461,7 +531,6 @@ async def test_all_stages_supported(
         with (
             _patch_extract(_make_extraction(stage=stage)),
             _patch_populate_kg(_make_kg_result()),
-            _patch_index(_make_index_result()),
             _patch_resolve(_make_resolution_result()),
         ):
             result = await agent.run(stage, f"{stage} output", "run-1")
@@ -498,7 +567,6 @@ async def test_result_aggregates_correctly(
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(kg_result),
-        _patch_index(_make_index_result()),
         _patch_resolve(res_result),
     ):
         result = await agent.run("researcher", "text", "run-1")
@@ -533,7 +601,6 @@ async def test_resolve_failure_preserves_kg_results(
     with (
         _patch_extract(_make_extraction()),
         _patch_populate_kg(kg_result),
-        _patch_index(_make_index_result()),
         patch(
             f"{_PATCH_BASE}.resolve_and_store",
             new_callable=AsyncMock,

@@ -7,6 +7,8 @@ import logging
 import math
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from anthropic import AsyncAnthropic
 
@@ -15,8 +17,18 @@ from decisionlab.knowledge.retrieval.models import RetrievalResult
 from decisionlab.knowledge.retrieval.query_rewriter import rewrite as _rewrite
 from decisionlab.runtime.usage import record as record_usage
 from shared.embedding import EmbeddingService
-from shared.knowledge_graph import KnowledgeGraph, vector_index_name
+from shared.knowledge_graph import (
+    KG_RELATION_NAMESPACE,
+    KnowledgeGraph,
+    select_valid_memory_ids,
+    vector_index_name,
+)
 from shared.vector_store import VectorStore
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from shared.database import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +332,84 @@ class _ScoredNode:
     score: float
     relation_chain: list[str]
     rel_memory_ids: list[str | None] | None = None
+    relation_lifecycle_mode: str | None = None
+    relation_lifecycle_as_of: datetime | None = None
+
+
+@dataclass(frozen=True)
+class _RelationLifecycleFilter:
+    """Resolved PG validity filter for KG relation-memory ids.
+
+    ``valid_memory_ids is None`` means legacy/unfiltered traversal because no
+    DB/session was provided. An empty set is an active filter where only
+    memoryless canonical edges are valid.
+    """
+
+    valid_memory_ids: frozenset[str] | None
+    as_of: datetime | None = None
+    mode: str | None = None
+
+    @property
+    def active(self) -> bool:
+        return self.valid_memory_ids is not None
+
+
+def _relation_chain_is_lifecycle_valid(
+    rel_memory_ids: list[str | None] | None,
+    lifecycle: _RelationLifecycleFilter,
+) -> bool:
+    """Return True when every memory-backed relation is valid in PG.
+
+    Relations without ``memory_id`` are seed/canonical edges and remain valid.
+    When the lifecycle filter is inactive, traversal preserves legacy behavior.
+    """
+    if not lifecycle.active:
+        return True
+    if rel_memory_ids is None:
+        return True
+
+    valid_ids = lifecycle.valid_memory_ids or frozenset()
+    return all(mid is None or str(mid) in valid_ids for mid in rel_memory_ids)
+
+
+async def _resolve_relation_lifecycle_filter(
+    *,
+    db: DatabaseService | None = None,
+    db_session: AsyncSession | None = None,
+    as_of: datetime | None = None,
+) -> _RelationLifecycleFilter:
+    """Resolve the current/as_of lifecycle filter for KG relations.
+
+    With no DB/session, return an inactive filter so callers keep the existing
+    traversal behavior. With a DB/session, ``as_of=None`` explicitly means
+    current-knowledge mode at ``datetime.now(UTC)``.
+    """
+    if db_session is None and db is None:
+        return _RelationLifecycleFilter(valid_memory_ids=None)
+
+    effective_as_of = as_of or datetime.now(UTC)
+    mode = "as_of" if as_of is not None else "current"
+
+    if db_session is not None:
+        valid_ids = await select_valid_memory_ids(
+            db_session,
+            effective_as_of,
+            namespace=KG_RELATION_NAMESPACE,
+        )
+    else:
+        assert db is not None
+        async with db.get_session() as session:
+            valid_ids = await select_valid_memory_ids(
+                session,
+                effective_as_of,
+                namespace=KG_RELATION_NAMESPACE,
+            )
+
+    return _RelationLifecycleFilter(
+        valid_memory_ids=frozenset(str(mid) for mid in valid_ids),
+        as_of=effective_as_of,
+        mode=mode,
+    )
 
 
 async def _ppr_traverse(
@@ -327,6 +417,9 @@ async def _ppr_traverse(
     kg: KnowledgeGraph,
     *,
     intent: str = "paradigm",
+    db: DatabaseService | None = None,
+    db_session: AsyncSession | None = None,
+    as_of: datetime | None = None,
 ) -> list[_ScoredNode]:
     """Run 2-hop BFS from each linked entity with score decay.
 
@@ -335,10 +428,21 @@ async def _ppr_traverse(
     - Relations are filtered to those relevant for the query intent
       (paradigm-style vs. variable-style) — see ``_types_for_intent``.
     - Per-node degree dampens hub influence — see ``_score_node``.
+    - When a DB/session is supplied, relation chains are lifecycle-filtered:
+      every relation carrying ``memory_id`` must point to a PG
+      ``pipeline_memories`` row valid at ``as_of``; ``as_of=None`` means
+      "current". Relations without ``memory_id`` are canonical seed edges and
+      remain traversable. With no DB/session, traversal is left unfiltered for
+      backward compatibility.
 
     For nodes reached by multiple paths, the maximum score wins.
     """
     allowed_types = list(_types_for_intent(intent))
+    lifecycle = await _resolve_relation_lifecycle_filter(
+        db=db,
+        db_session=db_session,
+        as_of=as_of,
+    )
     scored: dict[str, _ScoredNode] = {}
 
     def _update(
@@ -356,6 +460,8 @@ async def _ppr_traverse(
                 score=score,
                 relation_chain=rels,
                 rel_memory_ids=rel_memory_ids,
+                relation_lifecycle_mode=lifecycle.mode,
+                relation_lifecycle_as_of=lifecycle.as_of,
             )
 
     for entity in linked:
@@ -387,6 +493,9 @@ async def _ppr_traverse(
             "MATCH path = (start)-[r*1..2]-(connected) "
             "WHERE elementId(start) = $start_id "
             "  AND ALL(rel IN r WHERE type(rel) IN $allowed_types) "
+            "  AND ($valid_relation_memory_ids IS NULL OR "
+            "ALL(rel IN r WHERE rel.memory_id IS NULL OR "
+            "rel.memory_id IN $valid_relation_memory_ids)) "
             "RETURN elementId(connected) AS id, "
             "labels(connected) AS labels, "
             "properties(connected) AS props, "
@@ -394,10 +503,24 @@ async def _ppr_traverse(
             "[rel IN r | type(rel)] AS rel_types, "
             "[rel IN r | rel.memory_id] AS rel_memory_ids, "
             "COUNT { (connected)--() } AS degree",
-            {"start_id": entity.node_id, "allowed_types": allowed_types},
+            {
+                "start_id": entity.node_id,
+                "allowed_types": allowed_types,
+                "valid_relation_memory_ids": (
+                    None
+                    if lifecycle.valid_memory_ids is None
+                    else list(lifecycle.valid_memory_ids)
+                ),
+                "relation_lifecycle_as_of": (
+                    lifecycle.as_of.isoformat() if lifecycle.as_of else None
+                ),
+            },
         )
 
         for row in traversal_results:
+            rel_memory_ids = row.get("rel_memory_ids")
+            if not _relation_chain_is_lifecycle_valid(rel_memory_ids, lifecycle):
+                continue
             score = _score_node(
                 confidence=entity.confidence,
                 hops=int(row["hops"]),
@@ -408,7 +531,7 @@ async def _ppr_traverse(
                 row,
                 score,
                 row["rel_types"],
-                rel_memory_ids=row.get("rel_memory_ids"),
+                rel_memory_ids=rel_memory_ids,
             )
 
     return list(scored.values())
@@ -464,6 +587,9 @@ def _collect_passages(
         # ``pipeline_memories`` for run_id, valid_from/valid_to, confidence.
         if node.rel_memory_ids:
             meta["rel_memory_ids"] = node.rel_memory_ids
+        if node.relation_lifecycle_as_of is not None:
+            meta["relation_lifecycle"] = node.relation_lifecycle_mode
+            meta["relation_as_of"] = node.relation_lifecycle_as_of.isoformat()
         results.append(
             RetrievalResult(
                 text=_format_passage(node),
@@ -488,11 +614,19 @@ async def kg_retrieve(
     *,
     vectors: VectorStore | None,
     limit: int = 20,
+    db: DatabaseService | None = None,
+    db_session: AsyncSession | None = None,
+    as_of: datetime | None = None,
 ) -> list[RetrievalResult]:
     """Retrieve knowledge graph passages relevant to a query.
 
     Pipeline: entity extraction (Haiku NER) → entity linking (exact + embedding)
     → PPR traversal (2-hop BFS with decay) → passage collection.
+
+    When ``db`` or ``db_session`` is supplied, traversal is relation-lifecycle
+    aware: ``as_of=None`` means current valid relations; an explicit ``as_of``
+    retrieves paths valid at that timestamp. With no DB/session, traversal
+    stays legacy/unfiltered.
 
     Returns an empty list on any connection or service error so callers
     degrade gracefully.
@@ -522,7 +656,13 @@ async def kg_retrieve(
             return []
 
         # Step 3: PPR traversal.
-        scored_nodes = await _ppr_traverse(linked, kg)
+        scored_nodes = await _ppr_traverse(
+            linked,
+            kg,
+            db=db,
+            db_session=db_session,
+            as_of=as_of,
+        )
 
         # Step 4: Collect passages.
         return _collect_passages(scored_nodes, limit)

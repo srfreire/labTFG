@@ -20,8 +20,10 @@ model cannot emit a tool_use block that doesn't match the input_schema.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 
 from pydantic import BaseModel, ValidationError
 
@@ -33,6 +35,13 @@ logger = logging.getLogger(__name__)
 # rewrite — see plan decision (1): "anthropic/claude-sonnet-4.6 for every
 # LLM call". Keep this overridable per call so tests can stub it.
 DEFAULT_MODEL = "anthropic/claude-sonnet-4.6"
+_STRUCTURED_TIMEOUT_SECONDS = float(
+    os.getenv("DECISIONLAB_STRUCTURED_TIMEOUT_SECONDS", "900")
+)
+_STRUCTURED_MAX_ATTEMPTS = max(
+    1,
+    int(os.getenv("DECISIONLAB_STRUCTURED_MAX_ATTEMPTS", "3")),
+)
 
 
 class StructuredOutputError(RuntimeError):
@@ -91,27 +100,57 @@ async def call_structured[T: BaseModel](
     }
     sys_prompt = system if extra_system is None else f"{system}\n\n{extra_system}"
 
-    # Mirror runtime.loop's streaming threshold: above ~24k tokens the SDK
-    # rejects non-streaming requests (10-minute estimated-runtime guard).
-    # extraction.py runs at 32k for Researcher outputs and trips this.
-    if max_tokens >= 24000:
-        async with client.messages.stream(
-            model=model,
-            system=sys_prompt,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": tool_name},
-            messages=messages,
-            max_tokens=max_tokens,
-        ) as stream:
-            response = await stream.get_final_message()
-    else:
-        response = await client.messages.create(
-            model=model,
-            system=sys_prompt,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": tool_name},
-            messages=messages,
-            max_tokens=max_tokens,
+    response = None
+    for attempt in range(1, _STRUCTURED_MAX_ATTEMPTS + 1):
+        try:
+            async with asyncio.timeout(_STRUCTURED_TIMEOUT_SECONDS):
+                # Mirror runtime.loop's streaming threshold: above ~24k tokens the
+                # SDK rejects non-streaming requests (10-minute estimated-runtime
+                # guard). extraction.py runs at 32k for Researcher outputs and
+                # trips this.
+                if max_tokens >= 24000:
+                    async with client.messages.stream(
+                        model=model,
+                        system=sys_prompt,
+                        tools=[tool],
+                        tool_choice={"type": "tool", "name": tool_name},
+                        messages=messages,
+                        max_tokens=max_tokens,
+                    ) as stream:
+                        response = await stream.get_final_message()
+                else:
+                    response = await client.messages.create(
+                        model=model,
+                        system=sys_prompt,
+                        tools=[tool],
+                        tool_choice={"type": "tool", "name": tool_name},
+                        messages=messages,
+                        max_tokens=max_tokens,
+                    )
+            break
+        except TimeoutError as exc:
+            raise StructuredOutputError(
+                f"call_structured: timed out after {_STRUCTURED_TIMEOUT_SECONDS:g}s "
+                f"for {schema.__name__}",
+            ) from exc
+        except Exception as exc:
+            if attempt >= _STRUCTURED_MAX_ATTEMPTS:
+                raise StructuredOutputError(
+                    f"call_structured: API call failed after "
+                    f"{_STRUCTURED_MAX_ATTEMPTS} attempt(s) for {schema.__name__}: "
+                    f"{exc}",
+                ) from exc
+            logger.warning(
+                "call_structured: API call failed for %s on attempt %d/%d; retrying: %s",
+                schema.__name__,
+                attempt,
+                _STRUCTURED_MAX_ATTEMPTS,
+                exc,
+            )
+            await asyncio.sleep(min(2 ** (attempt - 1), 8))
+    if response is None:
+        raise StructuredOutputError(
+            f"call_structured: API call produced no response for {schema.__name__}"
         )
     record_usage(model, getattr(response, "usage", None))
 

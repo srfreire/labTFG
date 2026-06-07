@@ -52,6 +52,24 @@ def test_variable_id_normalises_name():
     assert out == ("id", "reinforcement-learning:action-value")
 
 
+def test_variable_with_formulation_still_uses_paradigm_scope():
+    spec = type(
+        "_Spec",
+        (),
+        {
+            "label": "Variable",
+            "properties": {
+                "name": "reward",
+                "formulation_id": "q-learning",
+                "paradigm_slug": "reinforcement-learning",
+            },
+        },
+    )()
+    out = _resolve_natural_key(spec)
+    assert out == ("id", "reinforcement-learning:reward")
+    assert spec.properties["formulation_id"] == "reinforcement-learning:q-learning"
+
+
 def test_variable_missing_name_returns_none():
     spec = type("_Spec", (), {"label": "Variable", "properties": {}})()
     assert _resolve_natural_key(spec) is None

@@ -34,6 +34,34 @@ def _result(text: str, score: float, source: str, **meta) -> RetrievalResult:
     return RetrievalResult(text=text, score=score, source=source, metadata=dict(meta))
 
 
+@pytest.fixture(autouse=True)
+def _hydrate_candidates_from_payload(monkeypatch):
+    """Resolver confidence tests use vector fakes; treat them as PG-live."""
+
+    async def _fake_hydrate(candidates, *, run_id, db_session):
+        hydrated = []
+        for candidate in candidates:
+            payload = candidate.get("payload", {})
+            memory = MagicMock()
+            memory.id = uuid.UUID(candidate["id"])
+            memory.content = payload.get("text_preview", "")
+            memory.source_stage = payload.get("source_stage", "unknown")
+            memory.created_at = payload.get("created_at", "unknown")
+            try:
+                memory.run_id = uuid.UUID(str(payload.get("run_id")))
+            except (TypeError, ValueError):
+                memory.run_id = uuid.uuid4()
+            if run_id is not None and memory.run_id == run_id:
+                continue
+            hydrated.append({**candidate, "id": str(memory.id), "memory": memory})
+        return hydrated
+
+    monkeypatch.setattr(
+        "decisionlab.knowledge.resolver._hydrate_live_candidates",
+        _fake_hydrate,
+    )
+
+
 # ---------------------------------------------------------------------------
 # AC1: Corroboration boosts — 3 independent runs → confidence = initial + 3*0.05
 # ---------------------------------------------------------------------------
@@ -50,6 +78,9 @@ class TestAC1_CorroborationBoost:
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
+        execute_result = MagicMock()
+        execute_result.scalars.return_value.all.return_value = [mem_id]
+        session.execute = AsyncMock(return_value=execute_result)
 
         with patch.object(
             memories, "update_memory_confidence", new_callable=AsyncMock
@@ -66,6 +97,9 @@ class TestAC1_CorroborationBoost:
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
+        execute_result = MagicMock()
+        execute_result.scalars.return_value.all.return_value = [mem_id]
+        session.execute = AsyncMock(return_value=execute_result)
 
         with patch.object(
             memories, "update_memory_confidence", new_callable=AsyncMock
@@ -91,6 +125,9 @@ class TestAC2_ContradictionPenalty:
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
+        execute_result = MagicMock()
+        execute_result.scalars.return_value.all.return_value = [mem_id]
+        session.execute = AsyncMock(return_value=execute_result)
 
         with patch.object(
             memories, "update_memory_confidence", new_callable=AsyncMock
@@ -226,6 +263,9 @@ class TestAC3_AccessBoost:
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
+        execute_result = MagicMock()
+        execute_result.scalars.return_value.all.return_value = [mem_id]
+        session.execute = AsyncMock(return_value=execute_result)
 
         with patch.object(
             memories, "update_memory_confidence", new_callable=AsyncMock
@@ -242,6 +282,9 @@ class TestAC3_AccessBoost:
 
         session = AsyncMock()
         mem_id = uuid.uuid4()
+        execute_result = MagicMock()
+        execute_result.scalars.return_value.all.return_value = [mem_id]
+        session.execute = AsyncMock(return_value=execute_result)
 
         with patch.object(
             memories, "update_memory_confidence", new_callable=AsyncMock

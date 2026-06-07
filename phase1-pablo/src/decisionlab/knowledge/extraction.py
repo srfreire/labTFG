@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from decisionlab.config import SETTINGS
+from decisionlab.knowledge.ids import normalize_extraction_ids
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.prompts import (
     _CANONICAL,
@@ -63,6 +64,9 @@ _STAGE_MODELS: dict[str, str] = {
 }
 
 _TOP_LEVEL_MARKDOWN_RE = re.compile(r"(?m)(?=^#\s+)")
+_FORMULATION_MARKDOWN_RE = re.compile(r"(?m)(?=^##\s+Formulation\s+\d+)")
+_BUILDER_ARTIFACT_RE = re.compile(r"(?m)(?=^##\s+Builder artifact\s*$)")
+_BUILDER_FIELD_RE = re.compile(r"(?im)^\s*(Paradigm|Formulation)\s*:\s*(.+?)\s*$")
 
 
 # Pydantic schemas mirror the pre-rewrite prompt JSON shape so the
@@ -243,10 +247,13 @@ def _split_stage_output_for_extraction(stage: str, output_text: str) -> list[str
         return []
 
     if stage == "formalizer":
-        # Router concatenates one markdown file per paradigm. Extracting all
-        # of them at once can exceed the structured output budget, so keep each
-        # paradigm document as its own extraction call.
-        parts = [p.strip() for p in _TOP_LEVEL_MARKDOWN_RE.split(text) if p.strip()]
+        # Router concatenates one markdown file per paradigm, and each document
+        # can contain multiple formulations. Extract one formulation section per
+        # call to keep structured tool output bounded.
+        parts: list[str] = []
+        documents = [p.strip() for p in _TOP_LEVEL_MARKDOWN_RE.split(text) if p.strip()]
+        for document in documents or [text]:
+            parts.extend(_split_formalizer_document(document))
         return parts or [text]
 
     if stage == "reasoner":
@@ -254,7 +261,25 @@ def _split_stage_output_for_extraction(stage: str, output_text: str) -> list[str
         if len(objects) > 1:
             return [json.dumps(obj, ensure_ascii=False) for obj in objects]
 
+    if stage == "builder":
+        parts = [p.strip() for p in _BUILDER_ARTIFACT_RE.split(text) if p.strip()]
+        return parts or [text]
+
     return [text]
+
+
+def _split_formalizer_document(document: str) -> list[str]:
+    sections = [
+        p.strip() for p in _FORMULATION_MARKDOWN_RE.split(document) if p.strip()
+    ]
+    if len(sections) <= 1:
+        return [document]
+    if sections[0].lstrip().startswith("## Formulation"):
+        return sections
+
+    preamble = sections[0]
+    formulation_sections = sections[1:]
+    return [f"{preamble}\n\n{section}" for section in formulation_sections]
 
 
 def _merge_result(target: ExtractionResult, source: ExtractionResult) -> None:
@@ -508,6 +533,9 @@ def _build_result(
         _enrich_reasoner_formulation_paradigms(result, source_text)
         _enrich_reasoner_parameters(result, source_text)
         _scope_reasoner_postulate_refs(result, source_text)
+    if stage == "builder":
+        _enrich_builder_models(result, source_text)
+    normalize_extraction_ids(result)
     return result
 
 
@@ -890,24 +918,44 @@ def _enrich_reasoner_parameters(result: ExtractionResult, source_text: str) -> N
             if symbol:
                 alias_to_symbol[symbol] = canonical
 
-            _upsert_node(
+            parameter_props = {
+                "name": canonical,
+                "symbol": symbol,
+                "display_name": display_name,
+                "default_value": param.get("default", param.get("default_value", "")),
+                "source": param.get("source", ""),
+                "range": param.get("range", ""),
+                "paradigm_slug": paradigm_slug,
+                "formulation_id": formulation_id,
+            }
+            existing = _find_parameter_node(
                 result.nodes,
-                label="Parameter",
-                natural_key="name",
-                key_value=canonical,
-                properties={
-                    "name": canonical,
-                    "symbol": symbol,
-                    "display_name": display_name,
-                    "default_value": param.get(
-                        "default", param.get("default_value", "")
-                    ),
-                    "source": param.get("source", ""),
-                    "range": param.get("range", ""),
-                    "paradigm_slug": paradigm_slug,
-                    "formulation_id": formulation_id,
-                },
+                aliases={canonical, display_name, symbol},
             )
+            if existing is not None:
+                existing.properties.update(
+                    {
+                        key: value
+                        for key, value in parameter_props.items()
+                        if value not in (None, "")
+                        or key
+                        in {
+                            "name",
+                            "display_name",
+                            "paradigm_slug",
+                            "formulation_id",
+                        }
+                    }
+                )
+                existing.natural_key = "name"
+            else:
+                _upsert_node(
+                    result.nodes,
+                    label="Parameter",
+                    natural_key="name",
+                    key_value=canonical,
+                    properties=parameter_props,
+                )
             _add_relation(
                 result.relations,
                 from_label="Formulation",
@@ -938,6 +986,25 @@ def _enrich_reasoner_parameters(result: ExtractionResult, source_text: str) -> N
             )
         if rel.to_label == "Parameter":
             rel.to_key_value = alias_to_symbol.get(rel.to_key_value, rel.to_key_value)
+
+
+def _find_parameter_node(
+    nodes: list[NodeSpec],
+    *,
+    aliases: set[str],
+) -> NodeSpec | None:
+    cleaned = {alias for alias in aliases if alias}
+    if not cleaned:
+        return None
+    for node in nodes:
+        if node.label != "Parameter":
+            continue
+        props = node.properties
+        for key in ("name", "symbol", "display_name"):
+            value = props.get(key)
+            if isinstance(value, str) and value in cleaned:
+                return node
+    return None
 
 
 def _enrich_reasoner_formulation_paradigms(
@@ -1030,3 +1097,99 @@ def _scope_reasoner_postulate_refs(result: ExtractionResult, source_text: str) -
         if not _SHORT_POSTULATE_ID_RE.match(rel.to_key_value):
             continue
         rel.to_key_value = f"{paradigm_slug}:{rel.to_key_value}"
+
+
+def _enrich_builder_models(result: ExtractionResult, source_text: str) -> None:
+    """Add deterministic Model/Formulation/Paradigm structure from build output."""
+    scopes = _builder_artifact_scopes(source_text)
+    if not scopes:
+        return
+
+    for node in list(result.nodes):
+        if node.label != "Model":
+            continue
+        props = node.properties
+        raw_fid = props.get("formulation_id")
+        if not isinstance(raw_fid, str) or not raw_fid.strip():
+            continue
+        local_fid = raw_fid.rsplit(":", 1)[-1].strip()
+        paradigm_slug = scopes.get(local_fid) or scopes.get(slugify(local_fid))
+        if not paradigm_slug:
+            continue
+
+        props["paradigm_slug"] = paradigm_slug
+        props["formulation_id"] = local_fid
+        if props.get("id") in {None, "", raw_fid}:
+            props["id"] = local_fid
+
+        _upsert_node(
+            result.nodes,
+            label="Paradigm",
+            natural_key="slug",
+            key_value=paradigm_slug,
+            properties={
+                "slug": paradigm_slug,
+                "name": paradigm_slug.replace("-", " ").title(),
+                "description": "Paradigm referenced by a builder model artifact.",
+            },
+        )
+        _upsert_node(
+            result.nodes,
+            label="Formulation",
+            natural_key="id",
+            key_value=local_fid,
+            properties={
+                "id": local_fid,
+                "name": local_fid.replace("-", " ").title(),
+                "type": "builder_model_target",
+                "description": "Formulation implemented by a builder model.",
+                "paradigm_slug": paradigm_slug,
+            },
+        )
+        _add_relation(
+            result.relations,
+            from_label="Model",
+            from_key_value=local_fid,
+            to_label="Formulation",
+            to_key_value=local_fid,
+            rel_type="IMPLEMENTS",
+        )
+        _add_relation(
+            result.relations,
+            from_label="Formulation",
+            from_key_value=local_fid,
+            to_label="Paradigm",
+            to_key_value=paradigm_slug,
+            rel_type="BELONGS_TO",
+        )
+
+
+def _builder_artifact_scopes(source_text: str) -> dict[str, str]:
+    scopes: dict[str, str] = {}
+    sections = [
+        section.strip()
+        for section in _BUILDER_ARTIFACT_RE.split(source_text.strip())
+        if section.strip()
+    ] or [source_text]
+
+    for section in sections:
+        fields = _builder_fields(section)
+        paradigm = fields.get("paradigm")
+        formulation = fields.get("formulation")
+        if not paradigm or not formulation:
+            continue
+        paradigm_slug = slugify(paradigm)
+        formulation_slug = slugify(formulation)
+        if not paradigm_slug or not formulation_slug:
+            continue
+        scopes[formulation_slug] = paradigm_slug
+    return scopes
+
+
+def _builder_fields(section: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for match in _BUILDER_FIELD_RE.finditer(section):
+        key = match.group(1).lower()
+        value = match.group(2).strip().strip("`")
+        fields.setdefault(key, value)
+    return fields

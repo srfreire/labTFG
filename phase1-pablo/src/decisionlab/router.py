@@ -807,8 +807,16 @@ class Router:
         payload: dict
         try:
             output = await self._collect_stage_output(work_stage)
+            approved_specs = (
+                self.state.approved_specs or self.state.selected_formulations
+            )
             result = await self.memory_agent.run(
-                agent_name, output, self.state.run_id, emit=self.emit
+                agent_name,
+                output,
+                self.state.run_id,
+                emit=self.emit,
+                approved_paradigms=self.state.approved_paradigms,
+                approved_specs=approved_specs,
             )
             logger.info("Memory Agent [%s] completed: %s", agent_name, result)
             payload = {
@@ -828,6 +836,8 @@ class Router:
                 payload["kg_error_count"] = len(result.kg_errors)
             if result.kg_health is not None:
                 payload["kg_health"] = asdict(result.kg_health)
+            if result.kg_review is not None:
+                payload["kg_review"] = asdict(result.kg_review)
         except Exception as exc:
             logger.exception(
                 "Memory Agent failed for stage=%s — continuing pipeline",
@@ -952,13 +962,12 @@ class Router:
                 logger.exception("Consolidation failed — continuing pipeline")
 
     async def _collect_stage_output(self, stage: Stage) -> str:
-        """Return the stage's output text. Prefers the in-memory cache populated
-        by the work handler; falls back to reading from S3 (used for resumed
-        runs and for stages whose handlers don't cache directly yet)."""
-        cached = self._stage_outputs.get(stage)
-        if cached is not None:
-            return cached
+        """Return the stage's output text.
 
+        Research memory uses approved deep reports when available; otherwise
+        the method prefers the in-memory cache populated by the work handler
+        before falling back to S3 for resumed runs and uncached stages.
+        """
         prefix = self.state.research_prefix
         models = self.state.models_prefix
 
@@ -971,6 +980,10 @@ class Router:
                         parts.append(await self._services.storage.get_text(key))
                     except Exception:
                         logger.warning("Could not read approved deep report %s", key)
+            else:
+                cached = self._stage_outputs.get(stage)
+                if cached is not None:
+                    return cached
             if not parts:
                 key = f"{prefix}/report.md"
                 try:
@@ -981,6 +994,10 @@ class Router:
             text = "\n\n".join(parts)
             self._stage_outputs[stage] = text
             return text
+
+        cached = self._stage_outputs.get(stage)
+        if cached is not None:
+            return cached
 
         if stage == Stage.FORMALIZE:
             parts: list[str] = []
@@ -1014,7 +1031,19 @@ class Router:
                 for fid in fids:
                     model_key = f"{models}/builder/{paradigm}/{fid}_model.py"
                     try:
-                        parts.append(await self._services.storage.get_text(model_key))
+                        model_text = await self._services.storage.get_text(model_key)
+                        parts.append(
+                            "\n".join(
+                                [
+                                    "## Builder artifact",
+                                    f"Paradigm: {paradigm}",
+                                    f"Formulation: {fid}",
+                                    f"S3 key: {model_key}",
+                                    "",
+                                    model_text,
+                                ]
+                            )
+                        )
                     except Exception:
                         logger.warning("Could not read builder model %s", model_key)
             if self.state.build_results:

@@ -304,7 +304,10 @@ class TestAC7_MemoryAccessTracking:
             patch(
                 f"{_TOOL_MODULE}._fetch_confidences",
                 new_callable=AsyncMock,
-                return_value={},
+                return_value={
+                    uuid.UUID(mem_id_1): 0.8,
+                    uuid.UUID(mem_id_2): 0.7,
+                },
             ),
         ):
             handler = _make_handler(db=mock_db)
@@ -337,27 +340,21 @@ class TestAC7_MemoryAccessTracking:
 
     @pytest.mark.asyncio
     async def test_track_memory_access_one_batched_update_plus_one_commit(self):
-        """AC1: one batched access-meta UPDATE + one commit on the session.
-
-        After P3-001, per-id confidence boosts go through `update_memory_confidence`
-        (patched out here). The session still issues exactly one batched UPDATE
-        for `last_accessed_at` / `access_count` and one commit per call.
-        """
+        """AC1: one batched touch call + one commit."""
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
-        from shared import pipeline_memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(5)]
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
-        with patch.object(
-            shared_memories,
-            "update_memory_confidence",
+        with patch(
+            f"{_TOOL_MODULE}.touch_memory",
             new_callable=AsyncMock,
-        ):
+            return_value=5,
+        ) as mock_touch:
             await _track_memory_access(mem_results, mock_db)
 
-        assert mock_session.execute.await_count == 1
+        mock_touch.assert_called_once()
         assert mock_session.commit.await_count == 1
 
     @pytest.mark.asyncio
@@ -366,17 +363,16 @@ class TestAC7_MemoryAccessTracking:
         import logging
 
         from decisionlab.knowledge.retrieval.tool import _track_memory_access
-        from shared import pipeline_memories as shared_memories
 
         mem_results = [_memory_result(str(uuid.uuid4())) for _ in range(3)]
         mock_session = AsyncMock()
         mock_db = _mock_db_with_session(mock_session)
 
         with (
-            patch.object(
-                shared_memories,
-                "update_memory_confidence",
+            patch(
+                f"{_TOOL_MODULE}.touch_memory",
                 new_callable=AsyncMock,
+                return_value=3,
             ),
             caplog.at_level(logging.INFO, logger=_TOOL_MODULE),
         ):
@@ -454,6 +450,8 @@ class TestSourceKindOf:
             ({"source_kind": "simulation"}, "simulation"),
             # Legacy points without ``source_kind`` fall back to namespace.
             ({"namespace": "simulation"}, "simulation"),
+            ({"source_stage": "seed", "namespace": "paradigm"}, "seed"),
+            ({"run_id": "canonical-paradigms-seed"}, "seed"),
             ({"namespace": "paradigm"}, "pipeline"),
             ({"namespace": "formulation"}, "pipeline"),
             ({"namespace": "model"}, "pipeline"),
@@ -550,8 +548,8 @@ class TestP3_002_RecencyConfidenceFromPG:
         assert all(r.metadata["confidence_factor"] == 1.0 for r in weighted)
 
     @pytest.mark.asyncio
-    async def test_recency_weighting_handles_missing_pg_row(self):
-        """A memory id with no PG row (orphaned Qdrant point) keeps factor 1.0."""
+    async def test_recency_weighting_drops_missing_pg_row(self):
+        """A pipeline memory id with no PG row is dropped as an orphan."""
         from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
 
         orphan_id = uuid.uuid4()
@@ -574,7 +572,7 @@ class TestP3_002_RecencyConfidenceFromPG:
 
         weighted = await _apply_recency_weighting(results, mock_db)
 
-        assert weighted[0].metadata["confidence_factor"] == 1.0
+        assert weighted == []
 
     @pytest.mark.asyncio
     async def test_recency_weighting_ignores_qdrant_payload_confidence(self):
@@ -636,8 +634,8 @@ class TestP3_002_RecencyConfidenceFromPG:
         assert any("db is None" in r.getMessage() for r in caplog.records)
 
     @pytest.mark.asyncio
-    async def test_recency_weighting_pg_error_falls_back_to_one(self, caplog):
-        """A PG fetch error must degrade to factor=1.0, not abort retrieve."""
+    async def test_recency_weighting_pg_error_filters_governed_memory(self, caplog):
+        """A PG fetch error must not return governed memory hits as trusted."""
         import logging
 
         from decisionlab.knowledge.retrieval.tool import _apply_recency_weighting
@@ -659,7 +657,7 @@ class TestP3_002_RecencyConfidenceFromPG:
         with caplog.at_level(logging.WARNING, logger=_TOOL_MODULE):
             weighted = await _apply_recency_weighting(results, mock_db)
 
-        assert weighted[0].metadata["confidence_factor"] == 1.0
+        assert weighted == []
         assert any("PG fetch failed" in r.getMessage() for r in caplog.records)
 
 

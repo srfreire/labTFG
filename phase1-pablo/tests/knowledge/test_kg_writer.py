@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 
@@ -15,6 +16,7 @@ from decisionlab.knowledge.models import (
     NodeSpec,
     RelationSpec,
 )
+from shared.pipeline_memories import memory_content_hash
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +31,22 @@ def _stub_node_run_observation(monkeypatch):
         return None
 
     monkeypatch.setattr(kg_writer, "_record_node_run_observation", _noop)
+
+
+def test_node_create_props_drops_nulls_inside_lists():
+    props = kg_writer._node_create_props(
+        {
+            "id": "p1",
+            "range": ["0", None, "1"],
+            "failure_reason": None,
+            "metadata": {"unsupported": "map"},
+        },
+        now="2026-06-06T00:00:00+00:00",
+    )
+
+    assert props["range"] == ["0", "1"]
+    assert "failure_reason" not in props
+    assert "metadata" not in props
 
 
 class _FakePGStore:
@@ -107,6 +125,45 @@ def pg_store(monkeypatch):
     return store
 
 
+@pytest.mark.asyncio
+async def test_create_relation_memory_populates_content_hash():
+    captured: dict = {}
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def execute(self, _stmt, params):
+            captured["params"] = params
+
+        async def commit(self):
+            captured["committed"] = True
+
+    class FakeDB:
+        def get_session(self):
+            return FakeSession()
+
+    content = "Paradigm.foo -[BELONGS_TO]-> Paradigm.bar"
+
+    memory_id = await kg_writer._create_relation_memory(
+        run_id=uuid.uuid4(),
+        stage="researcher",
+        content=content,
+        confidence=0.7,
+        importance=5.0,
+        properties={"source": "test"},
+        valid_from=datetime.now(UTC),
+        db=FakeDB(),
+    )
+
+    assert memory_id is not None
+    assert captured["params"]["content_hash"] == memory_content_hash(content)
+    assert captured["committed"] is True
+
+
 # ---------------------------------------------------------------------------
 # Fake in-memory Neo4j — simulates MERGE, relation lookup, supersession
 # ---------------------------------------------------------------------------
@@ -156,8 +213,12 @@ class FakeNeo4jStore:
 
         if cypher_upper.startswith("MERGE"):
             return self._handle_merge(cypher, params)
+        elif cypher_upper.startswith("MATCH (F:FORMULATION)"):
+            return self._handle_formulation_local_lookup(params)
         elif "RETURN R.MEMORY_ID AS MEMORY_ID, PROPERTIES(R)" in cypher_upper:
             return self._handle_relation_list(cypher, params)
+        elif cypher_upper.startswith("MATCH") and "MERGE (a)-[r:" in cypher:
+            return self._handle_merge_relation(cypher, params)
         elif cypher_upper.startswith("MATCH") and "CREATE (a)-[r:" in cypher:
             return self._handle_create_relation(cypher, params)
         return []
@@ -172,9 +233,14 @@ class FakeNeo4jStore:
         nk = self._node_key(label, key_prop, key_value)
 
         if nk in self.nodes:
-            # ON MATCH path: bump run_count, refresh last_run_at via update_props.
-            update_props = params.get("update_props", {})
-            self.nodes[nk].update(update_props)
+            # ON MATCH path: lifecycle refresh plus fill-only semantic props.
+            now = params.get("now")
+            if now is not None:
+                self.nodes[nk]["updated_at"] = now
+                self.nodes[nk]["last_run_at"] = now
+            for prop, value in params.get("match_props", {}).items():
+                if self.nodes[nk].get(prop) is None:
+                    self.nodes[nk][prop] = value
             self.nodes[nk]["run_count"] = self.nodes[nk].get("run_count", 0) + 1
             return [{"was_created": False}]
         else:
@@ -203,6 +269,28 @@ class FakeNeo4jStore:
                         "props": props,
                     }
                 )
+        return out
+
+    def _handle_formulation_local_lookup(self, params: dict) -> list[dict]:
+        local_id = params.get("local_id")
+        scoped_suffix = params.get("scoped_suffix")
+        out: list[dict] = []
+        for key, props in self.nodes.items():
+            if not key.startswith("Formulation:"):
+                continue
+            formulation_id = props.get("id")
+            if (
+                props.get("local_id") == local_id
+                or formulation_id == local_id
+                or (
+                    isinstance(formulation_id, str)
+                    and isinstance(scoped_suffix, str)
+                    and formulation_id.endswith(scoped_suffix)
+                )
+            ):
+                out.append({"id": formulation_id})
+            if len(out) >= 2:
+                break
         return out
 
     def _handle_create_relation(self, cypher: str, params: dict) -> list[dict]:
@@ -251,6 +339,57 @@ class FakeNeo4jStore:
         )
         return [{"rid": rid}]
 
+    def _handle_merge_relation(self, cypher: str, params: dict) -> list[dict]:
+        """Handle MERGE (a)-[r:TYPE {identity_hash: $identity_hash}]->(b)."""
+        m = re.search(
+            r"MATCH \(a:(\w+) \{(\w+): \$from_val\}\), "
+            r"\(b:(\w+) \{(\w+): \$to_val\}\)",
+            cypher,
+        )
+        if not m:
+            return []
+
+        from_label, from_key = m.group(1), m.group(2)
+        to_label, to_key = m.group(3), m.group(4)
+        from_val = params["from_val"]
+        to_val = params["to_val"]
+        from_nk = self._node_key(from_label, from_key, from_val)
+        to_nk = self._node_key(to_label, to_key, to_val)
+        if from_nk not in self.nodes or to_nk not in self.nodes:
+            return []
+
+        rm = re.search(r"MERGE \(a\)-\[r:(\w+)", cypher)
+        rel_type = rm.group(1) if rm else "UNKNOWN"
+        identity_hash = params.get("identity_hash")
+        for rel in self.relations:
+            if (
+                rel["from_val"] == from_val
+                and rel["to_val"] == to_val
+                and rel["rel_type"] == rel_type
+                and rel["props"].get("identity_hash") == identity_hash
+            ):
+                return [{"rid": rel["rid"], "created": False}]
+
+        self._rel_counter += 1
+        rid = f"rel-{self._rel_counter}"
+        props = dict(params.get("props", {}))
+        props.setdefault("identity_hash", identity_hash)
+        self.relations.append(
+            {
+                "rid": rid,
+                "from_label": from_label,
+                "from_key": from_key,
+                "from_val": from_val,
+                "to_label": to_label,
+                "to_key": to_key,
+                "to_val": to_val,
+                "rel_type": rel_type,
+                "props": props,
+                "valid_to": None,
+            }
+        )
+        return [{"rid": rid, "created": True}]
+
 
 class FakeKnowledgeGraph:
     """Fake KnowledgeGraph that uses an in-memory store."""
@@ -269,7 +408,7 @@ class FakeKnowledgeGraph:
             "Paper": "doi",
             "Postulate": "id",
             "Formulation": "id",
-            "Parameter": "name",
+            "Parameter": "id",
             "Model": "formulation_id",
         }
         if label not in schema:
@@ -425,8 +564,8 @@ async def test_ac1_creates_all_expected_nodes():
     assert "Variable:id=homeostatic-regulation:ghrelin" in store.nodes
     assert "BrainRegion:name=hypothalamus" in store.nodes
     assert "Paper:doi=10.1234/twotb" in store.nodes
-    assert "Postulate:id=P1" in store.nodes
-    assert "Postulate:id=P2" in store.nodes
+    assert "Postulate:id=homeostatic-regulation:P1" in store.nodes
+    assert "Postulate:id=homeostatic-regulation:P2" in store.nodes
 
 
 @pytest.mark.asyncio
@@ -513,6 +652,52 @@ async def test_relation_endpoint_aliases_equation_plaintext_to_latex():
     edge = kg.store.relations[0]
     assert edge["to_key"] == "latex"
     assert edge["to_val"] == "e(t) = s - A(t)"
+
+
+@pytest.mark.asyncio
+async def test_builder_local_formulation_id_resolves_existing_scoped_formulation():
+    """Builder artifacts keep local IDs, KG writes attach to scoped Formulation."""
+    kg = FakeKnowledgeGraph()
+    kg.store.nodes["Formulation:id=reinforcement-learning:q-learning"] = {
+        "id": "reinforcement-learning:q-learning",
+        "local_id": "q-learning",
+        "paradigm_slug": "reinforcement-learning",
+        "name": "Q-learning",
+    }
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Model",
+                properties={
+                    "formulation_id": "q-learning",
+                    "class_name": "QLearningModel",
+                },
+                natural_key="formulation_id",
+            )
+        ],
+        relations=[
+            RelationSpec(
+                from_label="Model",
+                from_key_value="q-learning",
+                to_label="Formulation",
+                to_key_value="q-learning",
+                rel_type="IMPLEMENTS",
+            )
+        ],
+        facts=[],
+        stage="builder",
+        run_id="run-1",
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.errors == []
+    assert "Model:formulation_id=reinforcement-learning:q-learning" in kg.store.nodes
+    edge = kg.store.relations[0]
+    assert edge["from_key"] == "formulation_id"
+    assert edge["from_val"] == "reinforcement-learning:q-learning"
+    assert edge["to_key"] == "id"
+    assert edge["to_val"] == "reinforcement-learning:q-learning"
 
 
 @pytest.mark.asyncio
@@ -642,6 +827,69 @@ async def test_ac2_second_run_skips_duplicate_relations(pg_store):
     assert result2.relations_superseded == 0
     # No new PG rows minted on the idempotent pass.
     assert len(pg_store.rows) == 4
+
+
+@pytest.mark.asyncio
+async def test_relation_provenance_props_do_not_create_duplicate_edge(pg_store):
+    kg = FakeKnowledgeGraph()
+    run_id = str(uuid.uuid4())
+    formulation_id = "reinforcement-learning:q-learning"
+    variable_id = f"{formulation_id}:reward"
+    extraction = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Formulation",
+                properties={
+                    "id": formulation_id,
+                    "name": "Q-learning",
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                natural_key="id",
+            ),
+            NodeSpec(
+                label="Variable",
+                properties={
+                    "name": "reward",
+                    "formulation_id": formulation_id,
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                natural_key="name",
+            ),
+        ],
+        relations=[
+            RelationSpec(
+                from_label="Formulation",
+                from_key_value=formulation_id,
+                to_label="Variable",
+                to_key_value=variable_id,
+                rel_type="USES_VARIABLE",
+                properties={},
+            ),
+            RelationSpec(
+                from_label="Formulation",
+                from_key_value=formulation_id,
+                to_label="Variable",
+                to_key_value=variable_id,
+                rel_type="USES_VARIABLE",
+                properties={
+                    "source": "memory_structural",
+                    "reason": "child formulation_id",
+                },
+            ),
+        ],
+        facts=[],
+        stage="formalizer",
+        run_id=run_id,
+    )
+
+    result = await populate_kg(extraction, kg)
+
+    assert result.relations_created == 1
+    assert len(pg_store.rows) == 1
+    uses_variable = [r for r in kg.store.relations if r["rel_type"] == "USES_VARIABLE"]
+    assert len(uses_variable) == 1
+    assert "memory_id" in uses_variable[0]["props"]
+    assert "identity_hash" in uses_variable[0]["props"]
 
 
 # ---------------------------------------------------------------------------
@@ -927,12 +1175,65 @@ async def test_node_merge_preserves_created_at():
 
     node = kg.store.nodes["Variable:id=reinforcement-learning:dopamine"]
     assert node["created_at"] == original_created  # preserved from first creation
-    assert node["type"] == "neurotransmitter"  # updated property
+    assert node["type"] == "molecular"  # semantic property preserved
     # P0-004: run provenance moved off the node — count + recency only.
     assert node["run_count"] == 2
     assert node.get("last_run_at") is not None
     # Legacy `run_ids` array no longer accumulates.
     assert "run_ids" not in node
+
+
+@pytest.mark.asyncio
+async def test_node_merge_fills_missing_semantic_props_without_overwriting_existing():
+    """Existing node semantics are preserved; absent safe props can be enriched."""
+    kg = FakeKnowledgeGraph()
+    ext1 = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={
+                    "slug": "reinforcement-learning",
+                    "name": "Reinforcement Learning",
+                    "description": "Original rich description",
+                },
+                natural_key="slug",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="researcher",
+        run_id="run-1",
+    )
+    await populate_kg(ext1, kg)
+
+    ext2 = ExtractionResult(
+        nodes=[
+            NodeSpec(
+                label="Paradigm",
+                properties={
+                    "slug": "reinforcement-learning",
+                    "name": "RL",
+                    "description": "Weaker later wording",
+                    "family": "learning",
+                },
+                natural_key="slug",
+            ),
+        ],
+        relations=[],
+        facts=[],
+        stage="formalizer",
+        run_id="run-2",
+    )
+
+    result = await populate_kg(ext2, kg)
+
+    node = kg.store.nodes["Paradigm:slug=reinforcement-learning"]
+    assert result.nodes_merged == 1
+    assert node["name"] == "Reinforcement Learning"
+    assert node["description"] == "Original rich description"
+    assert node["family"] == "learning"
+    assert node["run_count"] == 2
+    assert node.get("updated_at") is not None
 
 
 # ---------------------------------------------------------------------------

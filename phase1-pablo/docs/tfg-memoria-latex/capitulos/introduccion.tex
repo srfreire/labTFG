@@ -1,0 +1,96 @@
+\chapter{Introducción}
+
+\section{Contexto}
+
+Los paradigmas de toma de decisiones humanas se estudian habitualmente mediante
+modelos matemáticos, experimentos conductuales y simulaciones. Sin embargo,
+pasar de una descripción científica a un modelo ejecutable sigue siendo una
+tarea manual: exige buscar literatura, identificar variables, escoger una
+formulación, adaptarla a un entorno concreto y escribir código correcto.
+
+Este trabajo aborda esa brecha desde la ingeniería de agentes inteligentes. La
+fase desarrollada por Pablo Pazos Parada construye un pipeline capaz de partir
+de una descripción en lenguaje natural y producir modelos de decisión
+ejecutables. La salida no es un texto explicativo, sino código Python probado y
+preparado para integrarse en el laboratorio virtual de simulación.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Descripcion del problema
+        |
+        v
+Investigacion cientifica
+        |
+        v
+Formalizacion matematica
+        |
+        v
+Adaptacion al entorno
+        |
+        v
+Modelo Python probado
+\end{verbatim}
+\caption{Transformación principal de la fase 1.}
+\end{figure}
+
+\section{Motivación}
+
+El proyecto completo, compartido con la fase de Juan Freire Alvarez, persigue un
+laboratorio virtual para simular, observar y analizar agentes basados en modelos
+de decisión. Dentro de ese objetivo, esta memoria se centra en la parte que
+genera dichos modelos.
+
+La motivación técnica es doble. En primer lugar, los modelos de lenguaje pueden
+ayudar a interpretar literatura científica y sintetizar código, pero necesitan
+control, validación y trazabilidad. En segundo lugar, un sistema de investigación
+no debe empezar desde cero en cada ejecución: los paradigmas, formulaciones,
+decisiones de diseño y modelos aceptados deben convertirse en memoria reutilizable.
+
+\section{Objetivos}
+
+El objetivo general es diseñar e implementar un sistema de agentes que genere
+modelos de decisión ejecutables a partir de problemas descritos en lenguaje
+natural.
+
+Los objetivos específicos son:
+
+\begin{itemize}
+\item Separar el proceso en etapas especializadas: investigación, formalización,
+razonamiento de implementación y construcción.
+\item Mantener revisión humana entre etapas para evitar que errores tempranos se
+propaguen al código final.
+\item Persistir artefactos, trazas y estado de ejecución para poder auditar y
+reanudar el pipeline.
+\item Crear una memoria de conocimiento que combine base de datos relacional,
+almacenamiento de objetos, grafo de conocimiento y recuperación vectorial.
+\item Generar modelos Python compatibles con un contrato mínimo de simulación:
+\texttt{decide}, \texttt{update} y \texttt{get\_state}.
+\item Validar los modelos generados mediante pruebas ejecutables.
+\end{itemize}
+
+\section{Alcance}
+
+Esta memoria describe la fase 1 del sistema. Quedan dentro del alcance:
+
+\begin{itemize}
+\item El enrutador que coordina el pipeline.
+\item Los agentes Researcher, Formalizer, Reasoner, Builder y MemoryAgent.
+\item La integración con infraestructura compartida: PostgreSQL, MinIO, Neo4j,
+Qdrant, embeddings y reranking.
+\item El contrato de salida de los modelos generados.
+\item Las decisiones de diseño tomadas para controlar calidad, trazabilidad y
+memoria.
+\end{itemize}
+
+Quedan fuera del alcance principal, aunque se mencionan cuando son necesarios:
+la interfaz web, el motor de simulación completo, los agentes de análisis e
+informes de la segunda fase y la evaluación empírica de paradigmas concretos.
+
+\section{Estructura de la memoria}
+
+El capítulo 2 resume el estado del arte relevante. El capítulo 3 presenta la
+arquitectura global. El capítulo 4 profundiza en el flujo de agentes. El
+capítulo 5 describe la memoria y el grafo de conocimiento. El capítulo 6 recoge
+detalles de implementación y validación. Finalmente, el capítulo 7 presenta las
+conclusiones y líneas futuras.

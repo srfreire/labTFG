@@ -1,0 +1,85 @@
+
+% Para una visualizacion correcta, generar el PDF
+% Ni el DVI ni el PS se visualizan bien
+
+% Elegir el estilo que se desee, hay cientos en la red
+
+\documentclass{beamer}
+\usepackage{beamerthemeshadow}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+%\usepackage[latin1]{inputenc}
+
+\begin{document}
+\title{Laboratorio virtual para la simulación y análisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes}
+\subtitle{Fase 1: generación automática de modelos de decisión \\
+Grado en Ingeniería Informática \\
+Universidade de Santiago de Compostela}
+\author{Autor: Pablo Pazos Parada}
+\institute{Tutor: Eduardo Manuel Sanchez Vila}
+\date{\today}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Tabla de contenidos}\tableofcontents
+\end{frame}
+
+\section{Problema y objetivo}
+\begin{frame}
+\frametitle{Problema}
+Convertir literatura y descripciones de paradigmas de decisión en modelos
+ejecutables sigue siendo una tarea manual, lenta y difícil de auditar.
+\end{frame}
+
+\begin{frame}
+\frametitle{Objetivos}
+\begin{itemize}
+\item Investigar paradigmas científicos relevantes.
+\item Formalizarlos matemáticamente.
+\item Adaptarlos a un entorno de simulación.
+\item Generar código Python probado.
+\end{itemize}
+\end{frame}
+
+\section{Arquitectura}
+\begin{frame}
+\frametitle{Pipeline}
+\begin{center}
+Researcher $\rightarrow$ Formalizer $\rightarrow$ Reasoner $\rightarrow$ Builder
+\end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{Memoria}
+\begin{itemize}
+\item MinIO: artefactos.
+\item PostgreSQL: metadatos y ciclo de vida.
+\item Neo4j: entidades y relaciones.
+\item Qdrant: recuperación densa y BM25.
+\end{itemize}
+\end{frame}
+
+\section{Resultados}
+\begin{frame}
+\frametitle{Salida}
+Modelos Python autocontenidos compatibles con:
+\begin{itemize}
+\item \texttt{decide(perception)}
+\item \texttt{update(action, reward, new\_perception)}
+\item \texttt{get\_state()}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Conclusión}
+\begin{itemize}
+\item Pipeline trazable y revisable.
+\item Memoria persistente para reutilizar conocimiento aceptado.
+\item Validación mediante estructura, revisión y tests.
+\end{itemize}
+\end{frame}
+
+\end{document}

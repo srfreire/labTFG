@@ -85,6 +85,8 @@ async def seed_canonical_paradigms(
     # like `kg_writer._node_work`. Seed inserts have no FK row to point
     # at in `node_run_observations`, so we don't write one.
     cypher = (
+        "MERGE (v:CanonicalVocabulary {id: $vocabulary_id}) "
+        "ON CREATE SET v.name = $vocabulary_name, v.created_at = $now "
         "MERGE (p:Paradigm {slug: $slug}) "
         "ON CREATE SET p.name = $name, p.description = $description, "
         "  p.created_at = $now, p.run_count = 1, p.last_run_at = $now, "
@@ -92,6 +94,7 @@ async def seed_canonical_paradigms(
         "ON MATCH SET p.canonical = true, "
         "  p.run_count = coalesce(p.run_count, 0) + 1, "
         "  p.last_run_at = $now "
+        "MERGE (p)-[:PART_OF]->(v) "
         "RETURN p.created_at = $now AS was_created"
     )
 
@@ -107,6 +110,8 @@ async def seed_canonical_paradigms(
                     "name": name,
                     "description": definition,
                     "now": now,
+                    "vocabulary_id": "canonical-paradigms",
+                    "vocabulary_name": "Canonical paradigms",
                 },
             )
             return await result.single()

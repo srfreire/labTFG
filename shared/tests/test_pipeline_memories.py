@@ -19,7 +19,9 @@ from shared.models import Base, Run
 from shared.models import PipelineMemory as Memory
 from shared.pipeline_memories import (
     create_memory,
+    create_memory_once,
     get_memories,
+    memory_content_hash,
     supersede_memory,
     touch_memory,
     update_confidence,
@@ -105,6 +107,9 @@ async def test_ac2_create_and_query_by_namespace(session, run_id):
 
     assert mem.id is not None
     assert isinstance(mem.id, uuid.UUID)
+    assert mem.content_hash == memory_content_hash(
+        "Dopamine mediates wanting, not liking"
+    )
 
     results = await get_memories(session, namespace="paradigm")
     assert len(results) == 1
@@ -305,6 +310,58 @@ async def test_touch_memory_empty_list_is_noop(session):
     """Passing [] returns 0 and issues no SQL — no-op."""
     touched = await touch_memory(session, [])
     assert touched == 0
+
+
+@pytest.mark.asyncio
+async def test_touch_memory_ignores_missing_and_expired_ids(session, run_id):
+    """Only live existing memories are touched/count boosted."""
+    live = await create_memory(session, **_memory_kwargs(run_id, content="live"))
+    expired = await create_memory(
+        session,
+        **_memory_kwargs(
+            run_id,
+            content="expired",
+            valid_to=datetime(2020, 1, 1),
+        ),
+    )
+    missing = uuid.uuid4()
+    await session.commit()
+    live_id = live.id
+    expired_id = expired.id
+
+    touched = await touch_memory(session, [live_id, expired_id, missing])
+    await session.commit()
+
+    assert touched == 1
+    session.expire_all()
+    rows = (
+        await session.execute(
+            select(Memory).where(Memory.id.in_([live_id, expired_id]))
+        )
+    ).scalars()
+    by_id = {row.id: row for row in rows}
+    assert by_id[live_id].access_count == 1
+    assert by_id[expired_id].access_count == 0
+
+
+@pytest.mark.asyncio
+async def test_create_memory_once_reuses_same_live_fact(session, run_id):
+    """Same run/stage/ns/type/content hash returns the existing live row."""
+    kwargs = _memory_kwargs(run_id, content="  Same   Fact ")
+    first, created_first = await create_memory_once(session, **kwargs)
+    second, created_second = await create_memory_once(
+        session,
+        **_memory_kwargs(run_id, content="same fact"),
+    )
+    await session.commit()
+
+    assert created_first is True
+    assert created_second is False
+    assert second.id == first.id
+    rows = (
+        await session.execute(select(Memory).where(Memory.run_id == run_id))
+    ).scalars()
+    assert len(list(rows)) == 1
 
 
 # ── Additional: min_confidence filter ──

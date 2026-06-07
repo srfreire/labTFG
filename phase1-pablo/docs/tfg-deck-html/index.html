@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TFG Pablo Pazos Parada · Deck</title>
+  <link rel="stylesheet" href="deck.css" />
+</head>
+<body>
+<main class="deck">
+  <section class="slide" data-slide="01">
+    <div class="content">
+      <div class="topbar">
+        <div class="brand">
+          <img src="assets/logo_usc.png" alt="USC" />
+          <span>Universidade de Santiago de Compostela</span>
+        </div>
+        <div class="eyebrow">TFG · Fase 1</div>
+      </div>
+      <div class="title-grid">
+        <div>
+          <h1>Generación automática de modelos de decisión</h1>
+          <p class="lead">Un pipeline de agentes que transforma descripciones científicas en código Python validado para simulación.</p>
+          <div class="stat-row">
+            <div class="metric"><strong>4</strong><span>agentes principales</span></div>
+            <div class="metric"><strong>3</strong><span>capas de memoria</span></div>
+            <div class="metric"><strong>1</strong><span>contrato de simulación</span></div>
+          </div>
+        </div>
+        <div class="panel pad hero-graph">
+          <div class="edge-line e1"></div>
+          <div class="edge-line e2"></div>
+          <div class="edge-line e3"></div>
+          <div class="edge-line e4"></div>
+          <div class="node round amber" style="left: 24px; top: 70px;"><span>Researcher</span></div>
+          <div class="node soft blue" style="left: 286px; top: 86px;"><span>Reasoner</span></div>
+          <div class="node diamond green" style="left: 108px; top: 286px;"><span>Builder</span></div>
+          <div class="node hex cyan" style="left: 426px; top: 260px;"><span>Memory</span></div>
+        </div>
+      </div>
+      <div class="footer-note">Pablo Pazos Parada · Tutor: Eduardo Manuel Sanchez Vila · Junio 2026</div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="02">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Problema</div>
+        <div class="eyebrow">De literatura a simulación</div>
+      </div>
+      <div class="split">
+        <div class="claim">
+          <h2>El cuello de botella no es simular: es convertir conocimiento científico en modelos ejecutables.</h2>
+          <p class="lead">Buscar papers, elegir una formulación, adaptarla al entorno y escribir código correcto sigue siendo una tarea manual y difícil de auditar.</p>
+        </div>
+        <div class="panel pad">
+          <div class="diagram-title">
+            <h3>Transformación manual clásica</h3>
+            <span class="tag">riesgo</span>
+          </div>
+          <div class="flow vertical">
+            <div class="stage"><div class="dot amber"></div><div><b>Texto científico</b><p>Paradigmas, variables, hipótesis y ecuaciones repartidas en literatura.</p></div></div>
+            <div class="edge"></div>
+            <div class="stage"><div class="dot amber"></div><div><b>Interpretación humana</b><p>Decisiones no siempre trazables ni reutilizables en otro experimento.</p></div></div>
+            <div class="edge"></div>
+            <div class="stage"><div class="dot amber"></div><div><b>Código ad hoc</b><p>La implementación final puede separarse de la formulación original.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="03">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Tesis del sistema</div>
+        <div class="eyebrow">Control antes que magia</div>
+      </div>
+      <div class="claim">
+        <h2>La solución es un pipeline trazable, no un agente monolítico.</h2>
+        <p class="lead">Cada etapa reduce un tipo de incertidumbre y deja un artefacto revisable antes de continuar.</p>
+      </div>
+      <div class="panel pad">
+        <div class="flow">
+          <div class="node round amber"><span>Problema</span></div>
+          <div class="edge"></div>
+          <div class="node soft blue"><span>Paradigmas</span></div>
+          <div class="edge"></div>
+          <div class="node soft blue"><span>Formulas</span></div>
+          <div class="edge"></div>
+          <div class="node hex cyan"><span>Spec JSON</span></div>
+          <div class="edge"></div>
+          <div class="node diamond green"><span>Modelo.py</span></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="metric"><strong>Revisión</strong><span>humana entre decisiones semánticas</span></div>
+        <div class="metric"><strong>Artefactos</strong><span>persistidos por run id</span></div>
+        <div class="metric"><strong>Tests</strong><span>para validar salida ejecutable</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="04">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Pipeline</div>
+        <div class="eyebrow">Máquina de estados</div>
+      </div>
+      <div class="split">
+        <div>
+          <h2>El Router hace determinista el flujo de trabajo.</h2>
+          <p class="lead">Los modelos de lenguaje generan contenido; el sistema decide etapas, persistencia, revisión, memoria y reejecuciones.</p>
+          <div class="quote" style="margin-top: 32px;">La creatividad está en los agentes; la responsabilidad operacional está en el Router.</div>
+        </div>
+        <div class="panel sidebar-visual">
+          <div class="timeline">
+            <div class="timeline-row"><span class="dot green"></span><span>Classify</span></div>
+            <div class="timeline-row"><span class="dot green"></span><span>Research</span></div>
+            <div class="timeline-row"><span class="dot blue"></span><span>Review</span></div>
+            <div class="timeline-row"><span class="dot green"></span><span>Memory</span></div>
+            <div class="timeline-row"><span class="dot amber"></span><span>Formalize</span></div>
+            <div class="timeline-row"><span class="dot blue"></span><span>Reason</span></div>
+            <div class="timeline-row"><span class="dot green"></span><span>Build</span></div>
+            <div class="timeline-row"><span class="dot green"></span><span>Done</span></div>
+          </div>
+          <div class="kv" style="grid-template-columns: 1fr; margin-top: 28px;">
+            <div>Estado persistido</div>
+            <div>pipeline_state.json permite reanudar ejecución.</div>
+            <div>Trace</div>
+            <div>trace.jsonl conserva llamadas, herramientas y eventos.</div>
+            <div>Review gates</div>
+            <div>El usuario aprueba antes de memoria y siguiente etapa.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="05">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Agentes especializados</div>
+        <div class="eyebrow">Researcher → Formalizer → Reasoner → Builder</div>
+      </div>
+      <div class="claim">
+        <h2>Cada agente tiene una frontera cognitiva estrecha.</h2>
+      </div>
+      <div class="stage-list">
+        <div class="stage"><div class="dot amber"></div><div><b>Researcher</b><p>Descubre paradigmas, consulta memoria y lanza investigación profunda.</p></div></div>
+        <div class="stage"><div class="dot blue"></div><div><b>Formalizer</b><p>Convierte informes científicos en formulaciones matemáticas comparables.</p></div></div>
+        <div class="stage"><div class="dot blue"></div><div><b>Reasoner</b><p>Adapta una formulación al entorno y produce una especificación JSON.</p></div></div>
+        <div class="stage"><div class="dot green"></div><div><b>Builder</b><p>Genera Python autocontenido, tests y validación ejecutable con pytest.</p></div></div>
+      </div>
+      <div class="panel pad" style="margin-top: 18px;">
+        <div class="code">deep/{paradigm}.md  →  formulations/{slug}.md  →  reasoner/{formulation}.json  →  builder/{formulation}_model.py</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="06">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Arquitectura</div>
+        <div class="eyebrow">Persistencia y trazabilidad</div>
+      </div>
+      <div class="split">
+        <div>
+          <h2>Los artefactos son la unidad de verdad entre etapas.</h2>
+          <p class="lead">El sistema no pasa conocimiento crítico solo por prompt: lo escribe, lo versiona por ejecución y lo puede reabrir para revisar o reanudar.</p>
+        </div>
+        <div class="panel pad diagram-card">
+          <div class="diagram-title">
+            <h3>Capas runtime</h3>
+            <span class="tag">source of truth</span>
+          </div>
+          <div class="kv">
+            <div>MinIO</div><div>Bytes reales: informes, specs, código, estado y trazas.</div>
+            <div>PostgreSQL</div><div>Runs, artefactos, modelos registrados y ciclo de vida de memorias.</div>
+            <div>Neo4j</div><div>Identidad científica: paradigmas, papers, variables y relaciones.</div>
+            <div>Qdrant</div><div>Hechos recuperables con embeddings densos y BM25 nativo.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="07">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Memoria</div>
+        <div class="eyebrow">Curated knowledge backbone</div>
+      </div>
+      <div class="claim">
+        <h2>La memoria almacena conocimiento aceptado, no todos los borradores del LLM.</h2>
+        <p class="lead">Esta decisión evita contaminar ejecuciones futuras con formulaciones rechazadas o código inválido.</p>
+      </div>
+      <div class="memory-grid">
+        <div class="store"><div class="store-head"><b>MinIO</b><span class="pill">raw</span></div><p>Conserva los artefactos completos para auditoría y reconstrucción.</p></div>
+        <div class="store"><div class="store-head"><b>PostgreSQL</b><span class="pill">lifecycle</span></div><p>Gestiona confianza, validez temporal, accesos y supersesión.</p></div>
+        <div class="store"><div class="store-head"><b>Neo4j</b><span class="pill">relations</span></div><p>Representa entidades científicas y relaciones como grafo de conocimiento.</p></div>
+        <div class="store"><div class="store-head"><b>Qdrant</b><span class="pill">retrieval</span></div><p>Indexa hechos extraídos para recuperación densa y léxica.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="08">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">SOTA aplicado</div>
+        <div class="eyebrow">RAG · GraphRAG · CRAG</div>
+      </div>
+      <div class="split">
+        <div>
+          <h2>La recuperación combina señales complementarias.</h2>
+          <p class="lead">Densa para similitud semántica, BM25 para términos exactos, grafo para relaciones, RRF para fusionar y CRAG para corregir cuando hay duda.</p>
+        </div>
+        <div class="panel pad">
+          <div class="code"><span class="blue">query</span>
+  ├─ dense vectors  <span class="dim">Voyage/Qdrant</span>
+  ├─ sparse BM25    <span class="dim">Qdrant native</span>
+  └─ graph context  <span class="dim">Neo4j 2-hop</span>
+        ↓
+<span class="amber">RRF fusion</span> → rerank → confidence
+        ↓
+<span class="green">CRAG</span>: keep · supplement · fallback</div>
+          <div class="outcome-grid">
+            <div class="outcome"><b>Alta confianza</b><span>Se inyecta contexto interno sin coste extra.</span></div>
+            <div class="outcome"><b>Ambigüedad</b><span>Se complementa con búsqueda web controlada.</span></div>
+            <div class="outcome"><b>Incorrecto</b><span>Se evita propagar memoria irrelevante.</span></div>
+            <div class="outcome"><b>Sin grader</b><span>Se devuelve contexto con advertencia.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="09">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">MemoryAgent</div>
+        <div class="eyebrow">Extracción determinista</div>
+      </div>
+      <div class="claim">
+        <h2>MemoryAgent no conversa: ejecuta una tubería de memoria controlada.</h2>
+      </div>
+      <div class="panel pad">
+        <div class="flow">
+          <div class="node soft blue"><span>Accepted output</span></div>
+          <div class="edge"></div>
+          <div class="node round amber"><span>Extract</span></div>
+          <div class="edge"></div>
+          <div class="node round amber"><span>Canonicalize</span></div>
+          <div class="edge"></div>
+          <div class="node hex cyan"><span>Write KG</span></div>
+          <div class="edge"></div>
+          <div class="node diamond green"><span>Resolve</span></div>
+        </div>
+      </div>
+      <div class="two-col-list" style="margin-top: 26px;">
+        <div class="check"><div><b>Structured extraction</b><span>Nodos, relaciones y hechos validados con Pydantic.</span></div></div>
+        <div class="check"><div><b>Conflict handling</b><span>Duplicados, corroboración, contradicción y supersesión.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="10">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Salida ejecutable</div>
+        <div class="eyebrow">DecisionModel contract</div>
+      </div>
+      <div class="split">
+        <div>
+          <h2>La salida es código cargable por el laboratorio, no un informe.</h2>
+          <p class="lead">El contrato es pequeño para que los modelos sean autocontenidos y puedan cargarse por duck typing.</p>
+          <div class="stat-row">
+            <div class="metric"><strong>decide</strong><span>elige acción sin mutar estado</span></div>
+            <div class="metric"><strong>update</strong><span>aprende tras recompensa</span></div>
+            <div class="metric"><strong>state</strong><span>expone variables internas</span></div>
+          </div>
+        </div>
+        <div class="panel pad">
+          <div class="code"><span class="green">perception</span> = env.build_perception(agent)
+action = model.<span class="blue">decide</span>(perception)
+
+reward, result = env.apply(action)
+new = env.build_perception(agent)
+
+model.<span class="amber">update</span>(action, reward, new)
+state = model.get_state()</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="11">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Validación</div>
+        <div class="eyebrow">Control de calidad en capas</div>
+      </div>
+      <div class="claim">
+        <h2>La validación se reparte: estructura, revisión, pruebas y trazas.</h2>
+      </div>
+      <div class="stage-list">
+        <div class="stage"><div class="dot blue"></div><div><b>Schemas</b><p>JSON y salidas estructuradas reducen respuestas inválidas.</p></div></div>
+        <div class="stage"><div class="dot blue"></div><div><b>Revisión humana</b><p>Decisiones científicas aprobadas antes de avanzar.</p></div></div>
+        <div class="stage"><div class="dot green"></div><div><b>pytest</b><p>Builder ejecuta pruebas sobre los modelos generados.</p></div></div>
+        <div class="stage"><div class="dot amber"></div><div><b>trace.jsonl</b><p>Cada tool call y salida queda auditable por ejecución.</p></div></div>
+      </div>
+      <div class="panel pad" style="margin-top: 20px;">
+        <div class="code">uv run pytest  →  validation.json  →  registered model</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="12">
+    <div class="content">
+      <div class="topbar">
+        <div class="pipe-label">Contribución</div>
+        <div class="eyebrow">Resultado defendible</div>
+      </div>
+      <div>
+        <h2>La fase 1 aporta la capa generativa y acumulativa del laboratorio virtual.</h2>
+        <p class="lead">Convierte conocimiento científico en modelos ejecutables, manteniendo trazabilidad y memoria reutilizable.</p>
+        <div class="closing-note">Idea final: no sustituir al investigador, sino convertir su criterio en un sistema repetible.</div>
+      </div>
+      <div class="final-grid">
+        <div class="final-card"><b>Pipeline de agentes</b><p>Investigación, formalización, adaptación al entorno y construcción de código como etapas auditables.</p></div>
+        <div class="final-card"><b>Memoria de conocimiento</b><p>PostgreSQL, MinIO, Neo4j y Qdrant cooperan para reutilizar hechos aceptados.</p></div>
+        <div class="final-card"><b>Integración real</b><p>Los modelos generados respetan un contrato simple y pueden ser cargados por la fase de simulación.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -19,6 +19,16 @@ def test_variable_indexes_include_paradigm_slug():
     assert "name" in info["indexes"]
 
 
+def test_parameter_unique_key_is_scoped_id():
+    assert KnowledgeGraph.unique_key_for("Parameter") == "id"
+
+
+def test_formulation_indexes_include_local_id_bridge():
+    info = KnowledgeGraph.SCHEMA["Formulation"]
+    assert "local_id" in info["indexes"]
+    assert "paradigm_slug" in info["indexes"]
+
+
 @pytest.mark.asyncio
 async def test_init_schema_issues_run_ids_cleanup_cypher():
     """init_schema must REMOVE pre-P0-004 ``n.run_ids`` arrays idempotently.

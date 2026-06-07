@@ -340,7 +340,15 @@ async def test_create_relation_accepts_formulation_readability_types(
         "Variable",
         {"id": "readable:x", "name": "x", "paradigm_slug": "readable"},
     )
-    await kg.create_node("Parameter", {"name": "alpha", "default_value": 0.1})
+    await kg.create_node(
+        "Parameter",
+        {
+            "id": "readable:f-readable:alpha",
+            "name": "alpha",
+            "formulation_id": "f-readable",
+            "default_value": 0.1,
+        },
+    )
 
     await kg.create_relation(
         "Formulation",
@@ -356,8 +364,8 @@ async def test_create_relation_accepts_formulation_readability_types(
         "id",
         "f-readable",
         "Parameter",
-        "name",
-        "alpha",
+        "id",
+        "readable:f-readable:alpha",
         "HAS_PARAMETER",
     )
 

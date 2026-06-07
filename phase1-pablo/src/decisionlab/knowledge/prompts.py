@@ -171,10 +171,11 @@ formulation's narrative. \
 paradigm_slug must be the slug of the Paradigm whose formalization this document \
 describes (the Researcher upstream sets it; if absent, derive from the document's \
 paradigm name).
-- Parameter: properties={{name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="name". \
+- Parameter: properties={{id, name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="id". \
 Extract from ### Parameters tables. name must be the mathematical symbol, \
 display_name must be the human-readable Name column, and formulation_id must be \
-the slugified formulation heading name. default_value should be a number or string.
+the slugified formulation heading name. id must combine formulation_id and the \
+mathematical symbol (for example formulation-slug:alpha). default_value should be a number or string.
 - Formulation: properties={{id, name, type, description, paradigm_slug}}. natural_key="id". \
 Id is the slugified formulation heading name, not "Formulation 1". \
 Type is the approach (e.g., "ODE-based control", "Q-learning MDP").
@@ -209,9 +210,10 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
-- Parameter: properties={{name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="name". \
+- Parameter: properties={{id, name, symbol, display_name, default_value, source, range, paradigm_slug, formulation_id}}. natural_key="id". \
 Extract from the "parameters" array. name must be the "symbol" value; \
-display_name must be the descriptive "name" field. Use the default from the spec \
+display_name must be the descriptive "name" field. id must combine formulation_id \
+and symbol (for example formulation-slug:alpha). Use the default from the spec \
 (may differ from the formalizer's defaults — the reasoner has validated/updated them).
 - Formulation: properties={{id, name, type, description, paradigm_slug}}. natural_key="id". \
 Extract id from formulation_id and name from the name field. paradigm_slug must \
@@ -247,9 +249,9 @@ Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
 Node types to extract:
-- Model: properties={{formulation_id, class_name, passed, failure_reason}}. \
-natural_key="formulation_id". Extract formulation_id from the module docstring or \
-filename pattern. class_name is the main model class that implements the \
+- Model: properties={{formulation_id, paradigm_slug, class_name, passed, failure_reason}}. \
+natural_key="formulation_id". Extract formulation_id and paradigm_slug from the \
+artifact header, module docstring, or filename pattern. class_name is the main model class that implements the \
 DecisionModel contract (has decide, update, get_state methods). passed is a boolean \
 test outcome (true if all tests pass, false otherwise); omit it when no test output \
 is present. failure_reason is a brief description when passed is false, otherwise \
