@@ -66,6 +66,13 @@ _JSON_SCHEMA = """\
 }\
 """
 
+_NODE_LABEL_GUARD = """\
+Use only the node types listed for this stage. Do NOT emit Observation, \
+ObservationNode, SimulationObservation, or TestResult as node labels. Runtime \
+observations belong in facts; observable model inputs belong as Variable nodes \
+with type="Observation".\
+"""
+
 # ---------------------------------------------------------------------------
 # Researcher extraction
 # ---------------------------------------------------------------------------
@@ -76,6 +83,8 @@ scientific paradigm and extract structured entities, relations, and atomic facts
 
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
+
+{_NODE_LABEL_GUARD}
 
 {_CANONICAL_DIRECTIVE}
 
@@ -155,6 +164,8 @@ Extract structured entities, relations, and atomic facts.
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
+{_NODE_LABEL_GUARD}
+
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
@@ -207,6 +218,8 @@ and atomic facts.
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
 
+{_NODE_LABEL_GUARD}
+
 {_CANONICAL_DIRECTIVE}
 
 Node types to extract:
@@ -247,6 +260,8 @@ relations, and atomic facts.
 
 Output ONLY valid JSON matching this schema (no markdown fences, no commentary):
 {_JSON_SCHEMA}
+
+{_NODE_LABEL_GUARD}
 
 Node types to extract:
 - Model: properties={{formulation_id, paradigm_slug, class_name, passed, failure_reason}}. \

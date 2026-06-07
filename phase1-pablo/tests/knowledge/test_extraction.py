@@ -1243,9 +1243,9 @@ def test_build_result_skips_malformed_relations():
         "nodes": [],
         "relations": [
             {
-                "from_label": "A",
+                "from_label": "Postulate",
                 "from_key_value": "1",
-                "to_label": "B",
+                "to_label": "Paradigm",
                 "to_key_value": "2",
                 "rel_type": "R",
             },  # valid
@@ -1255,6 +1255,78 @@ def test_build_result_skips_malformed_relations():
     }
     result = _build_result(data, "researcher", "run-1")
     assert len(result.relations) == 1
+
+
+def test_build_result_keeps_observation_variables_but_drops_observation_nodes():
+    """Runtime observations are memory facts, not standalone KG node labels."""
+    data = {
+        "nodes": [
+            {
+                "label": "Formulation",
+                "properties": {
+                    "id": "q-learning",
+                    "name": "Q-learning",
+                    "type": "MDP",
+                    "description": "Uses observed rewards to update action values.",
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                "natural_key": "id",
+            },
+            {
+                "label": "Variable",
+                "properties": {
+                    "name": "observed_reward",
+                    "description": "Reward observed after an action.",
+                    "type": "Observation",
+                    "range": "scalar",
+                    "unit": "points",
+                    "paradigm_slug": "reinforcement-learning",
+                },
+                "natural_key": "name",
+            },
+            {
+                "label": "Observation",
+                "properties": {
+                    "content": "Agent observed reward spikes after food collection."
+                },
+                "natural_key": "content",
+            },
+        ],
+        "relations": [
+            {
+                "from_label": "Formulation",
+                "from_key_value": "q-learning",
+                "to_label": "Variable",
+                "to_key_value": "observed_reward",
+                "rel_type": "USES_VARIABLE",
+            },
+            {
+                "from_label": "Observation",
+                "from_key_value": "Agent observed reward spikes after food collection.",
+                "to_label": "Formulation",
+                "to_key_value": "q-learning",
+                "rel_type": "OBSERVED_IN",
+            },
+        ],
+        "facts": ["Formalizer extracted reward as an observation."],
+    }
+
+    result = _build_result(data, "formalizer", "run-1")
+
+    assert not any(node.label == "Observation" for node in result.nodes)
+    assert any(
+        node.label == "Variable" and node.properties["type"] == "Observation"
+        for node in result.nodes
+    )
+    assert not any(
+        rel.from_label == "Observation" or rel.to_label == "Observation"
+        for rel in result.relations
+    )
+    assert any(rel.rel_type == "USES_VARIABLE" for rel in result.relations)
+    assert result.facts[0] == (
+        "Observation: Agent observed reward spikes after food collection."
+    )
+    assert "Formalizer extracted reward as an observation." in result.facts
 
 
 def test_build_result_skips_empty_facts():

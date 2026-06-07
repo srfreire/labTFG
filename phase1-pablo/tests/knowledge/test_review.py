@@ -9,8 +9,10 @@ import pytest
 import decisionlab.knowledge.review as review_module
 from decisionlab.knowledge.models import ExtractionResult, NodeSpec, RelationSpec
 from decisionlab.knowledge.review import (
+    _apply_corrections,
     _NodePatch,
     _ReviewCorrections,
+    _ReviewNode,
     _ReviewRelation,
     review_and_correct_extraction,
 )
@@ -138,6 +140,50 @@ async def test_review_applies_node_patch_relation_remove_and_relation_add():
         and rel.to_label == "Parameter"
         and rel.to_key_value == f"{formulation_id}:alpha"
         for rel in result.relations
+    )
+
+
+def test_review_does_not_add_observation_nodes_or_relations():
+    extraction = _extraction()
+    corrections = _ReviewCorrections(
+        add_nodes=[
+            _ReviewNode(
+                label="Observation",
+                properties={"content": "Agent saw high reward."},
+                natural_key="content",
+            )
+        ],
+        add_relations=[
+            _ReviewRelation(
+                from_label="Observation",
+                from_key_value="Agent saw high reward.",
+                to_label="Formulation",
+                to_key_value="q-learning",
+                rel_type="OBSERVED_IN",
+            ),
+            _ReviewRelation(
+                from_label="Formulation",
+                from_key_value="q-learning",
+                to_label="Parameter",
+                to_key_value="alpha",
+                rel_type="HAS_PARAMETER",
+            ),
+        ],
+    )
+
+    _apply_corrections(extraction, corrections)
+
+    assert not any(node.label == "Observation" for node in extraction.nodes)
+    assert not any(
+        rel.from_label == "Observation" or rel.to_label == "Observation"
+        for rel in extraction.relations
+    )
+    assert any(
+        rel.from_label == "Formulation"
+        and rel.to_label == "Parameter"
+        and rel.to_key_value == "alpha"
+        and rel.rel_type == "HAS_PARAMETER"
+        for rel in extraction.relations
     )
 
 

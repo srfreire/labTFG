@@ -37,6 +37,21 @@ _REVIEW_CHUNK_MAX_RELATIONS = int(
 )
 _REVIEW_MAX_FACTS = int(os.getenv("DECISIONLAB_MEMORY_REVIEW_MAX_FACTS", "20"))
 
+_ALLOWED_REVIEW_LABELS = frozenset(
+    {
+        "Paradigm",
+        "Author",
+        "Paper",
+        "BrainRegion",
+        "Variable",
+        "Postulate",
+        "Equation",
+        "Parameter",
+        "Formulation",
+        "Model",
+    }
+)
+
 _REVIEW_SYSTEM = """\
 You are the review-and-correction pass for a scientific knowledge graph memory
 pipeline.
@@ -59,6 +74,11 @@ Focus on:
   a source/rule/postulate chain.
 - Filling missing formulation_id/paradigm_slug on Parameter, Variable, Equation,
   and Model nodes when the artifact makes the owner formulation clear.
+
+Use only existing graph node labels: Paradigm, Author, Paper, BrainRegion,
+Variable, Postulate, Equation, Parameter, Formulation, and Model. Do not emit
+Observation, ObservationNode, SimulationObservation, or TestResult nodes. Runtime
+observations belong in facts/memory; observable model inputs are Variable nodes.
 
 Do not invent authors, papers, equations, postulates, or scientific claims. Do
 not remove a relation unless it is clearly attached to the wrong endpoint.
@@ -246,6 +266,13 @@ def _apply_corrections(
         _patch_node(extraction, patch)
 
     for raw_node in corrections.add_nodes:
+        if not _label_is_allowed(raw_node.label):
+            logger.warning(
+                "KG review[%s]: ignored unsupported added node label %s",
+                extraction.stage,
+                raw_node.label,
+            )
+            continue
         _upsert_node(
             extraction,
             NodeSpec(
@@ -256,6 +283,14 @@ def _apply_corrections(
         )
 
     for raw_rel in corrections.add_relations:
+        if not _relation_labels_are_allowed(raw_rel):
+            logger.warning(
+                "KG review[%s]: ignored unsupported relation endpoints %s -> %s",
+                extraction.stage,
+                raw_rel.from_label,
+                raw_rel.to_label,
+            )
+            continue
         _add_relation(
             extraction,
             RelationSpec(
@@ -267,6 +302,14 @@ def _apply_corrections(
                 properties=dict(raw_rel.properties),
             ),
         )
+
+
+def _label_is_allowed(label: str) -> bool:
+    return label in _ALLOWED_REVIEW_LABELS
+
+
+def _relation_labels_are_allowed(rel: _ReviewRelation) -> bool:
+    return _label_is_allowed(rel.from_label) and _label_is_allowed(rel.to_label)
 
 
 def _patch_node(extraction: ExtractionResult, patch: _NodePatch) -> None:

@@ -63,6 +63,37 @@ _STAGE_MODELS: dict[str, str] = {
     "builder": SETTINGS.knowledge_fast_model,
 }
 
+_STAGE_ALLOWED_NODE_LABELS: dict[str, frozenset[str]] = {
+    "researcher": frozenset(
+        {"Paradigm", "Author", "Paper", "BrainRegion", "Variable", "Postulate"}
+    ),
+    "formalizer": frozenset({"Equation", "Variable", "Parameter", "Formulation"}),
+    "reasoner": frozenset({"Parameter", "Formulation"}),
+    "builder": frozenset({"Model"}),
+}
+
+_STAGE_ALLOWED_RELATION_ENDPOINT_LABELS: dict[str, frozenset[str]] = {
+    "researcher": _STAGE_ALLOWED_NODE_LABELS["researcher"],
+    "formalizer": frozenset(
+        {"Paradigm", "Equation", "Variable", "Parameter", "Formulation"}
+    ),
+    "reasoner": frozenset({"Paradigm", "Postulate", "Parameter", "Formulation"}),
+    "builder": frozenset({"Model", "Formulation"}),
+}
+
+_OBSERVATION_NODE_LABELS = frozenset(
+    {"Observation", "ObservationNode", "SimulationObservation"}
+)
+_OBSERVATION_FACT_KEYS = (
+    "content",
+    "summary",
+    "description",
+    "text",
+    "statement",
+    "name",
+    "title",
+)
+
 _TOP_LEVEL_MARKDOWN_RE = re.compile(r"(?m)(?=^#\s+)")
 _FORMULATION_MARKDOWN_RE = re.compile(r"(?m)(?=^##\s+Formulation\s+\d+)")
 _BUILDER_ARTIFACT_RE = re.compile(r"(?m)(?=^##\s+Builder artifact\s*$)")
@@ -403,10 +434,45 @@ def _fold_legacy_test_results(raw_nodes: list) -> list:
     return survivors
 
 
+def _allowed_node_labels_for_stage(stage: str) -> frozenset[str] | None:
+    return _STAGE_ALLOWED_NODE_LABELS.get(stage)
+
+
+def _allowed_relation_endpoint_labels_for_stage(stage: str) -> frozenset[str] | None:
+    return _STAGE_ALLOWED_RELATION_ENDPOINT_LABELS.get(stage)
+
+
+def _observation_node_fact(label: str, properties: dict[str, Any]) -> str | None:
+    if label not in _OBSERVATION_NODE_LABELS:
+        return None
+
+    for key in _OBSERVATION_FACT_KEYS:
+        value = properties.get(key)
+        if isinstance(value, str) and value.strip():
+            return f"Observation: {value.strip()}"
+    return None
+
+
+def _relation_uses_allowed_labels(
+    raw: dict[str, Any],
+    allowed_labels: frozenset[str] | None,
+) -> bool:
+    if allowed_labels is None:
+        return True
+    return (
+        str(raw.get("from_label")) in allowed_labels
+        and str(raw.get("to_label")) in allowed_labels
+    )
+
+
 def _build_result(
     data: dict, stage: str, run_id: str, *, source_text: str = ""
 ) -> ExtractionResult:
     """Convert parsed JSON dict into an ExtractionResult with validated fields."""
+    allowed_node_labels = _allowed_node_labels_for_stage(stage)
+    allowed_relation_endpoint_labels = _allowed_relation_endpoint_labels_for_stage(
+        stage
+    )
     raw_nodes = _fold_legacy_test_results(data.get("nodes", []))
     if stage == "builder":
         raw_nodes = [
@@ -449,6 +515,8 @@ def _build_result(
     nodes = []
     n_dropped_invalid = 0
     drop_reasons: list[str] = []
+    dropped_labels: list[str] = []
+    observation_facts: list[str] = []
     for raw in raw_nodes:
         if not isinstance(raw, dict):
             continue
@@ -457,11 +525,19 @@ def _build_result(
         natural_key = raw.get("natural_key")
         if not (label and isinstance(properties, dict) and natural_key):
             continue
+        label = str(label)
+
+        if allowed_node_labels is not None and label not in allowed_node_labels:
+            dropped_labels.append(label)
+            fact = _observation_node_fact(label, properties)
+            if fact:
+                observation_facts.append(fact)
+            continue
 
         # Per-label property validation. Slug-bearing labels enforce the
         # canonical Literal here so a single bad node is dropped instead
         # of failing the whole list at parse time (see _Extraction).
-        sub_model = _LABEL_TO_PROPS.get(str(label))
+        sub_model = _LABEL_TO_PROPS.get(label)
         if sub_model is not None:
             try:
                 sub_model.model_validate(properties)
@@ -475,10 +551,17 @@ def _build_result(
 
         nodes.append(
             NodeSpec(
-                label=str(label),
+                label=label,
                 properties=properties,
                 natural_key=str(natural_key),
             )
+        )
+
+    if dropped_labels:
+        logger.warning(
+            "extract[%s]: dropped unsupported node labels: %s",
+            stage,
+            ", ".join(sorted(set(dropped_labels))),
         )
 
     if n_dropped_invalid:
@@ -504,6 +587,8 @@ def _build_result(
             "rel_type",
         )
         if all(raw.get(k) for k in required):
+            if not _relation_uses_allowed_labels(raw, allowed_relation_endpoint_labels):
+                continue
             relations.append(
                 RelationSpec(
                     from_label=str(raw["from_label"]),
@@ -516,9 +601,14 @@ def _build_result(
             )
 
     facts = []
-    for raw in data.get("facts", []):
+    seen_facts: set[str] = set()
+    for raw in [*observation_facts, *data.get("facts", [])]:
         if isinstance(raw, str) and raw.strip():
-            facts.append(raw.strip())
+            fact = raw.strip()
+            if fact in seen_facts:
+                continue
+            facts.append(fact)
+            seen_facts.add(fact)
 
     result = ExtractionResult(
         nodes=nodes,
