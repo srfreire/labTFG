@@ -123,26 +123,26 @@ function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   return (
     <div
       className="relative flex flex-col items-center justify-center"
-      style={{ width: 116, height: 90 }}
+      style={{ width: 132, height: 106 }}
     >
       <NodeHandles />
       <div
         className="flex items-center justify-center"
         style={{
-          width: 60,
-          height: 60,
+          width: 74,
+          height: 74,
           borderRadius: 8,
           border: `1.5px solid ${borderColor}`,
           background: theme.nodeFill,
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
       >
-        <Database size={32} strokeWidth={1.9} aria-hidden="true" style={{ color: iconColor }} />
+        <Database size={42} strokeWidth={1.85} aria-hidden="true" style={{ color: iconColor }} />
       </div>
       <div
         className="mt-1 text-center"
         style={{
-          maxWidth: 116,
+          maxWidth: 132,
           color: theme.foreground,
           fontSize: 11,
           fontWeight: 650,
