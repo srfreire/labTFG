@@ -117,32 +117,35 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
 }
 
 function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
-  const borderColor = 'rgba(255,255,255,0.72)';
-  const iconColor = 'rgba(255,255,255,0.88)';
+  const borderColor =
+    status === 'running' ? theme.statusRunning
+    : status === 'done' ? theme.statusDone
+    : status === 'error' ? theme.statusError
+    : theme.nodeBorder;
 
   return (
     <div
       className="relative flex flex-col items-center justify-center"
-      style={{ width: 132, height: 106 }}
+      style={{ width: 156, height: 130 }}
     >
       <NodeHandles />
       <div
         className="flex items-center justify-center"
         style={{
-          width: 74,
-          height: 74,
+          width: 90,
+          height: 90,
           borderRadius: 8,
           border: `1.5px solid ${borderColor}`,
           background: theme.nodeFill,
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
       >
-        <Database size={42} strokeWidth={1.85} aria-hidden="true" style={{ color: iconColor }} />
+        <Database size={52} strokeWidth={1.85} aria-hidden="true" style={{ color: theme.nodeIcon }} />
       </div>
       <div
         className="mt-1 text-center"
         style={{
-          maxWidth: 132,
+          maxWidth: 156,
           color: theme.foreground,
           fontSize: 11,
           fontWeight: 650,
