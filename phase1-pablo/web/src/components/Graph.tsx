@@ -9,7 +9,7 @@ import {
 } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch } from 'lucide-react';
+import { Globe, Eye, Pencil, FlaskConical, FileSearch } from 'lucide-react';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
@@ -119,6 +119,7 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
 function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   const isVectorDb = node.id.includes('vector');
   const accent = isVectorDb ? '#a78bfa' : '#38bdf8';
+  const gradientId = isVectorDb ? 'db-stack-vector' : 'db-stack-kg';
   const borderColor =
     status === 'running' ? theme.statusRunning
     : status === 'error' ? theme.statusError
@@ -127,25 +128,67 @@ function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   return (
     <div
       className="relative flex flex-col items-center justify-center"
-      style={{ width: 104, height: 82 }}
+      style={{ width: 108, height: 88 }}
     >
       <NodeHandles />
-      <div
-        className="flex items-center justify-center"
+      <svg
+        width="76"
+        height="60"
+        viewBox="0 0 76 60"
+        aria-hidden="true"
         style={{
-          width: 58,
-          height: 50,
-          borderRadius: 14,
-          border: `1.5px solid ${borderColor}`,
-          background: `linear-gradient(180deg, ${accent}22, ${theme.nodeFill})`,
-          boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 10px 24px ${accent}1f`,
+          overflow: 'visible',
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
       >
-        <Database size={25} style={{ color: accent }} />
-      </div>
+        <defs>
+          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={accent} stopOpacity="0.32" />
+            <stop offset="100%" stopColor={theme.nodeFill} stopOpacity="1" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M 13 15 C 13 8.4 24.2 3 38 3 C 51.8 3 63 8.4 63 15 L 63 43 C 63 49.6 51.8 55 38 55 C 24.2 55 13 49.6 13 43 Z"
+          fill={`url(#${gradientId})`}
+          stroke={borderColor}
+          strokeWidth="1.6"
+        />
+        <ellipse
+          cx="38"
+          cy="15"
+          rx="25"
+          ry="12"
+          fill={`${accent}24`}
+          stroke={borderColor}
+          strokeWidth="1.6"
+        />
+        <path
+          d="M 13 28 C 13 34.6 24.2 40 38 40 C 51.8 40 63 34.6 63 28"
+          fill="none"
+          stroke={borderColor}
+          strokeOpacity="0.72"
+          strokeWidth="1.4"
+        />
+        <path
+          d="M 13 42 C 13 48.6 24.2 54 38 54 C 51.8 54 63 48.6 63 42"
+          fill="none"
+          stroke={borderColor}
+          strokeOpacity="0.72"
+          strokeWidth="1.4"
+        />
+        <ellipse
+          cx="38"
+          cy="15"
+          rx="12"
+          ry="4.7"
+          fill={`${accent}26`}
+          stroke={accent}
+          strokeOpacity="0.45"
+          strokeWidth="1"
+        />
+      </svg>
       <div
-        className="mt-1 text-center"
+        className="mt-0.5 text-center"
         style={{
           maxWidth: 104,
           color: theme.foreground,
