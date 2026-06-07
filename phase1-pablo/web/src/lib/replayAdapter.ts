@@ -17,6 +17,9 @@ const HIDDEN_TOOL_LABELS = new Set(["launch_deep_research"]);
 const hiddenNodeIds = new Set<string>();
 const liveDbNodeIds = new Set<string>();
 const liveMemoryEdgeIds = new Set<string>();
+const liveFileNodeIdsByPath = new Map<string, Set<string>>();
+const livePendingReadNodesByPath = new Map<string, AgrexNode[]>();
+const liveFileReadEdgeIds = new Set<string>();
 let lastBuilderParentId: string | undefined;
 
 type MemoryDbKind = "kg" | "vectors";
@@ -25,6 +28,9 @@ interface SanitizerState {
   lastBuilderParentId?: string;
   dbNodeIds: Set<string>;
   memoryEdgeIds: Set<string>;
+  fileNodeIdsByPath: Map<string, Set<string>>;
+  pendingReadNodesByPath: Map<string, AgrexNode[]>;
+  fileReadEdgeIds: Set<string>;
 }
 
 const MEMORY_DB_NODES: Record<MemoryDbKind, AgrexNode> = {
@@ -56,6 +62,9 @@ function createSanitizerState(): SanitizerState {
   return {
     dbNodeIds: new Set<string>(),
     memoryEdgeIds: new Set<string>(),
+    fileNodeIdsByPath: new Map<string, Set<string>>(),
+    pendingReadNodesByPath: new Map<string, AgrexNode[]>(),
+    fileReadEdgeIds: new Set<string>(),
   };
 }
 
@@ -82,6 +91,135 @@ function nodeMetadataPath(node: AgrexNode): string | undefined {
     if (typeof path === "string") return path;
   }
   return undefined;
+}
+
+function nodeStorageKey(node: AgrexNode): string | undefined {
+  const metadata = node.metadata as Record<string, unknown> | undefined;
+  if (typeof metadata?.s3_key === "string") return metadata.s3_key;
+  if (typeof metadata?.key === "string") return metadata.key;
+  return undefined;
+}
+
+function normalizeReadablePath(path: string): string {
+  return path.replace(/^\.?\//, "").replace(/\/+/g, "/");
+}
+
+function filePathAliases(node: AgrexNode): string[] {
+  if (node.type !== "file") return [];
+
+  const aliases = new Set<string>();
+  const metadataPath = nodeMetadataPath(node);
+  const storageKey = nodeStorageKey(node);
+
+  if (metadataPath) aliases.add(normalizeReadablePath(metadataPath));
+  if (storageKey) {
+    const normalized = normalizeReadablePath(storageKey);
+    aliases.add(normalized);
+    for (const prefix of ["research", "models"]) {
+      const match = normalized.match(new RegExp(`^${prefix}/[^/]+/(.+)$`));
+      if (match) aliases.add(normalizeReadablePath(match[1]));
+    }
+  }
+
+  return [...aliases];
+}
+
+function isReadFileNode(node: AgrexNode): boolean {
+  return node.type === "tool" && nodeToolName(node) === "read_file";
+}
+
+function registerFileNode(node: AgrexNode, state: SanitizerState) {
+  for (const alias of filePathAliases(node)) {
+    const ids = state.fileNodeIdsByPath.get(alias) ?? new Set<string>();
+    ids.add(node.id);
+    state.fileNodeIdsByPath.set(alias, ids);
+  }
+}
+
+function rememberPendingReadNode(node: AgrexNode, state: SanitizerState) {
+  const path = nodeMetadataPath(node);
+  if (!path) return;
+  const normalized = normalizeReadablePath(path);
+  const pending = state.pendingReadNodesByPath.get(normalized) ?? [];
+  if (!pending.some((readNode) => readNode.id === node.id)) {
+    pending.push(node);
+  }
+  state.pendingReadNodesByPath.set(normalized, pending);
+}
+
+function readEdgesForNode(node: AgrexNode, state: SanitizerState): AgrexEdge[] {
+  if (!isReadFileNode(node)) return [];
+  const path = nodeMetadataPath(node);
+  if (!path) return [];
+  const fileIds = state.fileNodeIdsByPath.get(normalizeReadablePath(path));
+  if (!fileIds || fileIds.size === 0) return [];
+  return [...fileIds].map((fileId) => ({
+    id: `edge:file-read:${fileId}:${node.id}`,
+    source: fileId,
+    target: node.id,
+    type: "reads",
+    label: "reads",
+  }));
+}
+
+function pendingReadEdgesForFileNode(
+  node: AgrexNode,
+  state: SanitizerState,
+): AgrexEdge[] {
+  const seenReadNodeIds = new Set<string>();
+  const edges: AgrexEdge[] = [];
+  for (const alias of filePathAliases(node)) {
+    const pending = state.pendingReadNodesByPath.get(alias) ?? [];
+    for (const readNode of pending) {
+      if (seenReadNodeIds.has(readNode.id)) continue;
+      seenReadNodeIds.add(readNode.id);
+      edges.push({
+        id: `edge:file-read:${node.id}:${readNode.id}`,
+        source: node.id,
+        target: readNode.id,
+        type: "reads",
+        label: "reads",
+      });
+    }
+    state.pendingReadNodesByPath.delete(alias);
+  }
+  return edges;
+}
+
+function emitFileReadEdgeEvent(
+  edge: AgrexEdge,
+  out: AgrexEvent[],
+  state: SanitizerState,
+  ts: number,
+) {
+  if (state.fileReadEdgeIds.has(edge.id)) return;
+  state.fileReadEdgeIds.add(edge.id);
+  out.push({ type: "edge_add", ts, edge } as AgrexEvent);
+}
+
+function projectVisibleFileReadNodeToEvents(
+  node: AgrexNode,
+  out: AgrexEvent[],
+  state: SanitizerState,
+  ts: number,
+) {
+  if (node.type === "file") {
+    registerFileNode(node, state);
+    for (const edge of pendingReadEdgesForFileNode(node, state)) {
+      emitFileReadEdgeEvent(edge, out, state, ts);
+    }
+    return;
+  }
+
+  if (!isReadFileNode(node)) return;
+  const edges = readEdgesForNode(node, state);
+  if (edges.length === 0) {
+    rememberPendingReadNode(node, state);
+    return;
+  }
+  for (const edge of edges) {
+    emitFileReadEdgeEvent(edge, out, state, ts);
+  }
 }
 
 function builderParentFromPath(path: string): string | undefined {
@@ -127,6 +265,9 @@ function resetLiveSanitizerState() {
   hiddenNodeIds.clear();
   liveDbNodeIds.clear();
   liveMemoryEdgeIds.clear();
+  liveFileNodeIdsByPath.clear();
+  livePendingReadNodesByPath.clear();
+  liveFileReadEdgeIds.clear();
   lastBuilderParentId = undefined;
 }
 
@@ -134,6 +275,9 @@ function resetReplaySanitizerState(state: SanitizerState) {
   state.lastBuilderParentId = undefined;
   state.dbNodeIds.clear();
   state.memoryEdgeIds.clear();
+  state.fileNodeIdsByPath.clear();
+  state.pendingReadNodesByPath.clear();
+  state.fileReadEdgeIds.clear();
 }
 
 function normalizeReplayNode(
@@ -311,6 +455,26 @@ function projectHiddenMemoryNodeToSnapshot(
   }
 }
 
+function addFileReadSnapshotEdge(
+  edge: AgrexEdge,
+  out: AgrexEdge[],
+  state: SanitizerState,
+) {
+  if (state.fileReadEdgeIds.has(edge.id)) return;
+  state.fileReadEdgeIds.add(edge.id);
+  out.push(edge);
+}
+
+function projectVisibleFileReadNodeToSnapshot(
+  node: AgrexNode,
+  edges: AgrexEdge[],
+  state: SanitizerState,
+) {
+  for (const edge of readEdgesForNode(node, state)) {
+    addFileReadSnapshotEdge(edge, edges, state);
+  }
+}
+
 function ensureLiveMemoryDbNode(
   store: Parameters<EventReducer>[0],
   kind: MemoryDbKind,
@@ -338,6 +502,78 @@ function projectHiddenMemoryNodeLive(
   }
 }
 
+function addLiveFileAlias(alias: string, nodeId: string) {
+  const ids = liveFileNodeIdsByPath.get(alias) ?? new Set<string>();
+  ids.add(nodeId);
+  liveFileNodeIdsByPath.set(alias, ids);
+}
+
+function addLiveFileReadEdge(
+  store: Parameters<EventReducer>[0],
+  edge: AgrexEdge,
+) {
+  if (liveFileReadEdgeIds.has(edge.id)) return;
+  liveFileReadEdgeIds.add(edge.id);
+  store.addEdge(edge);
+}
+
+function rememberLivePendingReadNode(node: AgrexNode) {
+  const path = nodeMetadataPath(node);
+  if (!path) return;
+  const normalized = normalizeReadablePath(path);
+  const pending = livePendingReadNodesByPath.get(normalized) ?? [];
+  if (!pending.some((readNode) => readNode.id === node.id)) {
+    pending.push(node);
+  }
+  livePendingReadNodesByPath.set(normalized, pending);
+}
+
+function projectVisibleFileReadNodeLive(
+  store: Parameters<EventReducer>[0],
+  node: AgrexNode,
+) {
+  if (node.type === "file") {
+    const aliases = filePathAliases(node);
+    for (const alias of aliases) addLiveFileAlias(alias, node.id);
+
+    const seenReadNodeIds = new Set<string>();
+    for (const alias of aliases) {
+      const pending = livePendingReadNodesByPath.get(alias) ?? [];
+      for (const readNode of pending) {
+        if (seenReadNodeIds.has(readNode.id)) continue;
+        seenReadNodeIds.add(readNode.id);
+        addLiveFileReadEdge(store, {
+          id: `edge:file-read:${node.id}:${readNode.id}`,
+          source: node.id,
+          target: readNode.id,
+          type: "reads",
+          label: "reads",
+        });
+      }
+      livePendingReadNodesByPath.delete(alias);
+    }
+    return;
+  }
+
+  if (!isReadFileNode(node)) return;
+  const path = nodeMetadataPath(node);
+  if (!path) return;
+  const fileIds = liveFileNodeIdsByPath.get(normalizeReadablePath(path));
+  if (!fileIds || fileIds.size === 0) {
+    rememberLivePendingReadNode(node);
+    return;
+  }
+  for (const fileId of fileIds) {
+    addLiveFileReadEdge(store, {
+      id: `edge:file-read:${fileId}:${node.id}`,
+      source: fileId,
+      target: node.id,
+      type: "reads",
+      label: "reads",
+    });
+  }
+}
+
 function sanitizeSnapshot(
   nodes: AgrexNode[],
   edges: AgrexEdge[],
@@ -355,6 +591,12 @@ function sanitizeSnapshot(
     } else {
       visibleNodes.push(normalized);
     }
+  }
+  for (const node of visibleNodes) {
+    registerFileNode(node, state);
+  }
+  for (const node of visibleNodes) {
+    projectVisibleFileReadNodeToSnapshot(node, projectedEdges, state);
   }
   const visibleEdges = edges.filter((edge) => !edgeTouchesHiddenNode(edge, hiddenIds));
   return { nodes: [...visibleNodes, ...dbNodes], edges: [...visibleEdges, ...projectedEdges] };
@@ -377,6 +619,7 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
           projectHiddenMemoryNodeToEvents(normalized, out, replayState, ev.ts);
         } else {
           out.push({ ...ev, node: normalized } as AgrexEvent);
+          projectVisibleFileReadNodeToEvents(normalized, out, replayState, ev.ts);
         }
       }
     } else if (
@@ -421,6 +664,7 @@ export const labReducers: Record<string, EventReducer> = {
       return;
     }
     store.addNode(normalized);
+    projectVisibleFileReadNodeLive(store, normalized);
   },
   node_update(store, ev) {
     const id = ev.id;
@@ -464,9 +708,15 @@ export const labReducers: Record<string, EventReducer> = {
     lastBuilderParentId = liveState.lastBuilderParentId;
     for (const node of nodes) {
       if (node.type === "database") liveDbNodeIds.add(node.id);
+      if (node.type === "file") {
+        for (const alias of filePathAliases(node)) {
+          addLiveFileAlias(alias, node.id);
+        }
+      }
     }
     for (const edge of edges) {
       if (edge.type?.startsWith("memory_")) liveMemoryEdgeIds.add(edge.id);
+      if (edge.type === "reads") liveFileReadEdgeIds.add(edge.id);
     }
     store.loadJSON({ nodes, edges });
   },

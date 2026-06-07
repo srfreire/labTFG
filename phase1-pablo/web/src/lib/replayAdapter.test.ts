@@ -264,6 +264,47 @@ describe("sanitizeLabTraceEvents", () => {
       }),
     ]);
   });
+
+  it("projects read_file tools into reads edges from matching file artifacts", () => {
+    const events = [
+      ev("node_add", {
+        node: {
+          id: "file:research:run-1:deep:prospect-theory.md",
+          type: "file",
+          label: "prospect-theory.md",
+          parentId: "deep_researcher:prospect-theory",
+          metadata: {
+            s3_key: "research/run-1/deep/prospect-theory.md",
+            artifact_type: "deep_report",
+          },
+        },
+      }),
+      ev("node_add", {
+        node: {
+          id: "tool:read_file:abc123",
+          type: "tool",
+          label: "read_file",
+          parentId: "formalizer:prospect-theory",
+          metadata: { path: "deep/prospect-theory.md" },
+        },
+      }),
+    ];
+
+    const sanitized = sanitizeLabTraceEvents(events);
+    const edges = sanitized
+      .filter((event) => event.type === "edge_add")
+      .map((event) => event.edge);
+
+    expect(edges).toEqual([
+      expect.objectContaining({
+        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:tool:read_file:abc123",
+        source: "file:research:run-1:deep:prospect-theory.md",
+        target: "tool:read_file:abc123",
+        type: "reads",
+        label: "reads",
+      }),
+    ]);
+  });
 });
 
 describe("labReducers", () => {
@@ -410,6 +451,40 @@ describe("labReducers", () => {
     expect(store.updateNode).not.toHaveBeenCalled();
   });
 
+  it("node_add connects pending read_file tools when the file artifact appears", () => {
+    const store = makeStore();
+    const readNode = {
+      id: "tool:read_file:abc123",
+      type: "tool" as const,
+      label: "read_file",
+      parentId: "formalizer:prospect-theory",
+      metadata: { path: "deep/prospect-theory.md" },
+    };
+    const fileNode = {
+      id: "file:research:run-1:deep:prospect-theory.md",
+      type: "file" as const,
+      label: "prospect-theory.md",
+      parentId: "deep_researcher:prospect-theory",
+      metadata: {
+        s3_key: "research/run-1/deep/prospect-theory.md",
+        artifact_type: "deep_report",
+      },
+    };
+
+    labReducers.node_add(store, ev("node_add", { node: readNode }));
+    labReducers.node_add(store, ev("node_add", { node: fileNode }));
+
+    expect(store.addEdge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:tool:read_file:abc123",
+        source: "file:research:run-1:deep:prospect-theory.md",
+        target: "tool:read_file:abc123",
+        type: "reads",
+        label: "reads",
+      }),
+    );
+  });
+
   it("edge_add forwards the canonical edge to store.addEdge", () => {
     const store = makeStore();
     const edge = { id: "e1", source: "a", target: "b" };
@@ -503,6 +578,44 @@ describe("labReducers", () => {
           source: "memory_agent:research",
           target: "db:vector-memory",
           type: "memory_store",
+        }),
+      ],
+    });
+  });
+
+  it("state_sync connects read_file tools to matching file artifacts", () => {
+    const store = makeStore();
+    const nodes = [
+      {
+        id: "tool:read_file:abc123",
+        type: "tool" as const,
+        label: "read_file",
+        parentId: "builder:prospect:utility",
+        metadata: { path: "reasoner/prospect/utility.json" },
+      },
+      {
+        id: "file:models:run-1:reasoner:prospect:utility.json",
+        type: "file" as const,
+        label: "utility.json",
+        parentId: "reasoner:prospect",
+        metadata: {
+          s3_key: "models/run-1/reasoner/prospect/utility.json",
+          artifact_type: "reasoner_spec",
+        },
+      },
+    ];
+
+    labReducers.state_sync(store, ev("state_sync", { nodes, edges: [] }));
+
+    expect(store.loadJSON).toHaveBeenCalledWith({
+      nodes,
+      edges: [
+        expect.objectContaining({
+          id: "edge:file-read:file:models:run-1:reasoner:prospect:utility.json:tool:read_file:abc123",
+          source: "file:models:run-1:reasoner:prospect:utility.json",
+          target: "tool:read_file:abc123",
+          type: "reads",
+          label: "reads",
         }),
       ],
     });
