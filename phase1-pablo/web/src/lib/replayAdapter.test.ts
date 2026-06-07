@@ -154,7 +154,7 @@ describe("sanitizeLabTraceEvents", () => {
     });
   });
 
-  it("projects legacy builder retrieve_knowledge nodes into DB read edges", () => {
+  it("projects legacy builder retrieve_knowledge nodes into DB retrieve edges", () => {
     const events = [
       ev("node_add", {
         node: {
@@ -192,21 +192,21 @@ describe("sanitizeLabTraceEvents", () => {
     expect(nodes).not.toContainEqual(expect.objectContaining({ id: "tool-2" }));
     expect(edges).toEqual([
       expect.objectContaining({
-        id: "edge:memory-read:kg:builder:homeostatic:pi_controller",
+        id: "edge:memory-retrieve:kg:builder:homeostatic:pi_controller",
         source: "db:knowledge-graph",
         target: "builder:homeostatic:pi_controller",
-        type: "memory_read",
+        type: "memory_retrieve",
       }),
       expect.objectContaining({
-        id: "edge:memory-read:vectors:builder:homeostatic:pi_controller",
+        id: "edge:memory-retrieve:vectors:builder:homeostatic:pi_controller",
         source: "db:vector-memory",
         target: "builder:homeostatic:pi_controller",
-        type: "memory_read",
+        type: "memory_retrieve",
       }),
     ]);
   });
 
-  it("projects memory output artifacts into DB write edges", () => {
+  it("projects memory output artifacts into DB store edges", () => {
     const events = [
       ev("node_add", {
         node: { id: "memory_agent:research", type: "sub_agent", label: "Memory" },
@@ -251,16 +251,16 @@ describe("sanitizeLabTraceEvents", () => {
     ]);
     expect(edges).toEqual([
       expect.objectContaining({
-        id: "edge:memory-write:kg:memory_agent:research",
+        id: "edge:memory-store:kg:memory_agent:research",
         source: "memory_agent:research",
         target: "db:knowledge-graph",
-        type: "memory_write",
+        type: "memory_store",
       }),
       expect.objectContaining({
-        id: "edge:memory-write:vectors:memory_agent:research",
+        id: "edge:memory-store:vectors:memory_agent:research",
         source: "memory_agent:research",
         target: "db:vector-memory",
-        type: "memory_index",
+        type: "memory_store",
       }),
     ]);
   });
@@ -334,7 +334,7 @@ describe("labReducers", () => {
     });
   });
 
-  it("node_add projects legacy builder retrieve_knowledge into DB read edges", () => {
+  it("node_add projects legacy builder retrieve_knowledge into DB retrieve edges", () => {
     const store = makeStore();
     labReducers.node_add(
       store,
@@ -369,21 +369,21 @@ describe("labReducers", () => {
     );
     expect(store.addEdge).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "edge:memory-read:kg:builder:homeostatic:pi_controller",
+        id: "edge:memory-retrieve:kg:builder:homeostatic:pi_controller",
         source: "db:knowledge-graph",
         target: "builder:homeostatic:pi_controller",
       }),
     );
     expect(store.addEdge).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "edge:memory-read:vectors:builder:homeostatic:pi_controller",
+        id: "edge:memory-retrieve:vectors:builder:homeostatic:pi_controller",
         source: "db:vector-memory",
         target: "builder:homeostatic:pi_controller",
       }),
     );
   });
 
-  it("node_add projects memory output artifacts into DB write edges", () => {
+  it("node_add projects memory output artifacts into DB store edges", () => {
     const store = makeStore();
     const node = {
       id: "memory_output:research:kg",
@@ -401,10 +401,10 @@ describe("labReducers", () => {
     expect(store.addNode).not.toHaveBeenCalledWith(node);
     expect(store.addEdge).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "edge:memory-write:kg:memory_agent:research",
+        id: "edge:memory-store:kg:memory_agent:research",
         source: "memory_agent:research",
         target: "db:knowledge-graph",
-        type: "memory_write",
+        type: "memory_store",
       }),
     );
     expect(store.updateNode).not.toHaveBeenCalled();
@@ -487,22 +487,22 @@ describe("labReducers", () => {
       ],
       edges: [
         expect.objectContaining({
-          id: "edge:memory-read:kg:agent-1",
+          id: "edge:memory-retrieve:kg:agent-1",
           source: "db:knowledge-graph",
           target: "agent-1",
-          type: "memory_read",
+          type: "memory_retrieve",
         }),
         expect.objectContaining({
-          id: "edge:memory-read:vectors:agent-1",
+          id: "edge:memory-retrieve:vectors:agent-1",
           source: "db:vector-memory",
           target: "agent-1",
-          type: "memory_read",
+          type: "memory_retrieve",
         }),
         expect.objectContaining({
-          id: "edge:memory-write:vectors:memory_agent:research",
+          id: "edge:memory-store:vectors:memory_agent:research",
           source: "memory_agent:research",
           target: "db:vector-memory",
-          type: "memory_index",
+          type: "memory_store",
         }),
       ],
     });

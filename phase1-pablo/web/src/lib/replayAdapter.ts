@@ -180,32 +180,32 @@ function memoryOutputDbKind(node: AgrexNode): MemoryDbKind | undefined {
   return undefined;
 }
 
-function memoryReadEdges(parentId: string): AgrexEdge[] {
+function memoryRetrieveEdges(parentId: string): AgrexEdge[] {
   return [
     {
-      id: `edge:memory-read:kg:${parentId}`,
+      id: `edge:memory-retrieve:kg:${parentId}`,
       source: MEMORY_DB_NODES.kg.id,
       target: parentId,
-      type: "memory_read",
-      label: "read",
+      type: "memory_retrieve",
+      label: "retrieve",
     },
     {
-      id: `edge:memory-read:vectors:${parentId}`,
+      id: `edge:memory-retrieve:vectors:${parentId}`,
       source: MEMORY_DB_NODES.vectors.id,
       target: parentId,
-      type: "memory_read",
-      label: "read",
+      type: "memory_retrieve",
+      label: "retrieve",
     },
   ];
 }
 
-function memoryWriteEdge(kind: MemoryDbKind, parentId: string): AgrexEdge {
+function memoryStoreEdge(kind: MemoryDbKind, parentId: string): AgrexEdge {
   return {
-    id: `edge:memory-write:${kind}:${parentId}`,
+    id: `edge:memory-store:${kind}:${parentId}`,
     source: parentId,
     target: MEMORY_DB_NODES[kind].id,
-    type: kind === "kg" ? "memory_write" : "memory_index",
-    label: kind === "kg" ? "write" : "index",
+    type: "memory_store",
+    label: "store",
   };
 }
 
@@ -218,18 +218,18 @@ function memoryProjectionForNode(
     }
     return {
       dbKinds: ["kg", "vectors"],
-      edges: memoryReadEdges(node.parentId),
+      edges: memoryRetrieveEdges(node.parentId),
     };
   }
 
-  const writeKind = memoryOutputDbKind(node);
-  if (!writeKind) return undefined;
+  const storeKind = memoryOutputDbKind(node);
+  if (!storeKind) return undefined;
   if (typeof node.parentId !== "string" || node.parentId.length === 0) {
     return undefined;
   }
   return {
-    dbKinds: [writeKind],
-    edges: [memoryWriteEdge(writeKind, node.parentId)],
+    dbKinds: [storeKind],
+    edges: [memoryStoreEdge(storeKind, node.parentId)],
   };
 }
 
