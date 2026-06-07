@@ -453,6 +453,98 @@ def _filter_superseded_relations(
     return out
 
 
+_LATEX_DISPLAY_REPLACEMENTS = (
+    ("\\alpha", "alpha"),
+    ("\\beta", "beta"),
+    ("\\gamma", "gamma"),
+    ("\\delta", "delta"),
+    ("\\epsilon", "epsilon"),
+    ("\\lambda", "lambda"),
+    ("\\mu", "mu"),
+    ("\\pi", "pi"),
+    ("\\sigma", "sigma"),
+    ("\\tau", "tau"),
+    ("\\theta", "theta"),
+    ("\\rho", "rho"),
+    ("\\kappa", "kappa"),
+    ("\\hat", "hat"),
+    ("\\bar", "bar"),
+    ("\\mathbb", ""),
+    ("\\exp", "exp"),
+)
+
+
+def _compact_math_label(value: object, *, max_len: int = 44) -> str:
+    """Return a short plain-text label for a LaTeX-ish expression."""
+    import re
+
+    text = str(value or "").strip().strip("$")
+    if not text:
+        return ""
+
+    # Graph labels should identify the equation, not render the whole formula.
+    # The full expression stays available in properties.latex.
+    if "=" in text:
+        text = text.split("=", 1)[0].strip()
+
+    text = text.replace("\\!", "").replace("\\,", "").replace("\\quad", " ")
+    text = re.sub(r"\\text\{([^{}]*)\}", r"\1", text)
+    for old, new in _LATEX_DISPLAY_REPLACEMENTS:
+        text = text.replace(old, new)
+    text = re.sub(r"_\{([^{}]*)\}", r"_\1", text)
+    text = re.sub(r"\^\{([^{}]*)\}", r"^\1", text)
+    text = re.sub(r"\{([^{}]*)\}", r"\1", text)
+    text = text.replace("\\", "")
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return ""
+    if len(text) > max_len:
+        return f"{text[: max_len - 1].rstrip()}..."
+    return text
+
+
+def _kg_node_display(label: str, props: dict) -> str:
+    """Human-readable graph label for a Neo4j node."""
+    if label == "Equation":
+        compact = _compact_math_label(props.get("plaintext") or props.get("latex"))
+        return f"Eq: {compact}" if compact else "Equation"
+
+    if label == "Variable":
+        candidates = (
+            props.get("symbol"),
+            props.get("name"),
+            props.get("display_name"),
+            props.get("local_id"),
+            props.get("id"),
+        )
+    elif label == "Parameter":
+        candidates = (
+            props.get("symbol"),
+            props.get("name"),
+            props.get("display_name"),
+            props.get("id"),
+        )
+    else:
+        candidates = (
+            props.get("name"),
+            props.get("slug"),
+            props.get("id"),
+            props.get("title"),
+            props.get("doi"),
+            props.get("formulation_id"),
+            props.get("latex"),
+            label,
+        )
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        text = str(candidate).strip()
+        if text:
+            return text[:60]
+    return label
+
+
 @app.get("/api/kg/snapshot")
 async def kg_snapshot(
     run_id: str | None = None,
@@ -501,16 +593,7 @@ async def kg_snapshot(
     for n in nodes_raw:
         props = n["props"] or {}
         label = n["labels"][0] if n["labels"] else "Node"
-        # Display label: prefer 'name', fall back to the natural key value.
-        display = (
-            props.get("name")
-            or props.get("slug")
-            or props.get("id")
-            or props.get("latex")
-            or props.get("doi")
-            or props.get("formulation_id")
-            or label
-        )
+        display = _kg_node_display(label, props)
         # Index every plausible natural-key property — `kg_writer` may have
         # picked any of these, and `node_run_observations` stores the value
         # used at write time. Enumerating them all keeps the lookup

@@ -5,6 +5,7 @@ import {
   fetchRunTrace,
   labReducers,
   labStepBoundaries,
+  sanitizeLabTraceEvents,
 } from "./replayAdapter";
 import { Stage } from "../types";
 
@@ -120,6 +121,67 @@ describe("labStepBoundaries", () => {
   });
 });
 
+describe("sanitizeLabTraceEvents", () => {
+  it("removes launch_deep_research tool nodes and their updates", () => {
+    const events = [
+      ev("node_add", {
+        node: { id: "launch-1", type: "tool", label: "launch_deep_research" },
+      }),
+      ev("node_update", { id: "launch-1", status: "done" }),
+      ev("node_add", { node: { id: "deep-1", type: "sub_agent", label: "Deep" } }),
+    ];
+
+    expect(sanitizeLabTraceEvents(events)).toEqual([
+      ev("node_add", { node: { id: "deep-1", type: "sub_agent", label: "Deep" } }),
+    ]);
+  });
+
+  it("reparents builder tools when a path identifies the formulation", () => {
+    const events = [
+      ev("node_add", {
+        node: {
+          id: "tool-1",
+          type: "tool",
+          label: "run_tests",
+          parentId: "builder",
+          metadata: { path: "builder/homeostatic/test_pi_controller.py" },
+        },
+      }),
+    ];
+
+    expect(sanitizeLabTraceEvents(events)[0]).toMatchObject({
+      node: { parentId: "builder:homeostatic:pi_controller" },
+    });
+  });
+
+  it("uses the last path-identified builder parent for legacy retrieve_knowledge nodes", () => {
+    const events = [
+      ev("node_add", {
+        node: {
+          id: "tool-1",
+          type: "tool",
+          label: "read_file",
+          parentId: "builder",
+          metadata: { path: "reasoner/homeostatic/pi_controller.json" },
+        },
+      }),
+      ev("node_add", {
+        node: {
+          id: "tool-2",
+          type: "tool",
+          label: "retrieve_knowledge",
+          parentId: "builder",
+          metadata: { query: "DecisionModel implementation pattern" },
+        },
+      }),
+    ];
+
+    expect(sanitizeLabTraceEvents(events)[1]).toMatchObject({
+      node: { parentId: "builder:homeostatic:pi_controller" },
+    });
+  });
+});
+
 describe("labReducers", () => {
   function makeStore() {
     return {
@@ -135,6 +197,10 @@ describe("labReducers", () => {
     };
   }
 
+  beforeEach(() => {
+    labReducers.graph_clear(makeStore(), ev("graph_clear"));
+  });
+
   it("node_add forwards the canonical node to store.addNode", () => {
     const store = makeStore();
     const node = { id: "a", type: "agent" as const, label: "Researcher" };
@@ -149,6 +215,69 @@ describe("labReducers", () => {
     const store = makeStore();
     labReducers.node_add(store, ev("node_add"));
     expect(store.addNode).not.toHaveBeenCalled();
+  });
+
+  it("node_add hides launch_deep_research tool nodes", () => {
+    const store = makeStore();
+    const node = {
+      id: "launch-1",
+      type: "tool" as const,
+      label: "launch_deep_research",
+    };
+
+    labReducers.node_add(store, ev("node_add", { node }));
+    labReducers.node_update(store, ev("node_update", { id: "launch-1", status: "done" }));
+
+    expect(store.addNode).not.toHaveBeenCalled();
+    expect(store.updateNode).not.toHaveBeenCalled();
+  });
+
+  it("node_add reparents builder tools when path identifies the formulation", () => {
+    const store = makeStore();
+    const node = {
+      id: "tool-1",
+      type: "tool" as const,
+      label: "read_file",
+      parentId: "builder",
+      metadata: { path: "reasoner/homeostatic/pi_controller.json" },
+    };
+
+    labReducers.node_add(store, ev("node_add", { node }));
+
+    expect(store.addNode).toHaveBeenCalledWith({
+      ...node,
+      parentId: "builder:homeostatic:pi_controller",
+    });
+  });
+
+  it("node_add reparents legacy builder retrieve_knowledge after a path tool", () => {
+    const store = makeStore();
+    labReducers.node_add(
+      store,
+      ev("node_add", {
+        node: {
+          id: "tool-1",
+          type: "tool",
+          label: "read_file",
+          parentId: "builder",
+          metadata: { path: "reasoner/homeostatic/pi_controller.json" },
+        },
+      }),
+    );
+
+    const node = {
+      id: "tool-2",
+      type: "tool" as const,
+      label: "retrieve_knowledge",
+      parentId: "builder",
+      metadata: { query: "DecisionModel implementation pattern" },
+    };
+    labReducers.node_add(store, ev("node_add", { node }));
+
+    expect(store.addNode).toHaveBeenLastCalledWith({
+      ...node,
+      parentId: "builder:homeostatic:pi_controller",
+    });
   });
 
   it("edge_add forwards the canonical edge to store.addEdge", () => {
@@ -181,6 +310,22 @@ describe("labReducers", () => {
     labReducers.state_sync(store, ev("state_sync", { nodes, edges }));
 
     expect(store.loadJSON).toHaveBeenCalledWith({ nodes, edges });
+  });
+
+  it("state_sync filters hidden launcher nodes and touching edges", () => {
+    const store = makeStore();
+    const nodes = [
+      { id: "launch-1", type: "tool" as const, label: "launch_deep_research" },
+      { id: "agent-1", type: "agent" as const, label: "Researcher" },
+    ];
+    const edges = [{ id: "e", source: "agent-1", target: "launch-1" }];
+
+    labReducers.state_sync(store, ev("state_sync", { nodes, edges }));
+
+    expect(store.loadJSON).toHaveBeenCalledWith({
+      nodes: [{ id: "agent-1", type: "agent", label: "Researcher" }],
+      edges: [],
+    });
   });
 
   it("state_sync defaults missing fields to empty arrays", () => {

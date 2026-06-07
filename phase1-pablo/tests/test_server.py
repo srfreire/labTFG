@@ -10,7 +10,12 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from decisionlab.server import ConnectionManager, _filter_superseded_relations, app
+from decisionlab.server import (
+    ConnectionManager,
+    _filter_superseded_relations,
+    _kg_node_display,
+    app,
+)
 
 
 def test_app_exists():
@@ -18,6 +23,33 @@ def test_app_exists():
     # Confirms route registration on import (no raise)
     routes = [getattr(r, "path", None) for r in app.routes]
     assert "/ws" in routes
+
+
+def test_kg_node_display_compacts_equation_latex():
+    display = _kg_node_display(
+        "Equation",
+        {
+            "latex": (
+                "\\mu_t = \\frac{\\sigma^2_{\\text{obs}} \\cdot \\mu_0 "
+                "+ n_t \\cdot \\sigma^2_0 \\cdot \\bar{y}_t}"
+                "{\\sigma^2_{\\text{obs}} + n_t \\cdot \\sigma^2_0}"
+            )
+        },
+    )
+
+    assert display == "Eq: mu_t"
+
+
+def test_kg_node_display_prefers_variable_symbol():
+    display = _kg_node_display(
+        "Variable",
+        {
+            "name": "State-value V(s) — expected return under policy",
+            "symbol": "V(s)",
+        },
+    )
+
+    assert display == "V(s)"
 
 
 @pytest.fixture

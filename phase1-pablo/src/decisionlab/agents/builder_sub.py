@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
+from decisionlab.runtime import agrex_context
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
     READ_FILE_SCHEMA,
@@ -22,6 +23,13 @@ if TYPE_CHECKING:
     from shared.storage import StorageService
 
 logger = logging.getLogger(__name__)
+
+
+def _builder_trace_parent(spec_id: str, spec_path: str) -> str:
+    parts = spec_path.split("/")
+    paradigm = parts[-2] if len(parts) >= 3 and parts[0] == "reasoner" else None
+    return agrex_context.trace_id("builder", paradigm, spec_id)
+
 
 BUILDER_SUB_SYSTEM_PROMPT = """\
 You translate JSON agent specs into Python DecisionModel implementations and verify \
@@ -260,16 +268,22 @@ class BuilderSubAgent:
         if self._has_knowledge:
             system += _KNOWLEDGE_PROMPT_SECTION
 
-        response = await run_agent_loop(
-            client=self.client,
-            model=SETTINGS.builder.model,
-            system=system,
-            tools=self.tools,
-            messages=messages,
-            registry=self.registry,
-            max_iterations=SETTINGS.builder.max_iterations,
-            max_tokens=SETTINGS.builder.max_tokens,
+        parent_token = agrex_context.set_parent(
+            _builder_trace_parent(spec_id, spec_path)
         )
+        try:
+            response = await run_agent_loop(
+                client=self.client,
+                model=SETTINGS.builder.model,
+                system=system,
+                tools=self.tools,
+                messages=messages,
+                registry=self.registry,
+                max_iterations=SETTINGS.builder.max_iterations,
+                max_tokens=SETTINGS.builder.max_tokens,
+            )
+        finally:
+            agrex_context.reset_parent(parent_token)
 
         text_blocks = [b.text for b in response.content if b.type == "text"]
         content = "\n".join(text_blocks)

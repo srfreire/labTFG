@@ -8,10 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
 from decisionlab.domain.ports import WebSearchPort
+from decisionlab.runtime import agrex_context
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.runtime.usage import record as record_usage
 from decisionlab.tools.papers import SEARCH_PAPERS_SCHEMA, create_search_papers
-from decisionlab.tools.reports import save_deep_report
+from decisionlab.tools.reports import save_deep_report, slugify
 from decisionlab.tools.search import WEB_SEARCH_SCHEMA, create_web_search
 
 if TYPE_CHECKING:
@@ -131,6 +132,15 @@ class DeepResearcher:
 
     async def run(self, paradigm: str) -> str:
         logger.info("DeepResearcher starting — paradigm: %s", paradigm)
+        parent_token = agrex_context.set_parent(
+            agrex_context.trace_id("deep_researcher", slugify(paradigm))
+        )
+        try:
+            return await self._run_with_trace_parent(paradigm)
+        finally:
+            agrex_context.reset_parent(parent_token)
+
+    async def _run_with_trace_parent(self, paradigm: str) -> str:
         messages = [
             {"role": "user", "content": f"Research this paradigm in depth: {paradigm}"}
         ]

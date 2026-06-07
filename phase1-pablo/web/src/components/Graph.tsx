@@ -9,7 +9,7 @@ import {
 } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Globe, Eye, Pencil, FlaskConical, Database } from 'lucide-react';
+import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch } from 'lucide-react';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
@@ -131,6 +131,7 @@ const TOOL_ICONS = {
   write_file: Pencil,
   run_tests: FlaskConical,
   retrieve_knowledge: Database,
+  search_papers: FileSearch,
 };
 
 export const THEME = {
@@ -160,6 +161,7 @@ interface GraphProps {
   onNodeClick?: (node: AgrexNode) => void;
   uiState?: GraphUIState;
   demo?: boolean;
+  showDetailPanel?: boolean;
   sidebarCollapsed?: boolean;
   timelineCollapsedChange?: (collapsed: boolean) => void;
   onExitReplay?: () => void;
@@ -175,6 +177,7 @@ export default function Graph({
   onNodeClick,
   uiState,
   demo,
+  showDetailPanel = true,
   sidebarCollapsed,
   timelineCollapsedChange,
   onExitReplay,
@@ -208,7 +211,7 @@ export default function Graph({
         showToasts={!demo}
         toastPlacement="top-left"
         toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
-        showDetailPanel={false}
+        showDetailPanel={!demo && showDetailPanel}
         // Demo has no replay → Agrex's embedded timeline doesn't mount, so
         // the floating StatsBar would otherwise render. Turn it off.
         // Live/replay: the embedded timeline owns stats (`timelineProps.showStats`),

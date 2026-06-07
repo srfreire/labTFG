@@ -29,6 +29,8 @@ _USAGE_BY_NODE_VAR: ContextVar[dict[str, dict[str, Any]] | None] = ContextVar(
     "decisionlab_agrex_usage_by_node", default=None
 )
 
+_SUPPRESSED_TOOL_NODES = {"launch_deep_research"}
+
 
 _STAGE_PARENT = {
     "research": "researcher",
@@ -40,6 +42,12 @@ _STAGE_PARENT = {
     "memory_reason": "memory_agent:reasoner",
     "memory_build": "memory_agent:builder",
 }
+
+
+def trace_id(*parts: object) -> str:
+    """Match the router's stable Agrex id convention."""
+    raw = ":".join(str(p) for p in parts if p is not None and str(p) != "")
+    return raw.replace("/", ":").replace(" ", "-")
 
 
 def bind(tracer: Any, emit: EmitFn | None) -> tuple:
@@ -94,6 +102,8 @@ def _current_parent() -> str | None:
 
 async def trace_tool_start(name: str, args: object) -> str | None:
     """Add a running tool node and return its node id."""
+    if name in _SUPPRESSED_TOOL_NODES:
+        return None
     tracer = _TRACER_VAR.get()
     if tracer is None:
         return None

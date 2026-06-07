@@ -1,11 +1,13 @@
 from unittest.mock import AsyncMock, MagicMock
 
+import agrex
 import pytest
 
 from decisionlab.agents.builder_sub import (
     BUILDER_SUB_SYSTEM_PROMPT,
     BuilderSubAgent,
 )
+from decisionlab.runtime import agrex_context
 
 
 def test_system_prompt_exists():
@@ -94,6 +96,53 @@ async def test_builder_sub_run_returns_content(
     )
 
     assert "pi_controller" in result
+
+
+@pytest.mark.asyncio
+async def test_builder_sub_traces_tools_under_formulation_parent(
+    tmp_path,
+    make_tool_use_block,
+    make_text_block,
+    make_response,
+):
+    read_spec = make_tool_use_block(
+        "call_1", "read_file", {"path": "reasoner/homeostatic/pi_controller.json"}
+    )
+    final_text = make_text_block("Done.")
+
+    client = AsyncMock()
+    client.messages.create = AsyncMock(
+        side_effect=[
+            make_response("tool_use", [read_spec]),
+            make_response("end_turn", [final_text]),
+        ]
+    )
+
+    storage = MagicMock()
+    storage.get_text = AsyncMock(return_value="{}")
+
+    emitted: list[dict] = []
+
+    async def emit(event: dict) -> None:
+        emitted.append(event)
+
+    tracer = agrex.create_tracer()
+    tokens = agrex_context.bind(tracer, emit)
+    try:
+        agent = BuilderSubAgent(
+            client=client,
+            models_prefix="models/run-1",
+            project_root=tmp_path,
+            storage=storage,
+            db=MagicMock(),
+        )
+        await agent.run("pi_controller", "reasoner/homeostatic/pi_controller.json")
+    finally:
+        agrex_context.reset(tokens)
+
+    tool_node = next(e["node"] for e in emitted if e["type"] == "node_add")
+    assert tool_node["label"] == "read_file"
+    assert tool_node["parentId"] == "builder:homeostatic:pi_controller"
 
 
 # ---- P5-003: Slug-based path tests ----

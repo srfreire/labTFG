@@ -227,6 +227,7 @@ export const TOOL_ICONS: Record<string, string> = {
   write_file: "FilePlus",
   run_tests: "FlaskConical",
   launch_deep_research: "Microscope",
+  search_papers: "FileSearch",
 };
 
 // ---------------------------------------------------------------------------

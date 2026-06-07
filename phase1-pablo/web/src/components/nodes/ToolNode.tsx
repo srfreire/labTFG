@@ -6,6 +6,7 @@ import {
   FlaskConical,
   Microscope,
   Database,
+  FileSearch,
   Wrench,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -19,6 +20,7 @@ const TOOL_ICON_MAP: Record<string, ComponentType<{ size: number }>> = {
   run_tests: FlaskConical,
   launch_deep_research: Microscope,
   retrieve_knowledge: Database,
+  search_papers: FileSearch,
 };
 
 interface ToolNodeData {

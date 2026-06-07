@@ -125,6 +125,34 @@ async def test_dispatch_traces_tool_node_when_agrex_context_bound():
 
 
 @pytest.mark.asyncio
+async def test_dispatch_suppresses_launch_deep_research_visual_node():
+    async def launch(params: dict) -> str:
+        return f"summary for {params['paradigm']}"
+
+    emitted: list[dict] = []
+
+    async def emit(event: dict) -> None:
+        emitted.append(event)
+
+    tracer = agrex.create_tracer()
+    tokens = agrex_context.bind(tracer, emit)
+    try:
+        calls = [
+            FakeToolCall(
+                id="t1",
+                name="launch_deep_research",
+                input={"paradigm": "homeostatic-regulation"},
+            )
+        ]
+        results = await dispatch_tools(calls, {"launch_deep_research": launch})
+    finally:
+        agrex_context.reset(tokens)
+
+    assert results[0]["content"] == "summary for homeostatic-regulation"
+    assert emitted == []
+
+
+@pytest.mark.asyncio
 async def test_dispatch_traces_structured_error_metadata_when_tool_raises():
     async def bad_tool(params: dict) -> str:
         raise ValueError(f"bad {params['x']}")

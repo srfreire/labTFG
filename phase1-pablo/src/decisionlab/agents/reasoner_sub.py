@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from decisionlab.config import SETTINGS
+from decisionlab.runtime import agrex_context
 from decisionlab.runtime.loop import run_agent_loop
 from decisionlab.tools.files import (
     READ_FILE_SCHEMA,
@@ -258,16 +259,22 @@ class ReasonerSubAgent:
         if self._has_knowledge:
             system += _KNOWLEDGE_PROMPT_SECTION
 
-        response = await run_agent_loop(
-            client=self.client,
-            model=SETTINGS.reasoner.model,
-            system=system,
-            tools=self.tools,
-            messages=messages,
-            registry=self.registry,
-            max_iterations=SETTINGS.reasoner.max_iterations,
-            max_tokens=SETTINGS.reasoner.max_tokens,
+        parent_token = agrex_context.set_parent(
+            agrex_context.trace_id("reasoner", paradigm_slug)
         )
+        try:
+            response = await run_agent_loop(
+                client=self.client,
+                model=SETTINGS.reasoner.model,
+                system=system,
+                tools=self.tools,
+                messages=messages,
+                registry=self.registry,
+                max_iterations=SETTINGS.reasoner.max_iterations,
+                max_tokens=SETTINGS.reasoner.max_tokens,
+            )
+        finally:
+            agrex_context.reset_parent(parent_token)
 
         text_blocks = [b.text for b in response.content if b.type == "text"]
         content = "\n".join(text_blocks)

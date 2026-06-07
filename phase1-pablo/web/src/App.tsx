@@ -40,10 +40,6 @@ function getFileExt(name: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : "";
 }
 
-/* ------------------------------------------------------------------ */
-/*  Node detail panel                                                  */
-/* ------------------------------------------------------------------ */
-
 function nodeMetadata(node: AgrexNode): Record<string, unknown> {
   return (node.metadata ?? {}) as Record<string, unknown>;
 }
@@ -51,265 +47,6 @@ function nodeMetadata(node: AgrexNode): Record<string, unknown> {
 function nodeDisplayLabel(node: AgrexNode): string {
   const meta = nodeMetadata(node);
   return typeof meta.displayLabel === "string" ? meta.displayLabel : node.label;
-}
-
-function numberMeta(meta: Record<string, unknown>, key: string): number | undefined {
-  const value = meta[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  const seconds = ms / 1000;
-  if (seconds < 60) return `${seconds.toFixed(seconds >= 10 ? 1 : 2)} s`;
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds % 60);
-  return `${minutes}m ${String(rest).padStart(2, "0")}s`;
-}
-
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}k`;
-  return String(tokens);
-}
-
-function formatCost(cost: number): string {
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
-  return `$${cost.toFixed(2)}`;
-}
-
-function stringifyDetail(value: unknown): string {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-function DetailMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-[82px] rounded-lg border border-border-subtle bg-white/[0.03] px-2.5 py-2">
-      <div className="text-[10px] uppercase tracking-[1px] text-text-faint">
-        {label}
-      </div>
-      <div className="mt-1 text-[13px] text-text tabular-nums">{value}</div>
-    </div>
-  );
-}
-
-function DetailCode({
-  title,
-  value,
-  language = "json",
-}: {
-  title: string;
-  value: unknown;
-  language?: string;
-}) {
-  if (value === undefined || value === null || value === "") return null;
-  return (
-    <div className="mb-3">
-      <div className="text-[10px] uppercase tracking-[1px] text-text-faint mb-1.5">
-        {title}
-      </div>
-      <CodeBlock code={stringifyDetail(value)} language={language} />
-    </div>
-  );
-}
-
-const DETAIL_METADATA_HIDDEN = new Set([
-  "args",
-  "input",
-  "output",
-  "content",
-  "error",
-  "startedAt",
-  "endedAt",
-  "tokens",
-  "cost",
-  "duration_ms",
-]);
-
-function NodeDetail({
-  node,
-  onClose,
-}: {
-  node: AgrexNode;
-  onClose: () => void;
-}) {
-  const meta = nodeMetadata(node);
-  const kind = node.type;
-  const displayLabel = nodeDisplayLabel(node);
-  const startedAt = numberMeta(meta, "startedAt");
-  const endedAt = numberMeta(meta, "endedAt");
-  const durationMs =
-    numberMeta(meta, "duration_ms") ??
-    (startedAt !== undefined && endedAt !== undefined
-      ? Math.max(0, endedAt - startedAt)
-      : undefined);
-  const tokens = numberMeta(meta, "tokens");
-  const cost = numberMeta(meta, "cost");
-  const llmCalls = numberMeta(meta, "llm_calls");
-  const resultChars = numberMeta(meta, "result_chars");
-  const errorValue = meta.error;
-  const extraMetadata = Object.entries(meta).filter(
-    ([key]) => !DETAIL_METADATA_HIDDEN.has(key),
-  );
-
-  let content: React.ReactNode = null;
-
-  switch (kind) {
-    case "agent":
-    case "sub_agent":
-      if (meta.output) {
-        content = <MarkdownRenderer content={String(meta.output)} />;
-      }
-      break;
-    case "file":
-    case "output":
-      if (meta.content) {
-        content = (
-          <CodeBlock
-            code={String(meta.content)}
-            language={
-              typeof meta.path === "string"
-                ? meta.path.split(".").pop()
-                : undefined
-            }
-          />
-        );
-      }
-      break;
-    case "search":
-      content = (
-        <>
-          {meta.query && (
-            <div className="text-[13px] mb-2 text-text-muted">
-              <span className="text-[11px] uppercase tracking-[1px] block mb-1 text-text-faint">
-                Query
-              </span>
-              {String(meta.query)}
-            </div>
-          )}
-          {Array.isArray(meta.results) && meta.results.length > 0 && (
-            <div>
-              <span className="text-[11px] uppercase tracking-[1px] block mb-1 text-text-faint">
-                Results
-              </span>
-              {meta.results.map((r, i) => (
-                <div
-                  key={i}
-                  className="text-[13px] py-1 text-text-muted border-b border-border-faint"
-                >
-                  {String(r)}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      );
-      break;
-    case "tool":
-      if (meta.args !== undefined || meta.output !== undefined) {
-        content = (
-          <>
-            <DetailCode title="Args" value={meta.args} />
-            <DetailCode title="Output" value={meta.output} language="text" />
-          </>
-        );
-      }
-      break;
-  }
-
-  if (!content && extraMetadata.length === 0 && !errorValue) {
-    content = (
-      <div className="text-[13px] text-text-dim">No details available.</div>
-    );
-  }
-
-  return (
-    <div className="animate-scale-in fixed bottom-5 right-5 w-[380px] max-h-[320px] bg-surface border border-border z-50 flex flex-col rounded-2xl shadow-2xl shadow-black/30 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[1px] text-text-faint">
-            {kind}
-          </span>
-          <span className="text-[14px] text-white font-medium">
-            {displayLabel}
-          </span>
-        </div>
-        <button
-          className="w-6 h-6 flex items-center justify-center rounded-full cursor-pointer text-text-faint bg-transparent border-none hover:bg-surface-hover text-[14px]"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {(durationMs !== undefined ||
-          tokens !== undefined ||
-          cost !== undefined ||
-          llmCalls !== undefined ||
-          resultChars !== undefined) && (
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {durationMs !== undefined && (
-              <DetailMetric label="Time" value={formatDuration(durationMs)} />
-            )}
-            {tokens !== undefined && (
-              <DetailMetric label="Tokens" value={formatTokens(tokens)} />
-            )}
-            {cost !== undefined && (
-              <DetailMetric label="Cost" value={formatCost(cost)} />
-            )}
-            {llmCalls !== undefined && (
-              <DetailMetric label="LLM calls" value={String(llmCalls)} />
-            )}
-            {resultChars !== undefined && (
-              <DetailMetric label="Result" value={`${resultChars} chars`} />
-            )}
-          </div>
-        )}
-
-        {errorValue !== undefined && (
-          <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5">
-            <div className="text-[10px] uppercase tracking-[1px] text-red-200/80 mb-1.5">
-              Error
-            </div>
-            <pre className="m-0 whitespace-pre-wrap break-words text-[12px] leading-5 text-red-50/90 font-mono">
-              {stringifyDetail(errorValue)}
-            </pre>
-          </div>
-        )}
-
-        {content}
-
-        {extraMetadata.length > 0 && (
-          <div className="mt-3">
-            <div className="text-[10px] uppercase tracking-[1px] text-text-faint mb-1.5">
-              Metadata
-            </div>
-            <div className="space-y-1.5 text-[12px]">
-              {extraMetadata.map(([key, value]) => (
-                <div
-                  key={key}
-                  className="grid grid-cols-[112px_minmax(0,1fr)] gap-2"
-                >
-                  <span className="text-text-faint">{key}</span>
-                  <span className="min-w-0 break-words text-text-muted">
-                    {typeof value === "string" ? value : stringifyDetail(value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -529,7 +266,6 @@ export default function App() {
     liveRunActiveRef.current = false;
   }, [replay]);
 
-  const [selectedNode, setSelectedNode] = useState<AgrexNode | null>(null);
   const [problemInput, setProblemInput] = useState("");
   // `undefined` = run the full pipeline (default). Otherwise the work stage
   // after which the pipeline terminates (kept review enabled).
@@ -595,7 +331,6 @@ export default function App() {
         }
         return;
       }
-      setSelectedNode((prev) => (prev?.id === node.id ? null : node));
     },
     [reviewActive, stageOutputs],
   );
@@ -673,7 +408,6 @@ export default function App() {
     const submit = (data: unknown) => {
       sendReviewResponse(reviewRequest.stage, data);
       setShowOutputModal(false);
-      setSelectedNode(null);
     };
 
     switch (reviewRequest.stage) {
@@ -875,6 +609,7 @@ export default function App() {
                     outputApprovals,
                   }}
                   sidebarCollapsed={sidebarCollapsed}
+                  showDetailPanel={!showOutputModal}
                   timelineCollapsedChange={setTimelineCollapsed}
                   onExitReplay={replay.mode === "replay" ? exitReplay : undefined}
                 />
@@ -986,18 +721,9 @@ export default function App() {
                   onClose={() => setShowOutputModal(false)}
                 />
               )}
-
             </>
           )}
         </div>
-
-        {/* Node detail panel — hidden during output review */}
-        {selectedNode && !showOutputModal && (
-          <NodeDetail
-            node={selectedNode}
-            onClose={() => setSelectedNode(null)}
-          />
-        )}
       </div>
 
       {/* Knowledge graph panel — delta for current run, click to expand */}

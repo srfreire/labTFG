@@ -695,19 +695,19 @@ class Router:
 
     async def _trace_reasoner_artifacts(self) -> None:
         for paradigm, formulations in sorted(self.state.selected_formulations.items()):
+            sub_id = self._trace_id("reasoner", paradigm)
+            await self._trace_node_once(
+                "sub_agent",
+                sub_id,
+                f"ReasonerSubAgent: {paradigm}",
+                parent="reasoner",
+                status="done",
+                metadata={"paradigm": paradigm},
+            )
+            await self._trace_edge_once(
+                "reasoner", sub_id, edge_type="launches", label="launches"
+            )
             for formulation in formulations:
-                sub_id = self._trace_id("reasoner", paradigm, formulation)
-                await self._trace_node_once(
-                    "sub_agent",
-                    sub_id,
-                    f"ReasonerSubAgent: {formulation}",
-                    parent="reasoner",
-                    status="done",
-                    metadata={"paradigm": paradigm, "formulation": formulation},
-                )
-                await self._trace_edge_once(
-                    "reasoner", sub_id, edge_type="launches", label="launches"
-                )
                 key = (
                     f"{self.state.models_prefix}/reasoner/{paradigm}/{formulation}.json"
                 )

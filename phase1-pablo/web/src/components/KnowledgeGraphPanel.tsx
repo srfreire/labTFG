@@ -17,6 +17,10 @@ import type {
   KGRelation,
   KGSnapshot,
 } from "../types";
+import {
+  formatKgPropertyValue,
+  shouldShowKgProperty,
+} from "../lib/kgDisplay";
 
 interface Props {
   runId: string | null;
@@ -87,26 +91,6 @@ function toReagraph(
   };
 }
 
-// Keys hidden from the stats panel — temporal/provenance fields are shown
-// in a dedicated footer, not mixed into the main property list.
-const HIDDEN_PROP_KEYS = new Set([
-  "run_count",
-  "last_run_at",
-  "created_at",
-  "updated_at",
-]);
-
-function formatPropValue(v: unknown): string {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  try {
-    return JSON.stringify(v);
-  } catch {
-    return String(v);
-  }
-}
-
 interface NeighborEdge {
   relId: string;
   relType: string;
@@ -165,7 +149,7 @@ function NodeStatsPanel({
 }: NodeStatsPanelProps) {
   const props = node.properties ?? {};
   const mainEntries = Object.entries(props).filter(
-    ([k]) => !HIDDEN_PROP_KEYS.has(k),
+    ([key, value]) => shouldShowKgProperty(key, value),
   );
   const createdAt = props.created_at as string | undefined;
   const updatedAt = props.updated_at as string | undefined;
@@ -212,7 +196,7 @@ function NodeStatsPanel({
                     {k}
                   </dt>
                   <dd className="text-text break-words whitespace-pre-wrap">
-                    {formatPropValue(v)}
+                    {formatKgPropertyValue(v)}
                   </dd>
                 </div>
               ))}
