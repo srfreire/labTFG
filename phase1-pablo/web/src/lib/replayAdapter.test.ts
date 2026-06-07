@@ -196,12 +196,14 @@ describe("sanitizeLabTraceEvents", () => {
         source: "db:knowledge-graph",
         target: "builder:homeostatic:pi_controller",
         type: "memory_retrieve",
+        label: "retrieves",
       }),
       expect.objectContaining({
         id: "edge:memory-retrieve:vectors:builder:homeostatic:pi_controller",
         source: "db:vector-memory",
         target: "builder:homeostatic:pi_controller",
         type: "memory_retrieve",
+        label: "retrieves",
       }),
     ]);
   });
@@ -255,12 +257,14 @@ describe("sanitizeLabTraceEvents", () => {
         source: "memory_agent:research",
         target: "db:knowledge-graph",
         type: "memory_store",
+        label: "stores",
       }),
       expect.objectContaining({
         id: "edge:memory-store:vectors:memory_agent:research",
         source: "memory_agent:research",
         target: "db:vector-memory",
         type: "memory_store",
+        label: "stores",
       }),
     ]);
   });
@@ -446,6 +450,7 @@ describe("labReducers", () => {
         source: "memory_agent:research",
         target: "db:knowledge-graph",
         type: "memory_store",
+        label: "stores",
       }),
     );
     expect(store.updateNode).not.toHaveBeenCalled();
@@ -566,18 +571,21 @@ describe("labReducers", () => {
           source: "db:knowledge-graph",
           target: "agent-1",
           type: "memory_retrieve",
+          label: "retrieves",
         }),
         expect.objectContaining({
           id: "edge:memory-retrieve:vectors:agent-1",
           source: "db:vector-memory",
           target: "agent-1",
           type: "memory_retrieve",
+          label: "retrieves",
         }),
         expect.objectContaining({
           id: "edge:memory-store:vectors:memory_agent:research",
           source: "memory_agent:research",
           target: "db:vector-memory",
           type: "memory_store",
+          label: "stores",
         }),
       ],
     });
