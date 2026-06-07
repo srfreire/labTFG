@@ -149,7 +149,7 @@ export default function Sidebar({
       }}
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border-subtle shrink-0">
+      <div className="px-4 py-3 border-b border-border-subtle shrink-0">
         <div className="text-[17px] font-semibold tracking-tight text-text">
           DecisionLab
         </div>

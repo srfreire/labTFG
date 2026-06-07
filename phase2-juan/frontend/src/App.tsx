@@ -44,7 +44,7 @@ function AppShell({ connected, agents, messages, thinking, simAgents, envCard: e
   return (
     <div className="h-screen p-10 flex gap-8 overflow-hidden">
       <aside className="hidden md:flex w-[200px] flex-shrink-0 min-h-0 flex-col floating-panel">
-        <div className="px-5 py-4 border-b border-border-subtle shrink-0">
+        <div className="px-4 py-3 border-b border-border-subtle shrink-0">
           <div className="text-[17px] font-semibold tracking-tight text-text">
             DecisionLab
           </div>
