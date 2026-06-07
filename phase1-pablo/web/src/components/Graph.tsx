@@ -119,11 +119,15 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
 function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   const isVectorDb = node.id.includes('vector');
   const accent = isVectorDb ? '#a78bfa' : '#38bdf8';
-  const gradientId = isVectorDb ? 'db-stack-vector' : 'db-stack-kg';
   const borderColor =
     status === 'running' ? theme.statusRunning
     : status === 'error' ? theme.statusError
     : accent;
+  const disks = [
+    { cy: 42, opacity: 0.18 },
+    { cy: 30, opacity: 0.22 },
+    { cy: 18, opacity: 0.3 },
+  ];
 
   return (
     <div
@@ -141,51 +145,19 @@ function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
       >
-        <defs>
-          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.32" />
-            <stop offset="100%" stopColor={theme.nodeFill} stopOpacity="1" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M 13 15 C 13 8.4 24.2 3 38 3 C 51.8 3 63 8.4 63 15 L 63 43 C 63 49.6 51.8 55 38 55 C 24.2 55 13 49.6 13 43 Z"
-          fill={`url(#${gradientId})`}
-          stroke={borderColor}
-          strokeWidth="1.6"
-        />
-        <ellipse
-          cx="38"
-          cy="15"
-          rx="25"
-          ry="12"
-          fill={`${accent}24`}
-          stroke={borderColor}
-          strokeWidth="1.6"
-        />
-        <path
-          d="M 13 28 C 13 34.6 24.2 40 38 40 C 51.8 40 63 34.6 63 28"
-          fill="none"
-          stroke={borderColor}
-          strokeOpacity="0.72"
-          strokeWidth="1.4"
-        />
-        <path
-          d="M 13 42 C 13 48.6 24.2 54 38 54 C 51.8 54 63 48.6 63 42"
-          fill="none"
-          stroke={borderColor}
-          strokeOpacity="0.72"
-          strokeWidth="1.4"
-        />
-        <ellipse
-          cx="38"
-          cy="15"
-          rx="12"
-          ry="4.7"
-          fill={`${accent}26`}
-          stroke={accent}
-          strokeOpacity="0.45"
-          strokeWidth="1"
-        />
+        {disks.map((disk) => (
+          <ellipse
+            key={disk.cy}
+            cx="38"
+            cy={disk.cy}
+            rx="25"
+            ry="10"
+            fill={accent}
+            fillOpacity={disk.opacity}
+            stroke={borderColor}
+            strokeWidth="1.6"
+          />
+        ))}
       </svg>
       <div
         className="mt-0.5 text-center"
