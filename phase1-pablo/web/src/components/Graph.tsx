@@ -174,8 +174,10 @@ const TOOL_ICONS = {
 };
 
 const EDGE_COLORS = {
+  read: 'rgba(56,189,248,0.55)',
+  write: 'rgba(251,191,36,0.55)',
   memory_retrieve: 'rgba(56,189,248,0.55)',
-  memory_store: 'rgba(34,197,94,0.55)',
+  memory_store: 'rgba(168,85,247,0.58)',
 };
 
 export const THEME = {
