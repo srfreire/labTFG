@@ -9,7 +9,7 @@ import {
 } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Globe, Eye, Pencil, FlaskConical, FileSearch } from 'lucide-react';
+import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch } from 'lucide-react';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
@@ -119,48 +119,28 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
 function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   const isVectorDb = node.id.includes('vector');
   const accent = isVectorDb ? '#a78bfa' : '#38bdf8';
-  const borderColor =
-    status === 'running' ? theme.statusRunning
-    : status === 'error' ? theme.statusError
+  const color =
+    status === 'error' ? theme.statusError
+    : status === 'running' ? theme.statusRunning
     : accent;
-  const disks = [
-    { cy: 42, opacity: 0.18 },
-    { cy: 30, opacity: 0.22 },
-    { cy: 18, opacity: 0.3 },
-  ];
 
   return (
     <div
       className="relative flex flex-col items-center justify-center"
-      style={{ width: 108, height: 88 }}
+      style={{ width: 104, height: 78 }}
     >
       <NodeHandles />
-      <svg
-        width="76"
-        height="60"
-        viewBox="0 0 76 60"
+      <Database
+        size={44}
+        strokeWidth={1.85}
         aria-hidden="true"
         style={{
-          overflow: 'visible',
+          color,
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
-      >
-        {disks.map((disk) => (
-          <ellipse
-            key={disk.cy}
-            cx="38"
-            cy={disk.cy}
-            rx="25"
-            ry="10"
-            fill={accent}
-            fillOpacity={disk.opacity}
-            stroke={borderColor}
-            strokeWidth="1.6"
-          />
-        ))}
-      </svg>
+      />
       <div
-        className="mt-0.5 text-center"
+        className="mt-1 text-center"
         style={{
           maxWidth: 104,
           color: theme.foreground,
