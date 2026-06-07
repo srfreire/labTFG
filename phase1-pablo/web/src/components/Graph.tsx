@@ -175,7 +175,9 @@ const TOOL_ICONS = {
 
 const EDGE_COLORS = {
   read: 'rgba(56,189,248,0.55)',
+  reads: 'rgba(56,189,248,0.55)',
   write: 'rgba(251,191,36,0.55)',
+  writes: 'rgba(251,191,36,0.55)',
   memory_retrieve: 'rgba(56,189,248,0.55)',
   memory_store: 'rgba(251,191,36,0.55)',
 };
