@@ -154,7 +154,7 @@ describe("sanitizeLabTraceEvents", () => {
     });
   });
 
-  it("uses the last path-identified builder parent for legacy retrieve_knowledge nodes", () => {
+  it("projects legacy builder retrieve_knowledge nodes into DB read edges", () => {
     const events = [
       ev("node_add", {
         node: {
@@ -176,9 +176,93 @@ describe("sanitizeLabTraceEvents", () => {
       }),
     ];
 
-    expect(sanitizeLabTraceEvents(events)[1]).toMatchObject({
-      node: { parentId: "builder:homeostatic:pi_controller" },
-    });
+    const sanitized = sanitizeLabTraceEvents(events);
+    const nodes = sanitized
+      .filter((event) => event.type === "node_add")
+      .map((event) => event.node);
+    const edges = sanitized
+      .filter((event) => event.type === "edge_add")
+      .map((event) => event.edge);
+
+    expect(nodes).toEqual([
+      expect.objectContaining({ id: "tool-1" }),
+      expect.objectContaining({ id: "db:knowledge-graph", type: "database" }),
+      expect.objectContaining({ id: "db:vector-memory", type: "database" }),
+    ]);
+    expect(nodes).not.toContainEqual(expect.objectContaining({ id: "tool-2" }));
+    expect(edges).toEqual([
+      expect.objectContaining({
+        id: "edge:memory-read:kg:builder:homeostatic:pi_controller",
+        source: "db:knowledge-graph",
+        target: "builder:homeostatic:pi_controller",
+        type: "memory_read",
+      }),
+      expect.objectContaining({
+        id: "edge:memory-read:vectors:builder:homeostatic:pi_controller",
+        source: "db:vector-memory",
+        target: "builder:homeostatic:pi_controller",
+        type: "memory_read",
+      }),
+    ]);
+  });
+
+  it("projects memory output artifacts into DB write edges", () => {
+    const events = [
+      ev("node_add", {
+        node: { id: "memory_agent:research", type: "sub_agent", label: "Memory" },
+      }),
+      ev("node_add", {
+        node: {
+          id: "memory_output:research:kg",
+          type: "artifact",
+          label: "KG writes: research",
+          parentId: "memory_agent:research",
+        },
+      }),
+      ev("edge_add", {
+        edge: {
+          id: "old-memory-edge",
+          source: "memory_agent:research",
+          target: "memory_output:research:kg",
+        },
+      }),
+      ev("node_add", {
+        node: {
+          id: "memory_output:research:facts",
+          type: "artifact",
+          label: "Memories: research",
+          parentId: "memory_agent:research",
+        },
+      }),
+    ];
+
+    const sanitized = sanitizeLabTraceEvents(events);
+    const nodeIds = sanitized
+      .filter((event) => event.type === "node_add")
+      .map((event) => (event.node as { id: string }).id);
+    const edges = sanitized
+      .filter((event) => event.type === "edge_add")
+      .map((event) => event.edge);
+
+    expect(nodeIds).toEqual([
+      "memory_agent:research",
+      "db:knowledge-graph",
+      "db:vector-memory",
+    ]);
+    expect(edges).toEqual([
+      expect.objectContaining({
+        id: "edge:memory-write:kg:memory_agent:research",
+        source: "memory_agent:research",
+        target: "db:knowledge-graph",
+        type: "memory_write",
+      }),
+      expect.objectContaining({
+        id: "edge:memory-write:vectors:memory_agent:research",
+        source: "memory_agent:research",
+        target: "db:vector-memory",
+        type: "memory_index",
+      }),
+    ]);
   });
 });
 
@@ -250,7 +334,7 @@ describe("labReducers", () => {
     });
   });
 
-  it("node_add reparents legacy builder retrieve_knowledge after a path tool", () => {
+  it("node_add projects legacy builder retrieve_knowledge into DB read edges", () => {
     const store = makeStore();
     labReducers.node_add(
       store,
@@ -274,10 +358,56 @@ describe("labReducers", () => {
     };
     labReducers.node_add(store, ev("node_add", { node }));
 
-    expect(store.addNode).toHaveBeenLastCalledWith({
-      ...node,
-      parentId: "builder:homeostatic:pi_controller",
-    });
+    expect(store.addNode).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: "tool-2" }),
+    );
+    expect(store.addNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "db:knowledge-graph", type: "database" }),
+    );
+    expect(store.addNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "db:vector-memory", type: "database" }),
+    );
+    expect(store.addEdge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "edge:memory-read:kg:builder:homeostatic:pi_controller",
+        source: "db:knowledge-graph",
+        target: "builder:homeostatic:pi_controller",
+      }),
+    );
+    expect(store.addEdge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "edge:memory-read:vectors:builder:homeostatic:pi_controller",
+        source: "db:vector-memory",
+        target: "builder:homeostatic:pi_controller",
+      }),
+    );
+  });
+
+  it("node_add projects memory output artifacts into DB write edges", () => {
+    const store = makeStore();
+    const node = {
+      id: "memory_output:research:kg",
+      type: "artifact" as const,
+      label: "KG writes: research",
+      parentId: "memory_agent:research",
+    };
+
+    labReducers.node_add(store, ev("node_add", { node }));
+    labReducers.node_update(store, ev("node_update", { id: node.id, status: "done" }));
+
+    expect(store.addNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "db:knowledge-graph", type: "database" }),
+    );
+    expect(store.addNode).not.toHaveBeenCalledWith(node);
+    expect(store.addEdge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "edge:memory-write:kg:memory_agent:research",
+        source: "memory_agent:research",
+        target: "db:knowledge-graph",
+        type: "memory_write",
+      }),
+    );
+    expect(store.updateNode).not.toHaveBeenCalled();
   });
 
   it("edge_add forwards the canonical edge to store.addEdge", () => {
@@ -325,6 +455,56 @@ describe("labReducers", () => {
     expect(store.loadJSON).toHaveBeenCalledWith({
       nodes: [{ id: "agent-1", type: "agent", label: "Researcher" }],
       edges: [],
+    });
+  });
+
+  it("state_sync projects hidden memory nodes into DB edges", () => {
+    const store = makeStore();
+    const nodes = [
+      { id: "agent-1", type: "agent" as const, label: "Researcher" },
+      {
+        id: "tool-1",
+        type: "tool" as const,
+        label: "retrieve_knowledge",
+        parentId: "agent-1",
+      },
+      {
+        id: "memory_output:research:facts",
+        type: "artifact" as const,
+        label: "Memories: research",
+        parentId: "memory_agent:research",
+      },
+    ];
+    const edges = [{ id: "e", source: "agent-1", target: "tool-1" }];
+
+    labReducers.state_sync(store, ev("state_sync", { nodes, edges }));
+
+    expect(store.loadJSON).toHaveBeenCalledWith({
+      nodes: [
+        { id: "agent-1", type: "agent", label: "Researcher" },
+        expect.objectContaining({ id: "db:knowledge-graph", type: "database" }),
+        expect.objectContaining({ id: "db:vector-memory", type: "database" }),
+      ],
+      edges: [
+        expect.objectContaining({
+          id: "edge:memory-read:kg:agent-1",
+          source: "db:knowledge-graph",
+          target: "agent-1",
+          type: "memory_read",
+        }),
+        expect.objectContaining({
+          id: "edge:memory-read:vectors:agent-1",
+          source: "db:vector-memory",
+          target: "agent-1",
+          type: "memory_read",
+        }),
+        expect.objectContaining({
+          id: "edge:memory-write:vectors:memory_agent:research",
+          source: "memory_agent:research",
+          target: "db:vector-memory",
+          type: "memory_index",
+        }),
+      ],
     });
   });
 

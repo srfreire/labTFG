@@ -10,11 +10,54 @@ import type { Stage } from "../types";
 
 // Events on the WS and in trace.jsonl are canonical agrex shape (`type`,
 // `parentId`, `metadata`). The lab layer only hides misleading launcher nodes
-// and repairs legacy parent ids where the path makes the true subagent clear.
+// and memory implementation details, then repairs legacy parent ids where the
+// path makes the true subagent clear.
 
 const HIDDEN_TOOL_LABELS = new Set(["launch_deep_research"]);
 const hiddenNodeIds = new Set<string>();
+const liveDbNodeIds = new Set<string>();
+const liveMemoryEdgeIds = new Set<string>();
 let lastBuilderParentId: string | undefined;
+
+type MemoryDbKind = "kg" | "vectors";
+
+interface SanitizerState {
+  lastBuilderParentId?: string;
+  dbNodeIds: Set<string>;
+  memoryEdgeIds: Set<string>;
+}
+
+const MEMORY_DB_NODES: Record<MemoryDbKind, AgrexNode> = {
+  kg: {
+    id: "db:knowledge-graph",
+    type: "database",
+    label: "Neo4j KG",
+    status: "done",
+    metadata: {
+      db: "Neo4j",
+      role: "Knowledge Graph",
+      description: "Canonical nodes and relations extracted by memory",
+    },
+  },
+  vectors: {
+    id: "db:vector-memory",
+    type: "database",
+    label: "Qdrant Memories",
+    status: "done",
+    metadata: {
+      db: "Qdrant",
+      role: "Vector Memory",
+      description: "Indexed memory facts used by retrieval",
+    },
+  },
+};
+
+function createSanitizerState(): SanitizerState {
+  return {
+    dbNodeIds: new Set<string>(),
+    memoryEdgeIds: new Set<string>(),
+  };
+}
 
 function nodeToolName(node: AgrexNode): string {
   const metadata = node.metadata as Record<string, unknown> | undefined;
@@ -23,7 +66,11 @@ function nodeToolName(node: AgrexNode): string {
 }
 
 function shouldHideNode(node: AgrexNode): boolean {
-  return node.type === "tool" && HIDDEN_TOOL_LABELS.has(nodeToolName(node));
+  return (
+    (node.type === "tool" && HIDDEN_TOOL_LABELS.has(nodeToolName(node))) ||
+    isMemoryReadNode(node) ||
+    memoryOutputDbKind(node) !== undefined
+  );
 }
 
 function nodeMetadataPath(node: AgrexNode): string | undefined {
@@ -78,16 +125,20 @@ function rememberBuilderParent(node: AgrexNode): string | undefined {
 
 function resetLiveSanitizerState() {
   hiddenNodeIds.clear();
+  liveDbNodeIds.clear();
+  liveMemoryEdgeIds.clear();
   lastBuilderParentId = undefined;
 }
 
-function resetReplaySanitizerState(state: { lastBuilderParentId?: string }) {
+function resetReplaySanitizerState(state: SanitizerState) {
   state.lastBuilderParentId = undefined;
+  state.dbNodeIds.clear();
+  state.memoryEdgeIds.clear();
 }
 
 function normalizeReplayNode(
   node: AgrexNode,
-  state: { lastBuilderParentId?: string },
+  state: SanitizerState,
 ): AgrexNode {
   const normalized = normalizeNode(node, state.lastBuilderParentId);
   const remembered = rememberBuilderParent(normalized);
@@ -104,7 +155,7 @@ function normalizeLiveNode(node: AgrexNode): AgrexNode {
 
 function normalizeSnapshotNode(
   node: AgrexNode,
-  state: { lastBuilderParentId?: string },
+  state: SanitizerState,
 ): AgrexNode {
   const normalized = normalizeNode(node, state.lastBuilderParentId);
   const remembered = rememberBuilderParent(normalized);
@@ -116,27 +167,202 @@ function edgeTouchesHiddenNode(edge: AgrexEdge, hiddenIds: Set<string>): boolean
   return hiddenIds.has(edge.source) || hiddenIds.has(edge.target);
 }
 
+function isMemoryReadNode(node: AgrexNode): boolean {
+  return node.type === "tool" && nodeToolName(node) === "retrieve_knowledge";
+}
+
+function memoryOutputDbKind(node: AgrexNode): MemoryDbKind | undefined {
+  if (node.type !== "artifact" || !node.id.startsWith("memory_output:")) {
+    return undefined;
+  }
+  if (node.id.endsWith(":kg")) return "kg";
+  if (node.id.endsWith(":facts")) return "vectors";
+  return undefined;
+}
+
+function memoryReadEdges(parentId: string): AgrexEdge[] {
+  return [
+    {
+      id: `edge:memory-read:kg:${parentId}`,
+      source: MEMORY_DB_NODES.kg.id,
+      target: parentId,
+      type: "memory_read",
+      label: "read",
+    },
+    {
+      id: `edge:memory-read:vectors:${parentId}`,
+      source: MEMORY_DB_NODES.vectors.id,
+      target: parentId,
+      type: "memory_read",
+      label: "read",
+    },
+  ];
+}
+
+function memoryWriteEdge(kind: MemoryDbKind, parentId: string): AgrexEdge {
+  return {
+    id: `edge:memory-write:${kind}:${parentId}`,
+    source: parentId,
+    target: MEMORY_DB_NODES[kind].id,
+    type: kind === "kg" ? "memory_write" : "memory_index",
+    label: kind === "kg" ? "write" : "index",
+  };
+}
+
+function memoryProjectionForNode(
+  node: AgrexNode,
+): { dbKinds: MemoryDbKind[]; edges: AgrexEdge[] } | undefined {
+  if (isMemoryReadNode(node)) {
+    if (typeof node.parentId !== "string" || node.parentId.length === 0) {
+      return undefined;
+    }
+    return {
+      dbKinds: ["kg", "vectors"],
+      edges: memoryReadEdges(node.parentId),
+    };
+  }
+
+  const writeKind = memoryOutputDbKind(node);
+  if (!writeKind) return undefined;
+  if (typeof node.parentId !== "string" || node.parentId.length === 0) {
+    return undefined;
+  }
+  return {
+    dbKinds: [writeKind],
+    edges: [memoryWriteEdge(writeKind, node.parentId)],
+  };
+}
+
+function ensureMemoryDbEvent(
+  kind: MemoryDbKind,
+  out: AgrexEvent[],
+  state: SanitizerState,
+  ts: number,
+) {
+  const node = MEMORY_DB_NODES[kind];
+  if (state.dbNodeIds.has(node.id)) return;
+  state.dbNodeIds.add(node.id);
+  out.push({ type: "node_add", ts, node } as AgrexEvent);
+}
+
+function emitMemoryEdgeEvent(
+  edge: AgrexEdge,
+  out: AgrexEvent[],
+  state: SanitizerState,
+  ts: number,
+) {
+  if (state.memoryEdgeIds.has(edge.id)) return;
+  state.memoryEdgeIds.add(edge.id);
+  out.push({ type: "edge_add", ts, edge } as AgrexEvent);
+}
+
+function projectHiddenMemoryNodeToEvents(
+  node: AgrexNode,
+  out: AgrexEvent[],
+  state: SanitizerState,
+  ts: number,
+) {
+  const projection = memoryProjectionForNode(node);
+  if (!projection) return;
+
+  for (const kind of projection.dbKinds) {
+    ensureMemoryDbEvent(kind, out, state, ts);
+  }
+  for (const edge of projection.edges) {
+    emitMemoryEdgeEvent(edge, out, state, ts);
+  }
+}
+
+function ensureMemoryDbSnapshotNode(
+  kind: MemoryDbKind,
+  out: AgrexNode[],
+  state: SanitizerState,
+) {
+  const node = MEMORY_DB_NODES[kind];
+  if (state.dbNodeIds.has(node.id)) return;
+  state.dbNodeIds.add(node.id);
+  out.push(node);
+}
+
+function addMemorySnapshotEdge(
+  edge: AgrexEdge,
+  out: AgrexEdge[],
+  state: SanitizerState,
+) {
+  if (state.memoryEdgeIds.has(edge.id)) return;
+  state.memoryEdgeIds.add(edge.id);
+  out.push(edge);
+}
+
+function projectHiddenMemoryNodeToSnapshot(
+  node: AgrexNode,
+  dbNodes: AgrexNode[],
+  edges: AgrexEdge[],
+  state: SanitizerState,
+) {
+  const projection = memoryProjectionForNode(node);
+  if (!projection) return;
+
+  for (const kind of projection.dbKinds) {
+    ensureMemoryDbSnapshotNode(kind, dbNodes, state);
+  }
+  for (const edge of projection.edges) {
+    addMemorySnapshotEdge(edge, edges, state);
+  }
+}
+
+function ensureLiveMemoryDbNode(
+  store: Parameters<EventReducer>[0],
+  kind: MemoryDbKind,
+) {
+  const node = MEMORY_DB_NODES[kind];
+  if (liveDbNodeIds.has(node.id)) return;
+  liveDbNodeIds.add(node.id);
+  store.addNode(node);
+}
+
+function projectHiddenMemoryNodeLive(
+  store: Parameters<EventReducer>[0],
+  node: AgrexNode,
+) {
+  const projection = memoryProjectionForNode(node);
+  if (!projection) return;
+
+  for (const kind of projection.dbKinds) {
+    ensureLiveMemoryDbNode(store, kind);
+  }
+  for (const edge of projection.edges) {
+    if (liveMemoryEdgeIds.has(edge.id)) continue;
+    liveMemoryEdgeIds.add(edge.id);
+    store.addEdge(edge);
+  }
+}
+
 function sanitizeSnapshot(
   nodes: AgrexNode[],
   edges: AgrexEdge[],
   hiddenIds: Set<string>,
-  state: { lastBuilderParentId?: string },
+  state: SanitizerState,
 ) {
   const visibleNodes: AgrexNode[] = [];
+  const dbNodes: AgrexNode[] = [];
+  const projectedEdges: AgrexEdge[] = [];
   for (const node of nodes) {
-    if (shouldHideNode(node)) {
-      hiddenIds.add(node.id);
+    const normalized = normalizeSnapshotNode(node, state);
+    if (shouldHideNode(normalized)) {
+      hiddenIds.add(normalized.id);
+      projectHiddenMemoryNodeToSnapshot(normalized, dbNodes, projectedEdges, state);
     } else {
-      visibleNodes.push(normalizeSnapshotNode(node, state));
+      visibleNodes.push(normalized);
     }
   }
   const visibleEdges = edges.filter((edge) => !edgeTouchesHiddenNode(edge, hiddenIds));
-  return { nodes: visibleNodes, edges: visibleEdges };
+  return { nodes: [...visibleNodes, ...dbNodes], edges: [...visibleEdges, ...projectedEdges] };
 }
 
 export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
   const hiddenIds = new Set<string>();
-  const replayState: { lastBuilderParentId?: string } = {};
+  const replayState = createSanitizerState();
   const out: AgrexEvent[] = [];
 
   for (const ev of events) {
@@ -144,10 +370,14 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
       const node = ev.node as AgrexNode | undefined;
       if (!node) {
         out.push(ev);
-      } else if (shouldHideNode(node)) {
-        hiddenIds.add(node.id);
       } else {
-        out.push({ ...ev, node: normalizeReplayNode(node, replayState) } as AgrexEvent);
+        const normalized = normalizeReplayNode(node, replayState);
+        if (shouldHideNode(normalized)) {
+          hiddenIds.add(normalized.id);
+          projectHiddenMemoryNodeToEvents(normalized, out, replayState, ev.ts);
+        } else {
+          out.push({ ...ev, node: normalized } as AgrexEvent);
+        }
       }
     } else if (
       (ev.type === "node_update" || ev.type === "node_remove") &&
@@ -184,11 +414,13 @@ export const labReducers: Record<string, EventReducer> = {
   node_add(store, ev) {
     const node = ev.node as AgrexNode | undefined;
     if (!node) return;
-    if (shouldHideNode(node)) {
-      hiddenNodeIds.add(node.id);
+    const normalized = normalizeLiveNode(node);
+    if (shouldHideNode(normalized)) {
+      hiddenNodeIds.add(normalized.id);
+      projectHiddenMemoryNodeLive(store, normalized);
       return;
     }
-    store.addNode(normalizeLiveNode(node));
+    store.addNode(normalized);
   },
   node_update(store, ev) {
     const id = ev.id;
@@ -222,7 +454,7 @@ export const labReducers: Record<string, EventReducer> = {
   },
   state_sync(store, ev) {
     resetLiveSanitizerState();
-    const liveState: { lastBuilderParentId?: string } = {};
+    const liveState = createSanitizerState();
     const { nodes, edges } = sanitizeSnapshot(
       (ev.nodes as AgrexNode[] | undefined) ?? [],
       (ev.edges as AgrexEdge[] | undefined) ?? [],
@@ -230,6 +462,12 @@ export const labReducers: Record<string, EventReducer> = {
       liveState,
     );
     lastBuilderParentId = liveState.lastBuilderParentId;
+    for (const node of nodes) {
+      if (node.type === "database") liveDbNodeIds.add(node.id);
+    }
+    for (const edge of edges) {
+      if (edge.type?.startsWith("memory_")) liveMemoryEdgeIds.add(edge.id);
+    }
     store.loadJSON({ nodes, edges });
   },
 };

@@ -116,11 +116,56 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
   );
 }
 
+function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
+  const isVectorDb = node.id.includes('vector');
+  const accent = isVectorDb ? '#a78bfa' : '#38bdf8';
+  const borderColor =
+    status === 'running' ? theme.statusRunning
+    : status === 'error' ? theme.statusError
+    : accent;
+
+  return (
+    <div
+      className="relative flex flex-col items-center justify-center"
+      style={{ width: 104, height: 82 }}
+    >
+      <NodeHandles />
+      <div
+        className="flex items-center justify-center"
+        style={{
+          width: 58,
+          height: 50,
+          borderRadius: 14,
+          border: `1.5px solid ${borderColor}`,
+          background: `linear-gradient(180deg, ${accent}22, ${theme.nodeFill})`,
+          boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 10px 24px ${accent}1f`,
+          animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
+        }}
+      >
+        <Database size={25} style={{ color: accent }} />
+      </div>
+      <div
+        className="mt-1 text-center"
+        style={{
+          maxWidth: 104,
+          color: theme.foreground,
+          fontSize: 11,
+          fontWeight: 650,
+          lineHeight: 1.1,
+        }}
+      >
+        {node.label}
+      </div>
+    </div>
+  );
+}
+
 /* ── Statics (declared outside component to avoid re-creation) ── */
 
 const NODE_RENDERERS = {
   search: SearchRenderer,
   output: OutputRenderer,
+  database: DatabaseRenderer,
 };
 
 // Match the icons the graph actually renders: SearchRenderer uses Globe for
@@ -130,8 +175,13 @@ const TOOL_ICONS = {
   read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
-  retrieve_knowledge: Database,
   search_papers: FileSearch,
+};
+
+const EDGE_COLORS = {
+  memory_read: 'rgba(56,189,248,0.55)',
+  memory_write: 'rgba(34,197,94,0.55)',
+  memory_index: 'rgba(167,139,250,0.55)',
 };
 
 export const THEME = {
@@ -204,6 +254,7 @@ export default function Graph({
         onNodeClick={onNodeClick}
         nodeRenderers={NODE_RENDERERS}
         toolIcons={TOOL_ICONS}
+        edgeColors={EDGE_COLORS}
         theme={THEME}
         className="w-full h-full"
         showControls={!demo}
