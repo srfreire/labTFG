@@ -1,85 +1,399 @@
-
-% Para una visualizacion correcta, generar el PDF
-% Ni el DVI ni el PS se visualizan bien
-
-% Elegir el estilo que se desee, hay cientos en la red
+% Presentación oficial del TFG basada en el modelo GrEI/USC.
+% Compilar con: pdflatex presentacion.tex
 
 \documentclass{beamer}
 \usepackage{beamerthemeshadow}
 \usepackage[spanish]{babel}
 \usepackage[utf8]{inputenc}
-%\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+
+\definecolor{DecisionGreen}{HTML}{22C55E}
+\definecolor{DecisionAmber}{HTML}{F59E0B}
+\definecolor{DecisionBlue}{HTML}{4A9EFF}
+\definecolor{DecisionRed}{HTML}{EF4444}
+\definecolor{DecisionDark}{HTML}{111827}
+
+\setbeamercolor{structure}{fg=DecisionBlue}
+\setbeamercolor{block title}{bg=DecisionBlue!18,fg=DecisionDark}
+\setbeamercolor{block body}{bg=DecisionBlue!4,fg=black}
+\setbeamercolor{alerted text}{fg=DecisionRed}
+\setbeamertemplate{navigation symbols}{}
+\setbeamerfont{title}{size=\large}
+\setbeamerfont{subtitle}{size=\small}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single
+}
+
+\title[Generación de modelos de decisión]{Laboratorio virtual para la simulación y análisis de paradigmas de toma de decisiones humanas\\mediante agentes inteligentes}
+\subtitle[TFG · Fase 1]{Fase 1: generación automática de modelos de decisión}
+\author[Pablo Pazos Parada]{Pablo Pazos Parada}
+\institute[USC]{Grado en Ingeniería Informática\\Universidade de Santiago de Compostela\\Tutor: Eduardo Manuel Sanchez Vila}
+\date{Junio de 2026}
+\titlegraphic{\includegraphics[width=0.8cm]{figuras/logo_usc}}
 
 \begin{document}
-\title{Laboratorio virtual para la simulación y análisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes}
-\subtitle{Fase 1: generación automática de modelos de decisión \\
-Grado en Ingeniería Informática \\
-Universidade de Santiago de Compostela}
-\author{Autor: Pablo Pazos Parada}
-\institute{Tutor: Eduardo Manuel Sanchez Vila}
-\date{\today}
 
 \begin{frame}
-\titlepage
+  \titlepage
 \end{frame}
 
 \begin{frame}
-\frametitle{Tabla de contenidos}\tableofcontents
+  \frametitle{Índice}
+  \tableofcontents
 \end{frame}
 
 \section{Problema y objetivo}
+
 \begin{frame}
-\frametitle{Problema}
-Convertir literatura y descripciones de paradigmas de decisión en modelos
-ejecutables sigue siendo una tarea manual, lenta y difícil de auditar.
+  \frametitle{Problema}
+  \begin{block}{Brecha principal}
+    Convertir literatura científica y descripciones de paradigmas de decisión
+    en modelos ejecutables sigue siendo una tarea manual, lenta y difícil de
+    auditar.
+  \end{block}
+
+  \vspace{0.3cm}
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Riesgos}
+        \begin{itemize}
+          \item Interpretaciones no trazables.
+          \item Código separado de la formulación.
+          \item Repetición de trabajo entre ejecuciones.
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Oportunidad}
+        Usar agentes inteligentes con revisión humana, memoria y pruebas para
+        convertir conocimiento científico en modelos simulables.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}
-\frametitle{Objetivos}
-\begin{itemize}
-\item Investigar paradigmas científicos relevantes.
-\item Formalizarlos matemáticamente.
-\item Adaptarlos a un entorno de simulación.
-\item Generar código Python probado.
-\end{itemize}
+  \frametitle{Objetivos}
+  \begin{columns}
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Objetivo general}
+        Diseñar e implementar un sistema de agentes que genere modelos de
+        decisión ejecutables a partir de problemas descritos en lenguaje natural.
+      \end{block}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{itemize}
+        \item Investigar paradigmas científicos.
+        \item Formalizarlos matemáticamente.
+        \item Adaptarlos al entorno.
+        \item Generar código Python probado.
+        \item Reutilizar conocimiento aceptado.
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \section{Arquitectura}
+
 \begin{frame}
-\frametitle{Pipeline}
-\begin{center}
-Researcher $\rightarrow$ Formalizer $\rightarrow$ Reasoner $\rightarrow$ Builder
-\end{center}
+  \frametitle{Idea central}
+  \begin{center}
+  \resizebox{0.96\textwidth}{!}{%
+  \begin{tikzpicture}[
+      node distance=0.55cm,
+      every node/.style={font=\scriptsize},
+      arrow/.style={-{Latex[length=2mm]}, thick}
+    ]
+    \node[draw=DecisionAmber, rounded corners=4pt, very thick,
+          minimum width=2.05cm, minimum height=0.85cm, align=center,
+          fill=DecisionAmber!8] (problem) {Problema\\natural};
+    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
+          minimum width=2.05cm, minimum height=0.85cm, align=center,
+          fill=DecisionBlue!8, right=0.32cm of problem] (paradigms)
+          {Paradigmas\\científicos};
+    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
+          minimum width=2.05cm, minimum height=0.85cm, align=center,
+          fill=DecisionBlue!8, right=0.32cm of paradigms] (formulas)
+          {Formulaciones\\matemáticas};
+    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
+          minimum width=2.05cm, minimum height=0.85cm, align=center,
+          fill=DecisionBlue!8, right=0.32cm of formulas] (spec)
+          {Spec JSON\\adaptada};
+    \node[draw=DecisionGreen, rounded corners=4pt, very thick,
+          minimum width=2.05cm, minimum height=0.85cm, align=center,
+          fill=DecisionGreen!8, right=0.32cm of spec] (code)
+          {Modelo Python\\+ tests};
+
+    \path[arrow] (problem) -- (paradigms);
+    \path[arrow] (paradigms) -- (formulas);
+    \path[arrow] (formulas) -- (spec);
+    \path[arrow] (spec) -- (code);
+  \end{tikzpicture}
+  }
+  \end{center}
+
+  \vspace{0.4cm}
+  \begin{block}{Tesis de diseño}
+    No se usa un agente monolítico: se usa un pipeline trazable, con artefactos
+    persistentes y revisión humana entre decisiones semánticas.
+  \end{block}
 \end{frame}
 
 \begin{frame}
-\frametitle{Memoria}
-\begin{itemize}
-\item MinIO: artefactos.
-\item PostgreSQL: metadatos y ciclo de vida.
-\item Neo4j: entidades y relaciones.
-\item Qdrant: recuperación densa y BM25.
-\end{itemize}
+  \frametitle{Router como máquina de estados}
+  \begin{columns}
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Responsabilidad del Router}
+        \begin{itemize}
+          \item Coordinar etapas.
+          \item Persistir estado y trazas.
+          \item Pedir revisión humana.
+          \item Activar memoria tras aceptación.
+          \item Permitir reejecución parcial.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \scriptsize
+      \begin{tabular}{ll}
+        \textcolor{DecisionGreen}{$\bullet$} & CLASSIFY\_UMBRELLA\\
+        \textcolor{DecisionGreen}{$\bullet$} & RESEARCH\\
+        \textcolor{DecisionBlue}{$\bullet$} & REVIEW\_RESEARCH\\
+        \textcolor{DecisionGreen}{$\bullet$} & MEMORY\_RESEARCH\\
+        \textcolor{DecisionAmber}{$\bullet$} & FORMALIZE\\
+        \textcolor{DecisionBlue}{$\bullet$} & REASON\\
+        \textcolor{DecisionGreen}{$\bullet$} & BUILD\\
+        \textcolor{DecisionGreen}{$\bullet$} & DONE
+      \end{tabular}
+      \vspace{0.3cm}
+
+      \begin{exampleblock}{Clave}
+        Los agentes generan contenido; el Router mantiene control operacional.
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-\section{Resultados}
 \begin{frame}
-\frametitle{Salida}
-Modelos Python autocontenidos compatibles con:
-\begin{itemize}
-\item \texttt{decide(perception)}
-\item \texttt{update(action, reward, new\_perception)}
-\item \texttt{get\_state()}
-\end{itemize}
+  \frametitle{Agentes especializados}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Researcher}
+        Identifica paradigmas, consulta memoria y lanza investigación profunda.
+      \end{block}
+      \begin{block}{Formalizer}
+        Convierte informes científicos en formulaciones matemáticas comparables.
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Reasoner}
+        Adapta formulaciones al entorno y produce especificaciones JSON.
+      \end{block}
+      \begin{block}{Builder}
+        Genera código Python autocontenido y tests ejecutables.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.15cm}
+  \begin{center}
+    \scriptsize
+    \texttt{deep/*.md} $\rightarrow$ \texttt{formulations/*.md} $\rightarrow$
+    \texttt{reasoner/*.json} $\rightarrow$ \texttt{builder/*\_model.py}
+  \end{center}
 \end{frame}
 
 \begin{frame}
-\frametitle{Conclusión}
-\begin{itemize}
-\item Pipeline trazable y revisable.
-\item Memoria persistente para reutilizar conocimiento aceptado.
-\item Validación mediante estructura, revisión y tests.
-\end{itemize}
+  \frametitle{Infraestructura y artefactos}
+  \begin{table}
+  \scriptsize
+  \begin{tabular}{lll}
+    \toprule
+    Capa & Tecnología & Responsabilidad\\
+    \midrule
+    Artefactos & MinIO & Informes, specs, código, estado y trazas\\
+    Metadatos & PostgreSQL & Runs, modelos y ciclo de vida de memoria\\
+    Grafo & Neo4j & Paradigmas, papers, variables y relaciones\\
+    Recuperación & Qdrant & Hechos densos y BM25\\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  \begin{block}{Decisión importante}
+    Los artefactos completos se guardan en MinIO. PostgreSQL conserva lo
+    consultable; Neo4j representa relaciones; Qdrant recupera hechos.
+  \end{block}
+\end{frame}
+
+\section{Memoria y recuperación}
+
+\begin{frame}
+  \frametitle{Sistema de memoria}
+  \begin{center}
+  \resizebox{0.78\textwidth}{!}{%
+  \begin{tikzpicture}[
+      node distance=0.42cm,
+      every node/.style={font=\scriptsize},
+      arrow/.style={-{Latex[length=2mm]}, thick}
+    ]
+    \node[draw, rounded corners=4pt, fill=DecisionBlue!8, minimum width=3.2cm,
+          minimum height=0.72cm] (accepted) {Artefacto aceptado};
+    \node[draw, rounded corners=4pt, fill=DecisionAmber!10, below=of accepted,
+          minimum width=3.2cm, minimum height=0.72cm] (extract) {Extraer nodos, relaciones y hechos};
+    \node[draw, rounded corners=4pt, fill=DecisionAmber!10, below=of extract,
+          minimum width=3.2cm, minimum height=0.72cm] (canonical) {Canonicalizar slugs};
+    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below left=0.35cm and 1.2cm of canonical,
+          minimum width=2.7cm, minimum height=0.72cm] (kg) {Neo4j};
+    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below=0.35cm of canonical,
+          minimum width=2.7cm, minimum height=0.72cm] (vec) {Qdrant};
+    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below right=0.35cm and 1.2cm of canonical,
+          minimum width=2.7cm, minimum height=0.72cm] (pg) {PostgreSQL};
+
+    \path[arrow] (accepted) -- (extract);
+    \path[arrow] (extract) -- (canonical);
+    \path[arrow] (canonical) -- (kg);
+    \path[arrow] (canonical) -- (vec);
+    \path[arrow] (canonical) -- (pg);
+  \end{tikzpicture}
+  }
+  \end{center}
+
+  \begin{alertblock}{Criterio de entrada}
+    La memoria almacena conocimiento aceptado tras revisión, no todos los
+    borradores generados por el modelo.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Recuperación híbrida}
+  \begin{columns}
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Señales complementarias}
+        \begin{itemize}
+          \item Densa: similitud semántica.
+          \item BM25: términos exactos, autores y símbolos.
+          \item Grafo: relaciones entre entidades.
+          \item RRF: fusión sin entrenamiento.
+          \item CRAG: corrección cuando hay duda.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \begin{exampleblock}{Flujo}
+        \scriptsize
+        Consulta\\
+        $\downarrow$\\
+        Qdrant denso + Qdrant BM25 + Neo4j\\
+        $\downarrow$\\
+        RRF + reranking\\
+        $\downarrow$\\
+        usar, complementar o fallback web
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Implementación y validación}
+
+\begin{frame}[fragile]
+  \frametitle{Contrato del modelo generado}
+  \begin{block}{Salida de la fase 1}
+    Modelos Python autocontenidos, cargables por duck typing desde el
+    laboratorio de simulación.
+  \end{block}
+
+\begin{lstlisting}[language=Python]
+def decide(self, perception: dict) -> Action: ...
+def update(self, action, reward, new_perception) -> None: ...
+def get_state(self) -> dict: ...
+\end{lstlisting}
+
+  \begin{alertblock}{Regla}
+    \texttt{decide} elige acción sin mutar estado; \texttt{update} aprende
+    después de recompensa y nueva percepción.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Validación}
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Capas de control}
+        \begin{itemize}
+          \item Schemas y Pydantic.
+          \item Validación semántica en Reasoner.
+          \item Revisión humana.
+          \item Tests con \texttt{pytest}.
+          \item Trazas por ejecución.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{exampleblock}{Evidencia ejecutable}
+        \centering
+        \texttt{spec.json}\\
+        $\downarrow$\\
+        \texttt{model.py + test\_model.py}\\
+        $\downarrow$\\
+        \texttt{uv run pytest}\\
+        $\downarrow$\\
+        modelo registrable
+      \end{exampleblock}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Conclusiones}
+
+\begin{frame}
+  \frametitle{Contribuciones}
+  \begin{columns}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Pipeline}
+        Investigación, formalización, adaptación y construcción como etapas
+        auditables.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Memoria}
+        Conocimiento aceptado reutilizable con PostgreSQL, MinIO, Neo4j y Qdrant.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Integración}
+        Modelos ejecutables compatibles con el laboratorio virtual.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Cierre}
+  \begin{block}{Idea final}
+    El sistema no sustituye al investigador: convierte su criterio en un
+    proceso repetible, trazable y acumulativo.
+  \end{block}
+
+  \vspace{0.35cm}
+  \begin{itemize}
+    \item Reduce trabajo manual entre literatura y simulación.
+    \item Mantiene control humano en decisiones científicas.
+    \item Reutiliza conocimiento mediante memoria persistente.
+    \item Entrega código probado, no solo texto.
+  \end{itemize}
+
+  \vspace{0.4cm}
+  \centering
+  \Large Muchas gracias
 \end{frame}
 
 \end{document}

@@ -1,0 +1,78 @@
+\chapter{Especificación de requisitos}
+
+\section{Requisitos funcionales}
+
+El sistema debe cubrir el proceso completo desde la descripción inicial del
+problema hasta la generación de modelos ejecutables. Los requisitos funcionales
+principales son:
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|p{2.2cm}|p{10.2cm}|} \hline
+\textbf{Código} & \textbf{Descripción} \\ \hline
+RF-01 & Permitir iniciar una ejecución a partir de una descripción en lenguaje natural. \\ \hline
+RF-02 & Identificar paradigmas científicos relevantes para el problema planteado. \\ \hline
+RF-03 & Generar informes de investigación y guardarlos como artefactos persistentes. \\ \hline
+RF-04 & Proponer formulaciones matemáticas para los paradigmas aprobados. \\ \hline
+RF-05 & Solicitar una especificación del entorno de simulación antes de adaptar las formulaciones. \\ \hline
+RF-06 & Generar especificaciones JSON implementables para el Builder. \\ \hline
+RF-07 & Generar modelos Python autocontenidos y pruebas asociadas. \\ \hline
+RF-08 & Ejecutar pruebas automáticas sobre los modelos generados. \\ \hline
+RF-09 & Registrar modelos aprobados para su uso posterior en el laboratorio virtual. \\ \hline
+RF-10 & Guardar en memoria solo artefactos aceptados tras revisión humana. \\ \hline
+\end{tabular}
+\caption{Requisitos funcionales principales.}
+\end{center}
+\end{table}
+
+\section{Requisitos no funcionales}
+
+Los requisitos no funcionales se centran en trazabilidad, robustez y
+mantenibilidad.
+
+\begin{itemize}
+\item \textbf{Trazabilidad:} cada ejecución debe conservar estado, artefactos y
+trazas de herramientas.
+\item \textbf{Reanudación:} el sistema debe poder continuar una ejecución desde
+el estado persistido.
+\item \textbf{Modularidad:} cada agente debe tener una responsabilidad clara.
+\item \textbf{Degradación controlada:} la generación principal debe seguir
+funcionando aunque falten servicios opcionales de memoria.
+\item \textbf{Validación:} los modelos generados deben acompañarse de pruebas
+ejecutables.
+\item \textbf{Separación de fases:} la salida de esta fase debe integrarse con
+la fase de simulación sin acoplamiento rígido.
+\end{itemize}
+
+\section{Información almacenada}
+
+El sistema almacena información en varias capas:
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
+\textbf{Sistema} & \textbf{Información almacenada} \\ \hline
+MinIO & Informes, formulaciones, especificaciones, código generado, pruebas, estado y trazas. \\ \hline
+PostgreSQL & Ejecuciones, metadatos de artefactos, modelos registrados y ciclo de vida de memorias. \\ \hline
+Neo4j & Paradigmas, papers, variables, postulados, formulaciones, modelos y relaciones. \\ \hline
+Qdrant & Hechos de memoria indexados mediante embeddings densos y BM25. \\ \hline
+\end{tabular}
+\caption{Información persistida por el sistema.}
+\end{center}
+\end{table}
+
+\section{Interfaces con otros sistemas}
+
+La fase desarrollada se comunica con:
+
+\begin{itemize}
+\item proveedores de modelos de lenguaje;
+\item servicios de búsqueda web o académica;
+\item infraestructura compartida del repositorio;
+\item herramientas de ejecución de pruebas;
+\item la fase de simulación, mediante el contrato de modelo generado.
+\end{itemize}
+
+La interfaz más relevante con la segunda fase es el contrato
+\texttt{DecisionModel}. Este contrato evita que los modelos generados dependan
+de clases internas del simulador.

@@ -1,0 +1,151 @@
+\chapter{Desarrollo del trabajo}
+
+\section{Metodología general}
+
+El desarrollo de este sistema no siguió un flujo tradicional basado
+principalmente en programación manual. Se utilizó una metodología apoyada en
+agentes de programación, concretamente Claude Code y Codex, con supervisión
+humana en las decisiones de diseño.
+
+La idea central fue separar dos tipos de trabajo:
+
+\begin{itemize}
+\item las decisiones de arquitectura, alcance y lógica de negocio, que requieren
+criterio humano y contexto global del proyecto;
+\item la implementación, refactorización, pruebas y corrección de errores, que
+pueden delegarse en modelos de lenguaje de alto rendimiento.
+\end{itemize}
+
+En tareas generales de programación, los modelos flagship actuales ya ofrecen un
+rendimiento superior al de un programador medio en muchas situaciones prácticas.
+Sin embargo, todavía no son igual de fiables tomando decisiones de diseño sin un
+contexto completo. Por ello, el flujo empleado sitúa al humano como
+\textit{human-in-the-loop} para decisiones de diseño y a los agentes como
+ejecutores principales de las tareas de programación.
+
+\section{Planificación con Linear}
+
+Al tratarse de un proyecto desarrollado por dos personas, una parte importante
+del trabajo fue planificar correctamente las tareas compartidas, especialmente
+la infraestructura común. Para ello se creó un proyecto en Linear.
+
+El flujo fue el siguiente:
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Idea inicial
+   |
+   v
+Especificacion tecnica iterada con Codex
+   |
+   v
+Diseno y fases del proyecto en Linear
+   |
+   v
+Tareas con criterios de aceptacion
+   |
+   v
+Ejecucion autonoma con agentes
+   |
+   v
+Revision humana y nuevas decisiones
+\end{verbatim}
+\caption{Flujo de planificación y ejecución del desarrollo.}
+\end{figure}
+
+Primero se iteró con Codex sobre la especificación técnica y el diseño hasta que
+el alcance del sistema quedó suficientemente cubierto. Después se dividió el
+trabajo en fases. Cada fase tenía criterios de aceptación, y cada tarea dentro
+de una fase también tenía sus propios criterios.
+
+Estos criterios fueron esenciales porque los agentes necesitaban una forma
+objetiva de comprobar si su trabajo estaba terminado. Sin criterios explícitos,
+un agente puede generar código funcional a primera vista pero incompleto desde
+el punto de vista del producto o de la arquitectura.
+
+\section{División del trabajo entre agentes}
+
+El proyecto utilizó agentes distintos para tipos de tareas distintos:
+
+\begin{itemize}
+\item Codex se empleó principalmente para backend, infraestructura, persistencia,
+pruebas y razonamiento técnico sobre el repositorio.
+\item Claude Code se empleó principalmente para tareas de frontend y experiencia
+de usuario.
+\item Skills propias, como \texttt{hydra}, permitieron ejecutar fases completas
+de forma autónoma, diferenciando entre tareas de nueva funcionalidad y tareas de
+corrección de errores.
+\end{itemize}
+
+La división no fue arbitraria. Backend y frontend tienen ritmos de validación
+distintos. En backend era especialmente importante respetar contratos,
+persistencia, pruebas y límites entre fases. En frontend era importante mantener
+coherencia visual, ergonomía e interacción.
+
+\section{Criterios de aceptación}
+
+Cada tarea se redactó con criterios de aceptación concretos. Un criterio de
+aceptación debía indicar qué comportamiento debía existir, cómo validarlo y qué
+evidencia debía quedar.
+
+Ejemplos de criterios usados en este proyecto fueron:
+
+\begin{itemize}
+\item una etapa del pipeline debe persistir sus artefactos en una ruta estable;
+\item una herramienta debe devolver errores estructurados;
+\item una memoria debe escribirse solo tras revisión aceptada;
+\item un modelo generado debe pasar sus pruebas con \texttt{uv run pytest};
+\item una pantalla debe mostrar estados de ejecución sin romper el layout.
+\end{itemize}
+
+Estos criterios permitieron que los agentes trabajasen con autonomía y, al
+mismo tiempo, que el resultado fuese verificable.
+
+\section{Identificación de gaps de diseño}
+
+Un punto importante del flujo fue permitir que los propios agentes identificasen
+gaps de diseño. Cuando durante una implementación aparecía una decisión no
+cerrada, el agente podía proponer o crear una tarea en Linear para que el equipo
+tomase la decisión correspondiente.
+
+Esto evitó que el agente resolviese por su cuenta cuestiones que requerían
+criterio humano, como:
+
+\begin{itemize}
+\item límites de responsabilidad entre la fase 1 y la fase 2;
+\item decisiones de arquitectura compartida;
+\item reglas de negocio del pipeline;
+\item políticas de memoria, confianza y supersesión;
+\item comportamiento esperado ante fallos de infraestructura.
+\end{itemize}
+
+De esta forma, los agentes no solo escribieron código, sino que ayudaron a
+descubrir incertidumbre técnica. La decisión final, sin embargo, permaneció en
+manos humanas.
+
+\section{Human-in-the-loop}
+
+El flujo de trabajo adoptado puede resumirse así:
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Humano
+  define arquitectura, prioridades y decisiones ambiguas
+        |
+        v
+Agentes
+  implementan, prueban, refactorizan y detectan gaps
+        |
+        v
+Humano
+  revisa resultados y decide nuevos criterios
+\end{verbatim}
+\caption{Modelo de colaboración humano-agente usado en el desarrollo.}
+\end{figure}
+
+Esta metodología influyó directamente en el sistema construido. El pipeline de
+generación de modelos también sigue una filosofía similar: los agentes producen
+artefactos, pero las decisiones relevantes pasan por revisión humana antes de
+quedar aceptadas y almacenadas en memoria.

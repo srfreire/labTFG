@@ -1,0 +1,51 @@
+\chapter{Conclusiones y posibles ampliaciones}
+
+\section{Cumplimiento de objetivos}
+
+El trabajo desarrollado cumple el objetivo principal: construir una fase del
+laboratorio virtual capaz de transformar descripciones en lenguaje natural en
+modelos de decisión ejecutables. Para ello se diseñó un pipeline con agentes
+especializados, revisión humana, persistencia de artefactos, memoria de
+conocimiento y validación mediante pruebas.
+
+Las contribuciones principales son:
+
+\begin{itemize}
+\item un Router que coordina el flujo completo del pipeline;
+\item agentes especializados para investigación, formalización, razonamiento y
+construcción;
+\item una memoria persistente basada en PostgreSQL, MinIO, Neo4j y Qdrant;
+\item un contrato de modelo sencillo e integrable con la fase de simulación;
+\item una metodología de desarrollo apoyada en coding agents y criterios de
+aceptación.
+\end{itemize}
+
+\section{Conclusiones técnicas}
+
+La principal conclusión técnica es que los modelos de lenguaje son más útiles
+cuando se integran en un sistema con límites claros. Un agente aislado puede
+generar resultados convincentes, pero un sistema de desarrollo necesita
+artefactos, validación, memoria y revisión.
+
+La segunda conclusión es que la memoria no debe ser un almacén indiscriminado.
+Guardar solo artefactos aceptados permite que ejecuciones futuras se apoyen en
+conocimiento curado.
+
+La tercera conclusión es metodológica: los agentes de programación son una
+herramienta muy potente para implementar, probar y refactorizar, pero las
+decisiones de diseño siguen necesitando contexto humano.
+
+\section{Posibles ampliaciones}
+
+Entre las líneas futuras destacan:
+
+\begin{itemize}
+\item añadir más paradigmas de decisión y experimentos de validación;
+\item medir cuantitativamente la calidad de los modelos generados;
+\item mejorar las métricas de recuperación de memoria;
+\item ampliar el sistema de detección de contradicciones;
+\item integrar explicaciones más detalladas de los modelos en la fase de
+análisis e informes;
+\item automatizar más partes de la planificación con Linear manteniendo revisión
+humana en decisiones de arquitectura.
+\end{itemize}

@@ -17,16 +17,24 @@ El proyecto se divide en dos fases complementarias:
 
 ### Fase 1 — Modelado de agentes (Pablo)
 
-Pipeline de 3 agentes LLM que, dado un problema de toma de decisiones, produce N agentes autonomos (codigo Python) listos para simular:
+Pipeline agentico coordinado por un Router que, dado un problema de toma de
+decisiones, produce N agentes autonomos (codigo Python) listos para simular:
 
 ```
 Usuario: "comportamiento alimentario"
+    → Classifier (ancla el problema a un paradigma canonico cuando existe)
     → Researcher (busca paradigmas en literatura cientifica)
-    → Reasoner (formaliza postulados como pseudocodigo/reglas)
+    → Formalizer (convierte informes en formulaciones matematicas)
+    → Env spec (entrada humana / Fase 2)
+    → Reasoner (adapta formulaciones al entorno como specs JSON)
     → Builder (implementa DecisionModel .py + tests)
 ```
 
-Apoyado por un **Knowledge Backbone** (Neo4j + Qdrant + Postgres) que persiste paradigmas, formulaciones y memorias entre runs y nutre a los agentes con contexto relevante via 3-layer retrieval (KG traversal + dense + sparse + RRF + reranking + CRAG).
+Despues de cada revision humana, un **MemoryAgent** puede escribir el output
+aceptado en el **Knowledge Backbone** (Neo4j + Qdrant + Postgres). Ese backbone
+persiste paradigmas, formulaciones, specs, modelos y memorias entre runs, y
+nutre a los agentes con contexto relevante via retrieval hibrido (KG traversal +
+dense + sparse + RRF + reranking + CRAG).
 
 ### Fase 2 — Infraestructura de simulacion (Juan)
 
@@ -49,13 +57,14 @@ Coordinados por un **Orchestrator** con chat interactivo. Los agentes consultan 
 ```
 phase1-pablo/                          — Fase 1: pipeline de modelado
   src/decisionlab/
-    agents/                            — Researcher, Reasoner, Builder, Formalizer
+    agents/                            — Classifier, Researcher, Formalizer, Reasoner, Builder, MemoryAgent
     knowledge/                         — Memory Agent, KG extraction, 3-layer retrieval, CRAG
     models/                            — Protocol DecisionModel, Action, Perception
     tools/                             — web_search, semantic_scholar, file_io, code_runner
     runtime/                           — Loop agentico y dispatcher de tools
     router.py                          — Orquestador del pipeline
     cli.py                             — Punto de entrada CLI
+  docs/formal-documentation/            — Documentacion tecnica actual de Fase 1
   evals/                               — Suite de evaluacion (latencia, calidad retrieval)
   tests/                               — Tests unitarios e integracion
 
@@ -93,7 +102,8 @@ docs/                                  — Documentos de referencia (TFM Denis, 
 Las dos fases se conectan a traves de:
 
 1. **Protocol `DecisionModel`** — interfaz con tres metodos (`decide()`, `update()`, `get_state()`). La Fase 1 implementa modelos concretos con tipos propios; la Fase 2 usa duck typing con percepciones como `dict`. Sin adaptador.
-2. **Knowledge Backbone compartido** — Neo4j + Qdrant + Postgres. La Fase 1 escribe paradigmas y formulaciones; la Fase 2 lee contexto via `retrieve_context` y escribe observaciones de simulacion.
+2. **Knowledge Backbone compartido** — Neo4j + Qdrant + Postgres. La Fase 1 escribe paradigmas, formulaciones, specs, modelos y memorias de pipeline; la Fase 2 lee contexto via `retrieve_context` y escribe observaciones de simulacion.
+3. **Artefactos compartidos** — MinIO guarda reports, deep research, formulaciones, specs JSON, modelos generados, tests y trazas por `run_id`.
 
 ---
 

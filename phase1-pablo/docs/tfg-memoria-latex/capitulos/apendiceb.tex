@@ -1,0 +1,28 @@
+\chapter{Manual de usuario}
+
+\section{Uso general}
+
+El usuario inicia una ejecución proporcionando una descripción del problema de
+toma de decisiones. El sistema genera investigación, formulaciones,
+especificaciones y modelos en etapas sucesivas.
+
+\section{Revisiones}
+
+En los puntos de revisión, el usuario debe aprobar o rechazar artefactos. La
+revisión es importante porque determina qué conocimiento puede pasar a memoria.
+
+\section{Modelo generado}
+
+Un modelo aceptado puede ser usado por el laboratorio virtual si implementa:
+
+\begin{lstlisting}[language=Python]
+def decide(self, perception: dict) -> Action
+def update(self, action, reward, new_perception) -> None
+def get_state(self) -> dict
+\end{lstlisting}
+
+\section{Errores}
+
+Si falla un servicio opcional de memoria, la ejecución puede continuar en modo
+degradado. Si fallan PostgreSQL o MinIO, la ejecución no puede completarse
+correctamente porque son necesarios para persistencia y artefactos.

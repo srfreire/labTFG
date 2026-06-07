@@ -1,5 +1,25 @@
 # Fase 1: Diseno del Pipeline de Modelado de Toma de Decisiones
 
+> **Estado: documento historico.**
+>
+> Este documento describe una version temprana del diseno de Fase 1. Algunas
+> secciones conservan decisiones utiles, pero varias rutas de artefactos,
+> nombres de etapas y detalles de infraestructura quedaron superados por la
+> implementacion actual.
+>
+> Para la memoria del TFG y para referencias tecnicas actuales, usa
+> `phase1-pablo/docs/formal-documentation/` como fuente principal:
+>
+> - `01-system-architecture.md`
+> - `02-agent-workflow.md`
+> - `03-memory-and-knowledge-system.md`
+> - `04-shared-infrastructure.md`
+> - `05-key-design-decisions.md`
+>
+> Resumen actual: `Classifier -> Researcher -> Formalizer -> Env spec input ->
+> Reasoner -> Builder`, coordinado por `Router`, con `MemoryAgent` despues de
+> revisiones humanas cuando la infraestructura de memoria esta disponible.
+
 **TFG**: Laboratorio virtual para la simulacion y analisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes
 
 **Alumno**: Pablo (Fase 1 — complementaria a la Fase 2 de Juan Freire Alvarez)

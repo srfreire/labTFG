@@ -1,0 +1,51 @@
+\chapter{Manual técnico}
+
+\section{Estructura relevante}
+
+\begin{verbatim}
+phase1-pablo/
+  src/decisionlab/
+    agents/
+    knowledge/
+    runtime/
+    router.py
+  docs/
+    formal-documentation/
+    tfg-memoria-latex/
+
+shared/
+  shared/
+    services.py
+    models.py
+    storage.py
+    database.py
+    knowledge_graph.py
+    vector_store.py
+\end{verbatim}
+
+\section{Servicios}
+
+La ejecución completa requiere PostgreSQL y MinIO. Neo4j, Qdrant, embeddings y
+reranking aportan memoria avanzada y recuperación, pero el pipeline puede
+degradar si alguno de estos servicios opcionales no está disponible.
+
+\section{Comandos}
+
+Para levantar infraestructura desde la raíz del repositorio:
+
+\begin{verbatim}
+docker compose up -d
+\end{verbatim}
+
+Para ejecutar pruebas Python:
+
+\begin{verbatim}
+uv run pytest
+\end{verbatim}
+
+Para compilar la memoria:
+
+\begin{verbatim}
+pdflatex traballo.tex
+pdflatex traballo.tex
+\end{verbatim}

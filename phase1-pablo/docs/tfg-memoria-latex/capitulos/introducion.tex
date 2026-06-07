@@ -1,0 +1,98 @@
+\chapter{Introducción}
+
+\section{Objetivos generales}
+
+Este Trabajo de Fin de Grado se enmarca en el desarrollo de un laboratorio
+virtual para la simulación y el análisis de paradigmas de toma de decisiones
+humanas mediante agentes inteligentes. El proyecto completo se divide en dos
+fases complementarias. Esta memoria documenta la fase desarrollada por Pablo
+Pazos Parada: el sistema que genera modelos de decisión ejecutables a partir de
+descripciones en lenguaje natural y conocimiento científico.
+
+El objetivo general de esta fase es construir un pipeline capaz de transformar
+un problema de decisión en un conjunto de artefactos verificables:
+
+\begin{itemize}
+\item una investigación sobre paradigmas científicos relevantes;
+\item una o varias formulaciones matemáticas;
+\item una especificación adaptada a un entorno de simulación;
+\item código Python autocontenido;
+\item pruebas ejecutables que validen el modelo generado.
+\end{itemize}
+
+\section{Relación de la documentación}
+
+La memoria sigue la estructura de un TFG de tipo B, orientado al desarrollo de
+un sistema software. Los capítulos principales son:
+
+\begin{itemize}
+\item especificación de requisitos;
+\item diseño del sistema;
+\item desarrollo del trabajo;
+\item pruebas;
+\item conclusiones y posibles ampliaciones.
+\end{itemize}
+
+Los apéndices incluyen información técnica de ejecución y una guía de uso
+básica. La bibliografía recoge tanto referencias técnicas de agentes y memoria
+como trabajos de recuperación aumentada, grafos de conocimiento y generación de
+código.
+
+\section{Descripción del sistema}
+
+El sistema recibe una descripción de un problema de toma de decisiones y la
+procesa mediante agentes especializados. Cada agente resuelve una parte del
+problema y produce artefactos persistentes que pueden ser revisados antes de
+continuar.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Descripcion del problema
+        |
+        v
+Investigacion cientifica
+        |
+        v
+Formalizacion matematica
+        |
+        v
+Adaptacion al entorno
+        |
+        v
+Modelo Python + pruebas
+\end{verbatim}
+\caption{Transformación principal del sistema desarrollado.}
+\end{figure}
+
+La salida final es un modelo compatible con el contrato de simulación usado por
+el laboratorio virtual:
+
+\begin{lstlisting}[language=Python]
+def decide(self, perception: dict) -> Action
+def update(self, action, reward, new_perception) -> None
+def get_state(self) -> dict
+\end{lstlisting}
+
+Esta interfaz permite separar la fase de generación de modelos de la fase de
+simulación. El modelo generado no necesita heredar de una clase concreta del
+simulador; basta con que implemente los métodos esperados.
+
+\section{Información adicional de interés}
+
+El trabajo combina varias técnicas actuales:
+
+\begin{itemize}
+\item agentes de lenguaje con uso de herramientas;
+\item revisión humana entre etapas;
+\item almacenamiento de artefactos;
+\item recuperación aumentada con búsqueda densa, BM25 y grafo;
+\item memoria persistente con ciclo de vida;
+\item generación de código con pruebas automáticas.
+\end{itemize}
+
+Una característica importante del proyecto es que el propio desarrollo del
+sistema también se realizó con apoyo intensivo de agentes de programación. Esta
+metodología se describe de forma específica en el capítulo de desarrollo, porque
+afecta a la planificación, a la división de tareas, a la validación y a la forma
+de tomar decisiones de diseño.

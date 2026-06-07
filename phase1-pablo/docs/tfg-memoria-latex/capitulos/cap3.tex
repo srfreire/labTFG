@@ -1,0 +1,105 @@
+\chapter{Diseño}
+
+\section{Visión general}
+
+El diseño separa el sistema en tres capas: agentes, artefactos y memoria. Esta
+separación permite que cada etapa sea auditable y que los resultados aceptados
+puedan reutilizarse en ejecuciones posteriores.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Usuario / CLI / Web
+        |
+        v
+   +---------+
+   | Router  |
+   +----+----+
+        |
+  +-----+------+------+
+  |            |      |
+  v            v      v
+Agentes   Artefactos Memoria
+R/F/R/B   MinIO+PG   Neo4j
+          codigo     Qdrant
+                     PG lifecycle
+\end{verbatim}
+\caption{Arquitectura lógica del sistema.}
+\end{figure}
+
+\section{Router}
+
+El Router coordina el flujo completo. No se delega la planificación global en un
+modelo de lenguaje, sino en una máquina de estados explícita. Esta decisión
+permite reanudar ejecuciones, registrar eventos y colocar la escritura de
+memoria después de la revisión humana.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+CLASSIFY_UMBRELLA
+  -> RESEARCH -> REVIEW_RESEARCH -> MEMORY_RESEARCH
+  -> FORMALIZE -> REVIEW_FORMALIZE -> MEMORY_FORMALIZE
+  -> GET_ENV_SPEC
+  -> REASON -> REVIEW_REASON -> MEMORY_REASON
+  -> BUILD -> REVIEW_BUILD -> MEMORY_BUILD
+  -> DONE
+\end{verbatim}
+\caption{Máquina de estados simplificada.}
+\end{figure}
+
+\section{Agentes}
+
+Cada agente tiene una responsabilidad acotada:
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
+\textbf{Agente} & \textbf{Responsabilidad} \\ \hline
+Researcher & Investigar paradigmas científicos y generar informes. \\ \hline
+Formalizer & Producir formulaciones matemáticas para paradigmas aprobados. \\ \hline
+Reasoner & Adaptar formulaciones al entorno y generar especificaciones JSON. \\ \hline
+Builder & Generar código Python y pruebas ejecutables. \\ \hline
+MemoryAgent & Extraer hechos, nodos y relaciones de artefactos aceptados. \\ \hline
+\end{tabular}
+\caption{División de responsabilidades entre agentes.}
+\end{center}
+\end{table}
+
+\section{Memoria y conocimiento}
+
+La memoria convierte ejecuciones aisladas en un sistema acumulativo. El sistema
+almacena solo artefactos aceptados, no todos los borradores producidos por los
+modelos. Esta decisión reduce ruido y evita que errores rechazados contaminen
+ejecuciones futuras.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+Artefacto aceptado
+      |
+      v
+MemoryAgent
+  |-- extrae hechos
+  |-- crea/actualiza nodos y relaciones
+  |-- indexa memoria para recuperacion
+  |-- resuelve duplicados y conflictos
+\end{verbatim}
+\caption{Flujo de memoria tras una revisión aceptada.}
+\end{figure}
+
+La recuperación combina varias señales: búsqueda densa, BM25, recorrido local
+del grafo, fusión RRF, reranking y corrección cuando la confianza no es
+suficiente.
+
+\section{Decisiones de diseño principales}
+
+\begin{itemize}
+\item Separar investigación, formalización, razonamiento y construcción.
+\item Usar revisión humana antes de escribir memoria.
+\item Usar artefactos persistentes en lugar de depender solo del contexto del
+modelo.
+\item Mantener Postgres como fuente de verdad para confianza y validez temporal.
+\item Usar duck typing para integrar los modelos con la fase de simulación.
+\item Validar con pruebas ejecutables, no solo con revisión textual.
+\end{itemize}

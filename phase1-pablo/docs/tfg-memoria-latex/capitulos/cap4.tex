@@ -1,0 +1,65 @@
+\chapter{Pruebas}
+
+\section{Plan de pruebas}
+
+El sistema se valida en varios niveles. Dado que se apoya en modelos de lenguaje,
+no basta con revisar manualmente las salidas: es necesario combinar validación
+estructural, revisión humana, trazas y pruebas ejecutables.
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
+\textbf{Nivel} & \textbf{Validación} \\ \hline
+Estructura & Salidas JSON y modelos Pydantic. \\ \hline
+Pipeline & Estados del Router, persistencia y reanudación. \\ \hline
+Memoria & Escritura tras revisión, deduplicación y recuperación. \\ \hline
+Código generado & Pruebas \texttt{pytest} para cada modelo. \\ \hline
+Integración & Carga dinámica del modelo desde la fase de simulación. \\ \hline
+\end{tabular}
+\caption{Niveles de validación del sistema.}
+\end{center}
+\end{table}
+
+\section{Pruebas del Builder}
+
+El Builder genera tanto el modelo como sus pruebas. Después ejecuta las pruebas
+mediante:
+
+\begin{verbatim}
+uv run pytest
+\end{verbatim}
+
+El objetivo es verificar que el modelo respeta el contrato esperado:
+
+\begin{itemize}
+\item \texttt{decide} devuelve una acción válida;
+\item \texttt{update} modifica el estado después de recibir recompensa;
+\item \texttt{get\_state} expone variables internas serializables;
+\item el modelo puede ejecutarse con percepciones del entorno.
+\end{itemize}
+
+\section{Pruebas de trazabilidad}
+
+Cada ejecución conserva artefactos y trazas. Esto permite comprobar qué
+herramientas se usaron, qué archivos se generaron y qué decisiones se tomaron en
+cada etapa.
+
+\begin{verbatim}
+pipeline_state.json
+trace.jsonl
+report.md
+formulations/*.md
+reasoner/*.json
+builder/*_model.py
+builder/test_*.py
+\end{verbatim}
+
+\section{Limitaciones de las pruebas}
+
+Las pruebas automáticas validan propiedades técnicas, pero no sustituyen la
+revisión humana de contenido científico. Por ejemplo, un test puede comprobar
+que un modelo ejecuta correctamente una política, pero no que la formulación
+elegida sea la más adecuada para un paradigma psicológico concreto.
+
+Por este motivo el sistema combina pruebas automáticas con revisión humana antes
+de aceptar artefactos y escribirlos en memoria.

@@ -32,7 +32,7 @@ lista de tablas.
 También se mantienen los ficheros:
 
   caratula.tex      Carátula auxiliar.
-  presentacion.tex  Presentación Beamer inicial.
+  presentacion.tex  Presentación Beamer oficial.
 
 ----------------------------------------------------------------------------------------
 FIGURAS
