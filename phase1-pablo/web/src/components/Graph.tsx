@@ -119,10 +119,11 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
 function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
   const isVectorDb = node.id.includes('vector');
   const accent = isVectorDb ? '#a78bfa' : '#38bdf8';
-  const color =
+  const borderColor =
     status === 'error' ? theme.statusError
     : status === 'running' ? theme.statusRunning
     : accent;
+  const iconColor = status === 'idle' ? theme.nodeIcon : borderColor;
 
   return (
     <div
@@ -130,15 +131,19 @@ function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
       style={{ width: 104, height: 78 }}
     >
       <NodeHandles />
-      <Database
-        size={44}
-        strokeWidth={1.85}
-        aria-hidden="true"
+      <div
+        className="flex items-center justify-center"
         style={{
-          color,
+          width: 48,
+          height: 48,
+          borderRadius: 8,
+          border: `1.5px solid ${borderColor}`,
+          background: theme.nodeFill,
           animation: status === 'running' ? 'agrex-running-ring 1.5s ease-in-out infinite' : undefined,
         }}
-      />
+      >
+        <Database size={24} strokeWidth={1.9} aria-hidden="true" style={{ color: iconColor }} />
+      </div>
       <div
         className="mt-1 text-center"
         style={{
