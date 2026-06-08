@@ -136,6 +136,113 @@ describe("sanitizeLabTraceEvents", () => {
     ]);
   });
 
+  it("removes human review tool nodes because review markers already represent them", () => {
+    const events = [
+      ev("marker", { kind: "review_research" }),
+      ev("node_add", {
+        node: {
+          id: "human_review:review_research",
+          type: "tool",
+          label: "review_research",
+          parentId: "researcher",
+          metadata: { hitl: true },
+        },
+      }),
+      ev("node_update", { id: "human_review:review_research", status: "done" }),
+    ];
+
+    expect(sanitizeLabTraceEvents(events)).toEqual([
+      ev("marker", { kind: "review_research" }),
+    ]);
+  });
+
+  it("removes recovered read_file NoSuchKey probes from replay traces", () => {
+    const events = [
+      ev("node_add", {
+        node: {
+          id: "tool:read_file:bad",
+          type: "tool",
+          label: "read_file",
+          parentId: "builder:rl:q-learning",
+          metadata: { path: "builder" },
+        },
+      }),
+      ev("node_update", {
+        id: "tool:read_file:bad",
+        status: "error",
+        metadata: {
+          error_type: "NoSuchKey",
+          error: {
+            name: "NoSuchKey",
+            message: "The specified key does not exist.",
+            stack: "Traceback ...",
+          },
+        },
+      }),
+      ev("node_add", {
+        node: {
+          id: "tool:read_file:good",
+          type: "tool",
+          label: "read_file",
+          parentId: "builder:rl:q-learning",
+          metadata: {
+            path: "builder/reinforcement-learning/q-learning_model.py",
+          },
+        },
+      }),
+    ];
+
+    const sanitized = sanitizeLabTraceEvents(events);
+    expect(sanitized).toEqual([
+      ev("node_add", {
+        node: {
+          id: "tool:read_file:good",
+          type: "tool",
+          label: "read_file",
+          parentId: "builder:rl:q-learning",
+          metadata: {
+            path: "builder/reinforcement-learning/q-learning_model.py",
+          },
+        },
+      }),
+    ]);
+  });
+
+  it("strips stack traces from visible tool errors", () => {
+    const events = [
+      ev("node_add", {
+        node: { id: "tool:run_tests:bad", type: "tool", label: "run_tests" },
+      }),
+      ev("node_update", {
+        id: "tool:run_tests:bad",
+        status: "error",
+        metadata: {
+          error_type: "RuntimeError",
+          error: {
+            name: "RuntimeError",
+            message: "tests failed",
+            stack: "Traceback ...",
+          },
+        },
+      }),
+    ];
+
+    expect(sanitizeLabTraceEvents(events)[1]).toMatchObject({
+      metadata: {
+        error: {
+          name: "RuntimeError",
+          message: "tests failed",
+        },
+      },
+    });
+    expect(
+      (
+        (sanitizeLabTraceEvents(events)[1].metadata as Record<string, unknown>)
+          .error as Record<string, unknown>
+      ).stack,
+    ).toBeUndefined();
+  });
+
   it("reparents builder tools when a path identifies the formulation", () => {
     const events = [
       ev("node_add", {
@@ -359,6 +466,47 @@ describe("labReducers", () => {
 
     expect(store.addNode).not.toHaveBeenCalled();
     expect(store.updateNode).not.toHaveBeenCalled();
+  });
+
+  it("node_add hides human review tool nodes", () => {
+    const store = makeStore();
+    const node = {
+      id: "human_review:review_research",
+      type: "tool" as const,
+      label: "review_research",
+      metadata: { hitl: true },
+    };
+
+    labReducers.node_add(store, ev("node_add", { node }));
+    labReducers.node_update(
+      store,
+      ev("node_update", { id: node.id, status: "done" }),
+    );
+
+    expect(store.addNode).not.toHaveBeenCalled();
+    expect(store.updateNode).not.toHaveBeenCalled();
+  });
+
+  it("node_update removes live missing read_file probes", () => {
+    const store = makeStore();
+    const node = {
+      id: "tool:read_file:bad",
+      type: "tool" as const,
+      label: "read_file",
+      metadata: { path: "builder" },
+    };
+
+    labReducers.node_add(store, ev("node_add", { node }));
+    labReducers.node_update(
+      store,
+      ev("node_update", {
+        id: node.id,
+        status: "error",
+        metadata: { error_type: "NoSuchKey" },
+      }),
+    );
+
+    expect(store.removeNode).toHaveBeenCalledWith(node.id);
   });
 
   it("node_add reparents builder tools when path identifies the formulation", () => {

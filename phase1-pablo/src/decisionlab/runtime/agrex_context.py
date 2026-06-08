@@ -148,7 +148,9 @@ async def trace_tool_done(
     else:
         if isinstance(error, BaseException):
             metadata["error_type"] = type(error).__name__
-        tracer.error(node_id, error=error, metadata=metadata)
+        error_message = str(error) if error is not None else "Tool failed"
+        metadata["error_message"] = error_message
+        tracer.error(node_id, error=error_message, metadata=metadata)
     await _emit_last_event(tracer)
 
 

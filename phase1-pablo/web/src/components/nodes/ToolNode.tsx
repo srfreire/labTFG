@@ -7,6 +7,8 @@ import {
   Microscope,
   Database,
   FileSearch,
+  FileText,
+  FileInput,
   Wrench,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -21,6 +23,8 @@ const TOOL_ICON_MAP: Record<string, ComponentType<{ size: number }>> = {
   launch_deep_research: Microscope,
   retrieve_knowledge: Database,
   search_papers: FileSearch,
+  read_report: FileText,
+  'Environment spec input': FileInput,
 };
 
 interface ToolNodeData {

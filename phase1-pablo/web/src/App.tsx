@@ -213,6 +213,7 @@ export default function App() {
     reducers: labReducers,
     markerExtractor: extractLabMarkers,
     stepBoundaries: labStepBoundaries,
+    maxPlaybackGapMs: 60_000,
   });
 
   // Gate replay event ingestion on having seen `run_start` in this session.

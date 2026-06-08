@@ -228,6 +228,8 @@ export const TOOL_ICONS: Record<string, string> = {
   run_tests: "FlaskConical",
   launch_deep_research: "Microscope",
   search_papers: "FileSearch",
+  read_report: "FileText",
+  "Environment spec input": "FileInput",
 };
 
 // ---------------------------------------------------------------------------

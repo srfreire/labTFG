@@ -1,7 +1,8 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import {
   Agrex,
   type AgrexHandle,
+  type AgrexEvent,
   type AgrexNode,
   type AgrexNodeProps,
   type AgrexEdge,
@@ -9,7 +10,7 @@ import {
 } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch } from 'lucide-react';
+import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch, FileText, FileInput } from 'lucide-react';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
@@ -174,6 +175,8 @@ const TOOL_ICONS = {
   write_file: Pencil,
   run_tests: FlaskConical,
   search_papers: FileSearch,
+  read_report: FileText,
+  'Environment spec input': FileInput,
 };
 
 const EDGE_COLORS = {
@@ -184,6 +187,96 @@ const EDGE_COLORS = {
   memory_retrieve: 'rgba(56,189,248,0.55)',
   memory_store: 'rgba(251,191,36,0.55)',
 };
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+
+function collectRunStats(events: AgrexEvent[]) {
+  const nodeIds = new Set<string>();
+  const usageByNode = new Map<string, { tokens: number; cost: number }>();
+  let firstTs: number | undefined;
+  let lastTs: number | undefined;
+
+  for (const event of events) {
+    const ts = Number(event.ts);
+    if (Number.isFinite(ts)) {
+      firstTs = firstTs === undefined ? ts : Math.min(firstTs, ts);
+      lastTs = lastTs === undefined ? ts : Math.max(lastTs, ts);
+    }
+
+    if (event.type === 'node_add') {
+      const node = event.node as AgrexNode | undefined;
+      if (node?.id) nodeIds.add(node.id);
+    }
+
+    if (event.type !== 'node_update' || typeof event.id !== 'string') continue;
+    const metadata = event.metadata as Record<string, unknown> | undefined;
+    const tokens = typeof metadata?.tokens === 'number' ? metadata.tokens : undefined;
+    const cost = typeof metadata?.cost === 'number' ? metadata.cost : undefined;
+    if (tokens === undefined && cost === undefined) continue;
+    usageByNode.set(event.id, {
+      tokens: tokens ?? usageByNode.get(event.id)?.tokens ?? 0,
+      cost: cost ?? usageByNode.get(event.id)?.cost ?? 0,
+    });
+  }
+
+  let tokens = 0;
+  let cost = 0;
+  for (const usage of usageByNode.values()) {
+    tokens += usage.tokens;
+    cost += usage.cost;
+  }
+
+  return {
+    nodeCount: nodeIds.size,
+    durationMs:
+      firstTs !== undefined && lastTs !== undefined ? Math.max(0, lastTs - firstTs) : 0,
+    tokens,
+    cost,
+  };
+}
+
+function ReplayRunStats({
+  replay,
+  collapsed,
+}: {
+  replay: UseAgrexReplay;
+  collapsed: boolean;
+}) {
+  if (replay.mode === 'idle' || replay.events.length === 0) return null;
+  const stats = collectRunStats(replay.events);
+  return (
+    <div
+      className="absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-lg border px-3 py-1.5 text-[11px] tabular-nums pointer-events-none"
+      style={{
+        bottom: collapsed ? 44 : 96,
+        background: 'color-mix(in srgb, var(--agrex-bg, #0a0a0a) 82%, transparent)',
+        borderColor: 'var(--agrex-node-border, rgba(255,255,255,0.15))',
+        color: 'var(--agrex-fg, #fff)',
+        backdropFilter: 'blur(14px)',
+      }}
+    >
+      <span className="opacity-50">nodes</span>
+      <strong>{stats.nodeCount}</strong>
+      <span className="opacity-50">run time</span>
+      <strong>{formatElapsed(stats.durationMs)}</strong>
+      <span className="opacity-50">tokens</span>
+      <strong>{formatCompact(stats.tokens)}</strong>
+      <span className="opacity-50">cost</span>
+      <strong>${stats.cost.toFixed(2)}</strong>
+    </div>
+  );
+}
 
 export const THEME = {
   background: '#000',
@@ -234,6 +327,12 @@ export default function Graph({
   onExitReplay,
   agrexRef,
 }: GraphProps) {
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const handleTimelineCollapsedChange = (collapsed: boolean) => {
+    setTimelineCollapsed(collapsed);
+    timelineCollapsedChange?.(collapsed);
+  };
+
   // Freeze the context value when the pieces don't change so renderers
   // only re-evaluate when the overlay actually shifts.
   const ctx = useMemo<GraphUIState>(
@@ -247,47 +346,44 @@ export default function Graph({
 
   return (
     <UIStateContext.Provider value={ctx}>
-      <Agrex
-        ref={agrexRef}
-        replay={replay}
-        nodes={nodes}
-        edges={edges}
-        onNodeClick={onNodeClick}
-        nodeRenderers={NODE_RENDERERS}
-        toolIcons={TOOL_ICONS}
-        edgeColors={EDGE_COLORS}
-        theme={THEME}
-        className="w-full h-full"
-        showControls={!demo}
-        showLegend={!demo}
-        showToasts={!demo}
-        toastPlacement="top-left"
-        toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
-        showDetailPanel={!demo && showDetailPanel}
-        // Demo has no replay → Agrex's embedded timeline doesn't mount, so
-        // the floating StatsBar would otherwise render. Turn it off.
-        // Live/replay: the embedded timeline owns stats (`timelineProps.showStats`),
-        // and Agrex's own gate hides the floating bar when the timeline is up.
-        showStats={!demo}
-        fitOnUpdate={!demo}
-        animateEdges
-        keyboardShortcuts={!demo}
-        // Embedded timeline — rendered only when `replay` is provided and
-        // `replay.mode !== "idle"`. Stats live inside the timeline panel, so
-        // the floating StatsBar auto-hides (gated by `!timelineVisible`).
-        showTimeline={!demo}
-        timelineProps={{
-          jumpMarkerKind: 'stage',
-          onCollapsedChange: timelineCollapsedChange,
-          onExit: onExitReplay,
-          showStats: true,
-          // App-scoped persistKey so previous runs under the package
-          // default (`agrex.timeline.collapsed`) don't carry over a stale
-          // "1" and open the timeline collapsed on fresh visits. New key
-          // starts missing → Agrex defaults to expanded.
-          persistKey: 'decisionlab.agrex.timeline.collapsed',
-        }}
-      />
+      <div className="relative h-full w-full">
+        <Agrex
+          ref={agrexRef}
+          replay={replay}
+          nodes={nodes}
+          edges={edges}
+          onNodeClick={onNodeClick}
+          nodeRenderers={NODE_RENDERERS}
+          toolIcons={TOOL_ICONS}
+          edgeColors={EDGE_COLORS}
+          theme={THEME}
+          className="w-full h-full"
+          showControls={!demo}
+          showLegend={!demo}
+          showToasts={!demo}
+          toastPlacement="top-left"
+          toastInsets={{ left: sidebarCollapsed ? 16 : 192 }}
+          showDetailPanel={!demo && showDetailPanel}
+          showStats={false}
+          fitOnUpdate={!demo}
+          animateEdges
+          keyboardShortcuts={!demo}
+          showTimeline={!demo}
+          timelineProps={{
+            jumpMarkerKind: 'stage',
+            onCollapsedChange: handleTimelineCollapsedChange,
+            onExit: onExitReplay,
+            showStats: false,
+            speeds: [1, 10, 30, 60],
+            // App-scoped persistKey so previous runs under the package
+            // default (`agrex.timeline.collapsed`) don't carry over a stale
+            // "1" and open the timeline collapsed on fresh visits. New key
+            // starts missing → Agrex defaults to expanded.
+            persistKey: 'decisionlab.agrex.timeline.collapsed',
+          }}
+        />
+        {replay && !demo && <ReplayRunStats replay={replay} collapsed={timelineCollapsed} />}
+      </div>
     </UIStateContext.Provider>
   );
 }

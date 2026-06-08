@@ -14,6 +14,12 @@ import type { Stage } from "../types";
 // path makes the true subagent clear.
 
 const HIDDEN_TOOL_LABELS = new Set(["launch_deep_research"]);
+const MISSING_READ_ERROR_TYPES = new Set([
+  "NoSuchKey",
+  "FileNotFoundError",
+  "NotFound",
+  "404",
+]);
 const hiddenNodeIds = new Set<string>();
 const liveDbNodeIds = new Set<string>();
 const liveMemoryEdgeIds = new Set<string>();
@@ -77,9 +83,16 @@ function nodeToolName(node: AgrexNode): string {
 function shouldHideNode(node: AgrexNode): boolean {
   return (
     (node.type === "tool" && HIDDEN_TOOL_LABELS.has(nodeToolName(node))) ||
+    isHumanReviewToolNode(node) ||
+    isNoisyMissingReadFileNode(node) ||
     isMemoryReadNode(node) ||
     memoryOutputDbKind(node) !== undefined
   );
+}
+
+function isHumanReviewToolNode(node: AgrexNode): boolean {
+  if (node.type !== "tool") return false;
+  return node.id.startsWith("human_review:") || nodeToolName(node).startsWith("review_");
 }
 
 function nodeMetadataPath(node: AgrexNode): string | undefined {
@@ -126,6 +139,80 @@ function filePathAliases(node: AgrexNode): string[] {
 
 function isReadFileNode(node: AgrexNode): boolean {
   return node.type === "tool" && nodeToolName(node) === "read_file";
+}
+
+function metadataErrorType(metadata: Record<string, unknown> | undefined): string {
+  const direct = metadata?.error_type;
+  if (typeof direct === "string") return direct;
+  const error = metadata?.error;
+  if (error && typeof error === "object" && "name" in error) {
+    const name = (error as Record<string, unknown>).name;
+    if (typeof name === "string") return name;
+  }
+  return "";
+}
+
+function isMissingReadErrorMetadata(
+  metadata: Record<string, unknown> | undefined,
+): boolean {
+  return MISSING_READ_ERROR_TYPES.has(metadataErrorType(metadata));
+}
+
+function isNoisyMissingReadFileNode(node: AgrexNode): boolean {
+  const metadata = node.metadata as Record<string, unknown> | undefined;
+  return (
+    isReadFileNode(node) &&
+    node.status === "error" &&
+    isMissingReadErrorMetadata(metadata)
+  );
+}
+
+function sanitizeErrorMetadata(
+  metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!metadata) return metadata;
+  const error = metadata.error;
+  if (!error || typeof error !== "object") return metadata;
+  const raw = error as Record<string, unknown>;
+  const nextError: Record<string, unknown> = {};
+  if (typeof raw.name === "string") nextError.name = raw.name;
+  if (typeof raw.message === "string") nextError.message = raw.message;
+  return { ...metadata, error: nextError };
+}
+
+function sanitizeNodeUpdateEvent(ev: AgrexEvent): AgrexEvent {
+  const metadata = sanitizeErrorMetadata(
+    ev.metadata as Record<string, unknown> | undefined,
+  );
+  return metadata === ev.metadata ? ev : ({ ...ev, metadata } as AgrexEvent);
+}
+
+function collectNoisyHiddenNodeIds(events: AgrexEvent[]): Set<string> {
+  const nodeById = new Map<string, AgrexNode>();
+  const out = new Set<string>();
+  for (const ev of events) {
+    if (ev.type === "node_add") {
+      const node = ev.node as AgrexNode | undefined;
+      if (node) {
+        nodeById.set(node.id, node);
+        if (isHumanReviewToolNode(node)) out.add(node.id);
+      }
+      continue;
+    }
+
+    if (ev.type !== "node_update" || ev.status !== "error") continue;
+    const id = typeof ev.id === "string" ? ev.id : "";
+    const node = nodeById.get(id);
+    if (!node || !isReadFileNode(node)) continue;
+    if (
+      isMissingReadErrorMetadata(
+        ev.metadata as Record<string, unknown> | undefined,
+      )
+    ) {
+      out.add(id);
+    }
+  }
+  return out;
 }
 
 function registerFileNode(node: AgrexNode, state: SanitizerState) {
@@ -603,7 +690,7 @@ function sanitizeSnapshot(
 }
 
 export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
-  const hiddenIds = new Set<string>();
+  const hiddenIds = collectNoisyHiddenNodeIds(events);
   const replayState = createSanitizerState();
   const out: AgrexEvent[] = [];
 
@@ -614,7 +701,7 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
         out.push(ev);
       } else {
         const normalized = normalizeReplayNode(node, replayState);
-        if (shouldHideNode(normalized)) {
+        if (hiddenIds.has(normalized.id) || shouldHideNode(normalized)) {
           hiddenIds.add(normalized.id);
           projectHiddenMemoryNodeToEvents(normalized, out, replayState, ev.ts);
         } else {
@@ -628,6 +715,8 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
       hiddenIds.has(ev.id)
     ) {
       if (ev.type === "node_remove") hiddenIds.delete(ev.id);
+    } else if (ev.type === "node_update") {
+      out.push(sanitizeNodeUpdateEvent(ev));
     } else if (ev.type === "edge_add") {
       const edge = ev.edge as AgrexEdge | undefined;
       if (!edge || !edgeTouchesHiddenNode(edge, hiddenIds)) out.push(ev);
@@ -669,10 +758,22 @@ export const labReducers: Record<string, EventReducer> = {
   node_update(store, ev) {
     const id = ev.id;
     if (typeof id !== "string" || hiddenNodeIds.has(id)) return;
+    if (
+      ev.status === "error" &&
+      isMissingReadErrorMetadata(ev.metadata as Record<string, unknown> | undefined)
+    ) {
+      hiddenNodeIds.add(id);
+      store.removeNode(id);
+      return;
+    }
     const updates: Partial<Pick<AgrexNode, "status" | "label" | "metadata">> = {};
     if ("status" in ev) updates.status = ev.status as AgrexNode["status"];
     if ("label" in ev) updates.label = ev.label as string;
-    if ("metadata" in ev) updates.metadata = ev.metadata as AgrexNode["metadata"];
+    if ("metadata" in ev) {
+      updates.metadata = sanitizeErrorMetadata(
+        ev.metadata as Record<string, unknown> | undefined,
+      ) as AgrexNode["metadata"];
+    }
     store.updateNode(id, updates);
   },
   node_remove(store, ev) {
