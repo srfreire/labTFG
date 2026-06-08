@@ -9,6 +9,7 @@ from decisionlab.knowledge.graph_review import (
     _deterministic_structural_patches,
     _GraphCorrections,
     _GraphRelationPatch,
+    _relation_patch_is_skip,
     _validate_relation_patch,
 )
 
@@ -62,6 +63,46 @@ def test_graph_review_rejects_noncanonical_endpoint_key():
     )
 
     with pytest.raises(ValueError, match="not canonical"):
+        _validate_relation_patch(
+            relation,
+            approved_slugs={"reinforcement-learning"},
+            approved_formulations=set(),
+        )
+
+
+def test_graph_review_rejects_unknown_relation_type():
+    relation = _GraphRelationPatch(
+        from_label="Variable",
+        from_key="id",
+        from_value="reinforcement-learning:td-error-delta",
+        rel_type="UPDATES",
+        to_label="Variable",
+        to_key="id",
+        to_value="reinforcement-learning:policy",
+    )
+
+    with pytest.raises(ValueError, match="unknown relation type"):
+        _validate_relation_patch(
+            relation,
+            approved_slugs={"reinforcement-learning"},
+            approved_formulations=set(),
+        )
+
+
+def test_graph_review_rejects_skip_marked_relation():
+    relation = _GraphRelationPatch(
+        from_label="Author",
+        from_key="name",
+        from_value="Richard S. Sutton",
+        rel_type="AUTHORED",
+        to_label="Paper",
+        to_key="doi",
+        to_value="10.1613/jair.301",
+        reason="SKIP - would require inventing authorship not directly evidenced",
+    )
+
+    assert _relation_patch_is_skip(relation)
+    with pytest.raises(ValueError, match="marked as skipped"):
         _validate_relation_patch(
             relation,
             approved_slugs={"reinforcement-learning"},

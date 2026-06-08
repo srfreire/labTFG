@@ -291,20 +291,27 @@ async def _generate_reflections(
             # fetches the live value.
             vectors = await embedding_service.embed_texts([reflection.content])
             point_id = str(reflection.id)
+            payload = {
+                "entity_id": point_id,
+                "namespace": "meta",
+                "source_stage": "consolidation",
+                "source_kind": "pipeline",
+                "run_id": run_id,
+                "importance": 8.0,
+                "created_at": datetime.now(UTC).isoformat(),
+                "text_preview": reflection.content[:200],
+            }
             await vector_store.upsert_dense(
                 collection="memories_dense",
                 id=point_id,
                 vector=vectors[0],
-                payload={
-                    "entity_id": point_id,
-                    "namespace": "meta",
-                    "source_stage": "consolidation",
-                    "source_kind": "pipeline",
-                    "run_id": run_id,
-                    "importance": 8.0,
-                    "created_at": datetime.now(UTC).isoformat(),
-                    "text_preview": reflection.content[:200],
-                },
+                payload=payload,
+            )
+            await vector_store.upsert_sparse(
+                collection="memories_sparse",
+                id=point_id,
+                text=reflection.content,
+                payload=payload,
             )
 
             # Cross-run: compare against existing reflections

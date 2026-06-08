@@ -33,6 +33,7 @@ from decisionlab.knowledge.kg_writer import (
 from decisionlab.knowledge.models import KGReviewResult
 from decisionlab.structured import call_structured
 from decisionlab.tools.reports import slugify
+from shared.knowledge_graph import _ALLOWED_REL_TYPES
 
 if TYPE_CHECKING:
     from anthropic import AsyncAnthropic
@@ -69,6 +70,7 @@ Forbidden:
 - do not emit Cypher;
 - do not connect to paradigms outside the approved context;
 - do not delete or weaken old/seed relations;
+- do not put unsafe or skipped candidates in add_relations; put them in warnings;
 - do not add a relation unless both endpoint key/value pairs appear in the graph
   snapshot or approved anchor context.
 
@@ -520,6 +522,16 @@ def _validate_relation_patch(
         if not _SAFE_IDENT.match(value):
             raise ValueError(f"invalid {name}: {value!r}")
 
+    if _relation_patch_is_skip(relation):
+        raise ValueError("relation correction is marked as skipped")
+
+    if canonical_key_for_label(relation.from_label) is None:
+        raise ValueError(f"unknown source label: {relation.from_label!r}")
+    if canonical_key_for_label(relation.to_label) is None:
+        raise ValueError(f"unknown target label: {relation.to_label!r}")
+    if relation.rel_type not in _ALLOWED_REL_TYPES:
+        raise ValueError(f"unknown relation type: {relation.rel_type!r}")
+
     if relation.from_key != (canonical_key_for_label(relation.from_label) or ""):
         raise ValueError("source endpoint key is not canonical for its label")
     if relation.to_key != (canonical_key_for_label(relation.to_label) or ""):
@@ -538,6 +550,23 @@ def _validate_relation_patch(
             local = text.rsplit(":", 1)[-1]
             if text not in approved_formulations and local not in approved_formulations:
                 raise ValueError(f"formulation {text!r} is outside approved context")
+
+
+def _relation_patch_is_skip(relation: _GraphRelationPatch) -> bool:
+    """Return true when the reviewer encoded a warning as an add_relations item."""
+    marker_text = f"{relation.reason}\n{relation.evidence}".strip().lower()
+    if not marker_text:
+        return False
+    skip_markers = (
+        "skip",
+        "skipped",
+        "do not add",
+        "do not create",
+        "would require inventing",
+        "not directly evidenced",
+        "insufficient evidence",
+    )
+    return any(marker in marker_text for marker in skip_markers)
 
 
 def _approved_formulations(

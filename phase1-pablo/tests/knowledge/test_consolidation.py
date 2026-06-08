@@ -310,6 +310,12 @@ class TestAC2_ReflectionGeneration:
         assert call_kwargs["namespace"] == "meta"
         assert call_kwargs["importance"] == 8.0
         assert call_kwargs["confidence"] == 0.7
+        vector_store.upsert_dense.assert_called_once()
+        vector_store.upsert_sparse.assert_called_once()
+        sparse_kwargs = vector_store.upsert_sparse.call_args.kwargs
+        assert sparse_kwargs["collection"] == "memories_sparse"
+        assert sparse_kwargs["id"] == str(reflection.id)
+        assert sparse_kwargs["text"] == reflection.content
 
     @pytest.mark.asyncio
     async def test_cluster_of_2_does_not_generate_reflection(self):
