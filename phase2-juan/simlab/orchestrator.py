@@ -466,14 +466,18 @@ READ_PREDICTIONS_TOOL = {
     "name": "read_predictions",
     "description": "Read the scientific predictions for a decision-making paradigm from Phase 1 deep research. "
     "Call this AFTER the user chooses a model and BEFORE running the simulation. "
-    "The paradigm slug is the paradigm field from the model listing "
-    "(e.g. 'homeostatic-regulation').",
+    "Use model_id from the model listing when available so predictions come from the selected Phase 1 run. "
+    "The paradigm slug is the paradigm field from the model listing (e.g. 'homeostatic-regulation').",
     "input_schema": {
         "type": "object",
         "properties": {
             "paradigm_slug": {
                 "type": "string",
                 "description": "Paradigm slug matching a deep research file (e.g. 'homeostatic-regulation')",
+            },
+            "model_id": {
+                "type": "string",
+                "description": "Optional model key from list_available_models (e.g. 'homeostatic-regulation/drive-reduction-rl')",
             },
         },
         "required": ["paradigm_slug"],
@@ -644,8 +648,8 @@ Each model gets its own agent(s) in the shared environment.
 ## Predictions — THIS IS CRITICAL
 
 After the user chooses which model(s) to use, and BEFORE running the simulation:
-1. Call read_predictions with the paradigm slug for each chosen model (the paradigm field from list_available_models, \
-e.g. "homeostatic-regulation").
+1. Call read_predictions with the paradigm slug and model_id for each chosen model (both from list_available_models, \
+e.g. paradigm_slug="homeostatic-regulation", model_id="homeostatic-regulation/drive-reduction-rl").
 2. Read the predictions returned and present them to the user in a clear, conversational way.
 3. Comment on what you EXPECT to happen in this specific environment given those predictions \
 (e.g. "Given homeostatic regulation theory, I expect the agent to eat more aggressively when its \
@@ -1276,9 +1280,34 @@ class Orchestrator:
             from shared.models import Model as DBModel
 
             slug = params["paradigm_slug"]
+            model_id = params.get("model_id")
 
             # Find the run_id from models that match this paradigm
-            run_id = state.get("run_id")
+            run_id = None
+            if model_id:
+                if self._discovered_models is None:
+                    self._discovered_models = await discover_models(
+                        db=self._services.db
+                    )
+                model_info = self._discovered_models.get(model_id)
+                if not model_info:
+                    return json.dumps(
+                        {
+                            "error": f"Model '{model_id}' not found. Call list_available_models to see available models."
+                        }
+                    )
+                run_id = model_info.run_id
+                if run_id:
+                    state["run_id"] = run_id
+                else:
+                    return json.dumps(
+                        {
+                            "error": f"No run_id found for selected model '{model_id}'. Models may not be registered yet."
+                        }
+                    )
+
+            if not run_id:
+                run_id = state.get("run_id")
             if not run_id:
                 async with self._services.db.get_session() as session:
                     result = await session.execute(

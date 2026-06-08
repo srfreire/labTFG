@@ -4,14 +4,13 @@ Agentic loop — the core execution engine for all agents.
 Flow:
   1. Send messages + tools to Claude
   2. If Claude responds with text → done, return response
-  3. If Claude requests tool calls → execute them all in parallel
+  3. If Claude requests tool calls → execute them in order
   4. Append results to conversation and go back to step 1
   5. Repeat until done or max iterations reached
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -60,9 +59,11 @@ async def _execute_single_tool(call, registry: Registry) -> dict[str, Any]:
 
 
 async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str, Any]]:
-    """Execute all tool calls in parallel and collect results."""
-    tasks = [_execute_single_tool(call, registry) for call in tool_calls]
-    return list(await asyncio.gather(*tasks))
+    """Execute tool calls in request order and collect results."""
+    results = []
+    for call in tool_calls:
+        results.append(await _execute_single_tool(call, registry))
+    return results
 
 
 # ---------------------------------------------------------------------------

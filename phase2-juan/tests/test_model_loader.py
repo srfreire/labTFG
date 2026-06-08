@@ -113,6 +113,15 @@ async def test_discover_models_null_run_id():
     assert info.run_id is None
 
 
+async def test_discover_models_orders_rows_before_duplicate_collapse():
+    mock_session, mock_db = _mock_session_with_rows([])
+
+    await discover_models(db=mock_db)
+
+    statement = mock_session.execute.await_args.args[0]
+    assert statement._order_by_clauses
+
+
 # ---------------------------------------------------------------------------
 # ModelInfo tests
 # ---------------------------------------------------------------------------
@@ -223,6 +232,33 @@ async def test_load_model_returns_decision_model():
     state = model.get_state()
     assert "energy" in state
     assert isinstance(state["energy"], float)
+
+
+async def test_load_model_uses_registered_class_name_when_multiple_classes_match():
+    source = """\
+class AlphaModel:
+    def decide(self, p):
+        pass
+    def update(self, a, r, p):
+        pass
+    def get_state(self):
+        return {"name": "alpha"}
+
+class TargetModel:
+    def decide(self, p):
+        pass
+    def update(self, a, r, p):
+        pass
+    def get_state(self):
+        return {"name": "target"}
+"""
+    info = _make_model_info(class_name="TargetModel")
+
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=source.encode())
+    model = await load_model(info, storage=mock_storage)
+
+    assert model.get_state() == {"name": "target"}
 
 
 async def test_load_model_with_seed():

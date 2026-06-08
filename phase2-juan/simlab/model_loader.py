@@ -78,8 +78,8 @@ async def discover_models(*, db: DatabaseService) -> dict[str, ModelInfo]:
     """Discover models from the Postgres models table.
 
     Returns a dict keyed by ``"{paradigm}/{formulation}"`` compound string.
-    When multiple runs produce the same paradigm/formulation, the last row
-    encountered wins (non-deterministic order).
+    When multiple runs produce the same paradigm/formulation, the most recently
+    registered row wins.
     """
     from sqlalchemy import select
 
@@ -87,7 +87,7 @@ async def discover_models(*, db: DatabaseService) -> dict[str, ModelInfo]:
 
     models: dict[str, ModelInfo] = {}
     async with db.get_session() as session:
-        result = await session.execute(select(DBModel))
+        result = await session.execute(select(DBModel).order_by(DBModel.registered_at))
         rows = result.scalars().all()
         for row in rows:
             key = f"{row.paradigm}/{row.formulation}"
@@ -148,11 +148,13 @@ async def load_model(
     if seed is not None and hasattr(mod, "random"):
         mod.random = _SeededRandomModule(seed)
 
-    model_class: type | None = None
-    for _name, obj in inspect.getmembers(mod, inspect.isclass):
-        if obj.__module__ == module_name and _has_decision_model_interface(obj):
-            model_class = obj
-            break
+    model_class = getattr(mod, model_info.class_name, None)
+    if (
+        not inspect.isclass(model_class)
+        or model_class.__module__ != module_name
+        or not _has_decision_model_interface(model_class)
+    ):
+        model_class = None
 
     del sys.modules[module_name]
 
@@ -160,7 +162,10 @@ async def load_model(
     _tmp_dirs.append(tmp_dir)
 
     if model_class is None:
-        raise ValueError(f"No decision model class found in {model_info.s3_model_key}")
+        raise ValueError(
+            f"No decision model class '{model_info.class_name}' found in "
+            f"{model_info.s3_model_key}"
+        )
 
     init_kwargs = kwargs
     if seed is not None:
