@@ -181,6 +181,16 @@ describe("sanitizeLabTraceEvents", () => {
       }),
       ev("node_add", {
         node: {
+          id: "file:builder:reinforcement-learning:q-learning_model.py",
+          type: "file",
+          label: "q-learning_model.py",
+          metadata: {
+            s3_key: "models/run-1/builder/reinforcement-learning/q-learning_model.py",
+          },
+        },
+      }),
+      ev("node_add", {
+        node: {
           id: "tool:read_file:good",
           type: "tool",
           label: "read_file",
@@ -196,13 +206,21 @@ describe("sanitizeLabTraceEvents", () => {
     expect(sanitized).toEqual([
       ev("node_add", {
         node: {
-          id: "tool:read_file:good",
-          type: "tool",
-          label: "read_file",
-          parentId: "builder:rl:q-learning",
+          id: "file:builder:reinforcement-learning:q-learning_model.py",
+          type: "file",
+          label: "q-learning_model.py",
           metadata: {
-            path: "builder/reinforcement-learning/q-learning_model.py",
+            s3_key: "models/run-1/builder/reinforcement-learning/q-learning_model.py",
           },
+        },
+      }),
+      ev("edge_add", {
+        edge: {
+          id: "edge:file-read:file:builder:reinforcement-learning:q-learning_model.py:builder:rl:q-learning",
+          source: "file:builder:reinforcement-learning:q-learning_model.py",
+          target: "builder:rl:q-learning",
+          type: "reads",
+          label: "reads",
         },
       }),
     ]);
@@ -292,10 +310,10 @@ describe("sanitizeLabTraceEvents", () => {
       .map((event) => event.edge);
 
     expect(nodes).toEqual([
-      expect.objectContaining({ id: "tool-1" }),
       expect.objectContaining({ id: "db:knowledge-graph", type: "database" }),
       expect.objectContaining({ id: "db:vector-memory", type: "database" }),
     ]);
+    expect(nodes).not.toContainEqual(expect.objectContaining({ id: "tool-1" }));
     expect(nodes).not.toContainEqual(expect.objectContaining({ id: "tool-2" }));
     expect(edges).toEqual([
       expect.objectContaining({
@@ -402,15 +420,21 @@ describe("sanitizeLabTraceEvents", () => {
     ];
 
     const sanitized = sanitizeLabTraceEvents(events);
+    const nodes = sanitized
+      .filter((event) => event.type === "node_add")
+      .map((event) => event.node);
     const edges = sanitized
       .filter((event) => event.type === "edge_add")
       .map((event) => event.edge);
 
+    expect(nodes).not.toContainEqual(
+      expect.objectContaining({ id: "tool:read_file:abc123" }),
+    );
     expect(edges).toEqual([
       expect.objectContaining({
-        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:tool:read_file:abc123",
+        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:formalizer:prospect-theory",
         source: "file:research:run-1:deep:prospect-theory.md",
-        target: "tool:read_file:abc123",
+        target: "formalizer:prospect-theory",
         type: "reads",
         label: "reads",
       }),
@@ -514,7 +538,7 @@ describe("labReducers", () => {
     const node = {
       id: "tool-1",
       type: "tool" as const,
-      label: "read_file",
+      label: "run_tests",
       parentId: "builder",
       metadata: { path: "reasoner/homeostatic/pi_controller.json" },
     };
@@ -627,11 +651,14 @@ describe("labReducers", () => {
     labReducers.node_add(store, ev("node_add", { node: readNode }));
     labReducers.node_add(store, ev("node_add", { node: fileNode }));
 
+    expect(store.addNode).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: "tool:read_file:abc123" }),
+    );
     expect(store.addEdge).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:tool:read_file:abc123",
+        id: "edge:file-read:file:research:run-1:deep:prospect-theory.md:formalizer:prospect-theory",
         source: "file:research:run-1:deep:prospect-theory.md",
-        target: "tool:read_file:abc123",
+        target: "formalizer:prospect-theory",
         type: "reads",
         label: "reads",
       }),
@@ -764,12 +791,23 @@ describe("labReducers", () => {
     labReducers.state_sync(store, ev("state_sync", { nodes, edges: [] }));
 
     expect(store.loadJSON).toHaveBeenCalledWith({
-      nodes,
+      nodes: [
+        {
+          id: "file:models:run-1:reasoner:prospect:utility.json",
+          type: "file",
+          label: "utility.json",
+          parentId: "reasoner:prospect",
+          metadata: {
+            s3_key: "models/run-1/reasoner/prospect/utility.json",
+            artifact_type: "reasoner_spec",
+          },
+        },
+      ],
       edges: [
         expect.objectContaining({
-          id: "edge:file-read:file:models:run-1:reasoner:prospect:utility.json:tool:read_file:abc123",
+          id: "edge:file-read:file:models:run-1:reasoner:prospect:utility.json:builder:prospect:utility",
           source: "file:models:run-1:reasoner:prospect:utility.json",
-          target: "tool:read_file:abc123",
+          target: "builder:prospect:utility",
           type: "reads",
           label: "reads",
         }),

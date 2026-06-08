@@ -1,7 +1,6 @@
 import { type NodeProps, type Node } from '@xyflow/react';
 import {
   Globe,
-  Eye,
   Pencil,
   FlaskConical,
   Microscope,
@@ -17,7 +16,6 @@ import NodeTooltip from './NodeTooltip';
 
 const TOOL_ICON_MAP: Record<string, ComponentType<{ size: number }>> = {
   web_search: Globe,
-  read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
   launch_deep_research: Microscope,

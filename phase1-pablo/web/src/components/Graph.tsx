@@ -10,7 +10,7 @@ import {
 } from '@ppazosp/agrex';
 import '@xyflow/react/dist/style.css';
 import '@ppazosp/agrex/styles.css';
-import { Globe, Eye, Pencil, FlaskConical, Database, FileSearch, FileText, FileInput } from 'lucide-react';
+import { Globe, Pencil, FlaskConical, Database, FileSearch, FileText, FileInput } from 'lucide-react';
 import FileTypeLogo from './nodes/FileTypeLogo';
 import NodeHandles from './nodes/NodeHandles';
 
@@ -171,7 +171,6 @@ const NODE_RENDERERS = {
 // kind="search" nodes, so the Legend's web_search entry uses Globe too.
 const TOOL_ICONS = {
   web_search: Globe,
-  read_file: Eye,
   write_file: Pencil,
   run_tests: FlaskConical,
   search_papers: FileSearch,

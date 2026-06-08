@@ -84,6 +84,7 @@ function shouldHideNode(node: AgrexNode): boolean {
   return (
     (node.type === "tool" && HIDDEN_TOOL_LABELS.has(nodeToolName(node))) ||
     isHumanReviewToolNode(node) ||
+    isReadFileNode(node) ||
     isNoisyMissingReadFileNode(node) ||
     isMemoryReadNode(node) ||
     memoryOutputDbKind(node) !== undefined
@@ -234,19 +235,34 @@ function rememberPendingReadNode(node: AgrexNode, state: SanitizerState) {
   state.pendingReadNodesByPath.set(normalized, pending);
 }
 
+function readConsumerId(node: AgrexNode): string | undefined {
+  return typeof node.parentId === "string" && node.parentId.length > 0
+    ? node.parentId
+    : undefined;
+}
+
+function fileReadEdge(fileId: string, readNode: AgrexNode): AgrexEdge | undefined {
+  const target = readConsumerId(readNode);
+  if (!target) return undefined;
+  return {
+    id: `edge:file-read:${fileId}:${target}`,
+    source: fileId,
+    target,
+    type: "reads",
+    label: "reads",
+  };
+}
+
 function readEdgesForNode(node: AgrexNode, state: SanitizerState): AgrexEdge[] {
   if (!isReadFileNode(node)) return [];
   const path = nodeMetadataPath(node);
   if (!path) return [];
   const fileIds = state.fileNodeIdsByPath.get(normalizeReadablePath(path));
   if (!fileIds || fileIds.size === 0) return [];
-  return [...fileIds].map((fileId) => ({
-    id: `edge:file-read:${fileId}:${node.id}`,
-    source: fileId,
-    target: node.id,
-    type: "reads",
-    label: "reads",
-  }));
+  return [...fileIds].flatMap((fileId) => {
+    const edge = fileReadEdge(fileId, node);
+    return edge ? [edge] : [];
+  });
 }
 
 function pendingReadEdgesForFileNode(
@@ -260,13 +276,8 @@ function pendingReadEdgesForFileNode(
     for (const readNode of pending) {
       if (seenReadNodeIds.has(readNode.id)) continue;
       seenReadNodeIds.add(readNode.id);
-      edges.push({
-        id: `edge:file-read:${node.id}:${readNode.id}`,
-        source: node.id,
-        target: readNode.id,
-        type: "reads",
-        label: "reads",
-      });
+      const edge = fileReadEdge(node.id, readNode);
+      if (edge) edges.push(edge);
     }
     state.pendingReadNodesByPath.delete(alias);
   }
@@ -562,6 +573,20 @@ function projectVisibleFileReadNodeToSnapshot(
   }
 }
 
+function removePendingReadNode(
+  nodeId: string,
+  pendingByPath: Map<string, AgrexNode[]>,
+) {
+  for (const [path, pending] of pendingByPath.entries()) {
+    const next = pending.filter((node) => node.id !== nodeId);
+    if (next.length === 0) {
+      pendingByPath.delete(path);
+    } else if (next.length !== pending.length) {
+      pendingByPath.set(path, next);
+    }
+  }
+}
+
 function ensureLiveMemoryDbNode(
   store: Parameters<EventReducer>[0],
   kind: MemoryDbKind,
@@ -629,13 +654,8 @@ function projectVisibleFileReadNodeLive(
       for (const readNode of pending) {
         if (seenReadNodeIds.has(readNode.id)) continue;
         seenReadNodeIds.add(readNode.id);
-        addLiveFileReadEdge(store, {
-          id: `edge:file-read:${node.id}:${readNode.id}`,
-          source: node.id,
-          target: readNode.id,
-          type: "reads",
-          label: "reads",
-        });
+        const edge = fileReadEdge(node.id, readNode);
+        if (edge) addLiveFileReadEdge(store, edge);
       }
       livePendingReadNodesByPath.delete(alias);
     }
@@ -651,13 +671,8 @@ function projectVisibleFileReadNodeLive(
     return;
   }
   for (const fileId of fileIds) {
-    addLiveFileReadEdge(store, {
-      id: `edge:file-read:${fileId}:${node.id}`,
-      source: fileId,
-      target: node.id,
-      type: "reads",
-      label: "reads",
-    });
+    const edge = fileReadEdge(fileId, node);
+    if (edge) addLiveFileReadEdge(store, edge);
   }
 }
 
@@ -670,17 +685,24 @@ function sanitizeSnapshot(
   const visibleNodes: AgrexNode[] = [];
   const dbNodes: AgrexNode[] = [];
   const projectedEdges: AgrexEdge[] = [];
+  const hiddenReadNodes: AgrexNode[] = [];
   for (const node of nodes) {
     const normalized = normalizeSnapshotNode(node, state);
     if (shouldHideNode(normalized)) {
       hiddenIds.add(normalized.id);
       projectHiddenMemoryNodeToSnapshot(normalized, dbNodes, projectedEdges, state);
+      if (isReadFileNode(normalized) && !isNoisyMissingReadFileNode(normalized)) {
+        hiddenReadNodes.push(normalized);
+      }
     } else {
       visibleNodes.push(normalized);
     }
   }
   for (const node of visibleNodes) {
     registerFileNode(node, state);
+  }
+  for (const node of hiddenReadNodes) {
+    projectVisibleFileReadNodeToSnapshot(node, projectedEdges, state);
   }
   for (const node of visibleNodes) {
     projectVisibleFileReadNodeToSnapshot(node, projectedEdges, state);
@@ -690,7 +712,8 @@ function sanitizeSnapshot(
 }
 
 export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
-  const hiddenIds = collectNoisyHiddenNodeIds(events);
+  const noisyHiddenIds = collectNoisyHiddenNodeIds(events);
+  const hiddenIds = new Set(noisyHiddenIds);
   const replayState = createSanitizerState();
   const out: AgrexEvent[] = [];
 
@@ -704,6 +727,9 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
         if (hiddenIds.has(normalized.id) || shouldHideNode(normalized)) {
           hiddenIds.add(normalized.id);
           projectHiddenMemoryNodeToEvents(normalized, out, replayState, ev.ts);
+          if (!noisyHiddenIds.has(normalized.id)) {
+            projectVisibleFileReadNodeToEvents(normalized, out, replayState, ev.ts);
+          }
         } else {
           out.push({ ...ev, node: normalized } as AgrexEvent);
           projectVisibleFileReadNodeToEvents(normalized, out, replayState, ev.ts);
@@ -750,6 +776,7 @@ export const labReducers: Record<string, EventReducer> = {
     if (shouldHideNode(normalized)) {
       hiddenNodeIds.add(normalized.id);
       projectHiddenMemoryNodeLive(store, normalized);
+      projectVisibleFileReadNodeLive(store, normalized);
       return;
     }
     store.addNode(normalized);
@@ -757,15 +784,17 @@ export const labReducers: Record<string, EventReducer> = {
   },
   node_update(store, ev) {
     const id = ev.id;
-    if (typeof id !== "string" || hiddenNodeIds.has(id)) return;
+    if (typeof id !== "string") return;
     if (
       ev.status === "error" &&
       isMissingReadErrorMetadata(ev.metadata as Record<string, unknown> | undefined)
     ) {
       hiddenNodeIds.add(id);
+      removePendingReadNode(id, livePendingReadNodesByPath);
       store.removeNode(id);
       return;
     }
+    if (hiddenNodeIds.has(id)) return;
     const updates: Partial<Pick<AgrexNode, "status" | "label" | "metadata">> = {};
     if ("status" in ev) updates.status = ev.status as AgrexNode["status"];
     if ("label" in ev) updates.label = ev.label as string;

@@ -223,7 +223,6 @@ export const AGENT_COLORS: Record<string, string> = {
 // Tool icon mapping
 export const TOOL_ICONS: Record<string, string> = {
   web_search: "Search",
-  read_file: "FileText",
   write_file: "FilePlus",
   run_tests: "FlaskConical",
   launch_deep_research: "Microscope",

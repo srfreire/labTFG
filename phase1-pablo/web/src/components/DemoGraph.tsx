@@ -14,6 +14,7 @@ interface DemoNode {
   kind: AgrexNode["type"];
   label: string;
   parent?: string;
+  reads?: string[];
   writes?: string[];
   metadata?: Record<string, unknown>;
 }
@@ -22,7 +23,6 @@ const FIRST_WAVE_MS = 200;
 const WAVE_MS = 100;
 
 const ws = (id: string, parent: string): DemoNode => ({ id, kind: "tool", label: "web_search", parent });
-const rf = (id: string, parent: string): DemoNode => ({ id, kind: "tool", label: "read_file", parent });
 const rt = (id: string, parent: string): DemoNode => ({ id, kind: "tool", label: "run_tests", parent });
 const wf = (id: string, parent: string, writes: string[]): DemoNode => ({
   id, kind: "tool", label: "write_file", parent, writes,
@@ -33,7 +33,9 @@ const file = (id: string, name: string): DemoNode => ({
 const out = (id: string, name: string, parent: string, stage: string): DemoNode => ({
   id, kind: "output", label: name, parent, metadata: { stage, path: name },
 });
-const ag = (id: string, label: string, parent?: string): DemoNode => ({ id, kind: "agent", label, parent });
+const ag = (id: string, label: string, parent?: string, reads?: string[]): DemoNode => ({
+  id, kind: "agent", label, parent, reads,
+});
 const sub = (id: string, label: string, parent: string, paradigm: string): DemoNode => ({
   id, kind: "sub_agent", label, parent, metadata: { paradigm },
 });
@@ -58,8 +60,12 @@ const WAVES: DemoNode[][] = [
   /*  8 */ [file("r_f1", "prospect_theory.md"), file("r_f2", "game_theory.md"), file("r_f3", "bounded_rat.md")],
   /*  9 */ [out("r_o1", "research.md", "researcher", "research")],
 
-  /* 10 */ [ag("fm1", "Formalizer", "researcher"), ag("fm2", "Formalizer", "researcher"), ag("fm3", "Formalizer", "researcher")],
-  /* 11 */ [rf("fm1_rf", "fm1"), rf("fm2_rf", "fm2"), rf("fm3_rf", "fm3")],
+  /* 10 */ [
+    ag("fm1", "Formalizer", "researcher", ["r_f1"]),
+    ag("fm2", "Formalizer", "researcher", ["r_f2"]),
+    ag("fm3", "Formalizer", "researcher", ["r_f3"]),
+  ],
+  /* 11 */ [],
   /* 12 */ [wf("fm1_wf", "fm1", ["fm1_f1"]), wf("fm2_wf", "fm2", ["fm2_f1"]), wf("fm3_wf", "fm3", ["fm3_f1"])],
   /* 13 */ [file("fm1_f1", "spec_prospect.json"), file("fm2_f1", "spec_game.json"), file("fm3_f1", "spec_bounded.json")],
   /* 14 */ [
@@ -68,8 +74,12 @@ const WAVES: DemoNode[][] = [
     out("fm3_o1", "spec_bounded.json", "fm3", "formalize"),
   ],
 
-  /* 15 */ [ag("rs1", "Reasoner", "researcher"), ag("rs2", "Reasoner", "researcher"), ag("rs3", "Reasoner", "researcher")],
-  /* 16 */ [rf("rs1_rf", "rs1"), rf("rs2_rf", "rs2"), rf("rs3_rf", "rs3")],
+  /* 15 */ [
+    ag("rs1", "Reasoner", "researcher", ["fm1_f1"]),
+    ag("rs2", "Reasoner", "researcher", ["fm2_f1"]),
+    ag("rs3", "Reasoner", "researcher", ["fm3_f1"]),
+  ],
+  /* 16 */ [],
   /* 17 */ [wf("rs1_wf", "rs1", ["rs1_f1"]), wf("rs2_wf", "rs2", ["rs2_f1"]), wf("rs3_wf", "rs3", ["rs3_f1"])],
   /* 18 */ [file("rs1_f1", "model_prospect.json"), file("rs2_f1", "model_game.json"), file("rs3_f1", "model_bounded.json")],
   /* 19 */ [
@@ -78,8 +88,12 @@ const WAVES: DemoNode[][] = [
     out("rs3_o1", "model_bounded.json", "rs3", "reason"),
   ],
 
-  /* 20 */ [ag("bd1", "Builder", "researcher"), ag("bd2", "Builder", "researcher"), ag("bd3", "Builder", "researcher")],
-  /* 21 */ [rf("bd1_rf", "bd1"), rf("bd2_rf", "bd2"), rf("bd3_rf", "bd3")],
+  /* 20 */ [
+    ag("bd1", "Builder", "researcher", ["rs1_f1"]),
+    ag("bd2", "Builder", "researcher", ["rs2_f1"]),
+    ag("bd3", "Builder", "researcher", ["rs3_f1"]),
+  ],
+  /* 21 */ [],
   /* 22 */ [rt("bd1_rt", "bd1"), rt("bd2_rt", "bd2"), rt("bd3_rt", "bd3")],
   /* 23 */ [wf("bd1_wf", "bd1", ["bd1_f1"]), wf("bd2_wf", "bd2", ["bd2_f1"]), wf("bd3_wf", "bd3", ["bd3_f1"])],
   /* 24 */ [file("bd1_f1", "agent_prospect.py"), file("bd2_f1", "agent_game.py"), file("bd3_f1", "agent_bounded.py")],
@@ -122,6 +136,7 @@ function buildDemoTrace(): AgrexEvent[] {
     for (const node of WAVES[wi]) {
       const init = {
         ...(node.parent ? { parent: node.parent } : {}),
+        ...(node.reads ? { reads: node.reads } : {}),
         ...(node.writes ? { writes: node.writes } : {}),
         ...(node.metadata ? { metadata: node.metadata } : {}),
       };
