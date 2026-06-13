@@ -1,5 +1,31 @@
 \chapter{Introducción}
 
+\section{Problema que se resuelve}
+
+El laboratorio virtual necesita modelos de decisión que puedan actuar dentro de
+un entorno de simulación. Crear estos modelos manualmente es una tarea costosa,
+porque no consiste solo en programar una política de acciones. Antes hay que
+identificar qué paradigmas científicos explican el comportamiento que se quiere
+simular, traducir sus postulados a variables y ecuaciones, adaptar esas
+formulaciones a las percepciones y acciones disponibles en el entorno, generar
+código ejecutable y comprobar que ese código respeta el contrato esperado por la
+simulación.
+
+El problema principal, por tanto, es la distancia entre una descripción en
+lenguaje natural y un modelo computacional verificable. Una descripción como
+``simular toma de decisiones basada en regulación homeostática'' no contiene por
+sí misma todos los elementos que necesita un agente ejecutable: autores y
+paradigmas relevantes, variables internas, parámetros, reglas de actualización,
+criterios de elección de acciones, correspondencia con el entorno y pruebas. Si
+todo ese trabajo se realiza a mano, cada nuevo paradigma exige una revisión
+bibliográfica y una implementación prácticamente desde cero.
+
+Este trabajo resuelve ese problema mediante un pipeline con agentes
+especializados, revisión humana y memoria persistente. El sistema no pretende
+eliminar la supervisión humana ni sustituir el criterio científico, sino
+automatizar las partes repetibles del proceso y producir artefactos
+intermedios que puedan revisarse, corregirse, reutilizarse y auditarse.
+
 \section{Objetivos generales}
 
 Este Trabajo de Fin de Grado se enmarca en el desarrollo de un laboratorio
@@ -9,8 +35,8 @@ fases complementarias. Esta memoria documenta la fase desarrollada por Pablo
 Pazos Parada: el sistema que genera modelos de decisión ejecutables a partir de
 descripciones en lenguaje natural y conocimiento científico.
 
-El objetivo general de esta fase es construir un pipeline capaz de transformar
-un problema de decisión en un conjunto de artefactos verificables:
+El objetivo general de esta fase es construir un sistema capaz de transformar
+un problema de decisión en un conjunto de artefactos verificables y persistentes:
 
 \begin{itemize}
 \item una investigación sobre paradigmas científicos relevantes;
@@ -19,6 +45,13 @@ un problema de decisión en un conjunto de artefactos verificables:
 \item código Python autocontenido;
 \item pruebas ejecutables que validen el modelo generado.
 \end{itemize}
+
+El objetivo no es producir una única respuesta textual, sino construir una
+cadena completa de generación de conocimiento y software. Cada etapa reduce la
+ambigüedad de la anterior: primero se investiga, después se formaliza, después
+se adapta al entorno y finalmente se implementa. Esta separación es importante
+porque un error bibliográfico, un error matemático, una mala adaptación al
+entorno y un bug de implementación requieren correcciones distintas.
 
 \section{Relación de la documentación}
 
