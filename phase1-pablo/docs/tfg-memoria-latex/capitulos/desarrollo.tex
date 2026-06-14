@@ -5,7 +5,10 @@
 El desarrollo de este sistema no siguió un flujo tradicional basado
 principalmente en programación manual. Se utilizó una metodología apoyada en
 agentes de programación, concretamente Claude Code y Codex, con supervisión
-humana en las decisiones de diseño.
+humana en las decisiones de diseño. Esta forma de trabajo se relaciona con
+líneas recientes sobre agentes de software, síntesis de programas y desarrollo
+multiagente
+\cite{chen2021codex,austin2021programsynthesis,yang2024sweagent,qian2024chatdev}.
 
 La idea central fue separar dos tipos de trabajo:
 
@@ -16,12 +19,13 @@ criterio humano y contexto global del proyecto;
 pueden delegarse en modelos de lenguaje de alto rendimiento.
 \end{itemize}
 
-En tareas generales de programación, los modelos flagship actuales ya ofrecen un
-rendimiento superior al de un programador medio en muchas situaciones prácticas.
-Sin embargo, todavía no son igual de fiables tomando decisiones de diseño sin un
-contexto completo. Por ello, el flujo empleado sitúa al humano como
-\textit{human-in-the-loop} para decisiones de diseño y a los agentes como
-ejecutores principales de las tareas de programación.
+En tareas acotadas de programación, los modelos actuales muestran un rendimiento
+competitivo y permiten acelerar implementación, pruebas y refactorización
+\cite{chen2021codex,yang2024sweagent}. Sin embargo, todavía no son igual de
+fiables tomando decisiones de diseño sin un contexto completo. Por ello, el
+flujo empleado sitúa al humano como \textit{human-in-the-loop} para decisiones
+de diseño y a los agentes como ejecutores principales de las tareas de
+programación.
 
 \section{Planificación con Linear}
 
@@ -62,7 +66,10 @@ de una fase también tenía sus propios criterios.
 Estos criterios fueron esenciales porque los agentes necesitaban una forma
 objetiva de comprobar si su trabajo estaba terminado. Sin criterios explícitos,
 un agente puede generar código funcional a primera vista pero incompleto desde
-el punto de vista del producto o de la arquitectura.
+el punto de vista del producto o de la arquitectura. Por eso se combinaron
+criterios de aceptación, validación estructural y pruebas ejecutables, una
+decisión coherente con la evaluación funcional de código generado y con enfoques
+de generación restringida \cite{chen2021codex,scholak2021picard}.
 
 \section{División del trabajo entre agentes}
 
@@ -148,4 +155,6 @@ Humano
 Esta metodología influyó directamente en el sistema construido. El pipeline de
 generación de modelos también sigue una filosofía similar: los agentes producen
 artefactos, pero las decisiones relevantes pasan por revisión humana antes de
-quedar aceptadas y almacenadas en memoria.
+quedar aceptadas y almacenadas en memoria. La revisión y los reruns funcionan
+como un mecanismo de refinamiento iterativo guiado por feedback
+\cite{madaan2023selfrefine,shinn2023reflexion}.

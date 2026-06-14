@@ -24,7 +24,10 @@ Este trabajo resuelve ese problema mediante un pipeline con agentes
 especializados, revisión humana y memoria persistente. El sistema no pretende
 eliminar la supervisión humana ni sustituir el criterio científico, sino
 automatizar las partes repetibles del proceso y producir artefactos
-intermedios que puedan revisarse, corregirse, reutilizarse y auditarse.
+intermedios que puedan revisarse, corregirse, reutilizarse y auditarse. Esta
+combinación se apoya en líneas recientes sobre agentes con herramientas,
+sistemas multiagente, memoria persistente y generación de código
+\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,park2023generativeagents,chen2021codex}.
 
 \section{Objetivos generales}
 
@@ -66,10 +69,15 @@ un sistema software. Los capítulos principales son:
 \item conclusiones y posibles ampliaciones.
 \end{itemize}
 
-Los apéndices incluyen información técnica de ejecución y una guía de uso
-básica. La bibliografía recoge tanto referencias técnicas de agentes y memoria
-como trabajos de recuperación aumentada, grafos de conocimiento y generación de
+La bibliografía recoge tanto referencias técnicas de agentes y memoria como
+trabajos de recuperación aumentada, grafos de conocimiento y generación de
 código.
+
+Algunos términos técnicos se mantienen en inglés cuando son nombres habituales
+del dominio o identificadores del propio sistema, como \textit{pipeline},
+\textit{benchmark}, \textit{sparse}, \textit{dense}, \textit{run} o
+\textit{spec}. Cuando no se trata de un identificador, se usa la forma española:
+flujo, ejecución, especificación, recuperación semántica o recuperación léxica.
 
 \section{Descripción del sistema}
 
@@ -123,6 +131,12 @@ El trabajo combina varias técnicas actuales:
 \item memoria persistente con ciclo de vida;
 \item generación de código con pruebas automáticas.
 \end{itemize}
+
+El uso de agentes con herramientas se relaciona con ReAct y Toolformer; la
+división en agentes especializados, con AutoGen y ChatDev; la recuperación de
+conocimiento, con RAG, DPR, BM25, RRF y CRAG; y la generación de código, con
+Codex, Program Synthesis y SWE-agent
+\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag,chen2021codex,austin2021programsynthesis,yang2024sweagent}.
 
 Una característica importante del proyecto es que el propio desarrollo del
 sistema también se realizó con apoyo intensivo de agentes de programación. Esta

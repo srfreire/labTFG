@@ -11,6 +11,7 @@
 \usepackage{listings}
 \usepackage{url}
 \usepackage{xurl}
+\usepackage{enumitem}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
 
 \lstset{
@@ -21,6 +22,8 @@
 }
 
 \addto\captionsspanish{\def\contentsname{Memoria tipo B -- Índice general}}
+\raggedbottom
+\setlist[itemize]{itemsep=0.15\baselineskip, topsep=0.35\baselineskip, parsep=0pt, partopsep=0pt}
 
 
 \begin{document}
@@ -53,14 +56,6 @@
 \include{capitulos/cap4}
 \cleardoublepage
 \include{capitulos/conclusions}
-
-\appendix
-\cleardoublepage
-\include{capitulos/apendicea}
-\cleardoublepage
-\include{capitulos/apendiceb}
-\cleardoublepage
-\include{capitulos/licenza}
 \cleardoublepage
 \include{capitulos/bibliografia}
 

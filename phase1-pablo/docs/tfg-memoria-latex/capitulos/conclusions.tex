@@ -1,51 +1,127 @@
 \chapter{Conclusiones y posibles ampliaciones}
 
+\section{Balance general}
+
+El trabajo desarrollado demuestra que es viable construir una primera fase de un
+laboratorio virtual capaz de transformar una descripción en lenguaje natural en
+modelos de decisión ejecutables. El resultado no es únicamente un generador de
+código: es un pipeline completo que investiga paradigmas, formaliza mecanismos,
+los adapta a un entorno de simulación, genera implementaciones Python y conserva
+evidencia de las decisiones tomadas durante el proceso.
+
+La aportación principal está en la combinación de tres elementos. En primer
+lugar, una arquitectura multiagente que divide el problema en etapas con
+responsabilidades explícitas. En segundo lugar, una revisión humana integrada en
+los puntos donde se toman decisiones científicas o de diseño. En tercer lugar,
+una memoria persistente que convierte artefactos aceptados, hechos, relaciones y
+observaciones en conocimiento reutilizable para ejecuciones futuras.
+
 \section{Cumplimiento de objetivos}
 
-El trabajo desarrollado cumple el objetivo principal: construir una fase del
-laboratorio virtual capaz de transformar descripciones en lenguaje natural en
-modelos de decisión ejecutables. Para ello se diseñó un pipeline con agentes
-especializados, revisión humana, persistencia de artefactos, memoria de
-conocimiento y validación mediante pruebas.
+Los objetivos planteados al inicio de la memoria se cumplen en sus aspectos
+esenciales. El sistema permite partir de un problema abierto, descubrir
+paradigmas relevantes, generar formulaciones, producir especificaciones
+adaptadas a un entorno y construir modelos que cumplen el contrato
+\texttt{DecisionModel}. Además, cada etapa produce artefactos persistentes, lo
+que permite auditar la ejecución y reanudar el trabajo sin depender únicamente
+del contexto conversacional del modelo.
 
-Las contribuciones principales son:
+También se cumple el objetivo de mantener al humano dentro del ciclo. La
+revisión no aparece como una comprobación final, sino como parte estructural del
+flujo. El usuario puede aprobar paradigmas, seleccionar formulaciones, revisar
+specs, rechazar modelos y forzar reruns específicos. Esta decisión reduce el
+riesgo de que un error temprano se propague hasta el código final sin ser
+detectado.
 
-\begin{itemize}
-\item un Router que coordina el flujo completo del pipeline;
-\item agentes especializados para investigación, formalización, razonamiento y
-construcción;
-\item una memoria persistente basada en PostgreSQL, MinIO, Neo4j y Qdrant;
-\item un contrato de modelo sencillo e integrable con la fase de simulación;
-\item una metodología de desarrollo apoyada en coding agents y criterios de
-aceptación.
-\end{itemize}
+Por último, se incorporó una estrategia de evaluación coherente con la naturaleza
+del sistema. Las pruebas unitarias verifican piezas concretas, mientras que las
+evals y benchmarks comprueban propiedades más amplias: coordinación entre
+agentes, calidad de recuperación, crecimiento de memoria, control de slugs,
+latencia, coste y comportamiento temporal de las memorias.
 
 \section{Conclusiones técnicas}
 
-La principal conclusión técnica es que los modelos de lenguaje son más útiles
-cuando se integran en un sistema con límites claros. Un agente aislado puede
-generar resultados convincentes, pero un sistema de desarrollo necesita
-artefactos, validación, memoria y revisión.
+La primera conclusión técnica es que los agentes de lenguaje son más útiles
+cuando no trabajan como una única entidad monolítica. El sistema obtiene mejores
+propiedades de control al separar investigación, formalización, adaptación al
+entorno y construcción. Los subagentes reducen la presión sobre la ventana de
+contexto y evitan que tareas conceptualmente distintas se contaminen entre sí.
+Esta separación también facilita localizar errores: un fallo puede atribuirse a
+la investigación, a la formulación, al razonamiento sobre el entorno o a la
+implementación.
 
-La segunda conclusión es que la memoria no debe ser un almacén indiscriminado.
-Guardar solo artefactos aceptados permite que ejecuciones futuras se apoyen en
-conocimiento curado.
+La segunda conclusión es que la memoria es una parte central del diseño, no un
+añadido posterior. Guardar hechos en recuperación densa y sparse permite
+responder preguntas semánticas y léxicas. Mantener un grafo de conocimiento
+aporta trazabilidad sobre autores, papers, postulados, variables y modelos. Las
+observaciones procedurales, por su parte, permiten que errores y decisiones de
+ejecuciones previas sean señales útiles para agentes futuros.
 
-La tercera conclusión es metodológica: los agentes de programación son una
-herramienta muy potente para implementar, probar y refactorizar, pero las
-decisiones de diseño siguen necesitando contexto humano.
+La tercera conclusión es que la persistencia de artefactos es imprescindible en
+un sistema de este tipo. Los informes, formulaciones, specs, modelos, tests,
+estado del pipeline y trazas permiten reconstruir qué ocurrió en una ejecución.
+Sin esta capa, el sistema dependería demasiado de respuestas textuales del
+modelo y sería difícil auditarlo, reanudarlo o evaluarlo de forma reproducible.
+
+Finalmente, el desarrollo confirma que los modelos actuales pueden acelerar de
+forma notable tareas de implementación, pruebas y refactorización, pero no
+sustituyen la necesidad de criterio humano. En este proyecto, la intervención
+humana sigue siendo especialmente importante al validar interpretaciones
+científicas, elegir formulaciones y decidir si un modelo generado representa de
+forma adecuada el paradigma que pretende implementar.
+
+\section{Limitaciones}
+
+El sistema sigue teniendo limitaciones relevantes. La validez científica final
+de un modelo no queda garantizada por el hecho de que compile, pase tests o haya
+sido generado desde una formulación. Las pruebas automáticas verifican
+propiedades funcionales y de integración, pero la adecuación psicológica o
+neurocientífica del modelo requiere revisión experta.
+
+Otra limitación es la dependencia de servicios externos y modelos de lenguaje.
+Las ejecuciones completas tienen coste económico, pueden verse afectadas por
+latencia de red y no son completamente deterministas. Por ello, las evals deben
+interpretarse como señales de regresión y calidad interna, no como un benchmark
+externo definitivo.
+
+También existe margen de mejora en la memoria. Aunque el sistema ya distingue
+entre hechos, relaciones y observaciones, la calidad de extracción depende del
+contenido producido por los agentes y de los criterios de consolidación. En
+particular, la canonicalización de paradigmas, la detección de contradicciones y
+la calibración de confianza son aspectos que pueden seguir refinándose con más
+ejecuciones y métricas.
 
 \section{Posibles ampliaciones}
 
-Entre las líneas futuras destacan:
+La primera línea futura es ampliar el conjunto de paradigmas y ejecutar más
+evaluaciones sobre problemas diversos. Esto permitiría medir mejor la
+generalidad del pipeline y detectar qué tipos de teorías son más difíciles de
+formalizar o implementar.
 
-\begin{itemize}
-\item añadir más paradigmas de decisión y experimentos de validación;
-\item medir cuantitativamente la calidad de los modelos generados;
-\item mejorar las métricas de recuperación de memoria;
-\item ampliar el sistema de detección de contradicciones;
-\item integrar explicaciones más detalladas de los modelos en la fase de
-análisis e informes;
-\item automatizar más partes de la planificación con Linear manteniendo revisión
-humana en decisiones de arquitectura.
-\end{itemize}
+La segunda línea es comparar modelos generados contra implementaciones manuales
+o contra resultados esperados en simulaciones controladas. Esta evaluación
+permitiría pasar de comprobar que el modelo funciona a estudiar si reproduce
+patrones de comportamiento coherentes con la literatura.
+
+La tercera línea es profundizar en el sistema de memoria. Sería útil mejorar la
+extracción de observaciones procedurales, ampliar las métricas de calidad de
+recuperación, estudiar estrategias de consolidación más estrictas y explotar más
+el grafo para consultas multi-hop sobre procedencia científica.
+
+La cuarta línea es reforzar la integración con la segunda fase del laboratorio.
+Los modelos generados ya siguen un contrato compatible, pero la conexión puede
+enriquecerse con análisis automáticos posteriores a la simulación, informes más
+explicativos y retroalimentación desde los resultados experimentales hacia la
+memoria de la fase 1.
+
+\section{Cierre}
+
+En conjunto, el proyecto muestra que un sistema multiagente con memoria,
+artefactos persistentes y revisión humana puede abordar una tarea compleja que
+no se reduce a generación de texto ni a generación de código. La contribución
+más importante no es que un modelo escriba un archivo Python, sino que exista un
+flujo trazable para pasar de conocimiento científico a una implementación
+ejecutable, revisable y reutilizable dentro de un laboratorio virtual. Esta
+conclusión conecta con la línea general de agentes con herramientas, memoria
+externa y generación de programas mediante modelos de lenguaje
+\cite{yao2023react,lewis2020rag,packer2023memgpt,chen2021codex,yang2024sweagent}.

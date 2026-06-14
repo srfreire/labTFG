@@ -15,10 +15,169 @@ Pipeline & Estados del Router, persistencia y reanudación. \\ \hline
 Memoria & Escritura tras revisión, deduplicación y recuperación. \\ \hline
 Código generado & Pruebas \texttt{pytest} para cada modelo. \\ \hline
 Integración & Carga dinámica del modelo desde la fase de simulación. \\ \hline
+Evals y benchmarks & Suites reproducibles para medir pipeline, memoria, recuperación, coste y latencia. \\ \hline
 \end{tabular}
 \caption{Niveles de validación del sistema.}
 \end{center}
 \end{table}
+
+\section{Evals y benchmarks}
+
+Además de las pruebas unitarias, el proyecto incluye un arnés de evaluación
+específico para el sistema. Esta parte es importante porque un pipeline basado
+en agentes no se valida solo comprobando que una función devuelve el tipo
+esperado. También hay que comprobar que los agentes se coordinan, que las
+herramientas se invocan cuando corresponde, que la memoria crece sin degradarse
+y que el sistema completo sigue funcionando después de cambios en prompts,
+modelos o infraestructura. Esta necesidad es coherente con trabajos sobre
+agentes de software y sistemas multiagente, donde la evaluación debe cubrir el
+comportamiento del sistema completo y no solo llamadas aisladas
+\cite{qian2024chatdev,yang2024sweagent}.
+
+Las evals se definen como suites YAML en \texttt{evals/suites/}. Cada suite
+declara las etapas que debe ejecutar, los temas de entrada, las aprobaciones
+automáticas necesarias, el presupuesto máximo y las aserciones esperadas. Se
+ejecutan desde la CLI:
+
+\begin{verbatim}
+uv run decisionlab eval run evals/suites/smoke.yaml
+uv run decisionlab eval run evals/suites/full-pipeline.yaml
+\end{verbatim}
+
+El resultado de cada suite se guarda en:
+
+\begin{verbatim}
+evals/reports/<fecha>-<suite>/report.md
+evals/reports/<fecha>-<suite>/report.json
+\end{verbatim}
+
+El informe incluye estado global, temas ejecutados, aserciones superadas o
+fallidas, crecimiento del grafo, escrituras de memoria, duración por etapa,
+latencia de herramientas y coste estimado. Esto permite usar las evals como
+benchmark de regresión: si un cambio mejora un prompt pero empeora la
+canonicalización, la recuperación o la latencia, queda reflejado en el reporte.
+
+\subsection{Evals del sistema multiagente}
+
+Estas evals prueban el workflow de agentes como sistema: Router, estados,
+subagentes, herramientas, artefactos, aprobación automática en modo eval y salida
+final. Su objetivo no es evaluar una memoria concreta, sino comprobar que el
+pipeline se mueve de una etapa a otra y que los artefactos generados son
+utilizables por la siguiente etapa.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
+\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
+Smoke & Research & Arranque básico del pipeline, éxito de una ejecución y descubrimiento mínimo de paradigmas. \\ \hline
+Full pipeline & Research--Build & Ejecución completa: investigación, formalización, razonamiento, generación de código, importación del modelo y llamada funcional a \texttt{decide}. \\ \hline
+\end{tabular}
+\caption{Evals del workflow multiagente.}
+\end{center}
+\end{table}
+
+Las aserciones de este bloque miran la salida del pipeline y el comportamiento
+de los agentes:
+
+\begin{verbatim}
+paradigm, min_paradigms, tool_called,
+has_formulation, module_imports,
+decide_returns_action
+\end{verbatim}
+
+Así se cubren fallos que no aparecerían en una prueba unitaria aislada. Por
+ejemplo, una prueba puede verificar que el Router avanza de estado, pero la eval
+completa comprueba que Researcher, Formalizer, Reasoner y Builder producen
+artefactos compatibles entre sí. Del mismo modo, importar el módulo generado y
+llamar a \texttt{decide} ofrece una evidencia ejecutable mínima de que el
+modelo final cumple el contrato esperado.
+
+\subsection{Evals del sistema de memoria}
+
+El segundo grupo de evals se centra en el sistema de memoria y conocimiento:
+Qdrant, Neo4j, PostgreSQL, canonicalización, recuperación, deduplicación,
+crecimiento del grafo y validez temporal. Estas pruebas son distintas porque
+evalúan comportamiento acumulativo entre ejecuciones. No basta con que un agente
+responda bien una vez; la memoria debe seguir siendo útil después de varios runs
+y no debe introducir duplicados, hechos obsoletos o recuperaciones irrelevantes.
+Por eso se evalúan señales propias de recuperación aumentada, memoria a largo
+plazo y grafos de conocimiento
+\cite{lewis2020rag,zhong2023memorybank,packer2023memgpt,hogan2021knowledgegraphs,edge2024graphrag}.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
+\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
+Cumulative growth & Research & Crecimiento acumulativo del grafo en temas relacionados, reutilización de slugs canónicos y control de duplicados. \\ \hline
+Canonicalization & Research & Uso de memoria, reutilización de paradigmas conocidos y detección de fugas de slugs no canónicos. \\ \hline
+Slug accuracy & Research & Tasa de acierto contra un oráculo de slugs, crecimiento por etiqueta y latencia p95 de recuperación. \\ \hline
+Memory retrieval & Research & Recuperación de paradigmas ya presentes en memoria y conservación de relaciones del grafo. \\ \hline
+Retrieval quality & Offline & Calidad directa de recuperación: hechos sembrados deben aparecer en el top-k para consultas semánticas y léxicas. \\ \hline
+Temporal correctness & Offline & Correctitud temporal de memorias: validez por fecha y cadenas de supersesión. \\ \hline
+\end{tabular}
+\caption{Evals del sistema de memoria y conocimiento.}
+\end{center}
+\end{table}
+
+Las aserciones de memoria combinan comprobaciones directas contra
+infraestructura y métricas agregadas de suite:
+
+\begin{verbatim}
+slug_hit_rate, kg_growth_rate, p95_below,
+memory_at_time, supersession_chain_length,
+retrieval_finds
+\end{verbatim}
+
+Esto cubre fallos propios de un sistema de memoria. Una prueba puede verificar
+que \texttt{retrieve\_knowledge} se llama, pero una eval de calidad comprueba
+que devuelve el hecho correcto. Una prueba puede comprobar que un nodo se
+escribe en Neo4j, pero una eval de crecimiento detecta si el sistema empieza a
+crear slugs duplicados para paradigmas ya conocidos. Del mismo modo, la suite
+temporal valida que una memoria supersedida deja de aparecer en consultas
+posteriores, algo que no puede comprobarse mirando solo el último estado del
+grafo.
+
+\subsection{Resultados representativos}
+
+La tabla siguiente resume ejecuciones reales del arnés de evals. No pretende ser
+un benchmark externo comparable con otros sistemas, sino evidencia interna de
+regresión y mejora.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{2.8cm}|p{1.4cm}|p{2.5cm}|p{5.6cm}|} \hline
+\textbf{Suite} & \textbf{Estado} & \textbf{Tiempo / coste} & \textbf{Evidencia} \\ \hline
+Full pipeline & PASS & 2445.9 s / \$9.30 & Generó modelos, los importó y \texttt{decide} devolvió acciones válidas. \\ \hline
+Retrieval quality & PASS & 22.7 s / \$0.08 & Cuatro consultas recuperaron los hechos esperados en top-k. \\ \hline
+Temporal correctness & PASS & 0.1 s / \$0.00 & Validó presencia/ausencia por fecha y cadena de supersesión de longitud 3. \\ \hline
+Slug accuracy & FAIL & 3646.2 s / \$5.08 & Detectó tasa 6/8 frente al umbral 0.80, con crecimiento de paradigmas controlado y p95 bajo 7000 ms. \\ \hline
+\end{tabular}
+\caption{Resultados representativos de evals internas.}
+\end{center}
+\end{table}
+
+El último caso es especialmente útil: una eval fallida no se interpreta como un
+fracaso del arnés, sino como una señal de regresión o de métrica mal calibrada.
+Durante el desarrollo se ajustaron límites y aserciones cuando los reportes
+mostraban que una métrica no representaba bien la calidad real del sistema.
+Esto convirtió el benchmark en una herramienta de diseño, no solo en una
+comprobación final.
+
+El arnés también incorpora límites de presupuesto. Cada suite puede declarar un
+coste máximo estimado; si se supera, la ejecución se corta y el reporte deja
+constancia de ello. Esta restricción es necesaria porque las evals ejecutan
+agentes reales, búsquedas, extracción de memoria y llamadas a modelos. En la
+práctica, las suites baratas se usan como smoke tests frecuentes y las suites
+caras, como \texttt{full-pipeline.yaml}, se reservan para regresiones
+importantes.
+
+El propio arnés cuenta con pruebas automáticas para el parseo de suites YAML, la
+ejecución de etapas, las aserciones, el cálculo de tiempos, los límites de
+presupuesto y la generación de reportes. Esto evita que una eval falle por un
+error del marco de evaluación en lugar de por una regresión del sistema evaluado.
 
 \section{Pruebas del Builder}
 
@@ -60,6 +219,13 @@ Las pruebas automáticas validan propiedades técnicas, pero no sustituyen la
 revisión humana de contenido científico. Por ejemplo, un test puede comprobar
 que un modelo ejecuta correctamente una política, pero no que la formulación
 elegida sea la más adecuada para un paradigma psicológico concreto.
+
+Las evals con agentes tienen además limitaciones propias. Pueden depender de
+servicios externos, tienen coste económico, no siempre son completamente
+deterministas y necesitan fixtures o semillas para que una regresión sea
+interpretable. Por esta razón se combinan suites online, que ejecutan agentes
+reales, con suites offline, que prueban memoria y recuperación sobre datos
+controlados.
 
 Por este motivo el sistema combina pruebas automáticas con revisión humana antes
 de aceptar artefactos y escribirlos en memoria.
