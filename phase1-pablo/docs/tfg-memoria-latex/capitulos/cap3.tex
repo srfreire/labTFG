@@ -176,6 +176,63 @@ difícil diagnosticar los errores.
 
 \subsection{Workflow de agentes}
 
+El sistema de agentes se entiende mejor como un flujo de reducción progresiva
+de ambigüedad. Cada agente transforma la salida anterior en un artefacto más
+estructurado, y cada punto de revisión humana decide qué ramas continúan.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=7mm and 7mm,
+  agentnode/.style={tfgbox, font=\scriptsize, minimum height=10mm, text width=3.05cm},
+  reviewnode/.style={diamond, aspect=2.1, draw=tfgOrange, fill=tfgOrange!15,
+    thick, align=center, font=\scriptsize, inner sep=1pt, text width=1.9cm},
+  sharednode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=12.6cm}
+]
+\node[agentnode, fill=tfgBlue!12, draw=tfgBlue] (problem) {Problema\\en lenguaje natural};
+\node[agentnode, fill=tfgGreen!12, draw=tfgGreen, right=of problem] (research) {Classifier + Researcher\\DeepResearchers\\\texttt{report.md}, \texttt{deep/*.md}};
+\node[reviewnode, right=of research] (review1) {revisión\\paradigmas};
+\node[agentnode, fill=tfgOrange!15, draw=tfgOrange, right=of review1] (formalizer) {Formalizer\\subagentes por paradigma\\\texttt{formulations/*.md}};
+\node[reviewnode, right=of formalizer] (review2) {revisión\\formulaciones};
+
+\node[agentnode, fill=tfgPurple!13, draw=tfgPurple, below=15mm of formalizer] (reasoner) {Reasoner\\subagentes por paradigma\\specs JSON};
+\node[agentnode, fill=tfgBlue!12, draw=tfgBlue, right=of reasoner] (env) {\texttt{env\_spec.json}\\acciones, percepciones\\y recompensas};
+\node[reviewnode, left=of reasoner] (review3) {revisión\\specs};
+\node[agentnode, fill=tfgRed!10, draw=tfgRed, left=of review3] (builder) {Builder\\subagentes por spec\\modelo + tests};
+\node[reviewnode, left=of builder] (review4) {revisión\\modelos};
+\node[agentnode, fill=tfgLight, draw=tfgGray, left=of review4] (registered) {Modelos registrados\\contrato\\\texttt{DecisionModel}};
+
+\node[sharednode, fill=tfgLight, draw=tfgGray, below=12mm of review3] (shared)
+{Infraestructura transversal: artefactos en MinIO, metadatos en PostgreSQL,
+trazas Agrex, memoria con \texttt{retrieve\_knowledge} y rutas de rerun};
+
+\draw[tfgarrow] (problem) -- (research);
+\draw[tfgarrow] (research) -- (review1);
+\draw[tfgarrow] (review1) -- (formalizer);
+\draw[tfgarrow] (formalizer) -- (review2);
+\draw[tfgarrow] (review2) |- (env);
+\draw[tfgarrow] (env) -- (reasoner);
+\draw[tfgarrow] (reasoner) -- (review3);
+\draw[tfgarrow] (review3) -- (builder);
+\draw[tfgarrow] (builder) -- (review4);
+\draw[tfgarrow] (review4) -- (registered);
+
+\draw[tfgarrow, dashed] (shared.north) -- (research.south);
+\draw[tfgarrow, dashed] (shared.north) -- (formalizer.south);
+\draw[tfgarrow, dashed] (shared.north) -- (reasoner.south);
+\draw[tfgarrow, dashed] (shared.north) -- (builder.south);
+\end{tikzpicture}}
+\caption{Workflow completo del sistema de agentes de la fase 1.}
+\end{figure}
+
+La figura separa tres ideas. Primero, el flujo principal avanza desde una
+entrada abierta hasta código probado. Segundo, los agentes principales no
+siempre ejecutan el trabajo directamente: Researcher, Formalizer, Reasoner y
+Builder delegan ramas independientes en subagentes. Tercero, la infraestructura
+transversal mantiene artefactos, trazas, memoria y rutas de repetición, de modo
+que cada salida pueda auditarse y corregirse en el nivel adecuado.
+
 \subsubsection{Classifier}
 
 Antes de lanzar la investigación completa, el sistema ejecuta un clasificador
@@ -542,6 +599,56 @@ Además, \texttt{get\_state} debe exponer variables internas y una clave
 alternativas de acción, confianza relativa y evolución de puntuaciones internas.
 
 \section{Sistema de memoria y conocimiento}
+
+El sistema de memoria no es solo una base de datos para guardar textos. Es un
+flujo de escritura y recuperación que convierte artefactos aceptados en
+conocimiento reutilizable y lo vuelve a inyectar en agentes futuros.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=7mm and 8mm,
+  memnode/.style={tfgbox, font=\scriptsize, minimum height=9mm, text width=3.45cm},
+  storenode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=2.85cm}
+]
+\node[memnode, fill=tfgBlue!12, draw=tfgBlue] (accepted) {Artefacto aceptado\\tras revisión humana};
+\node[memnode, fill=tfgPurple!13, draw=tfgPurple, right=of accepted] (router) {Router\\estado \texttt{MEMORY\_*}\\run y etapa};
+\node[memnode, fill=tfgGreen!12, draw=tfgGreen, right=of router, text width=4.15cm] (memoryagent) {MemoryAgent\\extrae, canonicaliza\\escribe y resuelve};
+\node[memnode, fill=tfgRed!10, draw=tfgRed, right=of memoryagent] (consolidation) {Consolidación\\reflexiones, decay\\supersesión};
+
+\node[storenode, fill=tfgLight, draw=tfgGray, below left=13mm and 31mm of memoryagent] (minio) {MinIO\\artefactos\\completos};
+\node[storenode, fill=tfgGreen!12, draw=tfgGreen, right=of minio] (neo4j) {Neo4j\\entidades\\y relaciones};
+\node[storenode, fill=tfgOrange!15, draw=tfgOrange, right=of neo4j] (qdrant) {Qdrant\\denso\\+ BM25};
+\node[storenode, fill=tfgPurple!13, draw=tfgPurple, right=of qdrant] (postgres) {PostgreSQL\\ciclo de vida\\y confianza};
+
+\node[memnode, fill=tfgOrange!15, draw=tfgOrange, below=16mm of qdrant, text width=4.15cm] (retrieve) {\texttt{retrieve\_knowledge}\\rewrite, fusión RRF\\rerank / CRAG};
+\node[memnode, fill=tfgLight, draw=tfgGray, right=of retrieve] (context) {Contexto filtrado\\por relevancia, confianza\\y vigencia};
+\node[memnode, fill=tfgBlue!12, draw=tfgBlue, right=of context] (agents) {Agentes futuros\\Researcher, Formalizer\\Reasoner, Builder};
+
+\draw[tfgarrow] (accepted) -- (router);
+\draw[tfgarrow] (router) -- (memoryagent);
+\draw[tfgarrow] (memoryagent) -- (consolidation);
+\draw[tfgarrow] (memoryagent.south west) -- (minio.north);
+\draw[tfgarrow] (memoryagent.south) -- (neo4j.north);
+\draw[tfgarrow] (memoryagent.south) -- (qdrant.north);
+\draw[tfgarrow] (memoryagent.south east) -- (postgres.north);
+\draw[tfgarrow] (consolidation.south) -- (postgres.north);
+\draw[tfgarrow] (neo4j.south) -- (retrieve.north west);
+\draw[tfgarrow] (qdrant.south) -- (retrieve.north);
+\draw[tfgarrow] (postgres.south) -- (retrieve.north east);
+\draw[tfgarrow] (retrieve) -- (context);
+\draw[tfgarrow] (context) -- (agents);
+\end{tikzpicture}}
+\caption{Flujo completo del sistema de memoria y recuperación.}
+\end{figure}
+
+La parte superior de la figura representa la escritura: el Router solo activa
+memoria después de una revisión aceptada, el MemoryAgent transforma el artefacto
+y los almacenes guardan piezas distintas del conocimiento. La parte inferior
+representa la lectura: \texttt{retrieve\_knowledge} combina grafo, búsqueda
+densa, BM25 y metadatos temporales para entregar contexto útil a agentes
+posteriores. Las subsecciones siguientes detallan cada componente del flujo.
 
 \subsection{Objetivo de la memoria}
 
