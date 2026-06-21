@@ -1,6 +1,30 @@
 \chapter{Introducción}
 
-\section{Problema que se resuelve}
+\section{Contexto y alcance}
+
+Este Trabajo de Fin de Grado forma parte de un proyecto más amplio: un
+laboratorio virtual para simular, observar y analizar paradigmas de toma de
+decisiones humanas mediante agentes inteligentes. El proyecto completo se
+divide en dos contribuciones complementarias. La primera, documentada en esta
+memoria, genera modelos de decisión ejecutables a partir de descripciones en
+lenguaje natural, literatura científica, formulaciones matemáticas y
+especificaciones de entorno. La segunda, desarrollada por Juan Freire Álvarez,
+se centra en la infraestructura de
+simulación, observación, análisis y reporte de esos modelos dentro del
+laboratorio virtual.
+
+La frontera entre ambas partes se definió mediante contratos e infraestructura
+compartida. Esta memoria describe la fase 1, sus agentes, artefactos,
+evaluaciones y el uso de servicios comunes como PostgreSQL, MinIO, Neo4j y
+Qdrant cuando son necesarios para persistencia, trazabilidad y memoria. No
+documenta la implementación interna de la fase de simulación, salvo en lo
+imprescindible para explicar la integración: los modelos generados deben cumplir
+un contrato común de decisión para que puedan ser cargados y ejecutados por el
+laboratorio.
+
+\section{Problema y motivación}
+
+\subsection{Problema que se resuelve}
 
 El laboratorio virtual necesita modelos de decisión que puedan actuar dentro de
 un entorno de simulación. Crear estos modelos manualmente es una tarea costosa,
@@ -29,14 +53,76 @@ combinación se apoya en líneas recientes sobre agentes con herramientas,
 sistemas multiagente, memoria persistente y generación de código
 \cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,park2023generativeagents,chen2021codex}.
 
-\section{Objetivos generales}
+\subsection{Motivación del proyecto}
+
+La toma de decisiones humanas se estudia desde teorías muy distintas: modelos
+de aprendizaje por refuerzo, teorías de utilidad, heurísticas de racionalidad
+limitada, modelos de acumulación de evidencia o mecanismos homeostáticos y
+hedónicos \cite{berthoud2011metabolic}. Esta diversidad es útil científicamente,
+pero dificulta construir un laboratorio virtual común. Dos paradigmas pueden
+explicar comportamientos similares con variables internas distintas, y dos
+formulaciones de un mismo paradigma pueden requerir reglas de actualización
+incompatibles.
+
+La motivación de esta fase es reducir esa fricción. Si el laboratorio virtual
+quiere comparar modelos de decisión, necesita un procedimiento repetible para
+pasar de literatura científica a modelos ejecutables. Ese procedimiento debe
+dejar rastro de las decisiones tomadas, separar lo que se sabe de lo que se
+asume y permitir que una persona revise los puntos donde existe ambigüedad
+científica o de diseño.
+
+El interés del proyecto no está solo en generar código. La contribución es
+construir una cadena trazable que conecte conocimiento científico, formulación
+matemática, adaptación al entorno, implementación y prueba. Esta trazabilidad es
+especialmente importante en modelado computacional de conducta, donde el
+resultado ejecutable puede parecer correcto aunque las hipótesis, los parámetros
+o las variables internas no representen bien el fenómeno que se quiere estudiar
+\cite{wilson2019modeling}.
+
+\section{Estado del arte}
+
+El proyecto se apoya en dos líneas de trabajo. La primera procede del modelado
+computacional de la decisión. Paradigmas como el aprendizaje por refuerzo
+\cite{sutton2018rl}, la teoría prospectiva \cite{kahneman1979prospect}, la
+racionalidad limitada \cite{simon1955behavioral} o los modelos de difusión de
+decisiones \cite{ratcliff1978theory} ofrecen mecanismos formales para explicar
+elección, aprendizaje, incertidumbre, recompensa o compromiso entre rapidez y
+precisión. Estos modelos son útiles para simulación, pero normalmente requieren
+trabajo experto para elegir variables, ecuaciones, parámetros, observables y
+reglas de actualización.
+
+La segunda línea procede de los sistemas recientes basados en modelos de
+lenguaje. Los agentes con herramientas permiten alternar razonamiento y acción,
+como en ReAct y Toolformer \cite{yao2023react,schick2023toolformer}. Los
+sistemas multiagente, como AutoGen o ChatDev, muestran que dividir un problema
+en roles especializados facilita flujos de trabajo largos
+\cite{wu2023autogen,qian2024chatdev}. La recuperación aumentada, la búsqueda
+densa y BM25, la fusión de rankings y CRAG permiten incorporar conocimiento
+externo o persistente durante la generación
+\cite{lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag}.
+Finalmente, los trabajos sobre generación de código y agentes de software
+muestran que los modelos actuales pueden producir programas útiles cuando el
+problema está suficientemente estructurado y existe validación ejecutable
+\cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
+
+Este trabajo combina ambas líneas. Por un lado, trata los paradigmas de decisión
+como objetos científicos que deben investigarse, formalizarse y revisarse. Por
+otro, usa agentes de lenguaje, herramientas, memoria persistente y pruebas para
+automatizar las partes repetibles de esa transformación. La diferencia respecto
+a un generador de texto convencional es que cada etapa produce artefactos
+persistentes y verificables, y la memoria del sistema solo se actualiza tras
+aceptación humana.
+
+\section{Objetivos y enfoque de la fase}
+
+\subsection{Objetivos generales}
 
 Este Trabajo de Fin de Grado se enmarca en el desarrollo de un laboratorio
 virtual para la simulación y el análisis de paradigmas de toma de decisiones
 humanas mediante agentes inteligentes. El proyecto completo se divide en dos
-fases complementarias. Esta memoria documenta la fase desarrollada por Pablo
-Pazos Parada: el sistema que genera modelos de decisión ejecutables a partir de
-descripciones en lenguaje natural y conocimiento científico.
+fases complementarias. Esta memoria documenta mi parte del proyecto: el sistema
+que genera modelos de decisión ejecutables a partir de descripciones en lenguaje
+natural y conocimiento científico.
 
 El objetivo general de esta fase es construir un sistema capaz de transformar
 un problema de decisión en un conjunto de artefactos verificables y persistentes:
@@ -56,30 +142,7 @@ se adapta al entorno y finalmente se implementa. Esta separación es importante
 porque un error bibliográfico, un error matemático, una mala adaptación al
 entorno y un bug de implementación requieren correcciones distintas.
 
-\section{Relación de la documentación}
-
-La memoria sigue la estructura de un TFG de tipo B, orientado al desarrollo de
-un sistema software. Los capítulos principales son:
-
-\begin{itemize}
-\item especificación de requisitos;
-\item diseño del sistema;
-\item desarrollo del trabajo;
-\item pruebas;
-\item conclusiones y posibles ampliaciones.
-\end{itemize}
-
-La bibliografía recoge tanto referencias técnicas de agentes y memoria como
-trabajos de recuperación aumentada, grafos de conocimiento y generación de
-código.
-
-Algunos términos técnicos se mantienen en inglés cuando son nombres habituales
-del dominio o identificadores del propio sistema, como \textit{pipeline},
-\textit{benchmark}, \textit{sparse}, \textit{dense}, \textit{run} o
-\textit{spec}. Cuando no se trata de un identificador, se usa la forma española:
-flujo, ejecución, especificación, recuperación semántica o recuperación léxica.
-
-\section{Descripción del sistema}
+\subsection{Descripción del sistema}
 
 El sistema recibe una descripción de un problema de toma de decisiones y la
 procesa mediante agentes especializados. Cada agente resuelve una parte del
@@ -88,21 +151,18 @@ continuar.
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Descripcion del problema
-        |
-        v
-Investigacion cientifica
-        |
-        v
-Formalizacion matematica
-        |
-        v
-Adaptacion al entorno
-        |
-        v
-Modelo Python + pruebas
-\end{verbatim}
+\resizebox{0.72\textwidth}{!}{%
+\begin{tikzpicture}[node distance=7mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=4.7cm] (input) {Descripción del problema};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of input, text width=4.7cm] (research) {Investigación científica};
+\node[tfgbox, fill=tfgOrange!16, draw=tfgOrange, below=of research, text width=4.7cm] (formalize) {Formalización matemática};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formalize, text width=4.7cm] (reason) {Adaptación al entorno};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of reason, text width=4.7cm] (build) {Modelo Python + pruebas};
+\draw[tfgarrow] (input) -- (research);
+\draw[tfgarrow] (research) -- (formalize);
+\draw[tfgarrow] (formalize) -- (reason);
+\draw[tfgarrow] (reason) -- (build);
+\end{tikzpicture}}
 \caption{Transformación principal del sistema desarrollado.}
 \end{figure}
 
@@ -119,27 +179,73 @@ Esta interfaz permite separar la fase de generación de modelos de la fase de
 simulación. El modelo generado no necesita heredar de una clase concreta del
 simulador; basta con que implemente los métodos esperados.
 
-\section{Información adicional de interés}
+\subsection{Combinación de técnicas actuales}
 
-El trabajo combina varias técnicas actuales:
+El trabajo no se apoya en una única técnica aislada. Su interés está en integrar
+varias líneas recientes del estado del arte dentro de un sistema software
+trazable. En la parte científica, toma como punto de partida la tradición de
+modelado computacional de la conducta y de la decisión: aprendizaje por
+refuerzo, teoría prospectiva, racionalidad limitada, modelos de difusión y
+buenas prácticas para ajustar e interpretar modelos de comportamiento
+\cite{sutton2018rl,kahneman1979prospect,simon1955behavioral,ratcliff1978theory,wilson2019modeling}.
 
-\begin{itemize}
-\item agentes de lenguaje con uso de herramientas;
-\item revisión humana entre etapas;
-\item almacenamiento de artefactos;
-\item recuperación aumentada con búsqueda densa, BM25 y grafo;
-\item memoria persistente con ciclo de vida;
-\item generación de código con pruebas automáticas.
-\end{itemize}
+En la parte de inteligencia artificial aplicada, el sistema combina agentes con
+herramientas, orquestación multiagente, recuperación aumentada, memoria
+persistente y generación de código validada por tests. El uso de herramientas se
+relaciona con ReAct y Toolformer; la división en roles especializados, con
+AutoGen y ChatDev; la recuperación de conocimiento, con RAG, DPR, BM25, RRF y
+CRAG; la memoria persistente y relacional, con MemoryBank, MemGPT, GraphRAG e
+HippoRAG; y la generación de programas, con Codex, Program Synthesis y
+SWE-agent
+\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag,zhong2023memorybank,packer2023memgpt,edge2024graphrag,gutierrez2024hipporag,chen2021codex,austin2021programsynthesis,yang2024sweagent}.
 
-El uso de agentes con herramientas se relaciona con ReAct y Toolformer; la
-división en agentes especializados, con AutoGen y ChatDev; la recuperación de
-conocimiento, con RAG, DPR, BM25, RRF y CRAG; y la generación de código, con
-Codex, Program Synthesis y SWE-agent
-\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag,chen2021codex,austin2021programsynthesis,yang2024sweagent}.
+La contribución de esta fase no consiste en proponer un nuevo algoritmo de
+aprendizaje por refuerzo, un nuevo método de recuperación o un nuevo modelo de
+lenguaje. Consiste en combinar esas ideas en una arquitectura concreta: un
+Router determinista, agentes especializados, revisión humana, artefactos
+persistentes, memoria con ciclo de vida y modelos Python probados. Esa
+combinación permite pasar de conocimiento científico a software ejecutable sin
+perder trazabilidad entre las decisiones intermedias.
+
+Esta forma de trabajo también cambia el nivel de análisis de la memoria. Al
+estar el desarrollo apoyado en agentes de código, la parte repetitiva de
+implementación, refactorización y corrección local puede automatizarse en mayor
+medida que en un proyecto software tradicional. Por ello, el interés técnico no
+está en describir decisiones de bajo nivel, diagramas de clases triviales o
+patrones de diseño ya conocidos, sino en estudiar las decisiones de alto nivel:
+arquitectura del pipeline, flujo de datos, contratos entre fases, separación de
+responsabilidades, persistencia de artefactos, memoria, evaluación y modos de
+fallo. En este contexto, la complejidad del trabajo se desplaza desde escribir
+cada pieza de código manualmente hacia diseñar un sistema capaz de coordinar
+agentes, validar sus salidas y mantener trazabilidad entre conocimiento
+científico y software ejecutable.
 
 Una característica importante del proyecto es que el propio desarrollo del
 sistema también se realizó con apoyo intensivo de agentes de programación. Esta
 metodología se describe de forma específica en el capítulo de desarrollo, porque
 afecta a la planificación, a la división de tareas, a la validación y a la forma
 de tomar decisiones de diseño.
+
+\section{Estructura de la memoria}
+
+La memoria sigue la estructura de un TFG de tipo B, orientado al desarrollo de
+un sistema software. Los capítulos principales son:
+
+\begin{itemize}
+\item especificación de requisitos;
+\item diseño del sistema;
+\item desarrollo del trabajo;
+\item pruebas;
+\item conclusiones y posibles ampliaciones;
+\item anexos técnicos, de usuario y de licencia.
+\end{itemize}
+
+La bibliografía recoge tanto referencias técnicas de agentes y memoria como
+trabajos de recuperación aumentada, grafos de conocimiento y generación de
+código.
+
+Algunos términos técnicos se mantienen en inglés cuando son nombres habituales
+del dominio o identificadores del propio sistema, como \textit{pipeline},
+\textit{benchmark}, \textit{sparse}, \textit{dense}, \textit{run} o
+\textit{spec}. Cuando no se trata de un identificador, se usa la forma española:
+flujo, ejecución, especificación, recuperación semántica o recuperación léxica.

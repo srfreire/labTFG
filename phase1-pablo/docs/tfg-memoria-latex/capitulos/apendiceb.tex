@@ -1,19 +1,135 @@
 \chapter{Manual de usuario}
 
-\section{Uso general}
+Este anexo describe el uso funcional de la fase 1 desde el punto de vista de una
+persona que quiere generar modelos de decisión para el laboratorio virtual. No
+se asume conocimiento interno de los agentes, aunque sí familiaridad básica con
+la ejecución de comandos.
 
-El usuario inicia una ejecución proporcionando una descripción del problema de
-toma de decisiones. El sistema genera investigación, formulaciones,
-especificaciones y modelos en etapas sucesivas.
+\section{Objetivo del flujo}
 
-\section{Revisiones}
+El usuario proporciona una descripción del problema de decisión. El sistema
+responde con una cadena de artefactos revisables:
 
-En los puntos de revisión, el usuario debe aprobar o rechazar artefactos. La
-revisión es importante porque determina qué conocimiento puede pasar a memoria.
+\begin{figure}[H]
+\centering
+\resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[node distance=6mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.5cm] (problem) {Problema};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of problem, text width=3.5cm] (paradigms) {Paradigmas científicos};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of paradigms, text width=3.5cm] (formulas) {Formulaciones matemáticas};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formulas, text width=3.5cm] (specs) {Specs adaptadas al entorno};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, left=of specs, text width=3.5cm] (models) {Modelos Python y tests};
+\draw[tfgarrow] (problem) -- (paradigms);
+\draw[tfgarrow] (paradigms) -- (formulas);
+\draw[tfgarrow] (formulas) -- (specs);
+\draw[tfgarrow] (specs) -- (models);
+\end{tikzpicture}}
+\caption{Cadena de artefactos revisables para el usuario.}
+\end{figure}
 
-\section{Modelo generado}
+El usuario no debe tratar la salida como una respuesta final cerrada. El valor
+del sistema está en que cada etapa puede revisarse, corregirse o repetirse.
 
-Un modelo aceptado puede ser usado por el laboratorio virtual si implementa:
+\section{Inicio de una ejecución}
+
+Una ejecución se inicia con una descripción en lenguaje natural. Conviene que la
+descripción indique:
+
+\begin{itemize}
+\item qué tipo de decisión se quiere simular;
+\item qué contexto o dominio se desea estudiar;
+\item si interesa comparar varios paradigmas;
+\item qué restricciones o comportamientos esperados son importantes.
+\end{itemize}
+
+Ejemplo de entrada:
+
+\begin{verbatim}
+Foraging under reward uncertainty.
+Compare reinforcement learning and optimal foraging.
+The agent moves from local perception and updates from rewards.
+\end{verbatim}
+
+\section{Revisión de investigación}
+
+La primera revisión aparece tras la investigación. El sistema propone paradigmas
+científicos y conserva informes profundos por paradigma. El usuario debe revisar
+si:
+
+\begin{itemize}
+\item los paradigmas son relevantes para el problema;
+\item falta algún paradigma importante;
+\item alguno es demasiado general, demasiado específico o incorrecto;
+\item las referencias y postulados son razonables.
+\end{itemize}
+
+Solo los paradigmas aprobados continúan. Si falta uno, se puede pedir al sistema
+que amplíe la investigación antes de formalizar.
+
+\section{Revisión de formulaciones}
+
+Para cada paradigma aprobado, el sistema genera varias formulaciones
+matemáticas. El usuario debe escoger las que quiere convertir en modelos
+ejecutables. Para decidir, conviene mirar:
+
+\begin{itemize}
+\item variables internas propuestas;
+\item parámetros necesarios;
+\item reglas de actualización;
+\item facilidad de adaptación al entorno;
+\item diferencia real entre formulaciones alternativas.
+\end{itemize}
+
+No todas las formulaciones generadas tienen que implementarse. La revisión sirve
+para evitar que variantes débiles o redundantes pasen a Reasoner.
+
+\section{Especificación del entorno}
+
+Antes de generar specs implementables, el sistema necesita una especificación
+del entorno. Esta especificación define acciones, percepción, recursos,
+recompensas y restricciones. Un ejemplo mínimo tiene esta forma:
+
+\begin{verbatim}
+{
+  "grid_width": 10,
+  "grid_height": 10,
+  "actions": ["up", "down", "left", "right", "stay", "eat"],
+  "perception_keys": [
+    "x", "y", "grid_width", "grid_height",
+    "step", "resources", "last_action_result"
+  ],
+  "resources": {
+    "food": {
+      "fields": ["x", "y", "amount"]
+    }
+  }
+}
+\end{verbatim}
+
+El Reasoner trata este archivo como fuente autoritativa. Si una formulación
+necesita una variable no observable, el sistema debe derivarla de la percepción
+o declarar la spec inválida.
+
+\section{Revisión de specs del Reasoner}
+
+El Reasoner produce especificaciones JSON que el Builder puede convertir en
+código. El usuario debe revisar:
+
+\begin{itemize}
+\item que las acciones existan en el entorno;
+\item que las variables internas estén definidas;
+\item que las reglas de actualización sean concretas;
+\item que los comportamientos esperados sean comprobables;
+\item que la adaptación no cambie el significado científico de la formulación.
+\end{itemize}
+
+Si el problema está en la formulación, conviene volver a Formalizer. Si el
+problema está en la adaptación al entorno, basta con repetir Reasoner.
+
+\section{Revisión de modelos generados}
+
+El Builder genera un archivo de modelo y un archivo de pruebas. El modelo debe
+implementar:
 
 \begin{lstlisting}[language=Python]
 def decide(self, perception: dict) -> Action
@@ -21,8 +137,72 @@ def update(self, action, reward, new_perception) -> None
 def get_state(self) -> dict
 \end{lstlisting}
 
-\section{Errores}
+El usuario debe comprobar que:
 
-Si falla un servicio opcional de memoria, la ejecución puede continuar en modo
-degradado. Si fallan PostgreSQL o MinIO, la ejecución no puede completarse
-correctamente porque son necesarios para persistencia y artefactos.
+\begin{itemize}
+\item \texttt{decide} elige acciones sin mutar estado;
+\item \texttt{update} concentra los cambios internos tras recibir recompensa;
+\item \texttt{get\_state} expone variables interpretables;
+\item las pruebas generadas cubren los comportamientos esperados;
+\item el modelo no depende de librerías externas ni de clases internas del simulador.
+\end{itemize}
+
+Si el modelo falla tests o no respeta el contrato, se puede repetir la etapa
+Builder. Si la causa es una mala spec, se debe volver a Reasoner.
+
+\section{Interpretación de artefactos}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4cm}|>{\raggedright\arraybackslash}p{8.2cm}|} \hline
+\textbf{Artefacto} & \textbf{Cómo interpretarlo} \\ \hline
+\texttt{report.md} & Resumen de investigación y paradigmas candidatos. \\ \hline
+\texttt{deep/<paradigm>.md} & Informe científico profundo de un paradigma concreto. \\ \hline
+\texttt{formulations/*.md} & Variantes matemáticas propuestas para cada paradigma. \\ \hline
+\texttt{env\_spec.json} & Descripción del entorno usada por Reasoner. \\ \hline
+\texttt{reasoner/*.json} & Contrato estructurado que Builder traduce a Python. \\ \hline
+\texttt{builder/*\_model.py} & Modelo ejecutable generado. \\ \hline
+\texttt{builder/test\_*.py} & Pruebas automáticas del modelo generado. \\ \hline
+\texttt{trace.jsonl} & Registro de herramientas, tiempos y acciones internas. \\ \hline
+\end{tabular}
+\caption{Lectura de artefactos principales.}
+\end{center}
+\end{table}
+
+\section{Uso de la memoria}
+
+Cuando la memoria está disponible, los agentes pueden consultar conocimiento de
+ejecuciones previas mediante \texttt{retrieve\_knowledge}. El usuario no tiene
+que invocar esta herramienta manualmente. Su papel es revisar qué artefactos se
+aceptan, porque solo los artefactos aprobados pasan a memoria.
+
+Este diseño evita que un borrador rechazado condicione ejecuciones futuras. La
+memoria debe entenderse como una base de conocimiento curada por revisión, no
+como un historial completo de todas las respuestas de los modelos.
+
+\section{Errores habituales}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4cm}|>{\raggedright\arraybackslash}p{8.2cm}|} \hline
+\textbf{Situación} & \textbf{Acción recomendada} \\ \hline
+Falta PostgreSQL o MinIO & Levantar infraestructura. Sin estos servicios no hay persistencia fiable de estado ni artefactos. \\ \hline
+Falta Neo4j, Qdrant o embeddings & Continuar en modo degradado si solo se necesita generación. Para memoria avanzada, levantar servicios o configurar claves. \\ \hline
+Paradigma incorrecto & Rechazar en revisión de investigación y pedir ampliar o corregir. \\ \hline
+Formulación poco implementable & Rechazar formulación y seleccionar otra variante. \\ \hline
+Spec usa acciones inexistentes & Repetir Reasoner con una especificación de entorno corregida. \\ \hline
+Modelo falla tests & Repetir Builder si la spec es correcta; repetir Reasoner si la spec era ambigua. \\ \hline
+\end{tabular}
+\caption{Problemas habituales y resolución.}
+\end{center}
+\end{table}
+
+\section{Resultado final esperado}
+
+Una ejecución satisfactoria produce al menos un modelo Python autocontenido y
+sus pruebas. Ese modelo queda preparado para ser usado por el laboratorio
+virtual siempre que implemente el contrato \texttt{DecisionModel}. El modelo
+final no debe interpretarse de forma aislada: su valor está unido al informe,
+la formulación, la spec, las pruebas y las trazas que explican cómo se obtuvo.

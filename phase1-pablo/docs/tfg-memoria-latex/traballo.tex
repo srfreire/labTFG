@@ -12,7 +12,44 @@
 \usepackage{url}
 \usepackage{xurl}
 \usepackage{enumitem}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
+
+\definecolor{tfgBlue}{HTML}{1F77B4}
+\definecolor{tfgGreen}{HTML}{2CA02C}
+\definecolor{tfgOrange}{HTML}{FF7F0E}
+\definecolor{tfgRed}{HTML}{D62728}
+\definecolor{tfgPurple}{HTML}{9467BD}
+\definecolor{tfgGray}{HTML}{4D4D4D}
+\definecolor{tfgLight}{HTML}{F6F8FA}
+
+\tikzset{
+  tfgbox/.style={
+    rectangle,
+    rounded corners=2pt,
+    draw=tfgGray,
+    thick,
+    fill=tfgLight,
+    align=center,
+    font=\small,
+    minimum height=9mm,
+    text width=3.2cm
+  },
+  tfgsmallbox/.style={
+    tfgbox,
+    font=\scriptsize,
+    minimum height=7mm,
+    text width=2.5cm
+  },
+  tfgarrow/.style={
+    -{Latex[length=2.2mm]},
+    thick,
+    draw=tfgGray
+  }
+}
 
 \lstset{
   basicstyle=\ttfamily\small,
@@ -56,6 +93,13 @@
 \include{capitulos/cap4}
 \cleardoublepage
 \include{capitulos/conclusions}
+\cleardoublepage
+\appendix
+\include{capitulos/apendicea}
+\cleardoublepage
+\include{capitulos/apendiceb}
+\cleardoublepage
+\include{capitulos/licenza}
 \cleardoublepage
 \include{capitulos/bibliografia}
 

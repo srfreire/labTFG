@@ -1,6 +1,8 @@
 \chapter{Desarrollo del trabajo}
 
-\section{Metodología general}
+\section{Metodología de desarrollo con agentes}
+
+\subsection{Metodología general}
 
 El desarrollo de este sistema no siguió un flujo tradicional basado
 principalmente en programación manual. Se utilizó una metodología apoyada en
@@ -27,7 +29,7 @@ flujo empleado sitúa al humano como \textit{human-in-the-loop} para decisiones
 de diseño y a los agentes como ejecutores principales de las tareas de
 programación.
 
-\section{Planificación con Linear}
+\subsection{Planificación con Linear}
 
 Al tratarse de un proyecto desarrollado por dos personas, una parte importante
 del trabajo fue planificar correctamente las tareas compartidas, especialmente
@@ -37,24 +39,21 @@ El flujo fue el siguiente:
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Idea inicial
-   |
-   v
-Especificacion tecnica iterada con Codex
-   |
-   v
-Diseno y fases del proyecto en Linear
-   |
-   v
-Tareas con criterios de aceptacion
-   |
-   v
-Ejecucion autonoma con agentes
-   |
-   v
-Revision humana y nuevas decisiones
-\end{verbatim}
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[node distance=7mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.2cm] (idea) {Idea inicial};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of idea, text width=5.2cm] (spec) {Especificación técnica\\iterada con Codex};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of spec, text width=5.2cm] (linear) {Diseño y fases\\del proyecto en Linear};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of linear, text width=5.2cm] (tasks) {Tareas con criterios\\de aceptación};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of tasks, text width=5.2cm] (agents) {Ejecución autónoma\\con agentes};
+\node[tfgbox, fill=tfgLight, draw=tfgGray, below=of agents, text width=5.2cm] (review) {Revisión humana\\y nuevas decisiones};
+\draw[tfgarrow] (idea) -- (spec);
+\draw[tfgarrow] (spec) -- (linear);
+\draw[tfgarrow] (linear) -- (tasks);
+\draw[tfgarrow] (tasks) -- (agents);
+\draw[tfgarrow] (agents) -- (review);
+\draw[tfgarrow, dashed] (review.east) -- ++(13mm,0) |- (spec.east);
+\end{tikzpicture}}
 \caption{Flujo de planificación y ejecución del desarrollo.}
 \end{figure}
 
@@ -71,7 +70,7 @@ criterios de aceptación, validación estructural y pruebas ejecutables, una
 decisión coherente con la evaluación funcional de código generado y con enfoques
 de generación restringida \cite{chen2021codex,scholak2021picard}.
 
-\section{División del trabajo entre agentes}
+\subsection{División del trabajo entre agentes}
 
 El proyecto utilizó agentes distintos para tipos de tareas distintos:
 
@@ -90,7 +89,7 @@ distintos. En backend era especialmente importante respetar contratos,
 persistencia, pruebas y límites entre fases. En frontend era importante mantener
 coherencia visual, ergonomía e interacción.
 
-\section{Criterios de aceptación}
+\subsection{Criterios de aceptación}
 
 Cada tarea se redactó con criterios de aceptación concretos. Un criterio de
 aceptación debía indicar qué comportamiento debía existir, cómo validarlo y qué
@@ -109,7 +108,9 @@ Ejemplos de criterios usados en este proyecto fueron:
 Estos criterios permitieron que los agentes trabajasen con autonomía y, al
 mismo tiempo, que el resultado fuese verificable.
 
-\section{Identificación de gaps de diseño}
+\section{Supervisión humana y gestión de incertidumbre}
+
+\subsection{Identificación de gaps de diseño}
 
 Un punto importante del flujo fue permitir que los propios agentes identificasen
 gaps de diseño. Cuando durante una implementación aparecía una decisión no
@@ -131,24 +132,21 @@ De esta forma, los agentes no solo escribieron código, sino que ayudaron a
 descubrir incertidumbre técnica. La decisión final, sin embargo, permaneció en
 manos humanas.
 
-\section{Human-in-the-loop}
+\subsection{Human-in-the-loop}
 
 El flujo de trabajo adoptado puede resumirse así:
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Humano
-  define arquitectura, prioridades y decisiones ambiguas
-        |
-        v
-Agentes
-  implementan, prueban, refactorizan y detectan gaps
-        |
-        v
-Humano
-  revisa resultados y decide nuevos criterios
-\end{verbatim}
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=9mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=6.2cm] (human1) {Humano\\arquitectura, prioridades\\y decisiones ambiguas};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of human1, text width=6.2cm] (agents) {Agentes\\implementan, prueban, refactorizan\\y detectan gaps};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of agents, text width=6.2cm] (human2) {Humano\\revisa resultados\\y decide nuevos criterios};
+\draw[tfgarrow] (human1) -- node[right, font=\scriptsize] {criterios} (agents);
+\draw[tfgarrow] (agents) -- node[right, font=\scriptsize] {evidencia} (human2);
+\draw[tfgarrow, dashed] (human2.east) -- ++(16mm,0) |- node[pos=0.25, right, font=\scriptsize] {feedback} (human1.east);
+\end{tikzpicture}}
 \caption{Modelo de colaboración humano-agente usado en el desarrollo.}
 \end{figure}
 

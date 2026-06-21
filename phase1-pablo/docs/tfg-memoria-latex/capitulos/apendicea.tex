@@ -1,6 +1,11 @@
 \chapter{Manual técnico}
 
-\section{Estructura relevante}
+Este anexo resume la instalación, estructura y operación técnica de la fase 1.
+No documenta la implementación interna de la fase de simulación; solo menciona
+la infraestructura compartida que la fase 1 utiliza para persistencia,
+artefactos y memoria.
+
+\section{Estructura relevante del repositorio}
 
 \begin{verbatim}
 phase1-pablo/
@@ -8,44 +13,185 @@ phase1-pablo/
     agents/
     knowledge/
     runtime/
+    tools/
+    eval/
     router.py
-  docs/
-    formal-documentation/
-    tfg-memoria-latex/
+  examples/sample-run/
+  evals/
+    suites/
+    fixtures/
+  docs/tfg-memoria-latex/
 
 shared/
   shared/
-    services.py
-    models.py
-    storage.py
-    database.py
-    knowledge_graph.py
-    vector_store.py
+    services.py          # contenedor de dependencias
+    settings.py          # variables de entorno
+    database.py          # PostgreSQL
+    storage.py           # MinIO/S3
+    knowledge_graph.py   # Neo4j
+    vector_store.py      # Qdrant
+    embedding.py         # Voyage/ZeroEntropy
+    models.py            # ORM compartido
 \end{verbatim}
 
-\section{Servicios}
+\section{Servicios requeridos y opcionales}
 
-La ejecución completa requiere PostgreSQL y MinIO. Neo4j, Qdrant, embeddings y
-reranking aportan memoria avanzada y recuperación, pero el pipeline puede
-degradar si alguno de estos servicios opcionales no está disponible.
+La fase 1 distingue entre servicios necesarios para una ejecución normal y
+servicios opcionales que enriquecen la memoria.
 
-\section{Comandos}
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3cm}|p{3cm}|p{6.3cm}|} \hline
+\textbf{Servicio} & \textbf{Carácter} & \textbf{Uso en fase 1} \\ \hline
+PostgreSQL & Requerido & Metadatos de runs, artefactos, modelos registrados y ciclo de vida de memorias. \\ \hline
+MinIO & Requerido & Almacenamiento S3-compatible de informes, specs, código, tests, estado y trazas. \\ \hline
+Neo4j & Opcional & Grafo de conocimiento con paradigmas, papers, variables, postulados, formulaciones y modelos. \\ \hline
+Qdrant & Opcional & Recuperación de hechos mediante embeddings densos y BM25 nativo. \\ \hline
+Voyage AI & Opcional & Embeddings de documentos y consultas. \\ \hline
+ZeroEntropy & Opcional & Reranking de resultados recuperados. \\ \hline
+\end{tabular}
+\caption{Servicios usados por la fase 1.}
+\end{center}
+\end{table}
 
-Para levantar infraestructura desde la raíz del repositorio:
+El contenedor \texttt{Services} encapsula estas dependencias. PostgreSQL y MinIO
+son necesarios para persistir estado y artefactos. Neo4j, Qdrant y embeddings
+pueden no estar disponibles; en ese caso el pipeline se ejecuta en modo
+degradado, sin memoria avanzada ni recuperación aumentada.
+
+\section{Variables de entorno}
+
+Las variables principales se leen desde \texttt{shared/shared/settings.py}. En
+desarrollo existen valores por defecto para servicios locales:
 
 \begin{verbatim}
-docker compose up -d
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=labtfg
+POSTGRES_DSN=postgresql+asyncpg://.../labtfg
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=labtfg00
+QDRANT_URL=http://localhost:6333
+VOYAGE_API_KEY=
+ZEROENTROPY_API_KEY=
 \end{verbatim}
 
-Para ejecutar pruebas Python:
+La configuración de modelos de lenguaje se gestiona desde la configuración de
+\texttt{decisionlab}. En despliegue se usan variables de entorno del proveedor
+correspondiente, como Anthropic u OpenRouter.
+
+\section{Arranque de infraestructura}
+
+Desde la raíz del repositorio, el stack común se levanta con:
+
+\begin{verbatim}
+docker compose up -d postgres minio neo4j qdrant
+\end{verbatim}
+
+Para levantar también el servidor de fase 1:
+
+\begin{verbatim}
+docker compose up -d phase1-server
+\end{verbatim}
+
+El \texttt{docker-compose.yml} de la raíz define PostgreSQL, MinIO, Neo4j,
+Qdrant y el servidor de fase 1. La fase 1 recibe las URLs y credenciales de esos
+servicios por variables de entorno.
+
+\section{Ejecución desde CLI}
+
+El proyecto usa \texttt{uv} para Python. Desde \texttt{phase1-pablo/}, los
+comandos habituales son:
+
+\begin{verbatim}
+uv run decisionlab --help
+uv run decisionlab pipeline "Problema de toma de decisiones"
+uv run decisionlab eval run evals/suites/smoke.yaml
+uv run decisionlab eval run evals/suites/full-pipeline.yaml
+\end{verbatim}
+
+Las suites caras ejecutan agentes reales y pueden consumir presupuesto de
+proveedor. Las suites offline validan propiedades de memoria sin llamadas a
+modelos.
+
+\section{Artefactos generados}
+
+La fase 1 genera artefactos por ejecución. En una ejecución real se almacenan en
+MinIO con prefijos asociados al \texttt{run\_id}; en la ejecución de ejemplo del
+repositorio aparecen materializados en \texttt{examples/sample-run/}.
+
+\begin{verbatim}
+report.md
+deep/<paradigm>.md
+formulations/<paradigm>.md
+env_spec.json
+reasoner/<paradigm>_<formulation>.json
+builder/<paradigm>_<formulation>_model.py
+builder/test_<paradigm>_<formulation>.py
+pipeline_state.json
+trace.jsonl
+\end{verbatim}
+
+El estado del pipeline permite reanudar la ejecución. Las trazas permiten
+reconstruir herramientas llamadas, tiempos, errores y artefactos producidos.
+
+\section{Ejecución de pruebas}
+
+Las pruebas Python se ejecutan con:
 
 \begin{verbatim}
 uv run pytest
 \end{verbatim}
 
-Para compilar la memoria:
+Las pruebas de la fase 1 cubren agentes, herramientas, runtime, Router, sistema
+de memoria, retrieval, eval harness, servidor y contrato de modelo. Las pruebas
+de \texttt{shared/tests/} cubren infraestructura común: settings, storage,
+PostgreSQL, Neo4j, Qdrant, embeddings y ciclo de vida de memorias.
+
+\section{Evals disponibles}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{4.2cm}|p{2.2cm}|p{5.7cm}|} \hline
+\textbf{Suite} & \textbf{Tipo} & \textbf{Objetivo} \\ \hline
+\texttt{smoke} & Online & Comprueba arranque básico del Researcher. \\ \hline
+\texttt{full-pipeline} & Online & Ejecuta research, formalize, reason y build, y valida modelos importables. \\ \hline
+\texttt{canonicalization} & Online & Comprueba reutilización de slugs canónicos. \\ \hline
+\texttt{slug-accuracy} & Online & Mide acierto de slugs contra oráculo. \\ \hline
+\texttt{memory-retrieval} & Online & Comprueba recuperación de paradigmas ya presentes. \\ \hline
+\texttt{retrieval-quality} & Mixta & Siembra hechos y verifica que se recuperan en top-k. \\ \hline
+\texttt{temporal-correctness} & Offline & Valida fechas de validez y cadenas de supersesión. \\ \hline
+\texttt{cumulative-growth} & Online & Evalúa crecimiento acumulativo y control de duplicados. \\ \hline
+\end{tabular}
+\caption{Suites de evaluación disponibles.}
+\end{center}
+\end{table}
+
+\section{Modos de fallo y degradación}
+
+Si PostgreSQL o MinIO fallan, la ejecución no puede completarse correctamente:
+son necesarios para metadatos, estado y artefactos. Si Neo4j, Qdrant o los
+servicios de embeddings no están disponibles, el sistema puede seguir
+generando modelos, pero se desactivan o reducen la recuperación de conocimiento
+y la escritura de memoria avanzada.
+
+Los fallos de un subagente no tienen por qué invalidar todo el pipeline. En las
+etapas con fan-out, como Formalizer, Reasoner y Builder, el sistema recoge
+errores por unidad de trabajo. Esto permite conservar resultados válidos aunque
+una formulación o spec concreta falle.
+
+\section{Compilación de la memoria}
+
+La memoria se compila desde \texttt{docs/tfg-memoria-latex/} con:
 
 \begin{verbatim}
 pdflatex traballo.tex
 pdflatex traballo.tex
 \end{verbatim}
+
+La doble ejecución actualiza correctamente índice, lista de figuras y lista de
+tablas.

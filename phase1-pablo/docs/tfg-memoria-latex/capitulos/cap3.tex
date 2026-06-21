@@ -1,6 +1,6 @@
 \chapter{Diseño}
 
-\section{Visión general}
+\section{Visión arquitectónica}
 
 El sistema se diseñó como un pipeline de generación científica y software. Su
 entrada es una descripción en lenguaje natural de un problema de toma de
@@ -18,27 +18,29 @@ agentes con herramientas y colaboración entre agentes, donde el razonamiento se
 descompone en tareas con responsabilidades acotadas
 \cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev}.
 
+Por la naturaleza del trabajo, este capítulo prioriza diagramas de arquitectura,
+flujo de datos y decisiones lógicas de alto nivel. La implementación contiene
+clases, servicios y módulos, pero el interés principal no está en enumerar un
+diagrama de clases de bajo nivel, sino en explicar cómo se coordinan los agentes,
+qué contratos conectan cada fase, dónde se persisten los artefactos, cómo se
+recupera conocimiento y qué ocurre cuando una salida debe revisarse o repetirse.
+El uso de agentes de código desplaza parte del esfuerzo desde la escritura
+manual de piezas locales hacia el diseño y control de un sistema más amplio.
+
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Usuario / CLI / Web / Evaluaciones
-        |
-        v
-   +---------+
-   | Router  |
-   | estados |
-   | review  |
-   | trazas  |
-   +----+----+
-        |
-  +-----+-------------+----------------+
-  |                   |                |
-  v                   v                v
-Agentes          Artefactos          Memoria
-R/F/R/B          MinIO + PG          Neo4j + Qdrant + PG
-subagentes       estado/trazas       recuperación
-herramientas     modelos             ciclo de vida
-\end{verbatim}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=9mm and 10mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.1cm] (entry) {Usuario / CLI / Web / Evaluaciones};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of entry, text width=4.3cm] (router) {Router\\estados, revisión\\trazas};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below left=15mm and 18mm of router, text width=3.9cm] (agents) {Agentes\\Researcher\\Formalizer\\Reasoner\\Builder};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=15mm of router, text width=3.9cm] (artifacts) {Artefactos\\MinIO + PostgreSQL\\estado, trazas\\modelos};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below right=15mm and 18mm of router, text width=3.9cm] (memory) {Memoria\\Neo4j + Qdrant\\ciclo de vida};
+\draw[tfgarrow] (entry) -- (router);
+\draw[tfgarrow] (router) -- (agents);
+\draw[tfgarrow] (router) -- (artifacts);
+\draw[tfgarrow] (router) -- (memory);
+\end{tikzpicture}}
 \caption{Arquitectura lógica del sistema.}
 \end{figure}
 
@@ -48,7 +50,7 @@ validaciones, revisión humana y persistencia. El diseño busca que cada etapa
 produzca algo inspeccionable y que los errores puedan localizarse en el nivel
 correcto.
 
-\section{Problema de diseño}
+\subsection{Problema de diseño}
 
 El problema no es solo generar código, sino transformar conocimiento científico
 en comportamiento simulado. Esa transformación tiene varios cambios de
@@ -56,21 +58,18 @@ representación:
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Problema en lenguaje natural
-        |
-        v
-Paradigmas cientificos relevantes
-        |
-        v
-Formulaciones matematicas
-        |
-        v
-Especificaciones adaptadas al entorno
-        |
-        v
-Modelos Python + pruebas
-\end{verbatim}
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[node distance=5mm and 8mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.8cm] (problem) {Problema en lenguaje natural};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of problem, text width=3.8cm] (paradigms) {Paradigmas científicos};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of paradigms, text width=3.8cm] (formulas) {Formulaciones matemáticas};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formulas, text width=3.8cm] (specs) {Specs adaptadas al entorno};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, left=of specs, text width=3.8cm] (models) {Modelos Python + pruebas};
+\draw[tfgarrow] (problem) -- (paradigms);
+\draw[tfgarrow] (paradigms) -- (formulas);
+\draw[tfgarrow] (formulas) -- (specs);
+\draw[tfgarrow] (specs) -- (models);
+\end{tikzpicture}}
 \caption{Transformación conceptual del pipeline.}
 \end{figure}
 
@@ -83,7 +82,9 @@ un único agente, sería difícil saber si un fallo procede de una mala fuente
 bibliográfica, una formulación incoherente, una mala adaptación al entorno o un
 bug en Python.
 
-\section{Router y máquina de estados}
+\section{Orquestación del pipeline}
+
+\subsection{Router y máquina de estados}
 
 El Router es el coordinador central. Se implementa como una máquina de estados
 explícita, no como una planificación libre de un LLM. Esta decisión permite
@@ -92,15 +93,42 @@ la escritura de memoria solo después de que una salida haya sido aceptada.
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-CLASSIFY_UMBRELLA
-  -> RESEARCH -> REVIEW_RESEARCH -> MEMORY_RESEARCH
-  -> FORMALIZE -> REVIEW_FORMALIZE -> MEMORY_FORMALIZE
-  -> GET_ENV_SPEC
-  -> REASON -> REVIEW_REASON -> MEMORY_REASON
-  -> BUILD -> REVIEW_BUILD -> MEMORY_BUILD
-  -> DONE
-\end{verbatim}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=8mm and 7mm]
+\node[tfgsmallbox, fill=tfgBlue!12, draw=tfgBlue] (c) {CLASSIFY};
+\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, right=of c] (r) {RESEARCH};
+\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of r] (rr) {REVIEW};
+\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rr] (mr) {MEMORY};
+
+\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of r] (f) {FORMALIZE};
+\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of f] (rf) {REVIEW};
+\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rf] (mf) {MEMORY};
+\node[tfgsmallbox, fill=tfgBlue!12, draw=tfgBlue, below=of f] (env) {GET ENV};
+
+\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of env] (reason) {REASON};
+\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of reason] (rreason) {REVIEW};
+\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rreason] (mreason) {MEMORY};
+
+\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of reason] (build) {BUILD};
+\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of build] (rbuild) {REVIEW};
+\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rbuild] (mbuild) {MEMORY};
+\node[tfgsmallbox, fill=tfgRed!10, draw=tfgRed, right=of mbuild] (done) {DONE};
+
+\draw[tfgarrow] (c) -- (r);
+\draw[tfgarrow] (r) -- (rr);
+\draw[tfgarrow] (rr) -- (mr);
+\draw[tfgarrow] (r) -- (f);
+\draw[tfgarrow] (f) -- (rf);
+\draw[tfgarrow] (rf) -- (mf);
+\draw[tfgarrow] (f) -- (env);
+\draw[tfgarrow] (env) -- (reason);
+\draw[tfgarrow] (reason) -- (rreason);
+\draw[tfgarrow] (rreason) -- (mreason);
+\draw[tfgarrow] (reason) -- (build);
+\draw[tfgarrow] (build) -- (rbuild);
+\draw[tfgarrow] (rbuild) -- (mbuild);
+\draw[tfgarrow] (mbuild) -- (done);
+\end{tikzpicture}}
 \caption{Máquina de estados simplificada.}
 \end{figure}
 
@@ -116,7 +144,7 @@ Además, emite trazas de agentes, herramientas y artefactos. Esto permite
 reconstruir qué ocurrió en una ejecución concreta y continuar desde el estado
 persistido si el proceso se interrumpe.
 
-\section{Por qué hay cuatro agentes principales}
+\subsection{Por qué hay cuatro agentes principales}
 
 El sistema tiene cuatro agentes principales de generación:
 \textit{Researcher}, \textit{Formalizer}, \textit{Reasoner} y
@@ -144,9 +172,11 @@ entorno usa acciones inexistentes, se corrige el Reasoner. Si el código falla,
 se corrige el Builder. Un agente monolítico mezclaría estos niveles y haría más
 difícil diagnosticar los errores.
 
-\section{Workflow de agentes}
+\section{Agentes, subagentes y herramientas}
 
-\subsection{Classifier}
+\subsection{Workflow de agentes}
+
+\subsubsection{Classifier}
 
 Antes de lanzar la investigación completa, el sistema ejecuta un clasificador
 ligero. Su función es intentar asociar el problema a un paradigma canónico ya
@@ -159,7 +189,7 @@ El Classifier no produce un artefacto principal. Su salida se usa como señal
 interna para orientar al Researcher y para reducir duplicados de identidad en la
 memoria.
 
-\subsection{Researcher y DeepResearcher}
+\subsubsection{Researcher y DeepResearcher}
 
 El Researcher es el agente que mantiene la visión científica de conjunto. Su
 responsabilidad no es escribir una monografía completa dentro de una sola
@@ -207,12 +237,13 @@ La emisión final queda restringida a esos slugs o a la marca
 \texttt{\_\_NEW\_\_}. Si aparece un paradigma nuevo, el sistema lo pasa por una
 fase de canonicalización antes de materializarlo en memoria. Esto evita que una
 misma familia científica aparezca fragmentada como múltiples nombres casi
-equivalentes. La decisión de restringir salidas mediante esquemas y validación
-estructural comparte el objetivo de trabajos sobre generación restringida, aunque
-el sistema lo implementa con Pydantic y validaciones propias
+equivalentes. La decisión se inspira de forma general en la generación
+restringida: comparte el objetivo de acotar salidas antes de que se propaguen,
+aunque aquí la restricción se implementa mediante esquemas, uso de herramientas,
+Pydantic y validaciones propias
 \cite{scholak2021picard}.
 
-\subsection{Formalizer}
+\subsubsection{Formalizer}
 
 El Formalizer recibe los paradigmas aprobados y genera formulaciones
 matemáticas. En esta etapa el componente principal funciona como un orquestador
@@ -243,7 +274,7 @@ Tras esta etapa, el humano selecciona qué formulaciones merecen continuar. Esta
 selección es importante porque no todas las variantes generadas son igual de
 útiles o implementables.
 
-\subsection{Reasoner}
+\subsubsection{Reasoner}
 
 El Reasoner adapta las formulaciones seleccionadas al entorno de simulación. Su
 entrada no es solo la formulación matemática, sino también el archivo
@@ -282,7 +313,7 @@ Si una formulación no es válida, el Reasoner no fuerza una implementación:
 escribe un informe JSON con \texttt{status: "invalid"} y una lista de problemas.
 Así el fallo queda documentado en el nivel correcto.
 
-\subsection{Builder}
+\subsubsection{Builder}
 
 El Builder traduce especificaciones JSON aprobadas a modelos Python. El Builder
 principal también es un orquestador programático: toma las especificaciones
@@ -308,7 +339,7 @@ lógica de decisión es ambigua, si usa claves de percepción inexistentes o si 
 comportamientos esperados no son testeables, guarda un informe de validación en
 lugar de producir código defectuoso.
 
-\section{Uso de subagentes}
+\subsection{Uso de subagentes}
 
 Los subagentes se usan en las etapas donde existen unidades de trabajo
 independientes. Un paradigma puede formalizarse sin esperar a otro; una
@@ -318,10 +349,10 @@ especificación puede implementarse sin cargar todo el historial del pipeline.
 La motivación principal es el control del contexto. Hay dos problemas que
 aparecen si todo se resuelve con un único agente: la ventana de contexto del
 agente grande se llena con informes, formulaciones, specs y código; y, además,
-el contexto del agente que trabaja una tarea queda contaminado por temas no
-relacionados. Si el mismo agente investiga dos paradigmas, puede acabar
-incluyendo en el artefacto de uno supuestos, autores o variables del otro. La
-división por subagentes evita ambas cosas: el agente padre conserva solo
+aumenta el riesgo de que una tarea incorpore información de otra rama no
+relacionada. Si el mismo agente investiga dos paradigmas, esa mezcla puede
+aparecer como supuestos, autores o variables fuera de lugar. La división por
+subagentes reduce ambas cosas: el agente padre conserva solo
 resúmenes y rutas de artefactos, y cada subagente mantiene una memoria de
 trabajo centrada en una única unidad conceptual.
 
@@ -357,7 +388,7 @@ Esta es una diferencia importante frente a un único agente grande. El objetivo
 no es solo reducir tiempo, sino mantener límites claros entre artefactos y
 evitar que errores de una rama contaminen el resto de la ejecución.
 
-\section{Herramientas de los agentes}
+\subsection{Herramientas de los agentes}
 
 Los agentes no actúan únicamente con texto. Cada uno dispone de herramientas
 limitadas a su responsabilidad. Esta restricción reduce el espacio de error:
@@ -388,7 +419,7 @@ ejecuciones anteriores: paradigmas ya conocidos, variables, postulados, rangos
 de parámetros, patrones de mapeo al entorno y errores de implementación
 detectados previamente.
 
-\section{Human-in-the-loop}
+\subsection{Human-in-the-loop}
 
 La revisión humana forma parte del diseño del pipeline, no es una operación
 externa. El Router llama a un \texttt{FeedbackPort}, que abstrae tres modos de
@@ -437,7 +468,9 @@ Construcción & Rechazar un modelo concreto. & Reejecuta Builder solo para la fo
 \end{center}
 \end{table}
 
-\section{Artefactos y persistencia}
+\section{Artefactos, persistencia e integración}
+
+\subsection{Artefactos y persistencia}
 
 El sistema es \textit{storage-first}: los artefactos reales se guardan en MinIO
 y sus metadatos se registran en PostgreSQL. Esto evita depender de carpetas
@@ -477,7 +510,7 @@ rechaza para evitar continuar desde una ejecución incoherente. Al finalizar, la
 traza local se cierra y se sube también a MinIO, de modo que la auditoría no
 depende del directorio temporal de ejecución.
 
-\section{Contrato de modelo generado}
+\subsection{Contrato de modelo generado}
 
 La salida final no hereda de una clase concreta del simulador. Usa duck typing:
 
@@ -513,12 +546,20 @@ formulaciones, parámetros, modelos, relaciones y hechos textuales.
 
 La regla central es:
 
-\begin{verbatim}
-salida de agente
-  -> revision humana
-  -> artefacto aceptado
-  -> memoria
-\end{verbatim}
+\begin{figure}[H]
+\centering
+\resizebox{0.82\textwidth}{!}{%
+\begin{tikzpicture}[node distance=7mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.5cm] (output) {Salida de agente};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of output, text width=3.5cm] (review) {Revisión humana};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of review, text width=3.5cm] (accepted) {Artefacto aceptado};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, right=of accepted, text width=3.5cm] (memory) {Memoria};
+\draw[tfgarrow] (output) -- (review);
+\draw[tfgarrow] (review) -- (accepted);
+\draw[tfgarrow] (accepted) -- (memory);
+\end{tikzpicture}}
+\caption{Regla de escritura en memoria.}
+\end{figure}
 
 El sistema no guarda cualquier borrador generado por un LLM. Solo escribe en la
 memoria después de la revisión humana. Esta decisión reduce ruido, evita
@@ -585,24 +626,22 @@ mantiene fijo el flujo de control:
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Artefacto aceptado
-      |
-      v
-Extraccion estructurada
-      |
-      v
-Canonicalizacion y normalizacion
-      |
-      v
-Escritura en Neo4j + revision del grafo
-      |
-      v
-Resolucion de duplicados/conflictos
-      |
-      v
-PostgreSQL + Qdrant dense/sparse
-\end{verbatim}
+\resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[node distance=7mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.4cm] (accepted) {Artefacto aceptado};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of accepted, text width=5.4cm] (extract) {Extracción estructurada\\nodos, relaciones y hechos};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of extract, text width=5.4cm] (canon) {Canonicalización y normalización};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of canon, text width=5.4cm] (graph) {Neo4j\\escritura y revisión del grafo};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of graph, text width=5.4cm] (resolve) {Resolución de duplicados\\y conflictos};
+\node[tfgbox, fill=tfgLight, draw=tfgGray, below left=8mm and 7mm of resolve, text width=3.9cm] (pg) {PostgreSQL\\ciclo de vida};
+\node[tfgbox, fill=tfgLight, draw=tfgGray, below right=8mm and 7mm of resolve, text width=3.9cm] (qdrant) {Qdrant\\dense + BM25};
+\draw[tfgarrow] (accepted) -- (extract);
+\draw[tfgarrow] (extract) -- (canon);
+\draw[tfgarrow] (canon) -- (graph);
+\draw[tfgarrow] (graph) -- (resolve);
+\draw[tfgarrow] (resolve) -- (pg);
+\draw[tfgarrow] (resolve) -- (qdrant);
+\end{tikzpicture}}
 \caption{Flujo interno del MemoryAgent.}
 \end{figure}
 
@@ -654,6 +693,57 @@ específica registra esa procedencia por ejecución. Así se puede distinguir en
 el hecho reutilizable, que vive en el ciclo de vida de
 \texttt{pipeline\_memories}, y la evidencia concreta de que un nodo fue
 observado en un run determinado.
+
+\subsection{Observaciones}
+
+El término observación aparece en el sistema con varios significados
+relacionados, pero no equivalentes. Esta distinción es importante porque evita
+mezclar datos de ejecución, entradas observables del modelo y conocimiento
+persistente.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.7cm}|>{\raggedright\arraybackslash}p{5.3cm}|} \hline
+\textbf{Tipo} & \textbf{Dónde vive} & \textbf{Función} \\ \hline
+Variable observable & Specs y modelos generados & Representa datos que el modelo puede leer del entorno, como recompensa, posición, recursos o resultado de la acción anterior. En el grafo se modela como \texttt{Variable} con tipo \texttt{Observation}, no como nodo \texttt{Observation}. \\ \hline
+Observación procedural & \texttt{pipeline\_memories} & Resume aprendizajes de una ejecución de fase 1: errores evitables, decisiones útiles, tests fallidos, patrones de implementación o adaptaciones que conviene reutilizar. \\ \hline
+Observación de nodo & \texttt{node\_run}\newline\texttt{\_observations} & Registra que un run concreto observó o materializó un nodo del grafo. Sirve para procedencia por ejecución sin inflar cada nodo de Neo4j con listas de \texttt{run\_id}. \\ \hline
+Observación de simulación & \texttt{simulation}\newline\texttt{\_observations} & Recoge hechos producidos por ejecuciones del laboratorio de simulación. La fase 1 no las escribe, pero la recuperación puede leerlas como memoria compartida cuando ayudan a razonar sobre modelos, paradigmas o formulaciones. \\ \hline
+\end{tabular}
+\caption{Tipos de observación usados por el sistema.}
+\end{center}
+\end{table}
+
+Las observaciones procedurales son especialmente valiosas para los agentes de
+fase 1. Un informe científico aceptado puede guardar hechos semánticos sobre un
+paradigma, pero una observación puede capturar experiencia operativa: una spec
+que parecía correcta pero no era implementable, una variable que no estaba
+disponible en la percepción, un test que detectó mutación indebida en
+\texttt{decide}, o un patrón de adaptación que funcionó bien para un entorno de
+rejilla. Este tipo de memoria no describe solo el dominio científico; describe
+lo que el propio pipeline aprendió al intentar convertir ciencia en código.
+
+La tabla \texttt{node\_run\_observations} resuelve otro problema. El grafo de
+conocimiento contiene entidades compartidas entre muchas ejecuciones: un mismo
+paradigma, paper o postulado puede aparecer en distintos runs. Guardar una lista
+creciente de ejecuciones dentro de cada nodo haría que Neo4j acumulase payloads
+cada vez mayores y difíciles de auditar. Por eso la procedencia por ejecución se
+lleva a PostgreSQL: cada fila indica que un \texttt{run\_id} observó un nodo
+identificado por \texttt{label} y \texttt{key\_value}. Así se puede reconstruir
+qué conocimiento apareció en una ejecución concreta sin contaminar la identidad
+global del grafo.
+
+Por último, \texttt{simulation\_observations} pertenece a la infraestructura
+compartida. Su objetivo es conservar hechos observados durante simulaciones:
+resúmenes, trayectorias, episodios o comportamientos asociados a un modelo,
+paradigma, formulación, entorno o experimento. Esta memoria tiene confianza fija
+y no sigue el mismo ciclo de supersesión que \texttt{pipeline\_memories}. Desde
+la perspectiva de esta fase, lo relevante es que la herramienta
+\texttt{retrieve\_knowledge} puede hidratar resultados tanto desde memorias de
+pipeline como desde observaciones de simulación. De este modo, una ejecución
+futura de fase 1 puede aprovechar señales empíricas producidas por el
+laboratorio sin depender de la implementación interna de la fase de simulación.
 
 \subsection{Tipos de memoria}
 
@@ -722,25 +812,26 @@ La herramienta \texttt{retrieve\_knowledge} combina varias señales:
 
 \begin{figure}[H]
 \centering
-\begin{verbatim}
-Consulta del agente
-      |
-      v
-Reescritura de consulta
-      |
-      +--> Qdrant denso
-      +--> Qdrant BM25
-      +--> Neo4j local 2-hop
-      |
-      v
-Fusion RRF + reranking
-      |
-      v
-CRAG / fallback web si hay baja confianza
-      |
-      v
-Contexto inyectado al agente
-\end{verbatim}
+\resizebox{0.88\textwidth}{!}{%
+\begin{tikzpicture}[node distance=8mm and 9mm]
+\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=4.8cm] (query) {Consulta del agente};
+\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of query, text width=4.8cm] (rewrite) {Reescritura de consulta};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below left=10mm and 7mm of rewrite, text width=3.6cm] (dense) {Qdrant denso};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=10mm of rewrite, text width=3.6cm] (bm25) {Qdrant BM25};
+\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below right=10mm and 7mm of rewrite, text width=3.6cm] (kg) {Neo4j local\\2-hop};
+\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=22mm of rewrite, text width=4.8cm] (fusion) {Fusión RRF\\+ reranking};
+\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of fusion, text width=4.8cm] (crag) {CRAG / fallback web\\si hay baja confianza};
+\node[tfgbox, fill=tfgLight, draw=tfgGray, below=of crag, text width=4.8cm] (context) {Contexto inyectado\\al agente};
+\draw[tfgarrow] (query) -- (rewrite);
+\draw[tfgarrow] (rewrite) -- (dense);
+\draw[tfgarrow] (rewrite) -- (bm25);
+\draw[tfgarrow] (rewrite) -- (kg);
+\draw[tfgarrow] (dense) -- (fusion);
+\draw[tfgarrow] (bm25) -- (fusion);
+\draw[tfgarrow] (kg) -- (fusion);
+\draw[tfgarrow] (fusion) -- (crag);
+\draw[tfgarrow] (crag) -- (context);
+\end{tikzpicture}}
 \caption{Flujo de recuperación de conocimiento.}
 \end{figure}
 
@@ -754,17 +845,17 @@ búsqueda web.
 
 El recorrido del grafo usa entidades enlazadas y exploración local de vecinos,
 con decaimiento por distancia y atenuación de nodos muy conectados. No implementa
-un PageRank completo, pero comparte la motivación de recuperar información
-relacional sensible al contexto de la consulta
+un PageRank completo; toma como inspiración general la recuperación relacional
+sensible al contexto de la consulta y trabajos recientes de RAG sobre grafos
 \cite{haveliwala2002topicsensitive,gutierrez2024hipporag}.
 
 La implementación incluye dos optimizaciones para controlar latencia y coste. Si
 el primer resultado denso ya supera un umbral de confianza, se omite la
 extracción de entidades para el camino de grafo. De forma análoga, si el
 reranking devuelve un resultado suficientemente fiable, se omite el evaluador
-CRAG. Así, el sistema mantiene el flujo completo cuando hay incertidumbre, pero
-evita llamadas adicionales cuando la recuperación ya es clara
-\cite{cormack2009rrf,asai2023selfrag,yan2024crag}.
+correctivo. Así, el sistema mantiene el flujo completo cuando hay incertidumbre,
+pero evita llamadas adicionales cuando la recuperación ya es clara
+\cite{cormack2009rrf,yan2024crag}.
 
 El tipo de recuperación depende de la pregunta. Si un agente pregunta qué
 significa un concepto, dominan los hechos densos y sparse. Si pregunta de dónde
@@ -778,7 +869,9 @@ Esto hace que la memoria sea útil pero no ciega. El sistema no inyecta
 automáticamente cualquier resultado almacenado: pondera confianza, actualidad,
 relevancia y señales de corrección.
 
-\section{Degradación controlada}
+\section{Robustez y decisiones de diseño}
+
+\subsection{Degradación controlada}
 
 El sistema distingue servicios obligatorios y opcionales. PostgreSQL y MinIO son
 obligatorios para ejecutar el pipeline de forma persistente. Neo4j, Qdrant,
@@ -801,7 +894,7 @@ Embeddings & La recuperación semántica y el reordenado se degradan o se desact
 \end{center}
 \end{table}
 
-\section{Decisiones de diseño principales}
+\subsection{Decisiones de diseño principales}
 
 Las decisiones más importantes del diseño son:
 

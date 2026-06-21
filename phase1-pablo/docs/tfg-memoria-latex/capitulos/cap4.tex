@@ -1,6 +1,8 @@
 \chapter{Pruebas}
 
-\section{Plan de pruebas}
+\section{Estrategia de validación}
+
+\subsection{Plan de pruebas}
 
 El sistema se valida en varios niveles. Dado que se apoya en modelos de lenguaje,
 no basta con revisar manualmente las salidas: es necesario combinar validación
@@ -20,6 +22,53 @@ Evals y benchmarks & Suites reproducibles para medir pipeline, memoria, recupera
 \caption{Niveles de validación del sistema.}
 \end{center}
 \end{table}
+
+\subsection{Evidencia versionada del repositorio}
+
+Además de las pruebas automáticas, el repositorio conserva una ejecución de
+ejemplo y suites de evaluación que sirven como evidencia auditable del
+funcionamiento del sistema. Esta evidencia es importante porque permite revisar
+la cadena completa de artefactos sin depender de una conversación concreta con
+un modelo de lenguaje.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2cm}|>{\raggedright\arraybackslash}p{6.7cm}|} \hline
+\textbf{Evidencia} & \textbf{Cantidad} & \textbf{Qué demuestra} \\ \hline
+Deep reports del sample-run & 7 informes & Researcher y DeepResearcher producen informes científicos estructurados por paradigma. \\ \hline
+Formulaciones del sample-run & 7 documentos & Formalizer convierte investigación en variables, parámetros, ecuaciones y lógicas de decisión. \\ \hline
+Specs del Reasoner & 24 specs JSON & Reasoner adapta formulaciones al entorno y genera contratos implementables. \\ \hline
+Builder del sample-run & 2 modelos + 2 tests & Builder genera código Python autocontenido y pruebas asociadas. \\ \hline
+Tests de fase 1 & 112 archivos & Tests unitarios y de integración de agentes, runtime, herramientas, memoria, evals y servidor. \\ \hline
+Tests de shared & 18 archivos & Tests de infraestructura compartida usada por la fase 1: settings, storage, base de datos, grafo, vectores y memorias. \\ \hline
+Suites YAML & 8 suites & Evals reproducibles para smoke, pipeline completo, canonicalización, recuperación, memoria temporal y crecimiento acumulativo. \\ \hline
+\end{tabular}
+\caption{Evidencias versionadas usadas para validar la fase 1.}
+\end{center}
+\end{table}
+
+La ejecución de ejemplo en \texttt{examples/sample-run/} es especialmente útil
+como caso de estudio. Parte de un dominio científico concreto, la regulación de
+la ingesta, y conserva el resultado de cada etapa: informe general, informes
+profundos, formulaciones, especificación del entorno, specs del Reasoner,
+modelos generados y pruebas. Por tanto, permite seguir la transformación desde
+conocimiento científico hasta implementación ejecutable.
+
+Las suites en \texttt{evals/suites/} cubren otro tipo de evidencia. No solo
+comprueban que existan archivos, sino que ejecutan propiedades del sistema:
+reutilización de slugs canónicos, recuperación de conocimiento relevante,
+correctitud temporal de memorias, crecimiento controlado del grafo, importación
+de módulos generados y llamada funcional a \texttt{decide}.
+
+Las rutas principales de esta evidencia son:
+
+\begin{itemize}
+\item \texttt{phase1-pablo/tests};
+\item \texttt{shared/tests};
+\item \texttt{phase1-pablo/evals/suites};
+\item \texttt{phase1-pablo/examples/sample-run}.
+\end{itemize}
 
 \section{Evals y benchmarks}
 
@@ -159,12 +208,22 @@ Slug accuracy & FAIL & 3646.2 s / \$5.08 & Detectó tasa 6/8 frente al umbral 0.
 \end{center}
 \end{table}
 
-El último caso es especialmente útil: una eval fallida no se interpreta como un
-fracaso del arnés, sino como una señal de regresión o de métrica mal calibrada.
-Durante el desarrollo se ajustaron límites y aserciones cuando los reportes
-mostraban que una métrica no representaba bien la calidad real del sistema.
-Esto convirtió el benchmark en una herramienta de diseño, no solo en una
-comprobación final.
+En la suite \texttt{full-pipeline}, la ejecución representativa recorrió
+\texttt{research}, \texttt{formalize}, \texttt{reason} y \texttt{build}. El
+reporte registró crecimiento del grafo de 11 a 117 nodos y de 10 a 181
+relaciones, escrituras de memoria en las cuatro etapas y 31 llamadas a
+\texttt{retrieve\_knowledge}. Las aserciones verificaron que aparecían los
+paradigmas \textit{reinforcement-learning} y
+\textit{optimal-foraging-theory}, que existían formulaciones para ambos y que
+los módulos generados se podían importar y ejecutar.
+
+El último caso de la tabla también es útil: una eval fallida no se interpreta
+como un fracaso del arnés, sino como una señal de regresión o de métrica mal
+calibrada. La suite \texttt{slug-accuracy} detectó que dos temas relacionados
+con aprendizaje por refuerzo se habían fragmentado en slugs demasiado
+específicos. Esta señal ayudó a justificar la canonicalización, el uso de
+paradigmas paraguas y la necesidad de medir no solo que el agente responda, sino
+si reutiliza identidad científica de forma consistente.
 
 El arnés también incorpora límites de presupuesto. Cada suite puede declarar un
 coste máximo estimado; si se supera, la ejecución se corta y el reporte deja
@@ -179,7 +238,9 @@ ejecución de etapas, las aserciones, el cálculo de tiempos, los límites de
 presupuesto y la generación de reportes. Esto evita que una eval falle por un
 error del marco de evaluación en lugar de por una regresión del sistema evaluado.
 
-\section{Pruebas del Builder}
+\section{Pruebas técnicas}
+
+\subsection{Pruebas del Builder}
 
 El Builder genera tanto el modelo como sus pruebas. Después ejecuta las pruebas
 mediante:
@@ -197,7 +258,7 @@ El objetivo es verificar que el modelo respeta el contrato esperado:
 \item el modelo puede ejecutarse con percepciones del entorno.
 \end{itemize}
 
-\section{Pruebas de trazabilidad}
+\subsection{Pruebas de trazabilidad}
 
 Cada ejecución conserva artefactos y trazas. Esto permite comprobar qué
 herramientas se usaron, qué archivos se generaron y qué decisiones se tomaron en
