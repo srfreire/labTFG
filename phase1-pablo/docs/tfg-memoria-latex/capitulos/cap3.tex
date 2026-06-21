@@ -502,6 +502,12 @@ La traza \texttt{trace.jsonl} registra eventos de agentes, herramientas y
 artefactos. Junto con \texttt{pipeline\_state.json}, permite auditar una
 ejecución y reanudarla sin reconstruir el contexto desde cero.
 
+El formato de traza se apoya en Agrex, una librería open source creada durante
+este trabajo para visualizar ejecuciones de agentes como grafos temporales
+\cite{pazos2026agrex}. En la fase 1, el backend emite eventos compatibles con
+Agrex y el frontend los reproduce para mostrar agentes, herramientas,
+artefactos, estados y errores durante la ejecución.
+
 La reanudación no se basa únicamente en leer el último estado guardado. Al
 cargar un \texttt{PipelineState}, el sistema comprueba que los artefactos
 referenciados por ese estado siguen existiendo en MinIO. Si el estado apunta a

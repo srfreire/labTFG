@@ -138,6 +138,34 @@ trace.jsonl
 El estado del pipeline permite reanudar la ejecución. Las trazas permiten
 reconstruir herramientas llamadas, tiempos, errores y artefactos producidos.
 
+\section{Agrex: visualización de trazas de agentes}
+
+Durante el desarrollo se creó Agrex, una librería open source para visualizar
+flujos de ejecución de agentes como grafos temporales. La librería está
+publicada como visor en:
+
+\begin{verbatim}
+https://agrex.ppazosp.dev
+\end{verbatim}
+
+y como paquete npm:
+
+\begin{verbatim}
+https://www.npmjs.com/package/@ppazosp/agrex
+\end{verbatim}
+
+Agrex define un formato de eventos para nodos, aristas, estados, etapas,
+marcadores temporales y metadatos. La fase 1 usa el paquete Python
+\texttt{agrex} para escribir la traza \texttt{trace.jsonl} durante cada
+ejecución. El servidor expone esa traza al frontend, y la interfaz web usa
+\texttt{@ppazosp/agrex} para reproducirla como un grafo interactivo.
+
+Esta herramienta no forma parte del contrato científico del modelo generado,
+pero sí de la infraestructura de observabilidad del trabajo. Permitió depurar
+ejecuciones largas, revisar qué herramientas había llamado cada agente,
+identificar errores intermedios y explicar el comportamiento del pipeline con
+diagramas de flujo reales en lugar de limitarse a logs textuales.
+
 \section{Ejecución de pruebas}
 
 Las pruebas Python se ejecutan con:
@@ -184,14 +212,41 @@ etapas con fan-out, como Formalizer, Reasoner y Builder, el sistema recoge
 errores por unidad de trabajo. Esto permite conservar resultados válidos aunque
 una formulación o spec concreta falle.
 
-\section{Compilación de la memoria}
+\section{Ejecución desde interfaz web}
 
-La memoria se compila desde \texttt{docs/tfg-memoria-latex/} con:
+Además de la CLI, la fase 1 puede ejecutarse desde la interfaz web incluida en
+\texttt{phase1-pablo/web}. En desarrollo local se usan tres piezas: la
+infraestructura compartida, el servidor FastAPI de fase 1 y el frontend Vite.
+
+Primero se levantan los servicios compartidos desde la raíz del repositorio:
 
 \begin{verbatim}
-pdflatex traballo.tex
-pdflatex traballo.tex
+docker compose up -d postgres minio neo4j qdrant minio-init
 \end{verbatim}
 
-La doble ejecución actualiza correctamente índice, lista de figuras y lista de
-tablas.
+Después, en una terminal, se arranca el servidor de fase 1. Para desarrollo con
+el frontend local se usa el puerto \texttt{8000}, porque Vite proxya ahí las
+rutas \texttt{/ws} y \texttt{/api}:
+
+\begin{verbatim}
+cd phase1-pablo
+uv run uvicorn decisionlab.server:app --host 0.0.0.0 --port 8000
+\end{verbatim}
+
+En otra terminal se arranca el frontend:
+
+\begin{verbatim}
+cd phase1-pablo/web
+pnpm install
+pnpm dev
+\end{verbatim}
+
+La aplicación queda disponible en:
+
+\begin{verbatim}
+http://localhost:5173
+\end{verbatim}
+
+Desde la interfaz web se puede iniciar un problema de decisión, seguir el estado
+de los agentes, revisar artefactos intermedios mediante WebSocket y responder a
+los puntos \textit{human-in-the-loop} del pipeline.
