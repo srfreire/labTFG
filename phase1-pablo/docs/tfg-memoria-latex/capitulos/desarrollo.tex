@@ -39,21 +39,23 @@ El flujo fue el siguiente:
 
 \begin{figure}[H]
 \centering
-\resizebox{0.92\textwidth}{!}{%
-\begin{tikzpicture}[node distance=7mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.2cm] (idea) {Idea inicial};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of idea, text width=5.2cm] (spec) {Especificación técnica\\iterada con Codex};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of spec, text width=5.2cm] (linear) {Diseño y fases\\del proyecto en Linear};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of linear, text width=5.2cm] (tasks) {Tareas con criterios\\de aceptación};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of tasks, text width=5.2cm] (agents) {Ejecución autónoma\\con agentes};
-\node[tfgbox, fill=tfgLight, draw=tfgGray, below=of agents, text width=5.2cm] (review) {Revisión humana\\y nuevas decisiones};
+\begin{tikzpicture}[
+  node distance=3.8mm,
+  flowbox/.style={tfgbox, font=\footnotesize, minimum height=7mm, text width=4.25cm}
+]
+\node[flowbox, fill=tfgBlue!12, draw=tfgBlue] (idea) {Idea inicial};
+\node[flowbox, fill=tfgGreen!12, draw=tfgGreen, below=of idea] (spec) {Especificación técnica\\iterada con Codex};
+\node[flowbox, fill=tfgOrange!15, draw=tfgOrange, below=of spec] (linear) {Diseño y fases\\del proyecto en Linear};
+\node[flowbox, fill=tfgPurple!13, draw=tfgPurple, below=of linear] (tasks) {Tareas con criterios\\de aceptación};
+\node[flowbox, fill=tfgRed!10, draw=tfgRed, below=of tasks] (agents) {Ejecución autónoma\\con agentes};
+\node[flowbox, fill=tfgLight, draw=tfgGray, below=of agents] (review) {Revisión humana\\y nuevas decisiones};
 \draw[tfgarrow] (idea) -- (spec);
 \draw[tfgarrow] (spec) -- (linear);
 \draw[tfgarrow] (linear) -- (tasks);
 \draw[tfgarrow] (tasks) -- (agents);
 \draw[tfgarrow] (agents) -- (review);
-\draw[tfgarrow, dashed] (review.east) -- ++(13mm,0) |- (spec.east);
-\end{tikzpicture}}
+\draw[tfgarrow, dashed] (review.east) -- ++(9mm,0) |- (spec.east);
+\end{tikzpicture}
 \caption{Flujo de planificación y ejecución del desarrollo.}
 \end{figure}
 
@@ -138,15 +140,17 @@ El flujo de trabajo adoptado puede resumirse así:
 
 \begin{figure}[H]
 \centering
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[node distance=9mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=6.2cm] (human1) {Humano\\arquitectura, prioridades\\y decisiones ambiguas};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of human1, text width=6.2cm] (agents) {Agentes\\implementan, prueban, refactorizan\\y detectan gaps};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of agents, text width=6.2cm] (human2) {Humano\\revisa resultados\\y decide nuevos criterios};
+\begin{tikzpicture}[
+  node distance=5mm,
+  flowbox/.style={tfgbox, font=\footnotesize, minimum height=8mm, text width=4.9cm}
+]
+\node[flowbox, fill=tfgBlue!12, draw=tfgBlue] (human1) {Humano\\arquitectura, prioridades\\y decisiones ambiguas};
+\node[flowbox, fill=tfgGreen!12, draw=tfgGreen, below=of human1] (agents) {Agentes\\implementan, prueban, refactorizan\\y detectan gaps};
+\node[flowbox, fill=tfgOrange!15, draw=tfgOrange, below=of agents] (human2) {Humano\\revisa resultados\\y decide nuevos criterios};
 \draw[tfgarrow] (human1) -- node[right, font=\scriptsize] {criterios} (agents);
 \draw[tfgarrow] (agents) -- node[right, font=\scriptsize] {evidencia} (human2);
-\draw[tfgarrow, dashed] (human2.east) -- ++(16mm,0) |- node[pos=0.25, right, font=\scriptsize] {feedback} (human1.east);
-\end{tikzpicture}}
+\draw[tfgarrow, dashed] (human2.east) -- ++(11mm,0) |- node[pos=0.25, right, font=\scriptsize] {feedback} (human1.east);
+\end{tikzpicture}
 \caption{Modelo de colaboración humano-agente usado en el desarrollo.}
 \end{figure}
 
