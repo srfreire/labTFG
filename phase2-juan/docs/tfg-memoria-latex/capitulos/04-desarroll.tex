@@ -1,0 +1,334 @@
+\chapter{Desarrollo del trabajo}
+
+Este capítulo no documenta el sistema, sino el proceso por el que se
+construyó. La observación que lo recorre es que trabajar de forma
+habitual con \textit{coding agents} --- en este caso, Claude Code ---
+desplaza el centro de gravedad del ciclo clásico de desarrollo de
+software: la implementación deja de ser la actividad dominante y, en su
+lugar, lo son la especificación, la revisión y la verificación. La
+sección que sigue desarrolla esta idea; el resto del capítulo describe el
+bucle de trabajo resultante y cómo se manifestó en esta segunda fase del
+proyecto.
+
+\section{El problema con el ciclo clásico}
+
+Los modelos de proceso clásicos --- del ciclo en cascada a sus
+variantes ágiles --- tienden a asumir que el coste dominante del
+desarrollo es escribir y depurar el código. Sobre esa premisa se
+construye buena parte de las prácticas habituales: separar análisis de
+implementación para no malgastar trabajo, escribir documentación
+intermedia para guiar al programador, planificar \textit{sprints} en
+función de la velocidad de implementación.
+
+Cuando los modelos de lenguaje actuales actúan como ejecutores
+principales, esa premisa queda cuestionada. En tareas generales de
+programación, escribir una función concreta o un módulo completo a
+partir de una especificación clara deja de ser la parte costosa del
+trabajo. La evidencia empírica de este desplazamiento --- los
+experimentos de Peng et al.\ con GitHub Copilot \cite{peng2023impact} y
+los ensayos aleatorizados a gran escala de Cui et al.\
+\cite{cui2025effects} --- se discutió en el capítulo de estado del arte
+y no se repite aquí.
+
+El peso se desplaza, en consecuencia, hacia tres actividades que antes
+estaban distribuidas o asumidas: enunciar bien la especificación,
+revisar lo que el agente ha producido y verificar que sigue
+funcionando lo que ya funcionaba. El ciclo deja de funcionar de forma
+estrictamente secuencial y se aproxima a un bucle corto con cuatro
+pasos --- especificar, ejecutar, revisar, ajustar --- que se repite
+muchas veces al día. En la práctica, especificar deja de ser
+\emph{escribir un párrafo de requisitos} y pasa a ser \emph{redactar un
+plan de implementación}: lo bastante rico como para que el agente
+pueda ejecutarlo sin tener que interpretar el contrato cada pocos
+pasos.
+
+\section{El nuevo bucle de desarrollo}
+
+El bucle adoptado durante esta fase fue este:
+
+\begin{enumerate}
+\item \textbf{Especificar.} Cada tarea no trivial empezó con una
+\textit{spec} en Markdown que, más que un documento de requisitos, era
+un plan de implementación por fases. Cada fase declaraba qué
+pruebas debían pasar al final, qué archivos se tocaban y qué
+invariantes debían preservarse. El objetivo era doble: que el agente
+pudiera ejecutar fase por fase de forma incremental y segura, y que el
+revisor humano dispusiera de un contrato \textit{ejecutable mentalmente}
+sobre el que comparar el resultado.
+\item \textbf{Ejecutar.} El agente se encarga de la implementación, las
+pruebas asociadas y la mayor parte de la depuración local. En tareas
+independientes, varios subagentes trabajan en paralelo sobre
+\textit{worktrees} de Git separados, de modo que cada uno ve su propia
+rama y su propio \textit{working tree} y no hay riesgo de que se pisen
+entre sí al modificar los mismos ficheros. En tareas con estado
+compartido se ejecuta de forma secuencial.
+\item \textbf{Revisar.} Antes de fusionar, el código pasa por una
+revisión combinada: una lectura humana enfocada en alcance y diseño, y
+una segunda pasada por subagentes especializados de revisión
+(\texttt{code-reviewer}, \texttt{code-simplifier} y
+\texttt{silent-failure-hunter}) configurados para reportar solo hallazgos
+con confianza alta.
+\item \textbf{Ajustar.} Los hallazgos confirmados se convierten en una
+nueva iteración, normalmente con su propia \textit{spec} reducida. Las
+correcciones triviales se aplican en línea. Para los errores
+funcionales se sigue el ciclo de TDD: primero se replica el fallo con
+una prueba que efectivamente falla en el estado actual, después se
+implementa el ajuste mínimo que la hace pasar y, por último, se vuelve
+a ejecutar la suite completa para comprobar que el resto sigue verde.
+\end{enumerate}
+
+Este bucle, repetido decenas de veces, sustituye al cronograma rígido
+del ciclo clásico. La planificación de alto nivel sigue existiendo
+--- en este proyecto, en forma de archivos \texttt{spec.md} versionados
+en el propio repositorio, no de \textit{tickets} externos --- pero
+deja de gobernar el día a día.
+
+\section{Reparto de responsabilidades}
+
+La diferencia más clara con el ciclo clásico es el reparto del trabajo
+entre humano y agente.
+
+\paragraph{Lo que sigue siendo humano.} Las decisiones de alcance, las
+elecciones arquitectónicas con consecuencias en otros módulos, la
+aceptación de revisiones que el agente no es capaz de juzgar y la
+interpretación de lo que el tutor pide cuando la petición es ambigua. El
+contrato con la primera fase del proyecto, por ejemplo, se discutió y
+estabilizó por completo antes de delegar nada. El diseño visual del
+\textit{dashboard} también se mantuvo en el lado humano: la paleta, el
+modo oscuro, la rejilla de tarjetas, la composición del panel de
+agentes y la disposición del \textit{replay} se prototiparon en Figma
+antes de empezar a programarlos. El agente intervino después,
+traduciendo el diseño aprobado a componentes React y a clases de
+Tailwind, en un ciclo iterativo en el que primero se cerraban unos
+pocos componentes base y luego se construían pantallas reutilizándolos.
+
+\paragraph{Lo que se delega.} La implementación de cada función o módulo
+una vez fijado su contrato, la escritura de pruebas a partir de una
+descripción del comportamiento esperado, los refactores mecánicos y la
+depuración local que no requiere contexto del producto. La mayor parte
+del código de esta segunda fase pasó por este reparto.
+
+Para que esa delegación produzca código de calidad sin necesidad de
+una corrección posterior intensiva, las \textit{specs} se redactaron en
+clave de TDD: cada fase del plan declara explícitamente las pruebas
+que el agente debe hacer pasar, indicando incluso las rutas concretas
+de los archivos de prueba que se esperan. El agente implementa primero
+esas pruebas (o las completa si están parcialmente escritas), comprueba
+que fallan en el estado actual y solo entonces escribe el código que
+las hace pasar. El diseño del plan es, por tanto, en gran parte el
+diseño de su propia suite de validación.
+
+Una intuición útil que emergió durante el trabajo es la siguiente: el
+agente es excelente cuando se le da un contrato preciso, y poco fiable
+cuando se le pide que infiera el contrato a partir del contexto. La
+mayoría de los errores de juicio aparecieron cuando se intentó saltar
+ese paso por economía de tiempo.
+
+El caso más claro fue la integración inicial de las herramientas en el
+Orchestrator. La primera versión daba por hecho que toda llamada que
+llegara del modelo traería el campo \texttt{query} bien formado, y por
+eso accedía a él directamente sobre el diccionario de parámetros. La
+suposición era cómoda pero ingenua: con que el modelo serializara mal
+una sola llamada o se la dejara a medias, el acceso reventaba y un
+fallo \emph{de él} pasaba a ser un error \emph{del backend}. Al
+revisarlo, se sustituyó el acceso directo por una lectura con valor por
+defecto, se añadieron pruebas para llamadas malformadas y se dejó la
+herramienta fallando con un mensaje controlado en lugar de propagar la
+excepción. La conclusión no fue que el agente no supiera escribir esa
+pieza --- la escribió en pocos segundos cuando se le pidió ---, sino
+que el contrato que se le dio no estaba lo suficientemente cerrado como
+para que pudiera anticipar el caso degenerado.
+
+\section{Planificación y coordinación con la primera fase}
+
+Esta fase se desarrolló en paralelo con la primera. Para evitar
+acoplamiento prematuro entre ambas se siguió una estrategia explícita:
+fijar pronto el contrato de integración y dejar que cada fase evolucionara
+por su cuenta sobre ese contrato. El
+contrato resultante --- los tres métodos \texttt{decide},
+\texttt{update} y \texttt{get\_state} --- es lo suficientemente mínimo
+como para que ninguna de las dos fases haya necesitado coordinar
+\textit{releases} con la otra durante los meses siguientes.
+
+La coordinación entre fases no se apoyó en un gestor de \textit{tickets}
+externo, sino en el propio repositorio compartido en GitHub. Cada
+cambio relevante --- de cualquiera de las dos fases o de la capa común
+--- venía acompañado de un archivo \texttt{spec.md} versionado en la
+misma rama, que funcionaba a la vez como plan para el agente y como
+documento de discusión con el otro autor. Los cambios viajaban por las
+ramas del repositorio: cuando uno de los dos hacía \texttt{pull}, veía
+de forma automática tanto el código nuevo como las \textit{specs} que
+lo habían motivado. La comunicación complementaria del día a día se
+mantuvo en mensajería directa, reservada a desbloqueos puntuales. Los
+cambios que afectaban al esquema compartido del Knowledge Backbone se
+discutían en la \textit{spec} correspondiente antes de implementarse en
+cualquiera de las dos fases.
+
+\section{Hitos de iteración del sistema}
+
+El sistema final no se planificó como un todo, sino que emergió por
+acumulación de iteraciones. Las más importantes, en orden
+aproximado, fueron las siguientes:
+
+\paragraph{M1. Pipeline básico sobre CLI.} La primera versión funcional
+se operaba enteramente desde una terminal: el usuario describía el
+problema y el Orchestrator invocaba en secuencia al Architect, al
+Tracker, al Analyst y al Reporter, sin pausas intermedias ni
+recomendaciones al usuario; era un \textit{pipeline} de un solo tirón
+cuya salida se imprimía en la consola. No había visualización del
+entorno ni persistencia entre sesiones. El objetivo de esta versión era
+validar que los cinco roles podían coordinarse sin solaparse, no
+producir una interfaz de uso.
+
+\paragraph{M2. Interfaz web con \textit{replay}.} Una vez estabilizado
+el pipeline, se añadió un \textit{frontend} en React conectado al
+backend mediante WebSocket. El cambio principal no fue cosmético sino
+de paradigma: cada paso del pipeline empezó a publicarse como un evento
+observable desde la interfaz, con \textit{replay} paso a paso de la
+simulación y paneles de estado por agente. La CLI quedó relegada a un
+canal de pruebas y depuración.
+
+\paragraph{M3. Comparativa multi-modelo.} El \texttt{model\_loader} se
+extendió para permitir instanciar varios modelos de la primera fase en
+el mismo entorno. El resto del pipeline se adaptó para tratar las
+trayectorias por agente en lugar de por simulación. Esta iteración
+ocurrió antes de la integración con el Knowledge Backbone, y fue lo que
+fijó el resto del pipeline en términos de \emph{múltiples agentes en
+una misma ejecución} en lugar de \emph{una simulación, un modelo}.
+
+\paragraph{M4. Orchestrator más conversacional.} Antes de abrir el
+sistema al Knowledge Backbone, el Orchestrator pasó por una iteración
+intermedia orientada al uso: dejó de ser un despachador silencioso de
+\textit{tool calls} y empezó a recomendar al usuario qué hacer a
+continuación, qué modelos parecían encajar con el problema descrito y
+qué herramientas tenía a su disposición. Esta iteración no introdujo
+nuevos agentes, pero hizo que la interfaz dejara de sentirse como un
+botón de \emph{lanzar} y se pareciera más a una conversación con
+sugerencias.
+
+\paragraph{M5. Lectura del Knowledge Backbone.} El Analyst dejó de
+trabajar exclusivamente sobre los datos del Tracker y empezó a consultar
+postulados previos en el grafo, a través de \texttt{retrieve\_context}.
+Poco después se extendió el patrón al Architect y al Reporter, pero en
+su variante inyectada: el Orchestrator pre-recupera el contexto y lo
+entrega como parámetro.
+
+\paragraph{M6. Persistencia de observaciones (\textit{sim-memory}).} El
+Tracker pasó de ser un observador puro a alimentar el Knowledge
+Backbone, mediante \texttt{TrackerMemoryWriter}. Esta iteración introdujo
+la tabla \texttt{simulation\_observations} en PostgreSQL y el
+\textit{namespace} \texttt{simulation} en Qdrant, y convirtió la segunda
+fase en productora del backbone además de consumidora.
+
+\paragraph{M7. BM25 nativo en Qdrant.} La búsqueda \textit{sparse} se
+migró del cliente Python a la implementación nativa de Qdrant,
+delegando la tokenización y el cálculo de pesos en el servidor.
+
+\paragraph{M8. Generación de informes por secciones.} El Reporter sufrió
+una limitación práctica: los informes completos podían superar el
+presupuesto de salida del modelo o producir LaTeX difícil de reparar. La
+solución fue desplazar parte de la estructura al backend: el sistema pide
+al modelo secciones acotadas, ensambla el documento final y conserva una
+ruta de reserva determinista si alguna sección falla. Este cambio hizo
+menos elegante la implementación, pero más fiable la entrega del PDF.
+
+\section{La verificación como nuevo cuello de botella}
+
+Si la implementación deja de ser lo costoso, el problema se desplaza:
+¿qué garantiza que el código generado es correcto?
+
+La respuesta adoptada en este proyecto tiene tres capas. La primera es
+\textbf{las pruebas como contrato}: una funcionalidad sin prueba no se
+considera terminada. La suite combina pruebas unitarias y de integración
+en \textit{pytest} para el backend, y pruebas \textit{end-to-end} en
+Playwright para el cliente web. La segunda capa es la \textbf{revisión
+combinada del cambio antes de fusionar}: la propia lectura humana del
+\textit{diff} --- centrada en el alcance, en lo que el cambio no
+debería romper y en si lo entregado coincide con la \textit{spec} --- y
+una pasada complementaria por subagentes especializados
+(\texttt{code-reviewer}, \texttt{code-simplifier} y
+\texttt{silent-failure-hunter}) configurados para reportar solo
+problemas de alta confianza. Los subagentes no reemplazan la revisión
+humana; la enfocan, encontrando antes los problemas mecánicos y
+dejando a la lectura humana las cuestiones de diseño y alcance. La
+tercera capa es la \textbf{verificación manual sobre la aplicación
+viva}: para los cambios que afectan a la interfaz, no basta con que las
+pruebas pasen; el cambio debe poderse usar en un navegador y mostrarse
+de forma correcta antes de aceptarlo.
+
+Esta capa evitó varias regresiones pequeñas pero costosas. En la
+generación de informes, por ejemplo, las pruebas unitarias podían validar
+que existía una ruta de compilación, pero la ejecución completa reveló
+fallos distintos: respuestas truncadas del Reporter, secciones duplicadas
+o mensajes de descarga emitidos dos veces en el chat. Esos errores no
+eran fallos de sintaxis aislados; afectaban al recorrido real del usuario.
+Por eso la verificación terminó combinando pruebas de bajo nivel con una
+sesión completa desde la interfaz.
+
+\section{Limitaciones observadas}
+
+El bucle descrito no resuelve todo. Durante el desarrollo aparecieron tres
+limitaciones recurrentes.
+
+La primera es que el agente puede generar resultados convincentes sin
+ser correctos, especialmente cuando el contrato es vago. Esto se mitiga
+con \textit{specs} precisas, pero no se elimina.
+
+La segunda es de ritmo. Cuando el coste de implementar baja, lo natural
+es producir más cambios; pero el coste de \emph{revisar} no baja al
+mismo ritmo. Si uno se deja llevar por la velocidad de generación,
+acaba acumulando cambios mal mirados que después cuestan más de
+desenredar de lo que se ahorró al hacerlos. Aquí se aplicó una regla
+sencilla para no caer en eso: ningún cambio se considera terminado
+hasta que ha pasado por la revisión combinada del bucle y, cuando toca
+interfaz, por una comprobación a mano sobre la aplicación viva. Esa
+tensión entre velocidad de producción y carga de revisión aparece
+también en los estudios cualitativos sobre el uso real de asistentes
+de IA en entornos profesionales \cite{butler2024dear}.
+
+La tercera es metodológica, y afecta al propio acto de escribir esta
+memoria. Documentar un sistema acabado consiste en describir un
+conjunto cerrado de decisiones; documentar un proceso como este,
+en cambio, exige asumir que no hubo grandes decisiones, sino muchas
+pequeñas iteraciones cuyo valor solo se ve cuando se miran encadenadas.
+Por eso este capítulo no presenta el desarrollo como un plan ejecutado
+de principio a fin, sino como un bucle corto que se repitió una y otra
+vez. Disfrazarlo de proceso lineal habría sido más cómodo de leer,
+pero menos fiel a lo que de verdad pasó.
+
+\section{Retos prácticos: la memoria de los agentes en tokens}
+
+Una limitación que apareció pronto y que condicionó decisiones de
+diseño concretas es la memoria de los propios agentes. Los modelos de
+lenguaje operan sobre una ventana de contexto finita medida en
+\textit{tokens}, y en una sesión real del laboratorio esa ventana se
+llena con sorprendente facilidad: el historial conversacional con el
+usuario, las trazas completas de la simulación, los JSON del Tracker
+con eventos paso a paso y las memorias recuperadas del Knowledge
+Backbone. Si todo eso se vuelca a cada agente en cada turno, el
+Orchestrator empieza a perder precisión, a ignorar parte de las
+instrucciones del \textit{system prompt} y a alucinar detalles que ya
+no caben de forma íntegra en su contexto.
+
+La respuesta a este problema se dio en dos frentes. Por un lado, se
+introdujo un mecanismo de \textbf{autocompactación} del historial: a
+partir de cierto umbral de uso de la ventana, el Orchestrator
+reemplaza los mensajes más antiguos por un resumen estructurado que
+preserva las decisiones tomadas, los \textit{artefactos} producidos
+hasta ese punto y las preferencias del usuario, pero descarta los
+detalles ya consolidados. Por otro lado, se diseñaron herramientas
+explícitas de \textbf{detalle y resumen} sobre los datos voluminosos: en
+lugar de inyectar el JSON completo del Tracker en cada turno, el
+Orchestrator entrega de forma rutinaria solo un resumen estructurado
+y deja a disposición \textit{tool calls} específicas
+(\texttt{get\_tracker\_detail}, \texttt{get\_analyst\_detail},
+\texttt{get\_simulation\_step\_window}, entre otras) para que el agente
+recupere bajo demanda únicamente la porción de detalle que necesita en
+un momento dado.
+
+Este patrón --- resumen por defecto, detalle bajo demanda --- desplaza
+parte de la complejidad al diseño de las herramientas, pero permite
+trabajar con sesiones largas sin saturar el contexto del modelo.
+También subraya una idea más general que aparece a lo largo del
+proyecto: gran parte del trabajo con agentes consiste en decidir qué
+ven y qué no ven, no en escribir el código que los invoca.

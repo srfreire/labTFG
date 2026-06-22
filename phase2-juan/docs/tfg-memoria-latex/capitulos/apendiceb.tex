@@ -1,0 +1,49 @@
+\chapter{Manual de usuario}
+
+\section{Arranque}
+
+Con la instalación ya preparada, el usuario levanta los servicios comunes,
+el backend y el cliente web:
+
+\begin{verbatim}
+docker compose up -d
+cd phase2-juan && uv run uvicorn simlab.api:app --port 8000
+cd phase2-juan/frontend && npm run dev
+\end{verbatim}
+
+La interfaz queda disponible en \texttt{http://localhost:5173}. También
+puede usarse la CLI con \texttt{uv run simlab}. La clave obligatoria es
+\texttt{OPENROUTER\_API\_KEY}; las de Voyage AI y ZeroEntropy solo afectan
+a la calidad de recuperación del Knowledge Backbone.
+
+\section{Uso general}
+
+El usuario describe en el chat el problema de toma de decisiones que quiere
+estudiar. El Orchestrator presenta los modelos disponibles de la primera
+fase, pide seleccionar uno o varios y delega la creación del entorno al
+Architect. Tras aceptar la configuración, se ejecuta la simulación y la
+interfaz muestra la rejilla, el \textit{replay}, los eventos críticos y el
+estado de cada agente.
+
+Al terminar, el Tracker resume las trayectorias, el Analyst interpreta los
+patrones observados y el Reporter genera un informe PDF descargable. La
+sesión queda registrada para consulta posterior.
+
+En cualquier momento del proceso, este se puede iterar, preguntar recomendaciones al Orchestrator o volver a pasos anteriores. El Orchestrator se encarga de mantener la conversación fluida y sin errores.
+
+\section{Errores frecuentes}
+
+Si los puertos \texttt{8000} o \texttt{5173} están ocupados, se puede
+levantar el backend en otro puerto y comunicarlo al frontend mediante
+\texttt{VITE\_API\_PORT}. Si fallan PostgreSQL, MinIO, Neo4j o Qdrant, la
+sesión no puede ejecutarse completa; normalmente basta con reiniciar
+\texttt{docker compose up -d}. Si falta \texttt{OPENROUTER\_API\_KEY}, los
+agentes no pueden invocarse.
+
+\section{Términos básicos}
+
+El Orchestrator es el agente coordinador de la sesión. Architect, Tracker,
+Analyst y Reporter son agentes especializados. El Knowledge Backbone es la
+capa compartida de memoria y persistencia. Un modelo de decisión es el
+código Python generado por la primera fase que implementa \texttt{decide},
+\texttt{update} y \texttt{get\_state}.

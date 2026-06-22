@@ -1,0 +1,30 @@
+\pagestyle{plain}
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+
+Este Trabajo de Fin de Grado nace de una propuesta del profesor Eduardo
+Manuel Sánchez Vila para su grupo de investigación. Aunque al principio fuese algo abstracto, se definieron dos ideas de tfg que juntas construirían un laboratorio completo de estudio de paradigmas de toma de decisiones humanas mediante agentes inteligentes.
+Esta memoria recoge y documenta la segunda de estas fases: la infraestructura que
+recoge los modelos generados por la primera fase, los ejecuta en un entorno
+común y produce en cada simulación artefactos verificables, desde una traza
+estructurada del comportamiento hasta un informe comparativo en PDF.
+
+El sistema se organiza como un pipeline de cuatro agentes especializados,
+coordinados por un Orchestrator con chat interactivo. El Architect define
+el entorno de simulación a partir de una descripción en lenguaje natural;
+el Tracker registra eventos, episodios y trayectorias de decisión; el
+Analyst identifica patrones de comportamiento y los contrasta con
+conocimiento previo; el Reporter sintetiza los hallazgos en un informe
+generado mediante LaTeX. El acceso principal es una interfaz web sobre un
+backend FastAPI con WebSocket.
+
+La integración con la primera fase del proyecto se realiza por \textit{duck
+typing} sobre un contrato mínimo (\texttt{decide}, \texttt{update} y
+\texttt{get\_state}), sin acoplamiento de clases entre ambos sistemas. Las
+observaciones registradas durante cada simulación se persisten para
+alimentar ejecuciones futuras.
+
+\vspace{0.5cm}
+\noindent{\bf Palabras clave:} agentes inteligentes, simulación multi-agente,
+observación de comportamiento, toma de decisiones, grafos de
+conocimiento.

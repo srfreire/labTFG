@@ -1,0 +1,161 @@
+\chapter{Especificación de requisitos}
+
+\section{Requisitos funcionales}
+
+El sistema debe cubrir el ciclo completo de una sesión de simulación,
+desde la descripción inicial del problema hasta la generación del informe
+final, permitir la conversación continua con el Orchestrator durante la
+sesión y la inspección y comparativa con ejecuciones pasadas.
+
+Los requisitos funcionales principales son:
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|p{2.2cm}|p{10.2cm}|} \hline
+\textbf{Código} & \textbf{Descripción} \\ \hline
+RF-01 & Cargar dinámicamente los modelos de decisión generados por la
+primera fase, descubriéndolos sin intervención manual entre sesiones. \\ \hline
+RF-02 & Generar especificaciones de entorno de simulación a partir de
+descripciones en lenguaje natural. \\ \hline
+RF-03 & Ejecutar simulaciones con uno o varios modelos en el mismo
+entorno, soportando comparativas multi-modelo. \\ \hline
+RF-04 & Registrar de forma estructurada los eventos, episodios y
+trayectorias de decisión producidos durante cada simulación. \\ \hline
+RF-05 & Identificar patrones de comportamiento en los resultados y
+contrastarlos con postulados previos del Knowledge Backbone. \\ \hline
+RF-06 & Generar, como parte del análisis, gráficas y visualizaciones
+sobre las trayectorias y métricas extraídas que se incorporan al informe
+final. \\ \hline
+RF-07 & Generar informes en PDF con los resultados, la evidencia visual y
+las referencias a los paradigmas analizados. \\ \hline
+RF-08 & Persistir las observaciones de simulación en el Knowledge Backbone
+como memorias reutilizables en ejecuciones posteriores. \\ \hline
+RF-09 & Conservar el historial completo de experimentos y permitir su
+consulta, filtrado y comparativa. \\ \hline
+RF-10 & Permitir la interacción con el sistema mediante un chat
+conversacional gestionado por el Orchestrator, con continuidad de la
+conversación dentro de la sesión y posibilidad de retomar pasos
+anteriores. \\ \hline
+RF-11 & Permitir al Orchestrator recomendar al usuario qué hacer a
+continuación, qué modelos o paradigmas pueden encajar con el problema
+descrito y qué herramientas tiene disponibles. \\ \hline
+RF-12 & Ofrecer una visualización del entorno de simulación con
+\textit{replay} paso a paso y paneles de actividad por agente. \\ \hline
+RF-13 & Exponer vistas de inspección del Knowledge Backbone (grafo,
+memorias y procedencia) accesibles desde la propia interfaz web. \\ \hline
+\end{tabular}
+\caption{Requisitos funcionales principales.}
+\end{center}
+\end{table}
+
+\section{Requisitos no funcionales}
+
+Los requisitos no funcionales se centran en el desacoplamiento entre
+fases, la trazabilidad de cada ejecución y el comportamiento ante fallos
+de servicios opcionales.
+
+\begin{itemize}
+\item \textbf{Modularidad y desacoplamiento:} la integración con la primera
+fase debe realizarse mediante un contrato mínimo (\textit{duck typing}),
+sin imponer dependencias de paquetes ni jerarquías de clases. Mientras
+RF-01 fija el \emph{qué} (cargar los modelos sin intervención manual),
+este requisito fija el \emph{cómo} (sin acoplar la evolución de las dos
+fases).
+\item \textbf{Extensibilidad de modelos:} la incorporación de nuevos
+modelos generados por la primera fase no debe requerir modificaciones en
+el código de la segunda fase.
+\item \textbf{Trazabilidad:} cada ejecución debe conservar su
+configuración, sus eventos y sus artefactos finales con un identificador
+único, de modo que sea posible reproducirla o auditarla.
+\item \textbf{Reactividad:} el cliente web debe recibir actualizaciones del
+estado de la simulación y de la actividad de cada agente en tiempo real,
+sin polling, mediante WebSocket.
+\item \textbf{Degradación controlada:} los componentes opcionales del
+Knowledge Backbone (reranker, embeddings) pueden estar ausentes; en ese
+caso el sistema debe seguir funcionando, aunque la recuperación pierda
+calidad.
+\item \textbf{Reproducibilidad de la simulación:} para una misma semilla
+y configuración, el motor de simulación debe producir resultados
+idénticos, de modo que las comparativas multi-modelo sean
+\textit{joinable} entre sesiones.
+\item \textbf{Portabilidad de despliegue:} los servicios externos (Postgres,
+MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
+mediante \texttt{docker compose}, sin pasos manuales de configuración
+específicos del entorno del desarrollador.
+\item \textbf{Configuración por entorno:} las credenciales y endpoints de
+los servicios externos deben aislarse en variables de entorno, sin
+quedar embebidos en el código fuente ni en los artefactos versionados.
+\item \textbf{Observabilidad:} las acciones del Orchestrator y de los
+agentes especializados deben dejar trazas en \textit{logs} estructurados
+suficientes para diagnosticar una sesión \textit{a posteriori} sin tener
+que reproducirla.
+\end{itemize}
+
+\section{Información que el sistema debe almacenar}
+
+La capa de persistencia compartida con la primera fase distribuye los
+datos entre los cuatro componentes del Knowledge Backbone. Esta sección
+enumera qué guarda cada uno; la justificación de la combinación se
+desarrolla en el capítulo de diseño.
+
+\paragraph{PostgreSQL.} Metadatos con estructura tabular: experimentos
+(\texttt{experiments}), ejecuciones dentro de cada experimento
+(\texttt{runs}), modelos de decisión registrados (\texttt{models}),
+referencias a los artefactos persistidos en MinIO
+(\texttt{artifacts}), historial conversacional con el Orchestrator
+(\texttt{chat\_messages}, persistido para auditoría y para reanudación
+dentro de la propia sesión, no como cliente de historial entre recargas
+del navegador), observaciones de simulación producidas por esta segunda
+fase (\texttt{simulation\_observations}) y memorias generadas y
+aceptadas por la primera fase (\texttt{pipeline\_memories}).
+
+\paragraph{MinIO.} Artefactos binarios: informes en PDF generados por
+el Reporter y los archivos \texttt{*\_model.py} producidos por el
+\textit{Builder} de la primera fase --- es decir, el código Python que
+implementa cada modelo de decisión y que el \texttt{model\_loader} de
+esta fase carga dinámicamente. Los registros en \texttt{artifacts} de
+PostgreSQL apuntan al objeto correspondiente mediante su clave de
+\textit{bucket}.
+
+\paragraph{Qdrant.} Índices vectoriales sobre las \emph{memorias}, donde
+una memoria es la unidad mínima de conocimiento persistida en el backbone:
+un hecho corto en lenguaje natural (un postulado de un paradigma, una
+observación extraída de una simulación, una cita relevante) junto con su
+procedencia y su \textit{namespace}. Cada memoria se almacena en dos
+colecciones complementarias: \texttt{memories\_dense}, con vectores
+densos de 1024 dimensiones producidos por Voyage AI para recuperación
+semántica, y \texttt{memories\_sparse}, con representaciones
+\textit{sparse} generadas mediante el BM25 nativo de Qdrant para
+recuperación léxica. Las dos colecciones comparten el mismo UUID con la
+tabla correspondiente de PostgreSQL, y se particionan por
+\textit{namespace}: \texttt{pipeline} para las que escribe la primera
+fase y \texttt{simulation} para las observaciones que produce la segunda.
+
+\paragraph{Neo4j.} Grafo con los paradigmas científicos, sus
+formulaciones, los modelos derivados de ellas, la procedencia de cada
+uno y las relaciones entre estas entidades: qué paradigma propone qué
+formulación, qué modelo implementa qué formulación y qué memoria de
+simulación corresponde a qué paradigma.
+
+\section{Interfaces externas}
+
+El sistema interactúa con varios sistemas externos y comparte una capa de
+persistencia con la primera fase del proyecto.
+
+\begin{itemize}
+\item \textbf{Primera fase del proyecto:} integración a través del
+contrato \texttt{decide}, \texttt{update} y \texttt{get\_state}, declarado
+como \texttt{Protocol} en \texttt{simlab.environment} y resuelto por
+\textit{duck typing}.
+\item \textbf{Knowledge Backbone compartido:} PostgreSQL (metadatos,
+historial de experimentos y tabla de observaciones de simulación), MinIO
+(artefactos binarios), Qdrant (vectores densos y BM25 nativo) y Neo4j
+(grafo de paradigmas, formulaciones y procedencia).
+\item \textbf{Servicios de modelos de lenguaje:} acceso a los proveedores
+de LLM a través de OpenRouter; embeddings asimétricos mediante Voyage AI
+(opcional) y reranking mediante ZeroEntropy (opcional).
+\item \textbf{Motor de composición tipográfica:} generación de los
+informes en PDF mediante una plantilla LaTeX procesada con \textit{tectonic}.
+\item \textbf{Cliente web:} comunicación con el backend a través de una
+API REST sobre HTTP y un canal WebSocket para los eventos en tiempo real.
+\end{itemize}

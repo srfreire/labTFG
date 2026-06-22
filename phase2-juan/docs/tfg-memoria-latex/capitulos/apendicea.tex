@@ -1,0 +1,83 @@
+\chapter{Manual técnico}
+
+\section{Estructura relevante}
+
+\begin{verbatim}
+phase2-juan/
+  simlab/
+    environment.py      dominio de simulacion
+    spec.py             validacion de entornos
+    orchestrator.py     chat, herramientas y coordinacion
+    architect.py        generacion de entorno
+    tracker.py          observacion de simulaciones
+    analyst.py          analisis de patrones
+    reporter.py         generacion de informes PDF
+    model_loader.py     carga de modelos de Fase 1
+    knowledge/          escritura de memorias de simulacion
+    recall/             lectura del Knowledge Backbone
+    api.py              FastAPI + WebSocket
+  frontend/             cliente React
+  tests/                pruebas pytest
+
+shared/                 servicios comunes y migraciones
+docker-compose.yml      Postgres, MinIO, Neo4j y Qdrant
+\end{verbatim}
+
+\section{Servicios}
+
+La ejecución completa requiere PostgreSQL, MinIO, Neo4j y Qdrant. El
+acceso a modelos de lenguaje se realiza mediante OpenRouter. Voyage AI y
+ZeroEntropy son opcionales: si no están configurados, el sistema puede
+ejecutarse, pero la recuperación del Knowledge Backbone pierde calidad.
+
+\section{Configuración}
+
+La configuración vive en \texttt{phase2-juan/.env}. Las variables
+principales son las conexiones a Postgres, MinIO, Neo4j y Qdrant,
+\texttt{OPENROUTER\_API\_KEY}, y los conmutadores
+\texttt{ENABLE\_KNOWLEDGE\_READ} y \texttt{ENABLE\_KNOWLEDGE\_WRITE}.
+El archivo \texttt{.env.example} contiene la lista completa.
+
+\section{Comandos}
+
+\begin{verbatim}
+# Infraestructura para levantar los contenedores
+docker compose up -d
+
+# Backend
+cd phase2-juan
+uv sync
+uv run uvicorn simlab.api:app --port 8000
+
+# Frontend
+cd phase2-juan/frontend
+npm install
+npm run dev
+
+# CLI
+cd phase2-juan && uv run simlab
+\end{verbatim}
+
+\section{Pruebas}
+
+\begin{verbatim}
+cd phase2-juan && uv run pytest tests/ -v
+cd phase2-juan/frontend && npx playwright test
+\end{verbatim}
+
+\section{Extensión}
+
+Un nuevo modelo de decisión generado por la primera fase queda
+disponible para esta fase sin necesidad de tocar el código del
+laboratorio: la primera fase lo registra en la tabla \texttt{models} de
+PostgreSQL y sube el archivo Python a MinIO; el
+\texttt{model\_loader} de \texttt{simlab/model\_loader.py} descubre la
+nueva entrada en la siguiente sesión y carga el archivo desde MinIO al
+instanciar el modelo. Para añadir una nueva herramienta al Orchestrator
+basta con registrar su esquema en el \textit{tool registry} de
+\texttt{simlab/orchestrator.py} junto con su implementación; para
+añadir un agente especializado, se sigue el mismo patrón que los
+existentes, creando un nuevo módulo en \texttt{simlab/} y registrando
+su \textit{tool call} en el Orchestrator. Los cambios sobre la capa de
+persistencia compartida se incorporan mediante migraciones Alembic en
+\texttt{shared/migrations/versions/}.

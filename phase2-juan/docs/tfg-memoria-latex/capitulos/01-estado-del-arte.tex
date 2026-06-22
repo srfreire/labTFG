@@ -1,0 +1,161 @@
+\chapter{Estado del arte}
+
+Esta fase se apoya en varias líneas de trabajo recientes: recuperación
+aumentada con conocimiento estructurado, sistemas multi-agente basados en
+modelos de lenguaje, uso de herramientas, auto-revisión y desarrollo
+asistido por \textit{coding agents}. Este capítulo resume las ideas que se
+incorporan al sistema y cierra situando el trabajo frente a ellas.
+
+\section[Recuperación aumentada y memoria]{Recuperación aumentada y memoria de agentes}
+
+La recuperación aumentada con conocimiento externo (RAG), formulada por
+Lewis et al. \cite{lewis2020rag}, estableció un patrón hoy estándar en
+sistemas con modelos de lenguaje: en lugar de depender exclusivamente
+del contexto contenido en el modelo o del system prompts, el sistema recupera fragmentos
+relevantes de un corpus externo y los incorpora a la generación. Dense
+Passage Retrieval \cite{karpukhin2020dpr} consolidó la recuperación
+densa mediante \textit{embeddings} asimétricos, mientras que BM25
+\cite{robertson2009bm25} sigue siendo la base de la recuperación léxica
+con la que la densa se combina.
+
+
+
+Aproximaciones recientes añaden estructura adicional al corpus.
+HippoRAG \cite{gutierrez2024hipporag} reorganiza la memoria como un
+grafo de conocimiento y aplica PageRank personalizado para integrar
+recuperaciones multimodales, inspirándose en una metáfora neurobiológica
+de la memoria a largo plazo. Microsoft GraphRAG \cite{edge2024graphrag}
+demuestra que construir un grafo a partir del corpus, combinado con
+resúmenes locales y globales, permite responder preguntas que la
+recuperación plana no resuelve, especialmente cuando la respuesta exige
+agregar evidencia distribuida por el corpus.
+
+Las arquitecturas de grafo de conocimiento, formalizadas en el
+\textit{survey} de Hogan et al. \cite{hogan2021knowledgegraphs}, ofrecen
+un sustrato para representar relaciones explícitas entre entidades.
+En el laboratorio desarrollado, esa estructura encaja bien: paradigmas,
+formulaciones, autores y procedencias forman relaciones que el grafo expone
+directamente y que un índice plano de documentos no captura. Esta fase
+combina ese grafo con dos modos complementarios de recuperación sobre el
+mismo \textit{backbone}: un índice denso que aproxima la similitud
+semántica entre fragmentos --- útil cuando la pregunta se formula con
+otras palabras que la memoria almacenada --- y un índice léxico
+BM25 que prioriza coincidencias exactas de términos --- útil cuando lo
+relevante es un nombre concreto, un identificador o una cita literal. El
+detalle de qué consulta utiliza cada agente y cómo se mezclan los
+resultados se desarrolla en el capítulo de diseño.
+
+\section{Sistemas multi-agente basados en LLMs}
+
+La forma más sencilla de utilizar un modelo de lenguaje es como un agente
+único: un sistema que mantiene todo el contexto, recibe la entrada del
+usuario y produce la respuesta directamente. Esta aproximación funciona
+bien para tareas acotadas o sencillas, pero se degrada cuando hay que coordinar
+varias subtareas con dependencias, invocar herramientas externas o
+validar resultados intermedios; en esos casos, el agente único tiende a
+producir respuestas convincentes pero difíciles de auditar paso a paso. A
+medida que el contexto se llena con instrucciones, datos y resultados
+intermedios, el modelo pierde precisión sobre lo que se le ha pedido y
+crece la probabilidad de que invente detalles que no estaban en la
+entrada original --- el fenómeno conocido como alucinación.
+
+Park et al. \cite{park2023generativeagents} mostraron empíricamente que
+un sistema multi-agente con memoria persistente, planificación y
+reflexión produce comportamientos emergentes más ricos que un agente
+único operando sobre el mismo conjunto de \textit{prompts}. Sobre esa
+intuición se han construido marcos de coordinación; entre ellos,
+MetaGPT \cite{hong2024metagpt} es especialmente cercano al adoptado en
+este trabajo, ya que codifica procedimientos operativos estandarizados
+como secuencias de roles especializados (Architect, Engineer, etc.) que
+se invocan en un orden canónico.
+
+El \textit{survey} de Guo et al. \cite{guo2024llmbased} sistematiza el
+campo y propone una taxonomía con tres paradigmas de comunicación ---
+cooperativo, debate, competitivo --- y cuatro patrones estructurales
+--- \textit{Layered}, \textit{Decentralized}, \textit{Centralized} y
+\textit{Shared Message Pool}. La arquitectura adoptada en esta fase, en
+la que un Orchestrator centraliza la comunicación y un conjunto de
+agentes especializados reciben tareas acotadas, corresponde a una
+composición \textit{Centralized} con estructura \textit{Layered}, y se
+distingue por canalizar a través del Orchestrator la mayor parte del
+acceso al \textit{Knowledge Backbone}: solo el Analyst lo consulta de
+forma directa como \textit{tool call}, mientras que el resto de agentes
+recibe un contexto pre-recuperado.
+
+\section{Uso de herramientas y auto-revisión}
+
+ReAct \cite{yao2023react} introdujo el patrón de intercalar razonamiento
+y acción: el modelo de lenguaje produce trazas de pensamiento y llamadas
+a herramientas externas, observa los resultados y razona sobre ellos
+antes de actuar de nuevo. Toolformer \cite{schick2023toolformer}
+demostró que los propios modelos pueden aprender, sin supervisión
+exhaustiva, cuándo invocar herramientas externas. El catálogo de
+herramientas del Orchestrator es una instancia directa de este patrón,
+aplicado a la coordinación del pipeline de simulación, observación y
+análisis.
+
+Madaan et al. \cite{madaan2023selfrefine} y Shinn et al.
+\cite{shinn2023reflexion} propusieron complementariamente que un modelo
+de lenguaje puede mejorar sus propias salidas mediante refinamiento
+iterativo o auto-crítica verbal. En este trabajo, la auto-revisión
+no se aplica al pipeline en tiempo de ejecución, pero sí aparece de
+forma intensiva en el ciclo de desarrollo --- mediante subagentes
+adversariales que revisan el código producido por el agente principal
+antes de fusionarlo, como se detalla en el capítulo correspondiente.
+
+\section{Coding agents y desarrollo asistido}
+
+Codex \cite{chen2021codex} estableció el \textit{baseline} de
+generación de código a partir de descripciones en lenguaje natural,
+junto con HumanEval como su \textit{benchmark} canónico. MBPP
+\cite{austin2021program} introdujo un conjunto complementario de
+problemas \textit{Python} sencillos. SWE-bench
+\cite{jimenez2024swebench} y SWE-agent \cite{yang2024sweagent}
+elevaron el listón: el primero, evaluando la capacidad de los modelos
+sobre 2.294 \textit{issues} reales de GitHub que requieren coordinar
+cambios en varios archivos; el segundo, definiendo una interfaz
+agente-máquina pensada para que un modelo opere sobre un sistema
+\textit{software} completo. En esa misma línea, ChatDev
+\cite{qian2024chatdev} traslada la metáfora multi-agente al propio
+desarrollo de \textit{software}: distintos agentes asumen los papeles
+clásicos del equipo (analista, diseñador, programador, probador) y
+cooperan para producir el código, una idea conceptualmente cercana al
+reparto de responsabilidades que adopta este trabajo durante su ciclo
+de desarrollo.
+
+La evidencia empírica sobre el impacto de estas herramientas en la
+productividad de los desarrolladores ha crecido en los últimos años.
+Peng et al. \cite{peng2023impact} midieron, en un experimento
+controlado, aceleraciones cercanas al 55\% en tareas de implementación
+con GitHub Copilot. Cui et al. \cite{cui2025effects} extendieron el
+análisis a tres ensayos aleatorizados a gran escala publicados en
+\textit{Management Science}, situando el incremento medio de tareas
+completadas de aproximadamente el 26\% sobre poblaciones de varios miles de
+desarrolladores. Butler et al. \cite{butler2024dear} complementaron
+estas medidas cuantitativas con un estudio cualitativo mixto que
+registra los cambios en la experiencia diaria del trabajo. Estos tres
+trabajos ofrecen el sustento empírico sobre el que el capítulo de
+desarrollo de esta memoria construye su argumento sobre la
+deconstrucción del ciclo clásico de desarrollo.
+
+\section{Posicionamiento de esta fase}
+
+Frente a los marcos revisados, este trabajo combina varios elementos que en
+la literatura aparecen distribuidos. Toma de los sistemas multi-agente la
+división explícita de responsabilidades entre roles especializados; de los
+marcos RAG/KG, la mediación del acceso al conocimiento a través de un
+\textit{backbone} híbrido; del uso de herramientas, la modelización del
+pipeline como secuencia de \textit{tool calls}; y de la revisión
+adversarial, la verificación intensiva del código durante el ciclo de
+desarrollo.
+
+La aportación de esta fase está en combinar esos elementos para un
+problema concreto: la ejecución comparativa de paradigmas de toma de
+decisiones humanas. Dos rasgos son especialmente propios del sistema. El
+primero es la dualidad lectura-escritura del Knowledge Backbone: el sistema
+consume paradigmas y postulados de la memoria compartida y, en la misma
+sesión, persiste sus observaciones de simulación para que ejecuciones
+futuras puedan apoyarse en ellas. El segundo es la carga dinámica, por
+\textit{duck typing}, de modelos de decisión generados por otra fase del
+proyecto. Esta separación permite que los dos sistemas evolucionen de forma
+independiente sin que un cambio en uno obligue a reorganizar el otro.

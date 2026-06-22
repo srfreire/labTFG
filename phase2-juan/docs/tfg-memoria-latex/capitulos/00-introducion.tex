@@ -1,0 +1,137 @@
+\chapter{Introducción}
+
+\section{Objetivos generales}
+
+El planteamiento inicial de este Trabajo de Fin de Grado partió de una
+propuesta del profesor Eduardo Manuel Sánchez Vila, tutor del trabajo,
+dirigida a su grupo de investigación. Todo nació a partir de un TFM que había llevado el propio Eduardo.
+Un TFM que sentó las bases del entorno de simulación, tanto en cuestión de código como de idea. Una idea original que explotaríamos varios niveles por encima para crear un sistema nuevo, vivo y complejo.
+La propuesta original perseguía
+sentar las bases de un entorno común sobre el que estudiar paradigmas de
+toma de decisiones humanas. A partir de esa idea, el alcance, la
+arquitectura y la división del proyecto en dos fases se fueron concretando
+de forma iterativa entre Eduardo, mi compañero y yo, en sucesivas reuniones de
+diseño que reorientaron el enfoque inicial, redefiniendo requisitos y enriqueciendo el producto.
+
+El proyecto resultante es un laboratorio virtual para la simulación y el
+análisis de paradigmas de toma de decisiones humanas mediante agentes
+inteligentes, dividido en dos fases complementarias. La primera,
+desarrollada por Pablo Pazos Parada, implementa un pipeline que transforma
+descripciones en lenguaje natural en modelos de decisión ejecutables. Esta
+memoria documenta la segunda, desarrollada por Juan Freire Álvarez:
+la infraestructura que recoge esos modelos, los ejecuta en un entorno
+común, observa su comportamiento y sintetiza los hallazgos en informes
+comparativos.
+
+El objetivo general de esta fase es construir una infraestructura que
+pueda ejecutar modelos de decisión heterogéneos y producir, en cada
+simulación, un conjunto de artefactos verificables:
+
+\begin{itemize}
+\item una especificación del entorno de simulación adaptada al problema
+descrito;
+\item un registro estructurado del comportamiento de los modelos durante
+la ejecución;
+\item un análisis de los patrones observados, contrastado con postulados
+previos del Knowledge Backbone;
+\item un informe en PDF con los resultados y la evidencia recogida;
+\item un conjunto de memorias de simulación persistidas para alimentar
+ejecuciones futuras.
+\end{itemize}
+
+Estos artefactos se obtienen mediante un pipeline de agentes
+especializados coordinados por un Orchestrator, y se exponen al
+usuario a través de una interfaz web. La justificación de cada uno de
+estos componentes se desarrolla en los capítulos correspondientes.
+
+La integración con la primera fase se realiza por \textit{duck
+typing} sobre el contrato \texttt{decide}, \texttt{update} y
+\texttt{get\_state}, sin acoplamiento de clases entre ambos sistemas.
+
+\section{Descripción del sistema}
+
+El sistema es un laboratorio virtual para ejecutar y comparar paradigmas
+de toma de decisiones humanas. Se accede a través de una interfaz web --- y,
+de forma secundaria, mediante una línea de comandos para uso interno y de
+depuración --- y se opera desde un chat con un agente coordinador, el
+Orchestrator. En cada sesión, el Orchestrator dirige un pipeline compuesto
+por cuatro agentes especializados (Architect, Tracker, Analyst y Reporter):
+crea un entorno de simulación adaptado al problema, ejecuta los modelos de
+decisión, observa y analiza el comportamiento resultante, y produce un
+informe en PDF.
+
+Los modelos de decisión que se ejecutan no son parte de esta fase, sino
+que se cargan dinámicamente desde la primera fase del proyecto, que es la
+encargada de generarlos. La integración entre ambas fases se realiza a
+través de un contrato mínimo --- los métodos \texttt{decide},
+\texttt{update} y \texttt{get\_state} --- aplicado por \textit{duck
+typing} en el momento de la carga.
+
+El acceso al Knowledge Backbone compartido entre fases es
+bidireccional: la segunda fase consume desde él tanto los propios
+modelos disponibles para simular como las memorias previas que la
+primera fase consolida sobre cada paradigma (sus formulaciones, su
+procedencia y las predicciones de comportamiento asociadas), y devuelve
+las observaciones registradas por el Tracker para que las ejecuciones
+posteriores puedan apoyarse en ellas.
+
+\section{Información adicional de interés}
+
+La arquitectura del sistema parte de varias decisiones técnicas que se
+resumen a continuación y se desarrollan con más detalle en el capítulo de
+diseño.
+
+\paragraph{Multi-agente coordinado por un Orchestrator centralizado.} El
+sistema podría haberse implementado como un único agente, pero dividir
+las responsabilidades en cuatro agentes especializados hace cada salida
+intermedia inspeccionable y reduce la superficie de error. El contraste
+con la alternativa monolítica se desarrolla en el capítulo de estado
+del arte.
+
+\paragraph{Acceso al conocimiento mediado por el Orchestrator.} El
+acceso al Knowledge Backbone se centraliza: el Analyst dispone de la
+herramienta de recuperación como \textit{tool call} y la invoca cuando
+necesita ampliar el contexto, mientras que el Architect y el Reporter
+no consultan el backbone por su cuenta: reciben un contexto
+pre-recuperado por el propio Orchestrator antes de cada invocación. El
+detalle del esquema y de sus consecuencias se desarrolla en el capítulo
+de diseño.
+
+\paragraph{Backend FastAPI con un único canal WebSocket.} El cliente web
+debe reaccionar a la actividad de los agentes a medida que se produce,
+sin recurrir a \textit{polling}. Un canal WebSocket bidireccional,
+complementado por unos pocos \textit{endpoints} REST, simplifica el
+código del backend y la sincronización del cliente.
+
+\paragraph{Knowledge Backbone híbrido.} La capa de persistencia combina
+cuatro componentes con responsabilidades diferenciadas --- metadatos
+relacionales, artefactos binarios, recuperación vectorial y léxica, y
+grafo de paradigmas ---. Los capítulos de requisitos y diseño explican
+qué datos residen en cada uno y por qué se separan de ese modo.
+
+\paragraph{Integración con la primera fase por \textit{duck typing}.}
+En lugar de compartir un paquete con clases base entre las dos fases,
+el contrato se reduce a tres métodos. La verificación se realiza en
+tiempo de ejecución mediante \texttt{runtime\_checkable}. Esto evita
+acoplar la evolución de ambas fases y hace que un cambio en una no
+obligue a reorganizar la otra.
+
+\section{Relación de la documentación}
+
+La memoria sigue la estructura de un Trabajo de Fin de Grado de tipo B,
+orientado al desarrollo de un sistema software. Los capítulos principales
+son:
+
+\begin{itemize}
+\item estado del arte;
+\item especificación de requisitos;
+\item diseño del sistema;
+\item desarrollo del trabajo;
+\item pruebas;
+\item conclusiones y posibles ampliaciones.
+\end{itemize}
+
+Los apéndices incluyen el manual técnico, el manual de usuario y la
+licencia. La bibliografía recoge tanto referencias sobre agentes
+inteligentes y modelos de decisión como trabajos en recuperación aumentada,
+grafos de conocimiento y simulación multi-agente.

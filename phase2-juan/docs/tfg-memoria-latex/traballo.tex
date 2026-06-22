@@ -1,0 +1,108 @@
+%
+%  PARA TRABALLOS EN GALLEGO USAR (LINEA 12): \usepackage[galician]{babel}
+%  PARA TRABALLOS EN CASTELLANO USAR (LINEA 13): \usepackage[spanish]{babel}
+%
+% Para los acentos usamos codificacion UTF-8 (LINEA 10): \usepackage[utf8]{inputenc} 
+% Si se usase la codificacion es_ES.ISO-8859-1 (LINEA 11): \usepackage[latin1]{inputenc}
+% La conversion de acentos se hace con: iconv -f UTF-8 -t ISO-8859-1 filename.tex
+%
+% Como se incluyen figuras eps hay que compilar con: latex traballo , dvipdf traballo
+%
+
+\documentclass[12pt,twoside,a4paper]{book}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{eurosym}
+\usepackage{float}
+\usepackage{latexsym}
+\usepackage{a4}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{xurl}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+\usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
+
+% Estilos compartidos para diagramas (paleta gris/negro)
+\tikzset{
+  diagblock/.style={
+    rectangle, rounded corners=2pt, draw=black!75, line width=0.6pt,
+    fill=black!4, minimum height=8mm, minimum width=28mm,
+    align=center, font=\small\sffamily
+  },
+  diaghub/.style={
+    rectangle, rounded corners=2pt, draw=black!85, line width=0.8pt,
+    fill=black!10, minimum height=9mm, minimum width=34mm,
+    align=center, font=\small\sffamily\bfseries
+  },
+  diaggroup/.style={
+    rectangle, rounded corners=3pt, draw=black!50, dashed,
+    line width=0.4pt, fill=black!1, inner sep=4mm
+  },
+  diagarrow/.style={
+    -{Stealth[length=2mm,width=1.6mm]}, draw=black!70, line width=0.5pt
+  },
+  diagarrowbi/.style={
+    {Stealth[length=2mm,width=1.6mm]}-{Stealth[length=2mm,width=1.6mm]},
+    draw=black!70, line width=0.5pt
+  }
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  frame=single
+}
+
+\addto\captionsspanish{\def\contentsname{Memoria tipo B -- Índice general}}
+	
+
+\begin{document}
+\include{capitulos/00-titulo}
+\cleardoublepage
+\include{capitulos/00-certificacion}
+\cleardoublepage
+\include{capitulos/00-agradecimientos}
+\cleardoublepage
+\include{capitulos/00-resumo}
+
+\cleardoublepage
+\pagestyle{plain}
+\tableofcontents
+\listoffigures
+\listoftables
+
+\cleardoublepage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\pagestyle{headings}
+\include{capitulos/00-introducion}
+\cleardoublepage
+\include{capitulos/01-estado-del-arte}
+\cleardoublepage
+\include{capitulos/02-especificacion-de-requisitos}
+\cleardoublepage
+\include{capitulos/03-diseño}
+\cleardoublepage
+\include{capitulos/04-desarroll}
+\cleardoublepage
+\include{capitulos/05-pruebas}
+\cleardoublepage
+\include{capitulos/06-conclusiones}
+
+% Aquí empezan os apéndices
+\appendix
+\cleardoublepage
+\include{capitulos/apendicea}
+\cleardoublepage
+\include{capitulos/apendiceb}
+\cleardoublepage
+\include{capitulos/licenza}
+\cleardoublepage
+\include{capitulos/bibliografia}
+
+\end{document}
