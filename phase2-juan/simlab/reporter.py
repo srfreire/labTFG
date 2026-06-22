@@ -85,7 +85,152 @@ def _prepare_latex_body(content: str) -> str:
     content = _escape_unmatched_closing_braces(content)
     content = re.sub(r"\\begin\{document\}", "", content)
     content = re.sub(r"\\end\{document\}", "", content)
+    content = _escape_specials_outside_math(content)
     return content.strip()
+
+
+# Commands whose brace argument is a literal path/key/label where an
+# underscore must stay raw (escaping it would break the file lookup or ref).
+_LITERAL_ARG_COMMANDS = (
+    "includegraphics",
+    "url",
+    "href",
+    "label",
+    "ref",
+    "eqref",
+    "cite",
+    "input",
+    "include",
+    "bibliography",
+)
+
+# Regions where a raw ``_`` is legal and must be preserved verbatim: math
+# spans (display/inline) and the literal-argument commands above.
+_PROTECTED_REGION_RE = re.compile(
+    r"\\begin\{(equation|align|gather|multline|eqnarray|math|displaymath)\*?\}"
+    r".*?\\end\{\1\*?\}"
+    r"|\$\$.*?\$\$"
+    r"|\\\[.*?\\\]"
+    r"|\\\(.*?\\\)"
+    r"|(?<!\\)\$.*?(?<!\\)\$"
+    r"|\\(?:" + "|".join(_LITERAL_ARG_COMMANDS) + r")\s*(?:\[[^\]]*\])?\{[^{}]*\}",
+    re.DOTALL,
+)
+
+
+def _escape_specials_outside_math(content: str) -> str:
+    """Escape raw ``_``, ``#`` and ``%`` in text mode, leaving math spans and
+    path/key arguments untouched.
+
+    The LLM routinely emits snake_case identifiers (model formulations like
+    ``drive_reduction_rl``, actions like ``move_up``) and figures like ``67%``
+    or ``#2`` as raw prose. An unescaped ``_`` makes tectonic abort with
+    "Missing $ inserted", an unescaped ``#`` is an outright error, and a raw
+    ``%`` silently comments out the rest of the line (eating content and often
+    breaking a later brace or environment). Math subscripts ($Q(s_t, a_t)$),
+    percentages inside math and figure paths (chart_2.png) must keep their
+    characters, so those regions are stashed before escaping and restored
+    afterwards. ``^``, ``&`` and ``~`` are intentionally left alone: their
+    escapes are awkward and they are usually deliberate (superscripts in math,
+    table separators, non-breaking spaces).
+    """
+    stash: list[str] = []
+
+    def _hold(match: re.Match[str]) -> str:
+        stash.append(match.group(0))
+        return f"\x00{len(stash) - 1}\x00"
+
+    protected = _PROTECTED_REGION_RE.sub(_hold, content)
+    escaped = re.sub(r"(?<!\\)([_#%])", r"\\\1", protected)
+    return re.sub(r"\x00(\d+)\x00", lambda m: stash[int(m.group(1))], escaped)
+
+
+def _fmt_resources(resources: object, *, prefix: str = "") -> list[str]:
+    """Format resource entries as ``"<count> [prefix]de tipo <type>"`` strings,
+    skipping anything malformed. We never substitute placeholders here: a
+    missing count/type would otherwise masquerade as a real fact in the
+    deterministic section instead of being dropped."""
+    out: list[str] = []
+    for r in resources if isinstance(resources, list) else []:
+        if not isinstance(r, dict):
+            continue
+        count, rtype = r.get("count"), r.get("type")
+        if count is None or not rtype:
+            continue
+        out.append(f"{count} {prefix}de tipo {rtype}")
+    return out
+
+
+def _env_facts_note(env_facts: dict) -> str:
+    """Authoritative facts block appended to the section system prompt so every
+    LLM section uses the real numbers instead of inventing them."""
+    lines = []
+    w, h = env_facts.get("grid_w"), env_facts.get("grid_h")
+    if w and h:
+        lines.append(f"- Rejilla: {w}x{h}")
+    res_fmt = _fmt_resources(env_facts.get("resources"))
+    if res_fmt:
+        lines.append("- Recursos: " + ", ".join(res_fmt))
+    if env_facts.get("steps"):
+        lines.append(f"- Pasos de simulación: {env_facts['steps']}")
+    if env_facts.get("actions"):
+        lines.append("- Acciones: " + ", ".join(env_facts["actions"]))
+    if env_facts.get("models"):
+        lines.append("- Modelos comparados: " + ", ".join(env_facts["models"]))
+    if env_facts.get("seed") is not None:
+        lines.append(f"- Semilla: {env_facts['seed']}")
+    if not lines:
+        return ""
+    return (
+        "\n\nDATOS DEL EXPERIMENTO (usa estos valores EXACTOS en todas las "
+        "secciones; NO inventes ni cambies el tamaño de la rejilla, el número de "
+        "pasos, los recursos ni los nombres de los modelos):\n" + "\n".join(lines)
+    )
+
+
+def _render_env_section(env_facts: dict) -> str:
+    """Deterministic 'Entorno y modelo' section built from the real spec, so the
+    factual description never depends on the LLM (which used to hallucinate the
+    grid size). Specials are escaped downstream by ``_prepare_latex_body``."""
+    sentences = []
+    w, h = env_facts.get("grid_w"), env_facts.get("grid_h")
+    steps = env_facts.get("steps")
+    intro_bits = []
+    if w and h:
+        intro_bits.append(f"una rejilla de ${w}\\times{h}$ celdas")
+    res_fmt = _fmt_resources(env_facts.get("resources"), prefix="recursos ")
+    if res_fmt:
+        intro_bits.append("con " + ", ".join(res_fmt))
+    if steps:
+        intro_bits.append(f"durante {steps} pasos de simulación")
+    if intro_bits:
+        sentences.append("El experimento se ejecutó sobre " + ", ".join(intro_bits) + ".")
+    if env_facts.get("actions"):
+        sentences.append(
+            "Las acciones disponibles fueron: " + ", ".join(env_facts["actions"]) + "."
+        )
+    models = env_facts.get("models") or []
+    if models:
+        joined = (
+            models[0]
+            if len(models) == 1
+            else ", ".join(models[:-1]) + " y " + models[-1]
+        )
+        sentences.append(
+            "Los modelos comparados, cargados dinámicamente desde la primera "
+            f"fase, fueron {joined}, integrados mediante el contrato "
+            "decide/update/get_state aplicado por duck typing, sin acoplamiento "
+            "de clases entre ambas fases."
+        )
+    if env_facts.get("seed") is not None:
+        sentences.append(
+            f"La simulación usó la semilla {env_facts['seed']} para garantizar "
+            "la reproducibilidad de los resultados."
+        )
+    body = " ".join(sentences) if sentences else (
+        "Configuración del entorno no disponible para esta ejecución."
+    )
+    return f"\\section{{Entorno y modelo}}\n\n{body}"
 
 
 def _escape_unmatched_closing_braces(content: str) -> str:
@@ -841,8 +986,15 @@ class Reporter:
         user_message: str,
         charts: list[dict] | None,
         prompt_suffix: str,
+        env_facts: dict | None = None,
     ) -> str:
-        """Generate bounded LaTeX sections and compile one assembled report."""
+        """Generate bounded LaTeX sections and compile one assembled report.
+
+        When ``env_facts`` is supplied, the factual "Entorno y modelo" section is
+        rendered deterministically from the real spec (never by the LLM) and the
+        exact numbers are pinned into every other section's prompt, so the report
+        cannot hallucinate the grid size, step count or model names.
+        """
         sections = [
             (
                 "Resumen ejecutivo",
@@ -865,6 +1017,11 @@ class Reporter:
                 "Lista conclusiones accionables y siguientes experimentos recomendados.",
             ),
         ]
+
+        # When we have the real spec, render "Entorno y modelo" deterministically
+        # (below) instead of letting the LLM invent it.
+        if env_facts:
+            sections = [s for s in sections if s[0] != "Entorno y modelo"]
 
         chart_lines = []
         for chart in charts or []:
@@ -893,6 +1050,8 @@ class Reporter:
             "Do not use \\cite{}, \\ref{}, \\label{}. "
             "Keep the section under 450 words."
         )
+        if env_facts:
+            section_system += _env_facts_note(env_facts)
         compact_context = user_message[:12000]
 
         async def generate_section(title: str, instruction: str) -> str:
@@ -953,6 +1112,11 @@ class Reporter:
             )
         )
 
+        # Insert the deterministic environment section right after the executive
+        # summary, in the slot the LLM section used to occupy.
+        if env_facts:
+            section_bodies.insert(1, _render_env_section(env_facts))
+
         if chart_lines:
             section_bodies.append("\\section{Graficos}\n\n" + "\n\n".join(chart_lines))
 
@@ -990,6 +1154,7 @@ class Reporter:
         extra_registry: dict | None = None,
         prompt_suffix: str = "",
         knowledge_context: str = "",
+        env_facts: dict | None = None,
     ) -> str:
         storage = self._storage
         db = self._db
@@ -1209,6 +1374,7 @@ class Reporter:
                     user_message=user_message,
                     charts=charts,
                     prompt_suffix=prompt_suffix,
+                    env_facts=env_facts,
                 ),
                 timeout=REPORTER_LLM_TIMEOUT_SECONDS,
             )

@@ -773,6 +773,51 @@ QUERY_HISTORY_TOOL = {
 # ---------------------------------------------------------------------------
 
 
+def _build_env_facts(state: dict) -> dict | None:
+    """Authoritative environment facts from the real spec/run, for the Reporter
+    to render the factual section deterministically instead of letting the LLM
+    invent the grid size, step count or model names.
+
+    Keys: ``grid_w``, ``grid_h``, ``resources``, ``actions``, ``steps``,
+    ``models``, ``seed``. Returns ``None`` (and logs) when a core fact is
+    missing, so the caller falls back to the LLM-generated section rather than
+    emitting a confident section with silently-dropped facts.
+    """
+    spec = state.get("spec") or {}
+    replay = state.get("replay") or {}
+    a2m = state.get("agent_to_model") or {}
+    grid = spec.get("grid") or {}
+    facts = {
+        "grid_w": replay.get("grid_width") or grid.get("width"),
+        "grid_h": replay.get("grid_height") or grid.get("height"),
+        "resources": spec.get("resources") or [],
+        "actions": [
+            a.get("name")
+            for a in (spec.get("actions") or [])
+            if isinstance(a, dict) and a.get("name")
+        ],
+        "steps": replay.get("total_steps"),
+        "models": sorted(
+            {
+                d.get("formulation")
+                for d in a2m.values()
+                if isinstance(d, dict) and d.get("formulation")
+            }
+        ),
+        "seed": state.get("seed"),
+    }
+    if not (facts["grid_w"] and facts["grid_h"] and facts["steps"]):
+        logger.warning(
+            "Reporter env_facts incomplete (grid_w=%s grid_h=%s steps=%s); "
+            "falling back to LLM-generated environment section.",
+            facts["grid_w"],
+            facts["grid_h"],
+            facts["steps"],
+        )
+        return None
+    return facts
+
+
 class Orchestrator:
     """Conversational orchestrator that coordinates the 4 simulation agents.
 
@@ -1691,6 +1736,7 @@ class Orchestrator:
             )
             focus = params.get("focus", "Genera un informe completo de la simulacion.")
             exp_id = state.get("experiment_id", "")
+            env_facts = _build_env_facts(state)
             result = await reporter.run(
                 focus,
                 state["tracker_output"],
@@ -1702,6 +1748,7 @@ class Orchestrator:
                 predictions=state.get("predictions"),
                 charts=state.get("charts"),
                 knowledge_context=knowledge_ctx,
+                env_facts=env_facts,
                 **_recall_kwargs("reporter"),
             )
             # Track PDF S3 keys — read from Reporter side-channel because the

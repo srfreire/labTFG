@@ -3,7 +3,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from simlab.reporter import Reporter, _build_standard_report_text, _prepare_latex_body
+from simlab.reporter import (
+    Reporter,
+    _build_standard_report_text,
+    _prepare_latex_body,
+    _render_env_section,
+)
 
 
 class _FakeMessages:
@@ -123,6 +128,118 @@ def test_prepare_latex_body_escapes_unmatched_closing_braces_in_text():
 
     assert r"Q((3, \}here')" in out
     assert "move\\_up" in out
+
+
+def test_prepare_latex_body_escapes_raw_underscores_in_text():
+    # Model identifiers leak into captions/prose as raw snake_case, which
+    # breaks tectonic with "Missing $ inserted" unless escaped.
+    body = r"\caption{Evolución del drive (drive_reduction_rl)} y move_up."
+
+    out = _prepare_latex_body(body)
+
+    assert r"drive\_reduction\_rl" in out
+    assert r"move\_up" in out
+    assert "drive_reduction_rl" not in out.replace(r"\_", "")  # no raw _ left
+
+
+def test_prepare_latex_body_preserves_underscores_inside_math():
+    body = r"La recompensa $R_t = -D(t)^2$ con $K_p$ y $Q(s_t, a_t)$ define la política."
+
+    out = _prepare_latex_body(body)
+
+    assert "$R_t = -D(t)^2$" in out
+    assert "$K_p$" in out
+    assert "$Q(s_t, a_t)$" in out
+
+
+def test_prepare_latex_body_preserves_underscores_in_includegraphics():
+    body = r"\includegraphics[width=0.9\textwidth]{chart_2.png}"
+
+    out = _prepare_latex_body(body)
+
+    assert "{chart_2.png}" in out
+    assert r"chart\_2.png" not in out
+
+
+def test_prepare_latex_body_escapes_hash_and_percent_in_text():
+    # Raw % silently eats the rest of the line (comment); raw # is an error.
+    body = r"El 67% de las acciones y el agente #2 fracasaron."
+    out = _prepare_latex_body(body)
+    assert r"67\%" in out
+    assert r"\#2" in out
+
+
+def test_prepare_latex_body_preserves_specials_inside_math():
+    body = r"La tasa $\alpha = 0.1$ y el 50% restante con $K_p$ activo."
+    out = _prepare_latex_body(body)
+    assert r"$\alpha = 0.1$" in out
+    assert "$K_p$" in out
+    assert r"50\%" in out
+
+
+def test_render_env_section_is_deterministic_with_real_facts():
+    facts = {
+        "grid_w": 8, "grid_h": 8,
+        "resources": [{"type": "food", "count": 6}],
+        "actions": ["move_up", "move_down", "eat", "stay"],
+        "steps": 30,
+        "models": ["drive_reduction_rl", "pi_negative_feedback"],
+        "seed": 42,
+    }
+    out = _render_env_section(facts)
+    assert r"\section{Entorno y modelo}" in out
+    # Facts come straight from the spec — never inferred by the LLM.
+    assert r"8\times8" in out or "8x8" in out
+    assert "30" in out
+    assert "6" in out
+    assert "drive_reduction_rl" in out
+    assert "pi_negative_feedback" in out
+    # No hallucinated grid size can appear because there is no LLM call.
+    assert "5\\times5" not in out and "5x5" not in out
+
+
+def test_render_env_section_skips_missing_fields():
+    out = _render_env_section({"grid_w": 8, "grid_h": 8})
+    assert r"\section{Entorno y modelo}" in out  # no crash on sparse facts
+
+
+def test_render_env_section_drops_malformed_resources_instead_of_fabricating():
+    facts = {
+        "grid_w": 8, "grid_h": 8, "steps": 30,
+        "resources": [{"type": "food"}, "bad", {"count": 5, "type": "water"}],
+    }
+    out = _render_env_section(facts)
+    assert "5 recursos de tipo water" in out
+    # malformed entries must not masquerade as facts in the authoritative section
+    assert "?" not in out
+    assert "de tipo recurso" not in out
+
+
+def test_build_env_facts_from_real_state():
+    from simlab.orchestrator import _build_env_facts
+
+    state = {
+        "spec": {
+            "grid": {"width": 8, "height": 8},
+            "resources": [{"type": "food", "count": 6}],
+            "actions": [{"name": "eat"}, {"name": "stay"}],
+        },
+        "replay": {"grid_width": 8, "grid_height": 8, "total_steps": 30},
+        "agent_to_model": {"a0": {"formulation": "drive_reduction_rl"}},
+        "seed": 42,
+    }
+    facts = _build_env_facts(state)
+    assert facts["grid_w"] == 8 and facts["grid_h"] == 8 and facts["steps"] == 30
+    assert facts["models"] == ["drive_reduction_rl"]
+    assert facts["actions"] == ["eat", "stay"]
+
+
+def test_build_env_facts_returns_none_when_core_facts_missing():
+    from simlab.orchestrator import _build_env_facts
+
+    assert _build_env_facts({"spec": {}, "replay": {}}) is None
+    # grid present but no steps → still None (don't trust a partial section)
+    assert _build_env_facts({"replay": {"grid_width": 8, "grid_height": 8}}) is None
 
 
 def test_prepare_latex_body_converts_tagged_display_math_to_equation():
