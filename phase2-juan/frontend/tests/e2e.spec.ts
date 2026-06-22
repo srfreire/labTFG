@@ -40,7 +40,7 @@ test.describe('DecisionLab E2E', () => {
     await expect(chatArea.locator('.msg-content').nth(1)).toBeVisible({ timeout: 60_000 })
   })
 
-  test('full pipeline with agent tool visibility', async ({ page }) => {
+  test('full pipeline produces tracker and analyst cards', async ({ page }) => {
     test.setTimeout(600_000) // 10 minutes — full pipeline is slow
     await page.goto('/')
     const sidebar = page.locator('aside')

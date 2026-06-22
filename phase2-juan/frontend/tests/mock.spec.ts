@@ -1,4 +1,26 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+// Turn-based mock: the first message kicks off the Architect step, then each
+// Orchestrator suggestion advances the pipeline one step.
+const STEP_SUGGESTIONS = [
+  'Lanza la simulación',
+  'Registra las trayectorias con el Tracker',
+  'Analiza los resultados',
+  'Genera el informe PDF',
+]
+
+// Click through every suggestion until the Reporter finishes. Assumes the
+// Architect step has already produced the first suggestion.
+async function runPipeline(page: Page) {
+  for (const label of STEP_SUGGESTIONS) {
+    const btn = page.getByRole('button', { name: label })
+    await expect(btn).toBeVisible({ timeout: 20_000 })
+    await btn.click()
+  }
+  await expect(
+    page.getByRole('button', { name: 'Muéstrame la evolución de la Q-table' }),
+  ).toBeVisible({ timeout: 20_000 })
+}
 
 test.describe('DecisionLab Mock Mode', () => {
 
@@ -13,26 +35,27 @@ test.describe('DecisionLab Mock Mode', () => {
     }
   })
 
-  test('full mock pipeline — cards, charts, critical events, replay', async ({ page }) => {
+  test('full mock pipeline — turn by turn with suggestions', async ({ page }) => {
     await page.goto('/?mock')
     await expect(page.getByRole('heading', { name: 'DecisionLab' })).toBeVisible()
 
-    // Trigger mock pipeline
+    // First message kicks off the Architect step
     await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
 
-    // Wait for pipeline to complete (final continuation prompt)
-    await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
-
-    // Environment spec card appeared
-    await expect(page.getByText('Environment Spec')).toBeVisible()
+    // Architect step: environment spec card + predictions + first suggestion
+    await expect(page.getByText('Environment Spec')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('main').getByText('food ×6', { exact: true })).toBeVisible()
-
-    // Predictions appeared
     await expect(page.getByText('regulación homeostática')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Lanza la simulación' })).toBeVisible()
+
+    // Drive the rest of the pipeline through the suggestions
+    await runPipeline(page)
 
     // Simulation grid rendered with critical events
     await expect(page.getByRole('main').getByText('Simulación', { exact: true })).toBeVisible()
     await expect(page.getByText('Eventos críticos').first()).toBeVisible()
+    await expect(page.getByText('Step 1 / 30')).toBeVisible()
+    await expect(page.getByText('Agentes', { exact: true })).toBeVisible()
 
     // Tracker card appeared
     await expect(page.getByText('Trayectorias', { exact: true })).toBeVisible()
@@ -58,29 +81,19 @@ test.describe('DecisionLab Mock Mode', () => {
     expect(await completedBadges.count()).toBeGreaterThanOrEqual(5)
   })
 
-  test('replay step indicator visible', async ({ page }) => {
+  test('keeps only the latest replay player visible after restart', async ({ page }) => {
     await page.goto('/?mock')
-    await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
-    await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
-
-    // Step indicator and Agentes legend visible
-    await expect(page.getByText('Step 1 / 30')).toBeVisible()
-    await expect(page.getByText('Agentes', { exact: true })).toBeVisible()
-  })
-
-  test('keeps only the latest replay player visible after multiple runs', async ({ page }) => {
-    await page.goto('/?mock')
-    const firstRun = page.getByRole('button', {
+    await page.getByRole('button', {
       name: 'Ejecuta una run corta con drive_reduction_rl',
-    })
-    await expect(firstRun).toBeVisible()
-    await firstRun.click()
-    await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 45_000 })
+    }).click()
+    await runPipeline(page)
 
-    await page.getByPlaceholder('Describe un paradigma de decisión...').fill('lanza otra simulación')
-    await page.getByRole('button').last().click()
-    await expect(page.getByText('¿Quieres explorar algo más?')).toHaveCount(2, { timeout: 45_000 })
+    // Restart from the Reporter suggestion → back to the Architect step
+    await page.getByRole('button', { name: 'Empezar un nuevo experimento' }).click()
+    await expect(page.getByRole('button', { name: 'Lanza la simulación' })).toBeVisible({ timeout: 20_000 })
+    await runPipeline(page)
 
+    // Only the most recent simulation keeps a live replay player
     await expect(page.getByRole('main').getByText('Simulación', { exact: true })).toHaveCount(1)
     await expect(page.getByText('Step 1 / 30')).toHaveCount(1)
   })
@@ -88,7 +101,7 @@ test.describe('DecisionLab Mock Mode', () => {
   test('decision traces — cards in chat and popover in replay', async ({ page }) => {
     await page.goto('/?mock')
     await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
-    await expect(page.getByText('¿Quieres explorar algo más?')).toBeVisible({ timeout: 30_000 })
+    await runPipeline(page)
 
     // Decision Trace cards appear in chat (from Analyst message)
     await expect(page.getByText('Decision Trace').first()).toBeVisible()
@@ -102,9 +115,6 @@ test.describe('DecisionLab Mock Mode', () => {
 
     // Shows comparison — pi_negative_feedback trace also rendered
     await expect(page.getByText('Sin Q-values').first()).toBeVisible()
-
-    // Q-values evolution chart
-    await expect(page.getByText('Evolución Q-values por acción (drive_reduction_rl)')).toBeVisible()
 
     // Replay: click confidence drop critical event marker → popover appears
     const confidenceMarker = page.locator('[title*="perdió confianza"]')

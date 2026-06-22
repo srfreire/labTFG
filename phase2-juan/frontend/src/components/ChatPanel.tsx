@@ -110,6 +110,8 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
   // Active chat state
   const orchColor = getFromColor('orchestrator')
   const latestReplayMessageId = [...messages].reverse().find(msg => msg.replay)?.id
+  const lastMessage = messages[messages.length - 1]
+  const suggestions = !busy && lastMessage?.from !== 'user' ? lastMessage?.suggestions : undefined
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -141,6 +143,20 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
                 Pensando<span>.</span><span>.</span><span>.</span>
               </div>
             </div>
+          </div>
+        )}
+        {suggestions && suggestions.length > 0 && (
+          <div className="mt-4 ml-10 flex flex-wrap gap-2 animate-msg-in">
+            {suggestions.map(suggestion => (
+              <button
+                key={suggestion}
+                onClick={() => onSend(suggestion)}
+                className="text-[12px] px-3.5 py-2 border border-border-subtle rounded-lg text-text-dim hover:text-text-muted hover:border-border hover:bg-surface-hover transition-colors duration-150 cursor-pointer"
+                style={{ borderColor: withAlpha(orchColor, '30'), color: orchColor }}
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -225,12 +241,23 @@ function MessageBubble({ msg, hideAvatar, showReplay = true }: {
           {msg.reports && msg.reports.length > 0 && <ReportLinks reports={msg.reports} color={dotColor} />}
           {msg.tracker && <TrackerCard tracker={msg.tracker} />}
           {msg.analyst && <AnalystCard analyst={msg.analyst} />}
-          {msg.charts && msg.charts.map(chart => (
-            <ChartCard key={chart.id} spec={chart} />
-          ))}
-          {showReplay && msg.replay && <SimulationGrid replay={msg.replay} />}
+          {msg.charts && (
+            <div data-testid="analysis-charts">
+              {msg.charts.map(chart => (
+                <ChartCard key={chart.id} spec={chart} />
+              ))}
+            </div>
+          )}
+          {showReplay && msg.replay && (
+            <div data-testid="sim-replay">
+              <SimulationGrid replay={msg.replay} />
+            </div>
+          )}
           {msg.traces && msg.traces.length > 0 && (
-            <div className={`mt-3 flex gap-2.5 ${msg.traces.length > 1 ? 'overflow-x-auto' : ''}`}>
+            <div
+              data-testid="decision-traces"
+              className={`mt-3 flex gap-2.5 ${msg.traces.length > 1 ? 'overflow-x-auto' : ''}`}
+            >
               {msg.traces.map((trace, i) => (
                 <div key={i} className={msg.traces!.length > 1 ? 'min-w-[280px] flex-1' : ''}>
                   <DecisionTraceCard trace={trace} />

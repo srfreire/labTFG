@@ -17,6 +17,8 @@ export interface ChatMessage {
   replay?: ReplayData
   charts?: ChartSpec[]
   traces?: DecisionTrace[]
+  /** Recommended next steps the user can click to continue the conversation. */
+  suggestions?: string[]
 }
 
 export interface ContextSummary {
