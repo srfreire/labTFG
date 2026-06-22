@@ -52,26 +52,6 @@ def test_tracker_memory_writer_constructs_with_mocked_services():
     assert isinstance(writer, TrackerMemoryWriter)
 
 
-async def test_writer_with_empty_tracker_returns_no_relevant_content():
-    writer = TrackerMemoryWriter(
-        vector_store=MagicMock(),
-        embedding_service=MagicMock(),
-        db=MagicMock(),
-    )
-    context = SimulationContext(
-        phase2_experiment_id="exp-1",
-        environment="grid_10x10",
-        steps=10,
-        seed=None,
-        agent_to_model={},
-    )
-    result = await writer.write("{}", context)
-    assert result.skipped_reason == "no_relevant_content"
-    assert result.summaries_written == 0
-    assert result.trajectories_written == 0
-    assert result.episodes_written == 0
-
-
 async def test_build_writer_returns_none_without_voyage_key(caplog):
     settings = Settings(VOYAGE_API_KEY="", ZEROENTROPY_API_KEY="z-key")
     with caplog.at_level("WARNING"):

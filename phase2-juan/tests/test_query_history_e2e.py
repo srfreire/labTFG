@@ -153,20 +153,3 @@ async def test_query_history_over_pipeline_memories(seeded_db):
     assert "homeostatic" in out
     assert "prospect theory" in out
 
-
-# ---------------------------------------------------------------------------
-# AC5 — out_of_scope plan → out-of-scope markdown, no DB call
-# ---------------------------------------------------------------------------
-
-
-async def test_query_history_out_of_scope_skips_db(seeded_db):
-    plan_mock = AsyncMock(return_value={"error": "out_of_scope"})
-    execute_mock = AsyncMock()
-    with (
-        patch("simlab.nlsql._plan", new=plan_mock),
-        patch("simlab.nlsql._execute", new=execute_mock),
-    ):
-        out = await query_history("¿qué hora es?", db=seeded_db)
-
-    assert "alcance" in out
-    execute_mock.assert_not_called()

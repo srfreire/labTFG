@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from simlab.model_loader import ModelInfo, discover_models, load_model
+from simlab.model_loader import ModelInfo, cleanup_temp_models, discover_models, load_model
 
 # ---------------------------------------------------------------------------
 # Fixtures — fake DB rows matching the new Model schema
@@ -113,13 +113,27 @@ async def test_discover_models_null_run_id():
     assert info.run_id is None
 
 
-async def test_discover_models_orders_rows_before_duplicate_collapse():
-    mock_session, mock_db = _mock_session_with_rows([])
+async def test_discover_models_duplicate_key_keeps_last_row():
+    older_run, newer_run = uuid.uuid4(), uuid.uuid4()
+    older = _make_db_row(
+        paradigm="same",
+        formulation="model",
+        run_id=older_run,
+        class_name="OlderModel",
+    )
+    newer = _make_db_row(
+        paradigm="same",
+        formulation="model",
+        run_id=newer_run,
+        class_name="NewerModel",
+    )
+    _, mock_db = _mock_session_with_rows([older, newer])
 
-    await discover_models(db=mock_db)
+    models = await discover_models(db=mock_db)
 
-    statement = mock_session.execute.await_args.args[0]
-    assert statement._order_by_clauses
+    assert list(models) == ["same/model"]
+    assert models["same/model"].class_name == "NewerModel"
+    assert models["same/model"].run_id == str(newer_run)
 
 
 # ---------------------------------------------------------------------------
@@ -336,3 +350,18 @@ class StrictModel:
     mock_storage.get = AsyncMock(return_value=source_no_kwargs.encode())
     with pytest.raises(ValueError, match="Failed to instantiate"):
         await load_model(info, storage=mock_storage, nonexistent_param=999)
+
+
+async def test_load_model_temp_dir_is_cleaned_after_instantiation(tmp_path):
+    cleanup_temp_models()
+    info = _make_model_info()
+    mock_storage = MagicMock()
+    mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
+    temp_dir = tmp_path / "model_tmp"
+    temp_dir.mkdir()
+
+    with patch("simlab.model_loader.tempfile.mkdtemp", return_value=str(temp_dir)):
+        model = await load_model(info, storage=mock_storage)
+
+    assert hasattr(model, "decide")
+    assert not temp_dir.exists()

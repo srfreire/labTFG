@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 _tmp_dirs: list[str] = []
 
 
+def _cleanup_tmp_dir(tmp_dir: str) -> None:
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    try:
+        _tmp_dirs.remove(tmp_dir)
+    except ValueError:
+        pass
+
+
 class _SeededRandomModule:
     """Small module-like random proxy backed by a per-model RNG."""
 
@@ -158,10 +166,8 @@ async def load_model(
 
     del sys.modules[module_name]
 
-    # Don't clean up tmp_dir yet -- the class object references the file
-    _tmp_dirs.append(tmp_dir)
-
     if model_class is None:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise ValueError(
             f"No decision model class '{model_info.class_name}' found in "
             f"{model_info.s3_model_key}"
@@ -177,15 +183,19 @@ async def load_model(
             init_kwargs = kwargs | {"seed": seed}
 
     try:
-        return model_class(**init_kwargs)
+        model = model_class(**init_kwargs)
     except TypeError as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise ValueError(
             f"Failed to instantiate {model_info.paradigm}/{model_info.formulation}: {e}"
         ) from e
 
+    _cleanup_tmp_dir(tmp_dir)
+    return model
+
 
 def cleanup_temp_models() -> None:
     """Clean up temp dirs created by load_model."""
-    for d in _tmp_dirs:
+    for d in list(_tmp_dirs):
         shutil.rmtree(d, ignore_errors=True)
     _tmp_dirs.clear()

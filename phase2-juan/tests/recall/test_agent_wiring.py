@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from simlab.orchestrator import Orchestrator
 from simlab.recall.agent_tools import build_recall_extras
 
 from shared.services import Services
@@ -19,6 +20,19 @@ _FLAG_OFF = Settings()
 
 def _stub_services() -> Services:
     return Services(db=MagicMock(), storage=MagicMock())
+
+
+def _stub_orchestrator_services() -> Services:
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+    cm = AsyncMock()
+    cm.__aenter__ = AsyncMock(return_value=session)
+    cm.__aexit__ = AsyncMock(return_value=None)
+
+    db = MagicMock()
+    db.get_session = MagicMock(return_value=cm)
+    return Services(db=db, storage=MagicMock())
 
 
 # ---------------------------------------------------------------------------
@@ -77,93 +91,64 @@ async def test_handler_uses_stage_prefix():
 
 
 # ---------------------------------------------------------------------------
-# AC1: Flag OFF — agents unchanged
+# Orchestrator wiring
 # ---------------------------------------------------------------------------
 
 
-async def test_flag_off_architect_no_retrieve_context():
-    """With flag off, Architect has no retrieve_context tool."""
-    assert "retrieve_context" not in [
-        t["name"] for t in _get_architect_tools(_FLAG_OFF)
+def test_orchestrator_flag_off_does_not_initialise_recall_extras():
+    orch = Orchestrator(client=MagicMock(), services=_stub_orchestrator_services())
+
+    with patch("simlab.recall.build_recall_extras") as build:
+        tools, registry = orch._build_tools(_FLAG_OFF)
+
+    build.assert_not_called()
+    assert "retrieve_context" not in [t["name"] for t in tools]
+    assert "retrieve_context" not in registry
+
+
+def test_orchestrator_flag_on_initialises_recall_extras_for_agent_stages():
+    orch = Orchestrator(client=MagicMock(), services=_stub_orchestrator_services())
+
+    with patch(
+        "simlab.recall.build_recall_extras",
+        return_value=([{"name": "retrieve_context"}], {"retrieve_context": AsyncMock()}, "prompt"),
+    ) as build:
+        tools, registry = orch._build_tools(_FLAG_ON)
+
+    assert [call.args[0] for call in build.call_args_list] == [
+        "architect",
+        "analyst",
+        "reporter",
     ]
-
-
-async def test_flag_off_analyst_no_retrieve_context():
-    """With flag off, Analyst has no retrieve_context tool."""
-    assert "retrieve_context" not in [t["name"] for t in _get_analyst_tools(_FLAG_OFF)]
-
-
-async def test_flag_off_reporter_no_retrieve_context():
-    """With flag off, Reporter has no retrieve_context tool."""
-    assert "retrieve_context" not in [t["name"] for t in _get_reporter_tools(_FLAG_OFF)]
-
-
-# ---------------------------------------------------------------------------
-# AC2: Flag ON — agents get retrieve_context
-# ---------------------------------------------------------------------------
-
-
-async def test_flag_on_architect_has_retrieve_context():
-    """With flag on, Architect gets retrieve_context in its tools."""
-    tools = _get_architect_tools(_FLAG_ON)
+    assert all(call.args[1] is orch._services for call in build.call_args_list)
     assert "retrieve_context" in [t["name"] for t in tools]
+    assert "retrieve_context" in registry
 
 
-async def test_flag_on_analyst_has_retrieve_context():
-    """With flag on, Analyst gets retrieve_context."""
-    tools = _get_analyst_tools(_FLAG_ON)
-    assert "retrieve_context" in [t["name"] for t in tools]
+async def test_create_environment_passes_recall_extras_to_architect():
+    services = _stub_orchestrator_services()
+    orch = Orchestrator(client=MagicMock(), services=services)
+    extra_tools = [{"name": "retrieve_context"}]
+    extra_registry = {"retrieve_context": AsyncMock(return_value="ctx")}
 
+    with (
+        patch(
+            "simlab.recall.build_recall_extras",
+            return_value=(extra_tools, extra_registry, "architect prompt"),
+        ),
+        patch("simlab.orchestrator.prefetch_knowledge", new=AsyncMock(return_value="kg")),
+        patch("simlab.orchestrator.Architect") as architect_cls,
+    ):
+        architect = MagicMock()
+        architect.run = AsyncMock(return_value='{"grid_width": 4, "grid_height": 4}')
+        architect_cls.return_value = architect
+        _tools, registry = orch._build_tools(_FLAG_ON)
 
-async def test_flag_on_reporter_has_retrieve_context():
-    """With flag on, Reporter gets retrieve_context."""
-    tools = _get_reporter_tools(_FLAG_ON)
-    assert "retrieve_context" in [t["name"] for t in tools]
+        await registry["create_environment"]({"description": "homeostatic task"})
 
-
-# ---------------------------------------------------------------------------
-# Helpers — extract tool lists from each agent via orchestrator
-# ---------------------------------------------------------------------------
-
-
-def _get_architect_tools(settings):
-    """Build the tool list the Architect would get."""
-    from simlab.architect import VALIDATE_SPEC_TOOL
-
-    tools = [VALIDATE_SPEC_TOOL]
-    if settings.ENABLE_KNOWLEDGE_READ:
-        from simlab.recall import build_recall_extras
-
-        et, _, _ = build_recall_extras("architect", _stub_services())
-        tools += et
-    return tools
-
-
-def _get_analyst_tools(settings):
-    """Build the tool list the Analyst would get."""
-    from unittest.mock import MagicMock
-
-    from simlab.tools import build_cross_experiment_tools, build_simulation_tools
-
-    tools, _ = build_simulation_tools([], critical_events=None)
-    db_tools, _ = build_cross_experiment_tools(db=MagicMock(), storage=MagicMock())
-    tools += db_tools
-    if settings.ENABLE_KNOWLEDGE_READ:
-        from simlab.recall import build_recall_extras
-
-        et, _, _ = build_recall_extras("analyst", _stub_services())
-        tools += et
-    return tools
-
-
-def _get_reporter_tools(settings):
-    """Build the tool list the Reporter would get."""
-    from simlab.reporter import COMPILE_REPORT_TOOL, READ_RESEARCH_TOOL
-
-    tools = [READ_RESEARCH_TOOL, COMPILE_REPORT_TOOL]
-    if settings.ENABLE_KNOWLEDGE_READ:
-        from simlab.recall import build_recall_extras
-
-        et, _, _ = build_recall_extras("reporter", _stub_services())
-        tools += et
-    return tools
+    architect.run.assert_awaited_once()
+    kwargs = architect.run.await_args.kwargs
+    assert kwargs["knowledge_context"] == "kg"
+    assert kwargs["extra_tools"] is extra_tools
+    assert kwargs["extra_registry"] is extra_registry
+    assert kwargs["prompt_suffix"] == "architect prompt"
