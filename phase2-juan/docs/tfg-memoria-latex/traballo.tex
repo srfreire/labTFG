@@ -1,15 +1,9 @@
 %
-%  PARA TRABALLOS EN GALLEGO USAR (LINEA 12): \usepackage[galician]{babel}
-%  PARA TRABALLOS EN CASTELLANO USAR (LINEA 13): \usepackage[spanish]{babel}
-%
-% Para los acentos usamos codificacion UTF-8 (LINEA 10): \usepackage[utf8]{inputenc} 
-% Si se usase la codificacion es_ES.ISO-8859-1 (LINEA 11): \usepackage[latin1]{inputenc}
-% La conversion de acentos se hace con: iconv -f UTF-8 -t ISO-8859-1 filename.tex
-%
-% Como se incluyen figuras eps hay que compilar con: latex traballo , dvipdf traballo
+% Memoria del TFG redactada en castellano. Codificación UTF-8.
+% Compilación recomendada con tectonic: tectonic traballo.tex
 %
 
-\documentclass[12pt,twoside,a4paper]{book}
+\documentclass[12pt,twoside,openright,a4paper]{book}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
@@ -20,11 +14,22 @@
 \usepackage{latexsym}
 \usepackage{a4}
 \usepackage{listings}
+\usepackage{array}
 \usepackage{url}
 \usepackage{xurl}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+\usepackage{pgfgantt}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
+
+% Maquetación para impresión a doble cara. Con book + twoside + openright,
+% LaTeX inserta páginas en blanco cuando hace falta para que cada capítulo
+% empiece en página impar, es decir, a la derecha al imprimir en formato libro.
+\raggedbottom
+
+% Holgura de última línea para resolver overfull menores (palabras \texttt{}
+% no separables) sin recurrir a ajustes por párrafo.
+\setlength{\emergencystretch}{2em}
 
 % Estilos compartidos para diagramas (paleta gris/negro)
 \tikzset{
@@ -59,7 +64,7 @@
 }
 
 \addto\captionsspanish{\def\contentsname{Memoria tipo B -- Índice general}}
-	
+
 
 \begin{document}
 \include{capitulos/00-titulo}
@@ -94,7 +99,7 @@
 \cleardoublepage
 \include{capitulos/06-conclusiones}
 
-% Aquí empezan os apéndices
+% Aquí empiezan los apéndices
 \appendix
 \cleardoublepage
 \include{capitulos/apendicea}

@@ -2,11 +2,11 @@
 
 \section{Enfoque de evaluación}
 
-La validación de este trabajo no se plantea solo como una comprobación de
-que el código se ejecuta sin errores. Esa parte queda cubierta por las
-pruebas automatizadas, pero no basta para valorar si el laboratorio cumple
-su objetivo principal: ayudar a estudiar paradigmas de toma de decisiones
-humana a partir de modelos generados en la primera fase del proyecto.
+La validación de este trabajo no podía quedarse en comprobar que el código
+se ejecuta sin errores. Esa parte queda cubierta por las pruebas
+automatizadas, pero no basta para saber si el laboratorio cumple su
+objetivo principal: ayudar a estudiar paradigmas de toma de decisiones
+humanas a partir de modelos generados en la primera fase del proyecto.
 
 Por ese motivo, el centro de la evaluación es una batería de escenarios
 reproducibles elegidos con el tutor y con el grupo de investigación. La
@@ -20,9 +20,9 @@ completa de escenarios reales, donde se observa si el sistema produce
 resultados interpretables para el usuario. Por otro, una suite automática
 que protege los contratos técnicos del sistema: simulación, agentes,
 persistencia, recuperación de conocimiento, interfaz web e integración con
-la primera fase. En esta memoria se da más peso al primer bloque, porque es
-el que responde mejor a la utilidad del laboratorio como herramienta de
-investigación.
+la primera fase. En esta memoria se da más peso al primer bloque, porque
+ahí es donde se ve si el laboratorio aporta algo como herramienta de
+investigación, más allá de pasar una batería de tests.
 
 \section{Escenario principal de validación}
 
@@ -120,14 +120,14 @@ comportamiento del laboratorio.
 
 \begin{table}[H]
 \begin{center}
-\begin{tabular}{|p{3.4cm}|p{9.2cm}|} \hline
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.5cm}|>{\raggedright\arraybackslash}p{9.1cm}|} \hline
 \textbf{Nivel} & \textbf{Qué se verifica} \\ \hline
 Dominio de simulación & Invariantes del \texttt{Environment}, validación
 de la especificación generada por el Architect, ciclo de vida de agentes
 y recursos. \\ \hline
 Pipeline y agentes & Comportamiento aislado de cada agente, persistencia
-del chat, idempotencia de la simulación y presupuestos del agente runtime.
-\\ \hline
+del chat, autocompactación del historial, idempotencia de la simulación y
+presupuestos del agente runtime. \\ \hline
 Knowledge Backbone & Escritura del \texttt{TrackerMemoryWriter}, lectura
 mediante \texttt{retrieve\_context}, pre-recuperación de contexto y
 \textit{wiring} entre Orchestrator y agentes. \\ \hline
@@ -141,15 +141,13 @@ modelos y validación del contrato \texttt{decide}, \texttt{update} y
 \end{center}
 \end{table}
 
-Toda la suite se ejecuta con \texttt{uv run pytest} para el backend y
-\texttt{npx playwright test} para el cliente web. El conjunto reúne más
-de treinta archivos de pruebas en \textit{pytest} y tres especificaciones
-\textit{end-to-end} en Playwright que cubren la sesión real, el camino con
-datos simulados y las vistas del Knowledge Backbone.
+La verificación automática combina \texttt{uv run pytest} para el backend,
+\texttt{npx playwright test} para el cliente web y \texttt{tectonic
+traballo.tex} para la propia memoria.
 
 \begin{table}[H]
 \begin{center}
-\begin{tabular}{|p{4.2cm}|p{8.4cm}|} \hline
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{8.4cm}|} \hline
 \textbf{Comando} & \textbf{Qué valida} \\ \hline
 \texttt{uv run pytest tests/ -v} & Ejecuta la suite del backend:
 dominio, agentes, Orchestrator, persistencia, recuperación y carga de
@@ -171,11 +169,84 @@ necesaria porque una prueba \textit{end-to-end} puede confirmar que un
 elemento existe, pero no siempre detecta problemas de legibilidad o de
 visibilidad en la interfaz.
 
+\subsection{Evidencia de ejecución de la suite}
+
+La tabla siguiente recoge el resultado de ejecutar la suite. No pretende
+comparar rendimiento con otros sistemas; sirve como evidencia interna de
+que los contratos técnicos del laboratorio se mantienen estables. La suite
+de \textit{pytest} reúne 36 archivos y 319 casos: 313 no dependen de
+servicios externos y los 6 restantes requieren el Knowledge Backbone en
+ejecución (PostgreSQL), levantado con \texttt{docker compose}.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
+\textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
+Backend (\textit{pytest}, 36 archivos) & PASS & 319/319 & Dominio, agentes, Orchestrator, persistencia, recuperación y carga de modelos. \\ \hline
+Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
+E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
+E2E web (sesión real y KG) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
+\end{tabular}
+\caption{Resultado de la ejecución de la suite automatizada.}
+\end{center}
+\end{table}
+
+El determinismo del motor merece una mención aparte porque sostiene la
+comparativa multi-modelo. Si una misma semilla no produjese la misma
+rejilla, los resultados de dos modelos dejarían de ser \textit{joinable}.
+La prueba \texttt{test\_environment::\allowbreak test\_seed\_determinism} ejecuta dos
+simulaciones con la misma semilla y verifica que sus eventos son
+idénticos. En otro nivel, el módulo \texttt{test\_orchestrator\_\allowbreak simulation\_\allowbreak idempotency}
+cubre la estabilidad de la firma de cada petición de simulación, usada
+para deduplicar una petición repetida. La parte determinista del sistema es
+el motor; la variabilidad de los modelos de lenguaje se discute en las
+limitaciones.
+
+\subsection{Métricas de una ejecución real}
+
+Además de la suite, se instrumentó una ejecución real del escenario
+principal contra un modelo de lenguaje servido a través de OpenRouter y
+sobre los servicios reales del Knowledge Backbone. La sesión parte de una
+petición en lenguaje natural y recorre el pipeline completo --- Architect,
+motor de simulación, Tracker, Analyst y Reporter --- comparando los dos
+modelos homeostáticos cargados dinámicamente desde la primera fase,
+\texttt{drive\_reduction\_rl} y \texttt{pi\_negative\_feedback}.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{7.2cm}|>{\raggedright\arraybackslash}p{4.8cm}|} \hline
+\textbf{Métrica} & \textbf{Valor} \\ \hline
+Latencia de extremo a extremo (Architect $\rightarrow$ Reporter) & $\approx 373$ s \\ \hline
+Entorno generado por el Architect & rejilla $8\times8$, 6 recursos de comida, 30 pasos (semilla 42) \\ \hline
+Modelos cargados dinámicamente (fase 1) & 2 (\texttt{drive\_reduction\_rl}, \texttt{pi\_negative\_feedback}) \\ \hline
+Observaciones de simulación persistidas (\texttt{simulation\_observations}) & 7 \\ \hline
+Memorias densas escritas (Voyage, 1024 dim.) & 7 \\ \hline
+Memorias \textit{sparse} escritas (BM25 nativo) & 7 \\ \hline
+\end{tabular}
+\caption{Métricas de una ejecución real del pipeline completo.}
+\end{center}
+\end{table}
+
+El dato relevante es la coincidencia entre las tres últimas filas: cada
+observación se materializa como fila en PostgreSQL, vector denso en Qdrant
+y vector \textit{sparse} en Qdrant, siempre bajo el mismo \textit{UUID}.
+Esa igualdad ($7 = 7 = 7$), medida como el incremento que produce esta
+ejecución sobre el estado previo del backbone, valida la \textbf{tripleta
+joinable} descrita en el diseño: la persistencia no deja ninguno de los
+tres almacenes desincronizado. Los paradigmas de la primera fase no
+estaban cargados como nodos del grafo, por lo que Neo4j no crece en esta
+ejecución concreta. Las observaciones de simulación se
+almacenan como memorias del \textit{namespace} \texttt{simulation}, no como
+nodos del grafo, y la recuperación de contexto se degrada de forma
+controlada sin abortar el pipeline.
+
 \section{Cobertura técnica}
 
 Las pruebas del dominio cubren las primitivas definidas en
-\texttt{simlab.environment} y la lógica de validación de
-\texttt{simlab.spec}. Verifican que un \texttt{Environment} aplica sus reglas
+\texttt{simlab.\allowbreak environment} y la lógica de validación de
+\texttt{simlab.\allowbreak spec}. Verifican que un \texttt{Environment} aplica sus reglas
 de aparición de recursos, que las acciones devuelven \texttt{Event}
 consistentes con la percepción recibida y que las especificaciones generadas
 por el Architect rechazan estructuras malformadas antes de instanciar el
@@ -186,7 +257,12 @@ después su composición orquestada. Se comprueba que el Tracker produce un JSON
 estructurado a partir de trayectorias arbitrarias, que el Orchestrator
 persiste el historial del chat en \texttt{chat\_messages}, que las
 herramientas en vivo emiten eventos incrementales y que dos simulaciones con
-la misma semilla y configuración producen resultados idénticos.
+la misma semilla y configuración producen resultados idénticos. Una batería
+específica cubre la autocompactación del historial: que se dispara al superar
+el umbral, que conserva intactos los turnos recientes y que el resumen que la
+sustituye es determinista y mantiene el estado activo del pipeline
+(\texttt{experiment\_id}, semilla y etapas completadas) para no perder
+trazabilidad.
 
 La interacción con el Knowledge Backbone tiene una cobertura propia porque
 una regresión en esta capa puede degradar ejecuciones posteriores sin hacerse
@@ -205,7 +281,9 @@ trazabilidad de nodos. Las pruebas comparan la respuesta con expectativas
 estructurales, como formato, esquema y códigos de error, en lugar de fijar
 valores concretos que podrían cambiar con los datos subyacentes.
 
-Las pruebas Playwright se organizan en tres especificaciones. La primera
+Las pruebas Playwright se organizan en tres especificaciones de validación,
+más una especificación auxiliar dedicada a capturar las figuras de la
+interfaz que ilustran esta memoria. La primera
 recorre la sesión completa desde el cliente: saludo inicial, configuración
 del entorno, ejecución de la simulación e inspección del informe final. La
 segunda valida las vistas de inspección del Knowledge Backbone introducidas

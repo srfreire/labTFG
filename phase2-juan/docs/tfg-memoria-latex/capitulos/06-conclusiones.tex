@@ -19,8 +19,8 @@ postulados disponibles en el Knowledge Backbone.
 \item Los informes en PDF se generan automáticamente y contienen tanto
 las métricas como las referencias a los paradigmas analizados.
 \item Las observaciones de simulación se persisten como memorias
-reutilizables, integrando la segunda fase como productora del backbone
-compartido.
+reutilizables, con lo que la segunda fase pasa a ser también productora
+del backbone compartido, y no solo consumir de él.
 \end{itemize}
 
 A esos artefactos hay que añadir un objetivo transversal igualmente
@@ -31,11 +31,10 @@ necesidad de coordinar publicaciones intermedias.
 
 \section{Conclusiones técnicas}
 
-Por encima de cada decisión concreta, la lección técnica que mejor
-resume el trabajo es que la \emph{forma} en que se conectan los
-componentes pesa más, en este sistema, que las elecciones internas de
-cada uno. Las tres conclusiones que siguen son variaciones de esa
-misma idea.
+Si tuviera que quedarme con una sola lección técnica, sería esta: en
+este sistema, la \emph{forma} en que se conectan los componentes acabó
+importando más que las decisiones internas de cada uno. Las tres
+conclusiones que siguen lo desarrollan desde tres ángulos distintos.
 
 \paragraph{Contratos finos entre componentes que evolucionan a ritmos
 distintos.} La integración con la primera fase podría haber requerido
@@ -44,18 +43,18 @@ redujo a un contrato \textit{duck-typed} mínimo, verificado en tiempo
 de ejecución. Ese contrato es lo que ha hecho posible que las dos
 fases del proyecto se desarrollaran en paralelo durante meses sin
 coordinar publicaciones intermedias y sin pisarse en el esquema
-compartido. La conclusión, en términos generales, es que la sencillez
-del contrato pesa más que la rigidez de su declaración cuando las dos
-partes están condenadas a evolucionar a ritmos distintos.
+compartido. Cuando dos partes están obligadas a evolucionar a ritmos
+distintos, un contrato sencillo aguanta mejor que uno rígido y
+minucioso.
 
 \paragraph{Centralizar el acceso al conocimiento merece la pena cuando
 el coste de cada consulta no es despreciable.} La opción más obvia
 habría sido dar a cada agente especializado acceso libre al
-\textit{Knowledge Backbone}. Centralizar ese acceso en el Orchestrator,
+Knowledge Backbone. Centralizar ese acceso en el Orchestrator,
 con la única excepción del Analyst, dio un control fino sobre cuándo se
 consulta el backbone y con qué presupuesto, y un único punto en el que
 diagnosticar problemas de recuperación. La asimetría entre acceso
-directo y acceso inyectado --- aparentemente complicada --- resultó más
+directo y acceso inyectado, aparentemente complicada, resultó más
 útil en la práctica que un acceso uniforme: cada agente recibe el tipo
 de contexto que de verdad necesita.
 
@@ -66,9 +65,9 @@ grafo y los índices vectoriales ocurre después, a cargo del
 \texttt{TrackerMemoryWriter} disparado por el Orchestrator. Un fallo en
 el observador no deja memorias incompletas en el backbone, y el
 \emph{writer} puede evolucionar (cambiar de embeddings, ajustar el
-batch, cambiar el esquema) sin tocar el agente que observa. La lección
-es la misma: definir bien la frontera entre las piezas vale más que
-sofisticar cada una de ellas.
+batch, cambiar el esquema) sin tocar el agente que observa. Trazar bien
+esa frontera costó poco y dejó cada pieza libre para cambiar por su
+cuenta.
 
 \section{Posibles ampliaciones}
 
@@ -77,16 +76,16 @@ El sistema deja varias líneas naturales de continuación.
 \paragraph{Más paradigmas y otros tipos de entornos.} Cada nuevo modelo
 que la primera fase produzca queda automáticamente disponible para
 experimentar. A medio plazo, dar el salto a otros tipos de entorno más
-allá de la rejilla 2D actual --- entornos continuos, escenarios
+allá de la rejilla 2D actual (entornos continuos, escenarios
 multi-agente con interacción cooperativa o competitiva, dominios no
-espaciales --- permitiría estudiar paradigmas de toma de decisiones
+espaciales) permitiría estudiar paradigmas de toma de decisiones
 para los que el escenario actual se queda corto.
 
 \paragraph{Métricas cuantitativas estandarizadas.} La comparativa
 multi-modelo actual combina métricas crudas con descripciones
-cualitativas del Analyst. Una capa de métricas estandarizadas ---
-recompensa acumulada, eficiencia, exploración, estabilidad de la
-política --- haría las comparativas más directas y abriría la puerta a
+cualitativas del Analyst. Una capa de métricas estandarizadas
+(recompensa acumulada, eficiencia, exploración, estabilidad de la
+política) haría las comparativas más directas y abriría la puerta a
 un \textit{benchmark} reproducible para nuevos paradigmas.
 
 \paragraph{Validación con el grupo de investigación y maduración del
@@ -99,40 +98,40 @@ producto incluye una capa de gestión de usuarios y la posibilidad de
 mantener varios hilos de conversación persistentes con el
 Orchestrator, al estilo de un chat conversacional. A esto se
 suman decisiones operativas que quedaron fuera del alcance de esta
-fase --- copias de seguridad del Knowledge Backbone, monitorización ---
+fase (copias de seguridad del Knowledge Backbone, monitorización),
 pero que cualquier despliegue real exigirá abordar.
 
 \section{Una reflexión final}
 
-Si la implementación deja de ser la actividad dominante, queda una
-pregunta natural: ¿qué hacemos con ese margen recuperado? La respuesta
-más interesante no es hacer lo mismo más deprisa, sino abordar sistemas
-que antes habrían sido impracticables para un único autor en el plazo de
-un trabajo de grado. Este propio TFG --- un pipeline de cinco agentes
-sobre un backbone de cuatro componentes, dos fases coordinadas e
-independientes y una interfaz web reactiva diseñada en Figma y
-construida después con asistencia del agente --- difícilmente habría
-alcanzado el estado en el que se entrega sin ese desplazamiento del
-cuello de botella hacia las actividades de especificación, revisión y
-verificación, como se describe en el capítulo de desarrollo.
+Si la implementación deja de ser la actividad dominante, aparece una
+pregunta bastante directa: ¿qué hacemos con ese margen recuperado? La
+respuesta más interesante no es hacer lo mismo más deprisa, sino abordar
+sistemas que antes habrían sido poco realistas para un único autor en el
+plazo de un trabajo de grado. Este propio TFG (un pipeline de cinco
+agentes, cuatro especializados coordinados por un Orchestrator, sobre un
+backbone de cuatro componentes, dos fases coordinadas e independientes y
+una interfaz web reactiva diseñada en Figma y construida después con
+asistencia del agente) difícilmente habría alcanzado el
+estado en el que se entrega sin ese desplazamiento del cuello de botella
+hacia las actividades de especificación, revisión y verificación, como se
+describe en el capítulo de desarrollo.
 
-Una vez aceptada esa nueva escala de lo posible, prescindir
-voluntariamente de estas herramientas equivale a renunciar a parte del
-alcance que permiten. El cambio de \textit{tooling} desplaza, en la
-práctica, el techo de lo que un trabajo individual puede plantearse como
-objetivo.
+Aceptada esa nueva escala de lo posible, la cuestión deja de ser si estas
+herramientas aceleran tareas aisladas. Lo relevante es que cambian el
+alcance que un trabajo individual puede plantearse sin perder control
+sobre el resultado.
 
 A modo de cierre, una observación más sobre el papel de la IA en este
 trabajo. Tras meses construyendo el laboratorio en colaboración con un
 agente, la imagen que queda es bastante distinta del relato de la IA
-como amenaza al que es fácil asomarse. Lo que aporta una herramienta
-así no es sustituir al desarrollador --- todas las decisiones de
-alcance, las elecciones arquitectónicas y los criterios de aceptación
-han seguido viniendo del lado humano ---, sino subir el nivel de
-abstracción al que se trabaja. La pregunta deja de ser \emph{cómo lo
-escribo} y pasa a ser \emph{qué quiero exactamente que ocurra}, lo que
-permite plantear sistemas más ricos y más complejos sin renunciar a
-controlarlos. Si esa lectura es correcta, lo razonable no es
-defendernos de la IA, sino aprovecharla para hacer cosas que sin ella
-no podríamos plantearnos --- exactamente lo que este TFG ha intentado
-hacer.
+como amenaza al que es fácil asomarse. En este proyecto, una herramienta
+así no ha sustituido al desarrollador: las decisiones de alcance, las
+elecciones arquitectónicas y los criterios de aceptación han seguido
+viniendo del lado humano. Lo que sí ha cambiado es el nivel de abstracción
+al que se trabaja. La pregunta deja de ser \emph{cómo lo escribo} y pasa
+a ser \emph{qué quiero exactamente que ocurra}. Ese cambio permite
+plantear sistemas más ricos sin renunciar a controlarlos. Si esa lectura
+es correcta, la postura más productiva no es tratar la IA como un atajo
+sospechoso, sino aprender a usarla con criterio para construir cosas que
+antes quedaban fuera de escala. En buena medida, eso es lo que este TFG ha
+intentado hacer.

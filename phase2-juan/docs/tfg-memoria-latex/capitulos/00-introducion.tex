@@ -4,14 +4,15 @@
 
 El planteamiento inicial de este Trabajo de Fin de Grado partió de una
 propuesta del profesor Eduardo Manuel Sánchez Vila, tutor del trabajo,
-dirigida a su grupo de investigación. Todo nació a partir de un TFM que había llevado el propio Eduardo.
-Un TFM que sentó las bases del entorno de simulación, tanto en cuestión de código como de idea. Una idea original que explotaríamos varios niveles por encima para crear un sistema nuevo, vivo y complejo.
-La propuesta original perseguía
-sentar las bases de un entorno común sobre el que estudiar paradigmas de
-toma de decisiones humanas. A partir de esa idea, el alcance, la
-arquitectura y la división del proyecto en dos fases se fueron concretando
-de forma iterativa entre Eduardo, mi compañero y yo, en sucesivas reuniones de
-diseño que reorientaron el enfoque inicial, redefiniendo requisitos y enriqueciendo el producto.
+dirigida a su grupo de investigación. El punto de partida fue un TFM
+previo que el propio Eduardo había tutorizado, y que ya contenía una
+primera intuición de entorno de simulación. Aquella base era todavía
+limitada, pero tenía algo valioso: una forma clara de convertir una idea
+de investigación en un sistema observable. A partir de ahí, el alcance,
+la arquitectura y la división del proyecto en dos fases se fueron
+cerrando poco a poco entre Eduardo, mi compañero y yo, en reuniones de
+diseño donde la propuesta inicial fue cambiando de escala y ganando
+concreción.
 
 El proyecto resultante es un laboratorio virtual para la simulación y el
 análisis de paradigmas de toma de decisiones humanas mediante agentes
@@ -42,7 +43,7 @@ ejecuciones futuras.
 Estos artefactos se obtienen mediante un pipeline de agentes
 especializados coordinados por un Orchestrator, y se exponen al
 usuario a través de una interfaz web. La justificación de cada uno de
-estos componentes se desarrolla en los capítulos correspondientes.
+estos componentes se explica en los capítulos correspondientes.
 
 La integración con la primera fase se realiza por \textit{duck
 typing} sobre el contrato \texttt{decide}, \texttt{update} y
@@ -51,9 +52,9 @@ typing} sobre el contrato \texttt{decide}, \texttt{update} y
 \section{Descripción del sistema}
 
 El sistema es un laboratorio virtual para ejecutar y comparar paradigmas
-de toma de decisiones humanas. Se accede a través de una interfaz web --- y,
+de toma de decisiones humanas. Se accede a través de una interfaz web (y,
 de forma secundaria, mediante una línea de comandos para uso interno y de
-depuración --- y se opera desde un chat con un agente coordinador, el
+depuración) y se opera desde un chat con un agente coordinador, el
 Orchestrator. En cada sesión, el Orchestrator dirige un pipeline compuesto
 por cuatro agentes especializados (Architect, Tracker, Analyst y Reporter):
 crea un entorno de simulación adaptado al problema, ejecuta los modelos de
@@ -63,8 +64,8 @@ informe en PDF.
 Los modelos de decisión que se ejecutan no son parte de esta fase, sino
 que se cargan dinámicamente desde la primera fase del proyecto, que es la
 encargada de generarlos. La integración entre ambas fases se realiza a
-través de un contrato mínimo --- los métodos \texttt{decide},
-\texttt{update} y \texttt{get\_state} --- aplicado por \textit{duck
+través de un contrato mínimo, los métodos \texttt{decide},
+\texttt{update} y \texttt{get\_state}, aplicado por \textit{duck
 typing} en el momento de la carga.
 
 El acceso al Knowledge Backbone compartido entre fases es
@@ -104,17 +105,17 @@ complementado por unos pocos \textit{endpoints} REST, simplifica el
 código del backend y la sincronización del cliente.
 
 \paragraph{Knowledge Backbone híbrido.} La capa de persistencia combina
-cuatro componentes con responsabilidades diferenciadas --- metadatos
+cuatro componentes con responsabilidades diferenciadas: metadatos
 relacionales, artefactos binarios, recuperación vectorial y léxica, y
-grafo de paradigmas ---. Los capítulos de requisitos y diseño explican
+grafo de paradigmas. Los capítulos de requisitos y diseño explican
 qué datos residen en cada uno y por qué se separan de ese modo.
 
 \paragraph{Integración con la primera fase por \textit{duck typing}.}
 En lugar de compartir un paquete con clases base entre las dos fases,
 el contrato se reduce a tres métodos. La verificación se realiza en
-tiempo de ejecución mediante \texttt{runtime\_checkable}. Esto evita
-acoplar la evolución de ambas fases y hace que un cambio en una no
-obligue a reorganizar la otra.
+tiempo de ejecución mediante \texttt{runtime\_checkable}. Esta decisión
+evita acoplar la evolución de ambas fases: cada una puede cambiar por
+dentro mientras respete la pequeña superficie común que las conecta.
 
 \section{Relación de la documentación}
 

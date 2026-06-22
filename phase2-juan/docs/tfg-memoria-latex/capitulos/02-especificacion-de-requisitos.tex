@@ -1,5 +1,28 @@
 \chapter{Especificación de requisitos}
 
+\section{Actores}
+
+El sistema tiene un único actor humano y se apoya en dos sistemas externos
+con los que intercambia información a lo largo de una sesión.
+
+\begin{itemize}
+\item \textbf{Usuario investigador} (actor primario). Persona que describe
+un problema de decisión en lenguaje natural, lanza simulaciones, sigue su
+ejecución en tiempo real y consulta los análisis, los informes y el
+historial de experimentos. Es el único actor que interactúa con la
+interfaz web.
+\item \textbf{Primera fase del proyecto} (sistema externo). Produce y
+registra los modelos de decisión que el laboratorio descubre y carga
+dinámicamente; comparte además la capa de persistencia del Knowledge
+Backbone. No actúa durante la sesión, pero su salida condiciona qué
+modelos están disponibles.
+\item \textbf{Servicios de modelos de lenguaje y apoyo} (sistema externo).
+Proveedores accedidos a través de OpenRouter para el razonamiento de los
+agentes, y los servicios opcionales de \textit{embeddings} (Voyage AI) y
+\textit{reranking} (ZeroEntropy) que dan soporte a la recuperación de
+conocimiento.
+\end{itemize}
+
 \section{Requisitos funcionales}
 
 El sistema debe cubrir el ciclo completo de una sesión de simulación,
@@ -7,44 +30,48 @@ desde la descripción inicial del problema hasta la generación del informe
 final, permitir la conversación continua con el Orchestrator durante la
 sesión y la inspección y comparativa con ejecuciones pasadas.
 
-Los requisitos funcionales principales son:
+Cada requisito se prioriza con la técnica MoSCoW, indicando si es
+imprescindible (\emph{Must}), recomendable (\emph{Should}) u opcional
+(\emph{Could}) para que el sistema cumpla su objetivo. Los requisitos
+funcionales principales son:
 
-\begin{table}[H]
+\begin{table}[htbp]
 \begin{center}
-\begin{tabular}{|p{2.2cm}|p{10.2cm}|} \hline
-\textbf{Código} & \textbf{Descripción} \\ \hline
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{8.3cm}|>{\raggedright\arraybackslash}p{2.1cm}|} \hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Prioridad} \\ \hline
 RF-01 & Cargar dinámicamente los modelos de decisión generados por la
-primera fase, descubriéndolos sin intervención manual entre sesiones. \\ \hline
+primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
 RF-02 & Generar especificaciones de entorno de simulación a partir de
-descripciones en lenguaje natural. \\ \hline
+descripciones en lenguaje natural. & Must \\ \hline
 RF-03 & Ejecutar simulaciones con uno o varios modelos en el mismo
-entorno, soportando comparativas multi-modelo. \\ \hline
+entorno, soportando comparativas multi-modelo. & Must \\ \hline
 RF-04 & Registrar de forma estructurada los eventos, episodios y
-trayectorias de decisión producidos durante cada simulación. \\ \hline
+trayectorias de decisión producidos durante cada simulación. & Must \\ \hline
 RF-05 & Identificar patrones de comportamiento en los resultados y
-contrastarlos con postulados previos del Knowledge Backbone. \\ \hline
+contrastarlos con postulados previos del Knowledge Backbone. & Must \\ \hline
 RF-06 & Generar, como parte del análisis, gráficas y visualizaciones
 sobre las trayectorias y métricas extraídas que se incorporan al informe
-final. \\ \hline
+final. & Should \\ \hline
 RF-07 & Generar informes en PDF con los resultados, la evidencia visual y
-las referencias a los paradigmas analizados. \\ \hline
+las referencias a los paradigmas analizados. & Must \\ \hline
 RF-08 & Persistir las observaciones de simulación en el Knowledge Backbone
-como memorias reutilizables en ejecuciones posteriores. \\ \hline
+como memorias reutilizables en ejecuciones posteriores. & Should \\ \hline
 RF-09 & Conservar el historial completo de experimentos y permitir su
-consulta, filtrado y comparativa. \\ \hline
+consulta, filtrado y comparativa. & Should \\ \hline
 RF-10 & Permitir la interacción con el sistema mediante un chat
 conversacional gestionado por el Orchestrator, con continuidad de la
 conversación dentro de la sesión y posibilidad de retomar pasos
-anteriores. \\ \hline
+anteriores. & Must \\ \hline
 RF-11 & Permitir al Orchestrator recomendar al usuario qué hacer a
 continuación, qué modelos o paradigmas pueden encajar con el problema
-descrito y qué herramientas tiene disponibles. \\ \hline
+descrito y qué herramientas tiene disponibles. & Could \\ \hline
 RF-12 & Ofrecer una visualización del entorno de simulación con
-\textit{replay} paso a paso y paneles de actividad por agente. \\ \hline
+\textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
 RF-13 & Exponer vistas de inspección del Knowledge Backbone (grafo,
-memorias y procedencia) accesibles desde la propia interfaz web. \\ \hline
+memorias y procedencia) accesibles desde la propia interfaz web. & Could \\ \hline
 \end{tabular}
-\caption{Requisitos funcionales principales.}
+\caption{Requisitos funcionales principales con su prioridad MoSCoW.}
 \end{center}
 \end{table}
 
@@ -55,41 +82,99 @@ fases, la trazabilidad de cada ejecución y el comportamiento ante fallos
 de servicios opcionales.
 
 \begin{itemize}
-\item \textbf{Modularidad y desacoplamiento:} la integración con la primera
+\item \textbf{RNF-01 --- Modularidad y desacoplamiento:} la integración con la primera
 fase debe realizarse mediante un contrato mínimo (\textit{duck typing}),
 sin imponer dependencias de paquetes ni jerarquías de clases. Mientras
 RF-01 fija el \emph{qué} (cargar los modelos sin intervención manual),
 este requisito fija el \emph{cómo} (sin acoplar la evolución de las dos
 fases).
-\item \textbf{Extensibilidad de modelos:} la incorporación de nuevos
+\item \textbf{RNF-02 --- Extensibilidad de modelos:} la incorporación de nuevos
 modelos generados por la primera fase no debe requerir modificaciones en
 el código de la segunda fase.
-\item \textbf{Trazabilidad:} cada ejecución debe conservar su
+\item \textbf{RNF-03 --- Trazabilidad:} cada ejecución debe conservar su
 configuración, sus eventos y sus artefactos finales con un identificador
 único, de modo que sea posible reproducirla o auditarla.
-\item \textbf{Reactividad:} el cliente web debe recibir actualizaciones del
+\item \textbf{RNF-04 --- Reactividad:} el cliente web debe recibir actualizaciones del
 estado de la simulación y de la actividad de cada agente en tiempo real,
 sin polling, mediante WebSocket.
-\item \textbf{Degradación controlada:} los componentes opcionales del
-Knowledge Backbone (reranker, embeddings) pueden estar ausentes; en ese
-caso el sistema debe seguir funcionando, aunque la recuperación pierda
-calidad.
-\item \textbf{Reproducibilidad de la simulación:} para una misma semilla
+\item \textbf{RNF-05 --- Degradación controlada:} si faltan componentes opcionales
+del backbone (reranker o embeddings), el sistema debe seguir funcionando,
+aunque la recuperación pierda calidad.
+\item \textbf{RNF-06 --- Determinismo:} para una misma semilla
 y configuración, el motor de simulación debe producir resultados
-idénticos, de modo que las comparativas multi-modelo sean
+idénticos, de modo que las comparativas entre modelos sean
 \textit{joinable} entre sesiones.
-\item \textbf{Portabilidad de despliegue:} los servicios externos (Postgres,
+\item \textbf{RNF-07 --- Portabilidad de despliegue:} los servicios externos (Postgres,
 MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
 mediante \texttt{docker compose}, sin pasos manuales de configuración
 específicos del entorno del desarrollador.
-\item \textbf{Configuración por entorno:} las credenciales y endpoints de
+\item \textbf{RNF-08 --- Configuración por entorno:} las credenciales y endpoints de
 los servicios externos deben aislarse en variables de entorno, sin
 quedar embebidos en el código fuente ni en los artefactos versionados.
-\item \textbf{Observabilidad:} las acciones del Orchestrator y de los
+\item \textbf{RNF-09 --- Observabilidad:} las acciones del Orchestrator y de los
 agentes especializados deben dejar trazas en \textit{logs} estructurados
 suficientes para diagnosticar una sesión \textit{a posteriori} sin tener
 que reproducirla.
+\item \textbf{RNF-10 --- Acotación del contexto conversacional:} una sesión larga no
+debe agotar la ventana de contexto del modelo. El historial del chat con
+el Orchestrator debe mantenerse dentro de un presupuesto acotado de forma
+automática, sin que el usuario tenga que reiniciar la sesión y sin perder
+la trazabilidad de las decisiones ya tomadas.
 \end{itemize}
+
+\section{Casos de uso}
+
+Los casos de uso describen las interacciones principales del usuario
+investigador con el laboratorio. Todos comparten una misma sesión de chat
+mediada por el Orchestrator; el actor es el usuario investigador salvo
+indicación contraria. La tabla siguiente resume los casos y los relaciona
+con los requisitos funcionales.
+
+\begin{table}[H]
+\begin{center}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{7.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|} \hline
+\textbf{Código} & \textbf{Caso de uso} & \textbf{RF relacionados} \\ \hline
+CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-02, RF-03, RF-10, RF-11, RF-12 \\ \hline
+CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
+CU-03 & Analizar los resultados y contrastarlos con el Knowledge Backbone & RF-04, RF-05, RF-06, RF-08 \\ \hline
+CU-04 & Generar el informe PDF de la sesión & RF-07 \\ \hline
+CU-05 & Consultar y comparar experimentos anteriores & RF-09 \\ \hline
+CU-06 & Inspeccionar el Knowledge Backbone desde la web & RF-13 \\ \hline
+\end{tabular}
+\caption{Resumen de casos de uso y su trazabilidad con los requisitos funcionales.}
+\end{center}
+\end{table}
+
+\paragraph{CU-01: Ejecutar una simulación desde lenguaje natural.}
+\textbf{Precondición:} existe al menos un modelo de decisión registrado
+por la primera fase. \textbf{Flujo principal:} (1)~el usuario describe un
+problema de decisión en el chat; (2)~el Orchestrator propone modelos y un
+entorno coherentes con la descripción; (3)~el Architect genera la
+especificación del entorno y el usuario la confirma; (4)~el sistema
+ejecuta la simulación y transmite cada paso a la interfaz en tiempo real.
+\textbf{Postcondición:} la simulación queda registrada como una ejecución
+dentro de un experimento, con sus eventos y trayectorias.
+
+\paragraph{CU-03: Analizar y contrastar con el Knowledge Backbone.}
+\textbf{Precondición:} existe una simulación observada por el Tracker.
+\textbf{Flujo principal:} (1)~el Analyst identifica patrones de
+comportamiento en los datos del Tracker; (2)~recupera postulados previos
+del backbone mediante \texttt{retrieve\_context}; (3)~contrasta los
+patrones observados con esos postulados. \textbf{Postcondición:} las
+observaciones de la simulación se persisten como memorias reutilizables en
+el \textit{namespace} \texttt{simulation}.
+
+\paragraph{CU-04: Generar el informe PDF.}
+\textbf{Precondición:} existe un análisis del Analyst. \textbf{Flujo
+principal:} (1)~el Reporter sintetiza los hallazgos en Markdown,
+incorporando gráficas y referencias a los paradigmas; (2)~la plantilla
+LaTeX se compila a PDF con \textit{tectonic}; (3)~el usuario descarga el
+documento desde la interfaz. \textbf{Postcondición:} el informe queda
+persistido como artefacto en MinIO y referenciado en PostgreSQL.
+
+Los demás casos de uso de la tabla son variantes o vistas auxiliares de
+estos tres flujos: comparativas sobre el mismo entorno, consulta de
+experimentos anteriores e inspección del Knowledge Backbone desde la web.
 
 \section{Información que el sistema debe almacenar}
 
@@ -111,7 +196,7 @@ aceptadas por la primera fase (\texttt{pipeline\_memories}).
 
 \paragraph{MinIO.} Artefactos binarios: informes en PDF generados por
 el Reporter y los archivos \texttt{*\_model.py} producidos por el
-\textit{Builder} de la primera fase --- es decir, el código Python que
+\textit{Builder} de la primera fase, es decir, el código Python que
 implementa cada modelo de decisión y que el \texttt{model\_loader} de
 esta fase carga dinámicamente. Los registros en \texttt{artifacts} de
 PostgreSQL apuntan al objeto correspondiente mediante su clave de

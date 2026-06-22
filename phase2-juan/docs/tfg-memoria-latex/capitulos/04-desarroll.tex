@@ -1,8 +1,8 @@
 \chapter{Desarrollo del trabajo}
 
 Este capítulo no documenta el sistema, sino el proceso por el que se
-construyó. La observación que lo recorre es que trabajar de forma
-habitual con \textit{coding agents} --- en este caso, Claude Code ---
+construyó. En esta fase, trabajar de forma habitual con
+\textit{coding agents} (en este caso, Claude Code)
 desplaza el centro de gravedad del ciclo clásico de desarrollo de
 software: la implementación deja de ser la actividad dominante y, en su
 lugar, lo son la especificación, la revisión y la verificación. La
@@ -12,8 +12,8 @@ proyecto.
 
 \section{El problema con el ciclo clásico}
 
-Los modelos de proceso clásicos --- del ciclo en cascada a sus
-variantes ágiles --- tienden a asumir que el coste dominante del
+Los modelos de proceso clásicos (del ciclo en cascada a sus
+variantes ágiles) tienden a asumir que el coste dominante del
 desarrollo es escribir y depurar el código. Sobre esa premisa se
 construye buena parte de las prácticas habituales: separar análisis de
 implementación para no malgastar trabajo, escribir documentación
@@ -24,19 +24,19 @@ Cuando los modelos de lenguaje actuales actúan como ejecutores
 principales, esa premisa queda cuestionada. En tareas generales de
 programación, escribir una función concreta o un módulo completo a
 partir de una especificación clara deja de ser la parte costosa del
-trabajo. La evidencia empírica de este desplazamiento --- los
+trabajo. La evidencia empírica de este desplazamiento (los
 experimentos de Peng et al.\ con GitHub Copilot \cite{peng2023impact} y
 los ensayos aleatorizados a gran escala de Cui et al.\
-\cite{cui2025effects} --- se discutió en el capítulo de estado del arte
+\cite{cui2025effects}) se discutió en el capítulo de estado del arte
 y no se repite aquí.
 
 El peso se desplaza, en consecuencia, hacia tres actividades que antes
 estaban distribuidas o asumidas: enunciar bien la especificación,
 revisar lo que el agente ha producido y verificar que sigue
-funcionando lo que ya funcionaba. El ciclo deja de funcionar de forma
-estrictamente secuencial y se aproxima a un bucle corto con cuatro
-pasos --- especificar, ejecutar, revisar, ajustar --- que se repite
-muchas veces al día. En la práctica, especificar deja de ser
+funcionando lo que ya funcionaba. El ciclo deja de parecer una secuencia
+cerrada y se convierte en un bucle corto con cuatro pasos
+(especificar, ejecutar, revisar, ajustar) que se repite muchas veces
+al día. En la práctica, especificar deja de ser
 \emph{escribir un párrafo de requisitos} y pasa a ser \emph{redactar un
 plan de implementación}: lo bastante rico como para que el agente
 pueda ejecutarlo sin tener que interpretar el contrato cada pocos
@@ -79,8 +79,8 @@ a ejecutar la suite completa para comprobar que el resto sigue verde.
 
 Este bucle, repetido decenas de veces, sustituye al cronograma rígido
 del ciclo clásico. La planificación de alto nivel sigue existiendo
---- en este proyecto, en forma de archivos \texttt{spec.md} versionados
-en el propio repositorio, no de \textit{tickets} externos --- pero
+(en este proyecto, en forma de archivos \texttt{spec.md} versionados
+en el propio repositorio, no de \textit{tickets} externos) pero
 deja de gobernar el día a día.
 
 \section{Reparto de responsabilidades}
@@ -118,7 +118,7 @@ que fallan en el estado actual y solo entonces escribe el código que
 las hace pasar. El diseño del plan es, por tanto, en gran parte el
 diseño de su propia suite de validación.
 
-Una intuición útil que emergió durante el trabajo es la siguiente: el
+Una intuición útil que apareció durante el trabajo es la siguiente: el
 agente es excelente cuando se le da un contrato preciso, y poco fiable
 cuando se le pide que infiera el contrato a partir del contexto. La
 mayoría de los errores de juicio aparecieron cuando se intentó saltar
@@ -128,14 +128,14 @@ El caso más claro fue la integración inicial de las herramientas en el
 Orchestrator. La primera versión daba por hecho que toda llamada que
 llegara del modelo traería el campo \texttt{query} bien formado, y por
 eso accedía a él directamente sobre el diccionario de parámetros. La
-suposición era cómoda pero ingenua: con que el modelo serializara mal
+suposición era cómoda, pero demasiado optimista: con que el modelo serializara mal
 una sola llamada o se la dejara a medias, el acceso reventaba y un
 fallo \emph{de él} pasaba a ser un error \emph{del backend}. Al
 revisarlo, se sustituyó el acceso directo por una lectura con valor por
 defecto, se añadieron pruebas para llamadas malformadas y se dejó la
 herramienta fallando con un mensaje controlado en lugar de propagar la
 excepción. La conclusión no fue que el agente no supiera escribir esa
-pieza --- la escribió en pocos segundos cuando se le pidió ---, sino
+pieza (la escribió en pocos segundos cuando se le pidió), sino
 que el contrato que se le dio no estaba lo suficientemente cerrado como
 para que pudiera anticipar el caso degenerado.
 
@@ -145,15 +145,15 @@ Esta fase se desarrolló en paralelo con la primera. Para evitar
 acoplamiento prematuro entre ambas se siguió una estrategia explícita:
 fijar pronto el contrato de integración y dejar que cada fase evolucionara
 por su cuenta sobre ese contrato. El
-contrato resultante --- los tres métodos \texttt{decide},
-\texttt{update} y \texttt{get\_state} --- es lo suficientemente mínimo
+contrato resultante (los tres métodos \texttt{decide},
+\texttt{update} y \texttt{get\_state}) es lo suficientemente mínimo
 como para que ninguna de las dos fases haya necesitado coordinar
 \textit{releases} con la otra durante los meses siguientes.
 
 La coordinación entre fases no se apoyó en un gestor de \textit{tickets}
 externo, sino en el propio repositorio compartido en GitHub. Cada
-cambio relevante --- de cualquiera de las dos fases o de la capa común
---- venía acompañado de un archivo \texttt{spec.md} versionado en la
+cambio relevante (de cualquiera de las dos fases o de la capa común)
+venía acompañado de un archivo \texttt{spec.md} versionado en la
 misma rama, que funcionaba a la vez como plan para el agente y como
 documento de discusión con el otro autor. Los cambios viajaban por las
 ramas del repositorio: cuando uno de los dos hacía \texttt{pull}, veía
@@ -168,69 +168,156 @@ cualquiera de las dos fases.
 
 El sistema final no se planificó como un todo, sino que emergió por
 acumulación de iteraciones. Las más importantes, en orden
-aproximado, fueron las siguientes:
+aproximado, fueron las siguientes.
 
-\paragraph{M1. Pipeline básico sobre CLI.} La primera versión funcional
-se operaba enteramente desde una terminal: el usuario describía el
-problema y el Orchestrator invocaba en secuencia al Architect, al
-Tracker, al Analyst y al Reporter, sin pausas intermedias ni
-recomendaciones al usuario; era un \textit{pipeline} de un solo tirón
-cuya salida se imprimía en la consola. No había visualización del
-entorno ni persistencia entre sesiones. El objetivo de esta versión era
-validar que los cinco roles podían coordinarse sin solaparse, no
-producir una interfaz de uso.
+\paragraph{M1. Diseño y especificación.} Las primeras semanas, casi sin
+código, se dedicaron a fijar el diseño: un documento de arquitectura con
+sus diagramas y un plan de implementación del entorno genérico. Sirvió
+para cerrar el contrato con la primera fase y la forma del dominio de
+simulación antes de delegar nada al agente.
 
-\paragraph{M2. Interfaz web con \textit{replay}.} Una vez estabilizado
+\paragraph{M2. Núcleo de simulación y agentes sobre CLI.} La primera
+versión funcional partía del \texttt{Environment} y se operaba
+enteramente desde una terminal: el usuario describía el problema y el
+Orchestrator invocaba en secuencia al Architect, al Tracker, al Analyst y
+al Reporter, sin pausas ni recomendaciones; un \textit{pipeline} de un
+solo tirón cuya salida se imprimía en la consola. El objetivo era validar
+que los cinco roles podían coordinarse sin solaparse, no producir una
+interfaz de uso.
+
+\paragraph{M3. Interfaz web con \textit{replay}.} Una vez estabilizado
 el pipeline, se añadió un \textit{frontend} en React conectado al
-backend mediante WebSocket. El cambio principal no fue cosmético sino
-de paradigma: cada paso del pipeline empezó a publicarse como un evento
-observable desde la interfaz, con \textit{replay} paso a paso de la
-simulación y paneles de estado por agente. La CLI quedó relegada a un
-canal de pruebas y depuración.
+backend mediante WebSocket. El cambio no fue cosmético sino de paradigma:
+cada paso del pipeline empezó a publicarse como un evento observable, con
+\textit{replay} paso a paso de la simulación y paneles de estado por
+agente. La CLI quedó relegada a un canal de pruebas y depuración.
 
-\paragraph{M3. Comparativa multi-modelo.} El \texttt{model\_loader} se
-extendió para permitir instanciar varios modelos de la primera fase en
-el mismo entorno. El resto del pipeline se adaptó para tratar las
-trayectorias por agente en lugar de por simulación. Esta iteración
-ocurrió antes de la integración con el Knowledge Backbone, y fue lo que
-fijó el resto del pipeline en términos de \emph{múltiples agentes en
-una misma ejecución} en lugar de \emph{una simulación, un modelo}.
+\paragraph{M4. Comparativa multi-modelo y persistencia de experimentos.}
+El \texttt{model\_loader} se extendió para instanciar varios modelos de
+la primera fase en el mismo entorno, y el resto del pipeline se adaptó
+para tratar las trayectorias por agente en lugar de por simulación. En
+paralelo se añadió una primera persistencia de experimentos y
+ejecuciones, que fijó el pipeline en términos de \emph{múltiples agentes
+en una misma ejecución} en lugar de \emph{una simulación, un modelo}.
 
-\paragraph{M4. Orchestrator más conversacional.} Antes de abrir el
-sistema al Knowledge Backbone, el Orchestrator pasó por una iteración
-intermedia orientada al uso: dejó de ser un despachador silencioso de
-\textit{tool calls} y empezó a recomendar al usuario qué hacer a
-continuación, qué modelos parecían encajar con el problema descrito y
-qué herramientas tenía a su disposición. Esta iteración no introdujo
-nuevos agentes, pero hizo que la interfaz dejara de sentirse como un
-botón de \emph{lanzar} y se pareciera más a una conversación con
-sugerencias.
+\paragraph{M5. Orchestrator más conversacional.} El Orchestrator pasó
+por una iteración orientada al uso: dejó de ser un despachador silencioso
+de \textit{tool calls} y empezó a recomendar al usuario qué hacer a
+continuación, qué modelos encajaban con el problema y qué herramientas
+tenía a su disposición. No introdujo nuevos agentes, pero hizo que la
+interfaz se pareciera más a una conversación con sugerencias que a un
+botón de \emph{lanzar}.
 
-\paragraph{M5. Lectura del Knowledge Backbone.} El Analyst dejó de
+\paragraph{M6. Enriquecimiento del análisis.} Una iteración amplia,
+motivada por el feedback del tutor tras una primera demostración, hizo el
+análisis mucho más útil: predicciones previas a la simulación, gráficas de
+energía, acciones y valores internos, detección de eventos críticos,
+análisis iterativo y comparación entre varios informes. Fue la iteración
+que más acercó la salida del Analyst a una herramienta de investigación,
+más allá de una ejecución técnicamente correcta.
+
+\paragraph{M7. Migración a la persistencia compartida.} La persistencia
+provisional en SQLite se sustituyó por la capa común con la primera fase:
+artefactos binarios en MinIO y metadatos en PostgreSQL, con las
+migraciones gestionadas por Alembic. Este cambio alineó el laboratorio
+con el Knowledge Backbone compartido y fue requisito previo para producir
+y consumir memoria.
+
+\paragraph{M8. Trazas de decisión.} Se añadió la traza de decisión por
+agente: para cada paso, el estado interno antes y después, la acción
+elegida y el resultado, enviados al \textit{frontend} para inspección
+causal (Figura~\ref{fig:decision-traces}). Estas trazas son la base del
+análisis de \emph{por qué} un modelo decide como decide, no solo de
+\emph{qué} hizo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figuras/ui-05-decision-traces}
+\caption{Trazas de decisión por agente: tarjetas de pre-decisión y
+post-decisión con el estado interno, la acción elegida, las alternativas
+valoradas (\textit{Q-values}) y la recompensa de cada paso.}
+\label{fig:decision-traces}
+\end{figure}
+
+\paragraph{M9. \textit{Sim-memory}.} El Tracker pasó de ser un observador
+puro a alimentar el Knowledge Backbone, mediante
+\texttt{TrackerMemoryWriter}. Esta iteración introdujo la tabla
+\texttt{simulation\_observations} en PostgreSQL y el \textit{namespace}
+\texttt{simulation} en Qdrant, y convirtió la segunda fase en productora
+del backbone además de consumidora.
+
+\paragraph{M10. Lectura del Knowledge Backbone.} El Analyst dejó de
 trabajar exclusivamente sobre los datos del Tracker y empezó a consultar
 postulados previos en el grafo, a través de \texttt{retrieve\_context}.
-Poco después se extendió el patrón al Architect y al Reporter, pero en
-su variante inyectada: el Orchestrator pre-recupera el contexto y lo
-entrega como parámetro.
+Poco después se extendió el patrón al Architect y al Reporter, pero en su
+variante inyectada: el Orchestrator pre-recupera el contexto y lo entrega
+como parámetro.
 
-\paragraph{M6. Persistencia de observaciones (\textit{sim-memory}).} El
-Tracker pasó de ser un observador puro a alimentar el Knowledge
-Backbone, mediante \texttt{TrackerMemoryWriter}. Esta iteración introdujo
-la tabla \texttt{simulation\_observations} en PostgreSQL y el
-\textit{namespace} \texttt{simulation} en Qdrant, y convirtió la segunda
-fase en productora del backbone además de consumidora.
+\paragraph{M11. Consulta del historial en lenguaje natural.} Se incorporó
+una herramienta para consultar el historial de experimentos en lenguaje
+natural (RF-09): traduce la pregunta a una consulta SQL acotada, la ejecuta sobre
+PostgreSQL y sintetiza la respuesta, de modo que el usuario pueda comparar
+ejecuciones pasadas sin salir del chat.
 
-\paragraph{M7. BM25 nativo en Qdrant.} La búsqueda \textit{sparse} se
-migró del cliente Python a la implementación nativa de Qdrant,
-delegando la tokenización y el cálculo de pesos en el servidor.
+\paragraph{M12. Autocompactación del historial.} El historial del chat con
+el Orchestrator podía crecer hasta agotar la ventana de contexto del
+modelo tras unas pocas iteraciones del pipeline. Para satisfacer RNF-10 se
+añadió una autocompactación que, superado un umbral, sustituye los mensajes antiguos
+por un resumen determinista con marco de auditoría, conservando la
+trazabilidad de la sesión sin reventar el presupuesto de \textit{tokens}.
 
-\paragraph{M8. Generación de informes por secciones.} El Reporter sufrió
-una limitación práctica: los informes completos podían superar el
-presupuesto de salida del modelo o producir LaTeX difícil de reparar. La
-solución fue desplazar parte de la estructura al backend: el sistema pide
-al modelo secciones acotadas, ensambla el documento final y conserva una
-ruta de reserva determinista si alguna sección falla. Este cambio hizo
-menos elegante la implementación, pero más fiable la entrega del PDF.
+\paragraph{M13. Despliegue.} El sistema se reestructuró para desplegarse
+de forma reproducible y se publicó en Railway, de modo que el laboratorio
+fuese accesible sin tener que montar el entorno local completo.
+
+\section{Planificación temporal}
+
+El desarrollo se extendió de marzo a junio de 2026. Dado el bucle iterativo
+descrito en este capítulo, los hitos no fueron fases estancas con entregas
+cerradas, sino líneas de trabajo que se solapan. La figura siguiente sitúa
+los hitos sobre el calendario, reconstruidos a partir del historial de
+\textit{commits} del repositorio. El primer bloque (marzo) concentra el
+diseño, el núcleo de simulación y la interfaz; el segundo (abril) reúne las
+iteraciones de análisis, almacenamiento y memoria; y el último
+(mayo--junio), la consulta del historial, la robustez y el despliegue,
+junto con la redacción de la memoria.
+
+\begin{figure}[H]
+\centering
+\begin{ganttchart}[
+  hgrid, vgrid,
+  x unit=0.52cm,
+  y unit chart=0.58cm,
+  y unit title=0.6cm,
+  bar height=0.6,
+  title height=1,
+  bar/.append style={fill=black!12, draw=black!55},
+  bar label font=\footnotesize,
+  title label font=\footnotesize\bfseries,
+]{1}{16}
+\gantttitle{2026}{16} \\
+\gantttitle{Marzo}{4}
+\gantttitle{Abril}{4}
+\gantttitle{Mayo}{4}
+\gantttitle{Junio}{4} \\
+\ganttbar{M1. Diseño y especificación}{1}{2} \\
+\ganttbar{M2. Núcleo de simulación + agentes}{2}{3} \\
+\ganttbar{M3. Interfaz web + replay}{3}{4} \\
+\ganttbar{M4. Multi-modelo + experimentos}{3}{4} \\
+\ganttbar{M5. Orchestrator conversacional}{4}{4} \\
+\ganttbar{M6. Enriquecimiento del análisis}{5}{7} \\
+\ganttbar{M7. Persistencia compartida}{6}{7} \\
+\ganttbar{M8. Trazas de decisión}{7}{8} \\
+\ganttbar{M9. Sim-memory (writer)}{7}{8} \\
+\ganttbar{M10. Lectura del backbone}{8}{9} \\
+\ganttbar{M11. Consulta del historial}{9}{12} \\
+\ganttbar{M12. Autocompactación}{12}{13} \\
+\ganttbar{M13. Despliegue (Railway)}{13}{14} \\
+\ganttbar{Memoria y documentación}{14}{16}
+\end{ganttchart}
+\caption{Planificación temporal aproximada de los hitos del desarrollo
+(semanas de marzo a junio de 2026).}
+\end{figure}
 
 \section{La verificación como nuevo cuello de botella}
 
@@ -243,8 +330,8 @@ considera terminada. La suite combina pruebas unitarias y de integración
 en \textit{pytest} para el backend, y pruebas \textit{end-to-end} en
 Playwright para el cliente web. La segunda capa es la \textbf{revisión
 combinada del cambio antes de fusionar}: la propia lectura humana del
-\textit{diff} --- centrada en el alcance, en lo que el cambio no
-debería romper y en si lo entregado coincide con la \textit{spec} --- y
+\textit{diff} (centrada en el alcance, en lo que el cambio no
+debería romper y en si lo entregado coincide con la \textit{spec}) y
 una pasada complementaria por subagentes especializados
 (\texttt{code-reviewer}, \texttt{code-simplifier} y
 \texttt{silent-failure-hunter}) configurados para reportar solo
@@ -326,9 +413,9 @@ y deja a disposición \textit{tool calls} específicas
 recupere bajo demanda únicamente la porción de detalle que necesita en
 un momento dado.
 
-Este patrón --- resumen por defecto, detalle bajo demanda --- desplaza
+Este patrón (resumen por defecto, detalle bajo demanda) desplaza
 parte de la complejidad al diseño de las herramientas, pero permite
 trabajar con sesiones largas sin saturar el contexto del modelo.
-También subraya una idea más general que aparece a lo largo del
-proyecto: gran parte del trabajo con agentes consiste en decidir qué
-ven y qué no ven, no en escribir el código que los invoca.
+Y reaparece algo que se repite en todo el proyecto: buena parte del
+trabajo con agentes está en decidir qué ven y qué no, más que en
+escribir el código que los invoca.

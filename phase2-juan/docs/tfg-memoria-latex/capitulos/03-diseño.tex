@@ -34,13 +34,35 @@ en la interfaz a medida que se produce, sin necesidad de \textit{polling}.
   \end{scope}
 \end{tikzpicture}
 \caption{Arquitectura lógica del sistema.}
+\label{fig:arquitectura}
 \end{figure}
 
-La figura separa tres preocupaciones que estructuran el resto del
+La Figura~\ref{fig:arquitectura} separa tres preocupaciones que estructuran el resto del
 capítulo: el \textbf{dominio de simulación} (qué se ejecuta), el
 \textbf{ciclo orquestado} (cómo se invoca cada paso y cómo se reacciona
 a sus salidas), y la \textbf{capa compartida de conocimiento} (qué
 memoria común usan ambas fases).
+
+Sobre esa estructura, el diseño de esta fase se apoya en tres decisiones
+principales:
+
+\begin{enumerate}
+\item La \textbf{orquestación agéntica} del pipeline: un coordinador que
+modela la sesión como una secuencia canónica de \textit{tool calls} y
+reserva al modelo de lenguaje únicamente las desviaciones puntuales, en
+lugar de delegarle la planificación completa.
+\item La \textbf{integración desacoplada con la primera fase}: un contrato
+mínimo resuelto por \textit{duck typing} y la carga dinámica de los
+modelos, que permite que ambas fases evolucionen sin coordinar sus
+versiones.
+\item El \textbf{laboratorio como productor y consumidor de memoria
+compartida}: las observaciones de simulación se persisten en el
+Knowledge Backbone y se reutilizan después para contrastar el
+comportamiento observado con los postulados previos.
+\end{enumerate}
+
+Las secciones siguientes desarrollan estas decisiones junto con el dominio
+de simulación y la interfaz reactiva que las hacen operativas.
 
 \section{El dominio de simulación}
 
@@ -74,7 +96,7 @@ acciones disponibles y el resultado producido.
 primera fase del proyecto. Es la \emph{política} que asocia una
 percepción a una acción y, opcionalmente, ajusta su estado interno tras
 recibir la recompensa. Se declara como \texttt{Protocol} con tres
-métodos --- \texttt{decide}, \texttt{update} y \texttt{get\_state} --- y
+métodos (\texttt{decide}, \texttt{update} y \texttt{get\_state}) y
 se aplica por \textit{duck typing}; ninguna implementación necesita
 heredar de él ni importar este módulo. La separación con
 \texttt{Agent} es deliberada: el \texttt{Agent} responde a la pregunta
@@ -94,7 +116,7 @@ resulta familiar para quien haya trabajado con aprendizaje por refuerzo:
 \texttt{update} aplica el ajuste interno tras recibir la recompensa, y
 \texttt{get\_state} expone la política aprendida. La generalidad de esta
 interfaz permite acomodar tanto modelos clásicos basados en Q-learning
-\cite{sutton2018rl, yadav2024tictactoerl} como paradigmas no tabulares o
+\cite{sutton2018rl} como paradigmas no tabulares o
 estrategias deliberativas más elaboradas.
 
 \section{El Orchestrator y el ciclo de la sesión}
@@ -104,9 +126,9 @@ conjunto. Mantiene el historial del chat, registra el catálogo de
 herramientas disponibles y despacha cada llamada al agente especializado
 correspondiente. La planificación global no se delega en el modelo de
 lenguaje, sino que se modela como una secuencia canónica de \textit{tool
-calls} sobre la que el LLM solo elige desviaciones puntuales --- pedir
-una consulta adicional al Knowledge Backbone, repetir un paso o
-descartar un intento fallido.
+calls} (Figura~\ref{fig:flujo-canonico}) sobre la que el LLM solo elige
+desviaciones puntuales: pedir una consulta adicional al Knowledge
+Backbone, repetir un paso o descartar un intento fallido.
 
 Este patrón corresponde a una composición
 centralizada con organización por capas en la taxonomía reciente de
@@ -149,6 +171,7 @@ secuencias de roles especializados \cite{hong2024metagpt}.
   \draw[diagarrow, dashed] (s5) -- (extras);
 \end{tikzpicture}
 \caption{Flujo canónico de una sesión orquestada y herramientas auxiliares disponibles.}
+\label{fig:flujo-canonico}
 \end{figure}
 
 Tres responsabilidades adicionales viven exclusivamente en el
@@ -157,7 +180,7 @@ Orchestrator y no se delegan a ningún agente especializado:
 \begin{enumerate}
 \item \textbf{Pre-recuperación de contexto.} Antes de invocar al
 Architect y al Reporter, el Orchestrator consulta el Knowledge Backbone
-mediante \texttt{\_get\_knowledge\_ctx} y entrega el resultado como
+mediante \texttt{\_get\_\allowbreak knowledge\_ctx} y entrega el resultado como
 parámetro \texttt{knowledge\_context} en la llamada; estos dos agentes
 no abren un canal propio al backbone. El Analyst es la excepción: tiene
 \texttt{retrieve\_context} declarada como \textit{tool call} y la invoca
@@ -172,6 +195,37 @@ el canal WebSocket para que el cliente actualice la interfaz sin
 esperar al final del pipeline.
 \end{enumerate}
 
+Las desviaciones que el modelo de lenguaje sí controla son de dos clases.
+La primera es la \textbf{confirmación humana}: antes de lanzar una
+simulación, el Orchestrator presenta al usuario la especificación de
+entorno propuesta por el Architect y los modelos seleccionados, y espera
+su validación; el usuario puede pedir ajustes y rehacer ese paso sin
+reiniciar la sesión. La segunda es el \textbf{rerun de un paso fallido}:
+si una \textit{tool call} produce una salida que no valida (por ejemplo,
+un JSON de entorno malformado) el Orchestrator puede repetirla o
+descartar el intento sin perder el contexto acumulado. En ambos casos la
+secuencia canónica se mantiene como base; lo que el LLM decide es
+\emph{cuándo} retroceder o reintentar, no el orden global del pipeline.
+Esta combinación de plan fijo y desviaciones acotadas es lo que hace que
+una sesión sea a la vez previsible en coste y tolerante a los fallos
+puntuales propios de las salidas generativas.
+
+\paragraph{Autocompactación del historial.} El Orchestrator gestiona
+también su propia ventana de contexto. Una sesión larga acumula en el
+historial el chat con el usuario, los JSON del Tracker, las trazas de
+decisión y las memorias recuperadas del backbone, y ese volumen acaba
+degradando la precisión del modelo. Para acotarlo, el historial se
+autocompacta: cuando supera un umbral de mensajes o de caracteres, el
+Orchestrator sustituye los turnos más antiguos por un resumen de
+auditoría y conserva intactos los últimos turnos. El resumen es
+\emph{determinista} (no lo genera el LLM, sino que se construye por
+plantilla) y preserva el estado activo del pipeline (identificador del
+experimento, semilla, etapas ya completadas, peticiones recientes del
+usuario y herramientas invocadas), de modo que la compactación libera
+contexto sin romper la trazabilidad de la sesión ni obligar a
+reiniciarla. La motivación y la experiencia de uso de este mecanismo se
+detallan en el capítulo de desarrollo.
+
 \section{Agentes especializados}
 
 Cuatro agentes especializados completan el pipeline. Todos siguen la
@@ -182,7 +236,7 @@ Markdown que el Orchestrator interpreta y propaga.
 
 \paragraph{Architect.} Genera la especificación del entorno de simulación
 a partir de la descripción del problema en lenguaje natural y, cuando
-existe, del \texttt{knowledge\_context} pre-recuperado por el
+existe, del \texttt{knowledge\_\allowbreak context} pre-recuperado por el
 Orchestrator. La salida es un JSON que se valida contra el modelo
 definido en \texttt{simlab.spec} antes de instanciar el
 \texttt{Environment}. El esquema mínimo del JSON contiene tres bloques
@@ -198,7 +252,7 @@ agente que lo consume.
 \paragraph{Tracker.} Observa la simulación en bloque, una vez completada,
 y produce un JSON estructurado con los eventos por paso, las trayectorias
 por agente y los episodios significativos. Actúa como observador puro:
-no escribe en el Knowledge Backbone --- esa
+no escribe en el Knowledge Backbone; esa
 responsabilidad recae en el Orchestrator, como se explicó arriba.
 
 \paragraph{Analyst.} Identifica patrones de comportamiento en los datos
@@ -211,11 +265,20 @@ curvas de evolución de las variables internas y de las recompensas,
 histogramas de acciones elegidas y trazas de decisión por agente. Estas
 visualizaciones se generan en \texttt{simlab.charts} a partir de los
 datos del Tracker y se incluyen como imágenes en el informe. Cuando una
-sesión ejecuta varios modelos en el mismo entorno --- comparativa
-\emph{multi-modelo} ---, o se contrasta con ejecuciones previas que
-implementan paradigmas distintos --- comparativa
-\emph{multi-paradigma} ---, el Analyst produce gráficas comparadas y un
-análisis cruzado de las trayectorias.
+sesión ejecuta varios modelos en el mismo entorno (comparativa
+\emph{multi-modelo}), o se contrasta con ejecuciones previas que
+implementan paradigmas distintos (comparativa
+\emph{multi-paradigma}), el Analyst produce gráficas comparadas y un
+análisis cruzado de las trayectorias (Figura~\ref{fig:analisis-charts}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figuras/ui-04-analisis-charts}
+\caption{Gráficas comparativas generadas por el Analyst: evolución de la
+energía por agente, distribución de acciones y evolución de los
+\textit{Q-values} por acción.}
+\label{fig:analisis-charts}
+\end{figure}
 
 \paragraph{Reporter.} Sintetiza los hallazgos del Analyst en un informe
 Markdown que se compila a PDF mediante una plantilla LaTeX
@@ -236,10 +299,10 @@ auto-contenido.
 
 El sistema no incorpora estáticamente los modelos generados por la primera
 fase. En su lugar, el módulo \texttt{model\_loader} consulta la tabla
-\texttt{models} de PostgreSQL --- donde la primera fase registra cada
+\texttt{models} de PostgreSQL (donde la primera fase registra cada
 modelo aceptado junto con su paradigma, su formulación, una
 descripción y la clave \texttt{s3\_model\_key} del archivo de código en
-MinIO --- y carga el archivo Python correspondiente bajo demanda en un
+MinIO) y carga el archivo Python correspondiente bajo demanda en un
 directorio temporal por sesión. A continuación importa dinámicamente
 las clases que cumplen el contrato esperado. La verificación se hace
 por \textit{duck typing}: basta con que la clase exponga los métodos
@@ -291,7 +354,7 @@ finas, y el grafo añade la dimensión relacional que ninguno de los dos
 captura. Trabajos recientes sobre recuperación aumentada con grafos
 \cite{edge2024graphrag} muestran que esta combinación responde mejor
 cuando la pregunta no apunta a un único documento, sino a un patrón
-distribuido por el corpus --- exactamente lo que ocurre al contrastar el
+distribuido por el corpus, exactamente lo que ocurre al contrastar el
 comportamiento de un modelo con varios paradigmas relacionados.
 
 El laboratorio es a la vez consumidor y productor del backbone, pero toda
@@ -325,12 +388,22 @@ clave, útil cuando se quiere recuperar un nombre concreto, un
 identificador o una cita literal.
 \end{itemize}
 
-Esta arquitectura encaja con una línea reciente de pensamiento que
-entiende la memoria de una organización como un grafo de contexto que captura los resultados
-de cada decisión y las trazas que los
-produjeron \cite{goyal2024contextgraph}. La elección de persistir las
-observaciones del Tracker junto a los postulados con los que dialogan, y
-no en un almacén aparte, está alineada con esa visión.
+Persistir las observaciones del Tracker junto a los postulados con los que
+dialogan, y no en un almacén aparte, responde a la misma lógica que motiva
+la recuperación aumentada con grafos \cite{edge2024graphrag}: el valor no
+reside solo en cada hecho aislado, sino en las relaciones entre las
+decisiones, sus resultados y las trazas que los produjeron.
+
+Esta doble condición de productor y consumidor es la aportación principal
+del laboratorio a la memoria compartida. Una observación extraída de una
+simulación no se agota en el informe de su sesión: queda persistida en el
+\textit{namespace} \texttt{simulation} y puede recuperarse en ejecuciones
+posteriores, incluso de paradigmas distintos. Así, cuando una sesión futura
+analiza un nuevo modelo, el Analyst puede contrastar su comportamiento con
+los postulados teóricos escritos por la primera fase y con observaciones
+empíricas de simulaciones anteriores. La separación por \textit{namespace}
+mantiene esa realimentación trazable: permite distinguir un postulado de la
+literatura de una observación generada por el laboratorio.
 
 \section{Capa de presentación reactiva}
 
@@ -347,50 +420,50 @@ consulta del historial de experimentos se hace a través de las vistas
 del Knowledge Backbone, no a través del propio chat.
 
 El frontend está construido sobre React 19, Vite y Tailwind CSS 4. La
-interfaz principal es un \textit{dashboard} en modo oscuro que muestra
-simultáneamente el chat con el Orchestrator, una visualización animada
-del entorno con \textit{replay} paso a paso, tarjetas de datos con
-métricas y eventos críticos extraídos por el Tracker, y un panel lateral
-que refleja el estado de cada agente mientras ejecuta.
+interfaz principal es un \textit{dashboard} en modo oscuro
+(Figura~\ref{fig:dashboard}) que muestra simultáneamente el chat con el
+Orchestrator, una visualización animada del entorno con \textit{replay}
+paso a paso, tarjetas de datos con métricas y eventos críticos extraídos
+por el Tracker, y un panel lateral que refleja el estado de cada agente
+mientras ejecuta (Figura~\ref{fig:panel-agentes}).
 
 \begin{figure}[H]
 \centering
-\fbox{
-\begin{minipage}[c][6cm][c]{0.88\textwidth}
-\centering
-\textbf{Placeholder de captura}\\[0.35cm]
-Vista general del \textit{dashboard}: chat con el Orchestrator,
-visualización del entorno, tarjetas de métricas y panel de actividad de
-los agentes.
-\end{minipage}
-}
-\caption{Interfaz principal del laboratorio virtual.}
+\includegraphics[width=\textwidth]{figuras/ui-01-dashboard-inicial}
+\caption{Interfaz principal del laboratorio virtual: panel lateral con el
+pipeline de agentes y zona de chat con el Orchestrator.}
+\label{fig:dashboard}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\fbox{
-\begin{minipage}[c][6cm][c]{0.88\textwidth}
+\includegraphics[height=0.62\textheight]{figuras/ui-02-panel-agentes}
+\caption{Panel lateral de estado: progreso de cada agente del pipeline,
+modelos cargados para la simulación y resumen del entorno generado.}
+\label{fig:panel-agentes}
+\end{figure}
+
+La visualización del entorno (Figura~\ref{fig:replay}) reproduce la
+simulación paso a paso, y al cierre de la sesión el Reporter genera un
+informe PDF descargable con las gráficas comparativas de ambos modelos
+(Figura~\ref{fig:reporter-pdf}).
+
+\begin{figure}[H]
 \centering
-\textbf{Placeholder de captura}\\[0.35cm]
-\textit{Replay} de una simulación: rejilla, recursos, agentes activos,
-eventos críticos y controles de reproducción.
-\end{minipage}
-}
-\caption{Visualización de la simulación y reproducción paso a paso.}
+\includegraphics[width=\textwidth]{figuras/ui-03-simulacion-replay}
+\caption{Visualización de la simulación y reproducción paso a paso: rejilla
+con agentes y recursos, línea de eventos críticos y controles de
+\textit{replay}.}
+\label{fig:replay}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\fbox{
-\begin{minipage}[c][6cm][c]{0.88\textwidth}
-\centering
-\textbf{Placeholder de captura}\\[0.35cm]
-Vista de consulta del Knowledge Backbone o pantalla de descarga del
-informe PDF generado al finalizar la sesión.
-\end{minipage}
-}
-\caption{Inspección de conocimiento e informe final generado.}
+\includegraphics[height=0.8\textheight]{figuras/ui-06-reporter-pdf}
+\caption{Página del informe PDF generado por el Reporter, con las gráficas
+comparativas de evolución de energía y distribución de acciones de los dos
+modelos.}
+\label{fig:reporter-pdf}
 \end{figure}
 
 La idea detrás del canal WebSocket único es sencilla: que cada paso del
@@ -400,6 +473,6 @@ pocos segundos, hay un flujo continuo de eventos que arrancan cuando el
 Orchestrator inicia una \textit{tool call} y terminan cuando la
 simulación se cierra. El precio de esta decisión es trasladar la
 sincronización al backend; el beneficio es que el usuario percibe la
-herramienta como un proceso vivo --- el agente está pensando, el
-entorno se está construyendo, el modelo está decidiendo --- y no como
+herramienta como un proceso vivo (el agente está pensando, el
+entorno se está construyendo, el modelo está decidiendo) y no como
 una serie de cargas independientes.
