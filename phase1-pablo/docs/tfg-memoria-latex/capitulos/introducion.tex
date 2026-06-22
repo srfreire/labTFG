@@ -151,18 +151,20 @@ continuar.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.72\textwidth}{!}{%
-\begin{tikzpicture}[node distance=7mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=4.7cm] (input) {Descripción del problema};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of input, text width=4.7cm] (research) {Investigación científica};
-\node[tfgbox, fill=tfgOrange!16, draw=tfgOrange, below=of research, text width=4.7cm] (formalize) {Formalización matemática};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formalize, text width=4.7cm] (reason) {Adaptación al entorno};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of reason, text width=4.7cm] (build) {Modelo Python + pruebas};
+\begin{tikzpicture}[
+  node distance=5mm,
+  introflow/.style={tfgbox, font=\footnotesize, minimum height=8mm, text width=4.9cm}
+]
+\node[introflow, fill=tfgBlue!12, draw=tfgBlue] (input) {Descripción del problema};
+\node[introflow, fill=tfgGreen!12, draw=tfgGreen, below=of input] (research) {Investigación científica};
+\node[introflow, fill=tfgOrange!16, draw=tfgOrange, below=of research] (formalize) {Formalización matemática};
+\node[introflow, fill=tfgPurple!13, draw=tfgPurple, below=of formalize] (reason) {Adaptación al entorno};
+\node[introflow, fill=tfgRed!10, draw=tfgRed, below=of reason] (build) {Modelo Python + pruebas};
 \draw[tfgarrow] (input) -- (research);
 \draw[tfgarrow] (research) -- (formalize);
 \draw[tfgarrow] (formalize) -- (reason);
 \draw[tfgarrow] (reason) -- (build);
-\end{tikzpicture}}
+\end{tikzpicture}
 \caption{Transformación principal del sistema desarrollado.}
 \end{figure}
 
