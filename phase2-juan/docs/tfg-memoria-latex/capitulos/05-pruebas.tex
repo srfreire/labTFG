@@ -174,7 +174,7 @@ visibilidad en la interfaz.
 La tabla siguiente recoge el resultado de ejecutar la suite. No pretende
 comparar rendimiento con otros sistemas; sirve como evidencia interna de
 que los contratos técnicos del laboratorio se mantienen estables. La suite
-de \textit{pytest} reúne 36 archivos y 319 casos: 313 no dependen de
+de \textit{pytest} reúne 36 archivos y 326 casos: 320 no dependen de
 servicios externos y los 6 restantes requieren el Knowledge Backbone en
 ejecución (PostgreSQL), levantado con \texttt{docker compose}.
 
@@ -183,7 +183,7 @@ ejecución (PostgreSQL), levantado con \texttt{docker compose}.
 \small
 \begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
 \textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
-Backend (\textit{pytest}, 36 archivos) & PASS & 319/319 & Dominio, agentes, Orchestrator, persistencia, recuperación y carga de modelos. \\ \hline
+Backend (\textit{pytest}, 36 archivos) & PASS & 326/326 & Dominio, agentes, Orchestrator, persistencia, recuperación y carga de modelos. \\ \hline
 Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
 E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
 E2E web (sesión real y KG) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
