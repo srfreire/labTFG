@@ -108,7 +108,7 @@ antes de fusionarlo, como se detalla en el capítulo correspondiente.
 Codex \cite{chen2021codex} estableció el \textit{baseline} de
 generación de código a partir de descripciones en lenguaje natural,
 junto con HumanEval como su \textit{benchmark} canónico. MBPP
-\cite{austin2021program} introdujo un conjunto complementario de
+\cite{austin2021programsynthesis} introdujo un conjunto complementario de
 problemas \textit{Python} sencillos. SWE-bench
 \cite{jimenez2024swebench} y SWE-agent \cite{yang2024sweagent}
 elevaron el listón: el primero, evaluando la capacidad de los modelos
@@ -148,6 +148,21 @@ marcos RAG/KG, la mediación del acceso al conocimiento a través de un
 pipeline como secuencia de \textit{tool calls}; y de la revisión
 adversarial, la verificación intensiva del código durante el ciclo de
 desarrollo.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.0cm}|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{4.2cm}|} \hline
+\textbf{Familia revisada} & \textbf{Idea que aporta} & \textbf{Adopción en esta fase} \\ \hline
+Recuperación aumentada y memoria de agentes & Mediar el acceso al conocimiento mediante recuperación sobre una memoria persistente. & Knowledge Backbone híbrido (grafo, vectorial y relacional) consultado por los agentes. \\ \hline
+Sistemas multi-agente basados en LLMs & Dividir el trabajo en roles especializados que cooperan. & Cuatro agentes (Architect, Tracker, Analyst, Reporter) coordinados por un Orchestrator. \\ \hline
+Uso de herramientas y auto-revisión & Modelar la acción del agente como llamadas a herramientas verificables. & Pipeline expresado como secuencia de \textit{tool calls} sobre el entorno y el backbone. \\ \hline
+Coding agents y desarrollo asistido & Generar y revisar código con asistentes durante el ciclo. & Verificación intensiva (pruebas, revisión adversarial y comprobación sobre la aplicación viva). \\ \hline
+\end{tabular}
+\caption{Elementos que esta fase toma de los marcos revisados.}
+\label{tab:posicionamiento}
+\end{center}
+\end{table}
 
 La aportación de esta fase está en combinar esos elementos para un
 problema concreto: la ejecución comparativa de paradigmas de toma de

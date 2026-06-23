@@ -20,7 +20,7 @@ postulados disponibles en el Knowledge Backbone.
 las métricas como las referencias a los paradigmas analizados.
 \item Las observaciones de simulación se persisten como memorias
 reutilizables, con lo que la segunda fase pasa a ser también productora
-del backbone compartido, y no solo consumir de él.
+del backbone compartido, y no solo consumidora de él.
 \end{itemize}
 
 A esos artefactos hay que añadir un objetivo transversal igualmente
@@ -64,8 +64,8 @@ puro: produce un JSON estructurado y nada más. La escritura sobre el
 grafo y los índices vectoriales ocurre después, a cargo del
 \texttt{TrackerMemoryWriter} disparado por el Orchestrator. Un fallo en
 el observador no deja memorias incompletas en el backbone, y el
-\emph{writer} puede evolucionar (cambiar de embeddings, ajustar el
-batch, cambiar el esquema) sin tocar el agente que observa. Trazar bien
+\emph{writer} puede evolucionar (cambiar de \textit{embeddings}, ajustar el
+\textit{batch}, cambiar el esquema) sin tocar el agente que observa. Trazar bien
 esa frontera costó poco y dejó cada pieza libre para cambiar por su
 cuenta.
 

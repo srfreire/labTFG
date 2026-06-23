@@ -127,13 +127,14 @@ de la especificación generada por el Architect, ciclo de vida de agentes
 y recursos. \\ \hline
 Pipeline y agentes & Comportamiento aislado de cada agente, persistencia
 del chat, autocompactación del historial, idempotencia de la simulación y
-presupuestos del agente runtime. \\ \hline
+presupuestos del agente \textit{runtime}. \\ \hline
 Knowledge Backbone & Escritura del \texttt{TrackerMemoryWriter}, lectura
 mediante \texttt{retrieve\_context}, pre-recuperación de contexto y
 \textit{wiring} entre Orchestrator y agentes. \\ \hline
-Capa de presentación & Endpoints REST de descarga e inspección del KG;
+Capa de presentación & Endpoints REST de descarga e inspección del
+Knowledge Backbone;
 sesión completa desde el cliente web con Playwright. \\ \hline
-Contrato Fase 1 \(\leftrightarrow\) Fase 2 & Descubrimiento dinámico de
+Contrato fase 1 \(\leftrightarrow\) fase 2 & Descubrimiento dinámico de
 modelos y validación del contrato \texttt{decide}, \texttt{update} y
 \texttt{get\_state}. \\ \hline
 \end{tabular}
@@ -186,7 +187,7 @@ ejecución (PostgreSQL), levantado con \texttt{docker compose}.
 Backend (\textit{pytest}, 36 archivos) & PASS & 326/326 & Dominio, agentes, Orchestrator, persistencia, recuperación y carga de modelos. \\ \hline
 Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
 E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
-E2E web (sesión real y KG) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
+E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
 \end{tabular}
 \caption{Resultado de la ejecución de la suite automatizada.}
 \end{center}
@@ -194,7 +195,7 @@ E2E web (sesión real y KG) & Separada & 13 & Sesión completa y vistas del Know
 
 El determinismo del motor merece una mención aparte porque sostiene la
 comparativa multi-modelo. Si una misma semilla no produjese la misma
-rejilla, los resultados de dos modelos dejarían de ser \textit{joinable}.
+rejilla, los resultados de dos modelos dejarían de ser comparables.
 La prueba \texttt{test\_environment::\allowbreak test\_seed\_determinism} ejecuta dos
 simulaciones con la misma semilla y verifica que sus eventos son
 idénticos. En otro nivel, el módulo \texttt{test\_orchestrator\_\allowbreak simulation\_\allowbreak idempotency}

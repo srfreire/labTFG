@@ -56,7 +56,7 @@ final. & Should \\ \hline
 RF-07 & Generar informes en PDF con los resultados, la evidencia visual y
 las referencias a los paradigmas analizados. & Must \\ \hline
 RF-08 & Persistir las observaciones de simulación en el Knowledge Backbone
-como memorias reutilizables en ejecuciones posteriores. & Should \\ \hline
+como memorias reutilizables en ejecuciones posteriores. & Must \\ \hline
 RF-09 & Conservar el historial completo de experimentos y permitir su
 consulta, filtrado y comparativa. & Should \\ \hline
 RF-10 & Permitir la interacción con el sistema mediante un chat
@@ -96,25 +96,26 @@ configuración, sus eventos y sus artefactos finales con un identificador
 único, de modo que sea posible reproducirla o auditarla.
 \item \textbf{RNF-04 --- Reactividad:} el cliente web debe recibir actualizaciones del
 estado de la simulación y de la actividad de cada agente en tiempo real,
-sin polling, mediante WebSocket.
+sin \textit{polling}, mediante WebSocket.
 \item \textbf{RNF-05 --- Degradación controlada:} si faltan componentes opcionales
-del backbone (reranker o embeddings), el sistema debe seguir funcionando,
+del backbone (\textit{reranker} o \textit{embeddings}), el sistema debe seguir funcionando,
 aunque la recuperación pierda calidad.
 \item \textbf{RNF-06 --- Determinismo:} para una misma semilla
 y configuración, el motor de simulación debe producir resultados
 idénticos, de modo que las comparativas entre modelos sean
-\textit{joinable} entre sesiones.
-\item \textbf{RNF-07 --- Portabilidad de despliegue:} los servicios externos (Postgres,
+reproducibles y comparables entre sesiones.
+\item \textbf{RNF-07 --- Portabilidad de despliegue:} los servicios externos (PostgreSQL,
 MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
 mediante \texttt{docker compose}, sin pasos manuales de configuración
 específicos del entorno del desarrollador.
-\item \textbf{RNF-08 --- Configuración por entorno:} las credenciales y endpoints de
+\item \textbf{RNF-08 --- Configuración por entorno:} las credenciales y \textit{endpoints} de
 los servicios externos deben aislarse en variables de entorno, sin
 quedar embebidos en el código fuente ni en los artefactos versionados.
 \item \textbf{RNF-09 --- Observabilidad:} las acciones del Orchestrator y de los
-agentes especializados deben dejar trazas en \textit{logs} estructurados
-suficientes para diagnosticar una sesión \textit{a posteriori} sin tener
-que reproducirla.
+agentes especializados deben dejar traza en los \textit{logs} del
+\textit{backend} (emitidos por la salida estándar del proceso que sirve la
+API), suficientes para diagnosticar una sesión \textit{a posteriori} sin
+tener que reproducirla.
 \item \textbf{RNF-10 --- Acotación del contexto conversacional:} una sesión larga no
 debe agotar la ventana de contexto del modelo. El historial del chat con
 el Orchestrator debe mantenerse dentro de un presupuesto acotado de forma
@@ -134,7 +135,7 @@ con los requisitos funcionales.
 \begin{center}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{7.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|} \hline
 \textbf{Código} & \textbf{Caso de uso} & \textbf{RF relacionados} \\ \hline
-CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-02, RF-03, RF-10, RF-11, RF-12 \\ \hline
+CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-02, RF-03, RF-04, RF-10, RF-11, RF-12 \\ \hline
 CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
 CU-03 & Analizar los resultados y contrastarlos con el Knowledge Backbone & RF-04, RF-05, RF-06, RF-08 \\ \hline
 CU-04 & Generar el informe PDF de la sesión & RF-07 \\ \hline
@@ -237,8 +238,8 @@ historial de experimentos y tabla de observaciones de simulación), MinIO
 (artefactos binarios), Qdrant (vectores densos y BM25 nativo) y Neo4j
 (grafo de paradigmas, formulaciones y procedencia).
 \item \textbf{Servicios de modelos de lenguaje:} acceso a los proveedores
-de LLM a través de OpenRouter; embeddings asimétricos mediante Voyage AI
-(opcional) y reranking mediante ZeroEntropy (opcional).
+de LLM a través de OpenRouter; \textit{embeddings} asimétricos mediante Voyage AI
+(opcional) y \textit{reranking} mediante ZeroEntropy (opcional).
 \item \textbf{Motor de composición tipográfica:} generación de los
 informes en PDF mediante una plantilla LaTeX procesada con \textit{tectonic}.
 \item \textbf{Cliente web:} comunicación con el backend a través de una

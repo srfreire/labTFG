@@ -12,7 +12,7 @@ phase2-juan/
     tracker.py          observacion de simulaciones
     analyst.py          analisis de patrones
     reporter.py         generacion de informes PDF
-    model_loader.py     carga de modelos de Fase 1
+    model_loader.py     carga de modelos de fase 1
     knowledge/          escritura de memorias de simulacion
     recall/             lectura del Knowledge Backbone
     api.py              FastAPI + WebSocket
@@ -20,7 +20,7 @@ phase2-juan/
   tests/                pruebas pytest
 
 shared/                 servicios comunes y migraciones
-docker-compose.yml      Postgres, MinIO, Neo4j y Qdrant
+docker-compose.yml      PostgreSQL, MinIO, Neo4j y Qdrant
 \end{verbatim}
 
 \section{Servicios}
@@ -33,7 +33,7 @@ ejecutarse, pero la recuperación del Knowledge Backbone pierde calidad.
 \section{Configuración}
 
 La configuración vive en \texttt{phase2-juan/.env}. Las variables
-principales son las conexiones a Postgres, MinIO, Neo4j y Qdrant,
+principales son las conexiones a PostgreSQL, MinIO, Neo4j y Qdrant,
 \texttt{OPENROUTER\_API\_KEY}, y los conmutadores
 \texttt{ENABLE\_KNOWLEDGE\_READ} y \texttt{ENABLE\_KNOWLEDGE\_WRITE}.
 El archivo \texttt{.env.example} contiene la lista completa.

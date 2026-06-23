@@ -63,10 +63,13 @@ informe en PDF.
 
 Los modelos de decisión que se ejecutan no son parte de esta fase, sino
 que se cargan dinámicamente desde la primera fase del proyecto, que es la
-encargada de generarlos. La integración entre ambas fases se realiza a
-través de un contrato mínimo, los métodos \texttt{decide},
-\texttt{update} y \texttt{get\_state}, aplicado por \textit{duck
-typing} en el momento de la carga.
+encargada de generarlos. Esa primera fase es un \textit{pipeline} de
+cuatro agentes (investigación, formalización, razonamiento y
+construcción) que, a partir de la descripción de un paradigma, produce el
+código Python autocontenido de cada modelo. La integración entre ambas
+fases se realiza a través de un contrato mínimo, los métodos
+\texttt{decide}, \texttt{update} y \texttt{get\_state}, aplicado por
+\textit{duck typing} en el momento de la carga.
 
 El acceso al Knowledge Backbone compartido entre fases es
 bidireccional: la segunda fase consume desde él tanto los propios

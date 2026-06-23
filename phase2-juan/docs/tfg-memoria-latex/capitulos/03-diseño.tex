@@ -19,9 +19,9 @@ en la interfaz a medida que se produce, sin necesidad de \textit{polling}.
   \node[diagblock, below=14mm of orch, xshift=-45mm, minimum width=36mm] (agents)
        {Agentes especializados\\\footnotesize Architect, Tracker,\\\footnotesize Analyst, Reporter};
   \node[diagblock, below=14mm of orch, minimum width=36mm] (env)
-       {Entorno y modelos\\\footnotesize Environment 2D\\\footnotesize Modelos de Fase 1};
+       {Entorno y modelos\\\footnotesize Environment 2D\\\footnotesize Modelos de fase 1};
   \node[diagblock, below=14mm of orch, xshift=45mm, minimum width=36mm] (kb)
-       {Knowledge Backbone\\\footnotesize Postgres, MinIO,\\\footnotesize Neo4j, Qdrant};
+       {Knowledge Backbone\\\footnotesize PostgreSQL, MinIO,\\\footnotesize Neo4j, Qdrant};
 
   \draw[diagarrowbi] (web) -- node[right, font=\scriptsize] {REST + WS} (api);
   \draw[diagarrow]   (api) -- (orch);
@@ -103,7 +103,11 @@ heredar de él ni importar este módulo. La separación con
 \emph{quién} y \emph{dónde}, y el \texttt{DecisionModel} a la pregunta
 \emph{cómo decide}, lo que permite cambiar la política sin tocar la
 infraestructura del entorno y ejecutar varios modelos en paralelo en la
-misma rejilla.
+misma rejilla. La especificación del entorno no forma parte de esa
+superficie de contacto: cada fase mantiene la suya (la primera la recibe
+como entrada para generar el modelo y esta la genera el Architect), y los
+modelos cargados solo dependen del contrato de percepción y acción, no de
+un fichero de entorno compartido.
 \end{itemize}
 
 Esta separación entre infraestructura del entorno y modelos de decisión
@@ -112,9 +116,15 @@ simulación sin que el código del entorno conozca su naturaleza.
 
 El contrato \texttt{decide}, \texttt{update}, \texttt{get\_state}
 resulta familiar para quien haya trabajado con aprendizaje por refuerzo:
-\texttt{decide} resuelve la selección de acción dada una percepción,
+\texttt{decide} resuelve la selección de acción dada una percepción ---un
+diccionario con la posición del agente (\texttt{x}, \texttt{y}), las
+dimensiones de la rejilla (\texttt{grid\_width}, \texttt{grid\_height}),
+el paso actual (\texttt{step}), los recursos visibles (\texttt{resources})
+y el resultado de la última acción (\texttt{last\_action\_result})---,
 \texttt{update} aplica el ajuste interno tras recibir la recompensa, y
-\texttt{get\_state} expone la política aprendida. La generalidad de esta
+\texttt{get\_state} expone el estado interno del modelo, incluida una
+clave \texttt{q\_values} que el laboratorio consume para las trazas de
+decisión y las gráficas de alternativas valoradas. La generalidad de esta
 interfaz permite acomodar tanto modelos clásicos basados en Q-learning
 \cite{sutton2018rl} como paradigmas no tabulares o
 estrategias deliberativas más elaboradas.
@@ -246,7 +256,7 @@ de nivel superior: \texttt{grid} con \texttt{width} y \texttt{height};
 o \texttt{NoopEffect}); y \texttt{resources}, una lista de tipos de
 recurso con sus propiedades y reglas de aparición. Un ejemplo
 representativo es una rejilla \(8 \times 8\) con acciones de movimiento
-y consumo, y un único recurso de tipo comida que añade energía al
+y consumo, y un único tipo de recurso (comida) que añade energía al
 agente que lo consume.
 
 \paragraph{Tracker.} Observa la simulación en bloque, una vez completada,
@@ -328,7 +338,7 @@ historial de experimentos y la tabla
 \texttt{simulation\_observations}; MinIO guarda los artefactos binarios;
 Qdrant indexa los vectores densos y las representaciones \textit{sparse}
 (BM25 nativo) de las memorias; Neo4j mantiene el grafo de paradigmas,
-formulaciones y procedencia. Los embeddings se delegan en Voyage AI y el
+formulaciones y procedencia. Los \textit{embeddings} se delegan en Voyage AI y el
 \textit{reranking} en ZeroEntropy; ambos componentes externos son
 opcionales y su ausencia degrada la calidad de la recuperación sin
 interrumpir el pipeline.

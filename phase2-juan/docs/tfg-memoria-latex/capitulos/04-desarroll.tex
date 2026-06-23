@@ -2,7 +2,7 @@
 
 Este capítulo no documenta el sistema, sino el proceso por el que se
 construyó. En esta fase, trabajar de forma habitual con
-\textit{coding agents} (en este caso, Claude Code)
+\textit{coding agents} (en este caso, Codex y Claude Code)
 desplaza el centro de gravedad del ciclo clásico de desarrollo de
 software: la implementación deja de ser la actividad dominante y, en su
 lugar, lo son la especificación, la revisión y la verificación. La
@@ -61,7 +61,9 @@ independientes, varios subagentes trabajan en paralelo sobre
 \textit{worktrees} de Git separados, de modo que cada uno ve su propia
 rama y su propio \textit{working tree} y no hay riesgo de que se pisen
 entre sí al modificar los mismos ficheros. En tareas con estado
-compartido se ejecuta de forma secuencial.
+compartido se ejecuta de forma secuencial. Esta ejecución autónoma por
+oleadas se apoyó en una orquestación compartida entre ambas fases del
+proyecto, descrita con más detalle en la memoria de la primera fase.
 \item \textbf{Revisar.} Antes de fusionar, el código pasa por una
 revisión combinada: una lectura humana enfocada en alcance y diseño, y
 una segunda pasada por subagentes especializados de revisión
@@ -79,9 +81,10 @@ a ejecutar la suite completa para comprobar que el resto sigue verde.
 
 Este bucle, repetido decenas de veces, sustituye al cronograma rígido
 del ciclo clásico. La planificación de alto nivel sigue existiendo
-(en este proyecto, en forma de archivos \texttt{spec.md} versionados
-en el propio repositorio, no de \textit{tickets} externos) pero
-deja de gobernar el día a día.
+(las tareas y las fases se gestionaron en Linear, con sus criterios de
+aceptación, y el detalle de cada cambio se concretaba en archivos
+\texttt{spec.md} versionados en el propio repositorio) pero deja de
+gobernar el día a día.
 
 \section{Reparto de responsabilidades}
 
@@ -129,7 +132,7 @@ Orchestrator. La primera versión daba por hecho que toda llamada que
 llegara del modelo traería el campo \texttt{query} bien formado, y por
 eso accedía a él directamente sobre el diccionario de parámetros. La
 suposición era cómoda, pero demasiado optimista: con que el modelo serializara mal
-una sola llamada o se la dejara a medias, el acceso reventaba y un
+una sola llamada o se la dejara a medias, el acceso fallaba y un
 fallo \emph{de él} pasaba a ser un error \emph{del backend}. Al
 revisarlo, se sustituyó el acceso directo por una lectura con valor por
 defecto, se añadieron pruebas para llamadas malformadas y se dejó la
@@ -138,6 +141,22 @@ excepción. La conclusión no fue que el agente no supiera escribir esa
 pieza (la escribió en pocos segundos cuando se le pidió), sino
 que el contrato que se le dio no estaba lo suficientemente cerrado como
 para que pudiera anticipar el caso degenerado.
+
+\paragraph{Qué agente para qué tarea.} El trabajo no se delegó siempre en
+el mismo \textit{coding agent}. El backend (contratos, persistencia,
+migraciones y suite de pruebas) se desarrolló sobre todo con Codex, mientras
+que el \textit{frontend} y la interacción se trabajaron con Claude Code, más
+sensible a la coherencia visual y al detalle de la interfaz. La división no
+fue dogmática (cualquiera de los dos podía cubrir el otro lado), sino una
+asignación práctica por afinidad de cada modelo con el tipo de tarea y con su
+ritmo de validación: en backend pesaba respetar contratos y dejar las pruebas
+en verde; en \textit{frontend}, iterar sobre la apariencia y la ergonomía.
+Esta intuición es coherente con la señal de evaluaciones públicas, que separan
+capacidades de programación y razonamiento de los rankings específicos de
+desarrollo web \cite{artificialanalysis2026index,lmarena2026webdev}; no se
+tomaron como verdad absoluta, porque cambian con rapidez y dependen del
+\textit{benchmark}, pero sí como indicio de que la elección de modelo conviene
+ligarla al tipo de tarea.
 
 \section{Planificación y coordinación con la primera fase}
 
@@ -150,12 +169,16 @@ contrato resultante (los tres métodos \texttt{decide},
 como para que ninguna de las dos fases haya necesitado coordinar
 \textit{releases} con la otra durante los meses siguientes.
 
-La coordinación entre fases no se apoyó en un gestor de \textit{tickets}
-externo, sino en el propio repositorio compartido en GitHub. Cada
-cambio relevante (de cualquiera de las dos fases o de la capa común)
-venía acompañado de un archivo \texttt{spec.md} versionado en la
-misma rama, que funcionaba a la vez como plan para el agente y como
-documento de discusión con el otro autor. Los cambios viajaban por las
+La planificación y la coordinación entre fases se apoyaron en Linear como
+gestor de tareas compartido. El trabajo se dividió en fases, cada una con
+sus criterios de aceptación, y cada tarea declaraba, además de su
+descripción funcional, sus dependencias, su prioridad, su posible
+solapamiento con otras tareas y si podía ejecutarse en paralelo. Sobre esa
+planificación, el detalle de cada cambio relevante (de cualquiera de las
+dos fases o de la capa común) se concretaba en un archivo \texttt{spec.md}
+versionado en la misma rama del repositorio compartido en GitHub, que
+funcionaba a la vez como plan para el agente y como documento de discusión
+con el otro autor. Los cambios viajaban por las
 ramas del repositorio: cuando uno de los dos hacía \texttt{pull}, veía
 de forma automática tanto el código nuevo como las \textit{specs} que
 lo habían motivado. La comunicación complementaria del día a día se
@@ -182,8 +205,8 @@ enteramente desde una terminal: el usuario describía el problema y el
 Orchestrator invocaba en secuencia al Architect, al Tracker, al Analyst y
 al Reporter, sin pausas ni recomendaciones; un \textit{pipeline} de un
 solo tirón cuya salida se imprimía en la consola. El objetivo era validar
-que los cinco roles podían coordinarse sin solaparse, no producir una
-interfaz de uso.
+que los cinco roles (los cuatro agentes y el Orchestrator) podían
+coordinarse sin solaparse, no producir una interfaz de uso.
 
 \paragraph{M3. Interfaz web con \textit{replay}.} Una vez estabilizado
 el pipeline, se añadió un \textit{frontend} en React conectado al
@@ -239,9 +262,11 @@ valoradas (\textit{Q-values}) y la recompensa de cada paso.}
 \label{fig:decision-traces}
 \end{figure}
 
-\paragraph{M9. \textit{Sim-memory}.} El Tracker pasó de ser un observador
-puro a alimentar el Knowledge Backbone, mediante
-\texttt{TrackerMemoryWriter}. Esta iteración introdujo la tabla
+\paragraph{M9. \textit{Sim-memory}.} La segunda fase pasó de solo observar
+a alimentar el Knowledge Backbone: la salida del Tracker empezó a
+persistirse mediante \texttt{TrackerMemoryWriter}, sin que el Tracker
+dejara de ser un observador puro (la escritura la dispara el
+Orchestrator, no el propio agente). Esta iteración introdujo la tabla
 \texttt{simulation\_observations} en PostgreSQL y el \textit{namespace}
 \texttt{simulation} en Qdrant, y convirtió la segunda fase en productora
 del backbone además de consumidora.
@@ -251,7 +276,9 @@ trabajar exclusivamente sobre los datos del Tracker y empezó a consultar
 postulados previos en el grafo, a través de \texttt{retrieve\_context}.
 Poco después se extendió el patrón al Architect y al Reporter, pero en su
 variante inyectada: el Orchestrator pre-recupera el contexto y lo entrega
-como parámetro.
+como parámetro. En la misma línea se añadieron a la interfaz las vistas de
+inspección del propio backbone (grafo, memorias y procedencia), accesibles
+desde la web (RF-13).
 
 \paragraph{M11. Consulta del historial en lenguaje natural.} Se incorporó
 una herramienta para consultar el historial de experimentos en lenguaje
@@ -264,7 +291,7 @@ el Orchestrator podía crecer hasta agotar la ventana de contexto del
 modelo tras unas pocas iteraciones del pipeline. Para satisfacer RNF-10 se
 añadió una autocompactación que, superado un umbral, sustituye los mensajes antiguos
 por un resumen determinista con marco de auditoría, conservando la
-trazabilidad de la sesión sin reventar el presupuesto de \textit{tokens}.
+trazabilidad de la sesión sin agotar el presupuesto de \textit{tokens}.
 
 \paragraph{M13. Despliegue.} El sistema se reestructuró para desplegarse
 de forma reproducible y se publicó en Railway, de modo que el laboratorio
@@ -343,6 +370,16 @@ viva}: para los cambios que afectan a la interfaz, no basta con que las
 pruebas pasen; el cambio debe poderse usar en un navegador y mostrarse
 de forma correcta antes de aceptarlo.
 
+Estas capas se apoyan en una compuerta automática de integración continua.
+El repositorio compartido ejecuta un \textit{workflow} de GitHub Actions en
+cada \textit{push} y \textit{pull request} contra \texttt{main}, que comprueba
+formato y \textit{linting} con \texttt{ruff} y lanza las suites unitarias de
+las dos fases y de la capa común, excluyendo las pruebas de integración,
+\textit{end-to-end} y las que requieren un modelo real por su coste. Así,
+ningún cambio se integra sin pasar antes esa verificación rápida y
+reproducible, y las pruebas más caras quedan reservadas para una ejecución
+explícita.
+
 Esta capa evitó varias regresiones pequeñas pero costosas. En la
 generación de informes, por ejemplo, las pruebas unitarias podían validar
 que existía una ruta de compilación, pero la ejecución completa reveló
@@ -412,6 +449,28 @@ y deja a disposición \textit{tool calls} específicas
 \texttt{get\_simulation\_step\_window}, entre otras) para que el agente
 recupere bajo demanda únicamente la porción de detalle que necesita en
 un momento dado.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=12mm and 10mm]
+  \node[diaghub] (orq) {Orchestrator --- contexto acotado};
+  \node[diagblock, below left=14mm and 4mm of orq, fill=black!8] (comp) {Autocompactación\\del historial};
+  \node[diagblock, below right=14mm and 4mm of orq, fill=black!8] (tools) {Resumen por defecto\\+ \texttt{*\_detail} bajo demanda};
+  \node[diagblock, below=10mm of comp] (hist) {Historial\\de sesión};
+  \node[diagblock, below=10mm of tools] (datos) {Datos voluminosos\\(trazas, JSON del\\Tracker, memorias del backbone)};
+  \draw[diagarrow] (hist) -- (comp);
+  \draw[diagarrow] (comp) -- (orq);
+  \draw[diagarrow] (datos) -- node[right, font=\footnotesize\sffamily] {resumen} (tools);
+  \draw[diagarrow] (tools) -- (orq);
+  \draw[diagarrow] (orq.east) .. controls +(right:16mm) and +(right:16mm) ..
+    node[right, font=\footnotesize\sffamily, align=left] {petición de\\detalle} (tools.east);
+\end{tikzpicture}}
+\caption{Gestión de la ventana de contexto del Orchestrator: el historial se
+condensa por autocompactación y los datos voluminosos entran como resumen,
+recuperando el detalle solo cuando una \textit{tool call} lo pide.}
+\label{fig:context-window}
+\end{figure}
 
 Este patrón (resumen por defecto, detalle bajo demanda) desplaza
 parte de la complejidad al diseño de las herramientas, pero permite
