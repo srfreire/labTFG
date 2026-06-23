@@ -70,6 +70,35 @@ Las rutas principales de esta evidencia son:
 \item \texttt{phase1-pablo/examples/sample-run}.
 \end{itemize}
 
+\subsection{Integración continua y flujo de Git}
+
+El repositorio incluye un workflow de GitHub Actions llamado \texttt{CI}. Se
+ejecuta en cada \textit{push} a \texttt{main}, en cada \textit{pull request}
+contra \texttt{main} y también de forma manual mediante
+\texttt{workflow\_dispatch}. Además, el workflow cancela ejecuciones antiguas de
+la misma rama cuando llega un \textit{push} nuevo, para que la señal de CI
+corresponda siempre al último commit.
+
+La validación automática tiene cuatro trabajos:
+
+\begin{itemize}
+\item \texttt{Lint + format}: instala \texttt{ruff} con \texttt{uv} y ejecuta
+el linter y el check de formato desde la raíz del repositorio;
+\item \texttt{Tests - shared}: sincroniza dependencias de \texttt{shared} con
+\texttt{uv sync} en modo frozen, incluyendo extras de desarrollo, y ejecuta los
+tests unitarios;
+\item \texttt{Tests - phase1}: sincroniza \texttt{phase1-pablo} y ejecuta sus
+tests unitarios;
+\item \texttt{Tests - phase2}: sincroniza \texttt{phase2-juan} y ejecuta sus
+tests unitarios.
+\end{itemize}
+
+Los jobs de pruebas excluyen marcas de integración, e2e y \texttt{real\_llm},
+porque esas suites dependen de servicios externos o de ejecuciones costosas. El
+flujo diario queda así dividido en dos capas: en cada \textit{push} se ejecuta
+una compuerta rápida de formato, lint y tests unitarios; para cambios de mayor
+riesgo se lanzan evals online o pruebas de integración de forma explícita.
+
 \section{Evals y benchmarks}
 
 Además de las pruebas unitarias, el proyecto incluye un arnés de evaluación
@@ -202,7 +231,7 @@ regresión y mejora.
 Full pipeline & PASS & 2445.9 s / \$9.30 & Generó modelos, los importó y \texttt{decide} devolvió acciones válidas. \\ \hline
 Retrieval quality & PASS & 22.7 s / \$0.08 & Cuatro consultas recuperaron los hechos esperados en top-k. \\ \hline
 Temporal correctness & PASS & 0.1 s / \$0.00 & Validó presencia/ausencia por fecha y cadena de supersesión de longitud 3. \\ \hline
-Slug accuracy & FAIL & 3646.2 s / \$5.08 & Detectó tasa 6/8 frente al umbral 0.80, con crecimiento de paradigmas controlado y p95 bajo 7000 ms. \\ \hline
+Slug accuracy (histórica) & Alerta & 3646.2 s / \$5.08 & Detectó tasa 6/8 frente al umbral 0.80, con crecimiento de paradigmas controlado y p95 bajo 7000 ms. \\ \hline
 \end{tabular}
 \caption{Resultados representativos de evals internas.}
 \end{center}
@@ -217,13 +246,15 @@ paradigmas \textit{reinforcement-learning} y
 \textit{optimal-foraging-theory}, que existían formulaciones para ambos y que
 los módulos generados se podían importar y ejecutar.
 
-El último caso de la tabla también es útil: una eval fallida no se interpreta
-como un fracaso del arnés, sino como una señal de regresión o de métrica mal
-calibrada. La suite \texttt{slug-accuracy} detectó que dos temas relacionados
-con aprendizaje por refuerzo se habían fragmentado en slugs demasiado
-específicos. Esta señal ayudó a justificar la canonicalización, el uso de
-paradigmas paraguas y la necesidad de medir no solo que el agente responda, sino
-si reutiliza identidad científica de forma consistente.
+El último caso de la tabla también es útil: se conserva como una alerta
+histórica, no como estado final fallido del pipeline completo. La suite
+\texttt{slug-accuracy} detectó que dos temas relacionados con aprendizaje por
+refuerzo se habían fragmentado en slugs demasiado específicos. Esta señal ayudó
+a justificar la canonicalización, el uso de paradigmas paraguas y la necesidad
+de medir no solo que el agente responda, sino si reutiliza identidad científica
+de forma consistente. Por tanto, el valor de esa fila es explicar una mejora de
+diseño: el arnés hizo visible un problema de identidad semántica que después se
+trataba mediante clasificación, restricciones de salida y revisión de slugs.
 
 El arnés también incorpora límites de presupuesto. Cada suite puede declarar un
 coste máximo estimado; si se supera, la ejecución se corta y el reporte deja

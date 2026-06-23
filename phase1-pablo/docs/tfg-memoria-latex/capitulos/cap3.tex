@@ -283,6 +283,16 @@ research/{run_id}/report.md
 research/{run_id}/deep/{paradigm}.md
 \end{verbatim}
 
+Estos informes no son simples logs de ejecución. El \texttt{report.md} global
+resume los paradigmas candidatos y, cuando procede, incluye mapas de
+interacción entre paradigmas y tablas comparativas que ayudan a decidir qué
+líneas científicas continúan. Cada informe profundo
+\texttt{deep/\{paradigm\}.md} sigue una estructura estable: fundamentos,
+postulados, supuestos, predicciones, variables identificadas y referencias. Esa
+regularidad hace que el artefacto sea útil para revisión humana y para etapas
+posteriores, porque permite comparar paradigmas por el mismo conjunto de
+preguntas en lugar de leer respuestas libres sin organización común.
+
 Después de esta etapa, el humano revisa qué paradigmas continúan. También puede
 pedir que se investigue un paradigma adicional si considera que falta una línea
 científica importante.
@@ -365,6 +375,13 @@ entorno, comportamientos esperados y referencias. Antes de escribir una
 especificación, el Reasoner valida que las variables estén definidas, que no
 haya dependencias circulares incoherentes, que las acciones existan en el
 entorno y que las percepciones usadas sean observables o computables.
+
+Este JSON es menos interesante como documento de lectura que los informes de
+investigación o las formulaciones, pero es crítico como interfaz operativa:
+convierte una formulación revisada en un contrato estructurado, validable y
+traducible a código. Por eso incluye campos explícitos para variables,
+parámetros, reglas, mapeo al entorno y comportamientos esperados, aunque la
+interpretación científica principal permanezca en los informes Markdown.
 
 Si una formulación no es válida, el Reasoner no fuerza una implementación:
 escribe un informe JSON con \texttt{status: "invalid"} y una lista de problemas.
@@ -463,7 +480,7 @@ Deep researcher & \texttt{search\_papers}, \texttt{web\_search}; \texttt{retriev
 Formalizer sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer informes profundos, escribir formulaciones y recuperar patrones matemáticos ya validados. \\ \hline
 Reasoner sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer investigación, formulaciones y entorno; escribir specs JSON; reutilizar rangos de parámetros y mapeos de entorno. \\ \hline
 Builder sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{run\_tests}, \texttt{retrieve\_knowledge} & Leer specs, escribir modelo y tests, ejecutar validación real y recuperar patrones de implementación previos. \\ \hline
-MemoryAgent & extracción estructurada, escritura en grafo, indexado vectorial, resolución de conflictos & No es un agente conversacional abierto; ejecuta una tubería fija para persistir conocimiento aceptado. \\ \hline
+MemoryAgent & extracción estructurada, escritura en grafo, indexado vectorial, resolución de conflictos & No es un agente conversacional abierto; ejecuta un \textit{fixed pipeline} para persistir conocimiento aceptado. \\ \hline
 \end{tabular}
 \caption{Herramientas disponibles por agente.}
 \end{center}
@@ -558,6 +575,27 @@ relacionales para listar ejecuciones, registrar modelos y recuperar estado.
 La traza \texttt{trace.jsonl} registra eventos de agentes, herramientas y
 artefactos. Junto con \texttt{pipeline\_state.json}, permite auditar una
 ejecución y reanudarla sin reconstruir el contexto desde cero.
+
+La utilidad de los artefactos no es homogénea. Algunos están pensados para
+lectura y decisión humana; otros son contratos de máquina que permiten encadenar
+etapas sin perder estructura. La tabla siguiente resume esta diferencia:
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.7cm}|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{4.5cm}|} \hline
+\textbf{Artefacto} & \textbf{Contenido principal} & \textbf{Uso dentro del sistema} \\ \hline
+\texttt{report.md} & Síntesis de paradigmas, autores, conceptos clave y mapa de interacción entre paradigmas. & Revisión de cobertura científica y comparación inicial entre marcos explicativos. \\ \hline
+\texttt{deep/*.md} & Fundamentos, postulados, supuestos, predicciones, variables, tablas y referencias por paradigma. & Base científica para validar si el paradigma merece formalización. \\ \hline
+\texttt{formulations/*.md} & Variantes matemáticas con variables, parámetros, ecuaciones y lógica de decisión. & Comparar alternativas implementables dentro de un mismo paradigma. \\ \hline
+\texttt{env\_spec.json} & Acciones, percepciones, recursos, recompensas y restricciones del entorno. & Fuente autoritativa para adaptar formulaciones sin inventar observables. \\ \hline
+\texttt{reasoner/*.json} & Contrato estructurado con reglas, mapeo al entorno y comportamientos esperados. & Entrada validable del Builder; es más operativo que narrativo. \\ \hline
+\texttt{builder/*.py} y tests & Código Python autocontenido y pruebas ejecutables. & Evidencia final de que el modelo cumple el contrato \texttt{DecisionModel}. \\ \hline
+\texttt{pipeline\_state}\newline\texttt{.json} y \texttt{trace.jsonl} & Estado persistido, eventos, herramientas, tiempos y errores. & Auditoría, observabilidad y reanudación de ejecuciones largas. \\ \hline
+\end{tabular}
+\caption{Función de los artefactos generados por la fase 1.}
+\end{center}
+\end{table}
 
 El formato de traza se apoya en Agrex, una librería open source creada durante
 este trabajo para visualizar ejecuciones de agentes como grafos temporales
@@ -733,8 +771,8 @@ no en simple ruido de logs.
 
 \subsection{MemoryAgent}
 
-El MemoryAgent no es un agente libre que decide qué hacer en cada turno. Es una
-tubería determinista que usa modelos de lenguaje para tareas concretas, pero
+El MemoryAgent no es un agente libre que decide qué hacer en cada turno. Es un
+\textit{fixed pipeline} determinista que usa modelos de lenguaje para tareas concretas, pero
 mantiene fijo el flujo de control:
 
 \begin{figure}[H]
@@ -1012,15 +1050,27 @@ Embeddings & La recuperación semántica y el reordenado se degradan o se desact
 Las decisiones más importantes del diseño son:
 
 \begin{itemize}
-\item separar investigación, formalización, razonamiento y construcción;
-\item usar un Router determinista en lugar de un agente planificador global;
-\item usar revisión humana antes de escribir memoria;
-\item guardar artefactos persistentes en MinIO y metadatos en PostgreSQL;
-\item usar Neo4j para relaciones, Qdrant para recuperación y PostgreSQL para
-confianza y validez temporal;
-\item mantener el contrato \texttt{DecisionModel} por duck typing;
-\item validar antes de implementar y ejecutar pruebas después de generar código;
-\item permitir degradación controlada cuando falta infraestructura opcional.
+\item diseñar el sistema como transformación escalonada de representaciones:
+problema abierto, investigación científica, formulación matemática, adaptación
+al entorno y código ejecutable;
+\item usar un Router determinista con estados persistidos, revisión humana y
+rutas de rerun, en lugar de dejar que un agente planificador global decida todo
+el flujo;
+\item dividir el trabajo en subagentes por paradigma, formulación o spec para
+reducir contexto, evitar contaminación entre ramas y aislar fallos;
+\item adoptar una estrategia \textit{storage-first}: los artefactos completos
+viven en MinIO, los metadatos en PostgreSQL y la reanudación comprueba que el
+estado apunta a artefactos realmente existentes;
+\item separar conocimiento semántico, relaciones y ciclo de vida: Neo4j mantiene
+topología científica, Qdrant recupera hechos densos y BM25, y PostgreSQL decide
+confianza, vigencia y supersesión;
+\item controlar la identidad semántica de paradigmas mediante clasificación,
+slugs canónicos y validaciones antes de escribir memoria;
+\item tratar las specs JSON como contratos ejecutables entre Reasoner y Builder,
+validando implementabilidad antes de generar código y ejecutando pruebas tras la
+generación;
+\item mantener \texttt{DecisionModel} por duck typing para desacoplar la fase de
+generación de la fase de simulación sin perder un contrato verificable.
 \end{itemize}
 
 En conjunto, estas decisiones convierten el sistema en algo más que una cadena
