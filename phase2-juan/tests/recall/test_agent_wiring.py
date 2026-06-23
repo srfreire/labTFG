@@ -111,7 +111,11 @@ def test_orchestrator_flag_on_initialises_recall_extras_for_agent_stages():
 
     with patch(
         "simlab.recall.build_recall_extras",
-        return_value=([{"name": "retrieve_context"}], {"retrieve_context": AsyncMock()}, "prompt"),
+        return_value=(
+            [{"name": "retrieve_context"}],
+            {"retrieve_context": AsyncMock()},
+            "prompt",
+        ),
     ) as build:
         tools, registry = orch._build_tools(_FLAG_ON)
 
@@ -136,7 +140,9 @@ async def test_create_environment_passes_recall_extras_to_architect():
             "simlab.recall.build_recall_extras",
             return_value=(extra_tools, extra_registry, "architect prompt"),
         ),
-        patch("simlab.orchestrator.prefetch_knowledge", new=AsyncMock(return_value="kg")),
+        patch(
+            "simlab.orchestrator.prefetch_knowledge", new=AsyncMock(return_value="kg")
+        ),
         patch("simlab.orchestrator.Architect") as architect_cls,
     ):
         architect = MagicMock()

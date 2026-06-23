@@ -204,7 +204,9 @@ def _render_env_section(env_facts: dict) -> str:
     if steps:
         intro_bits.append(f"durante {steps} pasos de simulación")
     if intro_bits:
-        sentences.append("El experimento se ejecutó sobre " + ", ".join(intro_bits) + ".")
+        sentences.append(
+            "El experimento se ejecutó sobre " + ", ".join(intro_bits) + "."
+        )
     if env_facts.get("actions"):
         sentences.append(
             "Las acciones disponibles fueron: " + ", ".join(env_facts["actions"]) + "."
@@ -227,8 +229,10 @@ def _render_env_section(env_facts: dict) -> str:
             f"La simulación usó la semilla {env_facts['seed']} para garantizar "
             "la reproducibilidad de los resultados."
         )
-    body = " ".join(sentences) if sentences else (
-        "Configuración del entorno no disponible para esta ejecución."
+    body = (
+        " ".join(sentences)
+        if sentences
+        else ("Configuración del entorno no disponible para esta ejecución.")
     )
     return f"\\section{{Entorno y modelo}}\n\n{body}"
 

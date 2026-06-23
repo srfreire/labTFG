@@ -6,7 +6,12 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from simlab.model_loader import ModelInfo, cleanup_temp_models, discover_models, load_model
+from simlab.model_loader import (
+    ModelInfo,
+    cleanup_temp_models,
+    discover_models,
+    load_model,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures — fake DB rows matching the new Model schema

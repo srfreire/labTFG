@@ -408,4 +408,3 @@ async def test_reporter_no_knowledge_context():
     msg = captured["messages"][0]["content"]
     assert "## Knowledge context" not in msg
     assert "## Tracker observation log" in msg
-

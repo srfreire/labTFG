@@ -143,7 +143,9 @@ def test_prepare_latex_body_escapes_raw_underscores_in_text():
 
 
 def test_prepare_latex_body_preserves_underscores_inside_math():
-    body = r"La recompensa $R_t = -D(t)^2$ con $K_p$ y $Q(s_t, a_t)$ define la política."
+    body = (
+        r"La recompensa $R_t = -D(t)^2$ con $K_p$ y $Q(s_t, a_t)$ define la política."
+    )
 
     out = _prepare_latex_body(body)
 
@@ -179,7 +181,8 @@ def test_prepare_latex_body_preserves_specials_inside_math():
 
 def test_render_env_section_is_deterministic_with_real_facts():
     facts = {
-        "grid_w": 8, "grid_h": 8,
+        "grid_w": 8,
+        "grid_h": 8,
         "resources": [{"type": "food", "count": 6}],
         "actions": ["move_up", "move_down", "eat", "stay"],
         "steps": 30,
@@ -205,7 +208,9 @@ def test_render_env_section_skips_missing_fields():
 
 def test_render_env_section_drops_malformed_resources_instead_of_fabricating():
     facts = {
-        "grid_w": 8, "grid_h": 8, "steps": 30,
+        "grid_w": 8,
+        "grid_h": 8,
+        "steps": 30,
         "resources": [{"type": "food"}, "bad", {"count": 5, "type": "water"}],
     }
     out = _render_env_section(facts)

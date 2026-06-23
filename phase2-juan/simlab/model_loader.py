@@ -14,6 +14,7 @@ import random
 import shutil
 import sys
 import tempfile
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -30,10 +31,8 @@ _tmp_dirs: list[str] = []
 
 def _cleanup_tmp_dir(tmp_dir: str) -> None:
     shutil.rmtree(tmp_dir, ignore_errors=True)
-    try:
+    with suppress(ValueError):
         _tmp_dirs.remove(tmp_dir)
-    except ValueError:
-        pass
 
 
 class _SeededRandomModule:

@@ -152,4 +152,3 @@ async def test_query_history_over_pipeline_memories(seeded_db):
     # both paradigms should be visible
     assert "homeostatic" in out
     assert "prospect theory" in out
-
