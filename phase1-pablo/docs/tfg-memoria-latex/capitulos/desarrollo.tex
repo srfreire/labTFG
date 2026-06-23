@@ -29,6 +29,14 @@ flujo empleado sitúa al humano como \textit{human-in-the-loop} para decisiones
 de diseño y a los agentes como ejecutores principales de las tareas de
 programación.
 
+Una parte importante de esta metodología fue gestionar la ventana de contexto.
+En tareas largas, un agente que acumula demasiados detalles de implementación,
+logs, errores intermedios y decisiones locales degrada su capacidad para
+mantener una visión global. Por eso el desarrollo no se organizó como una única
+conversación larga, sino como un sistema de orquestación: un agente coordinador
+mantiene el estado de alto nivel lo más limpio posible y delega tareas cerradas
+en agentes trabajadores con contexto propio.
+
 \subsection{Planificación con Linear}
 
 Al tratarse de un proyecto desarrollado por dos personas, una parte importante
@@ -62,7 +70,9 @@ El flujo fue el siguiente:
 Primero se iteró con Codex sobre la especificación técnica y el diseño hasta que
 el alcance del sistema quedó suficientemente cubierto. Después se dividió el
 trabajo en fases. Cada fase tenía criterios de aceptación, y cada tarea dentro
-de una fase también tenía sus propios criterios.
+de una fase también tenía sus propios criterios. En Linear, además de la
+descripción funcional, cada tarea indicaba dependencias, prioridad, posible
+solapamiento con otras tareas y si podía ejecutarse en paralelo.
 
 Estos criterios fueron esenciales porque los agentes necesitaban una forma
 objetiva de comprobar si su trabajo estaba terminado. Sin criterios explícitos,
@@ -88,8 +98,115 @@ corrección de errores.
 
 La división no fue arbitraria. Backend y frontend tienen ritmos de validación
 distintos. En backend era especialmente importante respetar contratos,
-persistencia, pruebas y límites entre fases. En frontend era importante mantener
-coherencia visual, ergonomía e interacción.
+persistencia, pruebas, migraciones y límites entre fases. En frontend era
+importante mantener coherencia visual, ergonomía, interacción y sensibilidad al
+detalle de la interfaz. Esta asignación se apoyó tanto en observación práctica
+del proyecto como en señales públicas de evaluación: Artificial Analysis separa
+capacidades de agentes, programación, razonamiento general y razonamiento
+científico, mientras que Code Arena mantiene rankings específicos de desarrollo
+web con tareas que exigen razonamiento multi-step y uso de herramientas
+\cite{artificialanalysis2026index,lmarena2026webdev}. Estas métricas no se
+tomaron como una verdad absoluta, porque cambian con rapidez y dependen del
+benchmark, pero sí como una señal de que la elección del modelo debe depender
+del tipo de tarea.
+
+\subsection{Orquestación autónoma con Hydra}
+
+La forma más avanzada de trabajo fue la ejecución de fases completas mediante la
+skill \texttt{hydra}. Su función no era sustituir a Linear ni a la revisión
+humana, sino convertir una lista de tareas ya especificadas en oleadas de
+ejecución autónoma. El patrón se parece al propio sistema construido en la fase
+1: un orquestador conserva el estado global, delega unidades de trabajo
+independientes, espera evidencias, recoge resultados y decide si puede continuar
+o si necesita intervención humana.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=6mm and 7mm,
+  hydranode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=3.3cm},
+  widenode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=4.1cm}
+]
+\node[widenode, fill=tfgBlue!12, draw=tfgBlue] (linear) {Linear\\tasks, blockers\\heat, criterios};
+\node[widenode, fill=tfgPurple!13, draw=tfgPurple, right=of linear] (hydra) {Hydra\\orquestador\\contexto limpio};
+\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below left=12mm and 6mm of hydra] (a1) {Agente 1\\worktree\\task A};
+\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below=12mm of hydra] (a2) {Agente 2\\worktree\\task B};
+\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below right=12mm and 6mm of hydra] (a3) {Agente N\\worktree\\task N};
+\node[widenode, fill=tfgOrange!15, draw=tfgOrange, below=18mm of a2] (review) {Review final\\bugs, silent failures\\arquitectura, convenciones};
+\node[widenode, fill=tfgRed!10, draw=tfgRed, right=of review] (merge) {PR a main\\CI, merge\\notas y follow-ups};
+\node[widenode, fill=tfgLight, draw=tfgGray, right=of hydra] (decision) {Nueva oleada\\o bloqueo humano};
+\draw[tfgarrow] (linear.east) -- (hydra.west);
+\draw[tfgarrow] (hydra.south west) -- (a1.north);
+\draw[tfgarrow] (hydra.south) -- (a2.north);
+\draw[tfgarrow] (hydra.south east) -- (a3.north);
+\draw[tfgarrow] (a1.south east) -- (review.north west);
+\draw[tfgarrow] (a2.south) -- (review.north);
+\draw[tfgarrow] (a3.south west) -- (review.north east);
+\draw[tfgarrow] (review.east) -- (merge.west);
+\draw[tfgarrow] (merge.east) -- ++(7mm,0) |- (decision.east);
+\draw[tfgarrow] (decision.west) -- (hydra.east);
+\end{tikzpicture}}
+\caption{Workflow de orquestación autónoma con Hydra.}
+\end{figure}
+
+El punto clave es que \texttt{hydra} mantiene su propia ventana de contexto lo
+más pequeña posible. No carga todos los documentos, diffs y logs de cada tarea.
+Lee la información mínima de coordinación, como identificador, estado,
+dependencias, tipo de tarea y grupo de solapamiento. El contenido profundo lo
+lee cada agente trabajador dentro de su propia sesión. Del mismo modo, cuando
+un trabajador termina, el orquestador no absorbe toda la terminal: recibe un
+resumen del resultado, el estado del merge, los ficheros tocados y cualquier
+nota que requiera seguimiento.
+
+La planificación de cada oleada depende de las dependencias entre tareas. Si una
+tarea bloquea a otra, se ejecuta primero la tarea bloqueante. Si dos tareas
+tocan zonas relacionadas del sistema, Linear las marca como potencialmente
+conflictivas y el orquestador las ejecuta de forma secuencial. Si no se van a
+pisar entre sí, puede lanzar varios agentes en paralelo. Cada agente trabaja en
+un \textit{worktree} independiente, por lo que sus cambios no contaminan el
+árbol principal mientras está desarrollando.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{4.5cm}|p{4.7cm}|} \hline
+\textbf{Paso} & \textbf{Responsable} & \textbf{Evidencia esperada} \\ \hline
+Descubrir tareas & Hydra leyendo Linear & Lista de tareas pendientes, dependencias, prioridad y posibilidad de paralelización. \\ \hline
+Planificar oleada & Hydra & Conjunto de tareas ejecutables sin blockers activos ni solapamientos peligrosos. \\ \hline
+Asignar modelo & Hydra + criterio humano previo & Codex para backend, infraestructura, persistencia y tests; Claude Code para frontend e interacción. \\ \hline
+Ejecutar tarea & Agente trabajador & Worktree propio, implementación, pruebas locales y PR hacia \texttt{main}. \\ \hline
+Revisar salida & Agente trabajador antes de mergear & Revisión de bugs, silent failures, fallos de arquitectura y convenciones del código. \\ \hline
+Cerrar o crear seguimiento & Hydra & PR mergeada, nota de follow-up, nueva tarea para agente o decisión humana pendiente. \\ \hline
+\end{tabular}
+\caption{Fases del workflow autónomo de desarrollo.}
+\end{center}
+\end{table}
+
+La revisión final de cada agente se estructuró en cuatro pasos. Primero, buscar
+bugs funcionales evidentes. Segundo, actuar como \textit{silent failure hunter}:
+detectar casos donde el sistema parece funcionar pero pierde datos, oculta
+errores o acepta estados incoherentes. Tercero, revisar fallos de arquitectura,
+como acoplamientos indebidos entre fase 1 y fase 2 o responsabilidades mal
+colocadas. Cuarto, comprobar convenciones del repositorio, estilo, tests y
+contratos locales.
+
+Cuando una tarea terminaba, el agente abría o actualizaba una PR hacia
+\texttt{main}. El orquestador monitorizaba las terminales de los agentes y, al
+detectar finalización, comprobaba que la PR se hubiese mergeado. Si la PR dejaba
+notas, problemas no resueltos o follow-ups, el orquestador decidía si crear una
+nueva tarea para otro agente o si marcar el punto como decisión humana. El flujo
+continuaba hasta que todas las tareas de la fase quedaban cerradas o hasta que
+el sistema se bloqueaba por una decisión que no debía resolver un agente.
+
+Este patrón fue necesario porque las tareas largas de desarrollo autónomo siguen
+siendo difíciles. Benchmarks recientes como Terminal-Bench miden tareas
+terminales largas con verificación por tests y muestran que incluso agentes
+frontera siguen fallando en una parte relevante de escenarios realistas
+\cite{merrill2026terminalbench}. Por ello, la metodología del proyecto no
+consistió en confiar ciegamente en un agente, sino en aislar tareas, exigir
+evidencia ejecutable, revisar antes de mergear y mantener un humano responsable
+de las decisiones de producto y arquitectura.
 
 \subsection{Criterios de aceptación}
 
