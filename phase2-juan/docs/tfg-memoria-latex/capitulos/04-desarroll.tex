@@ -2,13 +2,20 @@
 
 Este capítulo no documenta el sistema, sino el proceso por el que se
 construyó. En esta fase, trabajar de forma habitual con
-\textit{coding agents} (en este caso, Codex y Claude Code)
-desplaza el centro de gravedad del ciclo clásico de desarrollo de
-software: la implementación deja de ser la actividad dominante y, en su
-lugar, lo son la especificación, la revisión y la verificación. La
-sección que sigue desarrolla esta idea; el resto del capítulo describe el
-bucle de trabajo resultante y cómo se manifestó en esta segunda fase del
-proyecto.
+\textit{coding agents} (en este caso, Codex y Claude Code) desplazó el
+centro de gravedad del ciclo clásico de desarrollo de software: la
+implementación dejó de ser la actividad dominante y ganaron peso la
+especificación, la revisión y la verificación. La sección que sigue
+desarrolla esta idea; el resto del capítulo describe el bucle de trabajo
+resultante y cómo apareció en esta segunda fase del proyecto.
+
+Para separar el producto final de la metodología de desarrollo, el capítulo
+se organiza en dos niveles. Primero se explica el bucle de trabajo con
+agentes y el reparto de responsabilidades. Después se reconstruyen los hitos
+del sistema, desde el núcleo de simulación hasta la persistencia compartida,
+la lectura del Knowledge Backbone y el despliegue. Así, la metodología no
+sustituye a la explicación del avance técnico, sino que ayuda a entender por
+qué el sistema evolucionó mediante iteraciones cortas y verificables.
 
 \section{El problema con el ciclo clásico}
 
@@ -121,11 +128,17 @@ que fallan en el estado actual y solo entonces escribe el código que
 las hace pasar. El diseño del plan es, por tanto, en gran parte el
 diseño de su propia suite de validación.
 
-Una intuición útil que apareció durante el trabajo es la siguiente: el
-agente es excelente cuando se le da un contrato preciso, y poco fiable
-cuando se le pide que infiera el contrato a partir del contexto. La
-mayoría de los errores de juicio aparecieron cuando se intentó saltar
-ese paso por economía de tiempo.
+En la práctica, esa frontera se aplicó por tipo de decisión: el humano
+fijaba alcance, contratos, diseño visual, prioridades y aceptación de
+revisiones; el agente ejecutaba cambios acotados, pruebas, migraciones,
+refactores y depuración local. Ninguna salida se aceptaba solo por estar
+generada: debía pasar por pruebas, revisión de \textit{diff} y, cuando
+afectaba a la interfaz, comprobación manual en navegador.
+
+Una intuición útil apareció pronto: el agente trabaja bien cuando recibe
+un contrato preciso, y se vuelve poco fiable cuando tiene que inferirlo a
+partir del contexto. La mayoría de los errores de juicio aparecieron al
+intentar ahorrar tiempo saltándose esa especificación.
 
 El caso más claro fue la integración inicial de las herramientas en el
 Orchestrator. La primera versión daba por hecho que toda llamada que
@@ -190,161 +203,30 @@ cualquiera de las dos fases.
 \section{Hitos de iteración del sistema}
 
 El sistema final no se planificó como un todo, sino que emergió por
-acumulación de iteraciones. Las más importantes, en orden
-aproximado, fueron las siguientes.
+acumulación de iteraciones. Primero se cerraron el diseño, el contrato con
+la primera fase y el núcleo de simulación sobre CLI. Después se añadió la
+interfaz web con WebSocket y \textit{replay}, se incorporó la comparativa
+multi-modelo y el Orchestrator pasó de despachar herramientas a guiar una
+conversación con recomendaciones.
 
-\paragraph{M1. Diseño y especificación.} Las primeras semanas, casi sin
-código, se dedicaron a fijar el diseño: un documento de arquitectura con
-sus diagramas y un plan de implementación del entorno genérico. Sirvió
-para cerrar el contrato con la primera fase y la forma del dominio de
-simulación antes de delegar nada al agente.
-
-\paragraph{M2. Núcleo de simulación y agentes sobre CLI.} La primera
-versión funcional partía del \texttt{Environment} y se operaba
-enteramente desde una terminal: el usuario describía el problema y el
-Orchestrator invocaba en secuencia al Architect, al Tracker, al Analyst y
-al Reporter, sin pausas ni recomendaciones; un \textit{pipeline} de un
-solo tirón cuya salida se imprimía en la consola. El objetivo era validar
-que los cinco roles (los cuatro agentes y el Orchestrator) podían
-coordinarse sin solaparse, no producir una interfaz de uso.
-
-\paragraph{M3. Interfaz web con \textit{replay}.} Una vez estabilizado
-el pipeline, se añadió un \textit{frontend} en React conectado al
-backend mediante WebSocket. El cambio no fue cosmético sino de paradigma:
-cada paso del pipeline empezó a publicarse como un evento observable, con
-\textit{replay} paso a paso de la simulación y paneles de estado por
-agente. La CLI quedó relegada a un canal de pruebas y depuración.
-
-\paragraph{M4. Comparativa multi-modelo y persistencia de experimentos.}
-El \texttt{model\_loader} se extendió para instanciar varios modelos de
-la primera fase en el mismo entorno, y el resto del pipeline se adaptó
-para tratar las trayectorias por agente en lugar de por simulación. En
-paralelo se añadió una primera persistencia de experimentos y
-ejecuciones, que fijó el pipeline en términos de \emph{múltiples agentes
-en una misma ejecución} en lugar de \emph{una simulación, un modelo}.
-
-\paragraph{M5. Orchestrator más conversacional.} El Orchestrator pasó
-por una iteración orientada al uso: dejó de ser un despachador silencioso
-de \textit{tool calls} y empezó a recomendar al usuario qué hacer a
-continuación, qué modelos encajaban con el problema y qué herramientas
-tenía a su disposición. No introdujo nuevos agentes, pero hizo que la
-interfaz se pareciera más a una conversación con sugerencias que a un
-botón de \emph{lanzar}.
-
-\paragraph{M6. Enriquecimiento del análisis.} Una iteración amplia,
-motivada por el feedback del tutor tras una primera demostración, hizo el
-análisis mucho más útil: predicciones previas a la simulación, gráficas de
-energía, acciones y valores internos, detección de eventos críticos,
-análisis iterativo y comparación entre varios informes. Fue la iteración
-que más acercó la salida del Analyst a una herramienta de investigación,
-más allá de una ejecución técnicamente correcta.
-
-\paragraph{M7. Migración a la persistencia compartida.} La persistencia
-provisional en SQLite se sustituyó por la capa común con la primera fase:
-artefactos binarios en MinIO y metadatos en PostgreSQL, con las
-migraciones gestionadas por Alembic. Este cambio alineó el laboratorio
-con el Knowledge Backbone compartido y fue requisito previo para producir
-y consumir memoria.
-
-\paragraph{M8. Trazas de decisión.} Se añadió la traza de decisión por
-agente: para cada paso, el estado interno antes y después, la acción
-elegida y el resultado, enviados al \textit{frontend} para inspección
-causal (Figura~\ref{fig:decision-traces}). Estas trazas son la base del
-análisis de \emph{por qué} un modelo decide como decide, no solo de
-\emph{qué} hizo.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{figuras/ui-05-decision-traces}
-\caption{Trazas de decisión por agente: tarjetas de pre-decisión y
-post-decisión con el estado interno, la acción elegida, las alternativas
-valoradas (\textit{Q-values}) y la recompensa de cada paso.}
-\label{fig:decision-traces}
-\end{figure}
-
-\paragraph{M9. \textit{Sim-memory}.} La segunda fase pasó de solo observar
-a alimentar el Knowledge Backbone: la salida del Tracker empezó a
-persistirse mediante \texttt{TrackerMemoryWriter}, sin que el Tracker
-dejara de ser un observador puro (la escritura la dispara el
-Orchestrator, no el propio agente). Esta iteración introdujo la tabla
-\texttt{simulation\_observations} en PostgreSQL y el \textit{namespace}
-\texttt{simulation} en Qdrant, y convirtió la segunda fase en productora
-del backbone además de consumidora.
-
-\paragraph{M10. Lectura del Knowledge Backbone.} El Analyst dejó de
-trabajar exclusivamente sobre los datos del Tracker y empezó a consultar
-postulados previos en el grafo, a través de \texttt{retrieve\_context}.
-Poco después se extendió el patrón al Architect y al Reporter, pero en su
-variante inyectada: el Orchestrator pre-recupera el contexto y lo entrega
-como parámetro. En la misma línea se añadieron a la interfaz las vistas de
-inspección del propio backbone (grafo, memorias y procedencia), accesibles
-desde la web (RF-13).
-
-\paragraph{M11. Consulta del historial en lenguaje natural.} Se incorporó
-una herramienta para consultar el historial de experimentos en lenguaje
-natural (RF-09): traduce la pregunta a una consulta SQL acotada, la ejecuta sobre
-PostgreSQL y sintetiza la respuesta, de modo que el usuario pueda comparar
-ejecuciones pasadas sin salir del chat.
-
-\paragraph{M12. Autocompactación del historial.} El historial del chat con
-el Orchestrator podía crecer hasta agotar la ventana de contexto del
-modelo tras unas pocas iteraciones del pipeline. Para satisfacer RNF-10 se
-añadió una autocompactación que, superado un umbral, sustituye los mensajes antiguos
-por un resumen determinista con marco de auditoría, conservando la
-trazabilidad de la sesión sin agotar el presupuesto de \textit{tokens}.
-
-\paragraph{M13. Despliegue.} El sistema se reestructuró para desplegarse
-de forma reproducible y se publicó en Railway, de modo que el laboratorio
-fuese accesible sin tener que montar el entorno local completo.
+La segunda oleada se centró en hacer útil la salida para investigación:
+enriquecimiento del Analyst, gráficas, eventos críticos, trazas de decisión
+por agente y migración a la persistencia compartida con PostgreSQL y MinIO.
+La tercera convirtió al laboratorio en consumidor y productor del Knowledge
+Backbone: escritura de \texttt{simulation\_observations}, lectura de
+postulados mediante \texttt{retrieve\_context}, vistas de inspección del
+backbone, consulta del historial en lenguaje natural y autocompactación del
+contexto conversacional. El cierre del trabajo se dedicó al despliegue en
+Railway y a la redacción de la memoria.
 
 \section{Planificación temporal}
 
-El desarrollo se extendió de marzo a junio de 2026. Dado el bucle iterativo
-descrito en este capítulo, los hitos no fueron fases estancas con entregas
-cerradas, sino líneas de trabajo que se solapan. La figura siguiente sitúa
-los hitos sobre el calendario, reconstruidos a partir del historial de
-\textit{commits} del repositorio. El primer bloque (marzo) concentra el
-diseño, el núcleo de simulación y la interfaz; el segundo (abril) reúne las
-iteraciones de análisis, almacenamiento y memoria; y el último
-(mayo--junio), la consulta del historial, la robustez y el despliegue,
-junto con la redacción de la memoria.
-
-\begin{figure}[H]
-\centering
-\begin{ganttchart}[
-  hgrid, vgrid,
-  x unit=0.52cm,
-  y unit chart=0.58cm,
-  y unit title=0.6cm,
-  bar height=0.6,
-  title height=1,
-  bar/.append style={fill=black!12, draw=black!55},
-  bar label font=\footnotesize,
-  title label font=\footnotesize\bfseries,
-]{1}{16}
-\gantttitle{2026}{16} \\
-\gantttitle{Marzo}{4}
-\gantttitle{Abril}{4}
-\gantttitle{Mayo}{4}
-\gantttitle{Junio}{4} \\
-\ganttbar{M1. Diseño y especificación}{1}{2} \\
-\ganttbar{M2. Núcleo de simulación + agentes}{2}{3} \\
-\ganttbar{M3. Interfaz web + replay}{3}{4} \\
-\ganttbar{M4. Multi-modelo + experimentos}{3}{4} \\
-\ganttbar{M5. Orchestrator conversacional}{4}{4} \\
-\ganttbar{M6. Enriquecimiento del análisis}{5}{7} \\
-\ganttbar{M7. Persistencia compartida}{6}{7} \\
-\ganttbar{M8. Trazas de decisión}{7}{8} \\
-\ganttbar{M9. Sim-memory (writer)}{7}{8} \\
-\ganttbar{M10. Lectura del backbone}{8}{9} \\
-\ganttbar{M11. Consulta del historial}{9}{12} \\
-\ganttbar{M12. Autocompactación}{12}{13} \\
-\ganttbar{M13. Despliegue (Railway)}{13}{14} \\
-\ganttbar{Memoria y documentación}{14}{16}
-\end{ganttchart}
-\caption{Planificación temporal aproximada de los hitos del desarrollo
-(semanas de marzo a junio de 2026).}
-\end{figure}
+El desarrollo se extendió de marzo a junio de 2026. Los hitos no fueron fases
+estancas con entregas cerradas, sino líneas de trabajo que se solaparon: marzo
+concentró el diseño, el núcleo de simulación y la interfaz; abril reunió las
+iteraciones de análisis, almacenamiento y memoria; y mayo--junio se dedicó a
+la consulta del historial, la robustez, el despliegue y la redacción de la
+memoria.
 
 \section{La verificación como nuevo cuello de botella}
 
@@ -420,7 +302,7 @@ de principio a fin, sino como un bucle corto que se repitió una y otra
 vez. Disfrazarlo de proceso lineal habría sido más cómodo de leer,
 pero menos fiel a lo que de verdad pasó.
 
-\section{Retos prácticos: la memoria de los agentes en tokens}
+\section{Retos prácticos: la ventana de contexto de los agentes}
 
 Una limitación que apareció pronto y que condicionó decisiones de
 diseño concretas es la memoria de los propios agentes. Los modelos de
@@ -435,13 +317,15 @@ instrucciones del \textit{system prompt} y a alucinar detalles que ya
 no caben de forma íntegra en su contexto.
 
 La respuesta a este problema se dio en dos frentes. Por un lado, se
-introdujo un mecanismo de \textbf{autocompactación} del historial: a
-partir de cierto umbral de uso de la ventana, el Orchestrator
-reemplaza los mensajes más antiguos por un resumen estructurado que
-preserva las decisiones tomadas, los \textit{artefactos} producidos
-hasta ese punto y las preferencias del usuario, pero descarta los
-detalles ya consolidados. Por otro lado, se diseñaron herramientas
-explícitas de \textbf{detalle y resumen} sobre los datos voluminosos: en
+introdujo un mecanismo de \textbf{autocompactación} del historial:
+cuando el historial supera un umbral de tamaño ---número de mensajes o
+de caracteres, como proxy del uso de la ventana de contexto---, el
+Orchestrator reemplaza los mensajes más antiguos por un resumen
+determinista que preserva las decisiones tomadas, los
+\textit{artefactos} producidos hasta ese punto y las preferencias del
+usuario, pero descarta los detalles ya consolidados. Por otro lado, se
+diseñaron herramientas explícitas de \textbf{detalle y resumen} sobre
+los datos voluminosos: en
 lugar de inyectar el JSON completo del Tracker en cada turno, el
 Orchestrator entrega de forma rutinaria solo un resumen estructurado
 y deja a disposición \textit{tool calls} específicas
@@ -450,31 +334,9 @@ y deja a disposición \textit{tool calls} específicas
 recupere bajo demanda únicamente la porción de detalle que necesita en
 un momento dado.
 
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=12mm and 10mm]
-  \node[diaghub] (orq) {Orchestrator --- contexto acotado};
-  \node[diagblock, below left=14mm and 4mm of orq, fill=black!8] (comp) {Autocompactación\\del historial};
-  \node[diagblock, below right=14mm and 4mm of orq, fill=black!8] (tools) {Resumen por defecto\\+ \texttt{*\_detail} bajo demanda};
-  \node[diagblock, below=10mm of comp] (hist) {Historial\\de sesión};
-  \node[diagblock, below=10mm of tools] (datos) {Datos voluminosos\\(trazas, JSON del\\Tracker, memorias del backbone)};
-  \draw[diagarrow] (hist) -- (comp);
-  \draw[diagarrow] (comp) -- (orq);
-  \draw[diagarrow] (datos) -- node[right, font=\footnotesize\sffamily] {resumen} (tools);
-  \draw[diagarrow] (tools) -- (orq);
-  \draw[diagarrow] (orq.east) .. controls +(right:16mm) and +(right:16mm) ..
-    node[right, font=\footnotesize\sffamily, align=left] {petición de\\detalle} (tools.east);
-\end{tikzpicture}}
-\caption{Gestión de la ventana de contexto del Orchestrator: el historial se
-condensa por autocompactación y los datos voluminosos entran como resumen,
-recuperando el detalle solo cuando una \textit{tool call} lo pide.}
-\label{fig:context-window}
-\end{figure}
-
-Este patrón (resumen por defecto, detalle bajo demanda) desplaza
-parte de la complejidad al diseño de las herramientas, pero permite
-trabajar con sesiones largas sin saturar el contexto del modelo.
-Y reaparece algo que se repite en todo el proyecto: buena parte del
-trabajo con agentes está en decidir qué ven y qué no, más que en
-escribir el código que los invoca.
+Este patrón (resumen por defecto, detalle bajo demanda) desplaza parte
+de la complejidad al diseño de las herramientas, pero permite trabajar
+con sesiones largas sin saturar el contexto del modelo. Reaparece aquí
+una idea constante del proyecto: buena parte del trabajo con agentes
+consiste en decidir qué ven y qué no, más que en escribir el código que
+los invoca.

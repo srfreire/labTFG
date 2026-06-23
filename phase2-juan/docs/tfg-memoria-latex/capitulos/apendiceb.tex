@@ -33,6 +33,39 @@ En cualquier momento del proceso se puede iterar, pedir recomendaciones al
 Orchestrator o volver a pasos anteriores. El Orchestrator se encarga de
 guiar la conversación y de mantener la continuidad de la sesión.
 
+\section{Interpretación de la interfaz}
+
+La pantalla principal combina cuatro zonas. El chat permite pedir nuevas
+simulaciones, aceptar propuestas del Orchestrator o solicitar explicaciones
+sobre resultados ya generados. El panel de agentes muestra qué componente está
+trabajando en cada momento: Architect para el entorno, Tracker para la
+observación, Analyst para la interpretación y Reporter para el informe. La
+rejilla de simulación muestra agentes y recursos, y permite reproducir la
+ejecución paso a paso mediante el \textit{replay}. Las tarjetas de datos
+resumen métricas, eventos críticos y resultados relevantes.
+
+Las trazas de decisión deben leerse como una explicación local de cada paso.
+Para cada agente, la interfaz muestra la percepción recibida, la acción
+seleccionada, el resultado y, cuando el modelo los expone, sus valores internos
+o alternativas valoradas. Estas trazas son útiles para distinguir dos casos:
+un modelo que obtiene un mal resultado porque el entorno le fue desfavorable y
+un modelo que obtiene un mal resultado porque su política de decisión eligió
+acciones poco eficaces.
+
+\section{Consulta de resultados}
+
+Al terminar la ejecución, el informe PDF puede descargarse desde la propia
+interfaz. El informe contiene la configuración del entorno, los modelos
+comparados, las métricas principales, las gráficas generadas por el Analyst y
+la interpretación textual de los patrones observados.
+
+Las vistas del Knowledge Backbone permiten inspeccionar memorias, procedencia y
+relaciones disponibles. En esta fase, las observaciones de simulación se
+guardan en el \textit{namespace} \texttt{simulation}; los postulados y
+formulaciones procedentes de la primera fase usan otros espacios de memoria.
+Esta separación ayuda a distinguir entre conocimiento científico de entrada y
+evidencia producida por ejecuciones del laboratorio.
+
 \section{Errores frecuentes}
 
 Si los puertos \texttt{8000} o \texttt{5173} están ocupados, se puede
@@ -41,6 +74,13 @@ levantar el backend en otro puerto y comunicarlo al frontend mediante
 sesión no puede ejecutarse completa; normalmente basta con reiniciar
 \texttt{docker compose up -d}. Si falta \texttt{OPENROUTER\_API\_KEY}, los
 agentes no pueden invocarse.
+
+Si no aparece ningún modelo disponible, conviene comprobar que la primera fase
+ha registrado modelos aceptados en PostgreSQL y que los archivos asociados
+existen en MinIO. Si el informe no se descarga, el problema suele estar en la
+compilación LaTeX o en la ruta del artefacto persistido. Si el análisis parece
+demasiado pobre, puede deberse a que Voyage AI o ZeroEntropy no estén
+configurados y la recuperación del Knowledge Backbone se haya degradado.
 
 \section{Términos básicos}
 

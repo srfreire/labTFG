@@ -2,7 +2,7 @@
 
 \section{Enfoque de evaluación}
 
-La validación de este trabajo no podía quedarse en comprobar que el código
+La validación de este trabajo no podía limitarse a comprobar que el código
 se ejecuta sin errores. Esa parte queda cubierta por las pruebas
 automatizadas, pero no basta para saber si el laboratorio cumple su
 objetivo principal: ayudar a estudiar paradigmas de toma de decisiones
@@ -81,7 +81,17 @@ el contexto de la simulación, los resultados principales y la interpretación
 del análisis de forma revisable.
 \end{enumerate}
 
-La evaluación final no pretende ser puramente cuantitativa. Las métricas y
+Estos criterios cierran el recorrido iniciado en requisitos. La continuidad
+del flujo cubre el chat y la interfaz reactiva (RF-10, RF-12 y RNF-04);
+la integración con la primera fase valida la carga dinámica y el
+desacoplamiento (RF-01, RNF-01 y RNF-02); la observabilidad de la
+simulación cubre el registro estructurado y la trazabilidad operativa
+(RF-04, RNF-03 y RNF-09); la utilidad del análisis recoge el contraste con
+el Knowledge Backbone y las visualizaciones (RF-05, RF-06 y RF-08); y la
+trazabilidad del resultado valida el informe y sus artefactos asociados
+(RF-07 y RNF-03).
+
+La evaluación final no es puramente cuantitativa. Las métricas y
 las gráficas son necesarias, pero el criterio decisivo es si el tutor y el
 grupo de investigación consideran que la herramienta les reduce fricción para
 explorar paradigmas nuevos. Por eso la revisión cualitativa forma parte de la
@@ -114,70 +124,19 @@ una interacción efímera en el navegador.
 \section{Pruebas automatizadas como soporte}
 
 La suite automática se usa como red de regresión para asegurar que la
-evaluación anterior se apoya en un sistema estable. Las pruebas se agrupan en
-varios niveles, cada uno asociado a una pregunta concreta sobre el
-comportamiento del laboratorio.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.5cm}|>{\raggedright\arraybackslash}p{9.1cm}|} \hline
-\textbf{Nivel} & \textbf{Qué se verifica} \\ \hline
-Dominio de simulación & Invariantes del \texttt{Environment}, validación
-de la especificación generada por el Architect, ciclo de vida de agentes
-y recursos. \\ \hline
-Pipeline y agentes & Comportamiento aislado de cada agente, persistencia
-del chat, autocompactación del historial, idempotencia de la simulación y
-presupuestos del agente \textit{runtime}. \\ \hline
-Knowledge Backbone & Escritura del \texttt{TrackerMemoryWriter}, lectura
-mediante \texttt{retrieve\_context}, pre-recuperación de contexto y
-\textit{wiring} entre Orchestrator y agentes. \\ \hline
-Capa de presentación & Endpoints REST de descarga e inspección del
-Knowledge Backbone;
-sesión completa desde el cliente web con Playwright. \\ \hline
-Contrato fase 1 \(\leftrightarrow\) fase 2 & Descubrimiento dinámico de
-modelos y validación del contrato \texttt{decide}, \texttt{update} y
-\texttt{get\_state}. \\ \hline
-\end{tabular}
-\caption{Niveles de pruebas automatizadas del sistema.}
-\end{center}
-\end{table}
-
-La verificación automática combina \texttt{uv run pytest} para el backend,
-\texttt{npx playwright test} para el cliente web y \texttt{tectonic
-traballo.tex} para la propia memoria.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{8.4cm}|} \hline
-\textbf{Comando} & \textbf{Qué valida} \\ \hline
-\texttt{uv run pytest tests/ -v} & Ejecuta la suite del backend:
-dominio, agentes, Orchestrator, persistencia, recuperación y carga de
-modelos. \\ \hline
-\texttt{npx playwright test} & Ejecuta las pruebas \textit{end-to-end}
-del cliente web: sesión completa, vistas del Knowledge Backbone y camino
-con datos simulados. \\ \hline
-\texttt{tectonic traballo.tex} & Compila la memoria y verifica que las
-referencias, tablas, figuras y bibliografía se resuelven en el PDF final.
-\\ \hline
-\end{tabular}
-\caption{Comandos de verificación usados como evidencia técnica.}
-\end{center}
-\end{table}
-
-Además de las pruebas automatizadas, los cambios visibles en la interfaz se
-validaron manualmente sobre la aplicación en ejecución. Esta comprobación fue
-necesaria porque una prueba \textit{end-to-end} puede confirmar que un
-elemento existe, pero no siempre detecta problemas de legibilidad o de
-visibilidad en la interfaz.
+evaluación anterior se apoya en un sistema estable. Combina
+\texttt{uv run pytest} para dominio, agentes, Orchestrator, persistencia,
+recuperación y carga de modelos; Playwright para la sesión completa del
+cliente web y las vistas del Knowledge Backbone; y compilación LaTeX para
+la propia memoria. Los cambios visibles en la interfaz se revisaron además
+manualmente sobre la aplicación viva, porque una prueba \textit{end-to-end}
+puede confirmar que un elemento existe sin juzgar su legibilidad.
 
 \subsection{Evidencia de ejecución de la suite}
 
-La tabla siguiente recoge el resultado de ejecutar la suite. No pretende
-comparar rendimiento con otros sistemas; sirve como evidencia interna de
-que los contratos técnicos del laboratorio se mantienen estables. La suite
-de \textit{pytest} reúne 36 archivos y 326 casos: 320 no dependen de
-servicios externos y los 6 restantes requieren el Knowledge Backbone en
-ejecución (PostgreSQL), levantado con \texttt{docker compose}.
+La tabla siguiente recoge el resultado de ejecutar la suite. No compara
+rendimiento con otros sistemas; sirve como evidencia interna de que los
+contratos técnicos del laboratorio se mantienen estables.
 
 \begin{table}[H]
 \begin{center}
@@ -194,14 +153,9 @@ E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas de
 \end{table}
 
 El determinismo del motor merece una mención aparte porque sostiene la
-comparativa multi-modelo. Si una misma semilla no produjese la misma
-rejilla, los resultados de dos modelos dejarían de ser comparables.
-La prueba \texttt{test\_environment::\allowbreak test\_seed\_determinism} ejecuta dos
-simulaciones con la misma semilla y verifica que sus eventos son
-idénticos. En otro nivel, el módulo \texttt{test\_orchestrator\_\allowbreak simulation\_\allowbreak idempotency}
-cubre la estabilidad de la firma de cada petición de simulación, usada
-para deduplicar una petición repetida. La parte determinista del sistema es
-el motor; la variabilidad de los modelos de lenguaje se discute en las
+comparativa multi-modelo: con la misma semilla y configuración, dos
+simulaciones producen eventos idénticos. La parte determinista del sistema
+es el motor; la variabilidad de los modelos de lenguaje se discute en las
 limitaciones.
 
 \subsection{Métricas de una ejecución real}
@@ -245,58 +199,14 @@ controlada sin abortar el pipeline.
 
 \section{Cobertura técnica}
 
-Las pruebas del dominio cubren las primitivas definidas en
-\texttt{simlab.\allowbreak environment} y la lógica de validación de
-\texttt{simlab.\allowbreak spec}. Verifican que un \texttt{Environment} aplica sus reglas
-de aparición de recursos, que las acciones devuelven \texttt{Event}
-consistentes con la percepción recibida y que las especificaciones generadas
-por el Architect rechazan estructuras malformadas antes de instanciar el
-entorno.
-
-Las pruebas del pipeline cubren los agentes especializados de forma aislada y
-después su composición orquestada. Se comprueba que el Tracker produce un JSON
-estructurado a partir de trayectorias arbitrarias, que el Orchestrator
-persiste el historial del chat en \texttt{chat\_messages}, que las
-herramientas en vivo emiten eventos incrementales y que dos simulaciones con
-la misma semilla y configuración producen resultados idénticos. Una batería
-específica cubre la autocompactación del historial: que se dispara al superar
-el umbral, que conserva intactos los turnos recientes y que el resumen que la
-sustituye es determinista y mantiene el estado activo del pipeline
-(\texttt{experiment\_id}, semilla y etapas completadas) para no perder
-trazabilidad.
-
-La interacción con el Knowledge Backbone tiene una cobertura propia porque
-una regresión en esta capa puede degradar ejecuciones posteriores sin hacerse
-visible de inmediato. Las pruebas del \texttt{TrackerMemoryWriter} verifican
-que el Tracker se transforma en hechos persistibles y que esos hechos se
-insertan de forma coordinada en los almacenes configurados. Las pruebas de
-lectura cubren \texttt{retrieve\_context}, incluyendo escenarios con servicios
-opcionales ausentes. Otra batería comprueba que el Orchestrator pre-recupera
-contexto para Architect y Reporter cuando corresponde y que el Analyst accede
-a la herramienta de recuperación por el canal previsto.
-
-La capa de presentación se valida con pruebas de \textit{endpoints} REST y
-con Playwright. La cobertura incluye la descarga de informes, la inspección
-del grafo de conocimiento, la consulta de memorias persistidas y la
-trazabilidad de nodos. Las pruebas comparan la respuesta con expectativas
-estructurales, como formato, esquema y códigos de error, en lugar de fijar
-valores concretos que podrían cambiar con los datos subyacentes.
-
-Las pruebas Playwright se organizan en tres especificaciones de validación,
-más una especificación auxiliar dedicada a capturar las figuras de la
-interfaz que ilustran esta memoria. La primera
-recorre la sesión completa desde el cliente: saludo inicial, configuración
-del entorno, ejecución de la simulación e inspección del informe final. La
-segunda valida las vistas de inspección del Knowledge Backbone introducidas
-en el requisito RF-13. La tercera ejercita un camino con datos simulados, útil
-para ejecutar la suite en entornos sin acceso a servicios externos opcionales.
-
-La integración con la primera fase se valida desde el \texttt{model\_loader}.
-Estas pruebas descubren los archivos producidos por el Builder, los importan
-dinámicamente y comprueban que las clases resultantes cumplen el
-\texttt{Protocol} declarado en \texttt{simlab.environment}. El uso de
-\texttt{runtime\_checkable} permite detectar un modelo incompatible en el
-momento de la carga, antes de iniciar una simulación.
+La cobertura técnica se organiza alrededor de los contratos principales del
+laboratorio: dominio de simulación y validación de especificaciones;
+composición de agentes y autocompactación del historial; escritura y lectura
+del Knowledge Backbone; endpoints REST y sesión completa con Playwright; e
+integración con la primera fase desde el \texttt{model\_loader}. Esta última
+batería importa dinámicamente los modelos producidos por el Builder y comprueba
+que cumplen el \texttt{Protocol} declarado en \texttt{simlab.environment}
+antes de iniciar una simulación.
 
 \section{Limitaciones}
 
@@ -312,6 +222,13 @@ especificación que produce el Architect: la suite verifica que es válida
 contra el modelo formal del entorno, no que sea la especificación más adecuada
 para el paradigma descrito. Esa brecha se cubre mediante revisión experta del
 tutor y del grupo de investigación.
+
+\textbf{TODO:} queda pendiente incorporar una evaluación semántica específica
+definida con el tutor. Esa evaluación deberá revisar, sobre escenarios
+acordados, si las interpretaciones del Analyst y los informes del Reporter son
+útiles para el grupo de investigación, si las diferencias entre modelos se
+explican con suficiente claridad y si las observaciones generadas aportan
+evidencia reutilizable para ejecuciones posteriores.
 
 La segunda limitación es la reproducibilidad acotada del comportamiento de
 los modelos de lenguaje. La idempotencia se garantiza para el motor de
