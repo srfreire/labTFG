@@ -208,6 +208,32 @@ consistió en confiar ciegamente en un agente, sino en aislar tareas, exigir
 evidencia ejecutable, revisar antes de mergear y mantener un humano responsable
 de las decisiones de producto y arquitectura.
 
+\subsection{Decisiones técnicas y tradeoffs}
+
+Varias decisiones de implementación no fueron delegadas a los agentes, sino
+tomadas como restricciones de arquitectura del proyecto. La más importante fue
+mantener un Router determinista en lugar de dejar que un agente conversacional
+decidiese libremente la siguiente etapa. Esta opción redujo flexibilidad, porque
+cada transición debía estar modelada explícitamente, pero mejoró trazabilidad,
+reanudación y depuración: ante un fallo era posible saber en qué etapa estaba la
+ejecución, qué artefacto faltaba y qué decisión humana bloqueaba el avance. La
+misma lógica explica la persistencia temprana en MinIO y PostgreSQL. Guardar
+informes, specs, trazas y resultados en cada fase añade complejidad operativa,
+pero evita que el estado real del sistema dependa de la ventana de contexto de
+un modelo.
+
+Otra decisión deliberada fue separar el contrato externo del modelo generado de
+la implementación interna del laboratorio. Se eligió un contrato pequeño por
+duck typing, \texttt{decide}, \texttt{update} y \texttt{get\_state}, en vez de
+obligar a heredar de una clase del simulador. El tradeoff es que se pierden
+algunas garantías estáticas y hay que cubrir más casos mediante tests, pero se
+gana desacoplamiento entre fases y facilidad para ejecutar modelos generados
+como ficheros Python autocontenidos. También se decidió que la memoria
+persistente no se escribiese automáticamente tras cualquier salida del agente:
+solo los artefactos aceptados por revisión humana podían consolidarse. Esta
+restricción ralentiza el flujo, pero evita que errores científicos o
+alucinaciones pasen a formar parte del conocimiento reutilizable del sistema.
+
 \subsection{Criterios de aceptación}
 
 Cada tarea se redactó con criterios de aceptación concretos. Un criterio de

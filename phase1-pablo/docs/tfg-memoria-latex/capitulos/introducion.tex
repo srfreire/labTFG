@@ -105,13 +105,44 @@ muestran que los modelos actuales pueden producir programas útiles cuando el
 problema está suficientemente estructurado y existe validación ejecutable
 \cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
 
-Este trabajo combina ambas líneas. Por un lado, trata los paradigmas de decisión
-como objetos científicos que deben investigarse, formalizarse y revisarse. Por
-otro, usa agentes de lenguaje, herramientas, memoria persistente y pruebas para
-automatizar las partes repetibles de esa transformación. La diferencia respecto
-a un generador de texto convencional es que cada etapa produce artefactos
-persistentes y verificables, y la memoria del sistema solo se actualiza tras
-aceptación humana.
+Frente a esas líneas, este trabajo no se limita a aplicar una de ellas de forma
+aislada. Los modelos computacionales de decisión aportan la base científica,
+pero no resuelven por sí solos cómo pasar de literatura heterogénea a código
+ejecutable dentro de un laboratorio. Los sistemas RAG y CRAG ayudan a recuperar
+información externa, pero no garantizan que esa información quede convertida en
+variables, ecuaciones, especificaciones y pruebas. Los sistemas multiagente como
+AutoGen o ChatDev demuestran que la división en roles mejora flujos largos, pero
+su objetivo principal es coordinar conversaciones o tareas de desarrollo
+software, no conservar una cadena científica revisable. Por último, SWE-agent y
+los trabajos de síntesis de programas validan la utilidad de agentes capaces de
+editar y probar código, pero parten normalmente de tareas de programación ya
+definidas, no de paradigmas de decisión que antes deben investigarse y
+formalizarse.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{4.7cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
+\textbf{Línea relacionada} & \textbf{Qué aporta} & \textbf{Diferencia en este trabajo} \\ \hline
+Modelado computacional de decisión & Paradigmas, variables latentes, reglas de actualización y criterios de elección. & Se usa como entrada científica que debe transformarse en artefactos ejecutables, no como modelo manual aislado. \\ \hline
+RAG, CRAG y recuperación híbrida & Acceso a conocimiento externo y corrección de contexto cuando la recuperación es débil. & La recuperación se integra en un pipeline con revisión, persistencia y memoria aceptada, no en una respuesta textual única. \\ \hline
+Memoria y GraphRAG & Representación persistente de hechos, relaciones y contexto reutilizable. & La memoria tiene ciclo de vida, confianza y escritura posterior a aceptación humana. \\ \hline
+AutoGen y ChatDev & Coordinación de varios agentes con roles especializados. & Los roles se acoplan a etapas científicas y de ingeniería: investigar, formalizar, adaptar, construir y recordar. \\ \hline
+SWE-agent y síntesis de programas & Edición de código y validación mediante ejecución de pruebas. & La generación de código es la última etapa de una cadena trazable que empieza en literatura científica. \\ \hline
+\end{tabular}
+\caption{Comparación del proyecto con líneas relacionadas del estado del arte.}
+\end{center}
+\end{table}
+
+Este trabajo combina ambas líneas con una decisión central: tratar los
+paradigmas de decisión como objetos científicos que deben investigarse,
+formalizarse y revisarse antes de convertirse en software. La diferencia
+respecto a un generador de texto convencional es que cada etapa produce
+artefactos persistentes y verificables, y la memoria del sistema solo se
+actualiza tras aceptación humana. La diferencia respecto a un agente de
+programación convencional es que el problema no empieza en un issue técnico,
+sino en una pregunta científica que debe reducirse progresivamente hasta llegar
+a una especificación implementable.
 
 \section{Objetivos y enfoque de la fase}
 
