@@ -1,0 +1,65 @@
+{
+  "metrics": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "accuracy": 0.8,
+    "n": 5,
+    "committed": 4,
+    "correct": 4,
+    "mean_pattern_recall": 0.6
+  },
+  "rows": [
+    {
+      "scenario": "GS-OFT-1",
+      "model": "marginal-value-theorem-with-continuous-energy-dynamics-ode-based",
+      "truth": "optimal-foraging-theory",
+      "predicted": "optimal-foraging-theory",
+      "correct": true,
+      "pattern_recall": 0.67,
+      "analysis_excerpt": "{\n  \"patterns\": [\n    {\n      \"id\": \"P1\",\n      \"type\": \"estrategia\",\n      \"agents\": [\"subject\"],\n      \"description\": \"El agente implementa forrajeo óptimo según el Teorema del Valor Marginal (Charnov, 1976): ajusta su tiempo de permanencia en parches de recursos basándose en l"
+    },
+    {
+      "scenario": "GS-OFT-2",
+      "model": "marginal-value-theorem-with-continuous-energy-dynamics-ode-based",
+      "truth": "optimal-foraging-theory",
+      "predicted": "optimal-foraging-theory",
+      "correct": true,
+      "pattern_recall": 0.33,
+      "analysis_excerpt": "{\n  \"paradigm_identification\": {\n    \"paradigm\": \"Forrajeo óptimo — Teorema del Valor Marginal (Marginal Value Theorem)\",\n    \"justification\": \"El agente mantiene variables internas características de modelos de forrajeo óptimo: env_return_rate (tasa de retorno ambiental), margin"
+    },
+    {
+      "scenario": "GS-OFT-3",
+      "model": "diet-breadth-profitability-model-algebraic-threshold",
+      "truth": "optimal-foraging-theory",
+      "predicted": "optimal-foraging-theory",
+      "correct": true,
+      "pattern_recall": 0.33,
+      "analysis_excerpt": "{\n  \"patterns\": [\n    {\n      \"id\": \"P1\",\n      \"type\": \"estrategia\",\n      \"agents\": [\"subject\"],\n      \"description\": \"El agente implementa forrajeo óptimo basado en amplitud de dieta: rechaza alimentos de baja calidad (palatabilidad 0.2) cuando abundan los de alta calidad (0.9"
+    },
+    {
+      "scenario": "GS-RL-1-QL",
+      "model": "tabular-q-learning-with-greedy-action-selection",
+      "truth": "reinforcement-learning",
+      "predicted": "reinforcement-learning",
+      "correct": true,
+      "pattern_recall": 1.0,
+      "analysis_excerpt": "{\n  \"patterns\": [\n    {\n      \"id\": \"P1\",\n      \"type\": \"comportamiento\",\n      \"agents\": [\"subject\"],\n      \"description\": \"Mejora progresiva en eficiencia de alimentación a través del aprendizaje: el agente incrementó su recompensa acumulada de 17.0 en el primer quinto a 62.0 e"
+    },
+    {
+      "scenario": "GS-RL-1-AC",
+      "model": "actor-critic-with-softmax-policy",
+      "truth": "reinforcement-learning",
+      "predicted": "none",
+      "correct": false,
+      "pattern_recall": 0.67,
+      "analysis_excerpt": "{\n  \"patterns\": [\n    {\n      \"id\": \"P1\",\n      \"type\": \"comportamiento\",\n      \"agents\": [\"subject\"],\n      \"description\": \"El agente mantiene una política uniforme (π = 0.1667 para todas las acciones) a lo largo de toda la simulación, sin converger a ninguna estrategia preferen"
+    }
+  ],
+  "usage": {
+    "input_tokens": 143,
+    "output_tokens": 11915,
+    "calls": 24,
+    "seconds": 249.49,
+    "estimated_cost_usd": 0.1792
+  }
+}

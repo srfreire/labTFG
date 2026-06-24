@@ -1,0 +1,73 @@
+{
+  "ground_truth": {
+    "comida_consumida": 125.0,
+    "pasos": 200.0,
+    "recompensa_total": 125.0
+  },
+  "faithful_report": {
+    "score": 1.0,
+    "results": [
+      {
+        "key": "comida_consumida",
+        "status": "faithful",
+        "true_value": 125.0,
+        "claimed": [
+          125.0,
+          200.0
+        ]
+      },
+      {
+        "key": "pasos",
+        "status": "faithful",
+        "true_value": 200.0,
+        "claimed": [
+          125.0,
+          200.0
+        ]
+      },
+      {
+        "key": "recompensa_total",
+        "status": "faithful",
+        "true_value": 125.0,
+        "claimed": [
+          125.0
+        ]
+      }
+    ]
+  },
+  "adversarial_report": {
+    "score": 0.3333333333333333,
+    "hallucinations_caught": [
+      "comida_consumida",
+      "recompensa_total"
+    ],
+    "results": [
+      {
+        "key": "comida_consumida",
+        "status": "hallucinated",
+        "true_value": 125.0,
+        "claimed": [
+          150.0,
+          200.0
+        ]
+      },
+      {
+        "key": "pasos",
+        "status": "faithful",
+        "true_value": 200.0,
+        "claimed": [
+          150.0,
+          200.0
+        ]
+      },
+      {
+        "key": "recompensa_total",
+        "status": "hallucinated",
+        "true_value": 125.0,
+        "claimed": [
+          165.0
+        ]
+      }
+    ]
+  }
+}

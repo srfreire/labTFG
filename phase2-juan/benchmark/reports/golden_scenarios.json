@@ -1,0 +1,131 @@
+{
+  "layer1_contract": [
+    {
+      "agent": "MVT (forrajeo)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    },
+    {
+      "agent": "Diet-breadth (forrajeo)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    },
+    {
+      "agent": "Q-learning (RL)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    },
+    {
+      "agent": "Actor-critic (RL)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    },
+    {
+      "agent": "GreedyForagerOracle (techo)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    },
+    {
+      "agent": "RandomModel (suelo)",
+      "passed": true,
+      "detail": "decide read-only, q_values exposed"
+    }
+  ],
+  "layer1_determinism": [
+    {
+      "agent": "MVT (forrajeo)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    },
+    {
+      "agent": "Diet-breadth (forrajeo)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    },
+    {
+      "agent": "Q-learning (RL)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    },
+    {
+      "agent": "Actor-critic (RL)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    },
+    {
+      "agent": "GreedyForagerOracle (techo)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    },
+    {
+      "agent": "RandomModel (suelo)",
+      "passed": true,
+      "detail": "120 actions identical across runs"
+    }
+  ],
+  "layer2_golden": [
+    {
+      "id": "GS-OFT-1",
+      "model": "MVT (forrajeo)",
+      "prediction": "Abandona el parche al decaer la tasa marginal",
+      "passed": true,
+      "detail": "max_residence=12, departures=8 (need >=3 and >=2)"
+    },
+    {
+      "id": "GS-OFT-2",
+      "model": "MVT (forrajeo)",
+      "prediction": "↑ coste de viaje ⇒ ↑ tiempo de residencia",
+      "passed": true,
+      "detail": "mean residence low_cost=2.14 -> high_cost=2.73 (increases)"
+    },
+    {
+      "id": "GS-OFT-3",
+      "model": "Diet-breadth (forrajeo)",
+      "prediction": "Regla 0-1: excluye la presa pobre si abunda la buena",
+      "passed": true,
+      "detail": "singleton-diet fraction dense=0.65, scarce=0.00 (dense must exclude poor prey, scarce must not)"
+    },
+    {
+      "id": "GS-RL-1",
+      "model": "Q-learning (RL)",
+      "prediction": "aprende (curva ascendente)",
+      "passed": true,
+      "detail": "reward-rate improvement=+0.460 (need >=+0.1); exploración ε 0.99→0.05",
+      "reward_rate": 0.396
+    },
+    {
+      "id": "GS-RL-1",
+      "model": "Actor-critic (RL)",
+      "prediction": "aprende (curva ascendente)",
+      "passed": false,
+      "detail": "reward-rate improvement=+0.012 (need >=+0.1); temperatura β 3.0→15.0",
+      "reward_rate": 0.074
+    },
+    {
+      "id": "GS-RL-1",
+      "model": "MVT (forrajeo)",
+      "prediction": "control no-aprende (plano)",
+      "passed": true,
+      "detail": "reward-rate change=+0.003 (flat if |.|<=0.1)",
+      "reward_rate": 0.653
+    },
+    {
+      "id": "GS-RL-1",
+      "model": "Diet-breadth (forrajeo)",
+      "prediction": "control no-aprende (plano)",
+      "passed": true,
+      "detail": "reward-rate change=-0.008 (flat if |.|<=0.1)",
+      "reward_rate": 0.427
+    }
+  ],
+  "anchors": [
+    {
+      "agent": "GreedyForagerOracle (techo)",
+      "reward_rate": 0.741
+    },
+    {
+      "agent": "RandomModel (suelo)",
+      "reward_rate": 0.078
+    }
+  ]
+}

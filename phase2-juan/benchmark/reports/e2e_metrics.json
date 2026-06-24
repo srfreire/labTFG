@@ -1,0 +1,81 @@
+{
+  "experiment_id": "696c055b-d705-4db2-a41b-1eaf7b868e60",
+  "seed": 42,
+  "steps": 60,
+  "env_spec": {
+    "grid": {
+      "width": 8,
+      "height": 8
+    },
+    "actions": [
+      "move_up",
+      "move_down",
+      "move_left",
+      "move_right",
+      "eat",
+      "stay"
+    ],
+    "resources": [
+      {
+        "type": "food",
+        "count": 6,
+        "regenerate": true
+      }
+    ]
+  },
+  "events": 120,
+  "joinable_triple": {
+    "written": 6,
+    "postgres_rows": 6,
+    "qdrant_dense": 6,
+    "qdrant_sparse": 6,
+    "consistent": true,
+    "episodes_filtered": 6
+  },
+  "charts_generated": 3,
+  "reporter": {
+    "pdf_key": "experiments/696c055b-d705-4db2-a41b-1eaf7b868e60/informe_final.pdf",
+    "pdf_produced": true,
+    "pdf_is_real_latex": true
+  },
+  "latency_per_stage": {
+    "architect": {
+      "seconds": 10.5,
+      "input_tokens": 3910,
+      "output_tokens": 647
+    },
+    "simulation": {
+      "seconds": 0.0,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "tracker": {
+      "seconds": 38.95,
+      "input_tokens": 255897,
+      "output_tokens": 2067
+    },
+    "kg_write": {
+      "seconds": 0.45,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "analyst": {
+      "seconds": 88.5,
+      "input_tokens": 127827,
+      "output_tokens": 4713
+    },
+    "reporter": {
+      "seconds": 16.19,
+      "input_tokens": 30291,
+      "output_tokens": 5353
+    }
+  },
+  "total_seconds": 154.89,
+  "usage": {
+    "input_tokens": 417925,
+    "output_tokens": 12780,
+    "calls": 18,
+    "seconds": 197.76,
+    "estimated_cost_usd": 1.3314
+  }
+}

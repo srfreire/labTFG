@@ -165,8 +165,44 @@ MinIO objetos de modelo presentes; Neo4j 240 nodos / 42 rels; Qdrant dense 275 /
 sparse 231. Verificado que los 4 modelos cargan vía `discover_models`+`load_model`.
 
 **Capítulo:** el marco se redactó en `capitulos/05-pruebas.tex` (reestructurado a
-3 capas; resultados medibles marcados como `TODO` pendientes de ejecutar el
-benchmark). Citas nuevas añadidas a `capitulos/bibliografia.tex`.
+3 capas). Citas nuevas añadidas a `capitulos/bibliografia.tex`.
+
+## Resultados del benchmark (2026-06-24)
+
+Arnés implementado en `phase2-juan/benchmark/` (código puro, sin LLM):
+- `scenarios.py` — builders de entorno + `rollout()`.
+- `scoring.py` — funciones puras de puntuación (con tests en
+  `tests/test_benchmark_scoring.py`).
+- `run_golden_scenarios.py` — runner; vuelca `reports/golden_scenarios.{json,md}`
+  y `golden_scenarios_table.tex`.
+- `faithfulness.py` + `run_faithfulness.py` — capa 3 ligera, QAGS numérico
+  (tests en `tests/test_benchmark_faithfulness.py`).
+
+**Capa 1:** contrato observable 6/6 PASS; determinismo del motor 6/6 PASS.
+
+**Capa 2 (golden scenarios), 6/7 PASS:**
+- GS-OFT-1 (MVT abandono de parche): PASS — residencia máx 12, 8 abandonos.
+- GS-OFT-2 (MVT coste de viaje↑⇒residencia↑): PASS — media al partir 2,14→2,73.
+- GS-OFT-3 (diet regla 0-1): PASS — fracción dieta={1} 0,65 (densa) vs 0,00 (escasa).
+- GS-RL-1 Q-learning: PASS — tasa recompensa +0,46, ε 0,99→0,05.
+- GS-RL-1 Actor-critic: **FALLA** — no mejora (+0,01) aunque β se recoce 3→15.
+- GS-RL-1 MVT/diet (controles no-aprende): PASS (planos).
+- Anclas: oráculo 0,74 / azar 0,08; Q-learning aprende hasta ≈0,55.
+
+**Hallazgo clave:** los modelos RL generados codifican el conjunto completo de
+comida en la clave de estado tabular → con depleción ningún estado se repite y no
+aprenden; el aprendizaje solo emerge en régimen estacionario mínimo (2×2,
+cardinalidad de comida constante). El framework hace visible este gap.
+
+**Capa 3 ligera:** fidelidad del Reporter implementada y validada (informe fiel
+1,00; adversario con errores plantados 0,33, detecta las 2 magnitudes alteradas).
+Meta-eval juez↔humano (κ/ρ) y precision/recall del Analyst → movidas a
+Limitaciones/futuro (LLM + n pequeño). Etiquetas de verdad del Analyst definidas
+en el capítulo (tabla).
+
+**Memoria:** los `TODO` de `05-pruebas.tex` se rellenaron con resultados reales o
+se reencuadraron como alcance honesto; 0 TODO restantes. Compila con `tectonic`
+(89 págs). Suite backend 344/344.
 
 ## Notas de cautela (para no exagerar al citar)
 - El >80 % de acuerdo juez-humano es específico de tarea/dominio (MT-Bench + Arena); acótalo.

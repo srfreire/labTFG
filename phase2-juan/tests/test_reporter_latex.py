@@ -689,3 +689,59 @@ async def test_compile_report_uses_standard_pdf_fallback_when_latex_fails():
     assert reporter.last_pdf_key == "experiments/exp-latex-error/informe_con_error.pdf"
     pdf_upload = storage.put.await_args_list[1].args
     assert pdf_upload[1].startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
+async def test_compile_report_happy_path_produces_real_latex_pdf_not_fallback():
+    """The success path must store the genuine tectonic PDF, not the standard
+    fallback. This is the inverse of the fallback tests above: it guards against
+    a regression where every report silently degrades to the matplotlib PDF."""
+    storage = AsyncMock()
+    storage.list = AsyncMock(return_value=[])
+    db = MagicMock()
+    real_pdf = b"%PDF-1.5\n% genuine tectonic output\n%%EOF\n"
+
+    def fake_tectonic(cmd, **kwargs):
+        # Emulate a successful compile: write the sibling .pdf and exit 0.
+        tex_path = Path(cmd[1])
+        tex_path.with_suffix(".pdf").write_bytes(real_pdf)
+        return SimpleNamespace(returncode=0, stderr="")
+
+    captured: dict[str, str] = {}
+    response = SimpleNamespace(
+        stop_reason="end_turn",
+        content=[SimpleNamespace(type="text", text="Informe generado.")],
+    )
+
+    async def fake_loop(**kwargs):
+        captured["result"] = await kwargs["registry"]["compile_report"](
+            {
+                "content": r"\section{Resultados}Contenido válido del informe.",
+                "filename": "informe_ok",
+            }
+        )
+        return response
+
+    with (
+        patch("simlab.reporter.run_agent_loop", side_effect=fake_loop),
+        patch("simlab.reporter.subprocess.run", side_effect=fake_tectonic),
+        patch("shared.artifacts.register_artifact", new=AsyncMock()),
+    ):
+        reporter = Reporter(client=MagicMock(), storage=storage, db=db)
+        await reporter.run(
+            "genera informe",
+            '{"summary": "tracker"}',
+            '{"patterns": []}',
+            run_id="run-1",
+            experiment_id="exp-ok",
+        )
+
+    result = captured["result"]
+    # The tool reports success WITHOUT the fallback marker.
+    assert '"success": true' in result
+    assert "fallback" not in result
+    # The stored PDF is exactly tectonic's output — not the matplotlib fallback.
+    pdf_upload = storage.put.await_args_list[1].args
+    assert pdf_upload[0] == "experiments/exp-ok/informe_ok.pdf"
+    assert pdf_upload[1] == real_pdf
+    assert reporter.last_pdf_key == "experiments/exp-ok/informe_ok.pdf"

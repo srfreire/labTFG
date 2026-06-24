@@ -1,0 +1,18 @@
+% Auto-generado por benchmark/run_golden_scenarios.py — no editar a mano.
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|} \hline
+\textbf{ID} & \textbf{Modelo} & \textbf{Predicción teórica} & \textbf{Result.} \\ \hline
+GS-OFT-1 & MVT (forrajeo) & Abandona el parche al decaer la tasa marginal & PASS \\ \hline
+GS-OFT-2 & MVT (forrajeo) & ↑ coste de viaje ⇒ ↑ tiempo de residencia & PASS \\ \hline
+GS-OFT-3 & Diet-breadth (forrajeo) & Regla 0-1: excluye la presa pobre si abunda la buena & PASS \\ \hline
+GS-RL-1 & Q-learning (RL) & aprende (curva ascendente) & PASS \\ \hline
+GS-RL-1 & Actor-critic (RL) & aprende (curva ascendente) & FALLA \\ \hline
+GS-RL-1 & MVT (forrajeo) & control no-aprende (plano) & PASS \\ \hline
+GS-RL-1 & Diet-breadth (forrajeo) & control no-aprende (plano) & PASS \\ \hline
+\end{tabular}
+\caption{Resultados de los \textit{golden scenarios}: verdad teórica conocida frente al comportamiento medido en simulación (PASS/FALLA por predicción).}
+\label{tab:gs-resultados}
+\end{center}
+\end{table}
