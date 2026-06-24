@@ -179,7 +179,9 @@ def test_detect_paradigm_oft():
 
 
 def test_detect_paradigm_rl():
-    text = "Comportamiento de aprendizaje por refuerzo; el error TD decae con Q-learning."
+    text = (
+        "Comportamiento de aprendizaje por refuerzo; el error TD decae con Q-learning."
+    )
     assert detect_paradigm(text) == "reinforcement-learning"
 
 
@@ -189,7 +191,10 @@ def test_detect_paradigm_none():
 
 def test_pattern_recall_fraction():
     text = "Se observa abandono de parche y aumento del tiempo de residencia."
-    assert pattern_recall(text, ["abandono de parche", "residencia", "no-aparece"]) == 2 / 3
+    assert (
+        pattern_recall(text, ["abandono de parche", "residencia", "no-aparece"])
+        == 2 / 3
+    )
 
 
 def test_precision_recall_perfect():
@@ -200,7 +205,11 @@ def test_precision_recall_perfect():
 
 
 def test_precision_recall_with_uncommitted_attribution():
-    truth = ["optimal-foraging-theory", "reinforcement-learning", "reinforcement-learning"]
+    truth = [
+        "optimal-foraging-theory",
+        "reinforcement-learning",
+        "reinforcement-learning",
+    ]
     pred = ["optimal-foraging-theory", "none", "reinforcement-learning"]
     m = precision_recall(pred, truth)
     # 2 correct of 2 committed -> precision 1.0; 2 of 3 truths -> recall 0.667
