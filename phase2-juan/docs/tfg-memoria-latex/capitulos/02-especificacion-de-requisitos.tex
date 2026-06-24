@@ -75,6 +75,15 @@ memorias y procedencia) accesibles desde la propia interfaz web. & Could \\ \hli
 \end{center}
 \end{table}
 
+La lista anterior descompone los cinco artefactos definidos en la
+introducción. La especificación del entorno queda cubierta por RF-02 y
+por su visualización en RF-12; la ejecución y el registro estructurado
+por RF-01, RF-03 y RF-04; el análisis contrastado por RF-05 y RF-06; el
+informe final por RF-07; y la memoria reutilizable por RF-08 y RF-09.
+RF-10, RF-11 y RF-13 completan la forma de uso del laboratorio: chat
+continuo, recomendaciones del Orchestrator e inspección del Knowledge
+Backbone desde la interfaz.
+
 \section{Requisitos no funcionales}
 
 Los requisitos no funcionales se centran en el desacoplamiento entre
@@ -123,22 +132,32 @@ automática, sin que el usuario tenga que reiniciar la sesión y sin perder
 la trazabilidad de las decisiones ya tomadas.
 \end{itemize}
 
+Estos requisitos no funcionales no se corresponden con pantallas
+concretas, sino con propiedades transversales. El desacoplamiento y la
+extensibilidad se cierran en la carga dinámica de modelos; la trazabilidad,
+la observabilidad y el determinismo se validan en la suite de pruebas; la
+reactividad se materializa en el canal WebSocket; la degradación controlada
+afecta a la lectura del Knowledge Backbone; la portabilidad y la
+configuración por entorno se recogen en el despliegue; y la acotación del
+contexto se concreta en la autocompactación del Orchestrator.
+
 \section{Casos de uso}
 
 Los casos de uso describen las interacciones principales del usuario
 investigador con el laboratorio. Todos comparten una misma sesión de chat
 mediada por el Orchestrator; el actor es el usuario investigador salvo
 indicación contraria. La tabla siguiente resume los casos y los relaciona
-con los requisitos funcionales.
+con los requisitos funcionales. La trazabilidad completa con evidencias de
+validación se recoge al final del capítulo.
 
 \begin{table}[H]
 \begin{center}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{7.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|} \hline
 \textbf{Código} & \textbf{Caso de uso} & \textbf{RF relacionados} \\ \hline
-CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-02, RF-03, RF-04, RF-10, RF-11, RF-12 \\ \hline
+CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-01, RF-02, RF-03, RF-04, RF-10, RF-11, RF-12 \\ \hline
 CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
 CU-03 & Analizar los resultados y contrastarlos con el Knowledge Backbone & RF-04, RF-05, RF-06, RF-08 \\ \hline
-CU-04 & Generar el informe PDF de la sesión & RF-07 \\ \hline
+CU-04 & Generar el informe PDF de la sesión & RF-06, RF-07 \\ \hline
 CU-05 & Consultar y comparar experimentos anteriores & RF-09 \\ \hline
 CU-06 & Inspeccionar el Knowledge Backbone desde la web & RF-13 \\ \hline
 \end{tabular}
@@ -146,36 +165,14 @@ CU-06 & Inspeccionar el Knowledge Backbone desde la web & RF-13 \\ \hline
 \end{center}
 \end{table}
 
-\paragraph{CU-01: Ejecutar una simulación desde lenguaje natural.}
-\textbf{Precondición:} existe al menos un modelo de decisión registrado
-por la primera fase. \textbf{Flujo principal:} (1)~el usuario describe un
-problema de decisión en el chat; (2)~el Orchestrator propone modelos y un
-entorno coherentes con la descripción; (3)~el Architect genera la
-especificación del entorno y el usuario la confirma; (4)~el sistema
-ejecuta la simulación y transmite cada paso a la interfaz en tiempo real.
-\textbf{Postcondición:} la simulación queda registrada como una ejecución
-dentro de un experimento, con sus eventos y trayectorias.
-
-\paragraph{CU-03: Analizar y contrastar con el Knowledge Backbone.}
-\textbf{Precondición:} existe una simulación observada por el Tracker.
-\textbf{Flujo principal:} (1)~el Analyst identifica patrones de
-comportamiento en los datos del Tracker; (2)~recupera postulados previos
-del backbone mediante \texttt{retrieve\_context}; (3)~contrasta los
-patrones observados con esos postulados. \textbf{Postcondición:} las
-observaciones de la simulación se persisten como memorias reutilizables en
-el \textit{namespace} \texttt{simulation}.
-
-\paragraph{CU-04: Generar el informe PDF.}
-\textbf{Precondición:} existe un análisis del Analyst. \textbf{Flujo
-principal:} (1)~el Reporter sintetiza los hallazgos en Markdown,
-incorporando gráficas y referencias a los paradigmas; (2)~la plantilla
-LaTeX se compila a PDF con \textit{tectonic}; (3)~el usuario descarga el
-documento desde la interfaz. \textbf{Postcondición:} el informe queda
-persistido como artefacto en MinIO y referenciado en PostgreSQL.
-
-Los demás casos de uso de la tabla son variantes o vistas auxiliares de
-estos tres flujos: comparativas sobre el mismo entorno, consulta de
-experimentos anteriores e inspección del Knowledge Backbone desde la web.
+El caso de uso principal es CU-01: el usuario describe un problema, el
+Orchestrator propone modelos y entorno, el Architect genera la
+especificación, el sistema ejecuta la simulación y la interfaz recibe los
+eventos en tiempo real. Los demás casos de uso especializan ese recorrido:
+CU-02 compara varios modelos bajo la misma semilla y entorno; CU-03 analiza
+la simulación y escribe memoria reutilizable; CU-04 materializa el análisis
+en un informe PDF; CU-05 recupera experimentos anteriores; y CU-06 permite
+inspeccionar el Knowledge Backbone desde la web.
 
 \section{Información que el sistema debe almacenar}
 
@@ -184,44 +181,17 @@ datos entre los cuatro componentes del Knowledge Backbone. Esta sección
 enumera qué guarda cada uno; la justificación de la combinación se
 desarrolla en el capítulo de diseño.
 
-\paragraph{PostgreSQL.} Metadatos con estructura tabular: experimentos
-(\texttt{experiments}), ejecuciones dentro de cada experimento
-(\texttt{runs}), modelos de decisión registrados (\texttt{models}),
-referencias a los artefactos persistidos en MinIO
-(\texttt{artifacts}), historial conversacional con el Orchestrator
-(\texttt{chat\_messages}, persistido para auditoría y para reanudación
-dentro de la propia sesión, no como cliente de historial entre recargas
-del navegador), observaciones de simulación producidas por esta segunda
-fase (\texttt{simulation\_observations}) y memorias generadas y
-aceptadas por la primera fase (\texttt{pipeline\_memories}).
-
-\paragraph{MinIO.} Artefactos binarios: informes en PDF generados por
-el Reporter y los archivos \texttt{*\_model.py} producidos por el
-\textit{Builder} de la primera fase, es decir, el código Python que
-implementa cada modelo de decisión y que el \texttt{model\_loader} de
-esta fase carga dinámicamente. Los registros en \texttt{artifacts} de
-PostgreSQL apuntan al objeto correspondiente mediante su clave de
-\textit{bucket}.
-
-\paragraph{Qdrant.} Índices vectoriales sobre las \emph{memorias}, donde
-una memoria es la unidad mínima de conocimiento persistida en el backbone:
-un hecho corto en lenguaje natural (un postulado de un paradigma, una
-observación extraída de una simulación, una cita relevante) junto con su
-procedencia y su \textit{namespace}. Cada memoria se almacena en dos
-colecciones complementarias: \texttt{memories\_dense}, con vectores
-densos de 1024 dimensiones producidos por Voyage AI para recuperación
-semántica, y \texttt{memories\_sparse}, con representaciones
-\textit{sparse} generadas mediante el BM25 nativo de Qdrant para
-recuperación léxica. Las dos colecciones comparten el mismo UUID con la
-tabla correspondiente de PostgreSQL, y se particionan por
-\textit{namespace}: \texttt{pipeline} para las que escribe la primera
-fase y \texttt{simulation} para las observaciones que produce la segunda.
-
-\paragraph{Neo4j.} Grafo con los paradigmas científicos, sus
-formulaciones, los modelos derivados de ellas, la procedencia de cada
-uno y las relaciones entre estas entidades: qué paradigma propone qué
-formulación, qué modelo implementa qué formulación y qué memoria de
-simulación corresponde a qué paradigma.
+PostgreSQL almacena los metadatos tabulares: experimentos, ejecuciones,
+modelos registrados, referencias a artefactos, historial conversacional,
+observaciones de simulación y memorias aceptadas por la primera fase. MinIO
+conserva los artefactos binarios, como informes PDF y archivos
+\texttt{*\_model.py}. Qdrant indexa las memorias en dos colecciones
+complementarias, densa y \textit{sparse} BM25, particionadas por
+\textit{namespace} (\texttt{pipeline} para la primera fase y
+\texttt{simulation} para esta). Neo4j mantiene el grafo consolidado de
+paradigmas, formulaciones, modelos y procedencia; las observaciones de
+simulación solo se llevarían al grafo cuando exista una relación estable con
+un paradigma o una formulación concreta.
 
 \section{Interfaces externas}
 
@@ -245,3 +215,29 @@ informes en PDF mediante una plantilla LaTeX procesada con \textit{tectonic}.
 \item \textbf{Cliente web:} comunicación con el backend a través de una
 API REST sobre HTTP y un canal WebSocket para los eventos en tiempo real.
 \end{itemize}
+
+\section{Trazabilidad}
+
+La tabla siguiente conecta los objetivos operativos de esta segunda fase
+con los requisitos anteriores y con las evidencias usadas después en el
+capítulo de pruebas. Su finalidad es hacer explícito que la validación no
+se limita a que la aplicación arranque, sino a que cada artefacto prometido
+en la introducción queda cubierto por una prueba, una ejecución o una
+evidencia versionada.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{6.2cm}|} \hline
+\textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
+Cargar modelos de la primera fase sin acoplamiento rígido & RF-01, RNF-01, RNF-02 & Pruebas del \texttt{model\_loader}, contrato \texttt{DecisionModel} y ejecución multi-modelo del escenario homeostático. \\ \hline
+Generar y validar entornos de simulación & RF-02, RF-03, RNF-06 & Tests de \texttt{simlab.spec} y \texttt{simlab.environment}; escenario principal con rejilla \(8\times8\), semilla fija y 30 pasos. \\ \hline
+Observar trayectorias y eventos de decisión & RF-04, RF-12, RNF-03 & Salida estructurada del Tracker, trazas de decisión por agente y pruebas de emisión de eventos en vivo mediante WebSocket. \\ \hline
+Analizar resultados y contrastarlos con conocimiento previo & RF-05, RF-06, RF-08 & Pruebas de \texttt{retrieve\_context}, pre-recuperación desde el Orchestrator y gráficas comparativas generadas por el Analyst. \\ \hline
+Generar informes revisables & RF-07 & Informe PDF del Reporter, plantilla LaTeX, descarga REST y pruebas de generación y descarga de informes. \\ \hline
+Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10 & Tablas \texttt{chat\_messages}, \texttt{experiments}, \texttt{runs} y \texttt{simulation\_observations}; prueba de autocompactación y métricas de escritura \(7=7=7\) en PostgreSQL y Qdrant. \\ \hline
+Ofrecer una interfaz reactiva de uso & RF-10, RF-11, RF-12, RF-13, RNF-04 & Pruebas Playwright de sesión completa, vistas del Knowledge Backbone, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
+\end{tabular}
+\caption{Trazabilidad entre objetivos, requisitos y evidencias de la fase 2.}
+\end{center}
+\end{table}

@@ -29,12 +29,21 @@ contrato \textit{duck-typed} que se describe a lo largo de la memoria,
 y ha permitido que ambas fases evolucionaran de forma independiente sin
 necesidad de coordinar publicaciones intermedias.
 
+Vista en conjunto, la segunda fase completa el recorrido iniciado por la
+primera. Allí el esfuerzo se concentra en pasar de un paradigma descrito en
+lenguaje natural a un modelo Python ejecutable; aquí, en cambio, el punto de
+partida es ese modelo ya construido y el objetivo es convertir su ejecución en
+una evidencia revisable: una trayectoria, un conjunto de métricas, una
+interpretación y una memoria que pueda recuperarse después. Esa continuidad
+permite que el proyecto no termine en la generación de código, sino en un ciclo
+de experimentación sobre los modelos generados.
+
 \section{Conclusiones técnicas}
 
-Si tuviera que quedarme con una sola lección técnica, sería esta: en
-este sistema, la \emph{forma} en que se conectan los componentes acabó
-importando más que las decisiones internas de cada uno. Las tres
-conclusiones que siguen lo desarrollan desde tres ángulos distintos.
+La principal lección técnica es que, en este sistema, la \emph{forma} en
+que se conectan los componentes acabó importando más que las decisiones
+internas de cada uno. Las tres conclusiones que siguen lo desarrollan
+desde tres ángulos distintos.
 
 \paragraph{Contratos finos entre componentes que evolucionan a ritmos
 distintos.} La integración con la primera fase podría haber requerido
@@ -48,9 +57,9 @@ distintos, un contrato sencillo aguanta mejor que uno rígido y
 minucioso.
 
 \paragraph{Centralizar el acceso al conocimiento merece la pena cuando
-el coste de cada consulta no es despreciable.} La opción más obvia
-habría sido dar a cada agente especializado acceso libre al
-Knowledge Backbone. Centralizar ese acceso en el Orchestrator,
+el coste de cada consulta no es despreciable.} Una opción sencilla habría
+sido dar a cada agente especializado acceso libre al Knowledge Backbone.
+Centralizar ese acceso en el Orchestrator,
 con la única excepción del Analyst, dio un control fino sobre cuándo se
 consulta el backbone y con qué presupuesto, y un único punto en el que
 diagnosticar problemas de recuperación. La asimetría entre acceso
@@ -68,6 +77,37 @@ el observador no deja memorias incompletas en el backbone, y el
 \textit{batch}, cambiar el esquema) sin tocar el agente que observa. Trazar bien
 esa frontera costó poco y dejó cada pieza libre para cambiar por su
 cuenta.
+
+\section{Limitaciones}
+
+El sistema cumple los objetivos de esta fase, pero no debe interpretarse como
+una validación automática de teorías de decisión. El laboratorio permite
+ejecutar modelos, observar trayectorias y contrastar patrones con conocimiento
+previo, pero la adecuación científica de un modelo concreto sigue requiriendo
+revisión experta. Que un modelo cargue, decida y produzca una curva
+interpretable no significa por sí solo que represente correctamente el
+paradigma del que procede.
+
+La segunda limitación es la dependencia de modelos de lenguaje y servicios
+externos. El motor de simulación es determinista para una semilla dada, pero
+las salidas del Architect, Analyst y Reporter pueden variar entre ejecuciones.
+Los proveedores externos también introducen latencia, coste y posibles fallos
+de disponibilidad. Por eso la validación distingue entre lo que se puede fijar
+mediante pruebas reproducibles y lo que debe evaluarse como calidad de salida
+generativa.
+
+La tercera limitación procede del dominio de simulación. La rejilla 2D es
+adecuada para comparar modelos en un entorno común, observable y fácil de
+explicar, pero no cubre todos los paradigmas posibles. Entornos continuos,
+escenarios con interacción social entre agentes o tareas no espaciales
+exigirían extender el dominio y revisar qué métricas son comparables.
+
+Por último, la escritura de conocimiento desde la segunda fase todavía es
+deliberadamente conservadora. Las observaciones se guardan en el
+\textit{namespace} \texttt{simulation} y se indexan para recuperación, pero no
+siempre se materializan como nuevos nodos del grafo. Esta decisión evita
+contaminar el Knowledge Backbone con estructura relacional prematura, aunque
+limita por ahora las consultas multi-hop sobre resultados de simulación.
 
 \section{Posibles ampliaciones}
 
@@ -111,7 +151,7 @@ plazo de un trabajo de grado. Este propio TFG (un pipeline de cinco
 agentes, cuatro especializados coordinados por un Orchestrator, sobre un
 backbone de cuatro componentes, dos fases coordinadas e independientes y
 una interfaz web reactiva diseñada en Figma y construida después con
-asistencia del agente) difícilmente habría alcanzado el
+asistencia de agentes) difícilmente habría alcanzado el
 estado en el que se entrega sin ese desplazamiento del cuello de botella
 hacia las actividades de especificación, revisión y verificación, como se
 describe en el capítulo de desarrollo.
@@ -121,17 +161,13 @@ herramientas aceleran tareas aisladas. Lo relevante es que cambian el
 alcance que un trabajo individual puede plantearse sin perder control
 sobre el resultado.
 
-A modo de cierre, una observación más sobre el papel de la IA en este
-trabajo. Tras meses construyendo el laboratorio en colaboración con un
-agente, la imagen que queda es bastante distinta del relato de la IA
-como amenaza al que es fácil asomarse. En este proyecto, una herramienta
-así no ha sustituido al desarrollador: las decisiones de alcance, las
-elecciones arquitectónicas y los criterios de aceptación han seguido
-viniendo del lado humano. Lo que sí ha cambiado es el nivel de abstracción
-al que se trabaja. La pregunta deja de ser \emph{cómo lo escribo} y pasa
-a ser \emph{qué quiero exactamente que ocurra}. Ese cambio permite
-plantear sistemas más ricos sin renunciar a controlarlos. Si esa lectura
-es correcta, la postura más productiva no es tratar la IA como un atajo
-sospechoso, sino aprender a usarla con criterio para construir cosas que
-antes quedaban fuera de escala. En buena medida, eso es lo que este TFG ha
-intentado hacer.
+Queda también una observación sobre el papel de la IA en este trabajo.
+Tras meses construyendo el laboratorio en colaboración con agentes, la
+imagen resultante es más concreta que el debate general sobre la IA como
+amenaza o sustitución. En este proyecto, las decisiones de alcance, las
+elecciones arquitectónicas y los criterios de aceptación siguieron
+viniendo del lado humano. Lo que cambió fue el nivel de abstracción al
+que se trabaja: la pregunta dejó de ser \emph{cómo lo escribo} y pasó a
+ser \emph{qué quiero exactamente que ocurra}. Ese cambio permite
+plantear sistemas más ricos sin renunciar a controlarlos. En buena
+medida, eso es lo que este TFG ha intentado hacer.

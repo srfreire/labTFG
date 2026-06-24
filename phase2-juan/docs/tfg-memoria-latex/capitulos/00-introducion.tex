@@ -1,6 +1,6 @@
 \chapter{Introducción}
 
-\section{Objetivos generales}
+\section{Contexto y motivación}
 
 El planteamiento inicial de este Trabajo de Fin de Grado partió de una
 propuesta del profesor Eduardo Manuel Sánchez Vila, tutor del trabajo,
@@ -24,6 +24,37 @@ la infraestructura que recoge esos modelos, los ejecuta en un entorno
 común, observa su comportamiento y sintetiza los hallazgos en informes
 comparativos.
 
+\section{Problema que se aborda}
+
+La primera fase resuelve una parte esencial del laboratorio: pasar de una
+descripción científica a un modelo de decisión ejecutable. Sin embargo, un
+modelo que compila y cumple una interfaz todavía no basta para estudiar un
+paradigma. Hace falta ejecutarlo en condiciones controladas, observar sus
+decisiones paso a paso, comparar su comportamiento con otros modelos y
+conservar una evidencia que pueda revisarse después. De lo contrario, el
+resultado queda en un punto intermedio: existe código, pero no todavía un
+experimento.
+
+Sin esta segunda fase, los modelos generados por la primera quedarían como
+código Python aceptado y probado, pero no como comportamiento observable. La
+aportación de esta fase consiste precisamente en cerrar ese recorrido:
+convertir modelos ejecutables en sesiones de simulación comparables,
+trazables y revisables, donde el grupo de investigación pueda ver qué hacen
+los modelos, cómo evolucionan sus variables internas y qué evidencias quedan
+para interpretar o repetir la ejecución.
+
+El problema técnico está en coordinar ese recorrido sin acoplar las dos
+fases del proyecto. La infraestructura de simulación debe aceptar modelos
+heterogéneos generados externamente, construir un entorno común para ellos,
+emitir eventos observables en tiempo real, transformar la ejecución en
+trayectorias y episodios, generar un análisis útil y persistir los resultados
+en el Knowledge Backbone sin contaminar la memoria compartida con datos poco
+estructurados. Además, todo el flujo debe ser comprensible desde una interfaz
+de usuario, porque el objetivo no es solo ejecutar código, sino reducir la
+fricción de uso para un investigador que quiere explorar un paradigma.
+
+\section{Objetivos generales}
+
 El objetivo general de esta fase es construir una infraestructura que
 pueda ejecutar modelos de decisión heterogéneos y producir, en cada
 simulación, un conjunto de artefactos verificables:
@@ -45,9 +76,13 @@ especializados coordinados por un Orchestrator, y se exponen al
 usuario a través de una interfaz web. La justificación de cada uno de
 estos componentes se explica en los capítulos correspondientes.
 
-La integración con la primera fase se realiza por \textit{duck
-typing} sobre el contrato \texttt{decide}, \texttt{update} y
-\texttt{get\_state}, sin acoplamiento de clases entre ambos sistemas.
+La relación con la primera fase es complementaria. La primera fase toma
+conocimiento científico y lo convierte en modelos ejecutables; esta
+segunda fase toma esos modelos y los convierte en evidencia experimental
+observable, comparable y reutilizable. La integración técnica entre ambas
+se realiza por \textit{duck typing} sobre el contrato \texttt{decide},
+\texttt{update} y \texttt{get\_state}, sin acoplamiento de clases entre
+ambos sistemas.
 
 \section{Descripción del sistema}
 
@@ -66,10 +101,14 @@ que se cargan dinámicamente desde la primera fase del proyecto, que es la
 encargada de generarlos. Esa primera fase es un \textit{pipeline} de
 cuatro agentes (investigación, formalización, razonamiento y
 construcción) que, a partir de la descripción de un paradigma, produce el
-código Python autocontenido de cada modelo. La integración entre ambas
-fases se realiza a través de un contrato mínimo, los métodos
-\texttt{decide}, \texttt{update} y \texttt{get\_state}, aplicado por
-\textit{duck typing} en el momento de la carga.
+código Python autocontenido de cada modelo. La segunda fase continúa ese
+recorrido en el punto en el que la primera termina: no vuelve a
+formalizar el paradigma, sino que sitúa el modelo producido en un entorno
+común, registra su comportamiento y lo transforma en análisis e informe.
+La integración entre ambas fases se realiza a través de un contrato
+mínimo, los métodos \texttt{decide}, \texttt{update} y
+\texttt{get\_state}, aplicado por \textit{duck typing} en el momento de
+la carga.
 
 El acceso al Knowledge Backbone compartido entre fases es
 bidireccional: la segunda fase consume desde él tanto los propios
