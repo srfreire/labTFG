@@ -1,0 +1,55 @@
+\chapter{Diagramas de arquitectura}
+\label{ap:diagramas}
+
+Este apéndice recoge los diagramas estructurales de la segunda fase
+referenciados en el capítulo de diseño: la arquitectura lógica del sistema y la
+transformación conceptual que recorre la sesión, desde la petición
+conversacional hasta las memorias recuperables.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=6mm and 8mm]
+  \node[diagblock, minimum width=70mm] (web) {Cliente web\\\footnotesize React + Vite + Tailwind};
+  \node[diagblock, below=8mm of web, minimum width=70mm] (api) {Backend FastAPI\\\footnotesize REST + WebSocket};
+  \node[diaghub, below=8mm of api, minimum width=70mm] (orch) {Orchestrator\\\footnotesize chat + tool registry};
+
+  \node[diagblock, below=14mm of orch, xshift=-45mm, minimum width=36mm] (agents)
+       {Agentes especializados\\\footnotesize Architect, Tracker,\\\footnotesize Analyst, Reporter};
+  \node[diagblock, below=14mm of orch, minimum width=36mm] (env)
+       {Entorno y modelos\\\footnotesize Environment 2D\\\footnotesize Modelos de fase 1};
+  \node[diagblock, below=14mm of orch, xshift=45mm, minimum width=36mm] (kb)
+       {Knowledge Backbone\\\footnotesize PostgreSQL, MinIO,\\\footnotesize Neo4j, Qdrant};
+
+  \draw[diagarrowbi] (web) -- node[right, font=\scriptsize] {REST + WS} (api);
+  \draw[diagarrow]   (api) -- (orch);
+  \draw[diagarrow]   (orch) -- (agents);
+  \draw[diagarrow]   (orch) -- (env);
+  \draw[diagarrow]   (orch) -- (kb);
+
+  \begin{scope}[on background layer]
+    \node[diaggroup, fit=(agents)(env)(kb), label={[font=\scriptsize\itshape,black!60]below:Capa coordinada por el Orchestrator}] {};
+  \end{scope}
+\end{tikzpicture}
+\caption{Arquitectura lógica del sistema.}
+\label{fig:arquitectura}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=5mm and 7mm]
+\node[diagblock, text width=3.4cm] (request) {Petición conversacional};
+\node[diagblock, right=of request, text width=3.4cm] (spec) {Especificación de entorno};
+\node[diagblock, right=of spec, text width=3.4cm] (run) {Ejecución multi-modelo};
+\node[diagblock, below=of run, text width=3.4cm] (obs) {Trayectorias y episodios};
+\node[diagblock, left=of obs, text width=3.4cm] (analysis) {Análisis e informe};
+\node[diagblock, left=of analysis, text width=3.4cm] (memory) {Memorias recuperables};
+\draw[diagarrow] (request) -- (spec);
+\draw[diagarrow] (spec) -- (run);
+\draw[diagarrow] (run) -- (obs);
+\draw[diagarrow] (obs) -- (analysis);
+\draw[diagarrow] (analysis) -- (memory);
+\end{tikzpicture}}
+\caption{Transformación conceptual de la segunda fase.}
+\label{fig:transformacion-fase2}
+\end{figure}

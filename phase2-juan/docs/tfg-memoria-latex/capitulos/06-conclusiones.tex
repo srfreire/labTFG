@@ -80,34 +80,26 @@ cuenta.
 
 \section{Limitaciones}
 
-El sistema cumple los objetivos de esta fase, pero no debe interpretarse como
-una validación automática de teorías de decisión. El laboratorio permite
-ejecutar modelos, observar trayectorias y contrastar patrones con conocimiento
-previo, pero la adecuación científica de un modelo concreto sigue requiriendo
-revisión experta. Que un modelo cargue, decida y produzca una curva
-interpretable no significa por sí solo que represente correctamente el
-paradigma del que procede.
+Más allá de las limitaciones técnicas detalladas en el capítulo de pruebas,
+conviene cerrar con las de mayor alcance. El sistema cumple los objetivos de
+esta fase, pero no debe interpretarse como una validación automática de teorías
+de decisión: permite ejecutar modelos, observar trayectorias y contrastar
+patrones con conocimiento previo, pero la adecuación científica de un modelo
+concreto sigue requiriendo revisión experta ---que un modelo cargue, decida y
+produzca una curva interpretable no significa que represente correctamente el
+paradigma del que procede---, y depende además de modelos de lenguaje y
+servicios externos cuyas salidas, a diferencia del motor determinista, varían
+entre ejecuciones e introducen latencia y coste.
 
-La segunda limitación es la dependencia de modelos de lenguaje y servicios
-externos. El motor de simulación es determinista para una semilla dada, pero
-las salidas del Architect, Analyst y Reporter pueden variar entre ejecuciones.
-Los proveedores externos también introducen latencia, coste y posibles fallos
-de disponibilidad. Por eso la validación distingue entre lo que se puede fijar
-mediante pruebas reproducibles y lo que debe evaluarse como calidad de salida
-generativa.
-
-La tercera limitación procede del dominio de simulación. La rejilla 2D es
-adecuada para comparar modelos en un entorno común, observable y fácil de
-explicar, pero no cubre todos los paradigmas posibles. Entornos continuos,
-escenarios con interacción social entre agentes o tareas no espaciales
-exigirían extender el dominio y revisar qué métricas son comparables.
-
-Por último, la escritura de conocimiento desde la segunda fase todavía es
-deliberadamente conservadora. Las observaciones se guardan en el
-\textit{namespace} \texttt{simulation} y se indexan para recuperación, pero no
-siempre se materializan como nuevos nodos del grafo. Esta decisión evita
-contaminar el Knowledge Backbone con estructura relacional prematura, aunque
-limita por ahora las consultas multi-hop sobre resultados de simulación.
+Las otras dos limitaciones son de alcance. El dominio de rejilla 2D es adecuado
+para comparar modelos en un entorno común y explicable, pero no cubre entornos
+continuos, escenarios multi-agente o tareas no espaciales, que exigirían
+extenderlo y revisar qué métricas son comparables. Y la escritura de
+conocimiento desde la segunda fase es aún conservadora: las observaciones se
+indexan en el \textit{namespace} \texttt{simulation} para recuperación, pero no
+siempre se materializan como nodos del grafo ---una decisión que evita
+contaminar el backbone con estructura relacional prematura, a costa de limitar
+por ahora las consultas multi-hop sobre resultados de simulación.
 
 \section{Posibles ampliaciones}
 

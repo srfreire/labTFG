@@ -1,0 +1,107 @@
+\chapter{Detalle de la batería de pruebas (Capa 1)}
+\label{ap:capa1}
+
+Este apéndice desarrolla las comprobaciones de la primera capa de evaluación
+---el núcleo determinista--- resumidas en el capítulo de pruebas. Son
+comprobaciones objetivas, binarias y reproducibles, ejecutadas sobre los seis
+agentes: los cuatro modelos de la primera fase y los dos \textit{baselines}.
+
+\section{Contrato observable de los modelos}
+
+Antes de medir comportamiento hay que garantizar que los modelos respetan el
+contrato común en tiempo de ejecución, no solo en sus pruebas unitarias. Se
+comprueban tres invariantes sobre cada modelo cargado dinámicamente:
+
+\begin{enumerate}
+\item \textbf{\texttt{decide} es de solo lectura.} Invocar \texttt{decide} dos
+veces sobre la misma percepción no modifica el estado interno: el
+\texttt{get\_state} previo y posterior son idénticos. Esto evita que el modelo
+aprenda o cambie variables antes de que el entorno aplique la acción.
+\item \textbf{\texttt{update} es el único mutador.} El estado solo cambia tras
+recibir recompensa y nueva percepción.
+\item \textbf{\texttt{get\_state} expone \texttt{q\_values}.} La presencia de
+esta clave es lo que permite a la capa de observación representar alternativas
+de acción y confianza relativa de forma uniforme para cualquier modelo.
+\end{enumerate}
+
+Esta comprobación es binaria y no requiere juicio. Corresponde a las reglas
+mínimas de sanidad previas a cualquier ajuste de modelo de
+comportamiento~\cite{wilson2019tenrules}, trasladadas al contrato de ejecución
+del laboratorio. Ejecutada sobre los seis agentes, \textbf{los seis superan el
+contrato} (6/6): en todos, invocar \texttt{decide} dos veces sobre la misma
+percepción deja el estado inalterado y \texttt{get\_state} expone
+\texttt{q\_values}.
+
+\section{Determinismo del motor}
+
+El determinismo del motor sostiene la comparativa multi-modelo: con la misma
+semilla y la misma configuración, dos simulaciones producen eventos idénticos.
+La parte determinista del sistema es el motor; la variabilidad de los modelos
+de lenguaje se discute en las limitaciones. Esta propiedad se verifica de forma
+automática comparando dos ejecuciones byte a byte sobre la secuencia de eventos
+emitidos. Comprobada sobre los seis agentes (cada uno cargado e instanciado dos
+veces con la misma semilla), \textbf{las dos ejecuciones producen flujos de
+acciones idénticos en los seis casos} (6/6): la reproducibilidad del motor
+---incluida la siembra del generador aleatorio de los modelos por el cargador
+dinámico--- queda garantizada.
+
+\section{Fidelidad de la persistencia: la tripleta \textit{joinable}}
+
+Cada observación de simulación debe materializarse de forma consistente en los
+tres almacenes del Knowledge Backbone: una fila en PostgreSQL, un vector denso
+en Qdrant y un vector \textit{sparse} en Qdrant, siempre bajo el mismo
+\textit{UUID}. La fidelidad del Tracker se mide como la igualdad entre el número
+de observaciones generadas y el incremento que produce la ejecución en cada uno
+de los tres almacenes.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{7.2cm}|>{\raggedright\arraybackslash}p{4.8cm}|} \hline
+\textbf{Métrica de persistencia} & \textbf{Valor} \\ \hline
+Observaciones de simulación generadas & $N$ \\ \hline
+Filas nuevas en \texttt{simulation\_observations} (PostgreSQL) & $N$ \\ \hline
+Memorias densas escritas (Voyage, 1024 dim.) & $N$ \\ \hline
+Memorias \textit{sparse} escritas (BM25 nativo) & $N$ \\ \hline
+\end{tabular}
+\caption{Fidelidad de la persistencia: la igualdad $N=N=N$ valida la tripleta \textit{joinable} (ninguno de los tres almacenes queda desincronizado).}
+\label{tab:joinable}
+\end{center}
+\end{table}
+
+La igualdad de las tres últimas filas, medida como el incremento que produce la
+ejecución sobre el estado previo del backbone, valida la \textbf{tripleta
+joinable} descrita en el diseño: la persistencia no deja ninguno de los tres
+almacenes desincronizado.
+
+\section{Suite de regresión}
+
+La suite automática se usa como red de regresión para asegurar que la
+evaluación de las capas superiores se apoya en un sistema estable. Combina
+\texttt{uv run pytest} para dominio, agentes, Orchestrator, persistencia,
+recuperación y carga de modelos; Playwright para la sesión completa del cliente
+web y las vistas del Knowledge Backbone; y compilación LaTeX para la propia
+memoria. Los cambios visibles en la interfaz se revisaron además manualmente
+sobre la aplicación viva, porque una prueba \textit{end-to-end} puede confirmar
+que un elemento existe sin juzgar su legibilidad.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
+\textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
+Backend (\textit{pytest}, 38 archivos) & PASS & 353/353 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos, arnés de \textit{golden scenarios} y fidelidad del Reporter. \\ \hline
+Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
+E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
+E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
+\end{tabular}
+\caption{Resultado de la ejecución de la suite automatizada (red de regresión de la capa 1).}
+\label{tab:suite}
+\end{center}
+\end{table}
+
+Esta batería importa dinámicamente los modelos producidos por el Builder y
+comprueba que cumplen el \texttt{Protocol} declarado en
+\texttt{simlab.environment} antes de iniciar una simulación. No compara
+rendimiento con otros sistemas; sirve como evidencia interna de que los
+contratos técnicos del laboratorio se mantienen estables.

@@ -61,106 +61,32 @@ encima de la corrección~\cite{mohammadi2025agenteval}. Por eso el núcleo
 determinista es la primera capa, y el juicio mediante modelo de lenguaje se
 reserva para las salidas genuinamente abiertas.
 
-\subsection{Contrato observable de los modelos}
+Las comprobaciones son binarias y no requieren juicio. Se ejecutan sobre los
+seis agentes ---los cuatro modelos de la primera fase y los dos
+\textit{baselines}--- y verifican cuatro propiedades del núcleo:
 
-Antes de medir comportamiento hay que garantizar que los modelos respetan el
-contrato común en tiempo de ejecución, no solo en sus pruebas unitarias. Se
-comprueban tres invariantes sobre cada modelo cargado dinámicamente:
+\begin{itemize}
+\item \textbf{Contrato observable} (6/6): cada modelo cumple en ejecución el
+contrato común ---\texttt{decide} es de solo lectura, \texttt{update} es el
+único mutador y \texttt{get\_state} expone \texttt{q\_values}---, no solo en
+sus pruebas unitarias.
+\item \textbf{Determinismo del motor} (6/6): con la misma semilla y
+configuración, dos ejecuciones producen flujos de acciones idénticos byte a
+byte, lo que sostiene la comparativa multi-modelo.
+\item \textbf{Fidelidad de la persistencia} (tripleta \textit{joinable},
+$N=N=N$): cada observación se materializa de forma consistente como una fila en
+PostgreSQL, un vector denso y un vector \textit{sparse} en Qdrant, bajo el mismo
+\textit{UUID} (tabla~\ref{tab:joinable}).
+\item \textbf{Suite de regresión} (353/353 en \textit{pytest}, más Playwright y
+compilación \LaTeX): red de regresión que asegura que las capas superiores se
+apoyan en un sistema estable.
+\end{itemize}
 
-\begin{enumerate}
-\item \textbf{\texttt{decide} es de solo lectura.} Invocar \texttt{decide} dos
-veces sobre la misma percepción no modifica el estado interno: el
-\texttt{get\_state} previo y posterior son idénticos. Esto evita que el modelo
-aprenda o cambie variables antes de que el entorno aplique la acción.
-\item \textbf{\texttt{update} es el único mutador.} El estado solo cambia tras
-recibir recompensa y nueva percepción.
-\item \textbf{\texttt{get\_state} expone \texttt{q\_values}.} La presencia de
-esta clave es lo que permite a la capa de observación representar alternativas
-de acción y confianza relativa de forma uniforme para cualquier modelo.
-\end{enumerate}
-
-Esta comprobación es binaria y no requiere juicio. Corresponde a las reglas
-mínimas de sanidad previas a cualquier ajuste de modelo de
-comportamiento~\cite{wilson2019tenrules}, trasladadas al contrato de ejecución
-del laboratorio. Ejecutada sobre los seis agentes ---los cuatro modelos de la
-primera fase y los dos \textit{baselines}---, \textbf{los seis superan el
-contrato} (6/6): en todos, invocar \texttt{decide} dos veces sobre la misma
-percepción deja el estado inalterado y \texttt{get\_state} expone
-\texttt{q\_values}.
-
-\subsection{Determinismo del motor}
-
-El determinismo del motor sostiene la comparativa multi-modelo: con la misma
-semilla y la misma configuración, dos simulaciones producen eventos idénticos.
-La parte determinista del sistema es el motor; la variabilidad de los modelos
-de lenguaje se discute en las limitaciones. Esta propiedad se verifica de forma
-automática comparando dos ejecuciones byte a byte sobre la secuencia de eventos
-emitidos. Comprobada sobre los seis agentes (cada uno cargado e instanciado dos
-veces con la misma semilla), \textbf{las dos ejecuciones producen flujos de
-acciones idénticos en los seis casos} (6/6): la reproducibilidad del motor
----incluida la siembra del generador aleatorio de los modelos por el cargador
-dinámico--- queda garantizada.
-
-\subsection{Fidelidad de la persistencia: la tripleta \textit{joinable}}
-
-Cada observación de simulación debe materializarse de forma consistente en los
-tres almacenes del Knowledge Backbone: una fila en PostgreSQL, un vector denso
-en Qdrant y un vector \textit{sparse} en Qdrant, siempre bajo el mismo
-\textit{UUID}. La fidelidad del Tracker se mide como la igualdad entre el número
-de observaciones generadas y el incremento que produce la ejecución en cada uno
-de los tres almacenes.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{7.2cm}|>{\raggedright\arraybackslash}p{4.8cm}|} \hline
-\textbf{Métrica de persistencia} & \textbf{Valor} \\ \hline
-Observaciones de simulación generadas & $N$ \\ \hline
-Filas nuevas en \texttt{simulation\_observations} (PostgreSQL) & $N$ \\ \hline
-Memorias densas escritas (Voyage, 1024 dim.) & $N$ \\ \hline
-Memorias \textit{sparse} escritas (BM25 nativo) & $N$ \\ \hline
-\end{tabular}
-\caption{Fidelidad de la persistencia: la igualdad $N=N=N$ valida la tripleta \textit{joinable} (ninguno de los tres almacenes queda desincronizado).}
-\label{tab:joinable}
-\end{center}
-\end{table}
-
-La igualdad de las tres últimas filas, medida como el incremento que produce la
-ejecución sobre el estado previo del backbone, valida la \textbf{tripleta
-joinable} descrita en el diseño: la persistencia no deja ninguno de los tres
-almacenes desincronizado.
-
-\subsection{Suite de regresión}
-
-La suite automática se usa como red de regresión para asegurar que la
-evaluación de las capas superiores se apoya en un sistema estable. Combina
-\texttt{uv run pytest} para dominio, agentes, Orchestrator, persistencia,
-recuperación y carga de modelos; Playwright para la sesión completa del cliente
-web y las vistas del Knowledge Backbone; y compilación LaTeX para la propia
-memoria. Los cambios visibles en la interfaz se revisaron además manualmente
-sobre la aplicación viva, porque una prueba \textit{end-to-end} puede confirmar
-que un elemento existe sin juzgar su legibilidad.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
-\textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
-Backend (\textit{pytest}, 38 archivos) & PASS & 353/353 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos, arnés de \textit{golden scenarios} y fidelidad del Reporter. \\ \hline
-Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
-E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
-E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
-\end{tabular}
-\caption{Resultado de la ejecución de la suite automatizada (red de regresión de la capa 1).}
-\label{tab:suite}
-\end{center}
-\end{table}
-
-Esta batería importa dinámicamente los modelos producidos por el Builder y
-comprueba que cumplen el \texttt{Protocol} declarado en
-\texttt{simlab.environment} antes de iniciar una simulación. No compara
-rendimiento con otros sistemas; sirve como evidencia interna de que los
-contratos técnicos del laboratorio se mantienen estables.
+Estas comprobaciones son objetivas y se apoyan en una verdad programática;
+corresponden a las reglas mínimas de sanidad previas a cualquier ajuste de
+modelo de comportamiento~\cite{wilson2019tenrules}. El desarrollo de cada
+invariante, los detalles de cada comprobación y las tablas completas de
+resultados se recogen en el Apéndice~\ref{ap:capa1}.
 
 \section{Capa 2: evaluación de comportamiento (\textit{golden scenarios})}
 
@@ -307,34 +233,14 @@ evaluación por comportamiento.
 El test propio de esta capa para la parte de modelo de lenguaje es: dado cada
 escenario, ¿atribuye el Analyst el comportamiento al paradigma correcto
 (forrajeo óptimo frente a aprendizaje) y señala el patrón que la teoría predice?
-Como la verdad de cada escenario es conocida, la calidad del Analyst se puntúa
-con precisión y exhaustividad (\textit{precision} y \textit{recall}) frente a esa
-verdad, y no con una valoración subjetiva. El Knowledge Backbone refuerza este
-contraste: la run restaurada contiene el postulado del teorema del valor
-marginal vinculado a su evidencia empírica (Charnov, 1976), de modo que el
-Analyst puede contrastar el patrón observado contra el postulado recuperado.
-
-Para puntuar al Analyst se fija un conjunto de etiquetas de verdad por escenario
-(tabla~\ref{tab:analyst-labels}): el paradigma que debe atribuir y el patrón que
-la teoría predice. La atribución del Analyst se contrasta contra estas etiquetas
-y se resume con \textit{precision} y \textit{recall}, no con una valoración
-subjetiva.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.7cm}|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{5.6cm}|} \hline
-\textbf{Escenario} & \textbf{Paradigma (verdad)} & \textbf{Patrón que debe señalar} \\ \hline
-GS-OFT-1 & Forrajeo óptimo & Abandono de parche al decaer la tasa marginal \\ \hline
-GS-OFT-2 & Forrajeo óptimo & Mayor residencia al encarecer el viaje \\ \hline
-GS-OFT-3 & Forrajeo óptimo & Exclusión de la presa pobre cuando abunda la buena \\ \hline
-GS-RL-1 (Q-learning) & Aprendizaje por refuerzo & Mejora con la experiencia; decaimiento de la exploración \\ \hline
-GS-RL-1 (\textit{actor-critic}) & Aprendizaje por refuerzo & Señal de error de predicción; sin mejora de rendimiento \\ \hline
-\end{tabular}
-\caption{Etiquetas de verdad por escenario contra las que se puntúa la atribución del Analyst.}
-\label{tab:analyst-labels}
-\end{center}
-\end{table}
+Como la verdad de cada escenario es conocida ---el paradigma y el patrón
+esperados de la tabla~\ref{tab:golden-scenarios}---, la atribución del Analyst se
+contrasta contra esas etiquetas y se puntúa con precisión y exhaustividad
+(\textit{precision} y \textit{recall}), no con una valoración subjetiva. El
+Knowledge Backbone refuerza este contraste: la run restaurada contiene el
+postulado del teorema del valor marginal vinculado a su evidencia empírica
+(Charnov, 1976), de modo que el Analyst puede contrastar el patrón observado
+contra el postulado recuperado.
 
 Se ejecutó este test como un piloto sobre los cinco escenarios, invocando al
 Analyst real (servido vía OpenRouter) con un registro factual de cada simulación
@@ -350,23 +256,18 @@ delataría el refuerzo. Es decir, el modelo que no se comporta como su teoría
 predice es también el que el Analyst no puede atribuir: ambas capas coinciden.
 
 Este piloto se realiza sobre cinco escenarios, número insuficiente para una
-conclusión con potencia estadística; su valor es metodológico (demuestra que el
-pipeline recupera la verdad sembrada cuando esta existe) y se reporta como tal.
-La calibración del juez contra criterio humano ---distinta de esta atribución de
-verdad conocida--- se delimita como trabajo futuro en las limitaciones.
+conclusión con potencia estadística; su valor es metodológico ---demuestra que
+el pipeline recupera la verdad sembrada cuando esta existe--- y se reporta como
+tal.
 
-\subsection{Validación de los modelos generados}
-
-Más allá de evaluar al Analyst, los \textit{golden scenarios} permiten validar
-la \emph{ciencia} de los modelos generados, no solo su ejecución. Se siguen las
-reglas de validación de modelos de comportamiento de Wilson y
-Collins~\cite{wilson2019tenrules}: comprobar que el modelo reproduce, en
-simulación, los patrones cualitativos que la teoría predice (un análogo de la
-comprobación predictiva \textit{a posteriori}), y que dos paradigmas distintos
-producen comportamientos distinguibles (un análogo de la recuperación de
-modelo). La importancia de que un modelo pueda además \emph{fallar} donde otro
-acierta ---la falsación--- justifica el uso de los \textit{baselines} como
-controles negativos~\cite{palminteri2017falsification}.
+Más allá de evaluar al Analyst, este enfoque valida la \emph{ciencia} de los
+modelos generados, no solo su ejecución, siguiendo las reglas de validación de
+modelos de comportamiento de Wilson y Collins~\cite{wilson2019tenrules}:
+reproducir en simulación los patrones cualitativos que la teoría predice y
+distinguir paradigmas distintos por su comportamiento. Que un modelo pueda
+además \emph{fallar} donde otro acierta ---la falsación--- es lo que justifica
+el uso de los \textit{baselines} como controles
+negativos~\cite{palminteri2017falsification}.
 
 \section{Capa 3: juicio mediante modelo de lenguaje y revisión humana}
 
@@ -397,14 +298,11 @@ dato~\cite{li2024judges}. Solo cuando ese acuerdo es suficientemente alto se
 reduce la proporción de revisión humana.
 
 Esta meta-evaluación exige un corpus de salidas etiquetadas por el tutor y el
-grupo de investigación de tamaño suficiente, y constituye en sí misma una
-contribución de calibración independiente del laboratorio. Por ello, su
-ejecución ---fijar el corpus etiquetado, calcular el acuerdo juez--humano y
-determinar el umbral a partir del cual se confía en el juez--- se delimita como
-trabajo futuro y se recoge entre las limitaciones de este capítulo. El alcance de
-esta memoria cubre las capas 1 y 2 de forma completa y la capa 3 en su parte
-automatizable (el juicio por dimensión y la fidelidad del Reporter); la
-calibración del juez contra criterio humano queda como ampliación.
+grupo de investigación, y constituye en sí misma una contribución de calibración
+independiente; su ejecución se delimita como trabajo futuro (véanse las
+limitaciones). El alcance de esta memoria cubre las capas 1 y 2 de forma completa
+y la capa 3 en su parte automatizable ---el juicio por dimensión y la fidelidad
+del Reporter.
 
 \subsection{Fidelidad del Reporter}
 
@@ -508,27 +406,17 @@ contexto de la simulación, los resultados principales y la interpretación del
 análisis de forma revisable.
 \end{enumerate}
 
-Estos criterios cierran el recorrido iniciado en requisitos. La continuidad del
-flujo cubre el chat y la interfaz reactiva (RF-10, RF-12 y RNF-04); la
-integración con la primera fase valida la carga dinámica y el desacoplamiento
-(RF-01, RNF-01 y RNF-02); la observabilidad de la simulación cubre el registro
-estructurado y la trazabilidad operativa (RF-04, RNF-03 y RNF-09); la utilidad
-del análisis recoge el contraste con el Knowledge Backbone y las visualizaciones
-(RF-05, RF-06 y RF-08); y la trazabilidad del resultado valida el informe y sus
-artefactos asociados (RF-07 y RNF-03).
+Estos cinco criterios cierran el recorrido iniciado en requisitos y cubren, en
+conjunto, los requisitos funcionales y no funcionales según la trazabilidad ya
+recogida en la tabla de objetivos del capítulo de especificación.
 
 \subsection{Métricas de una ejecución real}
 
-Se instrumentó una ejecución real del escenario contra un modelo de lenguaje
-servido a través de OpenRouter y sobre los servicios reales del Knowledge
-Backbone, recorriendo el pipeline completo ---Architect, motor de simulación,
-Tracker, Analyst y Reporter.
-
-Se instrumentó una ejecución en directo del pipeline completo comparando los dos
-modelos de paradigmas distintos ---teorema del valor marginal y Q-learning
-tabular--- contra los servicios reales del Knowledge Backbone y un modelo de
-lenguaje servido vía OpenRouter. La tabla~\ref{tab:e2e} recoge las métricas
-medidas.
+Se instrumentó una ejecución en directo del pipeline completo ---Architect,
+motor de simulación, Tracker, Analyst y Reporter--- comparando los dos modelos
+de paradigmas distintos ---teorema del valor marginal y Q-learning tabular---
+contra los servicios reales del Knowledge Backbone y un modelo de lenguaje
+servido vía OpenRouter. La tabla~\ref{tab:e2e} recoge las métricas medidas.
 
 \begin{table}[H]
 \begin{center}
@@ -552,11 +440,8 @@ sin intervención, los dos modelos de la primera fase se cargan e integran por e
 contrato común, la simulación es observable, el Analyst genera tres gráficas y un
 análisis comparativo, y el Reporter produce un informe PDF trazable. El dato más
 relevante para el diseño es que la \textbf{tripleta \textit{joinable} se verificó
-de forma independiente en los tres almacenes}: las seis observaciones derivadas
-por el Tracker se materializaron como seis filas en PostgreSQL, seis vectores
-densos y seis \textit{sparse} en Qdrant, bajo el mismo \textit{UUID}
-(tabla~\ref{tab:joinable}), sin desincronización. Además, la verificación
-automática confirmó que el PDF generado es el informe real compilado con
+de forma independiente en los tres almacenes} ($6=6=6$, tabla~\ref{tab:e2e}),
+sin desincronización, y que el PDF generado es el informe real de
 \texttt{tectonic} y no el de respaldo. Para la defensa, la ejecución en directo
 podrá usar un \textit{backend} con los servicios externos sustituidos por
 respuestas deterministas, de forma que la demostración no dependa de la latencia
@@ -599,6 +484,4 @@ humano mediante $\kappa$ y $\rho$) requiere un corpus etiquetado por el tutor y 
 grupo de investigación, y el piloto de atribución se apoya en solo cinco
 escenarios, número insuficiente para una conclusión con potencia
 estadística~\cite{li2024judges}. Ampliar ese corpus y calibrar el juez contra
-criterio humano se deja como trabajo futuro. Es además la razón de fondo por la
-que la capa 3 nunca sustituye del todo a la revisión humana, sino que se calibra
-contra ella~\cite{zheng2023judge}.
+criterio humano se deja como trabajo futuro.

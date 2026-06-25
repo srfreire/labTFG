@@ -32,50 +32,11 @@ sesión y la inspección y comparativa con ejecuciones pasadas.
 
 Cada requisito se prioriza con la técnica MoSCoW, indicando si es
 imprescindible (\emph{Must}), recomendable (\emph{Should}) u opcional
-(\emph{Could}) para que el sistema cumpla su objetivo. Los requisitos
-funcionales principales son:
+(\emph{Could}) para que el sistema cumpla su objetivo. El catálogo completo de
+los trece requisitos funcionales (RF-01 a RF-13), con su descripción y
+prioridad, se recoge en el Apéndice~\ref{ap:requisitos}.
 
-\begin{table}[htbp]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{8.3cm}|>{\raggedright\arraybackslash}p{2.1cm}|} \hline
-\textbf{Código} & \textbf{Descripción} & \textbf{Prioridad} \\ \hline
-RF-01 & Cargar dinámicamente los modelos de decisión generados por la
-primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
-RF-02 & Generar especificaciones de entorno de simulación a partir de
-descripciones en lenguaje natural. & Must \\ \hline
-RF-03 & Ejecutar simulaciones con uno o varios modelos en el mismo
-entorno, soportando comparativas multi-modelo. & Must \\ \hline
-RF-04 & Registrar de forma estructurada los eventos, episodios y
-trayectorias de decisión producidos durante cada simulación. & Must \\ \hline
-RF-05 & Identificar patrones de comportamiento en los resultados y
-contrastarlos con postulados previos del Knowledge Backbone. & Must \\ \hline
-RF-06 & Generar, como parte del análisis, gráficas y visualizaciones
-sobre las trayectorias y métricas extraídas que se incorporan al informe
-final. & Should \\ \hline
-RF-07 & Generar informes en PDF con los resultados, la evidencia visual y
-las referencias a los paradigmas analizados. & Must \\ \hline
-RF-08 & Persistir las observaciones de simulación en el Knowledge Backbone
-como memorias reutilizables en ejecuciones posteriores. & Must \\ \hline
-RF-09 & Conservar el historial completo de experimentos y permitir su
-consulta, filtrado y comparativa. & Should \\ \hline
-RF-10 & Permitir la interacción con el sistema mediante un chat
-conversacional gestionado por el Orchestrator, con continuidad de la
-conversación dentro de la sesión y posibilidad de retomar pasos
-anteriores. & Must \\ \hline
-RF-11 & Permitir al Orchestrator recomendar al usuario qué hacer a
-continuación, qué modelos o paradigmas pueden encajar con el problema
-descrito y qué herramientas tiene disponibles. & Could \\ \hline
-RF-12 & Ofrecer una visualización del entorno de simulación con
-\textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
-RF-13 & Exponer vistas de inspección del Knowledge Backbone (grafo,
-memorias y procedencia) accesibles desde la propia interfaz web. & Could \\ \hline
-\end{tabular}
-\caption{Requisitos funcionales principales con su prioridad MoSCoW.}
-\end{center}
-\end{table}
-
-La lista anterior descompone los cinco artefactos definidos en la
+La lista descompone los cinco artefactos definidos en la
 introducción. La especificación del entorno queda cubierta por RF-02 y
 por su visualización en RF-12; la ejecución y el registro estructurado
 por RF-01, RF-03 y RF-04; el análisis contrastado por RF-05 y RF-06; el
@@ -88,49 +49,13 @@ Backbone desde la interfaz.
 
 Los requisitos no funcionales se centran en el desacoplamiento entre
 fases, la trazabilidad de cada ejecución y el comportamiento ante fallos
-de servicios opcionales.
-
-\begin{itemize}
-\item \textbf{RNF-01 --- Modularidad y desacoplamiento:} la integración con la primera
-fase debe realizarse mediante un contrato mínimo (\textit{duck typing}),
-sin imponer dependencias de paquetes ni jerarquías de clases. Mientras
-RF-01 fija el \emph{qué} (cargar los modelos sin intervención manual),
-este requisito fija el \emph{cómo} (sin acoplar la evolución de las dos
-fases).
-\item \textbf{RNF-02 --- Extensibilidad de modelos:} la incorporación de nuevos
-modelos generados por la primera fase no debe requerir modificaciones en
-el código de la segunda fase.
-\item \textbf{RNF-03 --- Trazabilidad:} cada ejecución debe conservar su
-configuración, sus eventos y sus artefactos finales con un identificador
-único, de modo que sea posible reproducirla o auditarla.
-\item \textbf{RNF-04 --- Reactividad:} el cliente web debe recibir actualizaciones del
-estado de la simulación y de la actividad de cada agente en tiempo real,
-sin \textit{polling}, mediante WebSocket.
-\item \textbf{RNF-05 --- Degradación controlada:} si faltan componentes opcionales
-del backbone (\textit{reranker} o \textit{embeddings}), el sistema debe seguir funcionando,
-aunque la recuperación pierda calidad.
-\item \textbf{RNF-06 --- Determinismo:} para una misma semilla
-y configuración, el motor de simulación debe producir resultados
-idénticos, de modo que las comparativas entre modelos sean
-reproducibles y comparables entre sesiones.
-\item \textbf{RNF-07 --- Portabilidad de despliegue:} los servicios externos (PostgreSQL,
-MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
-mediante \texttt{docker compose}, sin pasos manuales de configuración
-específicos del entorno del desarrollador.
-\item \textbf{RNF-08 --- Configuración por entorno:} las credenciales y \textit{endpoints} de
-los servicios externos deben aislarse en variables de entorno, sin
-quedar embebidos en el código fuente ni en los artefactos versionados.
-\item \textbf{RNF-09 --- Observabilidad:} las acciones del Orchestrator y de los
-agentes especializados deben dejar traza en los \textit{logs} del
-\textit{backend} (emitidos por la salida estándar del proceso que sirve la
-API), suficientes para diagnosticar una sesión \textit{a posteriori} sin
-tener que reproducirla.
-\item \textbf{RNF-10 --- Acotación del contexto conversacional:} una sesión larga no
-debe agotar la ventana de contexto del modelo. El historial del chat con
-el Orchestrator debe mantenerse dentro de un presupuesto acotado de forma
-automática, sin que el usuario tenga que reiniciar la sesión y sin perder
-la trazabilidad de las decisiones ya tomadas.
-\end{itemize}
+de servicios opcionales. Se especifican diez requisitos no funcionales
+(RNF-01 a RNF-10), que abarcan modularidad y desacoplamiento por contrato,
+extensibilidad de modelos, trazabilidad, reactividad sin \textit{polling},
+degradación controlada ante la ausencia de servicios opcionales,
+determinismo del motor, portabilidad del despliegue, configuración por
+entorno, observabilidad y acotación del contexto conversacional. Su
+enunciado completo se recoge en el Apéndice~\ref{ap:requisitos}.
 
 Estos requisitos no funcionales no se corresponden con pantallas
 concretas, sino con propiedades transversales. El desacoplamiento y la
