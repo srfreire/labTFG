@@ -204,6 +204,82 @@ en el capítulo (tabla).
 se reencuadraron como alcance honesto; 0 TODO restantes. Compila con `tectonic`
 (89 págs). Suite backend 344/344.
 
+## Próxima iteración: casos nuevos + Codex como juez experto (2026-06-25)
+
+> Dirección acordada para la **siguiente versión** del capítulo de pruebas. **No tocar
+> `05-pruebas.tex` todavía**: depende de que Pazos entregue los modelos generados de los
+> dos casos nuevos y sus resultados en el Knowledge Backbone. Esto es diseño aparcado.
+
+### Casos nuevos (material fuente en `~/Downloads/Evaluacion_CASO{1,2}.zip`)
+Dos paradigmas **inéditos** (fuera de la run de referencia), para "pruebas más extensas
+con más casos":
+- **CASO1 — decisión basada en valor / neuroeconomía** (elección dietética): Rangel 2008,
+  Rangel 2013 (dietary choice), tesis Jacquier 2016.
+- **CASO2 — regulación homeostática / interocepción**: Keramati & Gutkin *Homeostatic RL*
+  2014, Petzschner & Koch 2021, *Interoceptive Active Inference* 2010.
+  *Nota:* CASO2 es el mismo dominio que el sample-run de la Fase 1 ("regulación de la
+  ingesta") → continuidad real Fase 1↔Fase 2 que conviene narrar.
+
+### Qué sobrevive a la migración y qué cambia
+- **Capa 1** (contrato observable, determinismo, tripleta joinable): **intacta**, solo
+  cambian los agentes evaluados — no depende del paradigma.
+- **Capa 2** (golden scenarios): **el grueso del cambio**. Hay que definir predicciones
+  falsables nuevas: valor → la elección sigue la comparación de valor (patrón tipo DDM);
+  homeostasis → la conducta defiende un setpoint / reduce *drive*. Trabajo real, no sale
+  solo de los papers.
+- **Capa 3** + e2e: se re-narran sobre los casos nuevos.
+- **CONSERVAR el hallazgo del actor-critic** (compila + pasa tests + falla en
+  comportamiento) como caso histórico aunque deje de ser modelo "principal": es la
+  evidencia más valiosa del capítulo (la capa 2 ve lo que la Fase 1 no).
+
+### Principio rector: juzgamos la FASE 2, no la teoría
+Lo que se evalúa es el **laboratorio**, cuyo trabajo es *observar con verdad*. Un modelo
+de Pazos puede estar roto y **el lab sigue siendo correcto si reporta honestamente que lo
+está**. La verdad de referencia para juzgar la Fase 2 son **los datos de la simulación**;
+el paper entra solo como contexto interpretativo del patrón esperado. Cadena de verdad:
+`paper → qué patrón predice (contexto)` · `datos de la sim → qué pasó (lo que juzga el
+juez)` · `salida del lab → se juzga contra los datos`. Esto es *groundedness/faithfulness
+judging*, alineado con QAGS/SummaC ya citados — no conformidad con la teoría.
+
+### Codex como juez experto (proxy de revisión humana)
+Como **no hay experto humano disponible**, se usa Codex (GPT-5.5-high) como experto proxy.
+Es LLM-as-a-judge endurecido, con cuatro condiciones:
+1. **Independencia de modelo**: el lab/Analyst corre sobre **Claude**; el juez es **Codex
+   (GPT-5.5-high)** — familias distintas → sin self-enhancement bias (CALM).
+2. **Anclado en los papers**, no en su memoria paramétrica: Codex juzga con los PDFs del
+   caso + los datos de la sim + una rúbrica. LLM-as-judge con *grounding* documental.
+3. **Calibración adversaria** (la que sustituye al corpus humano): darle una run de
+   `RandomModel` o un análisis con una afirmación falsa plantada y confirmar que la marca.
+   Si aprueba un modelo aleatorio como "comportamiento correcto", el juez no vale → se
+   reporta el poder discriminativo del juez como resultado (análogo al 1,00 vs 0,33 de la
+   fidelidad del Reporter).
+4. **Proxy, no gold standard**: la confirmación humana del tutor sobre un subconjunto se
+   **aparca como futuro post-TFG**. Honesto: Codex escala, el humano anclará después.
+
+### Rúbrica (juez Codex, una llamada aislada por dimensión, anclada en {paper + datos sim + rúbrica})
+*Analyst:*
+- **D1 — Fidelidad a los datos**: cada afirmación se sostiene en eventos/métricas reales (no alucina).
+- **D2 — Recuperación del patrón**: cuando la sim exhibe el patrón, lo identifica y atribuye al paradigma correcto.
+- **D3 — Honestidad ante el fallo**: cuando la sim *no* lo exhibe, no inventa que sí. ← dimensión que separa "fallo de Fase 2" de "fallo de Fase 1" (caso de oro: actor-critic).
+- **D4 — Utilidad/discriminación**: distingue entre modelos, no repite datos.
+
+*Reporter:*
+- **D5 — Consistencia factual**: `faithfulness.py` cubre lo numérico; Codex añade lo narrativo/cualitativo.
+
+### Pivote de tono del capítulo
+Mantener el armazón científico (marco V&V por capas, falsación, citas) y **añadir debajo**
+la evidencia concreta y versionada por caso al estilo del cap. de Pruebas de Pazos (spec
+generada, replay, eventos críticos, salida del Tracker, análisis, PDF — todo auditable).
+No es pivotar científico→técnico, es **completar** con evidencia auditable.
+
+### Argumento "codex" (defensa metodológica)
+Objeción: *"si un agente puede escribir el modelo desde el paper, ¿para qué el pipeline + el
+lab?"*. Defensa de fondo (más fuerte que "es más barato"): que algo **compile y pase tests
+no garantiza que reproduzca el fenómeno** (actor-critic) — el lab es justo lo que lo
+detecta. Follow-ups de Pazos ya mapeados: *contrastar con investigadores* = capa 3 /
+revisión experta; *más casos* = CASO1/2; *modelo más barato* = se corre con la
+instrumentación de coste que la Fase 2 ya tiene (e2e ~418k/12,8k tokens, ~1,33 $).
+
 ## Notas de cautela (para no exagerar al citar)
 - El >80 % de acuerdo juez-humano es específico de tarea/dominio (MT-Bench + Arena); acótalo.
 - La guía de Anthropic es guía de ingeniería de proveedor: cítala como *best practice*, no
