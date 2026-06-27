@@ -15,7 +15,10 @@ en el modelo o del \textit{system prompt}, el sistema recupera fragmentos
 relevantes de un corpus externo y los incorpora a la generación. Dense
 retrieval consolidó la recuperación mediante \textit{embeddings}, mientras
 que BM25 \cite{robertson2009bm25} sigue siendo la base de la recuperación
-léxica con la que la densa se combina.
+léxica con la que la densa se combina. Cuando ambas señales producen
+rankings distintos, técnicas sencillas de fusión como Reciprocal Rank
+Fusion \cite{cormack2009rrf} ofrecen una forma robusta de combinarlas sin
+entrenar un modelo específico para cada colección.
 
 El paso siguiente consiste en añadir estructura al corpus. Microsoft
 GraphRAG \cite{edge2024graphrag} muestra que combinar recuperación con un
@@ -30,17 +33,20 @@ En el laboratorio desarrollado, esa estructura encaja bien: paradigmas,
 formulaciones, autores y procedencias forman relaciones que el grafo expone
 directamente y que un índice plano de documentos no captura. Esta fase
 combina ese grafo con dos modos complementarios de recuperación sobre el
-mismo repositorio de conocimiento: un índice denso que aproxima la
-similitud semántica entre fragmentos y un índice léxico BM25 que
-prioriza coincidencias exactas de términos. La diferencia práctica es
-sencilla. Si el usuario pregunta por ``conductas de exploración cuando el
-agente tiene poca energía'', la recuperación densa puede encontrar
-memorias que hablan de \textit{drive}, homeostasis o búsqueda de comida
-aunque no repitan esas palabras. Si la consulta contiene un nombre
+mismo repositorio de conocimiento. El primero es un índice denso: cada
+fragmento se convierte en un \textit{embedding}, es decir, un vector que
+permite comparar textos por cercanía semántica aunque no usen exactamente
+las mismas palabras. El segundo es un índice disperso, o \textit{sparse},
+basado en BM25, más literal y orientado a coincidencias exactas de términos.
+En la práctica se complementan bien. Si el usuario pregunta por ``conductas de exploración
+cuando el agente tiene poca energía'', la recuperación densa puede
+encontrar memorias que hablan de \textit{drive}, homeostasis o búsqueda de
+comida aunque no repitan esas palabras. Si la consulta contiene un nombre
 concreto, como \texttt{Rangel 2013}, un identificador de modelo o una cita
-literal, BM25 es más fiable porque no diluye esos términos en una vecindad
-semántica aproximada. El detalle de qué consulta utiliza cada agente y
-cómo se mezclan los resultados se desarrolla en el capítulo de diseño.
+literal, BM25 suele ser más fiable porque no diluye esos términos en una
+vecindad semántica aproximada. El detalle de qué consulta utiliza cada
+agente y cómo se mezclan los resultados se desarrolla en el capítulo de
+diseño.
 
 \section{Simulación y validación de modelos}
 
@@ -96,13 +102,16 @@ campo y propone una taxonomía con tres paradigmas de comunicación
 (cooperativo, debate, competitivo) y cuatro patrones estructurales
 (\textit{Layered}, \textit{Decentralized}, \textit{Centralized} y
 \textit{Shared Message Pool}). La arquitectura adoptada en esta fase, en
-la que un Orchestrator centraliza la comunicación y un conjunto de
-agentes especializados reciben tareas acotadas, corresponde a una
-composición \textit{Centralized} con estructura \textit{Layered}, y se
-distingue por canalizar a través del Orchestrator la mayor parte del
-acceso al conocimiento externo: solo el Analyst lo consulta de forma
-directa como \textit{tool call}, mientras que el resto de agentes recibe
-un contexto pre-recuperado.
+la que un Orchestrator centraliza la comunicación y un conjunto de agentes
+especializados reciben tareas acotadas, se sitúa en el paradigma
+\textit{Cooperative}: todos los agentes trabajan sobre la misma sesión, no
+compiten ni debaten entre sí. Estructuralmente, el sistema es sobre todo
+\textit{Centralized}, porque el Orchestrator decide qué agente actúa y qué
+contexto recibe. El flujo mantiene además una organización por etapas cercana a
+\textit{Layered}: Architect prepara el entorno, Tracker observa, Analyst
+interpreta y Reporter redacta. Esa centralización también afecta al acceso al
+conocimiento externo: solo el Analyst lo consulta directamente como
+\textit{tool call}; el resto recibe contexto pre-recuperado.
 
 \section{Uso de herramientas y auto-revisión}
 
@@ -112,6 +121,18 @@ herramientas externas, observa los resultados y razona sobre ellos antes de
 actuar de nuevo. El catálogo de herramientas del Orchestrator es una
 instancia directa de este patrón, aplicado a la coordinación del pipeline de
 simulación, observación y análisis.
+
+En las aplicaciones actuales, esa idea se materializa normalmente mediante
+\textit{tool calls} o llamadas a función: el modelo no ejecuta directamente una
+acción externa, sino que emite una petición estructurada con nombre de
+herramienta y argumentos; el sistema anfitrión valida esa petición, invoca el
+código correspondiente y devuelve la observación al modelo. Esta separación
+reduce la ambigüedad operativa de las respuestas en lenguaje natural y deja una
+traza auditable de qué operación se pidió, con qué parámetros y qué resultado
+produjo. Para esta fase es especialmente relevante porque el laboratorio no
+quiere que el modelo ``diga'' que ha simulado, observado o consultado el
+historial: esas acciones deben corresponderse con herramientas concretas del
+backend.
 
 La idea de revisar salidas intermedias aparece también en trabajos como
 Self-Refine \cite{madaan2023selfrefine} y Reflexion

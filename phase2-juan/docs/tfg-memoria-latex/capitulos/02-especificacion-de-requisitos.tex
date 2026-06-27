@@ -43,29 +43,29 @@ por RF-01, RF-03 y RF-04; el análisis contrastado por RF-05 y RF-06; el
 informe final por RF-07; y la memoria reutilizable por RF-08 y RF-09.
 RF-10, RF-11 y RF-13 completan la forma de uso del laboratorio: chat
 continuo, recomendaciones del Orchestrator y vistas auxiliares de
-inspección desde la interfaz.
+inspección desde la interfaz. RF-09 incluye dos formas de recuperación:
+la inspección directa de datos ya persistidos y la consulta en lenguaje
+natural del historial cuando la pregunta exige agregaciones o filtros
+relacionales.
 
 \section{Requisitos no funcionales}
 
 Los requisitos no funcionales se centran en el desacoplamiento entre
 fases, la trazabilidad de cada ejecución y el comportamiento ante fallos
-de servicios opcionales. Se especifican diez requisitos no funcionales
-(RNF-01 a RNF-10), que abarcan modularidad y desacoplamiento por contrato,
-extensibilidad de modelos, trazabilidad, reactividad sin \textit{polling},
-degradación controlada ante la ausencia de servicios opcionales,
-determinismo del motor, portabilidad del despliegue, configuración por
-entorno, observabilidad y acotación del contexto conversacional. Su
-enunciado completo se recoge en el Apéndice~\ref{ap:requisitos}.
+de servicios opcionales. Se especifican doce requisitos no funcionales
+(RNF-01 a RNF-12), cuyo enunciado completo se recoge en el
+Apéndice~\ref{ap:requisitos}.
 
-Estos requisitos no funcionales no describen pantallas concretas, sino
-condiciones que el sistema debe mantener durante todo el flujo. La carga
-dinámica evita acoplarse a una implementación concreta de la primera fase;
-la trazabilidad exige que cada ejecución deje datos auditables; el WebSocket
-permite seguir la sesión sin refrescos manuales; la degradación controlada
-evita que la ausencia de la capa semántica bloquee una simulación, aunque esa
-capa no participe en la recuperación avanzada ni en la escritura indexada de
-memorias; y la autocompactación impide que el historial conversacional crezca
-sin límite.
+No describen pantallas concretas, sino condiciones que el sistema debe
+mantener durante todo el flujo. La carga dinámica evita acoplarse a una
+implementación concreta de la primera fase; la trazabilidad exige que cada
+ejecución deje datos auditables; el WebSocket permite seguir la sesión sin
+refrescos manuales; la degradación controlada evita que la ausencia de la
+capa semántica bloquee una simulación; la autocompactación impide que el
+historial conversacional crezca sin límite; la consulta NL-SQL permite
+recuperar información histórica con garantías de solo lectura y tablas
+acotadas; y la recuperación de predicciones procedentes de la primera fase
+mantiene visible qué esperaba la teoría antes de observar la simulación.
 
 \section{Casos de uso}
 
@@ -73,7 +73,7 @@ Los casos de uso describen las interacciones principales del usuario
 investigador con el laboratorio. Todos comparten una sesión de chat mediada
 por el Orchestrator. La tabla siguiente resume los casos y los relaciona con
 los requisitos funcionales. La trazabilidad completa con evidencias de
-validación se recoge al final del capítulo.
+validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
 
 \begin{table}[H]
 \begin{center}
@@ -83,9 +83,10 @@ CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natura
 CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
 CU-03 & Analizar los resultados y contrastarlos con conocimiento previo & RF-04, RF-05, RF-06, RF-08 \\ \hline
 CU-04 & Generar el informe PDF de la sesión & RF-06, RF-07 \\ \hline
-CU-05 & Consultar y comparar experimentos anteriores & RF-09 \\ \hline
+CU-05 & Consultar y comparar experimentos anteriores & RF-09, RNF-11 \\ \hline
 \end{tabular}
-\caption{Resumen de casos de uso y su trazabilidad con los requisitos funcionales.}
+\caption[Casos de uso]{Casos de uso. La tabla resume las interacciones
+principales y su trazabilidad con los requisitos funcionales.}
 \end{center}
 \end{table}
 
@@ -95,67 +96,25 @@ especificación, el sistema ejecuta la simulación y la interfaz recibe los
 eventos en tiempo real. Los demás casos de uso especializan ese recorrido:
 CU-02 compara varios modelos bajo la misma semilla y entorno; CU-03 analiza
 la simulación y escribe memoria reutilizable; CU-04 materializa el análisis
-en un informe PDF; y CU-05 recupera experimentos anteriores. RF-13 queda
+en un informe PDF; y CU-05 recupera experimentos anteriores, tanto por
+inspección como mediante preguntas en lenguaje natural traducidas a SQL
+seguro. RF-13 queda
 como requisito auxiliar de inspección y depuración, no como caso de uso
 principal del investigador.
 
 \section{Información que el sistema debe almacenar}
 
-A partir de este punto se denomina Knowledge Backbone a la capa de
-persistencia y recuperación compartida con la primera fase. No es una única
-base de datos, sino un conjunto coordinado de almacenes. Esta sección enumera
-qué guarda cada uno; la justificación de la combinación se desarrolla en el
-capítulo de diseño.
+Desde el punto de vista de requisitos, el sistema debe conservar cinco tipos de
+información: los metadatos de experimentos y ejecuciones, los modelos
+registrados por la primera fase, el historial conversacional de cada sesión, los
+artefactos generados (trazas e informes) y las observaciones de simulación que
+puedan reutilizarse como memoria.
 
-PostgreSQL almacena los metadatos tabulares: experimentos, ejecuciones,
-modelos registrados, referencias a artefactos, historial conversacional,
-observaciones de simulación y memorias aceptadas por la primera fase. MinIO
-conserva los artefactos binarios, como informes PDF y archivos
-\texttt{*\_model.py}. Qdrant indexa las memorias en dos colecciones
-complementarias, densa y \textit{sparse} BM25, particionadas por
-\textit{namespace} (\texttt{pipeline} para la primera fase y
-\texttt{simulation} para esta). Neo4j mantiene el grafo consolidado de
-paradigmas, formulaciones, modelos y procedencia.
-
-La relación entre almacenes se mantiene mediante identificadores comunes.
-El grafo localiza qué formulaciones y modelos pertenecen a un paradigma;
-PostgreSQL conserva los metadatos operativos de esos modelos y de cada
-ejecución; MinIO guarda los artefactos pesados referenciados desde esos
-metadatos; y Qdrant recupera memorias por contenido. Así, una
-consulta puede empezar en el grafo, saltar al modelo registrado en
-PostgreSQL, cargar su archivo desde MinIO y recuperar observaciones similares
-en Qdrant. Las observaciones de simulación solo se llevarían al grafo cuando
-exista una relación estable con un paradigma o una formulación concreta.
-
-\section{Interfaces externas}
-
-A nivel de requisitos, las interfaces externas relevantes son tres. La
-primera fase aporta modelos ya registrados; los servicios de modelos de
-lenguaje y recuperación enriquecen las tareas de los agentes; y el cliente
-web consume el backend para operar la sesión. El detalle técnico de esas
-fronteras se desarrolla en el capítulo de diseño.
-
-\section{Trazabilidad}
-
-La tabla siguiente conecta los objetivos operativos de esta segunda fase
-con los requisitos anteriores y con las evidencias usadas después en el
-capítulo de pruebas. Su finalidad es evitar que los requisitos queden como
-una lista declarativa: cada objetivo se vincula con una forma concreta de
-comprobar que el sistema lo cumple.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{6.2cm}|} \hline
-\textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
-Cargar modelos de la primera fase sin acoplamiento rígido & RF-01, RNF-01, RNF-02 & Pruebas del \texttt{model\_loader}, contrato \texttt{DecisionModel} y ejecución multi-modelo del escenario homeostático. \\ \hline
-Generar y validar entornos de simulación & RF-02, RF-03, RNF-06 & Tests de \texttt{simlab.spec} y \texttt{simlab.environment}; escenario principal con rejilla \(8\times8\), semilla fija y 30 pasos. \\ \hline
-Observar trayectorias y eventos de decisión & RF-04, RF-12, RNF-03 & Salida estructurada del Tracker, trazas de decisión por agente y pruebas de emisión de eventos en vivo mediante WebSocket. \\ \hline
-Analizar resultados y contrastarlos con conocimiento previo & RF-05, RF-06, RF-08 & Pruebas de \texttt{retrieve\_context}, pre-recuperación desde el Orchestrator y gráficas comparativas generadas por el Analyst. \\ \hline
-Generar informes revisables & RF-07 & Informe PDF del Reporter, plantilla LaTeX, descarga REST y pruebas de generación y descarga de informes. \\ \hline
-Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10 & Tablas \texttt{chat\_messages}, \texttt{experiments}, \texttt{runs} y \texttt{simulation\_observations}; prueba de autocompactación y métricas de escritura \(7=7=7\) en PostgreSQL y Qdrant. \\ \hline
-Ofrecer una interfaz reactiva de uso & RF-10, RF-11, RF-12, RF-13, RNF-04 & Pruebas Playwright de sesión completa, vistas auxiliares de inspección, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
-\end{tabular}
-\caption{Trazabilidad entre objetivos, requisitos y evidencias de la fase 2.}
-\end{center}
-\end{table}
+Esa información no se guarda como un único bloque. Algunos datos deben
+consultarse de forma exacta, otros deben descargarse como artefactos y otros
+deben recuperarse por contenido o por relación con paradigmas previos. Por eso
+la persistencia se apoya en el Knowledge Backbone compartido con la primera
+fase. El reparto concreto entre PostgreSQL, MinIO, Qdrant y Neo4j se justifica
+en el capítulo de diseño; aquí basta con fijar el requisito: cada sesión debe
+dejar evidencia auditable y recuperable sin depender del estado efímero del
+navegador ni de la ventana de contexto del modelo.

@@ -37,9 +37,19 @@ de memorias de simulación en Qdrant.
 
 La configuración vive en \texttt{phase2-juan/.env}. Las variables
 principales son las conexiones a PostgreSQL, MinIO, Neo4j y Qdrant,
-\texttt{OPENROUTER\_API\_KEY}, y los conmutadores
-\texttt{ENABLE\_KNOWLEDGE\_READ} y \texttt{ENABLE\_KNOWLEDGE\_WRITE}.
-El archivo \texttt{.env.example} contiene la lista completa.
+\texttt{OPENROUTER\_API\_KEY} y varios conmutadores de capacidades opcionales:
+
+\begin{itemize}
+\item \texttt{ENABLE\_KNOWLEDGE\_READ}: activa la lectura del Knowledge Backbone.
+\item \texttt{ENABLE\_KNOWLEDGE\_WRITE}: activa la escritura de memorias de simulación.
+\item \texttt{ENABLE\_QUERY\_HISTORY}: activa la consulta NL-SQL del historial.
+\item \texttt{ENABLE\_CHAT\_PERSISTENCE}: activa la persistencia del chat.
+\end{itemize}
+
+Así, una instalación de desarrollo puede mantener operativo el flujo principal
+aunque algunas capacidades opcionales, como la consulta NL-SQL o la escritura de
+memorias, estén desactivadas. El archivo \texttt{.env.example} contiene la lista
+completa.
 
 \section{Comandos}
 

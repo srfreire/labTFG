@@ -6,56 +6,45 @@ referenciadas a lo largo de la memoria: el \textit{dashboard} principal, la
 visualización de la simulación con \textit{replay} paso a paso y las gráficas
 comparativas generadas por el Analyst.
 
-\clearpage
-\begin{landscape}
-\thispagestyle{plain}
 \begin{figure}[p]
 \centering
-\makebox[\linewidth][c]{\includegraphics[width=0.88\paperheight,height=0.68\paperwidth,keepaspectratio]{figuras/ui-01-dashboard-inicial}}
-\caption{Interfaz principal del laboratorio virtual: panel lateral con el
-pipeline de agentes y zona de chat con el Orchestrator.}
+\begin{minipage}{\linewidth}
+\centering
+\includegraphics[width=0.92\linewidth]{figuras/ui-01-dashboard-inicial}
+\caption[Interfaz principal]{Interfaz principal del laboratorio virtual. Se
+muestran el panel lateral del pipeline y la zona de chat con el Orchestrator.}
 \label{fig:dashboard}
-\end{figure}
-\end{landscape}
+\end{minipage}
 
-\clearpage
-\begin{landscape}
-\thispagestyle{plain}
-\begin{figure}[p]
+\vspace{0.8em}
+
+\begin{minipage}{\linewidth}
 \centering
-\makebox[\linewidth][c]{\includegraphics[width=0.88\paperheight,height=0.68\paperwidth,keepaspectratio]{figuras/ui-10-pipeline-accion}}
-\caption{El pipeline en ejecución: dos agentes en estado activo con su
-herramienta en curso en el panel lateral, mientras el Orchestrator procesa el
-turno en el chat.}
+\includegraphics[width=0.92\linewidth]{figuras/ui-10-pipeline-accion}
+\caption[Pipeline en ejecución]{Pipeline en ejecución. El panel lateral muestra
+dos agentes activos y la herramienta en curso mientras el Orchestrator procesa
+el turno en el chat.}
 \label{fig:pipeline-accion}
+\end{minipage}
 \end{figure}
-\end{landscape}
 
-\clearpage
-\begin{landscape}
-\thispagestyle{plain}
 \begin{figure}[p]
 \centering
-\makebox[\linewidth][c]{\includegraphics[width=0.88\paperheight,height=0.68\paperwidth,keepaspectratio]{figuras/ui-03-simulacion-replay}}
-\caption{Visualización de la simulación y reproducción paso a paso: rejilla
-con agentes y recursos, línea de eventos críticos y controles de
-\textit{replay}.}
+\includegraphics[width=\linewidth,height=0.33\textheight,keepaspectratio]{figuras/ui-03-simulacion-replay}
+\caption[Replay de la simulación]{Replay de la simulación. La vista combina la
+rejilla con agentes y recursos, la línea de eventos críticos y los controles de
+reproducción.}
 \label{fig:replay}
-\end{figure}
-\end{landscape}
 
-\clearpage
-\begin{landscape}
-\thispagestyle{plain}
-\begin{figure}[p]
+\vspace{1.2em}
+
 \centering
-\makebox[\linewidth][c]{\includegraphics[width=0.88\paperheight,height=0.68\paperwidth,keepaspectratio]{figuras/ui-04-analisis-charts}}
-\caption{Gráficas comparativas generadas por el Analyst: evolución de la
-energía por agente, distribución de acciones y evolución de los
-\textit{Q-values} por acción.}
+\includegraphics[width=\linewidth,height=0.48\textheight,keepaspectratio]{figuras/ui-04-analisis-charts}
+\caption[Gráficas comparativas del Analyst]{Gráficas comparativas del Analyst.
+Se muestran la energía por agente, la distribución de acciones y la evolución
+de los \textit{Q-values}.}
 \label{fig:analisis-charts}
 \end{figure}
-\end{landscape}
 
 \clearpage
 \section{Salida de detalle de cada agente}
@@ -72,66 +61,62 @@ PDF final (Figura~\ref{fig:reporter}). Por último, la interfaz expone el
 \textit{Knowledge Graph} científico que los agentes consultan
 (Figura~\ref{fig:kg}).
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figuras/ui-02-architect-spec}
-\caption{Architect: tarjeta de especificación del entorno generada a partir de
-la descripción del paradigma (rejilla, acciones y recursos).}
+\caption[Salida del Architect]{Salida del Architect. La tarjeta resume la
+especificación del entorno generada a partir del paradigma: rejilla, acciones y
+recursos.}
 \label{fig:architect}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figuras/ui-05-tracker-trayectorias}
-\caption{Tracker: trayectorias registradas por agente, con pasos sobrevividos,
-recursos consumidos y distribución de acciones.}
+\caption[Salida del Tracker]{Salida del Tracker. La vista recoge las
+trayectorias por agente, los pasos sobrevividos, los recursos consumidos y la
+distribución de acciones.}
 \label{fig:tracker}
 \end{figure}
 
-\clearpage
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{figuras/ui-06-analyst-patrones}
-\caption{Analyst: patrones de comportamiento detectados y comparaciones
-cuantitativas entre los dos modelos.}
+\includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{figuras/ui-06-analyst-patrones}
+\caption[Salida del Analyst]{Salida del Analyst. La tarjeta sintetiza patrones
+de comportamiento y comparaciones cuantitativas entre modelos.}
 \label{fig:patrones}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth]{figuras/ui-07-decision-traces}
-\caption{Trazas de decisión: estado pre/post de cada agente, alternativas
-evaluadas (\textit{Q-values}) y recompensa para un paso concreto.}
+\caption[Trazas de decisión]{Trazas de decisión. Cada fila muestra el estado
+pre/post del agente, las alternativas evaluadas y la recompensa de un paso.}
 \label{fig:traces}
 \end{figure}
 
-\clearpage
-% Panel del pipeline (tira vertical estrecha) y página del informe del Reporter
-% lado a lado, a la misma altura, para llenar la página de forma equilibrada.
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\begin{minipage}[t]{0.30\linewidth}
+\begin{minipage}[t]{0.36\linewidth}
 \centering
-\includegraphics[height=0.62\textheight,keepaspectratio]{figuras/ui-08-pipeline-panel}
-\caption{Panel lateral del pipeline: estado de cada agente, modelos en
-simulación (\textit{lab floor}) y resumen del entorno.}
+\includegraphics[height=0.58\textheight,keepaspectratio]{figuras/ui-08-pipeline-panel}
+\caption[Panel del pipeline]{Panel lateral del pipeline.}
 \label{fig:pipeline}
 \end{minipage}\hfill
-\begin{minipage}[t]{0.66\linewidth}
+\begin{minipage}[t]{0.60\linewidth}
 \centering
-\includegraphics[height=0.62\textheight,keepaspectratio]{figuras/ui-09-reporter-pdf}
-\caption{Reporter: página de ejemplo del informe PDF generado con las gráficas
-del análisis.}
+\includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{figuras/ui-09-reporter-pdf}
+\caption[Informe del Reporter]{Informe del Reporter. Página de ejemplo del PDF
+generado a partir de las gráficas del análisis.}
 \label{fig:reporter}
 \end{minipage}
 \end{figure}
 
-\clearpage
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.82\linewidth]{figuras/ui-11-knowledge-graph}
-\caption{Panel del \textit{Knowledge Graph}: vista científica con conceptos,
-paradigmas, formulaciones, modelos y postulados (32 nodos, 19 aristas) que
-Architect, Analyst y Reporter consultan para contextualizar sus salidas.}
+\includegraphics[width=0.95\linewidth,height=0.68\textheight,keepaspectratio]{figuras/ui-11-knowledge-graph}
+\caption[Panel del Knowledge Graph]{Panel del \textit{Knowledge Graph}. La
+vista relaciona conceptos, paradigmas, formulaciones, modelos y postulados que
+los agentes consultan para contextualizar sus salidas.}
 \label{fig:kg}
 \end{figure}

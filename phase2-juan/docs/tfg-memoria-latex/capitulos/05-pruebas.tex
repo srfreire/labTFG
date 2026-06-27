@@ -38,7 +38,8 @@ resultados representativos del fenómeno estudiado.
 2. Comportamiento (\textit{golden scenarios}) & Que los modelos se comportan como predice la teoría que implementan & Modelos de fase 1, Analyst \\ \hline
 3. Juicio externo y revisión humana & Salidas abiertas; Codex como juez externo y revisión humana como calibración futura & Architect, Analyst, Reporter \\ \hline
 \end{tabular}
-\caption{Marco de evaluación por capas y su correspondencia con los componentes del laboratorio.}
+\caption[Marco de evaluación]{Marco de evaluación. Cada capa se asocia con los
+componentes del laboratorio que valida.}
 \label{tab:eval-capas}
 \end{center}
 \end{table}
@@ -63,7 +64,7 @@ reserva para las salidas genuinamente abiertas.
 
 Las comprobaciones son binarias y no requieren juicio. Se ejecutan sobre seis
 modelos evaluados: los cuatro modelos de la primera fase y los dos
-\textit{baselines}. Sobre ellos se verifican cuatro propiedades del núcleo:
+\textit{baselines}. Sobre ellos se verifican cinco propiedades del núcleo:
 
 \begin{itemize}
 \item \textbf{Contrato observable} (6/6): cada modelo cumple en ejecución el
@@ -77,8 +78,12 @@ byte, lo que sostiene la comparativa multi-modelo.
 $N=N=N$): cada observación se materializa de forma consistente como una fila en
 PostgreSQL, un vector denso y un vector \textit{sparse} en Qdrant, bajo el mismo
 \textit{UUID} (tabla~\ref{tab:joinable}).
+\item \textbf{Consulta segura del historial}: las pruebas de
+\texttt{query\_history} y del validador NL-SQL comprueban que las preguntas
+en lenguaje natural solo generan consultas de lectura sobre tablas
+permitidas, con límite de resultados y rechazo de sentencias fuera de alcance.
 \item \textbf{Suite de regresión} (353/353 en \textit{pytest}, más Playwright y
-compilación \LaTeX): conjunto de regresión que asegura que las capas superiores se
+compilación LaTeX): conjunto de regresión que asegura que las capas superiores se
 apoyan en un sistema estable.
 \end{itemize}
 
@@ -100,9 +105,9 @@ selección de modelos, simulación, análisis y generación del informe. Entre a
 niveles quedan las pruebas del motor, del cargador dinámico de modelos, de la
 persistencia y de la generación de PDF. El desarrollo de cada invariante, los
 detalles de cada comprobación y las tablas completas de resultados se recogen en
-el Apéndice~\ref{ap:capa1}.
+el Apéndice~\ref{ap:capa1}, especialmente en la tabla~\ref{tab:suite}.
 
-\section[Capa 2: comportamiento]{Capa 2: evaluación de comportamiento (\textit{golden scenarios})}
+\section[Capa 2: comportamiento]{Capa 2: evaluación de comportamiento\\(\textit{golden scenarios})}
 
 La capa 1 muestra que el sistema es técnicamente correcto, pero no que los
 modelos hagan lo que la teoría predice. Para cerrar esa brecha se emplea la
@@ -132,7 +137,9 @@ Forrajeo óptimo & Amplitud de dieta (\textit{diet breadth}) & Regla cero-uno: i
 Aprendizaje por refuerzo & Q-learning tabular ($\varepsilon$-greedy) & Curva de aprendizaje: el rendimiento mejora con la experiencia \\ \hline
 Aprendizaje por refuerzo & \textit{Actor-critic} (softmax) & Aprende; el error TD actúa como señal de recompensa-predicción \\ \hline
 \end{tabular}
-\caption{Modelos sujeto de los \textit{golden scenarios} y la predicción falsable que cada uno debe reproducir.}
+\caption[Modelos de los \textit{golden scenarios}]{Modelos de los
+\textit{golden scenarios}. La tabla recoge la predicción falsable que debe
+reproducir cada modelo.}
 \label{tab:modelos-sujeto}
 \end{center}
 \end{table}
@@ -162,7 +169,8 @@ GS-OFT-2 & $\uparrow$ coste de viaje $\Rightarrow$ $\uparrow$ residencia & Tiemp
 GS-OFT-3 & Regla cero-uno de inclusión de dieta & Discontinuidad en la inclusión de presa de baja palatabilidad según abundancia de la buena \\ \hline
 GS-RL-1 & Curva de aprendizaje (RL aprende; OFT es plano) & Recompensa por ventana temporal; \texttt{td\_error}$\rightarrow 0$; \texttt{exploration\_rate} decae \\ \hline
 \end{tabular}
-\caption{\textit{Golden scenarios} y su predicción teórica de verdad conocida.}
+\caption[Escenarios de validación]{Escenarios de validación. Cada escenario
+contrasta una predicción teórica de verdad conocida con una métrica observable.}
 \label{tab:golden-scenarios}
 \end{center}
 \end{table}
@@ -190,22 +198,24 @@ predicción, la métrica observada y el veredicto frente a la verdad teórica.
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{5.0cm}|>{\raggedright\arraybackslash}p{1.3cm}|} \hline
-\textbf{ID} & \textbf{Modelo} & \textbf{Métrica observada} & \textbf{Result.} \\ \hline
-GS-OFT-1 & MVT & Residencia máx.\ 12 pasos, 8 abandonos con reinicio & PASS \\ \hline
-GS-OFT-2 & MVT & Residencia media al partir $2{,}14 \rightarrow 2{,}73$ al subir el coste de viaje & PASS \\ \hline
-GS-OFT-3 & Diet-breadth & Fracción de dieta $\{1\}$: $0{,}65$ (presa buena abundante) vs.\ $0{,}00$ (escasa) & PASS \\ \hline
-GS-RL-1 & Q-learning & Tasa de recompensa $+0{,}46$; $\varepsilon$ decae $0{,}99\rightarrow 0{,}05$ & PASS \\ \hline
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{2.6cm}|>{\raggedright\arraybackslash}p{4.8cm}|>{\raggedright\arraybackslash}p{1.6cm}|} \hline
+\textbf{ID} & \textbf{Modelo} & \textbf{Métrica observada} & \textbf{Estado} \\ \hline
+GS-OFT-1 & MVT & Residencia máx.\ 12 pasos, 8 abandonos con reinicio & PASA \\ \hline
+GS-OFT-2 & MVT & Residencia media al partir $2{,}14 \rightarrow 2{,}73$ al subir el coste de viaje & PASA \\ \hline
+GS-OFT-3 & Diet-breadth & Fracción de dieta $\{1\}$: $0{,}65$ (presa buena abundante) vs.\ $0{,}00$ (escasa) & PASA \\ \hline
+GS-RL-1 & Q-learning & Tasa de recompensa $+0{,}46$; $\varepsilon$ decae $0{,}99\rightarrow 0{,}05$ & PASA \\ \hline
 GS-RL-1 & Actor-critic & Tasa de recompensa $+0{,}01$; $\beta$ asciende $3\rightarrow 15$ & FALLA \\ \hline
-GS-RL-1 & MVT (control) & Tasa de recompensa $+0{,}00$ (plano) & PASS \\ \hline
-GS-RL-1 & Diet-breadth (control) & Tasa de recompensa $-0{,}01$ (plano) & PASS \\ \hline
+GS-RL-1 & MVT (control) & Tasa de recompensa $+0{,}00$ (plano) & PASA \\ \hline
+GS-RL-1 & Diet-breadth (control) & Tasa de recompensa $-0{,}01$ (plano) & PASA \\ \hline
 \end{tabular}
-\caption{Resultados de los \textit{golden scenarios}: verdad teórica conocida frente al comportamiento medido en simulación (PASS/FALLA por predicción). Seis de las siete predicciones se reproducen.}
+\caption[Resultados de los \textit{golden scenarios}]{Resultados de los
+\textit{golden scenarios}. Se comparan las predicciones teóricas con el
+comportamiento medido en simulación; seis de las siete se reproducen.}
 \label{tab:gs-resultados}
 \end{center}
 \end{table}
 
-Las cuatro predicciones del forrajeo óptimo se reproducen. El modelo del teorema
+Las predicciones del forrajeo óptimo se reproducen. El modelo del teorema
 del valor marginal explota cada parche y lo abandona cuando su tasa marginal
 decae (GS-OFT-1); permanece más tiempo cuando encarece el viaje, que es la
 estática comparativa central de Charnov~\cite{charnov1976mvt} (GS-OFT-2); y el
@@ -304,92 +314,21 @@ Las salidas del Architect, el Analyst y el Reporter son abiertas: no hay una
 Codex como juez externo y una revisión humana, que queda como patrón oro para
 calibrar ese juez en trabajo futuro.
 
-\subsection{\textit{LLM-as-a-judge}}
+En esta memoria se adopta una versión acotada de esa capa. Codex se usa como
+juez externo para revisar salidas abiertas mediante rúbricas separadas por
+dimensión, pero no se presenta como sustituto de la revisión humana. La
+calibración completa exigiría un corpus de salidas etiquetadas por el tutor y el
+grupo de investigación, y queda fuera del alcance de esta entrega.
 
-El uso de un modelo de lenguaje como juez está respaldado por resultados
-experimentales: jueces fuertes alcanzan más de un 80\,\% de acuerdo con las
-preferencias humanas, al mismo nivel que el acuerdo entre
-humanos~\cite{zheng2023judge}. Ahora bien, ese acuerdo es específico de cada
-tarea y dominio, y los jueces presentan una
-taxonomía de sesgos bien documentada, posición, verbosidad,
-\textit{self-enhancement}, entre otros, que amenaza su
-validez~\cite{calm2024biases}. Para mitigarlos se adoptan tres prácticas: usar
-\textbf{un juez aislado por dimensión} evaluada en lugar de uno único para todo,
-\textbf{usar un juez externo de otra familia de modelos} para reducir el sesgo de
-autoevaluación, y \textbf{anclar el juicio en rúbricas estructuradas}
-explícitas. En esta memoria, ese papel de juez externo lo ocupa Codex, mientras
-que los agentes de la aplicación se ejecutan con los modelos configurados en el
-laboratorio.
-
-\subsection{Meta-evaluación: acuerdo juez--humano}
-
-La fiabilidad del propio juez se mide contrastando sus veredictos con los
-humanos, considerados el patrón oro. Según el tipo de dato, pueden usarse
-métricas como exactitud, $\kappa$ de Cohen o $\rho$ de Spearman~\cite{li2024judges}.
-Solo cuando ese acuerdo es suficientemente alto tendría sentido reducir la
-proporción de revisión humana.
-
-En el alcance de esta memoria se usa una versión intermedia: Codex actúa como
-juez externo para revisar salidas abiertas con rúbricas separadas por dimensión,
-pero no se presenta como patrón oro humano. La meta-evaluación completa exige un
-corpus de salidas etiquetadas por el tutor y el grupo de investigación, y
-constituye en sí misma una contribución de calibración independiente. Esa parte
-se delimita como trabajo futuro (véanse las limitaciones). Así, la memoria cubre
-las capas 1 y 2 de forma completa y deja la capa 3 operativa en su parte
-automatizable: evaluación con juez externo, atribución del Analyst contra verdad
-conocida y fidelidad factual del Reporter.
-
-\subsection{Fidelidad del Reporter}
-
-El Reporter genera informes en PDF a partir de los datos de la simulación y del
-análisis. El riesgo específico es la \emph{alucinación}: que el informe afirme
-números o hechos que no se corresponden con los datos. Para acotarlo se mide la
-\textbf{consistencia factual} del informe frente a su fuente, con técnicas de
-verificación basadas en preguntas y respuestas: las preguntas hechas sobre el
-informe y sobre los datos deben producir la misma
-respuesta~\cite{wang2020qags}, o de inferencia textual a nivel de
-afirmación~\cite{laban2022summac}. La idea se generaliza al resto de salidas
-abiertas: Codex, como juez externo, formula preguntas de comprobación a partir de
-los datos de la simulación y de la rúbrica; las respuestas o afirmaciones de los
-agentes de la aplicación se contrastan después contra esos datos. Así el juicio
-no se basa en si el texto ``suena bien'', sino en si responde correctamente a
-preguntas que tienen apoyo en la ejecución.
-
-Esta comprobación está implementada en \texttt{benchmark/faithfulness.py} como
-una verificación de consistencia numérica al estilo QAGS~\cite{wang2020qags}, de
-código puro y sin modelo de lenguaje. A partir de la simulación se derivan las
-magnitudes clave: comida consumida, número de pasos, recompensa total y, cuando
-el modelo la expone, energía final. Cada una se trata como una pregunta cuya
-respuesta, calculada sobre los datos de origen, debe coincidir con la que da el
-informe. Una magnitud queda marcada como \textit{fiel} si el informe la menciona
-con el valor correcto, \textit{alucinada} si la menciona con otro valor, y
-\textit{ausente} si no aparece.
-
-Para validar la propia comprobación se contrastó, sobre una simulación
-determinista, un informe fiel frente a uno adversario con errores plantados. El
-informe fiel obtiene una puntuación de fidelidad de $1{,}00$; el adversario baja
-a $0{,}33$ y el verificador señala exactamente las dos magnitudes alteradas
-(comida consumida y recompensa total), dejando intacta la que sí coincidía
-(número de pasos). La comprobación forma parte de la batería de pruebas
-automatizada y puede aplicarse también a la salida real del Reporter.
-
-Además de la fidelidad del contenido, se comprueba una propiedad funcional
-sencilla: que el PDF entregado sea el informe real compilado con
-\texttt{tectonic} y no el documento de respaldo que se genera si falla \LaTeX.
-No es la parte central de la evaluación, pero evita contar como éxito un informe
-que en realidad solo contiene una salida degradada.
-
-\subsection{Revisión experta}
-
-La revisión humana se plantea como continuación natural de la evaluación.
-El criterio decisivo no es solo cuantitativo: importa si el tutor y el grupo de
-investigación consideran que la herramienta reduce fricción para explorar
-paradigmas nuevos. Para que esa revisión sea posible, cada ejecución debe
-dejar evidencia auditable: configuración del entorno, modelos usados,
-\textit{replay} de la simulación, eventos críticos, salida del Tracker, análisis
-del Analyst e informe del Reporter. Esta memoria deja preparado ese formato de
-evidencia; la recogida sistemática de comentarios expertos se considera trabajo
-futuro.
+La parte ejecutable de la capa 3 se concentra en la fidelidad factual del
+Reporter. El verificador \texttt{benchmark/faithfulness.py} compara el informe
+PDF con los datos de origen y comprueba magnitudes como comida consumida, pasos,
+recompensa total y energía final. En una prueba controlada, un informe fiel
+obtiene fidelidad $1{,}00$ y un informe adversario con errores plantados baja a
+$0{,}33$, señalando las magnitudes alteradas. También se comprueba que el PDF
+entregado sea el informe real compilado con \texttt{tectonic}, no el documento de
+respaldo usado si falla la compilación. El detalle metodológico de esta capa se
+recoge en el Apéndice~\ref{ap:capa3}.
 
 \section[Escenario end-to-end]{Escenario principal \textit{end-to-end}}
 
@@ -407,44 +346,25 @@ de recursos y cómo evoluciona su estado interno.
 La ejecución recorre el pipeline completo:
 
 \begin{enumerate}
-\item el Orchestrator inicia la sesión y lista los modelos disponibles;
-\item el Architect entrega una especificación de entorno coherente con el
+\item El Orchestrator inicia la sesión y lista los modelos disponibles;
+\item El Architect entrega una especificación de entorno coherente con el
 paradigma de forrajeo;
-\item el motor de simulación ejecuta los modelos y publica eventos en vivo;
-\item el Tracker produce trayectorias y episodios relevantes;
-\item el Analyst resume patrones, trazas de decisión y gráficas de energía,
+\item El motor de simulación ejecuta los modelos y publica eventos en vivo;
+\item El Tracker produce trayectorias y episodios relevantes;
+\item El Analyst resume patrones, trazas de decisión y gráficas de energía,
 acciones y valores internos;
-\item el Reporter genera un informe PDF descargable para la ejecución.
+\item El Reporter genera un informe PDF descargable para la ejecución.
 \end{enumerate}
 
 \subsection{Criterios de evaluación}
 
-Para que el escenario se considere satisfactorio, la ejecución debe cumplir
-cinco criterios.
-
-\begin{enumerate}
-\item \textbf{Continuidad del flujo.} El usuario debe poder pasar de una
-petición conversacional a una simulación observable, después a un análisis y
-finalmente a un informe descargable, sin cambiar de herramienta.
-\item \textbf{Integración con la primera fase.} Los modelos generados por el
-Builder deben cargarse dinámicamente y ejecutarse mediante el contrato común
-\texttt{decide}, \texttt{update} y \texttt{get\_state}, sin adaptadores
-específicos para cada modelo.
-\item \textbf{Observabilidad de la simulación.} La interfaz debe mostrar el
-estado del episodio, los eventos emitidos por el backend, las trayectorias de
-los agentes y las variables internas relevantes.
-\item \textbf{Utilidad del análisis.} La salida del Analyst debe ayudar a
-entender diferencias entre modelos, no solo repetir datos de la simulación. En
-particular, debe señalar patrones de comportamiento, episodios críticos y
-relaciones entre acciones, recompensas y estado interno.
-\item \textbf{Trazabilidad del resultado.} El informe generado debe recoger el
-contexto de la simulación, los resultados principales y la interpretación del
-análisis de forma revisable.
-\end{enumerate}
-
-Estos cinco criterios cierran el recorrido iniciado en requisitos y cubren, en
-conjunto, los requisitos funcionales y no funcionales según la trazabilidad ya
-recogida en la tabla de objetivos del capítulo de especificación.
+Para que el escenario se considere satisfactorio, la ejecución debe cubrir cinco
+criterios: continuidad del flujo conversacional hasta el informe descargable,
+carga dinámica de modelos de la primera fase mediante el contrato común,
+observabilidad de la simulación en la interfaz, utilidad del análisis para
+comparar modelos y trazabilidad del resultado final. En conjunto, estos criterios
+cierran el recorrido iniciado en requisitos y cubren los requisitos funcionales y
+no funcionales según la trazabilidad recogida en el capítulo de especificación.
 
 \subsection{Métricas de una ejecución real}
 
@@ -466,7 +386,9 @@ Coste estimado & $\approx 1{,}33$ \$ \\ \hline
 Observaciones persistidas & $6$ escritas; tripleta \textit{joinable} $6 = 6 = 6$ (PostgreSQL $=$ denso $=$ \textit{sparse}) \\ \hline
 Informe del Reporter & PDF real de \texttt{tectonic} (no el de respaldo) \\ \hline
 \end{tabular}
-\caption{Métricas de una ejecución \textit{end-to-end} real (Architect $\rightarrow$ simulación $\rightarrow$ Tracker $\rightarrow$ Knowledge Backbone $\rightarrow$ Analyst $\rightarrow$ Reporter).}
+\caption[Métricas de ejecución \textit{end-to-end}]{Métricas de ejecución
+\textit{end-to-end}. La medición cubre el recorrido completo desde Architect
+hasta el informe final del Reporter.}
 \label{tab:e2e}
 \end{center}
 \end{table}
@@ -484,6 +406,7 @@ respuestas deterministas, de forma que la demostración no dependa de la latenci
 ni de la disponibilidad de proveedores de modelos de lenguaje.
 
 \section{Limitaciones de la evaluación}
+
 La suite y los escenarios descritos validan propiedades técnicas y de
 comportamiento, pero conviene delimitar su alcance.
 

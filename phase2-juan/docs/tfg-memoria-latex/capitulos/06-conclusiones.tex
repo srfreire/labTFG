@@ -20,7 +20,9 @@ partida es ese modelo ya construido y el objetivo es convertir su ejecución en
 una evidencia revisable: una trayectoria, un conjunto de métricas, una
 interpretación y una memoria que pueda recuperarse después. Esa continuidad
 permite que el proyecto no termine en la generación de código, sino en un ciclo
-de experimentación sobre los modelos generados.
+de experimentación sobre los modelos generados. En otras palabras, la primera
+fase valida la construcción del modelo; esta segunda fase valida que ese modelo
+pueda observarse, compararse y discutirse a partir de su comportamiento.
 
 \section{Conclusiones técnicas}
 
@@ -79,8 +81,8 @@ continuos, escenarios multi-agente o tareas no espaciales, que exigirían
 extenderlo y revisar qué métricas son comparables. Y la escritura de
 conocimiento desde la segunda fase es aún conservadora: las observaciones se
 indexan en el \textit{namespace} \texttt{simulation} para poder recuperarlas
-después, pero no siempre se convierten en nodos del grafo. La decisión es
-deliberada: antes de añadir nuevas relaciones al backbone conviene tener claro
+después, pero no se materializan como nodos del grafo. La decisión es
+deliberada: antes de añadir nodos y relaciones al backbone conviene tener claro
 cuáles serán estables y útiles. A cambio, por ahora no se pueden hacer
 consultas encadenadas complejas sobre resultados de simulación, como seguir
 desde un paradigma hasta una formulación, de ahí a un modelo concreto y después
@@ -132,7 +134,7 @@ contra el criterio del tutor y del grupo de investigación.
 \section{Una reflexión final}
 
 Si la implementación deja de ser la actividad dominante, aparece una
-pregunta bastante directa: ¿qué hacemos con ese margen recuperado? La
+pregunta bastante directa: ?`qué hacemos con ese margen recuperado? La
 respuesta más interesante no es hacer lo mismo más deprisa, sino abordar
 sistemas que antes habrían sido poco realistas para un único autor en el
 plazo de un trabajo de grado. Este propio TFG (un pipeline de cinco

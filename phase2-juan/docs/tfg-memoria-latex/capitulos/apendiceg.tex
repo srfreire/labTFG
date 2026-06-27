@@ -1,0 +1,99 @@
+\chapter{Catálogo de \textit{tool calls}}
+\label{ap:toolcalls}
+
+Este apéndice resume las herramientas que los agentes pueden invocar durante
+una sesión. No recoge el esquema JSON completo de cada llamada, sino su papel en
+el flujo: qué agente la usa, qué decisión habilita y qué tipo de salida devuelve
+al modelo. La lista ayuda a separar dos responsabilidades: el LLM decide cuándo
+necesita una operación, pero la operación real la ejecuta código del backend.
+
+\section{Herramientas del Orchestrator}
+
+\begin{table}[H]
+\begin{center}
+{\scriptsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.04}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.1cm}|} \hline
+\textbf{Tool call} & \textbf{Propósito} & \textbf{Salida principal} \\ \hline
+\texttt{list\_available\_models} & Consultar el catálogo de modelos registrados por la primera fase y presentarlos al usuario antes de simular. & Lista de modelos con identificador, clase, paradigma, formulación y metadatos. \\ \hline
+\texttt{read\_predictions} & Recuperar predicciones científicas de la primera fase para el paradigma o modelo seleccionado. & Texto de predicciones usado como expectativa previa al análisis. \\ \hline
+\texttt{create\_environment} & Pedir al Architect una especificación ejecutable del entorno a partir de la descripción del usuario. & JSON de entorno validado o error de validación. \\ \hline
+\texttt{run\_simulation} & Ejecutar uno o varios modelos en el mismo entorno, con semilla y número de pasos definidos. & Resumen de ejecución, replay, identificadores de agentes y eventos generados. \\ \hline
+\texttt{observe\_simulation} & Pedir al Tracker una observación estructurada de la ejecución. & Resumen compacto del JSON del Tracker. \\ \hline
+\texttt{analyze\_results} & Pedir al Analyst interpretación, comparación y visualizaciones de los resultados. & Resumen de patrones, comparaciones y gráficas generadas. \\ \hline
+\texttt{generate\_report} & Pedir al Reporter un informe PDF a partir del análisis y los artefactos disponibles. & Texto del Reporter y clave del PDF generado cuando la compilación tiene éxito. \\ \hline
+\texttt{get\_report\_links} & Recuperar enlaces de descarga de informes ya generados en la sesión actual. & Lista de URLs REST de descarga. \\ \hline
+\end{tabular}
+}
+\caption[Herramientas de ejecución del Orchestrator]{Herramientas de ejecución
+del Orchestrator.}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+{\scriptsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.04}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.1cm}|} \hline
+\textbf{Tool call} & \textbf{Propósito} & \textbf{Salida principal} \\ \hline
+\texttt{get\_tracker\_detail} & Consultar partes concretas de la última salida del Tracker sin reinyectar todo el JSON. & Episodios, trayectorias o eventos críticos filtrados. \\ \hline
+\texttt{get\_analyst\_detail} & Consultar partes concretas de la última salida del Analyst. & Patrones o comparaciones filtradas. \\ \hline
+\texttt{get\_\allowbreak simulation\_\allowbreak step\_\allowbreak window} & Inspeccionar los eventos alrededor de un paso concreto de la simulación activa. & Ventana compacta o completa de eventos por paso y agente. \\ \hline
+\texttt{list\_experiments} & Mostrar experimentos anteriores registrados en PostgreSQL. & Lista de experimentos con estado, descripción, modelos y fecha. \\ \hline
+\texttt{query\_experiments} & Resolver preguntas históricas más ricas mediante NL-SQL y, cuando procede, recuperación de artefactos. & Respuesta sintetizada a partir de filas SQL y datos de MinIO. \\ \hline
+\texttt{query\_history} & Resolver preguntas operativas sobre historial mediante SQL de solo lectura. & Tabla en \textit{markdown} con resultados acotados. \\ \hline
+\texttt{retrieve\_context} & Recuperar conocimiento del backbone para preguntas conversacionales o apoyo a otros agentes. & Fragmentos relevantes de paradigmas, formulaciones, modelos o simulaciones. \\ \hline
+\end{tabular}
+}
+\caption[Herramientas de inspección del Orchestrator]{Herramientas de
+inspección y recuperación del Orchestrator.}
+\end{center}
+\end{table}
+
+\section{Herramientas de agentes especializados}
+
+\begin{table}[H]
+\begin{center}
+{\scriptsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.04}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.9cm}|} \hline
+\textbf{Agente} & \textbf{Tool call} & \textbf{Uso dentro del agente} \\ \hline
+Architect & \texttt{validate\_spec} & Valida el JSON de entorno antes de devolverlo al Orchestrator. Evita que una especificación malformada llegue al motor de simulación. \\ \hline
+Tracker & \texttt{get\_simulation\_events} & Obtiene la traza completa o resumida de eventos de la simulación. \\ \hline
+Tracker & \texttt{get\_agent\_trajectory} & Consulta la trayectoria de un agente concreto, con modo compacto o completo. \\ \hline
+Tracker & \texttt{get\_agent\_state} & Recupera el estado interno de un agente en un paso determinado. \\ \hline
+Tracker & \texttt{get\_event\_window} & Lee una ventana alrededor de un paso para explicar episodios locales. \\ \hline
+Tracker & \texttt{list\_critical\_events} & Enumera eventos críticos detectados por reglas deterministas. \\ \hline
+Tracker & \texttt{get\_decision\_trace} & Inspecciona percepción, acción, recompensa y estado antes/después de una decisión. \\ \hline
+Tracker & \texttt{compare\_\allowbreak decision\_\allowbreak traces} & Compara trazas de decisión de varios agentes o pasos. \\ \hline
+\end{tabular}
+}
+\caption[Herramientas del Architect y Tracker]{Herramientas del Architect y del
+Tracker.}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+{\scriptsize
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.04}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.9cm}|} \hline
+\textbf{Agente} & \textbf{Tool call} & \textbf{Uso dentro del agente} \\ \hline
+Analyst & Herramientas del Tracker & Reutiliza las herramientas de simulación para comprobar episodios, trayectorias y trazas antes de formular conclusiones. \\ \hline
+Analyst & \texttt{list\_past\_experiments} & Localiza experimentos previos cuando el usuario pide comparación histórica. \\ \hline
+Analyst & \texttt{get\_\allowbreak experiment\_\allowbreak analysis} & Recupera salidas previas del Tracker y Analyst desde los artefactos almacenados. \\ \hline
+Analyst & \texttt{create\_chart} & Genera gráficas de recompensa, acciones, estados internos o \textit{Q-values}. \\ \hline
+Analyst & \texttt{list\_state\_keys} & Enumera variables internas disponibles antes de pedir gráficas de estado. \\ \hline
+Analyst & \texttt{retrieve\_context} & Amplía el contexto científico cuando el conocimiento pre-recuperado no basta para interpretar un patrón. \\ \hline
+Reporter & \texttt{read\_research} & Lee documentos de investigación de la primera fase cuando necesita contexto textual adicional. \\ \hline
+Reporter & \texttt{compile\_report} & Compila el cuerpo LaTeX del informe en un PDF persistido como artefacto. \\ \hline
+\end{tabular}
+}
+\caption[Herramientas del Analyst y Reporter]{Herramientas del Analyst y del
+Reporter.}
+\end{center}
+\end{table}
