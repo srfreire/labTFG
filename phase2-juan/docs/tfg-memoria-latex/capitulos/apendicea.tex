@@ -28,8 +28,10 @@ docker-compose.yml      PostgreSQL, MinIO, Neo4j y Qdrant
 
 La ejecución completa requiere PostgreSQL, MinIO, Neo4j y Qdrant. El
 acceso a modelos de lenguaje se realiza mediante OpenRouter. Voyage AI y
-ZeroEntropy son opcionales: si no están configurados, el sistema puede
-ejecutarse, pero la recuperación del Knowledge Backbone pierde calidad.
+ZeroEntropy son opcionales para el flujo principal: si no están configurados,
+el sistema sigue ejecutándose, pero la capa semántica no participa. En ese
+modo no hay recuperación semántica, \textit{reranking} ni escritura indexada
+de memorias de simulación en Qdrant.
 
 \section{Configuración}
 
@@ -99,7 +101,7 @@ primera fase e informes PDF de esta fase. Qdrant almacena las memorias densas
 y \textit{sparse}; Neo4j mantiene el grafo de paradigmas, formulaciones,
 modelos y procedencia científica cuando esos datos existen.
 
-La conversación no se trata como mero estado de interfaz. Los mensajes se
+La conversación no se trata como un simple estado de interfaz. Los mensajes se
 persisten para auditoría y para que el Orchestrator pueda compactar el
 historial sin perder las decisiones tomadas. La autocompactación sustituye
 turnos antiguos por un resumen determinista cuando el contexto crece demasiado.

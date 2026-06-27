@@ -13,8 +13,8 @@ cd phase2-juan/frontend && npm run dev
 
 La interfaz queda disponible en \texttt{http://localhost:5173}. También
 puede usarse la CLI con \texttt{uv run simlab}. La clave obligatoria es
-\texttt{OPENROUTER\_API\_KEY}; las de Voyage AI y ZeroEntropy solo afectan
-a la calidad de recuperación del Knowledge Backbone.
+\texttt{OPENROUTER\_API\_KEY}; las de Voyage AI y ZeroEntropy activan la capa
+semántica del Knowledge Backbone. Si faltan, esa capa no participa.
 
 \section{Uso general}
 
@@ -29,9 +29,9 @@ Al terminar, el Tracker resume las trayectorias, el Analyst interpreta los
 patrones observados y el Reporter genera un informe PDF descargable. La
 sesión queda registrada para consulta posterior.
 
-En cualquier momento del proceso se puede iterar, pedir recomendaciones al
-Orchestrator o volver a pasos anteriores. El Orchestrator se encarga de
-guiar la conversación y de mantener la continuidad de la sesión.
+Durante el proceso se puede iterar, pedir recomendaciones al Orchestrator o
+volver a pasos anteriores. El Orchestrator guía la conversación y mantiene la
+continuidad de la sesión.
 
 \section{Interpretación de la interfaz}
 
@@ -79,8 +79,9 @@ Si no aparece ningún modelo disponible, conviene comprobar que la primera fase
 ha registrado modelos aceptados en PostgreSQL y que los archivos asociados
 existen en MinIO. Si el informe no se descarga, el problema suele estar en la
 compilación LaTeX o en la ruta del artefacto persistido. Si el análisis parece
-demasiado pobre, puede deberse a que Voyage AI o ZeroEntropy no estén
-configurados y la recuperación del Knowledge Backbone se haya degradado.
+demasiado pobre o no aparecen memorias de simulación indexadas, puede deberse
+a que Voyage AI o ZeroEntropy no estén configurados. En ese caso la capa
+semántica del Knowledge Backbone no participa.
 
 \section{Términos básicos}
 

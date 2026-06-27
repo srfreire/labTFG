@@ -1,10 +1,10 @@
 \chapter{Detalle de la batería de pruebas (Capa 1)}
 \label{ap:capa1}
 
-Este apéndice desarrolla las comprobaciones de la primera capa de evaluación
----el núcleo determinista--- resumidas en el capítulo de pruebas. Son
+Este apéndice desarrolla las comprobaciones de la primera capa de evaluación, el núcleo determinista, resumidas en el capítulo de pruebas. Son
 comprobaciones objetivas, binarias y reproducibles, ejecutadas sobre los seis
-agentes: los cuatro modelos de la primera fase y los dos \textit{baselines}.
+modelos evaluados: los cuatro modelos de la primera fase y los dos
+\textit{baselines}.
 
 \section{Contrato observable de los modelos}
 
@@ -27,7 +27,7 @@ de acción y confianza relativa de forma uniforme para cualquier modelo.
 Esta comprobación es binaria y no requiere juicio. Corresponde a las reglas
 mínimas de sanidad previas a cualquier ajuste de modelo de
 comportamiento~\cite{wilson2019tenrules}, trasladadas al contrato de ejecución
-del laboratorio. Ejecutada sobre los seis agentes, \textbf{los seis superan el
+del laboratorio. Ejecutada sobre los seis modelos, \textbf{los seis superan el
 contrato} (6/6): en todos, invocar \texttt{decide} dos veces sobre la misma
 percepción deja el estado inalterado y \texttt{get\_state} expone
 \texttt{q\_values}.
@@ -39,11 +39,10 @@ semilla y la misma configuración, dos simulaciones producen eventos idénticos.
 La parte determinista del sistema es el motor; la variabilidad de los modelos
 de lenguaje se discute en las limitaciones. Esta propiedad se verifica de forma
 automática comparando dos ejecuciones byte a byte sobre la secuencia de eventos
-emitidos. Comprobada sobre los seis agentes (cada uno cargado e instanciado dos
+emitidos. Comprobada sobre los seis modelos (cada uno cargado e instanciado dos
 veces con la misma semilla), \textbf{las dos ejecuciones producen flujos de
-acciones idénticos en los seis casos} (6/6): la reproducibilidad del motor
----incluida la siembra del generador aleatorio de los modelos por el cargador
-dinámico--- queda garantizada.
+acciones idénticos en los seis casos} (6/6): la reproducibilidad del motor, incluida la siembra del generador aleatorio de los modelos por el cargador
+dinámico, queda garantizada.
 
 \section{Fidelidad de la persistencia: la tripleta \textit{joinable}}
 
@@ -76,7 +75,7 @@ almacenes desincronizado.
 
 \section{Suite de regresión}
 
-La suite automática se usa como red de regresión para asegurar que la
+La suite automática se usa como conjunto de regresión para asegurar que la
 evaluación de las capas superiores se apoya en un sistema estable. Combina
 \texttt{uv run pytest} para dominio, agentes, Orchestrator, persistencia,
 recuperación y carga de modelos; Playwright para la sesión completa del cliente
@@ -95,7 +94,7 @@ Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la mis
 E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
 E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
 \end{tabular}
-\caption{Resultado de la ejecución de la suite automatizada (red de regresión de la capa 1).}
+\caption{Resultado de la ejecución de la suite automatizada (conjunto de regresión de la capa 1).}
 \label{tab:suite}
 \end{center}
 \end{table}

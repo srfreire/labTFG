@@ -9,13 +9,12 @@ especificación, la revisión y la verificación. La sección que sigue
 desarrolla esta idea; el resto del capítulo describe el bucle de trabajo
 resultante y cómo apareció en esta segunda fase del proyecto.
 
-Para separar el producto final de la metodología de desarrollo, el capítulo
-se organiza en dos niveles. Primero se explica el bucle de trabajo con
-agentes y el reparto de responsabilidades. Después se reconstruyen los hitos
-del sistema, desde el núcleo de simulación hasta la persistencia compartida,
-la lectura del Knowledge Backbone y el despliegue. Así, la metodología no
-sustituye a la explicación del avance técnico, sino que ayuda a entender por
-qué el sistema evolucionó mediante iteraciones cortas y verificables.
+El capítulo se mueve en dos planos. Primero, el bucle de trabajo con agentes
+y el reparto de responsabilidades entre persona y modelo. Luego, la historia
+concreta del sistema: cómo fue creciendo por iteraciones cortas, del núcleo de
+simulación a la persistencia compartida y la lectura del Knowledge Backbone.
+Contar la metodología no sustituye al relato del avance técnico; explica por
+qué el sistema acabó tomando la forma que tomó.
 
 \section{El problema con el ciclo clásico}
 
@@ -32,10 +31,10 @@ principales, esa premisa queda cuestionada. En tareas generales de
 programación, escribir una función concreta o un módulo completo a
 partir de una especificación clara deja de ser la parte costosa del
 trabajo. La evidencia empírica de este desplazamiento (los
-experimentos de Peng et al.\ con GitHub Copilot \cite{peng2023impact} y
-los ensayos aleatorizados a gran escala de Cui et al.\
-\cite{cui2025effects}) se discutió en el capítulo de estado del arte
-y no se repite aquí.
+ensayos aleatorizados a gran escala de Cui et al.~\cite{cui2025effects})
+sirve aquí solo como contexto: el argumento de este capítulo no depende de
+esas cifras, sino de cómo cambió en la práctica el ciclo de trabajo del
+proyecto.
 
 El peso se desplaza, en consecuencia, hacia tres actividades que antes
 estaban distribuidas o asumidas: enunciar bien la especificación,
@@ -46,8 +45,8 @@ cerrada y se convierte en un bucle corto con cuatro pasos
 al día. En la práctica, especificar deja de ser
 \emph{escribir un párrafo de requisitos} y pasa a ser \emph{redactar un
 plan de implementación}: lo bastante rico como para que el agente
-pueda ejecutarlo sin tener que interpretar el contrato cada pocos
-pasos.
+pueda ejecutarlo sin inventarse pasos intermedios ni convertir
+ambigüedades en decisiones propias.
 
 \section{El nuevo bucle de desarrollo}
 
@@ -55,22 +54,23 @@ El bucle adoptado durante esta fase fue este:
 
 \begin{enumerate}
 \item \textbf{Especificar.} Cada tarea no trivial empezó con una
-\textit{spec} en Markdown que, más que un documento de requisitos, era
-un plan de implementación por fases. Cada fase declaraba qué
-pruebas debían pasar al final, qué archivos se tocaban y qué
-invariantes debían preservarse. El objetivo era doble: que el agente
-pudiera ejecutar fase por fase de forma incremental y segura, y que el
-revisor humano dispusiera de un contrato \textit{ejecutable mentalmente}
-sobre el que comparar el resultado.
+\textit{issue} de Linear suficientemente concreta: descripción funcional,
+criterios de aceptación, dependencias, prioridad, posible solapamiento con
+otras tareas y si podía ejecutarse en paralelo. Cuando la tarea lo requería,
+ese mismo hilo incluía el plan técnico por fases, las pruebas esperadas y las
+invariantes que no debían romperse. El objetivo era doble: que el agente
+pudiera ejecutar una tarea cerrada sin ampliar el alcance por su cuenta, y
+que el revisor humano dispusiera de un contrato \textit{ejecutable
+mentalmente} sobre el que comparar el resultado.
 \item \textbf{Ejecutar.} El agente se encarga de la implementación, las
 pruebas asociadas y la mayor parte de la depuración local. En tareas
 independientes, varios subagentes trabajan en paralelo sobre
 \textit{worktrees} de Git separados, de modo que cada uno ve su propia
 rama y su propio \textit{working tree} y no hay riesgo de que se pisen
 entre sí al modificar los mismos ficheros. En tareas con estado
-compartido se ejecuta de forma secuencial. Esta ejecución autónoma por
-oleadas se apoyó en una orquestación compartida entre ambas fases del
-proyecto, descrita con más detalle en la memoria de la primera fase.
+compartido se ejecuta de forma secuencial. La decisión de qué lanzar en
+paralelo salía de la planificación registrada en Linear, no de una
+interpretación improvisada durante la ejecución.
 \item \textbf{Revisar.} Antes de fusionar, el código pasa por una
 revisión combinada: una lectura humana enfocada en alcance y diseño, y
 una segunda pasada por subagentes especializados de revisión
@@ -78,8 +78,9 @@ una segunda pasada por subagentes especializados de revisión
 \texttt{silent-failure-hunter}) configurados para reportar solo hallazgos
 con confianza alta.
 \item \textbf{Ajustar.} Los hallazgos confirmados se convierten en una
-nueva iteración, normalmente con su propia \textit{spec} reducida. Las
-correcciones triviales se aplican en línea. Para los errores
+nueva iteración, normalmente actualizando la misma tarea o creando un
+\textit{follow-up} en Linear. Las correcciones triviales se aplican en
+línea. Para los errores
 funcionales se sigue el ciclo de TDD: primero se replica el fallo con
 una prueba que efectivamente falla en el estado actual, después se
 implementa el ajuste mínimo que la hace pasar y, por último, se vuelve
@@ -89,9 +90,9 @@ a ejecutar la suite completa para comprobar que el resto sigue verde.
 Este bucle, repetido decenas de veces, sustituye al cronograma rígido
 del ciclo clásico. La planificación de alto nivel sigue existiendo
 (las tareas y las fases se gestionaron en Linear, con sus criterios de
-aceptación, y el detalle de cada cambio se concretaba en archivos
-\texttt{spec.md} versionados en el propio repositorio) pero deja de
-gobernar el día a día.
+aceptación, dependencias y prioridades) pero deja de gobernar el día a
+día. Su función principal pasa a ser mantener explícito qué está decidido,
+qué puede ejecutarse en paralelo y qué debe volver a revisión humana.
 
 \section{Reparto de responsabilidades}
 
@@ -107,8 +108,8 @@ estabilizó por completo antes de delegar nada. El diseño visual del
 \textit{dashboard} también se mantuvo en el lado humano: la paleta, el
 modo oscuro, la rejilla de tarjetas, la composición del panel de
 agentes y la disposición del \textit{replay} se prototiparon en Figma
-antes de empezar a programarlos. El agente intervino después,
-traduciendo el diseño aprobado a componentes React y a clases de
+antes de empezar a programarlos. El agente intervino después traduciendo
+ese diseño aprobado a componentes React y a clases de
 Tailwind, en un ciclo iterativo en el que primero se cerraban unos
 pocos componentes base y luego se construían pantallas reutilizándolos.
 
@@ -163,13 +164,9 @@ sensible a la coherencia visual y al detalle de la interfaz. La división no
 fue dogmática (cualquiera de los dos podía cubrir el otro lado), sino una
 asignación práctica por afinidad de cada modelo con el tipo de tarea y con su
 ritmo de validación: en backend pesaba respetar contratos y dejar las pruebas
-en verde; en \textit{frontend}, iterar sobre la apariencia y la ergonomía.
-Esta intuición es coherente con la señal de evaluaciones públicas, que separan
-capacidades de programación y razonamiento de los rankings específicos de
-desarrollo web \cite{artificialanalysis2026index,lmarena2026webdev}; no se
-tomaron como verdad absoluta, porque cambian con rapidez y dependen del
-\textit{benchmark}, pero sí como indicio de que la elección de modelo conviene
-ligarla al tipo de tarea.
+en verde; en \textit{frontend}, iterar sobre la apariencia y la ergonomía. La
+elección se apoyó sobre todo en experiencia directa: las clasificaciones
+públicas de modelos envejecen en semanas y sirven, como mucho, de indicio.
 
 \section{Planificación y coordinación con la primera fase}
 
@@ -186,19 +183,23 @@ La planificación y la coordinación entre fases se apoyaron en Linear como
 gestor de tareas compartido. El trabajo se dividió en fases, cada una con
 sus criterios de aceptación, y cada tarea declaraba, además de su
 descripción funcional, sus dependencias, su prioridad, su posible
-solapamiento con otras tareas y si podía ejecutarse en paralelo. Sobre esa
-planificación, el detalle de cada cambio relevante (de cualquiera de las
-dos fases o de la capa común) se concretaba en un archivo \texttt{spec.md}
-versionado en la misma rama del repositorio compartido en GitHub, que
-funcionaba a la vez como plan para el agente y como documento de discusión
-con el otro autor. Los cambios viajaban por las
-ramas del repositorio: cuando uno de los dos hacía \texttt{pull}, veía
-de forma automática tanto el código nuevo como las \textit{specs} que
-lo habían motivado. La comunicación complementaria del día a día se
+solapamiento con otras tareas y si podía ejecutarse en paralelo. Esas
+mismas tareas son las que alimentaban el bucle descrito al principio del
+capítulo: no eran solo una lista de pendientes, sino el lugar donde se
+guardaba el plan operativo que después seguía el agente. Para cambios
+pequeños bastaba con la descripción y los criterios de aceptación; para
+cambios transversales, de cualquiera de las dos fases o de la capa común,
+la propia tarea incorporaba más detalle técnico y servía como documento de
+discusión con el otro autor.
+
+Los cambios viajaban por las ramas del repositorio compartido en GitHub,
+mientras que Linear mantenía el estado vivo de la planificación: qué estaba
+hecho, qué quedaba bloqueado, qué podía ejecutarse en paralelo y qué
+requería revisión humana. La comunicación complementaria del día a día se
 mantuvo en mensajería directa, reservada a desbloqueos puntuales. Los
 cambios que afectaban al esquema compartido del Knowledge Backbone se
-discutían en la \textit{spec} correspondiente antes de implementarse en
-cualquiera de las dos fases.
+discutían en la tarea correspondiente antes de implementarse en cualquiera
+de las dos fases.
 
 \section{Hitos de iteración del sistema}
 
@@ -215,9 +216,9 @@ por agente y migración a la persistencia compartida con PostgreSQL y MinIO.
 La tercera convirtió al laboratorio en consumidor y productor del Knowledge
 Backbone: escritura de \texttt{simulation\_observations}, lectura de
 postulados mediante \texttt{retrieve\_context}, vistas de inspección del
-backbone, consulta del historial en lenguaje natural y autocompactación del
-contexto conversacional. El cierre del trabajo se dedicó al despliegue en
-Railway y a la redacción de la memoria.
+backbone, consulta del historial mediante lenguaje natural sobre SQL
+(NL-SQL) y autocompactación del contexto conversacional. El cierre del
+trabajo se dedicó al despliegue en Railway y a la redacción de la memoria.
 
 \section{Planificación temporal}
 
@@ -265,8 +266,8 @@ explícita.
 Esta capa evitó varias regresiones pequeñas pero costosas. En la
 generación de informes, por ejemplo, las pruebas unitarias podían validar
 que existía una ruta de compilación, pero la ejecución completa reveló
-fallos distintos: respuestas truncadas del Reporter, secciones duplicadas
-o mensajes de descarga emitidos dos veces en el chat. Esos errores no
+fallos distintos: respuestas truncadas o incorrectas del Reporter, secciones
+duplicadas o mensajes de descarga emitidos dos veces en el chat. Esos errores no
 eran fallos de sintaxis aislados; afectaban al recorrido real del usuario.
 Por eso la verificación terminó combinando pruebas de bajo nivel con una
 sesión completa desde la interfaz.
@@ -316,10 +317,15 @@ Orchestrator empieza a perder precisión, a ignorar parte de las
 instrucciones del \textit{system prompt} y a alucinar detalles que ya
 no caben de forma íntegra en su contexto.
 
-La respuesta a este problema se dio en dos frentes. Por un lado, se
+Aunque el capítulo de diseño describe el mecanismo desde el punto de vista de
+la arquitectura, aquí importa por su origen práctico. Al probar sesiones
+largas, el sistema funcionaba, pero el contexto disponible para razonar se
+llenaba con datos que no siempre hacían falta en ese turno.
+
+La respuesta tuvo dos partes. Por un lado, se
 introdujo un mecanismo de \textbf{autocompactación} del historial:
-cuando el historial supera un umbral de tamaño ---número de mensajes o
-de caracteres, como proxy del uso de la ventana de contexto---, el
+cuando el historial supera un umbral de tamaño, número de mensajes o
+de caracteres, como proxy del uso de la ventana de contexto, el
 Orchestrator reemplaza los mensajes más antiguos por un resumen
 determinista que preserva las decisiones tomadas, los
 \textit{artefactos} producidos hasta ese punto y las preferencias del
@@ -332,7 +338,9 @@ y deja a disposición \textit{tool calls} específicas
 (\texttt{get\_tracker\_detail}, \texttt{get\_analyst\_detail},
 \texttt{get\_simulation\_step\_window}, entre otras) para que el agente
 recupere bajo demanda únicamente la porción de detalle que necesita en
-un momento dado.
+un momento dado. Gracias a esto se pueden pedir después análisis centrados
+en pasos concretos, ventanas de simulación o eventos críticos sin volver a
+cargar toda la traza en la conversación.
 
 Este patrón (resumen por defecto, detalle bajo demanda) desplaza parte
 de la complejidad al diseño de las herramientas, pero permite trabajar

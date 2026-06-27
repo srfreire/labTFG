@@ -9,11 +9,11 @@ ayudar a estudiar paradigmas de toma de decisiones humanas a partir de los
 modelos generados en la primera fase del proyecto.
 
 El laboratorio combina dos naturalezas muy distintas que no se pueden medir
-con la misma vara. Por un lado, un \textbf{núcleo determinista} ---el motor de
-simulación, el Tracker y la persistencia en el Knowledge Backbone--- cuyo
+con la misma vara. Por un lado, un \textbf{núcleo determinista}, el motor de
+simulación, el Tracker y la persistencia en el Knowledge Backbone, cuyo
 comportamiento es reproducible y se puede comprobar contra una verdad
 programática. Por otro, una \textbf{capa de juicio basada en modelos de
-lenguaje} ---Architect, Analyst y Reporter--- cuyas salidas son abiertas y no
+lenguaje}, Architect, Analyst y Reporter, cuyas salidas son abiertas y no
 tienen una única respuesta correcta. Evaluar ambas igual llevaría o bien a
 exigir determinismo donde no lo hay, o bien a aceptar como válido cualquier
 texto plausible.
@@ -33,10 +33,10 @@ resultados representativos del fenómeno estudiado.
 \begin{center}
 \small
 \begin{tabular}{|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
-\textbf{Capa} & \textbf{Qué valida} & \textbf{Agentes / componentes} \\ \hline
+\textbf{Capa} & \textbf{Qué evalúa} & \textbf{Agentes / componentes} \\ \hline
 1. Núcleo determinista & Contratos técnicos contra verdad programática (métricas duras, binarias) & Motor de simulación, Tracker, persistencia \\ \hline
 2. Comportamiento (\textit{golden scenarios}) & Que los modelos se comportan como predice la teoría que implementan & Modelos de fase 1, Analyst \\ \hline
-3. Juicio y revisión humana & Calidad de las salidas abiertas frente a criterio experto & Architect, Analyst, Reporter \\ \hline
+3. Juicio externo y revisión humana & Salidas abiertas; Codex como juez externo y revisión humana como calibración futura & Architect, Analyst, Reporter \\ \hline
 \end{tabular}
 \caption{Marco de evaluación por capas y su correspondencia con los componentes del laboratorio.}
 \label{tab:eval-capas}
@@ -44,7 +44,7 @@ resultados representativos del fenómeno estudiado.
 \end{table}
 
 El mensaje que articula el capítulo es que la primera fase valida que el
-\emph{modelo funciona} ---compila, pasa tests y se integra---, mientras que la
+\emph{modelo funciona}, compila, pasa tests y se integra, mientras que la
 segunda fase valida que el \emph{modelo se comporta como predice la teoría} y
 que la infraestructura lo \emph{observa con fidelidad}. Esa es precisamente la
 brecha que la fase 1 deja abierta: que un modelo se ejecute sin errores no
@@ -61,14 +61,14 @@ encima de la corrección~\cite{mohammadi2025agenteval}. Por eso el núcleo
 determinista es la primera capa, y el juicio mediante modelo de lenguaje se
 reserva para las salidas genuinamente abiertas.
 
-Las comprobaciones son binarias y no requieren juicio. Se ejecutan sobre los
-seis agentes ---los cuatro modelos de la primera fase y los dos
-\textit{baselines}--- y verifican cuatro propiedades del núcleo:
+Las comprobaciones son binarias y no requieren juicio. Se ejecutan sobre seis
+modelos evaluados: los cuatro modelos de la primera fase y los dos
+\textit{baselines}. Sobre ellos se verifican cuatro propiedades del núcleo:
 
 \begin{itemize}
 \item \textbf{Contrato observable} (6/6): cada modelo cumple en ejecución el
-contrato común ---\texttt{decide} es de solo lectura, \texttt{update} es el
-único mutador y \texttt{get\_state} expone \texttt{q\_values}---, no solo en
+contrato común, \texttt{decide} es de solo lectura, \texttt{update} es el
+único mutador y \texttt{get\_state} expone \texttt{q\_values}, no solo en
 sus pruebas unitarias.
 \item \textbf{Determinismo del motor} (6/6): con la misma semilla y
 configuración, dos ejecuciones producen flujos de acciones idénticos byte a
@@ -78,24 +78,38 @@ $N=N=N$): cada observación se materializa de forma consistente como una fila en
 PostgreSQL, un vector denso y un vector \textit{sparse} en Qdrant, bajo el mismo
 \textit{UUID} (tabla~\ref{tab:joinable}).
 \item \textbf{Suite de regresión} (353/353 en \textit{pytest}, más Playwright y
-compilación \LaTeX): red de regresión que asegura que las capas superiores se
+compilación \LaTeX): conjunto de regresión que asegura que las capas superiores se
 apoyan en un sistema estable.
 \end{itemize}
 
-Estas comprobaciones son objetivas y se apoyan en una verdad programática;
-corresponden a las reglas mínimas de sanidad previas a cualquier ajuste de
-modelo de comportamiento~\cite{wilson2019tenrules}. El desarrollo de cada
-invariante, los detalles de cada comprobación y las tablas completas de
-resultados se recogen en el Apéndice~\ref{ap:capa1}.
+La fidelidad de la persistencia merece una aclaración. No basta con que el
+Tracker produzca un JSON correcto al final de la simulación: si una observación
+se guarda en PostgreSQL pero no aparece en Qdrant, o si el vector denso y el
+índice BM25 quedan asociados a identificadores distintos, esa observación ya no
+puede recuperarse de forma fiable en una ejecución posterior. Por eso se
+comprueba la tripleta \textit{joinable}: la misma observación debe existir como
+fila relacional, como vector denso y como vector \textit{sparse}, siempre bajo el
+mismo \textit{UUID}.
 
-\section{Capa 2: evaluación de comportamiento (\textit{golden scenarios})}
+La suite de regresión cubre desde pruebas pequeñas de backend hasta recorridos
+completos de interfaz. En el extremo bajo, por ejemplo, las pruebas de
+\texttt{benchmark/scoring.py} verifican con datos controlados que una curva de
+aprendizaje o un tiempo de residencia se puntúan correctamente. En el extremo
+alto, Playwright recorre el flujo conversacional de la aplicación: saludo,
+selección de modelos, simulación, análisis y generación del informe. Entre ambos
+niveles quedan las pruebas del motor, del cargador dinámico de modelos, de la
+persistencia y de la generación de PDF. El desarrollo de cada invariante, los
+detalles de cada comprobación y las tablas completas de resultados se recogen en
+el Apéndice~\ref{ap:capa1}.
 
-La capa 1 demuestra que el sistema es técnicamente correcto, pero no que los
+\section[Capa 2: comportamiento]{Capa 2: evaluación de comportamiento (\textit{golden scenarios})}
+
+La capa 1 muestra que el sistema es técnicamente correcto, pero no que los
 modelos hagan lo que la teoría predice. Para cerrar esa brecha se emplea la
 técnica de los \textit{golden scenarios}: escenarios controlados en los que
 \emph{se conoce de antemano la verdad}, porque viene fijada por la teoría que el
-modelo dice implementar. Se mide entonces si el laboratorio ---y en particular
-el Analyst--- recupera esa verdad a partir de la simulación. Este enfoque es el
+modelo dice implementar. Se mide entonces si el laboratorio, y en particular
+el Analyst, recupera esa verdad a partir de la simulación. Este enfoque es el
 recomendado para evaluar agentes cuando no existe una única respuesta
 correcta~\cite{mohammadi2025agenteval}, y traslada al laboratorio la práctica de
 validación de modelos de comportamiento mediante recuperación de patrones
@@ -129,10 +143,12 @@ de verdad conocida, implementados a mano en el paquete \texttt{benchmark}:
 consume (define el \textbf{techo} de eficiencia de forrajeo), y
 \texttt{RandomModel}, que elige una acción uniformemente al azar (define el
 \textbf{suelo}). Ambos respetan el contrato común por \textit{duck typing}. Un
-modelo generado que forrajee de verdad debe situarse cerca del oráculo y, en
-todo caso, batir claramente al azar; si no bate al azar, su comportamiento es
-indistinguible de la casualidad y el escenario ha fallado en detectar un patrón
-real.
+modelo generado que forrajee de verdad debe situarse cerca del oráculo y, como
+mínimo, obtener más recompensa que el modelo aleatorio. ``Batir al azar''
+significa eso: que la política del modelo aporta información útil sobre dónde ir
+o qué consumir. Si obtiene una recompensa parecida a la del modelo aleatorio, no
+hay evidencia de que esté siguiendo una estrategia de forrajeo y el escenario no
+puede considerarlo un patrón real.
 
 \subsection{Escenarios}
 
@@ -154,10 +170,10 @@ GS-RL-1 & Curva de aprendizaje (RL aprende; OFT es plano) & Recompensa por venta
 El escenario más discriminativo es \textbf{GS-OFT-2}, la estática comparativa
 central del teorema del valor marginal~\cite{charnov1976mvt}: al aumentar el
 coste de desplazarse entre parches, un forrajeador óptimo debe permanecer más
-tiempo en cada parche antes de abandonarlo. Es una predicción direccional cuyo
-signo se conoce por la teoría, de modo que se verifica si el modelo lo
-reproduce ---en el espíritu de la recuperación de
-parámetros~\cite{wilson2019tenrules}. \textbf{GS-RL-1} es discriminativo entre
+tiempo en cada parche antes de abandonarlo. La prueba no intenta ajustar un
+modelo estadístico complejo; solo comprueba si, al cambiar una condición del
+entorno, el comportamiento se mueve en la dirección que la teoría predice.
+\textbf{GS-RL-1} es discriminativo entre
 paradigmas: los modelos de aprendizaje por refuerzo deben mejorar con la
 experiencia, mientras que los de forrajeo óptimo, que no aprenden, deben
 mostrar un rendimiento plano. El contraste entre ambos comportamientos es, en sí
@@ -189,120 +205,139 @@ GS-RL-1 & Diet-breadth (control) & Tasa de recompensa $-0{,}01$ (plano) & PASS \
 \end{center}
 \end{table}
 
-Las cuatro predicciones del forrajeo óptimo se reproducen: el modelo del teorema
+Las cuatro predicciones del forrajeo óptimo se reproducen. El modelo del teorema
 del valor marginal explota cada parche y lo abandona cuando su tasa marginal
-decae (GS-OFT-1), permanece más tiempo cuando encarece el viaje ---la estática
-comparativa central de Charnov~\cite{charnov1976mvt} (GS-OFT-2)--- y el modelo de
-amplitud de dieta excluye la presa pobre solo cuando la buena es abundante, la
-regla cero-uno~\cite{macarthur1966dietbreadth} (GS-OFT-3). Los \textit{baselines}
+decae (GS-OFT-1); permanece más tiempo cuando encarece el viaje, que es la
+estática comparativa central de Charnov~\cite{charnov1976mvt} (GS-OFT-2); y el
+modelo de amplitud de dieta excluye la presa pobre solo cuando la buena es
+abundante, siguiendo la regla cero-uno~\cite{macarthur1966dietbreadth}
+(GS-OFT-3). Los \textit{baselines}
 anclan la escala: en la tarea de aprendizaje el oráculo alcanza una tasa de
 recompensa de $0{,}74$ y el azar $0{,}08$; el modelo de Q-learning, que parte del
 nivel del azar, aprende hasta $\approx 0{,}55$, claramente por encima del suelo.
 
 El escenario discriminativo entre paradigmas (GS-RL-1) arroja el resultado más
-informativo. El modelo de Q-learning exhibe una curva de aprendizaje nítida ---su
+informativo. El modelo de Q-learning exhibe una curva de aprendizaje nítida, su
 tasa de recompensa se multiplica por siete a lo largo de la ejecución y su tasa
-de exploración decae como prescribe la teoría---, mientras que los modelos de
+de exploración decae como prescribe la teoría, mientras que los modelos de
 forrajeo, que no aprenden, se mantienen planos (controles negativos correctos).
 En cambio, el modelo \textit{actor-critic} \textbf{no} mejora su rendimiento
-pese a que su temperatura inversa $\beta$ se recoce según lo previsto: su
-maquinaria de aprendizaje opera, pero no se traduce en mejor forrajeo. Este
-fallo no es un artefacto del horizonte ni del escenario ---se reprodujo
-ampliando la ejecución hasta $20\,000$ pasos y variando los propios
-hiperparámetros del modelo (tasa del actor y recocido de $\beta$)---, sino una
-deficiencia del modelo generado: su política \textit{softmax} converge a un
-comportamiento subóptimo antes de que el crítico aprenda valores útiles. Esta única falla es justamente el tipo de hallazgo que
-justifica la capa 2: un modelo puede compilar, pasar sus pruebas unitarias y
-respetar el contrato ---todo lo que la primera fase verifica--- y aun así no
-reproducir el comportamiento que su teoría predice. El contraste entre un modelo
-que aprende y otro que no, ambos del mismo paradigma, es una prueba de falsación
-en el sentido de Palminteri~\cite{palminteri2017falsification}.
+pese a que su temperatura inversa $\beta$ aumenta según lo previsto: el modelo
+se vuelve menos exploratorio, pero no consigue convertir esa explotación en más
+recompensa. Este fallo no parece depender solo de una ejecución corta. Se repitió
+la prueba hasta $20\,000$ pasos y se variaron hiperparámetros del propio modelo,
+incluidas la tasa de aprendizaje del actor y la velocidad con la que crece
+$\beta$.
 
-Conviene además documentar una limitación de los modelos de aprendizaje
-generados, descubierta al construir el escenario: ambos codifican el conjunto
-completo de comida percibida dentro de la clave de estado tabular, de modo que
-consumir un recurso altera el estado y ningún estado se repite. El aprendizaje
-solo emerge en un régimen estacionario mínimo ---rejilla pequeña y comida de
-cardinalidad constante---; en entornos de forrajeo con depleción, la
-representación de estado impide converger. Que el banco de pruebas haga visible
-este detalle, invisible a las pruebas unitarias, ilustra el valor de la
-evaluación por comportamiento.
+Lo que ocurre es más interesante que un simple error de integración. El
+\textit{actor-critic} actual empieza a fijar su política \textit{softmax} antes
+de que el crítico haya aprendido valores suficientemente útiles. En la práctica,
+se compromete demasiado pronto con acciones pobres y luego le cuesta salir de
+ese comportamiento. La capa 1 no podía detectar esto: el modelo carga, decide,
+actualiza su estado y expone sus variables internas. La capa 2 sí lo detecta,
+porque mira el comportamiento completo frente a una predicción falsable. Ahí está
+el valor del banco de pruebas: permite decir que el laboratorio funciona incluso
+cuando un modelo generado no reproduce bien su teoría.
+
+Conviene documentar también una segunda limitación, esta vez compartida por los
+modelos de aprendizaje generados. Ambos usan como clave de estado no solo la
+posición del agente, sino también la lista completa de comida visible. En un
+entorno con comida que se consume, esa lista cambia casi a cada paso. Para una
+tabla de Q-learning, eso significa que el agente cree estar en un estado nuevo
+una y otra vez, aunque desde fuera parezca una situación parecida. Así es muy
+difícil acumular experiencia. El aprendizaje solo aparece en un escenario mínimo
+y más estacionario, con rejilla pequeña y número de recursos constante. Esta
+limitación no rompe el contrato técnico del modelo, pero sí afecta a su
+comportamiento; por eso aparece en esta capa y no en las pruebas unitarias.
 
 \subsection{Recuperación de la verdad por el Analyst}
 
 El test propio de esta capa para la parte de modelo de lenguaje es: dado cada
 escenario, ¿atribuye el Analyst el comportamiento al paradigma correcto
 (forrajeo óptimo frente a aprendizaje) y señala el patrón que la teoría predice?
-Como la verdad de cada escenario es conocida ---el paradigma y el patrón
-esperados de la tabla~\ref{tab:golden-scenarios}---, la atribución del Analyst se
+La verdad de cada escenario está fijada por el paradigma y el patrón esperados
+de la tabla~\ref{tab:golden-scenarios}. Por eso la atribución del Analyst se
 contrasta contra esas etiquetas y se puntúa con precisión y exhaustividad
 (\textit{precision} y \textit{recall}), no con una valoración subjetiva. El
-Knowledge Backbone refuerza este contraste: la run restaurada contiene el
+Knowledge Backbone refuerza este contraste: la ejecución restaurada contiene el
 postulado del teorema del valor marginal vinculado a su evidencia empírica
 (Charnov, 1976), de modo que el Analyst puede contrastar el patrón observado
-contra el postulado recuperado.
+contra una formulación ya presente en la memoria del sistema. En términos más
+simples: el Analyst no recibe solo la trayectoria de la simulación, sino también
+el recordatorio de qué debería ocurrir según el paradigma almacenado. La prueba
+mide si usa ese contexto para explicar lo que pasó, sin inventar patrones que no
+aparecen en los datos.
 
 Se ejecutó este test como un piloto sobre los cinco escenarios, invocando al
-Analyst real (servido vía OpenRouter) con un registro factual de cada simulación
+Analyst real con un registro factual de cada simulación
 y puntuando su atribución de paradigma contra las etiquetas. El resultado es
 \textbf{precisión $1{,}00$ y exhaustividad $0{,}80$} (cuatro de cinco
 atribuciones correctas): el Analyst identifica el forrajeo óptimo en los tres
 escenarios OFT y el aprendizaje por refuerzo en el de Q-learning, sin ninguna
 atribución errónea. El único fallo es revelador: en el escenario del
-\textit{actor-critic} ---el mismo modelo que falla la prueba de comportamiento
-(tabla~\ref{tab:gs-resultados})--- el Analyst no se compromete con ningún
+\textit{actor-critic}, el mismo modelo que falla la prueba de comportamiento
+(tabla~\ref{tab:gs-resultados}), el Analyst no se compromete con ningún
 paradigma, precisamente porque el modelo no exhibe el patrón de aprendizaje que
 delataría el refuerzo. Es decir, el modelo que no se comporta como su teoría
-predice es también el que el Analyst no puede atribuir: ambas capas coinciden.
+predice es también el que el Analyst deja sin atribución. Este comportamiento
+es positivo para el laboratorio: ante una simulación ambigua, el Analyst no
+fuerza una explicación de aprendizaje por refuerzo que los datos no sostienen.
 
 Este piloto se realiza sobre cinco escenarios, número insuficiente para una
-conclusión con potencia estadística; su valor es metodológico ---demuestra que
-el pipeline recupera la verdad sembrada cuando esta existe--- y se reporta como
-tal.
+conclusión con potencia estadística. Su valor es metodológico: muestra que el
+pipeline puede recuperar la verdad sembrada cuando esta existe, y se reporta con
+esa cautela.
 
-Más allá de evaluar al Analyst, este enfoque valida la \emph{ciencia} de los
-modelos generados, no solo su ejecución, siguiendo las reglas de validación de
-modelos de comportamiento de Wilson y Collins~\cite{wilson2019tenrules}:
-reproducir en simulación los patrones cualitativos que la teoría predice y
-distinguir paradigmas distintos por su comportamiento. Que un modelo pueda
-además \emph{fallar} donde otro acierta ---la falsación--- es lo que justifica
-el uso de los \textit{baselines} como controles
-negativos~\cite{palminteri2017falsification}.
+Más allá de evaluar al Analyst, este enfoque acerca la prueba al comportamiento
+científico que el modelo dice representar, no solo a su ejecución técnica. Sigue
+la lógica de Wilson y Collins~\cite{wilson2019tenrules}: comprobar si la
+simulación reproduce los patrones cualitativos esperados y si paradigmas
+distintos se distinguen por su comportamiento. Que un modelo pueda además
+\emph{fallar} donde otro acierta, la falsación, es lo que justifica el uso de los
+\textit{baselines} como controles negativos~\cite{palminteri2017falsification}.
 
-\section{Capa 3: juicio mediante modelo de lenguaje y revisión humana}
+\section{Capa 3: juicio externo y revisión humana}
 
 Las salidas del Architect, el Analyst y el Reporter son abiertas: no hay una
 única especificación de entorno correcta, ni un único análisis válido, ni un
-único informe. Para evaluarlas se combina el juicio mediante modelo de lenguaje
-con la revisión humana como patrón oro.
+único informe. Esta capa separa dos niveles: una revisión automatizable con
+Codex como juez externo y una revisión humana, que queda como patrón oro para
+calibrar ese juez en trabajo futuro.
 
 \subsection{\textit{LLM-as-a-judge}}
 
-El uso de un modelo de lenguaje como juez es un método validado: jueces fuertes
-alcanzan más de un 80\,\% de acuerdo con las preferencias humanas, al mismo
-nivel que el acuerdo entre humanos~\cite{zheng2023judge}. Ahora bien, ese
-acuerdo es específico de cada tarea y dominio, y los jueces presentan una
-taxonomía de sesgos bien documentada ---posición, verbosidad,
-\textit{self-enhancement}, entre otros--- que amenaza su
+El uso de un modelo de lenguaje como juez está respaldado por resultados
+experimentales: jueces fuertes alcanzan más de un 80\,\% de acuerdo con las
+preferencias humanas, al mismo nivel que el acuerdo entre
+humanos~\cite{zheng2023judge}. Ahora bien, ese acuerdo es específico de cada
+tarea y dominio, y los jueces presentan una
+taxonomía de sesgos bien documentada, posición, verbosidad,
+\textit{self-enhancement}, entre otros, que amenaza su
 validez~\cite{calm2024biases}. Para mitigarlos se adoptan tres prácticas: usar
 \textbf{un juez aislado por dimensión} evaluada en lugar de uno único para todo,
-\textbf{calibrar} el juez contra criterio experto antes de confiar en él, y
-\textbf{anclar el juicio en rúbricas estructuradas} explícitas.
+\textbf{usar un juez externo de otra familia de modelos} para reducir el sesgo de
+autoevaluación, y \textbf{anclar el juicio en rúbricas estructuradas}
+explícitas. En esta memoria, ese papel de juez externo lo ocupa Codex, mientras
+que los agentes de la aplicación se ejecutan con los modelos configurados en el
+laboratorio.
 
 \subsection{Meta-evaluación: acuerdo juez--humano}
 
 La fiabilidad del propio juez se mide contrastando sus veredictos con los
-humanos, considerados el patrón oro, mediante métricas de acuerdo y correlación
----exactitud, $\kappa$ de Cohen, $\rho$ de Spearman--- según el tipo de
-dato~\cite{li2024judges}. Solo cuando ese acuerdo es suficientemente alto se
-reduce la proporción de revisión humana.
+humanos, considerados el patrón oro. Según el tipo de dato, pueden usarse
+métricas como exactitud, $\kappa$ de Cohen o $\rho$ de Spearman~\cite{li2024judges}.
+Solo cuando ese acuerdo es suficientemente alto tendría sentido reducir la
+proporción de revisión humana.
 
-Esta meta-evaluación exige un corpus de salidas etiquetadas por el tutor y el
-grupo de investigación, y constituye en sí misma una contribución de calibración
-independiente; su ejecución se delimita como trabajo futuro (véanse las
-limitaciones). El alcance de esta memoria cubre las capas 1 y 2 de forma completa
-y la capa 3 en su parte automatizable ---el juicio por dimensión y la fidelidad
-del Reporter.
+En el alcance de esta memoria se usa una versión intermedia: Codex actúa como
+juez externo para revisar salidas abiertas con rúbricas separadas por dimensión,
+pero no se presenta como patrón oro humano. La meta-evaluación completa exige un
+corpus de salidas etiquetadas por el tutor y el grupo de investigación, y
+constituye en sí misma una contribución de calibración independiente. Esa parte
+se delimita como trabajo futuro (véanse las limitaciones). Así, la memoria cubre
+las capas 1 y 2 de forma completa y deja la capa 3 operativa en su parte
+automatizable: evaluación con juez externo, atribución del Analyst contra verdad
+conocida y fidelidad factual del Reporter.
 
 \subsection{Fidelidad del Reporter}
 
@@ -310,16 +345,21 @@ El Reporter genera informes en PDF a partir de los datos de la simulación y del
 análisis. El riesgo específico es la \emph{alucinación}: que el informe afirme
 números o hechos que no se corresponden con los datos. Para acotarlo se mide la
 \textbf{consistencia factual} del informe frente a su fuente, con técnicas de
-verificación basadas en preguntas y respuestas ---comprobar que las preguntas
-hechas sobre el informe y sobre los datos producen la misma
-respuesta~\cite{wang2020qags}--- o de inferencia textual a nivel de
-afirmación~\cite{laban2022summac}.
+verificación basadas en preguntas y respuestas: las preguntas hechas sobre el
+informe y sobre los datos deben producir la misma
+respuesta~\cite{wang2020qags}, o de inferencia textual a nivel de
+afirmación~\cite{laban2022summac}. La idea se generaliza al resto de salidas
+abiertas: Codex, como juez externo, formula preguntas de comprobación a partir de
+los datos de la simulación y de la rúbrica; las respuestas o afirmaciones de los
+agentes de la aplicación se contrastan después contra esos datos. Así el juicio
+no se basa en si el texto ``suena bien'', sino en si responde correctamente a
+preguntas que tienen apoyo en la ejecución.
 
 Esta comprobación está implementada en \texttt{benchmark/faithfulness.py} como
 una verificación de consistencia numérica al estilo QAGS~\cite{wang2020qags}, de
 código puro y sin modelo de lenguaje. A partir de la simulación se derivan las
-magnitudes clave ---comida consumida, número de pasos, recompensa total y, cuando
-el modelo la expone, energía final--- y cada una se trata como una pregunta cuya
+magnitudes clave: comida consumida, número de pasos, recompensa total y, cuando
+el modelo la expone, energía final. Cada una se trata como una pregunta cuya
 respuesta, calculada sobre los datos de origen, debe coincidir con la que da el
 informe. Una magnitud queda marcada como \textit{fiel} si el informe la menciona
 con el valor correcto, \textit{alucinada} si la menciona con otro valor, y
@@ -331,39 +371,35 @@ informe fiel obtiene una puntuación de fidelidad de $1{,}00$; el adversario baj
 a $0{,}33$ y el verificador señala exactamente las dos magnitudes alteradas
 (comida consumida y recompensa total), dejando intacta la que sí coincidía
 (número de pasos). La comprobación forma parte de la batería de pruebas
-automatizada y, sin cambios, puede apuntarse a la salida real del Reporter.
+automatizada y puede aplicarse también a la salida real del Reporter.
 
-Esta capa cubre además un riesgo silencioso del Reporter: ante un fallo de
-compilación de \LaTeX, el agente degrada a un PDF de respaldo en formato
-estándar en lugar del informe real. La verificación detecta ese respaldo por su
-distintivo de aviso ---de modo que un informe degradado no se confunde con uno
-válido--- y una prueba del camino feliz garantiza que, cuando la compilación
-tiene éxito, el artefacto almacenado es el PDF real de \texttt{tectonic} y no el
-de respaldo.
+Además de la fidelidad del contenido, se comprueba una propiedad funcional
+sencilla: que el PDF entregado sea el informe real compilado con
+\texttt{tectonic} y no el documento de respaldo que se genera si falla \LaTeX.
+No es la parte central de la evaluación, pero evita contar como éxito un informe
+que en realidad solo contiene una salida degradada.
 
 \subsection{Revisión experta}
 
-La capa humana es el patrón oro contra el que se calibran las anteriores. La
-evaluación final no es puramente cuantitativa: el criterio decisivo es si el
-tutor y el grupo de investigación consideran que la herramienta les reduce
-fricción para explorar paradigmas nuevos. Por eso la revisión cualitativa forma
-parte de la validación: permite detectar si el sistema produce información útil o
-si solo presenta una ejecución técnicamente correcta. En cada escenario se
-recoge la misma clase de evidencia ---configuración del entorno, modelos usados,
+La revisión humana se plantea como continuación natural de la evaluación.
+El criterio decisivo no es solo cuantitativo: importa si el tutor y el grupo de
+investigación consideran que la herramienta reduce fricción para explorar
+paradigmas nuevos. Para que esa revisión sea posible, cada ejecución debe
+dejar evidencia auditable: configuración del entorno, modelos usados,
 \textit{replay} de la simulación, eventos críticos, salida del Tracker, análisis
-del Analyst, informe del Reporter y comentarios del grupo--- de modo que cada
-ejecución pueda revisarse después y no quede como una interacción efímera en el
-navegador.
+del Analyst e informe del Reporter. Esta memoria deja preparado ese formato de
+evidencia; la recogida sistemática de comentarios expertos se considera trabajo
+futuro.
 
-\section{Escenario principal de validación \textit{end-to-end}}
+\section[Escenario end-to-end]{Escenario principal \textit{end-to-end}}
 
-Por encima de las capas anteriores, un escenario principal valida el recorrido
+Por encima de las capas anteriores, un escenario principal comprueba el recorrido
 completo como herramienta. Compara dos modelos cargados desde la primera fase
 que pertenecen a paradigmas distintos: el del \textbf{teorema del valor marginal}
 (forrajeo óptimo) y el de \textbf{Q-learning tabular} (aprendizaje por refuerzo).
 La elección no es arbitraria: combina un objetivo interpretable, variables
-internas observables ---tiempo de residencia y tasa marginal en uno, error TD y
-tasa de exploración en el otro--- y diferencias esperables entre modelos. Si el
+internas observables, tiempo de residencia y tasa marginal en uno, error TD y
+tasa de exploración en el otro, y diferencias esperables entre modelos. Si el
 sistema funciona, no debería limitarse a mostrar que ambos agentes se mueven por
 la rejilla, sino permitir comparar cómo cada modelo responde a la disponibilidad
 de recursos y cómo evoluciona su estado interno.
@@ -412,11 +448,11 @@ recogida en la tabla de objetivos del capítulo de especificación.
 
 \subsection{Métricas de una ejecución real}
 
-Se instrumentó una ejecución en directo del pipeline completo ---Architect,
-motor de simulación, Tracker, Analyst y Reporter--- comparando los dos modelos
-de paradigmas distintos ---teorema del valor marginal y Q-learning tabular---
-contra los servicios reales del Knowledge Backbone y un modelo de lenguaje
-servido vía OpenRouter. La tabla~\ref{tab:e2e} recoge las métricas medidas.
+Se instrumentó una ejecución en directo del pipeline completo, Architect,
+motor de simulación, Tracker, Analyst y Reporter, comparando los dos modelos
+de paradigmas distintos, teorema del valor marginal y Q-learning tabular, contra
+los servicios reales del Knowledge Backbone y un modelo de lenguaje servido vía
+OpenRouter. La tabla~\ref{tab:e2e} recoge las métricas medidas.
 
 \begin{table}[H]
 \begin{center}
@@ -427,7 +463,7 @@ Entorno generado por el Architect & Rejilla $8\times8$, 6 acciones, recurso \tex
 Latencia de extremo a extremo & $155$ s (Architect $10{,}5$; Tracker $39$; Analyst $88{,}5$; Reporter $16$) \\ \hline
 Tokens (entrada / salida) & $\approx 418\,000$ / $12\,800$ \\ \hline
 Coste estimado & $\approx 1{,}33$ \$ \\ \hline
-Observaciones persistidas (tripleta \textit{joinable}) & $6 = 6 = 6 = 6$ (PostgreSQL $=$ denso $=$ \textit{sparse} $=$ escritas) \\ \hline
+Observaciones persistidas & $6$ escritas; tripleta \textit{joinable} $6 = 6 = 6$ (PostgreSQL $=$ denso $=$ \textit{sparse}) \\ \hline
 Informe del Reporter & PDF real de \texttt{tectonic} (no el de respaldo) \\ \hline
 \end{tabular}
 \caption{Métricas de una ejecución \textit{end-to-end} real (Architect $\rightarrow$ simulación $\rightarrow$ Tracker $\rightarrow$ Knowledge Backbone $\rightarrow$ Analyst $\rightarrow$ Reporter).}
@@ -435,7 +471,7 @@ Informe del Reporter & PDF real de \texttt{tectonic} (no el de respaldo) \\ \hli
 \end{center}
 \end{table}
 
-La ejecución valida los cinco criterios: el flujo recorre el pipeline completo
+La ejecución satisface los cinco criterios: el flujo recorre el pipeline completo
 sin intervención, los dos modelos de la primera fase se cargan e integran por el
 contrato común, la simulación es observable, el Analyst genera tres gráficas y un
 análisis comparativo, y el Reporter produce un informe PDF trazable. El dato más
@@ -447,8 +483,7 @@ podrá usar un \textit{backend} con los servicios externos sustituidos por
 respuestas deterministas, de forma que la demostración no dependa de la latencia
 ni de la disponibilidad de proveedores de modelos de lenguaje.
 
-\section{Limitaciones}
-
+\section{Limitaciones de la evaluación}
 La suite y los escenarios descritos validan propiedades técnicas y de
 comportamiento, pero conviene delimitar su alcance.
 
@@ -457,31 +492,26 @@ semántica. Las pruebas de la capa 1 comprueban que el Analyst produce un JSON
 con la forma esperada y que el Architect genera una especificación válida contra
 el modelo formal del entorno, pero no que el patrón identificado sea la mejor
 interpretación de las trayectorias ni que la especificación sea la más adecuada
-para el paradigma descrito. Las capas 2 y 3 acotan esa brecha ---los
-\textit{golden scenarios} con verdad conocida y la calibración del juez contra
-criterio experto---, pero la adecuación psicológica o neurocientífica última de
+para el paradigma descrito. La capa 2 acota esa brecha con \textit{golden
+scenarios} de verdad conocida, y la capa 3 añade un juez externo para revisar
+salidas abiertas. Aun así, la adecuación psicológica o neurocientífica última de
 un modelo sigue requiriendo revisión experta del tutor y del grupo de
-investigación~\cite{wilson2019tenrules}.
+investigación~\cite{wilson2019tenrules}. Las conclusiones retoman esta idea en
+un plano más general; aquí se documenta solo como límite de las pruebas.
 
 La segunda limitación es la reproducibilidad acotada del comportamiento de los
 modelos de lenguaje. La idempotencia se garantiza para el motor de simulación,
 siempre que se use la misma semilla y la misma configuración, pero las salidas
 generadas por modelos de lenguaje mantienen cierta variabilidad. Esta es la
-razón de fondo por la que el juicio de la capa 3 nunca sustituye del todo a la
-revisión humana, sino que se calibra contra ella~\cite{zheng2023judge}.
+razón de fondo por la que el juicio de la capa 3 no sustituye a la revisión
+humana y debe calibrarse contra ella~\cite{zheng2023judge}.
 
-La tercera pertenece al nivel \textit{end-to-end}. Playwright valida que la
-interfaz muestra los elementos esperados y reacciona a la actividad del backend,
-pero no juzga por sí solo la calidad visual del \textit{dashboard} ni la
-claridad de la experiencia de usuario. Esa parte se revisó manualmente durante
-el desarrollo.
-
-La cuarta delimita el alcance de la capa 3. Su parte automatizable está cubierta
----el juicio por dimensión, la atribución del Analyst contra verdad conocida
-(medida como piloto) y la comprobación de fidelidad del Reporter, implementada y
-validada---, pero la \textbf{meta-evaluación} del juez (su acuerdo con criterio
-humano mediante $\kappa$ y $\rho$) requiere un corpus etiquetado por el tutor y el
-grupo de investigación, y el piloto de atribución se apoya en solo cinco
-escenarios, número insuficiente para una conclusión con potencia
-estadística~\cite{li2024judges}. Ampliar ese corpus y calibrar el juez contra
-criterio humano se deja como trabajo futuro.
+La tercera delimita el alcance de la capa 3. Su parte automatizable queda
+instrumentada: juicio por dimensión con Codex como juez externo, atribución del
+Analyst contra verdad conocida (medida como piloto) y comprobación de fidelidad
+del Reporter. En cambio, la \textbf{meta-evaluación} del juez, es decir, medir su
+acuerdo con criterio humano mediante $\kappa$ y $\rho$, requiere un corpus
+etiquetado por el tutor y el grupo de investigación. Además, el piloto de
+atribución se apoya en solo cinco escenarios, número insuficiente para una
+conclusión con potencia estadística~\cite{li2024judges}. Ampliar ese corpus y
+calibrar el juez contra criterio humano se deja como trabajo futuro.

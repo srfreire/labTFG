@@ -1,9 +1,6 @@
 # Fase 2: Diseno del Laboratorio Virtual de Simulacion
 
 **TFG**: Laboratorio virtual para la simulacion y analisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes
-
----
-
 ## 1. Vision general
 
 Este TFG es la segunda parte de un proyecto de dos fases:
@@ -22,9 +19,6 @@ Usuario (CLI / Web UI) → Orchestrator
 ```
 
 El usuario **solo habla con el Orchestrator**. Este interpreta la peticion y delega en los subagentes, coordinando el flujo: environment → simulacion → observacion → analisis → informe.
-
----
-
 ## 2. Decisiones de diseno
 
 | Decision | Valor | Razon |
@@ -36,9 +30,6 @@ El usuario **solo habla con el Orchestrator**. Este interpreta la peticion y del
 | Acciones/recursos | Configuracion dinamica via JSON spec | El Architect genera specs, `spec_to_environment` los instancia |
 | API LLM | `anthropic` SDK + loop manual de tool use | Compatible con OpenRouter, consistente con Fase 1 |
 | Frontend | React + Vite + Tailwind + WebSocket | Dashboard en tiempo real con replay de simulaciones |
-
----
-
 ## 3. Los 5 agentes
 
 ### Orchestrator (Sonnet)
@@ -55,9 +46,6 @@ Procesa la salida del Tracker para identificar patrones de comportamiento, anoma
 
 ### Reporter (Haiku)
 Genera informes PDF via LaTeX (compilado con tectonic). Lee investigacion de la Fase 1 para contextualizar. Produce documentos con portada USC, indice, tablas y conclusiones.
-
----
-
 ## 4. Environment
 
 Framework en Python puro (sin LLMs) que define el mundo de simulacion.
@@ -95,9 +83,6 @@ def get_state(self) -> dict
 ```
 
 Duck typing — los modelos de la Fase 1 implementan estos tres metodos directamente. Sin adapter, sin Protocol formal.
-
----
-
 ## 5. Integracion con Fase 1
 
 Los `.py` generados por el Builder de Pablo se colocan en `phase1-pablo/examples/sample-run/builder/`. El `model_loader` de la Fase 2 los descubre automaticamente:
@@ -108,9 +93,6 @@ Los `.py` generados por el Builder de Pablo se colocan en `phase1-pablo/examples
 4. Al simular, se instancian con semilla para reproducibilidad
 
 Multiples modelos pueden ejecutarse en el **mismo environment** para comparacion directa.
-
----
-
 ## 6. Stack tecnico
 
 | Componente | Tecnologia |
@@ -129,9 +111,6 @@ Multiples modelos pueden ejecutarse en el **mismo environment** para comparacion
 2. **Consistencia con Fase 1** — Pablo usa el mismo patron
 3. **Simplicidad** — el loop de tool use son ~55 lineas (`runtime/loop.py`)
 4. **Control total** — cada agente define sus tools, prompt y modelo sin abstracciones intermedias
-
----
-
 ## 7. Experiment Store: persistencia y trazabilidad
 
 ### Motivacion
@@ -204,9 +183,6 @@ La persistencia se integra como efecto secundario del pipeline:
 ### Tecnologia
 
 **Postgres** via SQLAlchemy 2.0 async (`asyncpg` driver). Migraciones con Alembic en `shared/migrations/`. Levantar con `docker compose up`. No hay fallback local — Phase 2 requiere los servicios compartidos.
-
----
-
 ## 8. Estado de implementacion
 
 ### Completado

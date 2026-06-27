@@ -1,33 +1,21 @@
 \pagestyle{plain}
 \chapter*{Resumen}
-\addcontentsline{toc}{chapter}{Resumen}
 
-Esta memoria documenta una infraestructura para simular, observar y
-analizar paradigmas de toma de decisiones humanas mediante agentes
-inteligentes. El sistema recoge modelos de decisión generados por otra
-fase del proyecto, los ejecuta en un entorno común y produce en cada
-simulación un conjunto de artefactos verificables, desde una traza
-estructurada del comportamiento hasta un informe comparativo en PDF.
+Esta memoria aborda un problema concreto dentro del estudio computacional
+de la toma de decisiones: cómo pasar de modelos ejecutables a
+experimentos observables, comparables y documentados. El trabajo se
+centra en la parte del laboratorio encargada de ejecutar esos modelos,
+registrar lo que hacen y convertir la ejecución en material revisable.
 
-El trabajo corresponde a la segunda fase de un laboratorio virtual
-propuesto por el profesor Eduardo Manuel Sánchez Vila para su grupo de
-investigación: la primera fase genera los modelos de decisión y esta
-segunda construye la infraestructura que los ejecuta y los estudia.
+La solución desarrollada integra una interfaz conversacional, un entorno
+de simulación 2D, observación estructurada de eventos, análisis asistido
+por modelos de lenguaje y generación automática de informes. El resultado
+es un flujo completo en el que cada sesión deja trazas, métricas,
+interpretaciones y artefactos persistidos.
 
-El sistema se organiza como un pipeline de cuatro agentes especializados,
-coordinados por un Orchestrator con chat interactivo. El Architect define
-el entorno de simulación a partir de una descripción en lenguaje natural;
-el Tracker registra eventos, episodios y trayectorias de decisión; el
-Analyst identifica patrones de comportamiento y los contrasta con
-conocimiento previo; el Reporter sintetiza los hallazgos en un informe
-generado mediante LaTeX. El acceso principal es una interfaz web sobre un
-backend FastAPI con WebSocket.
-
-La integración con la primera fase del proyecto se realiza por \textit{duck
-typing} sobre un contrato mínimo (\texttt{decide}, \texttt{update} y
-\texttt{get\_state}), sin acoplamiento de clases entre ambos sistemas. Las
-observaciones registradas durante cada simulación se persisten para
-alimentar ejecuciones futuras.
+La aportación principal no es un nuevo modelo de decisión, sino la
+infraestructura que permite estudiarlos de forma homogénea y repetir o
+contrastar sus resultados en ejecuciones posteriores.
 
 \vspace{0.5cm}
 \noindent{\bf Palabras clave:} agentes inteligentes, simulación multi-agente,

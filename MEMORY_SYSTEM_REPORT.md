@@ -1,9 +1,6 @@
 # Memory System — Architecture, State, and Eval Results
 
 _Snapshot: 2026-05-09 — phase1-pablo + shared, post-merge resolution and silent-discard fixes._
-
----
-
 ## TL;DR
 
 The memory system is a four-store **Knowledge Backbone** (Postgres, Neo4j, Qdrant, MinIO) shared by Phase 1 (extraction) and Phase 2 (simulation observations). Architecturally it is well-designed: P4-001 (Services DI), P4-002 (native Neo4j vector index), P4-003 (cross-phase memory split), P4-004 (PG as temporal source of truth), and P6-002 (native Qdrant BM25) form a coherent recent refactor.
@@ -15,9 +12,6 @@ This session confirmed three things and surfaced two pre-existing bugs:
 3. ✅ **Pipeline reliability is significantly better post-fix**. Two silent-failure paths were eliminated: a Pydantic list-validation discard (commit `bb03e9d`) and an `AutoApproveFeedback` storage misconfiguration (commit `1b04c23`). Smoke went from 1/2 asserts (zero KG growth) to 2/2 asserts (+120 nodes).
 
 Total eval spend this session: **$8.65** (3× smoke @ $2.84 + 1× slug-accuracy @ $5.81).
-
----
-
 ## 1. Architecture (current state)
 
 ### 1.1 Storage layout
@@ -121,9 +115,6 @@ query
   → fire-and-forget _track_memory_access()      (touch_memory: bump last_accessed_at,
                                                  access_count, confidence +0.02)
 ```
-
----
-
 ## 2. Changes shipped this session
 
 ### 2.1 P4-001 merge conflict resolution (`42a60e6`)
@@ -158,9 +149,6 @@ nodes.append(NodeSpec(...))
 `eval/runner.py:201` constructed `AutoApproveFeedback(env_spec_path=...)` without `storage`. The eval harness writes deep reports to S3 (under `research/{run_id}/deep/`); without `storage`, `review_research` could not list them, raised `RuntimeError("storage not provided")`, was caught by a broad `except`, and "approved 0 paradigms". Result: every eval topic had `result.paradigms = ()` and the per-topic `min_paradigms` / `paradigm` assertions failed regardless of what the LLM had emitted.
 
 Fix is one parameter: `AutoApproveFeedback(storage=services.storage, env_spec_path=...)`.
-
----
-
 ## 3. Eval results
 
 ### 3.1 Smoke (3 runs, $2.84 total)
@@ -220,9 +208,6 @@ Run 3 is the current healthy baseline.
 | Neo4j `Reflection` | 8 |
 | Total nodes | 562 (Δ +562 from seed of 10) |
 | Total relations | 72 |
-
----
-
 ## 4. Findings — what the evals tell us, and why
 
 ### 4.1 The deletion of `canonicalize.py` (P1-004) was premature
@@ -290,9 +275,6 @@ These match textbook vocabulary depth (10–15 Variables per paradigm covered in
 ### 4.5 The merge resolution itself is healthy
 
 8 topics × 4 stages of memory writes (research, memory_research) ran across slug-accuracy with **zero crashes** at any layer. The P4-001 DI plumbing, P4-002 native vector indexing, P4-003 source_kind payload, and P4-004 PG-then-KG ordering all worked without incident across +562 nodes / +72 relations / 8 reflections. This is the strongest evidence that the merge resolution is correct.
-
----
-
 ## 5. What the evals don't (and won't) prove
 
 The slug-accuracy run is a regression check for **canonical-slug enforcement and growth bounds**. It does NOT cover:
@@ -308,9 +290,6 @@ The slug-accuracy run is a regression check for **canonical-slug enforcement and
 | **Relation-type coverage** | ⚠️ partial | Only `BELONGS_TO` asserted (in `memory-retrieval.yaml`). `SUPPORTS` / `CONTRADICTS` / `EXTENDS` / `MEASURES` / `MODULATES` are unverified. |
 | **`as_of` queries (P4-004 public API)** | ❌ none | No eval calls `retrieve_knowledge(as_of=...)`. |
 | **Variable composite-key collision** | ⚠️ weak | The `{paradigm_slug}:{name}` discipline is critical (e.g. "reward" exists in both RL and prospect-theory); slug-accuracy didn't isolate this. |
-
----
-
 ## 6. Recommendations, in priority order
 
 ### 6.1 Re-introduce canonicalization (or accept the 62.5% baseline)
@@ -356,18 +335,12 @@ From the earlier triage list — these are real bugs but not load-bearing:
 
 - Document it in the suite README, or
 - Make the eval CLI prompt for confirmation ("This will wipe the KG. Continue? [y/N]") instead of refusing silently.
-
----
-
 ## 7. Operating notes
 
 - **Migrations**: Postgres `alembic_version` table can be in a stamped-but-empty state (`e7a4c9d2b813 (head)` with no other tables). To recover: `DELETE FROM alembic_version;` then `uv run alembic upgrade head`. This was the actual blocker on the first smoke attempt.
 - **Neo4j credentials**: production password is `labtfg00`, not the `labtfg-neo4j` default in `shared/shared/settings.py`. `.env` overrides correctly; only matters when running `cypher-shell` directly.
 - **Eval costs (this session, observed)**: smoke ≈ $0.77–1.10/run. Slug-accuracy ≈ $0.73/topic ($5.81/8 topics). All comfortably under the YAML caps (smoke $2, slug-accuracy $12).
 - **Eval reports**: written to `evals/reports/{date}-{suite}/report.{md,json}`. Per-run S3 prefixes preserve deep reports under `research/{run_id}/deep/`.
-
----
-
 ## 8. Bottom line
 
 The memory system is architecturally sound. The recent P4 refactor wave is coherent and the merge resolution restored a working package. **The biggest remaining gap is canonicalization — deleting it cost 37.5% of eval-graded slug accuracy, and that gap is not closeable by prompt engineering alone.** The retrieval stack is built but underused. The temporal layer is built but unverified online.
@@ -375,9 +348,6 @@ The memory system is architecturally sound. The recent P4 refactor wave is coher
 Rebuilding a slim canonicalizer (Section 6.1) and investigating why `retrieve_knowledge` is barely called (Section 6.2) are the two highest-leverage next steps. Adding the two missing eval suites (Section 6.3) gives you the regression coverage you need to ship those changes confidently.
 
 Total session spend: $8.65 across 4 eval runs. Pipeline went from non-importable (committed merge conflicts) to passing smoke + producing diagnosable signal on slug-accuracy.
-
----
-
 ## 9. 2026-05-10 follow-up — issues 1-7 resolved
 
 Seven follow-up issues addressed in one autonomous session. All commits on `main`, branch ahead of origin by 16:

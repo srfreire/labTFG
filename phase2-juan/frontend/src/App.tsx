@@ -55,7 +55,7 @@ function AppShell({ connected, agents, messages, thinking, simAgents, envCard: e
               style={{ background: connected ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }}
             />
             {isMock && (
-              <span className="text-[9px] px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
+              <span data-testid="mock-badge" className="text-[9px] px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
                 mock
               </span>
             )}
