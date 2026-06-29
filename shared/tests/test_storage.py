@@ -1,4 +1,4 @@
-"""Integration tests for StorageService (requires MinIO on localhost:9000)."""
+"""Integration tests for StorageService (requires MinIO; defaults to localhost:9000)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from shared.settings import Settings
+from shared.settings import load_settings
 from shared.storage import StorageService
 
 pytestmark = pytest.mark.integration
@@ -19,7 +19,7 @@ PREFIX = f"_test/{uuid.uuid4().hex}/"
 @pytest_asyncio.fixture
 async def storage():
     """Yield a connected StorageService and clean up test objects afterwards."""
-    svc = StorageService(Settings())
+    svc = StorageService(load_settings())
     await svc.connect()
     yield svc
     # cleanup: delete everything under our unique prefix
@@ -67,6 +67,19 @@ async def test_delete_and_exists(storage: StorageService):
     assert await storage.exists(key) is True
     await storage.delete(key)
     assert await storage.exists(key) is False
+
+
+@pytest.mark.asyncio
+async def test_rename_moves_object(storage: StorageService):
+    old_key = _key("old.txt")
+    new_key = _key("new.txt")
+    await storage.put_text(old_key, "moved")
+
+    result = await storage.rename(old_key, new_key)
+
+    assert result == new_key
+    assert await storage.exists(old_key) is False
+    assert await storage.get_text(new_key) == "moved"
 
 
 @pytest.mark.asyncio

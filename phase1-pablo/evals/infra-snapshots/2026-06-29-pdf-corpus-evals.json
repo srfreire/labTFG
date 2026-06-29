@@ -1,0 +1,103 @@
+{
+  "snapshot_id": "2026-06-29-pdf-corpus-evals",
+  "created_at": "2026-06-29T16:25:46+02:00",
+  "workspace": "/Users/ppazosp/projects/labTFG",
+  "git": {
+    "branch": "main",
+    "head_before_commit": "a690ec5417f52afd04622eda0319ab0806e35454"
+  },
+  "scope": {
+    "purpose": "Phase 1 PDF corpus evaluation rerun for CASO1 and full run for CASO2",
+    "infra_policy": "TFG-only services were used. Omnia infrastructure was not changed.",
+    "secrets_included": false
+  },
+  "runtime_environment": {
+    "labtfg_eval_kg": "1",
+    "minio_endpoint": "localhost:9200",
+    "memory_extraction_timeout_seconds": 3600,
+    "formalizer_max_iterations": 8,
+    "reasoner_max_iterations": 8
+  },
+  "containers": [
+    {
+      "name": "labtfg-postgres-1",
+      "image": "postgres:17-alpine",
+      "container_id": "8900f91182eec316307bfc06a90fa2ad98559823d8a96a186d509df8e69a1c6f",
+      "status": "running",
+      "health": "healthy",
+      "ports": {
+        "5432/tcp": ["0.0.0.0:5432", "[::]:5432"]
+      }
+    },
+    {
+      "name": "labtfg-neo4j-1",
+      "image": "neo4j:5-community",
+      "container_id": "f6da6ebe4e5467c8f19a57769fcb36a24e86a3f0927c79b30e06ebdde2175659",
+      "status": "running",
+      "health": "healthy",
+      "ports": {
+        "7473/tcp": [],
+        "7474/tcp": ["0.0.0.0:7474", "[::]:7474"],
+        "7687/tcp": ["0.0.0.0:7687", "[::]:7687"]
+      }
+    },
+    {
+      "name": "labtfg-qdrant-1",
+      "image": "qdrant/qdrant:latest",
+      "container_id": "107fbc6f0c22375c4ad4aba5ce03402a9f05fb6aefe6d1af4d691c71c4236b6e",
+      "status": "running",
+      "health": "healthy",
+      "ports": {
+        "6333/tcp": ["0.0.0.0:6333", "[::]:6333"],
+        "6334/tcp": ["0.0.0.0:6334", "[::]:6334"]
+      }
+    },
+    {
+      "name": "labtfg-minio-alt",
+      "image": "minio/minio:latest",
+      "container_id": "c6b29449ab35ce21a20b4cd07467eeb3ef59d7bcd784aee269e28868d6810c66",
+      "status": "running",
+      "health": "no-healthcheck",
+      "ports": {
+        "9000/tcp": ["0.0.0.0:9200", "[::]:9200"],
+        "9001/tcp": ["0.0.0.0:9201", "[::]:9201"]
+      }
+    }
+  ],
+  "eval_runs": [
+    {
+      "suite": "caso1-pdf-corpus",
+      "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+      "status": "pass",
+      "report_dir": "phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus",
+      "artifact_bundle": "phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle",
+      "bundle_file_count": 93,
+      "kg_snapshot": "phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle/kg_snapshot_2026-06-29.json",
+      "kg_snapshot_counts": {
+        "nodes": 433,
+        "relations": 518
+      },
+      "cost_usd": 33.7085227,
+      "duration_seconds": 6152.0
+    },
+    {
+      "suite": "caso2-pdf-corpus",
+      "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+      "status": "pass",
+      "report_dir": "phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus",
+      "artifact_bundle": "phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus/artifact-bundle",
+      "bundle_file_count": 72,
+      "kg_snapshot": "phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus/artifact-bundle/kg_snapshot_2026-06-29.json",
+      "kg_snapshot_counts": {
+        "nodes": 272,
+        "relations": 352
+      },
+      "cost_usd": 24.4715663,
+      "duration_seconds": 4961.8
+    }
+  ],
+  "artifact_bundle_contents": {
+    "description": "Each bundle contains corpus PDFs and extracted text, database exports, KG snapshot, storage exports, trace files and manifest metadata.",
+    "combined_bundle_file_count": 165
+  }
+}

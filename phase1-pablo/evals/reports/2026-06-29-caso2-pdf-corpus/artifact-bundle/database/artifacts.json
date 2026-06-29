@@ -1,0 +1,542 @@
+[
+  {
+    "id": "bfb2dfb6-fb67-4c16-9192-c200eb4f8bd0",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/deep/predictive-coding.md",
+    "artifact_type": "deep_report",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:13:00.052722",
+    "size_bytes": 15934,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1f4e275a-a3c1-4ca4-9f35-c02109ef2ed6",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/deep/interoceptive-active-inference.md",
+    "artifact_type": "deep_report",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:13:01.369861",
+    "size_bytes": 16799,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "eb7ca7e0-acfa-4aa1-889e-20187663d6c6",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/deep/homeostatic-regulation.md",
+    "artifact_type": "deep_report",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:13:04.733230",
+    "size_bytes": 17153,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "fc9a89df-3fb5-4a77-bbdf-af3884309e43",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/deep/homeostatic-reinforcement-learning.md",
+    "artifact_type": "deep_report",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:13:11.124400",
+    "size_bytes": 17933,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2d9381eb-b0c5-4893-8d09-55c151b216d9",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/report.md",
+    "artifact_type": "report",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:14:25.904125",
+    "size_bytes": 11613,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "430657ec-70cc-4393-9bd9-e3570183b473",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/formulations/homeostatic-regulation.md",
+    "artifact_type": "formulation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:20:04.099042",
+    "size_bytes": 16618,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "caeb7a1f-6412-4d78-96b5-76dd8e370add",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/formulations/homeostatic-reinforcement-learning.md",
+    "artifact_type": "formulation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:20:06.072890",
+    "size_bytes": 18004,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ac00d70d-00df-48b0-988b-efe6c0b6629f",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/formulations/interoceptive-active-inference.md",
+    "artifact_type": "formulation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:20:17.971964",
+    "size_bytes": 18954,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d0ce3289-342e-45f8-9ebc-7988282c3322",
+    "s3_key": "research/80d9be2e-8521-4e58-b982-9c1da697297c/formulations/predictive-coding.md",
+    "artifact_type": "formulation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:20:40.177108",
+    "size_bytes": 23930,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1367b646-86c0-47b7-a749-f208df8345b3",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-reinforcement-learning/drive-reduction-td-q-learning-model-free.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:35:49.115833",
+    "size_bytes": 12498,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "9706af7b-7e9d-4fa7-b01c-58d5fd4eb2c4",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-regulation/homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:35:56.351369",
+    "size_bytes": 10728,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ec4ac233-8081-47f5-b223-c5cc10602a73",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/interoceptive-active-inference/continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:35:57.388577",
+    "size_bytes": 14317,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4d7a9b96-6a31-4626-8e08-ba7d81a2b892",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/predictive-coding/hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:36:28.059657",
+    "size_bytes": 18012,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b827f020-a66d-4fd7-b862-4ef361650a17",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-regulation/continuous-drive-dynamics-with-urgency-threshold-policy.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:36:49.322187",
+    "size_bytes": 11163,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "98307aa6-04f1-436f-8239-b1e5ec6b9027",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-reinforcement-learning/continuous-drive-gradient-reactive-policy-algebraic-geometric.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:36:54.351013",
+    "size_bytes": 13494,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4005fcce-6891-4fc1-9d92-5df9958c2340",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/interoceptive-active-inference/homeostatic-reinforcement-learning-with-drive-reduction-reward.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:37:08.031277",
+    "size_bytes": 13679,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "7b15e2fe-9a3b-4def-a4ef-fb7aaa9ae1e5",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/predictive-coding/active-inference-with-expected-free-energy-probabilistic-policy-selection.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:39:56.499226",
+    "size_bytes": 22945,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "f1dda3cc-0155-41e6-a962-fb40abbe31e0",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/continuous-drive-gradient-reactive-policy-algebraic-geometric_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:13:54.853812",
+    "size_bytes": 7972,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "9198dc3d-8d7c-4d79-9221-4eb36c55c4c7",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:06.822569",
+    "size_bytes": 14831,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "85a34f53-cb4f-4a2a-add0-cf2f1baf04eb",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/homeostatic-reinforcement-learning-with-drive-reduction-reward_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:10.974211",
+    "size_bytes": 9873,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "16991d0a-28e5-475d-8974-d1d44751b3d4",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/homeostatic_reinforcement_learning_hrl_with_drive_reduction_reward_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:51.823115",
+    "size_bytes": 8872,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4c9cd903-8921-4944-bfac-d9cf19d53d24",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/test_continuous-drive-gradient-reactive-policy-algebraic-geometric.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:57.301461",
+    "size_bytes": 15592,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2083c07a-5a2e-41b1-a70d-c2f11bb6e039",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/active_inference_with_expected_free_energy_probabilistic_policy_selection_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:59.983209",
+    "size_bytes": 19174,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "392cb63c-12fb-4ba0-bcc5-14d0c6e35602",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/test_active-inference-with-expected-free-energy-probabilistic-policy-selection.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:34.270117",
+    "size_bytes": 15385,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "9b5e6e28-3505-4e84-b809-1600080851b6",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/predictive-coding/algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:37:58.408909",
+    "size_bytes": 17891,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ca810dda-3148-407c-98c9-395d6de78c40",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-regulation/interoceptive-active-inference-iai-with-free-energy-minimisation.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:38:20.159649",
+    "size_bytes": 18064,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ee718618-ccdd-4f90-b44c-ce66e6f4a904",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/drive-reduction-td-q-learning-model-free_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:13:39.851263",
+    "size_bytes": 7293,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "dd9d0234-b617-481c-9df1-b192421b9143",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/interoceptive-active-inference-iai-with-free-energy-minimisation_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:05.238183",
+    "size_bytes": 12210,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "974a8c58-332e-44c6-bc96-ad2b3628413e",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/test_algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:09.649526",
+    "size_bytes": 16039,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "c4c010d3-32c3-4813-8145-7c2ac4507858",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/active-inference-with-expected-free-energy-probabilistic-policy-selection_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:34.269708",
+    "size_bytes": 17953,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b320aa22-43d6-4c2f-9c2e-642ee9356ec7",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/homeostatic_reinforcement_learning_with_drive_reduction_reward_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:03.474270",
+    "size_bytes": 9524,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "64a79949-80ee-498d-94cc-3934dad90a3d",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/interoceptive_active_inference_iai_with_free_energy_minimisation_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:35.930552",
+    "size_bytes": 12210,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "daf26491-d4fa-497c-92e4-c0ae0bf99975",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/test_continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:55.410642",
+    "size_bytes": 24355,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "c544e62f-7051-44cc-ab92-87cf78442e84",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/homeostatic-reinforcement-learning/free-energy-minimizing-homeostatic-agent-probabilistic-bayesian.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:38:28.249687",
+    "size_bytes": 18015,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "65cf6a87-65ea-4eee-a856-503be020a7d7",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:13:57.853688",
+    "size_bytes": 11453,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1592c761-0cab-4b56-8c35-ccd1b27df024",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:06.825692",
+    "size_bytes": 8904,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ebf5bd64-99bc-4f5c-b66e-08c2ef418b2f",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/test_continuous-drive-dynamics-with-urgency-threshold-policy.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:48.822466",
+    "size_bytes": 13009,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "f2556bc2-097a-4103-a283-382fe4533efc",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/free_energy_minimizing_homeostatic_agent_probabilistic_bayesian_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:17:44.035316",
+    "size_bytes": 12159,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1eeb1c92-2859-4a7c-8c3e-9f17fb1421fd",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/test_interoceptive-active-inference-iai-with-free-energy-minimisation.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:38.277809",
+    "size_bytes": 19727,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1acee0d0-ff1d-49a9-8982-0c69f619dbe5",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/test_free-energy-minimizing-homeostatic-agent-probabilistic-bayesian.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:21.654614",
+    "size_bytes": 19807,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "47755aee-8326-4539-8e89-a8ef5c77ebbf",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/reasoner/interoceptive-active-inference/expected-free-energy-policy-selection-with-allostatic-prior-shifting.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T12:39:18.467158",
+    "size_bytes": 20827,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "81481b3d-22ef-4cae-a0de-1f9e23d03749",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/free-energy-minimizing-homeostatic-agent-probabilistic-bayesian_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:13:55.671646",
+    "size_bytes": 10568,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d1a19f05-db4c-4dee-96ec-b3bcc37c51c6",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/continuous-drive-dynamics-with-urgency-threshold-policy_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:13:57.864472",
+    "size_bytes": 9508,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "c9331a7b-1615-4fac-b151-84c92d3db699",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/expected-free-energy-policy-selection-with-allostatic-prior-shifting_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:28.346684",
+    "size_bytes": 17134,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d4b33610-6206-43f9-8f0b-fa375fb355ff",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:14:55.404252",
+    "size_bytes": 10884,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "c5c5c22a-859b-4666-9e72-211f0091c8f8",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/test_homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:06.829246",
+    "size_bytes": 16942,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "f6b9336e-0b96-4dac-b3bd-fd969063f331",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-regulation/continuous_drive_dynamics_with_urgency_threshold_policy_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:36.155651",
+    "size_bytes": 9394,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d4b6bd02-4e9f-4b0b-8bd5-4dbcd083907b",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/continuous_drive_gradient_reactive_policy_algebraic_geometric_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:40.115760",
+    "size_bytes": 8026,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2a80af89-6857-4275-ae28-18a7ae997ed2",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/algebraic_precision_weighted_bayesian_filtering_single_step_conjugate_update_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:05.318547",
+    "size_bytes": 11385,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "941790fa-b13a-4239-86aa-f352b87d3a41",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/test_homeostatic-reinforcement-learning-with-drive-reduction-reward.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:10.974949",
+    "size_bytes": 19886,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "fcda1826-6e56-44c6-ac70-18b75cd602b4",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/homeostatic-reinforcement-learning/test_drive-reduction-td-q-learning-model-free.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:03.667006",
+    "size_bytes": 19505,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "fc482442-8286-456d-90f8-ead4d5058184",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/interoceptive-active-inference/test_expected-free-energy-policy-selection-with-allostatic-prior-shifting.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:16.989378",
+    "size_bytes": 28864,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "654833de-7e51-415d-9f3e-6e8e0e9b31b7",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/hierarchical_precision_weighted_prediction_error_minimization_gradient_descent_ode_model.py",
+    "artifact_type": "model",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:16:58.961108",
+    "size_bytes": 16899,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4d09591a-0363-4820-b30e-d631fb7c60fd",
+    "s3_key": "models/80d9be2e-8521-4e58-b982-9c1da697297c/builder/predictive-coding/test_hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode.py",
+    "artifact_type": "test",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "experiment_id": null,
+    "created_at": "2026-06-29T13:15:22.886362",
+    "size_bytes": 27988,
+    "content_type": "text/plain"
+  }
+]

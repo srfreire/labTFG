@@ -1,0 +1,236 @@
+{
+  "formulation_id": "continuous-drive-dynamics-with-urgency-threshold-policy",
+  "paradigm": "homeostatic-regulation",
+  "name": "Continuous Drive-Dynamics with Urgency-Threshold Policy",
+  "description": "ODE-based continuous-time drive dynamics with a deterministic threshold-and-gradient policy. The agent maintains a scalar energy level governed by linear decay and discrete intake events. Drive is computed as the asymmetric (deficit-only) squared deviation from setpoint. A cybernetic negative-feedback controller uses two thresholds (D_crit and D_low) and the drive velocity (rate of change) to gate between three behavioural modes: REST, EAT, and FORAGE. In FORAGE mode, the agent follows a greedy Manhattan-distance gradient toward the nearest food resource. No learning occurs — the agent is purely reactive. Grounded in Cannon (1929) cybernetic homeostasis and Hull (1943) drive-reduction theory.",
+  "variables": [
+    {
+      "symbol": "h",
+      "name": "energy_level",
+      "description": "Scalar physiological variable representing normalised energy/nutrient store",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "description": "Ideal target value for the energy level",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "D",
+      "name": "drive",
+      "description": "Motivational urgency signal: squared deficit from setpoint. Zero when energy >= setpoint; increases quadratically as energy drops below setpoint.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "D_prev",
+      "name": "previous_drive",
+      "description": "Drive value from the previous time step, used to compute drive velocity",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "dD_dt",
+      "name": "drive_velocity",
+      "description": "Finite-difference approximation of drive rate of change. Positive means drive is worsening; negative means drive is improving.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "mode",
+      "name": "behavioural_mode",
+      "description": "Current action mode selected by threshold gating: REST, EAT, or FORAGE",
+      "type": "string",
+      "initial_value": "REST",
+      "range": ["REST", "EAT", "FORAGE"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "default": 0.8,
+      "source": "Matched to Keramati & Gutkin (2014) normalised energy target"
+    },
+    {
+      "symbol": "n",
+      "name": "drive_exponent",
+      "default": 2,
+      "source": "Hull (1943) / Keramati & Gutkin (2014), quadratic urgency"
+    },
+    {
+      "symbol": "lambda_decay",
+      "name": "natural_decay_rate",
+      "default": 0.02,
+      "source": "Calibrated; metabolic drain per tick"
+    },
+    {
+      "symbol": "c_eat",
+      "name": "eating_restoration",
+      "default": 0.3,
+      "source": "Calibrated; food value per consumption event"
+    },
+    {
+      "symbol": "c_move",
+      "name": "movement_cost",
+      "default": 0.005,
+      "source": "Calibrated; action metabolic cost for movement"
+    },
+    {
+      "symbol": "D_crit",
+      "name": "critical_drive_threshold",
+      "default": 0.15,
+      "source": "Calibrated; triggers urgent foraging behaviour"
+    },
+    {
+      "symbol": "D_low",
+      "name": "low_drive_threshold",
+      "default": 0.02,
+      "source": "Calibrated; below this the agent rests to conserve energy"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: discrete-time ODE approximation. Energy decays by lambda_decay each step, is reduced by c_move if agent moved, and increased by c_eat if agent ate. Clipped to [0,1].",
+      "type": "ODE_discrete",
+      "pseudocode": "moved = 1 if action in ['move_up','move_down','move_left','move_right'] else 0\nate = 1 if (action == 'eat' and last_action_result.get('consumed', False)) else 0\nh = clip(h + (-lambda_decay + c_eat * ate - c_move * moved), 0.0, 1.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Asymmetric drive function: only deficit (h < h*) generates drive. When h >= h*, drive is zero. This follows Hull (1943) where deprivation, not excess, is motivating.",
+      "type": "algebraic",
+      "pseudocode": "D = (max(h_star - h, 0.0)) ** n",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Drive velocity via finite difference: approximates dD/dt to detect whether the organism's condition is improving or deteriorating.",
+      "type": "algebraic",
+      "pseudocode": "dD_dt = D - D_prev",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Nearest-resource gradient: for each movement action, compute whether it brings the agent closer to the nearest food resource (Manhattan distance reduction).",
+      "type": "algebraic",
+      "pseudocode": "# For action a, compute the position the agent would occupy\nnew_x, new_y = position_after(current_x, current_y, a)\nd_current = manhattan_distance_to_nearest_food(current_x, current_y, food_list)\nd_after = manhattan_distance_to_nearest_food(new_x, new_y, food_list)\ng_a = d_current - d_after  # positive means a brings agent closer",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Mode selection: urgency-gated switching between REST, EAT, and FORAGE based on drive level, drive velocity, and food availability.",
+      "type": "conditional",
+      "pseudocode": "if D < D_low:\n    mode = 'REST'\nelif food_at_current_cell and D > 0:\n    mode = 'EAT'\nelif D >= D_crit or dD_dt > 0:\n    mode = 'FORAGE'\nelse:\n    mode = 'REST'",
+      "source_postulate": "P1, P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Deterministic cybernetic controller: compute drive and drive velocity, gate into a behavioural mode using thresholds, then execute the appropriate action for that mode. No learning — purely reactive negative feedback.",
+    "pseudocode": [
+      "# --- Perceive ---",
+      "food_list = perception['resources'].get('food', [])",
+      "food_here = any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_list)",
+      "current_x, current_y = perception['x'], perception['y']",
+      "",
+      "# --- Compute drive (R2) ---",
+      "D = (max(h_star - h, 0.0)) ** n",
+      "",
+      "# --- Compute drive velocity (R3) ---",
+      "dD_dt = D - D_prev",
+      "",
+      "# --- Mode selection (R5) ---",
+      "if D < D_low:",
+      "    mode = 'REST'",
+      "elif food_here and D > 0:",
+      "    mode = 'EAT'",
+      "elif D >= D_crit or dD_dt > 0:",
+      "    mode = 'FORAGE'",
+      "else:",
+      "    mode = 'REST'",
+      "",
+      "# --- Action execution by mode ---",
+      "if mode == 'REST':",
+      "    action = 'stay'",
+      "elif mode == 'EAT':",
+      "    action = 'eat'",
+      "elif mode == 'FORAGE':",
+      "    if len(food_list) > 0:",
+      "        # Compute gradient toward nearest food (R4)",
+      "        move_actions = ['move_up', 'move_down', 'move_left', 'move_right']",
+      "        deltas = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "        best_action = None",
+      "        best_gradient = -inf",
+      "        for a in move_actions:",
+      "            dx, dy = deltas[a]",
+      "            nx = clip(current_x + dx, 0, grid_width - 1)",
+      "            ny = clip(current_y + dy, 0, grid_height - 1)",
+      "            d_current = min(manhattan(current_x, current_y, f['x'], f['y']) for f in food_list)",
+      "            d_after = min(manhattan(nx, ny, f['x'], f['y']) for f in food_list)",
+      "            g = d_current - d_after",
+      "            if g > best_gradient:",
+      "                best_gradient = g",
+      "                best_action = a",
+      "        action = best_action if best_action else random_choice(move_actions)",
+      "    else:",
+      "        action = random_choice(['move_up','move_down','move_left','move_right'])",
+      "",
+      "# --- Store drive for next step ---",
+      "D_prev = D",
+      "",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_cell": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources'].get('food', []))",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "No external reward is used. The agent is purely reactive, driven by internal drive dynamics. The env ConsumeEffect reward (1.0) is ignored."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Immediate foraging when depleted: agent transitions to FORAGE mode as soon as drive exceeds D_crit or is increasing, and moves directly toward nearest food",
+      "test_pseudocode": "set h=0.4 (well below setpoint) → assert mode == 'FORAGE' and agent moves toward nearest food"
+    },
+    {
+      "id": "B2",
+      "description": "Rest when sated: agent stays still when energy is at or above setpoint (drive near zero), conserving energy",
+      "test_pseudocode": "set h=0.85 → compute D=(0.8-0.85) clamped to 0 → D=0 < D_low → assert action == 'stay'"
+    },
+    {
+      "id": "B3",
+      "description": "Eat immediately when on food and hungry: if food is present at the agent's cell and drive > 0, agent eats before attempting movement",
+      "test_pseudocode": "place agent on food cell with h=0.5 → assert action == 'eat'"
+    },
+    {
+      "id": "B4",
+      "description": "Energy oscillates around setpoint: over many steps with food available, energy oscillates in a band near h* as the agent alternates between foraging/eating and resting",
+      "test_pseudocode": "run 500 steps with food regenerating → compute mean h → assert 0.6 < mean_h < 0.9"
+    },
+    {
+      "id": "B5",
+      "description": "Drive velocity detects worsening: even when drive is below D_crit, if drive is increasing (dD_dt > 0) the agent preemptively switches to FORAGE mode",
+      "test_pseudocode": "set h=0.68 (D=0.0144 < D_crit=0.15) but D_prev=0.01 so dD_dt=0.0044>0 → assert mode == 'FORAGE'"
+    }
+  ],
+  "references": [
+    "Cannon, W.B. (1929). Organization for physiological homeostasis. Foundational cybernetic negative-feedback framework.",
+    "Hull, C.L. (1943). Principles of Behavior. Drive-reduction theory: deprivation generates motivational drive directing behaviour.",
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811. Referenced for quadratic drive function and setpoint calibration."
+  ]
+}

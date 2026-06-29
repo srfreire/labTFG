@@ -1,0 +1,1906 @@
+[
+  {
+    "id": "948d788f-00e6-4ecb-afea-96975d1b2103",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-1-0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.277932"
+  },
+  {
+    "id": "c1157883-ce19-4cfb-b75b-733ad0175f0a",
+    "label": "Formulation",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.344819"
+  },
+  {
+    "id": "4fe43ed2-8b07-4b2f-9b88-56b18ce5b116",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.391565"
+  },
+  {
+    "id": "d58aa5a5-a490-4221-b401-c94d058ffdb9",
+    "label": "Variable",
+    "key_value": "predictive-coding:hatmu-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.443767"
+  },
+  {
+    "id": "79babefc-ac48-4cb5-b9a0-16e4c484f7fe",
+    "label": "Variable",
+    "key_value": "predictive-coding:w-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.480337"
+  },
+  {
+    "id": "a56819c1-b328-46fd-a6ac-549ba59f29f8",
+    "label": "Equation",
+    "key_value": "\\hat{\\mu}(t) = \\frac{\\hat{\\pi}_s \\, s(t) + \\hat{\\pi}_0 \\, \\mu_0(t)}{\\hat{\\pi}_s + \\hat{\\pi}_0}",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.541382"
+  },
+  {
+    "id": "94b11a74-b34a-47d3-92b1-d97a890d9cad",
+    "label": "Equation",
+    "key_value": "P(a) = \\frac{\\exp\\bigl(\\beta \\, V(a)\\bigr)}{\\sum_{j} \\exp\\bigl(\\beta \\, V(j)\\bigr)}",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.573689"
+  },
+  {
+    "id": "1d27bf4f-20ae-4b44-bc05-f8684590ba47",
+    "label": "Variable",
+    "key_value": "predictive-coding:mathbfs-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.644863"
+  },
+  {
+    "id": "bdd81fff-677f-4a6a-947c-4543e0c39d89",
+    "label": "Variable",
+    "key_value": "predictive-coding:mathbfc",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.714950"
+  },
+  {
+    "id": "fe179cdc-b81b-4bd9-96c9-657298ae3bcd",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:omega",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.891087"
+  },
+  {
+    "id": "7cac1d0d-3594-44c8-ac60-2db3fecf25a1",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:n-obs",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.927114"
+  },
+  {
+    "id": "0a41aa54-898c-4016-82f0-f41678e6c346",
+    "label": "Model",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.490554"
+  },
+  {
+    "id": "fc802f2f-0bcf-4d51-a49c-6c4b53fea50d",
+    "label": "Model",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.534804"
+  },
+  {
+    "id": "ae865abc-5e8c-43d1-91c2-153cf50a412f",
+    "label": "Model",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.562235"
+  },
+  {
+    "id": "b6e0c1d5-ab42-4dd7-9cba-cd5537b33fab",
+    "label": "Model",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.337032"
+  },
+  {
+    "id": "e685b8a5-f662-4ff5-9bbe-e0cd57317f01",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.398716"
+  },
+  {
+    "id": "e74403dc-0f00-45f6-90f5-f9e56b0a4c2e",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:n",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.425985"
+  },
+  {
+    "id": "909a3a16-89c5-4634-967c-b66d662aa51f",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:alpha",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.527175"
+  },
+  {
+    "id": "f1f9dd75-52a8-4d37-848f-ed2f8b217ee8",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:c-dec",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.461065"
+  },
+  {
+    "id": "9e7dcc67-85c6-4f09-9245-b807bfebdd72",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.535131"
+  },
+  {
+    "id": "2253b1c1-867b-4bbd-b95e-7eb064819fb2",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:c-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.469696"
+  },
+  {
+    "id": "7bb7c6c3-c005-4a76-969a-c18e5dc274c8",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:n-energy-bins",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.657962"
+  },
+  {
+    "id": "8b6220d9-376f-437e-8fb7-718c11f9ec96",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:lambda-decay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.767013"
+  },
+  {
+    "id": "d4798d9a-28ad-4d62-8455-182050f352f1",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.482706"
+  },
+  {
+    "id": "4fcd1be7-e027-4a30-9754-af1f7fa8bef1",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:c-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.777477"
+  },
+  {
+    "id": "5649c312-3f69-417f-81e4-b253124c301e",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.815372"
+  },
+  {
+    "id": "b328b432-4bed-4cfc-a5dd-380082cb8358",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.868007"
+  },
+  {
+    "id": "281a3cd1-bbf3-42de-84a8-194ecc86120e",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:m",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.915062"
+  },
+  {
+    "id": "f53558f9-0a1d-4eba-992b-b473fbe92331",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-max",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.989513"
+  },
+  {
+    "id": "128c9b32-16ed-4735-8554-1132c3b99e05",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.146533"
+  },
+  {
+    "id": "8a862f50-f0d3-40ac-b1e5-342ba77ac4ed",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.275710"
+  },
+  {
+    "id": "47991a60-6c39-4513-b959-94615e4e84f2",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:kappa",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.313034"
+  },
+  {
+    "id": "de69c38c-3039-440b-b5e1-80c129332aa1",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.395724"
+  },
+  {
+    "id": "b9778bec-7a9a-4380-9493-16946b58fcb8",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.430322"
+  },
+  {
+    "id": "7b493fb9-fdf6-4606-97d6-6c6db835f52a",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:mu-p-low",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.605333"
+  },
+  {
+    "id": "9d92c659-be9d-477f-b952-f9ed961ec945",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:k-policies",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.709164"
+  },
+  {
+    "id": "52400d4e-6ad7-458f-839b-f3a3d91496fd",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:kappa",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.743653"
+  },
+  {
+    "id": "c8f53b94-6bf2-43d2-9374-55379173dba9",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.781104"
+  },
+  {
+    "id": "b47f615e-0445-40ea-92f3-3b0d75e3341b",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-s-init",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.814183"
+  },
+  {
+    "id": "a93da81e-8a0b-4489-ab3c-864d7f1882ca",
+    "label": "Paradigm",
+    "key_value": "homeostatic-regulation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.160126"
+  },
+  {
+    "id": "d7fd1f15-e13d-4bbf-bf83-ab5d85882c99",
+    "label": "Author",
+    "key_value": "Mehdi Keramati",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.268356"
+  },
+  {
+    "id": "6649445b-2707-4ae6-a341-250b7df91e03",
+    "label": "Author",
+    "key_value": "Boris Gutkin",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.275351"
+  },
+  {
+    "id": "a7bc413d-03c3-41d5-ba81-3a408424b8a9",
+    "label": "Author",
+    "key_value": "Karl Friston",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.282014"
+  },
+  {
+    "id": "e1db8b05-a4b1-42ac-bcc9-296501fa32b8",
+    "label": "Author",
+    "key_value": "Frederike Petzschner",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.289999"
+  },
+  {
+    "id": "56048054-81b3-4690-b252-ebb1ed3b6989",
+    "label": "Author",
+    "key_value": "Walter B. Cannon",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.297288"
+  },
+  {
+    "id": "e3591757-cb26-488c-9641-457a8dc84f97",
+    "label": "Author",
+    "key_value": "Clark L. Hull",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.305350"
+  },
+  {
+    "id": "36c5fca7-9d73-4216-91ce-5a6de4f237d1",
+    "label": "Paper",
+    "key_value": "10.7554/eLife.04811",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.312954"
+  },
+  {
+    "id": "fba2a3a8-e923-4392-ac8c-942e348c0c07",
+    "label": "Paper",
+    "key_value": "10.1038/nrn2787",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.320327"
+  },
+  {
+    "id": "a8eff51d-47d4-4f9c-91f1-a98ada8e4666",
+    "label": "Paper",
+    "key_value": "10.1016/j.tins.2020.09.012",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.327281"
+  },
+  {
+    "id": "642ad773-5392-448e-b04d-70aeb0624c19",
+    "label": "Paper",
+    "key_value": "Every good regulator of a system must be a model of that system",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.370014"
+  },
+  {
+    "id": "64e2eb2f-e3c3-41c7-83e8-0446563a8800",
+    "label": "BrainRegion",
+    "key_value": "Hypothalamus",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.397579"
+  },
+  {
+    "id": "86682e8e-ad5c-4971-902e-65d04f5faf24",
+    "label": "BrainRegion",
+    "key_value": "Ventral Tegmental Area",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.419578"
+  },
+  {
+    "id": "90b9f727-2012-4278-a095-1bccab50a0e9",
+    "label": "BrainRegion",
+    "key_value": "Nucleus Accumbens",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.425577"
+  },
+  {
+    "id": "7b4c8234-108d-4332-8739-ed31b4141bb2",
+    "label": "BrainRegion",
+    "key_value": "Insular Cortex",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.432485"
+  },
+  {
+    "id": "e07afcf9-2346-4778-a0a9-bd6360fd3a38",
+    "label": "Postulate",
+    "key_value": "homeostatic-regulation:P1",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.456920"
+  },
+  {
+    "id": "200584a2-da59-4a45-9b19-ad620067030a",
+    "label": "Postulate",
+    "key_value": "homeostatic-regulation:P2",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.464411"
+  },
+  {
+    "id": "e1ac8ad3-2989-4e5a-b296-d1c764d596f1",
+    "label": "Postulate",
+    "key_value": "homeostatic-regulation:P3",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.471286"
+  },
+  {
+    "id": "7e24f766-f77c-417f-b4c8-535b41833800",
+    "label": "Postulate",
+    "key_value": "homeostatic-regulation:P4",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.477460"
+  },
+  {
+    "id": "f2544173-50b0-4b4a-93fe-2d56b7ee836d",
+    "label": "Postulate",
+    "key_value": "homeostatic-regulation:P5",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.483492"
+  },
+  {
+    "id": "b16bf28d-24b6-464e-8676-8e74ca124f57",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:d-h-t-drive",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.490175"
+  },
+  {
+    "id": "6806e8a8-2a5f-4ce9-9ffa-4ebebc42281c",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:r-h-t-k-t-primary-reward",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.498348"
+  },
+  {
+    "id": "ce5582ce-10eb-4505-8ae0-b9ed0c7ae339",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:k-t-outcome-impact-vector",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.504854"
+  },
+  {
+    "id": "6cfc1750-ec13-433b-947f-bb1d9e730e04",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:gamma-temporal-discount-factor",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.511256"
+  },
+  {
+    "id": "985cd757-6c5c-4749-9abe-ec3daec5cb0f",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:delta-t-homeostatic-reward-prediction-error",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.542504"
+  },
+  {
+    "id": "d1f996b5-01bb-4871-afe0-b17507cb15b3",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:f-variational-free-energy",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.595633"
+  },
+  {
+    "id": "87eab25c-334c-4ca7-b1ad-dc8ec3c225f0",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:epsilon-t-interoceptive-prediction-error",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.631990"
+  },
+  {
+    "id": "c32cb197-4638-4be8-a47d-40302d0bd5f9",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:behavioural-policy",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.640192"
+  },
+  {
+    "id": "de1f4261-a27e-48de-839f-ffc5095d1182",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:sigma2-interoceptive-sensory-precision",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.649219"
+  },
+  {
+    "id": "6b434b92-12e8-44a1-9072-8527e65b8b77",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:v-h-s-state-value-function",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:16:52.657279"
+  },
+  {
+    "id": "70a93d21-271d-4084-88ef-771f2b28f9d4",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.290559"
+  },
+  {
+    "id": "4847f823-34ec-4887-bf42-0bea92c01b08",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.416449"
+  },
+  {
+    "id": "84881843-062e-4577-91fe-3aebc4e31a2e",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.527795"
+  },
+  {
+    "id": "1fe43825-41f3-4fe2-a524-33d1d5c3467c",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:sigma2-q-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.685822"
+  },
+  {
+    "id": "39fea512-3219-4bec-9c98-4169ef38dfa9",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.777723"
+  },
+  {
+    "id": "e8f2cdef-37b9-49c1-9cad-56d6357d9406",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.887846"
+  },
+  {
+    "id": "4eb29e0b-cd56-49c7-9081-1ef51b929974",
+    "label": "Formulation",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.982906"
+  },
+  {
+    "id": "7c9a8097-ec6f-43a1-bbee-d02ac9ed3a1c",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:d-manhattan-s-t-r",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.124571"
+  },
+  {
+    "id": "58220126-35dd-4383-8b22-1876da951c59",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:u-stay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.283223"
+  },
+  {
+    "id": "aa4059d3-15d5-4448-b20d-48a8530398ee",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:mu-h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.380801"
+  },
+  {
+    "id": "e96a4b91-4fd8-4983-bed7-490f20c84201",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:r-beliefs",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.459212"
+  },
+  {
+    "id": "cb6a7730-a371-43df-bbd0-d04c73bf3265",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:epsilon-s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.570946"
+  },
+  {
+    "id": "00ec5160-03c2-4703-a124-23a9ae1e69ca",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:s",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.662401"
+  },
+  {
+    "id": "f26ede37-6bb5-463f-99ce-0795bf3e7a67",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.711930"
+  },
+  {
+    "id": "cfa53be4-207d-46ff-9180-f776a889ce13",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:m",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.757666"
+  },
+  {
+    "id": "2ea6ace4-ffc5-4cb4-8d2a-5b5eb9d2688d",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.806545"
+  },
+  {
+    "id": "6702453d-a1e1-4e53-a181-8657c4af2e9f",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:mu-p-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.889165"
+  },
+  {
+    "id": "f7adfe78-d112-42d6-addf-5260dcb3b092",
+    "label": "Formulation",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.008468"
+  },
+  {
+    "id": "0d52ff60-4aab-4600-822b-7e00659f32a9",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.120504"
+  },
+  {
+    "id": "ccde005f-a32c-441e-afa7-a30968a2df32",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:d-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.334331"
+  },
+  {
+    "id": "289c9b9b-9b6a-4403-83fa-66ce37686be6",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.438966"
+  },
+  {
+    "id": "6e777553-67a1-4d22-a0d0-fde4d6edd3b0",
+    "label": "Equation",
+    "key_value": "h(t{+}1) = h(t) + \\Delta t \\left( -\\lambda + c_{\\text{eat}} \\cdot \\mathbb{1}_{\\text{ate}} - c_{\\text{move}} \\cdot \\mathb",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.563024"
+  },
+  {
+    "id": "ada472c7-28e5-40b8-88c7-d0d3224a7365",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:epsilon-int-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.715004"
+  },
+  {
+    "id": "a6350810-4678-43b8-b1fe-74fa9291ce2e",
+    "label": "Equation",
+    "key_value": "h(t{+}1) = h(t) - \\lambda + c_{\\text{eat}} \\cdot \\mathbb{1}_{\\text{ate}} - c_{\\text{move}} \\cdot \\mathbb{1}_{\\text{moved",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.785955"
+  },
+  {
+    "id": "51d9afd9-a828-4263-9aeb-72659c91ca7d",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:q-s-h-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.930862"
+  },
+  {
+    "id": "b85c503e-f5e0-4968-bf2f-3a333ac8fa8e",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.018387"
+  },
+  {
+    "id": "c85ae3a7-35c1-4e25-8a07-303dd247d99c",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:u-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.160055"
+  },
+  {
+    "id": "4e9161fb-7bde-438f-aeee-839e48a31363",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:p-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.296361"
+  },
+  {
+    "id": "e7e0db12-a906-4b16-8d47-f734cad17cf5",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:sigma-h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.405513"
+  },
+  {
+    "id": "813bcf99-71ba-489c-bc0b-a7eb52a19287",
+    "label": "Formulation",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.467504"
+  },
+  {
+    "id": "44ed1b01-0c4c-4eeb-8249-97ae0a9ff382",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:epsilon-p-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.577455"
+  },
+  {
+    "id": "aa50623b-bd3b-4af3-8ba3-af398364d267",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:p",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.671615"
+  },
+  {
+    "id": "d7ea8ab1-cd3d-4733-b2e6-4a9523661a20",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:q-s-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.716723"
+  },
+  {
+    "id": "119dcd57-f46a-4ed7-b775-b7c16a1bfecf",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.766119"
+  },
+  {
+    "id": "09e84a3e-9536-43af-a4cb-d7c35ab447ec",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-stay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.814214"
+  },
+  {
+    "id": "e04c9f43-1ee4-4349-8003-e57e6243bed8",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:c",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.935124"
+  },
+  {
+    "id": "41a05914-8cda-45c8-be7e-190ba4c9dea3",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:mu-p-base",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.032937"
+  },
+  {
+    "id": "7df67a29-4d46-4408-830e-5a190bf5d787",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:beta-g",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.128406"
+  },
+  {
+    "id": "3c704b33-9cb1-42fb-aecc-38da365c8478",
+    "label": "Variable",
+    "key_value": "predictive-coding:mu-1-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.205587"
+  },
+  {
+    "id": "df3a78c9-1f1d-4250-b143-e8dba4a32215",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:r-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.345990"
+  },
+  {
+    "id": "223ce733-53d0-4ede-b07f-dace7498c1d3",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:dd-dt",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.484313"
+  },
+  {
+    "id": "1c36c8b0-3753-4be2-b2a3-5a9d2a2860e5",
+    "label": "Equation",
+    "key_value": "\\frac{dD}{dt} \\approx D(t) - D(t{-}1)",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.620735"
+  },
+  {
+    "id": "97c58f8c-310a-4ef7-94b6-73a6d4318639",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:o-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.726160"
+  },
+  {
+    "id": "e509a37d-d6b6-4588-9ccc-c51d1524cdfe",
+    "label": "Equation",
+    "key_value": "\\mu_{\\text{prior}}(t) = \\mu(t{-}1) - \\lambda + c_{\\text{eat}} \\cdot \\mathbb{1}_{\\text{ate\\_prev}} - c_{\\text{move}} \\cdo",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.793847"
+  },
+  {
+    "id": "4ecd0599-61db-4c19-b4b0-cc2fa3f386a4",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:delta-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.939586"
+  },
+  {
+    "id": "f101f073-0c97-447e-813d-ab8a47208f24",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:prox-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.320410"
+  },
+  {
+    "id": "802d526e-d6b6-47c6-a3a5-a46eb96b02f3",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:p-h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.416055"
+  },
+  {
+    "id": "e3f171ce-1a15-4058-83fe-1d045b2b2148",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.494631"
+  },
+  {
+    "id": "51547a14-c399-480a-ad59-c6f69a6c80ad",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:f-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.601603"
+  },
+  {
+    "id": "bfe018c1-cf40-4b36-947a-ad8524437d98",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:kappa",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.680082"
+  },
+  {
+    "id": "275496e8-ada5-4d42-873a-8aa2b2cc879a",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:k-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.723044"
+  },
+  {
+    "id": "7e234e32-a7be-4ce0-ad15-fcc758b7a89f",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:gamma",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.776850"
+  },
+  {
+    "id": "cc80f9ef-1fc4-4aac-a294-97833029d646",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:k-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.822836"
+  },
+  {
+    "id": "1feb4e34-dd13-4cd7-a25b-83b906f63fda",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.962972"
+  },
+  {
+    "id": "9e8f62be-445f-46be-b85e-808f32709b2d",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:lambda-allo",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.058998"
+  },
+  {
+    "id": "57877c5f-6f41-42a6-916b-ac3dbeefc45f",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:alpha-learn",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.136732"
+  },
+  {
+    "id": "72f39c02-3fe9-4120-8d0a-c61a5d8417ed",
+    "label": "Variable",
+    "key_value": "predictive-coding:mu-2-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.215122"
+  },
+  {
+    "id": "8f6d2230-9bd1-4f10-9e34-55c2f8bb0221",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-2-0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.288424"
+  },
+  {
+    "id": "ecf1418b-ab12-4986-b54f-a600689defb2",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:hatpi-s-0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.353376"
+  },
+  {
+    "id": "4956475c-9fa9-4105-b90b-cd0485340018",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-food",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.398322"
+  },
+  {
+    "id": "5c2fea91-3099-4381-bdb9-198fec3afa27",
+    "label": "Variable",
+    "key_value": "predictive-coding:hatpi-s",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.450574"
+  },
+  {
+    "id": "6f64e524-756c-46e6-bf4f-76c0c6897251",
+    "label": "Variable",
+    "key_value": "predictive-coding:v-c",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.486266"
+  },
+  {
+    "id": "a3363b4e-e745-49da-8c61-baf54c3f0a9d",
+    "label": "Equation",
+    "key_value": "\\hat{\\pi}_{\\text{post}} = \\hat{\\pi}_s + \\hat{\\pi}_0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.550164"
+  },
+  {
+    "id": "78774396-d5ef-4b40-94fa-d414ad90f9ef",
+    "label": "Variable",
+    "key_value": "predictive-coding:mathbfs-0-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.664684"
+  },
+  {
+    "id": "d1d708de-798b-4a2c-a251-867a89affee3",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward:gamma",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.507556"
+  },
+  {
+    "id": "d2ed7f3d-2442-4239-bfda-4af7447057ed",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.787388"
+  },
+  {
+    "id": "bbe66c49-437e-4b0c-a428-b5064ca8dbd8",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:sigma2-w",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.835133"
+  },
+  {
+    "id": "5b3814e5-d6ff-437d-9bd7-ad75639747dc",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:beta-g",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.875906"
+  },
+  {
+    "id": "423aadad-23ae-496b-8f69-607eb4be0efe",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:gamma",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.921982"
+  },
+  {
+    "id": "6fd2ed00-a5bf-4d73-8cb3-5bba97bb917d",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.019511"
+  },
+  {
+    "id": "86c0885c-fabd-4bcc-98b3-d23456a8de0e",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:n",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.089546"
+  },
+  {
+    "id": "f0c973fd-f943-4d64-9dc1-0a0c962bd092",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-max",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.155464"
+  },
+  {
+    "id": "7eff0067-d90c-4f4b-96fd-427ac5e122b0",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.226943"
+  },
+  {
+    "id": "5489de2b-1b36-4677-a067-e85416e69f3a",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:lambda-drift",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.290345"
+  },
+  {
+    "id": "46ebbe53-f9e0-4ab2-b1bd-e980a3ef369c",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:initial-resource-prio",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.318620"
+  },
+  {
+    "id": "89088a39-67cc-4560-aaf8-d367d858dfac",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:mu-p-va",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.366102"
+  },
+  {
+    "id": "d88bb639-6bfb-4a67-9849-507febc26292",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-stay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.400199"
+  },
+  {
+    "id": "6726f2a8-6c8f-4728-bde4-fef18abebc3c",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta-urgent",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.489212"
+  },
+  {
+    "id": "31d677da-84a5-45fd-bfa4-782003ff58a2",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-dist-bins",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.574281"
+  },
+  {
+    "id": "44875b86-2205-4603-a14d-269426281e8c",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:c-move",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.715163"
+  },
+  {
+    "id": "9db42f29-28a4-44a9-88fe-5a86e755bb2e",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-1-init",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.750652"
+  },
+  {
+    "id": "f803aa88-4435-4d1f-ac61-ee34832c4906",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:lam",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.788468"
+  },
+  {
+    "id": "e7baeba4-3c6d-4402-9f44-fc05b3f0f670",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-0-init",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.821179"
+  },
+  {
+    "id": "b8f2d962-1274-4bf9-925d-b23bf203c754",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.898687"
+  },
+  {
+    "id": "3a804ae5-554e-4e58-98af-1cf6c21d145c",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-b",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.935383"
+  },
+  {
+    "id": "4fc4c063-0ea0-424d-8db3-bfa7d15f2780",
+    "label": "Model",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.401001"
+  },
+  {
+    "id": "0dd395d0-e913-45bc-a158-aad332d838d0",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:q-s-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.377662"
+  },
+  {
+    "id": "10922ef0-afb7-4303-bdc8-4b4c53417b67",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:v-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.511090"
+  },
+  {
+    "id": "967c06bf-6ade-4029-821b-804be19ce743",
+    "label": "Equation",
+    "key_value": "v_a = D(t) - \\hat{D}(t{+}1 \\mid a)",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.630394"
+  },
+  {
+    "id": "0d3a1210-353c-48ce-94b8-faaaee87deb8",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:g-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.736491"
+  },
+  {
+    "id": "219dc4a3-08fe-499f-9ba2-6628ef79b8c4",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:d-h-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.825978"
+  },
+  {
+    "id": "cc93620c-7500-4dd4-9276-f48368f8c1f8",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.948675"
+  },
+  {
+    "id": "81027bb4-c3bb-46f5-99fe-5056e171b585",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.071004"
+  },
+  {
+    "id": "4228e117-abc3-426a-a60a-80aedb564af6",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:u-move-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.234398"
+  },
+  {
+    "id": "0afe792f-842e-42c0-8626-b37fff199e77",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:d-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.348386"
+  },
+  {
+    "id": "e93566ed-0740-4e84-bc69-a5ba0b56b2cf",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:q-h-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.423975"
+  },
+  {
+    "id": "212bcdda-03a0-4b8a-97fe-c116af0ae2f2",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:mu-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.522634"
+  },
+  {
+    "id": "dc959ff2-95f3-4ec4-87a6-5d15e1f204da",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:a-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.625014"
+  },
+  {
+    "id": "4a9a7d8f-158d-4b4b-81bd-19beb3c04c2a",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:mu-p",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.685850"
+  },
+  {
+    "id": "ff2b1c59-eb42-4b63-ae91-ae3bf65d0fa9",
+    "label": "Formulation",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.730766"
+  },
+  {
+    "id": "2341caad-6d49-4bfa-b7a5-e25f3d975f99",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:alpha",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.787154"
+  },
+  {
+    "id": "837cf8bc-dfbd-4e35-8e20-07766fc755ee",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:d-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.831537"
+  },
+  {
+    "id": "8b9a5214-59b1-43ef-86b8-a16f53c07daa",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:b-a",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.989641"
+  },
+  {
+    "id": "79f76c07-de0c-4f1c-9953-b890452839e5",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:w-prag",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.086055"
+  },
+  {
+    "id": "f9fbf654-b92a-4cc9-9f1e-3b7777842e00",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:n-energy",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.162677"
+  },
+  {
+    "id": "ab021e0e-f6e8-4baf-85aa-86777830b863",
+    "label": "Variable",
+    "key_value": "predictive-coding:epsilon-1-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.250520"
+  },
+  {
+    "id": "71f7b489-dd63-4c14-a5ff-858a3670d0eb",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:eta-pi",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.302542"
+  },
+  {
+    "id": "5c148414-13ac-4871-934a-a34332416c14",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:hatpi-0-0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.363266"
+  },
+  {
+    "id": "b64d77e3-4216-4db3-8462-0abcbeacc51f",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-empty",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.404274"
+  },
+  {
+    "id": "1e3c370f-df31-4fdc-9f68-4478a53bf9c8",
+    "label": "Variable",
+    "key_value": "predictive-coding:hatpi-0",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.458760"
+  },
+  {
+    "id": "3e56b9a3-b88f-4451-9a37-092f5e12870d",
+    "label": "Variable",
+    "key_value": "predictive-coding:a-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.514135"
+  },
+  {
+    "id": "8cacb162-2917-494b-a6c3-95087748b2b4",
+    "label": "Equation",
+    "key_value": "w(t) = \\frac{\\hat{\\pi}_s \\, \\|\\varepsilon(t)\\|^2}{\\hat{\\pi}_s + \\hat{\\pi}_0}",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.557101"
+  },
+  {
+    "id": "04a4f0bb-4fce-4202-908b-6b263bd14a01",
+    "label": "Formulation",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.606223"
+  },
+  {
+    "id": "801b6212-042b-42da-966c-fbd0a8bd0005",
+    "label": "Variable",
+    "key_value": "predictive-coding:g-pi",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.673787"
+  },
+  {
+    "id": "ae031c75-a96b-41a0-9096-6b40806e821a",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.732620"
+  },
+  {
+    "id": "56b23fa4-0f37-4704-9afd-2e8545da1729",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:d-crit",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.796434"
+  },
+  {
+    "id": "448bc468-8242-429f-a851-475a5d430ee2",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:sigma2-s",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.842371"
+  },
+  {
+    "id": "bfd7f110-8789-4761-8bbc-46191f75a849",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:kappa",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.885125"
+  },
+  {
+    "id": "ae25b65a-3486-4739-b365-6102034b140a",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:alpha",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.927625"
+  },
+  {
+    "id": "cc3af26c-979a-4cc1-902d-4d5bf7557df6",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:lambda-drift",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.044033"
+  },
+  {
+    "id": "e055b41b-91b8-43cb-9461-24b36c9fe47d",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:m",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.096252"
+  },
+  {
+    "id": "4138e216-dd58-4363-9600-fa08203fbfa4",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:w-prox",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.176078"
+  },
+  {
+    "id": "288cc000-6547-48f9-b13c-a9c97496f571",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:sigma-p",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.251131"
+  },
+  {
+    "id": "245d3ed2-2975-4267-b60f-5df3bf601e56",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:h-max",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.296794"
+  },
+  {
+    "id": "57e5f5cc-e73f-4906-83ed-b5ef2e796f65",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move-",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.416448"
+  },
+  {
+    "id": "fe814d8b-aba3-4f45-a59f-7d8d458244fd",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-critical",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.511416"
+  },
+  {
+    "id": "c4eb2fe4-1c22-4def-a592-ec23ce9bcd65",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-energy-bins",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.583094"
+  },
+  {
+    "id": "c39c0e5b-70ad-4e57-b329-a1ac5f5fae87",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:c-stay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.721626"
+  },
+  {
+    "id": "f7a57284-279f-4e77-9686-b1859a2035e7",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-2-init",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.756998"
+  },
+  {
+    "id": "8a47fbd6-7da4-4fc0-bd9c-999741093edf",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:sigma2-init",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.794005"
+  },
+  {
+    "id": "c6446173-9b71-472d-8c59-10697fee3e08",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:delta-h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.904560"
+  },
+  {
+    "id": "aa2fa9e6-7000-4bce-94b8-2191d8e747dc",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:sigmoid-scale",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.942208"
+  },
+  {
+    "id": "0e3b5a74-774e-4034-80ce-fb57d62b7068",
+    "label": "Model",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.417602"
+  },
+  {
+    "id": "fbd29901-8615-44fd-8e91-cfc56c1fc6b3",
+    "label": "Model",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.452142"
+  },
+  {
+    "id": "31e10ff1-7dff-4711-94e7-d3402ece7f0a",
+    "label": "Model",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.547825"
+  },
+  {
+    "id": "fbdec021-464f-4b54-beb1-3830535138a3",
+    "label": "Model",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.602605"
+  },
+  {
+    "id": "f772571f-c285-4467-8b46-d9800f90a22c",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:delta-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.387053"
+  },
+  {
+    "id": "98442aec-c80b-4fd6-85ea-83d011ce78ef",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:d-res-i",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.519306"
+  },
+  {
+    "id": "77d19137-9aba-4733-a200-3c66c662626f",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:mu-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.659983"
+  },
+  {
+    "id": "5a8501ac-1567-4900-a868-ccbc7cd3c2f7",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:r-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.849455"
+  },
+  {
+    "id": "a17b49cb-3f40-489a-a022-7efc0656bfd2",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:a-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:31.974209"
+  },
+  {
+    "id": "e7e2afca-3eb8-42e1-a015-c25026f5a514",
+    "label": "Variable",
+    "key_value": "homeostatic-reinforcement-learning:r",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.096692"
+  },
+  {
+    "id": "6c585ecf-85af-433d-9ffa-e6301398245c",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation:u-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.259380"
+  },
+  {
+    "id": "2471fcd3-a0ba-495f-84ab-d821531efc6e",
+    "label": "Formulation",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.355318"
+  },
+  {
+    "id": "4248e050-59ad-4359-afc5-d3897d50bee3",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:mu-p",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.531099"
+  },
+  {
+    "id": "41f8f399-2716-45e5-90b6-c663d7f73a54",
+    "label": "Formulation",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.641893"
+  },
+  {
+    "id": "e819ffb0-f5d7-4abc-9aa0-86dadf03f4a7",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:sigma-s",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.706998"
+  },
+  {
+    "id": "8dad0ad1-8c9e-4ef5-a32d-c574dd6e2c32",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.749395"
+  },
+  {
+    "id": "483d8663-f5ab-4c62-a32f-9e4d6da3c74d",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.798879"
+  },
+  {
+    "id": "1b595ed8-ad0e-4819-9898-f309f89b5640",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:g",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.868843"
+  },
+  {
+    "id": "5798fa80-7cdb-4a92-b612-59f7058992b7",
+    "label": "Variable",
+    "key_value": "interoceptive-active-inference:q-s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:32.999342"
+  },
+  {
+    "id": "2581f5f2-069f-490d-a32c-28faaad65e2b",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:w-epist",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.095419"
+  },
+  {
+    "id": "496bd932-ae47-47ca-ab72-0b8d2d3568b6",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:n-dist",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.172613"
+  },
+  {
+    "id": "a9656f96-4758-46df-8a57-fe7552d6c800",
+    "label": "Variable",
+    "key_value": "predictive-coding:epsilon-2-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.260070"
+  },
+  {
+    "id": "b03cd3b4-f23c-402a-8b0e-a1fb761ed5a9",
+    "label": "Variable",
+    "key_value": "predictive-coding:pi-1",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.325860"
+  },
+  {
+    "id": "9d37c3d0-bdc9-45b5-9382-7bcbf1fc94ff",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:alpha-pi",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.372222"
+  },
+  {
+    "id": "5e746152-cee5-4c7b-bd31-fdf6ec5d278e",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:d-max",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.426843"
+  },
+  {
+    "id": "378c60c9-f752-4bd1-8895-e4c36a597913",
+    "label": "Variable",
+    "key_value": "predictive-coding:mu-0-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.467403"
+  },
+  {
+    "id": "309b8afb-654a-45c1-8358-3de99286b23a",
+    "label": "Equation",
+    "key_value": "\\mu_0(t) = \\gamma \\, \\hat{\\mu}(t-1) + (1-\\gamma)\\, s_{\\text{default}}",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.522715"
+  },
+  {
+    "id": "9a79d065-9fca-434d-bb92-b2255e24ceac",
+    "label": "Equation",
+    "key_value": "\\hat{\\pi}_s \\leftarrow \\hat{\\pi}_s + \\alpha_\\pi \\left(\\frac{1}{\\|\\varepsilon(t)\\|^2 + 0.01} - \\hat{\\pi}_s\\right)",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.564205"
+  },
+  {
+    "id": "73be94af-1ae9-4bf2-a58d-dd07bb16403f",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:h",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.613160"
+  },
+  {
+    "id": "6a67546f-e5f8-48a0-838b-be85527d064e",
+    "label": "Variable",
+    "key_value": "predictive-coding:g-prag-pi",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.683074"
+  },
+  {
+    "id": "710ae748-ca16-440a-abc0-d493871c93c3",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:n",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.741317"
+  },
+  {
+    "id": "8a936fb9-6996-4ebe-90c1-04592364c429",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy:d-low",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.802430"
+  },
+  {
+    "id": "49618173-e8be-4003-bc0a-96c3ca34efa2",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:lambda-decay",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.849415"
+  },
+  {
+    "id": "92e196e0-5075-4228-ba18-4e3959391196",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.952167"
+  },
+  {
+    "id": "250e212a-c1f0-49e1-b94e-010dcbfa91df",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-bins",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.067360"
+  },
+  {
+    "id": "e2658148-1569-4ead-9b2a-bc4b75ac0180",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.103647"
+  },
+  {
+    "id": "920e3acc-9fb0-4d95-a5f4-c9c31525c9d9",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:beta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.183965"
+  },
+  {
+    "id": "fa7459dd-6375-48a7-9ab0-807ba04965af",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:sigma-obs",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.259491"
+  },
+  {
+    "id": "649df6bc-0941-4827-a498-c3ac07cf259c",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:beta-g",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.302045"
+  },
+  {
+    "id": "aeec8f45-46a5-457a-9020-eaa98d6b8203",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-s",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.350032"
+  },
+  {
+    "id": "361fea8c-9300-433c-88cf-576ca94ac0f7",
+    "label": "Paradigm",
+    "key_value": "interoceptive-active-inference",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.421240"
+  },
+  {
+    "id": "d11b01f3-bcfb-4247-bde3-0013119168a3",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:k-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.728842"
+  },
+  {
+    "id": "ad455fad-90c1-4346-a309-160808a2f904",
+    "label": "Paradigm",
+    "key_value": "predictive-coding",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.800743"
+  },
+  {
+    "id": "f93de550-b1d8-434f-8ceb-0bf4cd49bdd0",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.911710"
+  },
+  {
+    "id": "e1b1e6b7-2aa8-4e40-af66-d0e7bef235fd",
+    "label": "Equation",
+    "key_value": "G(\\pi) = \\sum_{\\tau=t+1}^{t+T} \\left[ w_{\\text{prag}} \\underbrace{\\mathbb{E}_{q}\\!\\left[\\ln q(s_\\tau|\\pi) - C_{o_\\tau}\\r",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.183213"
+  },
+  {
+    "id": "80387362-ed5d-42a8-a770-0792e945246f",
+    "label": "Formulation",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.268723"
+  },
+  {
+    "id": "e4cdf665-e8e7-4fbe-a4e5-ed6252d61c96",
+    "label": "Variable",
+    "key_value": "predictive-coding:pi-2",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.336027"
+  },
+  {
+    "id": "b32eff3e-dca7-4765-9c04-78b7e8905599",
+    "label": "Parameter",
+    "key_value": "predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:gamma",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.383811"
+  },
+  {
+    "id": "b176e8b0-88ed-4aa4-903a-bcaaa3c84008",
+    "label": "Variable",
+    "key_value": "predictive-coding:s-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.435416"
+  },
+  {
+    "id": "6f62d7a8-3da8-4f26-a37d-0b5d3abfd64b",
+    "label": "Variable",
+    "key_value": "predictive-coding:epsilon-t",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.473742"
+  },
+  {
+    "id": "495d39f2-4982-472c-ad07-f993ea4ef4b5",
+    "label": "Equation",
+    "key_value": "\\varepsilon(t) = s(t) - \\mu_0(t)",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.531463"
+  },
+  {
+    "id": "a8bef638-3877-4ca6-95e6-604c22f8d35e",
+    "label": "Equation",
+    "key_value": "V(c) = \\hat{\\pi}_s \\, \\hat{R}(c) - \\left(1 - \\frac{\\hat{\\pi}_s}{\\hat{\\pi}_s + \\hat{\\pi}_0}\\right) d(c)",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.569234"
+  },
+  {
+    "id": "63d94101-e090-44d3-af40-9a4df4438a2d",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:tau",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.619996"
+  },
+  {
+    "id": "31709425-ef29-408a-83a0-77cae696b9f2",
+    "label": "Variable",
+    "key_value": "predictive-coding:g-epist-pi",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:27:33.704955"
+  },
+  {
+    "id": "4393e1a6-d94b-41a1-8abe-9359f8cfc018",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation:c-eat",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.858301"
+  },
+  {
+    "id": "7418e4f7-e507-4a7a-8f1d-5be1f5ce83f4",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:n",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.896767"
+  },
+  {
+    "id": "0cbdf220-80b4-49fe-8f09-db860b79f939",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-star",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:34.958975"
+  },
+  {
+    "id": "70d06783-558b-4e71-ae3c-6a7b64634af5",
+    "label": "Paradigm",
+    "key_value": "homeostatic-reinforcement-learning",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.075981"
+  },
+  {
+    "id": "e0b2f75a-81d8-41a2-bd55-c8566d860a64",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:lambda-drift",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.127185"
+  },
+  {
+    "id": "8fc2e48c-2395-4f1d-a9ea-d494fe7edbd5",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:eta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.191611"
+  },
+  {
+    "id": "9ffa27b5-3281-452c-8824-be37613d8d53",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:sigma-process-sq",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.267622"
+  },
+  {
+    "id": "0730f778-2627-4161-abbc-ee86596423db",
+    "label": "Parameter",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:w-e",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.307588"
+  },
+  {
+    "id": "974ea9b6-5a18-42d2-b7ee-8ad70a059af7",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-p",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.355709"
+  },
+  {
+    "id": "9992bbdd-97dd-40e5-b3c5-de76de7bbfb7",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:energy-",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.390533"
+  },
+  {
+    "id": "36956e0f-fde7-4b07-88a5-dab35b7e8c85",
+    "label": "Parameter",
+    "key_value": "interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting:eta",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.702078"
+  },
+  {
+    "id": "2fef9940-06aa-4bb7-964f-f6e4b364a208",
+    "label": "Parameter",
+    "key_value": "predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:n-iter",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.772728"
+  },
+  {
+    "id": "dedc7d02-42d0-4a42-a738-f26e44eab8f8",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:beta-g",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.883837"
+  },
+  {
+    "id": "43ad5c06-db0d-487a-8282-8f556259a29d",
+    "label": "Parameter",
+    "key_value": "predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:k",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T12:57:35.920047"
+  },
+  {
+    "id": "7d6a5f4c-9b3e-4bf2-b523-99ff787192b7",
+    "label": "Model",
+    "key_value": "homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.432306"
+  },
+  {
+    "id": "ffa406e6-67a6-49d7-831e-8fe8cffc5f5d",
+    "label": "Model",
+    "key_value": "homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.465664"
+  },
+  {
+    "id": "e46e3b57-2c03-4283-a315-580d1dfaf718",
+    "label": "Model",
+    "key_value": "interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward",
+    "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+    "observed_at": "2026-06-29T13:27:07.522040"
+  }
+]

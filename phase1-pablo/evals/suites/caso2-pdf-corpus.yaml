@@ -1,0 +1,15 @@
+name: caso2-pdf-corpus
+stages: [research, formalize, reason, build]
+env_spec: evals/fixtures/env_spec_grid_10x10.json
+reset_kg_before: true
+eval_corpus: ~/Downloads/Evaluacion_CASO2.zip
+
+topics:
+  - text: >
+      PDF-corpus evaluation case 2. Using only the papers available through
+      the eval web_search and search_papers tools, identify and investigate
+      all decision-making paradigms that explain body regulation, homeostasis,
+      interoception, active inference, and reinforcement learning in adaptive
+      behavior. Treat the corpus as the complete literature universe: split,
+      merge, and name paradigms according to the evidence in the papers, then
+      carry every discovered paradigm and formulation forward.

@@ -1,0 +1,265 @@
+{
+  "formulation_id": "algebraic-closed-form-ddm-with-softmax-action-selection",
+  "paradigm": "drift-diffusion-model",
+  "name": "Algebraic Closed-Form DDM with Softmax Action Selection",
+  "description": "Uses the exact closed-form solutions for first-passage time statistics of the Wiener process (Bogacz et al., 2006) to analytically compute per-action choice probability and expected decision time, avoiding simulation of stochastic trajectories. Each action's drift rate is derived from perceptual proximity to resources. The DDM-predicted accuracy P_i and mean decision time T_bar_i are combined with a learned Q-value into a composite action value V_i. Actions are selected via softmax sampling over these composite values. This formulation implements postulates P2 (drift rate reflects stimulus quality) and P3 (speed-accuracy trade-off controlled by boundary separation) in an algebraically tractable way, making it computationally fast while preserving the theoretical grounding of the DDM. After each step, the chosen action's Q-value is updated via a simple temporal-difference rule.",
+  "variables": [
+    {
+      "symbol": "P_i",
+      "name": "choice_probability",
+      "description": "Closed-form probability that a DDM accumulator for action i would hit the upper boundary, given drift rate v_i, boundary a, and diffusion coefficient sigma. Derived from the Wiener first-passage solution.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "T_bar_i",
+      "name": "expected_decision_time",
+      "description": "Mean first-passage time for the accumulator for action i, derived from the Wiener process closed-form solution. Used as a time-cost penalty.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1000.0]
+    },
+    {
+      "symbol": "V_i",
+      "name": "composite_action_value",
+      "description": "Combined value of action i: accuracy-weighted benefit minus time cost plus learned utility. The decision criterion for action selection.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-100.0, 100.0]
+    },
+    {
+      "symbol": "pi_i",
+      "name": "action_selection_probability",
+      "description": "Softmax probability of selecting action i, derived from composite values V_i and inverse temperature beta.",
+      "type": "float",
+      "initial_value": 0.1667,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "Q_i",
+      "name": "learned_action_utility",
+      "description": "Running estimate of expected reward from taking action i. Updated via temporal-difference learning after each step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "v_i",
+      "name": "drift_rate",
+      "description": "Drift rate for action i computed from perceptual signal. Positive values indicate evidence favoring the action; higher magnitude means stronger evidence.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "s_i",
+      "name": "perceptual_signal",
+      "description": "Raw perceptual signal for action i derived from resource proximity or resource presence on cell.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "a",
+      "name": "boundary_separation",
+      "default": 1.5,
+      "source": "Ratcliff & McKoon (2008); typical value for moderate caution"
+    },
+    {
+      "symbol": "z_rel",
+      "name": "relative_starting_point",
+      "default": 0.5,
+      "source": "Unbiased default; Ratcliff & Rouder (1998)"
+    },
+    {
+      "symbol": "sigma",
+      "name": "diffusion_coefficient",
+      "default": 0.1,
+      "source": "Standard scaling convention; Ratcliff (1978)"
+    },
+    {
+      "symbol": "beta",
+      "name": "softmax_inverse_temperature",
+      "default": 5.0,
+      "source": "Controls exploration-exploitation trade-off; knowledge backbone default from Run 542c7e41"
+    },
+    {
+      "symbol": "alpha",
+      "name": "learning_rate",
+      "default": 0.1,
+      "source": "Standard RL learning rate for Q-value updates"
+    },
+    {
+      "symbol": "k_v",
+      "name": "drift_rate_scaling",
+      "default": 1.0,
+      "source": "Maps perceptual signal to drift rate units; linked to postulate P2"
+    },
+    {
+      "symbol": "lambda_t",
+      "name": "time_cost_penalty",
+      "default": 0.1,
+      "source": "Penalizes slow decisions; implements speed-accuracy trade-off per postulate P3"
+    },
+    {
+      "symbol": "w_P",
+      "name": "accuracy_weight",
+      "default": 1.0,
+      "source": "Relative importance of DDM-predicted accuracy in composite value"
+    },
+    {
+      "symbol": "w_Q",
+      "name": "utility_weight",
+      "default": 0.5,
+      "source": "Relative importance of learned reward signal in composite value"
+    },
+    {
+      "symbol": "epsilon",
+      "name": "zero_drift_guard",
+      "default": 0.0001,
+      "source": "Numerical guard for v_i near zero in Eq. 3 (L'Hopital limit); standard numerical practice"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Drift rate from perception: scales the perceptual signal by k_v to produce a drift rate for each action.",
+      "type": "algebraic",
+      "pseudocode": "for each action i:\n  v_i = k_v * s_i",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Closed-form choice probability: exact DDM accuracy from Wiener first-passage analysis (Bogacz et al., 2006, Eq. 2.8). Assumes unbiased starting point z = a/2.",
+      "type": "algebraic",
+      "pseudocode": "P_i = 1.0 / (1.0 + exp(-2.0 * v_i * a / (sigma ** 2)))",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R3",
+      "description": "Expected decision time: closed-form mean first-passage time (Bogacz et al., 2006, Eq. 2.10). Uses numerical guard for near-zero drift.",
+      "type": "algebraic",
+      "pseudocode": "if abs(v_i) < epsilon:\n  T_bar_i = (a ** 2) / (2.0 * sigma ** 2)\nelse:\n  T_bar_i = (a / (2.0 * v_i)) * tanh(v_i * a / (sigma ** 2))",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Composite action value: combines DDM-predicted accuracy (higher is better), a time-cost penalty (slower decisions are penalized), and a learned utility term.",
+      "type": "algebraic",
+      "pseudocode": "V_i = w_P * P_i - lambda_t * T_bar_i + w_Q * Q_i",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Softmax action selection: converts composite values into a probability distribution over actions using the Boltzmann softmax with inverse temperature beta.",
+      "type": "algebraic",
+      "pseudocode": "max_V = max(V_i for all i)  # numerical stability\npi_i = exp(beta * (V_i - max_V)) / sum(exp(beta * (V_j - max_V)) for all j)\nR = sample from categorical distribution with probabilities pi_i",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Q-value update: simple temporal-difference update for the chosen action only.",
+      "type": "update",
+      "pseudocode": "Q_R = Q_R + alpha * (reward_observed - Q_R)",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Per-step decision: compute perceptual signals, derive drift rates, evaluate closed-form DDM accuracy and decision time, form composite values, and sample action via softmax. No internal simulation loop needed — all computations are algebraic. After reward feedback, update the Q-value for the chosen action.",
+    "pseudocode": [
+      "# Step 1: Parse perception",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_on_cell = any(f['x'] == pos[0] and f['y'] == pos[1] for f in food_list)",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# Step 2: Compute perceptual signals s_i for each action",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "direction_deltas = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "for each action i:",
+      "  if i in direction_deltas:",
+      "    dx, dy = direction_deltas[i]",
+      "    neighbor = (pos[0]+dx, pos[1]+dy)",
+      "    d_i = min Manhattan distance from neighbor to any food (large number if no food)",
+      "    s_i = 1.0 / (1.0 + d_i)",
+      "  elif i == 'eat':",
+      "    s_i = 1.0 if food_on_cell else -0.5",
+      "  elif i == 'stay':",
+      "    s_i = 0.0",
+      "",
+      "# Step 3: Compute drift rates via R1",
+      "v_i = k_v * s_i  # for each action i",
+      "",
+      "# Step 4: Compute DDM accuracy P_i via R2",
+      "P_i = 1.0 / (1.0 + exp(-2.0 * v_i * a / sigma**2))  # for each action i",
+      "",
+      "# Step 5: Compute expected decision time T_bar_i via R3",
+      "for each action i:",
+      "  if abs(v_i) < epsilon:",
+      "    T_bar_i = a**2 / (2.0 * sigma**2)",
+      "  else:",
+      "    T_bar_i = (a / (2.0 * v_i)) * tanh(v_i * a / sigma**2)",
+      "",
+      "# Step 6: Compute composite value V_i via R4",
+      "V_i = w_P * P_i - lambda_t * T_bar_i + w_Q * Q_i  # for each action i",
+      "",
+      "# Step 7: Softmax selection via R5",
+      "max_V = max(V_i for all i)",
+      "pi_i = exp(beta * (V_i - max_V)) / sum(exp(beta * (V_j - max_V)) for all j)",
+      "chosen = sample_categorical(actions, probabilities=pi_i)",
+      "",
+      "# Step 8: Return chosen action",
+      "return Action(chosen)",
+      "",
+      "# Step 9 (in update method): Update Q_chosen via R6",
+      "Q[chosen] = Q[chosen] + alpha * (reward - Q[chosen])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']",
+      "food_on_cell": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "step_number": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; move/stay actions yield reward 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent moves toward food: actions pointing toward nearby food get higher drift rates, higher P_i, and thus higher V_i, making them more likely under softmax.",
+      "test_pseudocode": "place food at (5,5), agent at (0,0) → over 50 steps, assert agent's distance to food decreases on average"
+    },
+    {
+      "id": "B2",
+      "description": "Agent eats when on food: the eat action gets s_eat = 1.0 when food is on cell, producing high drift and high P_eat, dominating the softmax.",
+      "test_pseudocode": "place agent on food cell → run decide() 100 times → assert eat is chosen > 70% of the time"
+    },
+    {
+      "id": "B3",
+      "description": "Speed-accuracy trade-off: increasing boundary separation 'a' makes P_i closer to 1.0 but increases T_bar_i, shifting the balance in V_i. Higher lambda_t favors faster (lower-confidence) actions.",
+      "test_pseudocode": "compare action distributions with lambda_t=0.01 vs lambda_t=1.0 → higher lambda favors actions with lower T_bar"
+    },
+    {
+      "id": "B4",
+      "description": "Q-learning adapts over time: initially Q_i = 0 for all actions, but after repeated eat rewards, Q_eat increases, further biasing selection toward eat when on food.",
+      "test_pseudocode": "simulate 50 eat-reward cycles → assert Q['eat'] > 0.5"
+    },
+    {
+      "id": "B5",
+      "description": "No internal simulation loop: decision is computed in O(n_actions) algebraic operations, not iterative accumulation. Faster than Formulation 1.",
+      "test_pseudocode": "time decide() → assert < 1ms per call"
+    }
+  ],
+  "references": [
+    "Ratcliff, R. (1978). A theory of memory retrieval. Psychological Review, 85(2), 59-108. DOI: 10.1037/0033-295X.85.2.59",
+    "Ratcliff, R., & McKoon, G. (2008). The diffusion decision model: Theory and data for two-choice decision tasks. Neural Computation, 20(4), 873-922. DOI: 10.1162/neco.2008.12-06-420",
+    "Ratcliff, R., & Rouder, J. N. (1998). Modeling response times for two-choice decisions. Psychological Science, 9(5), 347-356. DOI: 10.1111/1467-9280.00067",
+    "Bogacz, R., Brown, E., Moehlis, J., Holmes, P., & Cohen, J. D. (2006). The physics of optimal decision making. Psychological Review, 113(4), 700-765. DOI: 10.1037/0033-295X.113.4.700"
+  ]
+}

@@ -1,0 +1,227 @@
+{
+  "formulation_id": "drive-reduction-ode-with-goal-directed-valuation",
+  "paradigm": "homeostatic-regulation-of-food-valuation",
+  "name": "Drive-Reduction ODE with Goal-Directed Valuation",
+  "description": "A continuous-time homeostatic ODE system (discretized to grid steps) that couples an internal energy store to a sigmoid hunger drive, which in turn modulates multi-attribute food valuation. The agent uses deterministic argmax action selection over analytically computed action values that weight caloric value vs. effort cost depending on current hunger state. No learning is required — the agent is purely model-based and goal-directed, computing values from first principles each step. Grounded in Jacquier (2016) energy-balance ODEs and Rangel (2013) multi-attribute value computation framework (Postulates P1, P3, P6).",
+  "variables": [
+    {
+      "symbol": "E",
+      "name": "energy_store",
+      "description": "Normalized internal energy reserve, proxy for fat mass. Depleted by basal metabolic cost each step and replenished by eating food.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger_drive",
+      "description": "Motivational drive state derived from energy deficit via sigmoid function. High when energy is below set-point, low when above.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_c",
+      "name": "caloric_weight",
+      "description": "State-dependent attribute weight for caloric/nutritional value of food. Equals hunger drive H — hungry agents weight calories highly.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_e",
+      "name": "effort_weight",
+      "description": "State-dependent attribute weight penalizing movement cost. Equals 1 - H — satiated agents are more effort-averse.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "d",
+      "name": "resource_distance",
+      "description": "Manhattan distance from agent's current position (or post-move position) to the nearest visible food resource.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 18]
+    },
+    {
+      "symbol": "ate",
+      "name": "ate_flag",
+      "description": "Binary indicator: 1 if the agent successfully consumed food on the previous step, 0 otherwise. Derived from last_action_result.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_E",
+      "name": "basal_metabolic_cost",
+      "default": 0.01,
+      "source": "Jacquier (2016), adapted to grid timescale — represents continuous energy drain per step"
+    },
+    {
+      "symbol": "c_food",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized; represents a substantial meal restoring ~30% of energy capacity (Jacquier 2016 energy intake scaling)"
+    },
+    {
+      "symbol": "E_set",
+      "name": "energy_set_point",
+      "default": 0.5,
+      "source": "Jacquier (2016) homeostatic set-point concept — midpoint of normalized energy range"
+    },
+    {
+      "symbol": "k_H",
+      "name": "hunger_sensitivity",
+      "default": 4.0,
+      "source": "Tuned so sigmoid spans [0,1] meaningfully across the deficit range [-0.5, 0.5]"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Rangel (2013) normalized value scale for food reward"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.05,
+      "source": "Small penalty for movement to encourage efficiency; negative value represents effort cost"
+    },
+    {
+      "symbol": "theta",
+      "name": "eat_threshold",
+      "default": 0.3,
+      "source": "Rangel (2013) meal-initiation threshold concept — minimum hunger to initiate eating"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: energy decreases by basal metabolic cost each step and increases when food is consumed.",
+      "type": "difference_equation",
+      "pseudocode": "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R2",
+      "description": "Hunger drive: sigmoid function of energy deficit from set-point. When energy is below set-point, hunger is high; when above, hunger is low.",
+      "type": "algebraic",
+      "pseudocode": "H = 1.0 / (1.0 + exp(-k_H * (E_set - E)))",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "State-dependent attribute weights: caloric weight equals hunger drive, effort weight is its complement. This captures the shift in food attribute weighting with homeostatic state.",
+      "type": "algebraic",
+      "pseudocode": "w_c = H\nw_e = 1.0 - H",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R4",
+      "description": "Food value for eat action: product of caloric weight, base food reward, and hunger. Quadratic in H, so value rises steeply with hunger.",
+      "type": "algebraic",
+      "pseudocode": "V_eat = w_c * r_food * H  # equivalent to H^2 * r_food",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R5",
+      "description": "Move-toward-food value: caloric value discounted by distance to nearest food after the move, plus effort cost weighted by effort weight.",
+      "type": "algebraic",
+      "pseudocode": "V_move_a = w_c * r_food * H / (1.0 + d_after_move_a) + c_step * w_e",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R6",
+      "description": "Stay value: baseline zero value, representing no gain and no cost from inaction.",
+      "type": "algebraic",
+      "pseudocode": "V_stay = 0.0",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Deterministic goal-directed action selection via argmax over analytically computed action values. The agent computes the value of every available action based on current hunger state and food positions, then greedily selects the highest-value action. A meal-initiation threshold prevents eating when hunger is below a minimum level, implementing Rangel (2013) threshold concept.",
+    "pseudocode": [
+      "# 1. Update internal state from previous step",
+      "ate = 1 if last_action_result indicates successful consumption else 0",
+      "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "H = 1.0 / (1.0 + exp(-k_H * (E_set - E)))",
+      "w_c = H",
+      "w_e = 1.0 - H",
+      "",
+      "# 2. Compute distances to nearest food from each candidate position",
+      "food_list = perception['resources']['food']",
+      "nearest_food_dist = manhattan_distance_to_nearest(agent_pos, food_list)",
+      "food_at_cell = any(f for f in food_list if f['x'] == x and f['y'] == y)",
+      "",
+      "# 3. Compute action values",
+      "action_values = {}",
+      "",
+      "if food_at_cell and H >= theta:",
+      "    action_values['eat'] = w_c * r_food * H",
+      "elif food_at_cell and H < theta:",
+      "    action_values['eat'] = 0.0  # below meal-initiation threshold",
+      "",
+      "for move_action in ['move_up', 'move_down', 'move_left', 'move_right']:",
+      "    new_pos = apply_move(agent_pos, move_action, grid_width, grid_height)",
+      "    d_after = manhattan_distance_to_nearest(new_pos, food_list)",
+      "    action_values[move_action] = w_c * r_food * H / (1.0 + d_after) + c_step * w_e",
+      "",
+      "action_values['stay'] = 0.0",
+      "",
+      "# 4. Select action with highest value (ties broken randomly)",
+      "best_action = argmax(action_values)  # random tiebreak",
+      "return Action(best_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "ate_flag": "1 if perception['last_action_result'] indicates eat success (resource consumed) else 0",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "resource_distance": "min(|agent.x - f.x| + |agent.y - f.y| for f in food_sources) or grid_width + grid_height if no food"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; move/stay actions → reward 0.0 from env. Internal energy/hunger dynamics are tracked separately."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases without eating: as energy depletes from basal metabolism, hunger drive rises via sigmoid function.",
+      "test_pseudocode": "run 50 steps without food available → assert H increases monotonically toward 1.0"
+    },
+    {
+      "id": "B2",
+      "description": "Agent seeks food when hungry: when H > theta and food is visible, agent moves toward nearest food.",
+      "test_pseudocode": "set E = 0.2 (H ≈ 0.88) with food at distance 3 → assert agent selects move action reducing distance to food"
+    },
+    {
+      "id": "B3",
+      "description": "Agent eats when on food and hungry: food at cell + high hunger → eat action selected.",
+      "test_pseudocode": "place agent on food cell with E = 0.2 → assert agent selects 'eat'"
+    },
+    {
+      "id": "B4",
+      "description": "Agent stays or wanders when satiated: when energy is at or above set-point, hunger is low and agent prefers staying over movement.",
+      "test_pseudocode": "set E = 0.8 (H ≈ 0.12) → assert agent selects 'stay' or moves away from food (V_stay = 0 > V_move when H is very low)"
+    },
+    {
+      "id": "B5",
+      "description": "Meal-initiation threshold prevents eating when not hungry enough.",
+      "test_pseudocode": "place agent on food cell with E = 0.7 (H ≈ 0.27 < theta=0.3) → assert agent does NOT select 'eat'"
+    },
+    {
+      "id": "B6",
+      "description": "Energy oscillates around set-point over time as agent cycles between eating and depleting.",
+      "test_pseudocode": "run 500 steps with food available → assert mean(E) is close to E_set (within ±0.15)"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Jacquier, M. (2016). Mathematical modeling of the hormonal regulation of food intake and body weight. Doctoral thesis, Université Claude Bernard Lyon 1. HAL: tel-01273347",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357"
+  ]
+}

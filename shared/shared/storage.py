@@ -101,6 +101,19 @@ class StorageService:
             Key=key,
         )
 
+    async def rename(self, old_key: str, new_key: str) -> str:
+        """Move an object to *new_key* and return the new key."""
+        if old_key == new_key:
+            return new_key
+        bucket = self._settings.MINIO_BUCKET
+        await self._c().copy_object(
+            Bucket=bucket,
+            CopySource={"Bucket": bucket, "Key": old_key},
+            Key=new_key,
+        )
+        await self.delete(old_key)
+        return new_key
+
     async def exists(self, key: str) -> bool:
         """Return True if *key* exists in the bucket."""
         try:

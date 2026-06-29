@@ -240,6 +240,7 @@ class Researcher:
         kg=None,
         vectors=None,
         embeddings=None,
+        paper_search: Callable[[dict], Awaitable[str]] | None = None,
     ):
         self.client = client
         self.search = search
@@ -249,6 +250,7 @@ class Researcher:
         self._kg = kg
         self._vectors = vectors
         self._embeddings = embeddings
+        self._paper_search = paper_search
 
         self._deep_reports: dict[str, str] = {}
 
@@ -285,6 +287,7 @@ class Researcher:
             storage=self._storage,
             db=self._db,
             run_id=self.run_id,
+            paper_search=self._paper_search,
         )
         summary = await dr.run(paradigm)
         self._deep_reports[paradigm] = summary

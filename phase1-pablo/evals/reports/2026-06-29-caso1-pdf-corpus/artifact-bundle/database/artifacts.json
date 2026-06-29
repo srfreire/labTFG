@@ -1,0 +1,752 @@
+[
+  {
+    "id": "36998ffb-b219-4e6b-9f8b-8330886298ee",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/dlpfc-self-control-modulation.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:17.728868",
+    "size_bytes": 14121,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "21d55dc5-eb0c-49d3-addc-5a92bfeb9b4e",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/attribute-based-value-computation.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:18.910908",
+    "size_bytes": 15063,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "7dd24d6a-9b13-4fee-8e96-c35de43e50b7",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/pavlovian-control-of-food-approach.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:23.103097",
+    "size_bytes": 16018,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4807e0e5-bd52-4648-a4aa-961decf25d47",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/homeostatic-regulation-of-food-valuation.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:31.965078",
+    "size_bytes": 17076,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5905d7e1-59f8-4f5d-ac3e-fdad0df74794",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/goal-directed-vs-habitual-control.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:32.069572",
+    "size_bytes": 16801,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "063169bc-68bb-4bcd-b0c8-afd6eddcc37e",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/deep/drift-diffusion-model.md",
+    "artifact_type": "deep_report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:29:33.810534",
+    "size_bytes": 15470,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "fc860c17-d3cf-4a4a-9dab-358aa71c5f0f",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/report.md",
+    "artifact_type": "report",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:30:51.160272",
+    "size_bytes": 11065,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "7f496fdc-d482-43df-bddd-dddb45a36572",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/homeostatic-regulation-of-food-valuation.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:37:32.394103",
+    "size_bytes": 17063,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "81ccf3ba-79e6-4bb1-b1ac-06dcf0d7b188",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/drift-diffusion-model.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:37:32.393599",
+    "size_bytes": 17425,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "63fb6c1e-6ee4-422f-b877-211ee76edb0a",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/attribute-based-value-computation.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:37:42.910525",
+    "size_bytes": 18540,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "0569d135-109f-41e9-b175-09a4267e834f",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/dlpfc-self-control-modulation.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:37:44.703080",
+    "size_bytes": 19024,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "265e4a9d-46dd-4594-8ec7-0b5ce48922f0",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/goal-directed-vs-habitual-control.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:37:53.272627",
+    "size_bytes": 22067,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1b5ae6d8-49a6-43cb-ac3a-89a7983ef501",
+    "s3_key": "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/formulations/pavlovian-control-of-food-approach.md",
+    "artifact_type": "formulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T10:38:00.531104",
+    "size_bytes": 19726,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "4864d335-0f52-404f-85d7-a77bbc673905",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/drift-diffusion-model/classical-wiener-process-with-per-action-accumulators.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:01.157795",
+    "size_bytes": 11735,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "71b35417-e951-44a2-bc1a-3bd0192a2941",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/homeostatic-regulation-of-food-valuation/drive-reduction-ode-with-goal-directed-valuation.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:14.157945",
+    "size_bytes": 10792,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5ea9b04d-88fe-4f9d-bd4d-659fd8303ba5",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/pavlovian-control-of-food-approach/rescorlawagner-cached-value-agent-with-softmax-action-selection.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:20.073893",
+    "size_bytes": 11944,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2b18cd3d-e46f-40cc-8dbc-5abb88bc17d2",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/attribute-based-value-computation/weighted-linear-summation-with-state-dependent-attribute-weights-algebraic.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:33.509374",
+    "size_bytes": 14077,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b5ce6d1b-2c76-408f-870c-3baefe8aee69",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/goal-directed-vs-habitual-control/dual-q-table-with-fixed-exponential-decay-arbitration.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:34.300013",
+    "size_bytes": 16852,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "e68db981-8c44-49aa-b174-51da04d7bfea",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/dlpfc-self-control-modulation/attribute-reweighting-algebraic-model.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:01:50.541816",
+    "size_bytes": 13955,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "eb5822cd-5c71-4b0b-bd52-3c9060238aa9",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/drift-diffusion-model/algebraic-closed-form-ddm-with-softmax-action-selection.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:02:00.949421",
+    "size_bytes": 12691,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a7179672-8634-4a64-a48a-275f1e2bce82",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/homeostatic-regulation-of-food-valuation/hormonal-modulation-with-softmax-reinforcement-learning.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:02:23.484574",
+    "size_bytes": 14382,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2f2254a2-3d1b-4156-9b06-fee5cd98e5fe",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/pavlovian-control-of-food-approach/incentive-salience-dual-process-agent-wantingliking-dissociation.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:02:26.112966",
+    "size_bytes": 14822,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "6b0f6d27-b1fc-45c1-a752-b532bc17d664",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/attribute-based-value-computation/attribute-based-evidence-accumulation-drift-diffusion.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:02:45.538835",
+    "size_bytes": 15436,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a3c6f73a-8ecf-4382-a1f4-944fb9502d17",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/dlpfc-self-control-modulation/executive-resource-ode-with-dual-value-arbitration.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:02:55.021230",
+    "size_bytes": 13613,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "cb8ba992-5433-47ad-9d58-2371baddc531",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/drift-diffusion-model/collapsing-boundary-ode-accumulators-with-lateral-inhibition.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:03:07.881404",
+    "size_bytes": 14280,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ca77190a-845d-49d9-8952-55c0298711b8",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/goal-directed-vs-habitual-control/uncertainty-based-bayesian-arbitration.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:03:09.066534",
+    "size_bytes": 20199,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "c04ce194-b540-4ed9-8324-56712e0f958f",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/dlpfc-self-control-modulation/bayesian-conflict-gated-stochastic-control.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:03:17.985232",
+    "size_bytes": 1262,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b231a9fe-903e-460d-ba51-a727a81c9bd3",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/pavlovian-control-of-food-approach/ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:03:41.275982",
+    "size_bytes": 14541,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "2c51ca81-0c9e-48f4-8bf1-96f4c2b1d32d",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/homeostatic-regulation-of-food-valuation/dual-controller-competition-with-pavlovian-override.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:03:48.832353",
+    "size_bytes": 17805,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "e8bcf08c-1bf6-4b52-9a17-67c9df5d4d2d",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/attribute-based-value-computation/ode-based-dynamic-attribute-valuation-with-cognitive-control.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:04:12.922650",
+    "size_bytes": 17397,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b67822ef-f59d-4e7d-bb62-502c54ef763e",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/reasoner/goal-directed-vs-habitual-control/ode-based-habit-strength-with-continuous-arbitration-dynamics.json",
+    "artifact_type": "reasoner_spec",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:04:56.643899",
+    "size_bytes": 19977,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "42a558a8-a33a-4dc0-ae6f-4873cdf3c02d",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/algebraic_closed_form_ddm_with_softmax_action_selection_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:14.817802",
+    "size_bytes": 11243,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "8bc0d772-2b97-45c4-8435-d1bcc024f3d7",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/rescorlawagner-cached-value-agent-with-softmax-action-selection_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:15.364218",
+    "size_bytes": 7048,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "299185b9-907b-4047-88da-f603898bf27e",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/collapsing_boundary_ode_accumulators_with_lateral_inhibition_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:20.905961",
+    "size_bytes": 8980,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5262386c-0e41-4135-839b-ae756986fa33",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/ode-based-habit-strength-with-continuous-arbitration-dynamics_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:22.770363",
+    "size_bytes": 9825,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "3d885710-7453-4a49-b36c-fc200b8d9cf3",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/dual-q-table-with-fixed-exponential-decay-arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:30.111876",
+    "size_bytes": 11129,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "516d3ba3-5f94-497e-9416-47fce4f233cb",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/test_classical-wiener-process-with-per-action-accumulators.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:48.219959",
+    "size_bytes": 9742,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "f1fc50c9-cdd0-4d1b-8d0c-4ceee9df55ee",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/attribute-based-value-computation/weighted-linear-summation-with-state-dependent-attribute-weights-algebraic_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:24.626347",
+    "size_bytes": 9578,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "f4cddf25-bc97-4cb3-9083-218f217214ee",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/drive-reduction-ode-with-goal-directed-valuation_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:35.825743",
+    "size_bytes": 8838,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "7754d35b-e871-4a06-9ab5-0379963db30e",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/rescorlawagner_cached_value_agent_with_softmax_action_selection_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:54.626831",
+    "size_bytes": 7048,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a295127c-b18f-4eb4-9780-a77958f88b41",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/executive-resource-ode-with-dual-value-arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:03.389993",
+    "size_bytes": 16094,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5d3605c5-ef27-49ef-a2d6-f13dee1960e3",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/attribute-based-value-computation/weighted_linear_summation_with_state_dependent_attribute_weights_algebraic_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:10.680239",
+    "size_bytes": 9578,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a8b59096-3c1c-484c-a3bb-87abbc65a593",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/hormonal_modulation_with_softmax_reinforcement_learning_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:51.825767",
+    "size_bytes": 11659,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "068a4489-3807-480a-9fbc-656e015f402e",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/hormonal-modulation-with-softmax-reinforcement-learning_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:23.335804",
+    "size_bytes": 10614,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "312bfe93-c8d0-4989-a457-445bf6c5a42f",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/attribute-based-value-computation/ode-based-dynamic-attribute-valuation-with-cognitive-control_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:33.564122",
+    "size_bytes": 11798,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "6a056a4d-a7ea-45f5-8976-83f44c276f71",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/dual-controller-competition-with-pavlovian-override_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:50.086010",
+    "size_bytes": 15554,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5b3ca9b9-1f7e-44f4-bfcb-13eee6f5fd16",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/classical_wiener_process_with_per_action_accumulators_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:27.797223",
+    "size_bytes": 7515,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b1e08950-e0e3-40c2-9515-73d8aee9bc20",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/uncertainty_based_bayesian_arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:55:23.852499",
+    "size_bytes": 11034,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d290fd42-762c-4c5e-924a-19b0f540f70a",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/test_algebraic_closed_form_ddm_with_softmax_action_selection.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:38.696205",
+    "size_bytes": 23848,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "1e44007e-997d-413d-84d0-e13071a02c28",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/test_executive-resource-ode-with-dual-value-arbitration.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:03.391211",
+    "size_bytes": 18964,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5e8b49e7-f0da-41f6-9ca2-b4ea5742a3cd",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/test_hormonal-modulation-with-softmax-reinforcement-learning.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:56.808345",
+    "size_bytes": 24124,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "07e1c18f-cd47-4927-9082-800d2c249122",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/test_uncertainty-based-bayesian-arbitration.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:24.501037",
+    "size_bytes": 32753,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "15f0e441-2222-4ada-a535-1f6895f56ab1",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/incentive-salience-dual-process-agent-wantingliking-dissociation_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:24.083889",
+    "size_bytes": 10538,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a78c87e9-19b3-4fa7-a35f-8c1e424397ff",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/attribute-reweighting-algebraic-model_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:34.053920",
+    "size_bytes": 12202,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "5405845d-677e-44f2-b7d4-6c6872c5b424",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/test_collapsing_boundary_ode_accumulators_with_lateral_inhibition.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:43.407522",
+    "size_bytes": 17916,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "72e9c2ae-45c8-4596-bd30-fb372746bbba",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/attribute_reweighting_algebraic_model_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:25.532263",
+    "size_bytes": 11076,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "53aceec6-4de5-4bb8-bb18-6dd9bfc965e6",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/dual_q_table_with_fixed_exponential_decay_arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:55:08.582706",
+    "size_bytes": 10900,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "9b05e39e-3748-4505-829a-c38488d17db5",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/test_ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:16.161891",
+    "size_bytes": 10615,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "291ffbee-85e3-45d9-b676-cfa2b9ca59c7",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/test_dual-controller-competition-with-pavlovian-override.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:04.389161",
+    "size_bytes": 18886,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b403189b-a6d3-4c37-9394-3df060f5ca13",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/reasoner/test_attribute-based-evidence-accumulation-drift-diffusion.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:27.821962",
+    "size_bytes": 15364,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "0c0f28db-5c3b-4ac9-a63f-90b91c71bc8d",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:24.233728",
+    "size_bytes": 9704,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "ce585e76-e9e0-497d-8d21-0906af95f3ad",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/uncertainty-based-bayesian-arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:34.711745",
+    "size_bytes": 11121,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "8df3c31c-e501-4741-9a33-5292f16d8378",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/test_rescorlawagner-cached-value-agent-with-softmax-action-selection.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:17.190557",
+    "size_bytes": 14554,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "203d4bbe-46bb-4158-aadb-5a0a107ce8d0",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/test_ode-based-habit-strength-with-continuous-arbitration-dynamics.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:44.702024",
+    "size_bytes": 19068,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "73e41d07-7d9d-4005-9a7a-3290bc79c47c",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/ode_based_habit_strength_with_continuous_arbitration_dynamics_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:37.405818",
+    "size_bytes": 9825,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "edc5ed15-5f62-4008-a786-d9f49d326dc2",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/goal-directed-vs-habitual-control/test_dual-q-table-with-fixed-exponential-decay-arbitration.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:10.159011",
+    "size_bytes": 23322,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d3799db4-5690-414a-a733-141b1e5132b0",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/test_attribute-reweighting-algebraic-model.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:34.586323",
+    "size_bytes": 15755,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "021f854b-f4bb-4276-b219-de24383d7faa",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/drift-diffusion-model/classical-wiener-process-with-per-action-accumulators_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:48.217979",
+    "size_bytes": 7448,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b8967887-865e-4728-a58b-976ef6bfaa31",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/ode_based_continuous_drive_dynamics_with_deterministic_threshold_policy_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:54:10.444234",
+    "size_bytes": 11395,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a96dd703-2161-421a-be55-1a205365f27d",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/dlpfc-self-control-modulation/executive_resource_ode_with_dual_value_arbitration_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:55:16.349330",
+    "size_bytes": 14884,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "b13846d8-ce8f-4be5-a808-904585d74dcf",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/pavlovian-control-of-food-approach/test_incentive-salience-dual-process-agent-wantingliking-dissociation.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:58.799680",
+    "size_bytes": 19610,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "a544746e-7f69-4833-b84d-33e3f9b56c54",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/homeostatic-regulation-of-food-valuation/test_drive-reduction-ode-with-goal-directed-valuation.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:35.825025",
+    "size_bytes": 25565,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "df6288b7-5aef-478b-8c13-178fff42668e",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/attribute-based-value-computation/test_weighted-linear-summation-with-state-dependent-attribute-weights-algebraic.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:24.619747",
+    "size_bytes": 19353,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "d73fd9d4-1216-4166-bc62-6c1eabb7cbc9",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/reasoner/attribute-based-evidence-accumulation-drift-diffusion_model.py",
+    "artifact_type": "model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:52:30.034961",
+    "size_bytes": 11008,
+    "content_type": "text/plain"
+  },
+  {
+    "id": "8269b772-1b35-41a4-b7ef-62223276e471",
+    "s3_key": "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/builder/attribute-based-value-computation/test_ode-based-dynamic-attribute-valuation-with-cognitive-control.py",
+    "artifact_type": "test",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "experiment_id": null,
+    "created_at": "2026-06-29T11:53:50.585874",
+    "size_bytes": 20976,
+    "content_type": "text/plain"
+  }
+]

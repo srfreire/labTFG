@@ -1,0 +1,275 @@
+{
+  "formulation_id": "ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy",
+  "paradigm": "pavlovian-control-of-food-approach",
+  "name": "ODE-Based Continuous Drive Dynamics with Deterministic Threshold Policy",
+  "description": "A continuous-time Pavlovian agent modeled via ordinary differential equations governing hunger drive (logistic growth toward 1, sharp drop on eating) and associative strength V(s) (Rescorla–Wagner learning with explicit extinction decay). The agent computes an effective motivational drive E(t) = hunger × max perceived associative value, and uses a deterministic threshold policy: approach when E exceeds theta_approach (gradient ascent on V landscape), eat when E exceeds theta_eat and food is present, stay otherwise. This produces binary 'released' approach behavior characteristic of Pavlovian responses — the agent either approaches or does not, without graded stochasticity. The ODE framework naturally models temporal hunger accumulation and gradual conditioning/extinction.",
+  "variables": [
+    {
+      "symbol": "H_t",
+      "name": "hunger_drive",
+      "description": "Continuous internal energy-deficit signal governed by logistic ODE. Grows toward 1 when not eating, drops sharply on food intake.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "V",
+      "name": "associative_strength",
+      "description": "Dictionary mapping grid cell (x,y) to learned CS–US association strength. Updated via Rescorla–Wagner rule with explicit extinction decay term eta.",
+      "type": "dict[tuple[int,int], float]",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "E_t",
+      "name": "effective_drive",
+      "description": "Combined motivational signal computed as mu * H_t * V_perceived. Compared against thresholds to trigger approach or eating.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 3.0]
+    },
+    {
+      "symbol": "V_perceived",
+      "name": "max_perceived_value",
+      "description": "Maximum learned Pavlovian value among all visible cells (including current cell and cells with food). Represents the strongest CS signal in the perceptual field.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "r_t",
+      "name": "reward_received",
+      "description": "Scalar food reward obtained at time t. 0 if no food eaten, r_food if food consumed.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "d_min",
+      "name": "nearest_food_distance",
+      "description": "Manhattan distance from current cell to closest visible food source. Used for behavioral analysis but not directly in decision equations (approach direction is via value gradient).",
+      "type": "int",
+      "initial_value": null,
+      "range": [0, 18]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_V",
+      "name": "associative_learning_rate",
+      "default": 0.10,
+      "source": "Within Rescorla–Wagner validated range; Rangel (2013)"
+    },
+    {
+      "symbol": "c_H",
+      "name": "hunger_growth_rate",
+      "default": 0.02,
+      "source": "Metabolic hunger accrual per time step; logistic growth toward H=1"
+    },
+    {
+      "symbol": "k_sat",
+      "name": "satiation_rate",
+      "default": 0.25,
+      "source": "Hunger reduction rate upon food intake; calibrated for meaningful satiation from single meal"
+    },
+    {
+      "symbol": "mu",
+      "name": "drive_coupling_constant",
+      "default": 1.5,
+      "source": "Hunger × value multiplicative gain; Berridge as cited in Rangel (2013)"
+    },
+    {
+      "symbol": "theta_approach",
+      "name": "approach_threshold",
+      "default": 0.3,
+      "source": "Effective drive above which approach is triggered; calibrated for typical H and V ranges"
+    },
+    {
+      "symbol": "theta_eat",
+      "name": "eat_threshold",
+      "default": 0.5,
+      "source": "Effective drive above which eating is triggered when food is available; higher than approach threshold"
+    },
+    {
+      "symbol": "eta",
+      "name": "extinction_decay_rate",
+      "default": 0.01,
+      "source": "Rate of V(s) decay during unreinforced CS presentations; slow extinction matches Pavlovian outcome insensitivity"
+    },
+    {
+      "symbol": "r_food",
+      "name": "food_reward_magnitude",
+      "default": 1.0,
+      "source": "Matches env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "V_max",
+      "name": "max_associative_strength",
+      "default": 2.0,
+      "source": "Asymptote of conditioning; 2x max single-step reward"
+    },
+    {
+      "symbol": "dt",
+      "name": "integration_time_step",
+      "default": 1.0,
+      "source": "Discrete Euler approximation of continuous ODE dynamics; 1 simulation tick per step"
+    },
+    {
+      "symbol": "hunger_override",
+      "name": "hunger_override_threshold",
+      "default": 0.8,
+      "source": "Very high hunger triggers consummatory response regardless of E(t); reflects unconditioned eating (P1)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger drive dynamics (Euler-discretized ODE): hunger grows logistically toward 1.0 with rate c_H*(1-H), and drops sharply by k_sat upon eating.",
+      "type": "ODE_euler",
+      "pseudocode": "ate = 1.0 if (action == 'eat' and eat_succeeded) else 0.0\nH_t = H_t + dt * (c_H * (1.0 - H_t) - k_sat * ate)\nH_t = clip(H_t, 0.0, 1.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Associative strength update (Rescorla–Wagner with explicit extinction): when at state s, V(s) is driven toward r_t if rewarded; V(s) decays by eta when unrewarded. States not visited are unchanged.",
+      "type": "update",
+      "pseudocode": "pos = (x, y)\nif r_t > 0:\n  # Reinforcement: drive V toward reward\n  V[pos] = clip(V.get(pos, 0.0) + alpha_V * (r_t - V.get(pos, 0.0)), 0.0, V_max)\nelse:\n  # Extinction: gradual decay\n  V[pos] = clip(V.get(pos, 0.0) - eta * V.get(pos, 0.0), 0.0, V_max)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Maximum perceived Pavlovian value: scan all visible cells (cells with food resources and current cell) and take the maximum V value as V_perceived.",
+      "type": "algebraic",
+      "pseudocode": "visible_cells = set()\nvisible_cells.add((x, y))  # current cell always visible\nfor f in food_list:\n  visible_cells.add((f['x'], f['y']))\n# Also consider neighboring cells for movement decisions\nfor nx, ny in neighbors(x, y, grid_w, grid_h):\n  visible_cells.add((nx, ny))\nV_perceived = max(V.get(cell, 0.0) for cell in visible_cells) if visible_cells else 0.0",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Effective motivational drive: multiplicative coupling of hunger and perceived associative value.",
+      "type": "algebraic",
+      "pseudocode": "E_t = mu * H_t * V_perceived",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Approach direction via gradient ascent on V landscape: move toward the neighboring cell with the highest V value. Ties broken randomly.",
+      "type": "algebraic",
+      "pseudocode": "neighbor_vals = {}\nfor action_name, (dx, dy) in move_deltas.items():\n  nx, ny = x + dx, y + dy\n  if 0 <= nx < grid_w and 0 <= ny < grid_h:\n    neighbor_vals[action_name] = V.get((nx, ny), 0.0)\nbest_val = max(neighbor_vals.values()) if neighbor_vals else -1\nbest_actions = [a for a, v in neighbor_vals.items() if v == best_val]\napproach_action = random_choice(best_actions)",
+      "source_postulate": "P3"
+    }
+  ],
+  "decision_logic": {
+    "description": "Deterministic threshold-based Pavlovian policy: the agent computes effective drive E(t) from hunger and perceived CS value, then applies a hierarchy of rules. Rule A (eat) fires when food is present and drive exceeds eat threshold. Rule B (approach) fires when drive exceeds approach threshold — the agent moves via gradient ascent on V. Rule C (stay) fires when drive is below approach threshold. Rule D (hunger override) forces eating at very high hunger regardless of conditioning. This produces binary 'released' approach behavior — the agent either approaches or stays — capturing the stereotyped, all-or-nothing character of Pavlovian responding (P1).",
+    "pseudocode": [
+      "# 1. PERCEIVE",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_positions = set((f['x'], f['y']) for f in food_list)",
+      "food_at_position = pos in food_positions",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# 2. COMPUTE V_perceived (R3)",
+      "visible_cells = set()",
+      "visible_cells.add(pos)",
+      "for f in food_list:",
+      "  visible_cells.add((f['x'], f['y']))",
+      "move_deltas = {",
+      "  'move_up': (0, -1), 'move_down': (0, 1),",
+      "  'move_left': (-1, 0), 'move_right': (1, 0)",
+      "}",
+      "for act, (ddx, ddy) in move_deltas.items():",
+      "  nx, ny = pos[0]+ddx, pos[1]+ddy",
+      "  if 0 <= nx < grid_w and 0 <= ny < grid_h:",
+      "    visible_cells.add((nx, ny))",
+      "V_perceived = max(V.get(c, 0.0) for c in visible_cells) if visible_cells else 0.0",
+      "",
+      "# 3. COMPUTE EFFECTIVE DRIVE (R4)",
+      "E_t = mu * H_t * V_perceived",
+      "",
+      "# 4. COMPUTE APPROACH DIRECTION (R5)",
+      "neighbor_vals = {}",
+      "for action_name, (ddx, ddy) in move_deltas.items():",
+      "  nx, ny = pos[0]+ddx, pos[1]+ddy",
+      "  if 0 <= nx < grid_w and 0 <= ny < grid_h:",
+      "    neighbor_vals[action_name] = V.get((nx, ny), 0.0)",
+      "if neighbor_vals:",
+      "  best_val = max(neighbor_vals.values())",
+      "  best_actions = [a for a, v in neighbor_vals.items() if v == best_val]",
+      "  approach_action = random_choice(best_actions)",
+      "else:",
+      "  approach_action = 'stay'",
+      "",
+      "# 5. DECISION RULES (deterministic threshold hierarchy)",
+      "# Rule D: Hunger override — very high hunger triggers eating unconditionally",
+      "if food_at_position and H_t > hunger_override:",
+      "  return Action('eat')",
+      "",
+      "# Rule A: Eat if food present and effective drive exceeds eat threshold",
+      "if food_at_position and E_t >= theta_eat:",
+      "  return Action('eat')",
+      "",
+      "# Rule B: Approach if effective drive exceeds approach threshold",
+      "if E_t >= theta_approach:",
+      "  return Action(approach_action)",
+      "",
+      "# Rule C: Stay — insufficient motivational drive",
+      "return Action('stay')"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food'] — list of dicts with 'x', 'y', 'type', 'palatability'",
+      "food_at_position": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "ate_food": "last_action_result — check if eat action succeeded (consumed == true)",
+      "reward_received": "reward argument in update() method; 1.0 from ConsumeEffect on successful eat",
+      "nearest_food_distance": "min(abs(f['x']-x) + abs(f['y']-y) for f in food_list) if food_list else grid_width + grid_height"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward = 1.0; all other actions yield reward = 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Logistic hunger growth: hunger approaches 1.0 asymptotically when not eating, with diminishing rate c_H*(1-H)",
+      "test_pseudocode": "run 200 steps without food → assert H_t > 0.95 (approaches 1.0 logistically from 0.5)"
+    },
+    {
+      "id": "B2",
+      "description": "Threshold-triggered approach: agent stays idle when E < theta_approach but begins approaching once E crosses the threshold",
+      "test_pseudocode": "set H_t=0.1, V_perceived=0.5 → E=0.075 < 0.3 → assert action=='stay'; set H_t=0.5, V_perceived=0.5 → E=0.375 > 0.3 → assert action is a movement"
+    },
+    {
+      "id": "B3",
+      "description": "Gradient ascent on V: agent moves toward the neighboring cell with the highest V value",
+      "test_pseudocode": "set V[(4,5)]=1.0, V[(6,5)]=0.0, agent at (5,5), E > theta_approach → assert action == 'move_left'"
+    },
+    {
+      "id": "B4",
+      "description": "Explicit extinction: V(s) decays when agent visits a cell without receiving reward, at rate eta*V(s)",
+      "test_pseudocode": "set V[(5,5)]=1.0, agent visits (5,5) with no food 100 times → assert V[(5,5)] approx 1.0 * (1-0.01)^100 ≈ 0.366"
+    },
+    {
+      "id": "B5",
+      "description": "Hunger override: at very high hunger (>0.8), agent eats food regardless of low E(t)",
+      "test_pseudocode": "set H_t=0.9, V=all zeros (E=0), food at position → assert action == 'eat'"
+    },
+    {
+      "id": "B6",
+      "description": "Eat vs approach threshold separation: agent approaches food from a distance (E > theta_approach) but only eats when drive is strong enough (E > theta_eat or hunger override)",
+      "test_pseudocode": "set E=0.4 (> 0.3 but < 0.5), no food at position → assert movement action; set E=0.4, food at position → assert action=='stay' or movement (not eat, since E < theta_eat and H < 0.8)"
+    },
+    {
+      "id": "B7",
+      "description": "Conditioning: after repeated eating at a location, V(s) increases, making future approach more likely",
+      "test_pseudocode": "agent eats at (5,5) 15 times → assert V[(5,5)] > 0.8; E_t increases → approach triggered from farther away"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Rescorla, R. A., & Wagner, A. R. (1972). A theory of Pavlovian conditioning. As cited in Rangel (2013).",
+    "Berridge, K. C., & Robinson, T. E. (2003). Parsing reward. As cited in Rangel (2013) for drive coupling parameter μ."
+  ]
+}

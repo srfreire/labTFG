@@ -1,0 +1,237 @@
+{
+  "formulation_id": "classical-wiener-process-with-per-action-accumulators",
+  "paradigm": "drift-diffusion-model",
+  "name": "Classical Wiener Process with Per-Action Accumulators",
+  "description": "Implements the canonical drift-diffusion model (Ratcliff, 1978) as a discrete-time Wiener process with independent parallel accumulators, one per candidate action. Each accumulator starts at a common starting point z0 and accumulates evidence at a drift rate computed from perceptual proximity to resources and past reward history, plus Gaussian noise. The first accumulator to cross the fixed upper boundary 'a' determines the chosen action (race model). If no accumulator crosses by T_max steps, the action with the highest accumulated evidence is selected. After each environment step, the reward history for the chosen action is updated via exponential moving average. This formulation directly instantiates postulates P1 (continuous evidence accumulation to threshold) and P2 (drift rate reflects stimulus quality) from Ratcliff (1978) and Bogacz et al. (2006).",
+  "variables": [
+    {
+      "symbol": "X_i",
+      "name": "evidence_accumulator",
+      "description": "Running total of accumulated evidence favoring action i at internal time-step t. One accumulator per candidate action (6 total). Initialized at z0 each decision cycle.",
+      "type": "float",
+      "initial_value": 0.75,
+      "range": [0, 1.5]
+    },
+    {
+      "symbol": "v_i",
+      "name": "drift_rate",
+      "description": "Mean rate of evidence accumulation for action i, computed from perceptual proximity signal, eat-resource indicator, and reward history.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "xi_i",
+      "name": "noise_sample",
+      "description": "Independent Gaussian noise sample N(0,1) drawn at each internal integration step for each accumulator.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "R",
+      "name": "chosen_action",
+      "description": "The action whose accumulator first crosses threshold a, or the argmax accumulator at timeout.",
+      "type": "str",
+      "initial_value": "stay",
+      "range": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"]
+    },
+    {
+      "symbol": "T_d",
+      "name": "decision_time",
+      "description": "Number of internal integration steps until a boundary crossing occurs (or T_max if timeout).",
+      "type": "int",
+      "initial_value": 0,
+      "range": [1, 100]
+    },
+    {
+      "symbol": "r_bar_i",
+      "name": "reward_history",
+      "description": "Exponentially-weighted running mean of past rewards received after taking action i. One value per action (6 total).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 5.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "a",
+      "name": "decision_boundary",
+      "default": 1.5,
+      "source": "Ratcliff & McKoon (2008); typical range [0.5, 2.0] for moderate caution"
+    },
+    {
+      "symbol": "sigma",
+      "name": "diffusion_coefficient",
+      "default": 0.1,
+      "source": "Standard scaling convention; Ratcliff (1978)"
+    },
+    {
+      "symbol": "z0",
+      "name": "starting_point",
+      "default": 0.75,
+      "source": "Unbiased default = 0.5 * a; Ratcliff & Rouder (1998)"
+    },
+    {
+      "symbol": "dt",
+      "name": "integration_timestep",
+      "default": 0.01,
+      "source": "Discretization of Wiener process; Bogacz et al. (2006)"
+    },
+    {
+      "symbol": "T_max",
+      "name": "max_deliberation_steps",
+      "default": 100,
+      "source": "Prevents indefinite accumulation; practical computational bound"
+    },
+    {
+      "symbol": "k_res",
+      "name": "resource_proximity_scaling",
+      "default": 2.0,
+      "source": "Derived from postulate P2: stimulus quality maps to drift rate (Ratcliff, 1978)"
+    },
+    {
+      "symbol": "k_eat",
+      "name": "eat_action_base_drift",
+      "default": 1.0,
+      "source": "Baseline desirability of eating when resource is present; linked to P2"
+    },
+    {
+      "symbol": "gamma",
+      "name": "reward_history_decay",
+      "default": 0.9,
+      "source": "Standard exponential moving average decay; knowledge backbone default"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Drift rate computation: combines resource proximity signal, eat-resource indicator, and reward history into a per-action drift rate.",
+      "type": "algebraic",
+      "pseudocode": "for each action i in [move_up, move_down, move_left, move_right, stay, eat]:\n  prox_i = 1.0 / (1.0 + manhattan_distance_to_nearest_food_in_direction(i))  # 0 if none visible\n  eat_bonus = k_eat if (i == 'eat' and food_on_current_cell) else 0.0\n  v_i = k_res * prox_i + eat_bonus + r_bar_i",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Evidence accumulation via discrete Wiener process: each accumulator evolves independently with drift and Gaussian noise.",
+      "type": "SDE_discrete",
+      "pseudocode": "X_i(t+1) = X_i(t) + v_i * dt + sigma * sqrt(dt) * random_normal(0, 1)\nX_i(t+1) = clamp(X_i(t+1), 0, a)  # reflecting lower boundary at 0, absorbing upper at a",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Boundary-crossing decision: the first accumulator to reach or exceed the threshold a determines the chosen action.",
+      "type": "decision",
+      "pseudocode": "for t in range(1, T_max + 1):\n  update all X_i via R2\n  winners = [i for i in actions if X_i(t) >= a]\n  if winners:\n    R = random_choice(winners)  # tie-breaking\n    T_d = t\n    break",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Timeout fallback: if no accumulator crosses the boundary within T_max steps, choose the action with the highest accumulator value.",
+      "type": "decision",
+      "pseudocode": "if T_d is None:  # no boundary crossing\n  R = argmax_i(X_i(T_max))\n  T_d = T_max",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Reward history update: after observing reward, update the exponentially-weighted reward mean for the chosen action. Non-chosen actions decay toward zero.",
+      "type": "update",
+      "pseudocode": "r_bar_R = gamma * r_bar_R + (1 - gamma) * reward_observed\nfor i != R:\n  r_bar_i = gamma * r_bar_i  # decay non-chosen actions toward 0",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Per-step decision: compute drift rates from perception, run a stochastic race among 6 accumulators (one per action), and return the winning action. After receiving reward feedback, update reward history traces.",
+    "pseudocode": [
+      "# Step 1: Parse perception",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_on_cell = any(f['x'] == pos[0] and f['y'] == pos[1] for f in food_list)",
+      "",
+      "# Step 2: Compute drift rates for each action via R1",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "direction_deltas = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "for each action i:",
+      "  if i in direction_deltas:",
+      "    dx, dy = direction_deltas[i]",
+      "    target = (pos[0]+dx, pos[1]+dy)",
+      "    d_i = min Manhattan distance from target to any food (or large number if no food)",
+      "    prox_i = 1.0 / (1.0 + d_i)",
+      "  elif i == 'eat':",
+      "    prox_i = 0.0  # eat uses k_eat bonus instead",
+      "  elif i == 'stay':",
+      "    prox_i = 0.0",
+      "  eat_bonus = k_eat if (i == 'eat' and food_on_cell) else 0.0",
+      "  v_i = k_res * prox_i + eat_bonus + r_bar[i]",
+      "",
+      "# Step 3: Initialize accumulators at z0",
+      "X = {i: z0 for i in actions}",
+      "",
+      "# Step 4: Run stochastic race (R2, R3)",
+      "chosen = None",
+      "for t in range(1, T_max + 1):",
+      "  for i in actions:",
+      "    X[i] = X[i] + v_i * dt + sigma * sqrt(dt) * random_normal()",
+      "    X[i] = clamp(X[i], 0, a)",
+      "  winners = [i for i in actions if X[i] >= a]",
+      "  if winners:",
+      "    chosen = random_choice(winners)",
+      "    break",
+      "",
+      "# Step 5: Timeout fallback (R4)",
+      "if chosen is None:",
+      "  chosen = argmax over actions of X[i]",
+      "",
+      "# Step 6: Return chosen action",
+      "return Action(chosen)",
+      "",
+      "# Step 7 (in update method): Update reward history via R5",
+      "r_bar[chosen] = gamma * r_bar[chosen] + (1 - gamma) * reward",
+      "for i != chosen: r_bar[i] = gamma * r_bar[i]"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']",
+      "food_on_cell": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "step_number": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; move/stay actions yield reward 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent navigates toward nearest food: drift rates for movement actions pointing toward food should dominate, causing those accumulators to win the race most often.",
+      "test_pseudocode": "place food at (5,5), agent at (0,0) → over 50 steps, assert agent's mean distance to food decreases"
+    },
+    {
+      "id": "B2",
+      "description": "Agent eats when on food: when food is present on the agent's cell, the eat accumulator receives a strong k_eat drift bonus, making it likely to win the race.",
+      "test_pseudocode": "place agent on food cell → run decide() 100 times → assert eat is chosen > 60% of the time"
+    },
+    {
+      "id": "B3",
+      "description": "Stochastic exploration: Gaussian noise in accumulators causes occasional non-optimal action choices, providing natural exploration without epsilon-greedy.",
+      "test_pseudocode": "place agent equidistant from two food sources → run 100 decisions → assert both directions are chosen at least 20% each"
+    },
+    {
+      "id": "B4",
+      "description": "Reward history biases future decisions: after repeatedly receiving reward from eating, the eat action's reward trace increases, biasing the accumulator.",
+      "test_pseudocode": "give agent 10 eat rewards → assert r_bar['eat'] > r_bar['move_up']"
+    },
+    {
+      "id": "B5",
+      "description": "Decision time varies with evidence quality: when one action has a much higher drift rate, the race resolves in fewer steps (lower T_d).",
+      "test_pseudocode": "food directly adjacent (high prox) → mean T_d < T_d when food is far away"
+    }
+  ],
+  "references": [
+    "Ratcliff, R. (1978). A theory of memory retrieval. Psychological Review, 85(2), 59-108. DOI: 10.1037/0033-295X.85.2.59",
+    "Ratcliff, R., & Rouder, J. N. (1998). Modeling response times for two-choice decisions. Psychological Science, 9(5), 347-356. DOI: 10.1111/1467-9280.00067",
+    "Ratcliff, R., & McKoon, G. (2008). The diffusion decision model: Theory and data for two-choice decision tasks. Neural Computation, 20(4), 873-922. DOI: 10.1162/neco.2008.12-06-420",
+    "Bogacz, R., Brown, E., Moehlis, J., Holmes, P., & Cohen, J. D. (2006). The physics of optimal decision making. Psychological Review, 113(4), 700-765. DOI: 10.1037/0033-295X.113.4.700"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "formulation_id": "bayesian-conflict-gated-stochastic-control",
+  "paradigm": "dlpfc-self-control-modulation",
+  "status": "invalid",
+  "problems": [
+    {
+      "type": "undefined_variable",
+      "detail": "Parameter 'γ' (distance discount factor) is used in Eq. 1 (impulsive policy: γ^{d(a)}) and Eq. 2 (goal-directed policy: γ^{d(a)} and γ^{d(j)}) but is not defined in the Parameters section. The Parameters table lists β_I, β_G, α_E, β_E, κ, φ, w_h, and w_τ — no γ. Formulation 2 defines γ=0.9 as 'temporal discount for approach values' but each formulation must be self-contained. This is a clear omission: the equations reference an undefined symbol."
+    },
+    {
+      "type": "inconsistent_mapping",
+      "detail": "Equations 1 and 2 reference 'Health(a)' and 'Taste(a)' as resource attributes, but the env_spec only provides 'palatability' as a food property. While this is shared across all three formulations and can be resolved by deriving health = 1 - palatability, this derivation is not mentioned anywhere in Formulation 3's text, creating an implicit mapping gap. (Note: Formulations 1 and 2 also require this derivation, but their decision logic sections explicitly describe the mapping context more clearly.)"
+    }
+  ]
+}

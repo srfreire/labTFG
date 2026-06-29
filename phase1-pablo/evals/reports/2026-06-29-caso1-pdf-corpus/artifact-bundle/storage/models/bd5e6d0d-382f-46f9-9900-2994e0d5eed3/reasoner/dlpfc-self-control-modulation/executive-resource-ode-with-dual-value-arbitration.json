@@ -1,0 +1,251 @@
+{
+  "formulation_id": "executive-resource-ode-with-dual-value-arbitration",
+  "paradigm": "dlpfc-self-control-modulation",
+  "name": "Executive Resource ODE with Dual-Value Arbitration",
+  "description": "Continuous-time ODE governing depletable executive (dlPFC) resource dynamics, combined with a dual-system architecture where an impulsive controller (taste-driven, Pavlovian/habitual) competes with a goal-directed controller (health-integrated). An arbitration weight derived from executive capacity determines the mixture proportion. When executive resources are critically low, the agent suffers complete self-control failure and is forced to follow the impulsive system. Habit values are learned via model-free temporal difference updating. Based on Rangel et al. (2008) three-controller architecture and Rangel (2013) postulates P2 and P4. Since the environment only provides 'palatability' on food resources, health is derived as (1 - palatability), creating the taste-health conflict that drives dual-system arbitration.",
+  "variables": [
+    {
+      "symbol": "E",
+      "name": "executive_capacity",
+      "description": "Depletable dlPFC resource level. 1 = full capacity, 0 = exhausted. Governs the agent's ability to engage goal-directed control over impulsive responses.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "V_I",
+      "name": "impulsive_value",
+      "description": "Value of action a in state s from the Pavlovian/habitual controller. Driven purely by taste (palatability), distance-discounted. Updated via model-free TD learning.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 2.0]
+    },
+    {
+      "symbol": "V_G",
+      "name": "goal_directed_value",
+      "description": "Value of action a in state s from the model-based goal-directed controller. Integrates both taste and health attributes with respective weights.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 2.0]
+    },
+    {
+      "symbol": "V",
+      "name": "integrated_value",
+      "description": "Arbitrated mixture of impulsive and goal-directed action values, weighted by omega.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 2.0]
+    },
+    {
+      "symbol": "omega",
+      "name": "arbitration_weight",
+      "description": "Proportion of goal-directed influence in the integrated value. Derived as E^2 to capture nonlinear collapse of self-control under severe depletion.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "ctrl",
+      "name": "control_exertion_flag",
+      "description": "Binary indicator of whether dlPFC is actively overriding the impulsive system this step. Set to 1 when the goal-directed and impulsive systems disagree on the best action.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_E",
+      "name": "depletion_rate",
+      "default": 0.08,
+      "source": "Knowledge backbone; cognitive depletion assumption from Rangel (2013)"
+    },
+    {
+      "symbol": "beta_E",
+      "name": "recovery_rate",
+      "default": 0.04,
+      "source": "Knowledge backbone: recovery approximately half depletion rate"
+    },
+    {
+      "symbol": "theta",
+      "name": "override_threshold",
+      "default": 0.3,
+      "source": "Derived from Rangel (2013) P4: minimum executive capacity needed for conflict override"
+    },
+    {
+      "symbol": "epsilon",
+      "name": "stochastic_lapse_rate",
+      "default": 0.1,
+      "source": "Standard exploration/noise parameter in RL; accounts for motor execution noise"
+    },
+    {
+      "symbol": "alpha_Q",
+      "name": "habit_learning_rate",
+      "default": 0.1,
+      "source": "Standard reinforcement learning literature"
+    },
+    {
+      "symbol": "gamma",
+      "name": "distance_discount_factor",
+      "default": 0.9,
+      "source": "Standard temporal/spatial discounting for approach value in grid environments"
+    },
+    {
+      "symbol": "w_h_G",
+      "name": "health_weight_goal_directed",
+      "default": 0.6,
+      "source": "Rangel (2013): goal-directed system weights health when engaged"
+    },
+    {
+      "symbol": "w_tau_G",
+      "name": "taste_weight_goal_directed",
+      "default": 0.4,
+      "source": "Complement of w_h_G, from Rangel (2013)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Executive capacity dynamics (Euler-discretized ODE). Recovery drives E toward 1 with rate beta_E; depletion drains E at rate alpha_E whenever ctrl=1 (dlPFC actively overriding impulse). Clamped to [0, 1].",
+      "type": "ODE",
+      "pseudocode": "# Continuous form: dE/dt = beta_E * (1 - E) - alpha_E * ctrl\n# Discrete Euler step:\nE_new = E + beta_E * (1.0 - E) - alpha_E * ctrl\nE = clamp(E_new, 0.0, 1.0)",
+      "source_postulate": "P2, P3"
+    },
+    {
+      "id": "R2",
+      "description": "Impulsive action value: Pavlovian/habitual value based purely on taste (palatability) of the nearest food resource accessible via action a, discounted by Manhattan distance. For eat at current position, distance = 0.",
+      "type": "algebraic",
+      "pseudocode": "for each action a in candidate_actions:\n    target_food = best_food_toward(a, position, visible_foods)\n    if target_food is not None:\n        dist = manhattan_distance(next_pos(a), target_food)\n        V_I[a] = target_food.palatability * gamma ** dist\n    else:\n        V_I[a] = 0.0\n    # If cached habit Q-value exists for (state_hash, a), blend:\n    # V_I[a] = max(V_I[a], Q_habit.get((state_hash, a), 0.0))",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Goal-directed action value: integrates both taste and health attributes with explicit weights, discounted by distance. Health derived as (1 - palatability).",
+      "type": "algebraic",
+      "pseudocode": "for each action a in candidate_actions:\n    target_food = best_gd_food_toward(a, position, visible_foods)\n    if target_food is not None:\n        dist = manhattan_distance(next_pos(a), target_food)\n        taste_val = target_food.palatability\n        health_val = 1.0 - target_food.palatability\n        V_G[a] = (w_tau_G * taste_val + w_h_G * health_val) * gamma ** dist\n    else:\n        V_G[a] = 0.0",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R4",
+      "description": "Arbitration weight: nonlinear mapping from executive capacity to goal-directed influence. Squaring ensures moderate depletion has small effects but severe depletion rapidly collapses self-control.",
+      "type": "algebraic",
+      "pseudocode": "omega = E ** 2",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Integrated value: weighted mixture of goal-directed and impulsive action values.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n    V[a] = omega * V_G[a] + (1.0 - omega) * V_I[a]",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R6",
+      "description": "Control exertion detection: conflict flag is 1 when the impulsive-best and goal-directed-best actions disagree.",
+      "type": "algebraic",
+      "pseudocode": "best_impulsive = argmax(V_I)\nbest_goal_directed = argmax(V_G)\nctrl = 1 if best_impulsive != best_goal_directed else 0",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R7",
+      "description": "Habit value update via model-free TD: after eating, update cached Q-value for the (state, action) pair toward the received taste reward.",
+      "type": "discrete_update",
+      "pseudocode": "if last_action == 'eat' and successfully_ate:\n    taste_reward = eaten_food_palatability\n    state_key = discretize_state(last_position, nearby_food_config)\n    Q_habit[(state_key, 'eat')] += alpha_Q * (taste_reward - Q_habit[(state_key, 'eat')])",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent perceives grid position and visible food resources with palatability. Health is derived as (1 - palatability). Two parallel value systems compute action values: impulsive (taste-only) and goal-directed (taste+health weighted). Conflict between these triggers executive resource depletion. Arbitration weight from executive capacity determines the integrated value. Epsilon-greedy selection over integrated values, with forced impulsive fallback when executive capacity drops below threshold during conflict.",
+    "pseudocode": [
+      "# 1. Parse perception",
+      "position = (perception.x, perception.y)",
+      "visible_foods = perception.resources.food",
+      "food_at_pos = [f for f in visible_foods if f.x == position[0] and f.y == position[1]]",
+      "",
+      "# 2. If we ate last step, update habit values via R7",
+      "if last_action == 'eat' and perception.last_action_result.get('consumed', False):",
+      "    update_habit_q(last_state, last_eaten_palatability)  # R7",
+      "",
+      "# 3. Build candidate actions",
+      "candidate_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if food_at_pos:",
+      "    candidate_actions.append('eat')",
+      "",
+      "# 4. Compute impulsive values V_I for all actions via R2",
+      "V_I = compute_impulsive_values(candidate_actions, position, visible_foods)  # R2",
+      "",
+      "# 5. Compute goal-directed values V_G for all actions via R3",
+      "V_G = compute_goal_directed_values(candidate_actions, position, visible_foods)  # R3",
+      "",
+      "# 6. Detect conflict via R6",
+      "ctrl = 1 if argmax(V_I) != argmax(V_G) else 0  # R6",
+      "",
+      "# 7. Update executive capacity via R1",
+      "E = clamp(E + beta_E * (1.0 - E) - alpha_E * ctrl, 0.0, 1.0)  # R1",
+      "",
+      "# 8. Compute arbitration weight via R4",
+      "omega = E ** 2  # R4",
+      "",
+      "# 9. Compute integrated values via R5",
+      "V = {a: omega * V_G[a] + (1.0 - omega) * V_I[a] for a in candidate_actions}  # R5",
+      "",
+      "# 10. Action selection: check for forced impulsive failure first",
+      "if E < theta and ctrl == 1:",
+      "    # Complete self-control failure per P3: forced impulsive action",
+      "    action = argmax(V_I)",
+      "elif random() < epsilon:",
+      "    # Stochastic lapse: random exploration",
+      "    action = random_choice(candidate_actions)",
+      "else:",
+      "    # Normal greedy selection over integrated values",
+      "    action = argmax(V)",
+      "",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "visible_foods": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_at_position": "[f for f in perception.resources.food if f.x == perception.x and f.y == perception.y]",
+      "taste_of_food": "food.palatability  # direct mapping from env property",
+      "health_of_food": "1.0 - food.palatability  # derived: inverse palatability proxy",
+      "ate_successfully": "perception.last_action_result  # check consumed flag after eat action",
+      "grid_dims": "(perception.grid_width, perception.grid_height)",
+      "current_step": "perception.step"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 from env); agent internally distinguishes taste reward (palatability) from health value (1-palatability) for dual-system valuation"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Executive capacity depletes during sustained conflict and recovers during non-conflict periods",
+      "test_pseudocode": "place high-palatability and low-palatability foods creating conflict → run 40 steps → assert E < 0.6; then remove conflict foods → run 20 steps → assert E > previous E"
+    },
+    {
+      "id": "B2",
+      "description": "When E is high, agent integrates health into decisions (prefers balanced or healthy food); when E is low, agent acts impulsively (prefers highest palatability)",
+      "test_pseudocode": "set E=1.0 → assert agent sometimes chooses lower palatability food; set E=0.1 → assert agent almost always chooses highest palatability"
+    },
+    {
+      "id": "B3",
+      "description": "Hard self-control failure: when E drops below theta during conflict, agent is forced to take impulsive action",
+      "test_pseudocode": "deplete E to 0.2 (below theta=0.3) with conflict present → assert selected action == argmax(V_I) for 10 consecutive trials"
+    },
+    {
+      "id": "B4",
+      "description": "Habit values update via TD learning: repeatedly eating high-palatability food strengthens the habit Q-value for that state-action pair",
+      "test_pseudocode": "agent eats food with palatability 0.9 ten times at same location → assert Q_habit for that (state, eat) > 0.5"
+    },
+    {
+      "id": "B5",
+      "description": "Arbitration weight omega exhibits nonlinear collapse: E=0.7 → omega=0.49 (moderate), E=0.3 → omega=0.09 (near-impulsive)",
+      "test_pseudocode": "set E=0.7 → assert abs(omega - 0.49) < 0.01; set E=0.3 → assert abs(omega - 0.09) < 0.01"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561"
+  ]
+}

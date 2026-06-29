@@ -1,0 +1,302 @@
+{
+  "formulation_id": "hormonal-modulation-with-softmax-reinforcement-learning",
+  "paradigm": "homeostatic-regulation-of-food-valuation",
+  "name": "Hormonal Modulation with Softmax Reinforcement Learning",
+  "description": "A model-free Q-learning agent whose action selection is modulated by simulated ghrelin (orexigenic) and leptin (anorexigenic) hormone proxies. Ghrelin rises with fasting and drops after eating; leptin tracks energy stores. A composite hormonal modulator M multiplicatively scales food-related Q-values before softmax action selection, so the same learned values produce different behavior under hunger vs. satiety. The reward signal is also modulated by M, causing the agent to learn higher values for food when it was hungry at the time of eating. Grounded in Rangel (2013) hormonal modulation of decision circuitry (Postulates P2, P4), Jacquier (2016) ghrelin/leptin dynamics, and the wanting/liking distinction referenced in Rangel (2013).",
+  "variables": [
+    {
+      "symbol": "E",
+      "name": "energy_store",
+      "description": "Normalized internal energy reserve. Depleted by basal metabolism, replenished by eating.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "G",
+      "name": "ghrelin_proxy",
+      "description": "Short-term orexigenic hunger signal. Rises linearly each step during fasting, drops sharply after eating. Proxies plasma ghrelin dynamics.",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "L",
+      "name": "leptin_proxy",
+      "description": "Long-term anorexigenic signal proportional to energy stores (proxy for fat-mass-derived leptin). High when energy stores are full, low when depleted.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "M",
+      "name": "hormonal_modulator",
+      "description": "Composite gain factor applied to food-related Q-values. M > 1 when ghrelin is high and leptin is low (hungry), M < 1 when leptin dominates (satiated). Captures bidirectional hormonal modulation of food value.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.33, 3.0]
+    },
+    {
+      "symbol": "Q",
+      "name": "action_value_table",
+      "description": "Learned Q-values for state-action pairs. State is discretized as (agent_x, agent_y, food_at_cell, nearest_food_direction, hunger_bin). Updated via TD-learning.",
+      "type": "dict",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "delta",
+      "name": "td_error",
+      "description": "Temporal difference error: discrepancy between received reward plus discounted future value and current Q-value. Drives Q-table updates.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "R",
+      "name": "reward_signal",
+      "description": "Immediate reward signal. Modulated by hormonal state M when eating (hungry eating is more rewarding), fixed small negative cost for movement steps.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 5.0]
+    },
+    {
+      "symbol": "ate",
+      "name": "ate_flag",
+      "description": "Binary indicator: 1 if the agent successfully consumed food on the current step, 0 otherwise.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_E",
+      "name": "basal_metabolic_cost",
+      "default": 0.01,
+      "source": "Jacquier (2016), adapted to grid timescale"
+    },
+    {
+      "symbol": "c_food",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized; represents substantial meal (Jacquier 2016 energy intake scaling)"
+    },
+    {
+      "symbol": "lambda_G",
+      "name": "ghrelin_rise_rate",
+      "default": 0.03,
+      "source": "Jacquier (2016): ghrelin rises pre-prandially during fasting"
+    },
+    {
+      "symbol": "kappa_G",
+      "name": "ghrelin_suppression_on_eating",
+      "default": 0.5,
+      "source": "Jacquier (2016): rapid post-prandial ghrelin suppression (~50% drop)"
+    },
+    {
+      "symbol": "k_L",
+      "name": "leptin_coupling_exponent",
+      "default": 1.0,
+      "source": "Jacquier (2016): leptin proportional to fat mass; exponent 1.0 = linear coupling"
+    },
+    {
+      "symbol": "w_G",
+      "name": "ghrelin_weight_in_modulator",
+      "default": 2.0,
+      "source": "Rangel (2013): ghrelin amplifies food value signals in vmPFC/VTA"
+    },
+    {
+      "symbol": "w_L",
+      "name": "leptin_weight_in_modulator",
+      "default": 2.0,
+      "source": "Rangel (2013): leptin suppresses food value signals"
+    },
+    {
+      "symbol": "alpha",
+      "name": "learning_rate",
+      "default": 0.1,
+      "source": "Standard Q-learning rate (Sutton & Barto)"
+    },
+    {
+      "symbol": "gamma",
+      "name": "discount_factor",
+      "default": 0.9,
+      "source": "Standard RL temporal discounting"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploration-exploitation balance for softmax"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Rangel (2013) normalized value scale"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.02,
+      "source": "Small movement penalty to discourage aimless wandering"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: energy decreases by basal metabolic cost each step and increases when food is consumed.",
+      "type": "difference_equation",
+      "pseudocode": "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R2",
+      "description": "Ghrelin dynamics: ghrelin rises linearly each step during fasting and is sharply suppressed post-prandially, modeling the short-term orexigenic signal.",
+      "type": "difference_equation",
+      "pseudocode": "G = clamp(G + lambda_G - kappa_G * ate, 0.0, 1.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Leptin proxy: leptin is a power function of current energy stores, modeling the proportionality of leptin to fat mass.",
+      "type": "algebraic",
+      "pseudocode": "L = E ** k_L",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Hormonal modulator: composite gain factor that amplifies food Q-values when ghrelin is high (hungry) and suppresses them when leptin is high (satiated). This is the core mechanism by which homeostatic state enters the decision circuitry.",
+      "type": "algebraic",
+      "pseudocode": "M = (1.0 + w_G * G) / (1.0 + w_L * L)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "State-dependent reward: eating reward is modulated by hormonal state M, so eating while hungry is more rewarding than eating while satiated. Non-eating actions incur a small step cost.",
+      "type": "conditional",
+      "pseudocode": "if ate == 1:\n    R = M * r_food\nelse:\n    R = c_step",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "TD-error and Q-value update: standard Q-learning update using the state-dependent reward signal.",
+      "type": "update",
+      "pseudocode": "delta = R + gamma * max(Q[s_next, a'] for a' in actions) - Q[s_current, a_current]\nQ[s_current, a_current] = Q[s_current, a_current] + alpha * delta",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R7",
+      "description": "Modulated softmax action selection: Q-values for food-related actions (eat, move toward food) are multiplied by M before softmax. Non-food actions (stay) use unmodulated Q-values. This implements the hormonal gating of food valuation at decision time.",
+      "type": "action_selection",
+      "pseudocode": "for each action a in available_actions:\n    if a == 'eat' or a is a move toward food:\n        Q_tilde[a] = M * Q[s, a]\n    else:\n        Q_tilde[a] = Q[s, a]\nP(a) = exp(beta * Q_tilde[a]) / sum(exp(beta * Q_tilde[j]) for j in available_actions)\nsample action from P",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Stochastic softmax action selection over hormonally modulated Q-values. The agent maintains a Q-table indexed by a discretized state encoding (position, local food presence, hunger level bin). Ghrelin and leptin proxies create a multiplicative hormonal modulator M that scales food-related Q-values before the softmax, causing the agent to strongly prefer eating when hungry and to be indifferent to food when satiated — even if the raw Q-values are the same. This implements Rangel (2013) Postulate P2: hormones modulate decision circuitry rather than bypassing it.",
+    "pseudocode": [
+      "# 1. Determine eating outcome from last step",
+      "ate = 1 if last_action_result indicates successful consumption else 0",
+      "",
+      "# 2. Update internal physiological state",
+      "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "G = clamp(G + lambda_G - kappa_G * ate, 0.0, 1.0)",
+      "L = E ** k_L",
+      "M = (1.0 + w_G * G) / (1.0 + w_L * L)",
+      "",
+      "# 3. Compute reward for the previous action (for Q-update)",
+      "if ate == 1:",
+      "    R = M * r_food",
+      "else:",
+      "    R = c_step",
+      "",
+      "# 4. Discretize state for Q-table lookup",
+      "# State encoding: (x, y, food_at_cell, nearest_food_dx_sign, nearest_food_dy_sign, hunger_bin)",
+      "# hunger_bin: 0 if G < 0.33, 1 if 0.33 <= G < 0.67, 2 if G >= 0.67",
+      "food_at_cell = any(f for f in food_list if f['x'] == x and f['y'] == y)",
+      "nearest = nearest_food(x, y, food_list)",
+      "dx_sign = sign(nearest.x - x)  # -1, 0, or 1",
+      "dy_sign = sign(nearest.y - y)  # -1, 0, or 1",
+      "hunger_bin = 0 if G < 0.33 else (1 if G < 0.67 else 2)",
+      "s = (x, y, food_at_cell, dx_sign, dy_sign, hunger_bin)",
+      "",
+      "# 5. Q-learning update for the PREVIOUS step's (s, a) pair",
+      "if previous_state is not None:",
+      "    delta = R + gamma * max(Q[s, a_prime] for a_prime in actions) - Q[prev_s, prev_a]",
+      "    Q[prev_s, prev_a] += alpha * delta",
+      "",
+      "# 6. Compute modulated Q-values for action selection",
+      "# Determine which actions are 'food-related'",
+      "# eat is food-related; moves that decrease distance to nearest food are food-related",
+      "for a in available_actions:",
+      "    if a == 'eat' or move_decreases_food_distance(a, x, y, nearest):",
+      "        Q_tilde = M * Q[s, a]",
+      "    else:",
+      "        Q_tilde = Q[s, a]",
+      "    modulated_values[a] = Q_tilde",
+      "",
+      "# 7. Softmax action selection",
+      "max_q = max(modulated_values.values())  # for numerical stability",
+      "probs = {a: exp(beta * (q - max_q)) for a, q in modulated_values.items()}",
+      "total = sum(probs.values())",
+      "probs = {a: p / total for a, p in probs.items()}",
+      "selected_action = random_choice(actions, weights=probs)",
+      "",
+      "# 8. Store current state and action for next step's Q-update",
+      "prev_s = s",
+      "prev_a = selected_action",
+      "return Action(selected_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "ate_flag": "1 if perception['last_action_result'] indicates eat success (resource consumed) else 0",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "food_at_cell": "any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with env reward 1.0 (used as signal for ate_flag). Internal reward R is computed by R5 using hormonal modulator M, not the raw env reward."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Ghrelin rises during fasting: without eating, G increases linearly toward 1.0, amplifying food value.",
+      "test_pseudocode": "run 30 steps without food → assert G increases by ~lambda_G per step"
+    },
+    {
+      "id": "B2",
+      "description": "Ghrelin drops after eating: successful eat action causes sharp ghrelin suppression.",
+      "test_pseudocode": "set G = 0.8 then eat → assert G drops by kappa_G to ~0.3"
+    },
+    {
+      "id": "B3",
+      "description": "Hormonal modulator amplifies food seeking when hungry: M >> 1 when G is high and E is low.",
+      "test_pseudocode": "set G = 0.9, E = 0.1 → compute M → assert M > 2.0"
+    },
+    {
+      "id": "B4",
+      "description": "Hormonal modulator suppresses food seeking when satiated: M ≈ 1 or M < 1 when G is low and E is high.",
+      "test_pseudocode": "set G = 0.1, E = 0.9 → compute M → assert M < 1.0"
+    },
+    {
+      "id": "B5",
+      "description": "Agent learns to approach food: after sufficient training, Q-values for actions that move toward food should be higher than those moving away.",
+      "test_pseudocode": "train for 500 steps → for states with food nearby, assert Q[move_toward] > Q[move_away]"
+    },
+    {
+      "id": "B6",
+      "description": "State-dependent eating: same spatial state produces different action probabilities under high vs low ghrelin due to M modulation.",
+      "test_pseudocode": "fix Q-values, set M = 2.5 → compute P(eat); set M = 0.5 → compute P(eat); assert P_hungry(eat) >> P_satiated(eat)"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Jacquier, M. (2016). Mathematical modeling of the hormonal regulation of food intake and body weight. Doctoral thesis, Université Claude Bernard Lyon 1. HAL: tel-01273347",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357"
+  ]
+}

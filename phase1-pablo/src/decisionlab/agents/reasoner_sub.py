@@ -53,6 +53,8 @@ authoritative for available actions, resource types, and their properties.
 `reasoner/{paradigm_slug}/{formulation_slug}.json`.
 6. For each **invalid** formulation, produce a validation report and call `write_file` to \
 save it at `reasoner/{paradigm_slug}/{formulation_slug}.json` (same path, different schema).
+7. After the final required `write_file` succeeds, stop calling tools and return a concise \
+completion summary.
 
 ## Validation
 

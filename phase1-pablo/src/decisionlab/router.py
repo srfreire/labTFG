@@ -350,10 +350,12 @@ class Router:
         emit: EmitFn | None = None,
         stop_after: Stage | None = None,
         feedback: FeedbackPort | None = None,
+        paper_search: Callable[[dict], Awaitable[str]] | None = None,
     ):
         self.client = client
         self.state = state
         self.search = search
+        self.paper_search = paper_search
         self.project_root = project_root
         self._services: Services = services
         self.console = Console()
@@ -1248,6 +1250,7 @@ class Router:
                 kg=self._services.kg,
                 vectors=self._services.vectors,
                 embeddings=self._services.embeddings,
+                paper_search=self.paper_search,
                 **self._knowledge_tool_kwargs("researcher"),
             )
             report = await r.run(
@@ -1293,6 +1296,7 @@ class Router:
                         storage=self._services.storage,
                         db=self._services.db,
                         run_id=self.state.run_id,
+                        paper_search=self.paper_search,
                         **self._knowledge_tool_kwargs("deep_researcher"),
                     )
                     await dr.run(additional)
@@ -1867,6 +1871,7 @@ class Router:
                         storage=self._services.storage,
                         db=self._services.db,
                         run_id=self.state.run_id,
+                        paper_search=self.paper_search,
                         **self._knowledge_tool_kwargs("deep_researcher"),
                     )
                     await dr.run(paradigm)

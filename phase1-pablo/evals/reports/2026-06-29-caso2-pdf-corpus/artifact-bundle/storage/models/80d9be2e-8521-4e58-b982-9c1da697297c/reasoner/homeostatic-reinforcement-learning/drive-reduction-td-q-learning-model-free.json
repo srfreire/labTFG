@@ -1,0 +1,288 @@
+{
+  "formulation_id": "drive-reduction-td-q-learning-model-free",
+  "paradigm": "homeostatic-reinforcement-learning",
+  "name": "Drive-Reduction TD Q-Learning (Model-Free)",
+  "description": "Tabular Q-learning over a joint (grid-position × discretized-hunger) state space where primary reward is defined as the reduction in homeostatic drive. The agent maintains a Q-table indexed by (position, hunger_bin, action) and updates it via temporal-difference learning using homeostatic reward prediction errors (hRPE). Actions are selected via softmax over Q-values. This implements the core Keramati & Gutkin (2014) model-free HRL framework: reward = drive reduction (P1), discounting enforces expeditious correction (P3), and state-dependent reward valuation emerges from the joint state representation (P4). Over time, Q-values converge so the agent anticipates deficits (P5).",
+  "variables": [
+    {
+      "symbol": "h_t",
+      "name": "hunger_level",
+      "description": "Scalar internal state representing current hunger deficit. 0 = fully sated, higher = hungrier. Increases each step via metabolic drift and decreases when food is consumed.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 10.0]
+    },
+    {
+      "symbol": "h_star",
+      "name": "homeostatic_setpoint",
+      "description": "Ideal internal state the agent seeks to maintain. Fixed at 0 (no deficit).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 0.0]
+    },
+    {
+      "symbol": "D_t",
+      "name": "drive",
+      "description": "Scalar measure of deviation from setpoint: D(h_t) = m * |h_t - h*|^n. Serves as the cost signal; reward is its reduction.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "Infinity"]
+    },
+    {
+      "symbol": "r_t",
+      "name": "homeostatic_reward",
+      "description": "Primary reward signal: r_t = D(h_t) - D(h_{t+1}). Positive when eating reduces drive, negative when drive increases (e.g., metabolic drift without eating).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "Q",
+      "name": "q_table",
+      "description": "Action-value function Q(s, h_bin, a). A dictionary mapping (position_tuple, hunger_bin, action_name) -> expected discounted homeostatic reward. Initialized to 0 for all entries.",
+      "type": "dict",
+      "initial_value": {},
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "delta_t",
+      "name": "hRPE",
+      "description": "Homeostatic reward prediction error: delta_t = r_t + gamma * max_a' Q(s', h'_bin, a') - Q(s, h_bin, a). The TD learning signal.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "s_t",
+      "name": "external_state",
+      "description": "Agent's current grid position (x, y), read from perception.",
+      "type": "tuple",
+      "initial_value": [0, 0],
+      "range": "grid coordinates (0..grid_width-1, 0..grid_height-1)"
+    },
+    {
+      "symbol": "h_bin",
+      "name": "hunger_bin",
+      "description": "Discretized hunger level for tabular indexing. h_bin = int(h_t / h_max * h_bins), clamped to [0, h_bins-1].",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 9]
+    },
+    {
+      "symbol": "ate_t",
+      "name": "ate_food_flag",
+      "description": "Boolean (0 or 1) indicating whether the agent successfully consumed food this step. Read from last_action_result.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "n",
+      "name": "drive_exponent",
+      "default": 2,
+      "source": "Keramati & Gutkin (2014): quadratic drive penalizes large deviations superlinearly"
+    },
+    {
+      "symbol": "m",
+      "name": "drive_scaling",
+      "default": 1.0,
+      "source": "Keramati & Gutkin (2014): normalizing constant"
+    },
+    {
+      "symbol": "gamma",
+      "name": "discount_factor",
+      "default": 0.95,
+      "source": "Keramati & Gutkin (2014): must be < 1 for homeostatic optimality (P3)"
+    },
+    {
+      "symbol": "alpha",
+      "name": "learning_rate",
+      "default": 0.1,
+      "source": "Standard TD-learning (Sutton & Barto, 1998)"
+    },
+    {
+      "symbol": "beta",
+      "name": "softmax_inv_temperature",
+      "default": 5.0,
+      "source": "Controls exploration-exploitation trade-off; moderate value"
+    },
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "default": 0.0,
+      "source": "Keramati & Gutkin (2014): ideal = no deficit"
+    },
+    {
+      "symbol": "h_max",
+      "name": "max_hunger",
+      "default": 10.0,
+      "source": "Simulation bound for internal state"
+    },
+    {
+      "symbol": "K",
+      "name": "resource_nutritive_value",
+      "default": 3.0,
+      "source": "Per-resource hunger reduction upon eating"
+    },
+    {
+      "symbol": "lambda_drift",
+      "name": "metabolic_drift_rate",
+      "default": 0.1,
+      "source": "Per-timestep hunger increase representing metabolic cost"
+    },
+    {
+      "symbol": "h_bins",
+      "name": "hunger_discretization_bins",
+      "default": 10,
+      "source": "Number of bins for tabular Q-learning internal state discretization"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Drive function — quadratic deviation from setpoint",
+      "type": "algebraic",
+      "pseudocode": "D_t = m * abs(h_t - h_star) ** n",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Internal state dynamics — metabolic drift plus consumption",
+      "type": "update",
+      "pseudocode": "h_t_next = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Homeostatic reward — drive reduction from state transition",
+      "type": "algebraic",
+      "pseudocode": "D_before = m * abs(h_t - h_star) ** n\nD_after = m * abs(h_t_next - h_star) ** n\nr_t = D_before - D_after",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Discretize internal state for tabular lookup",
+      "type": "algebraic",
+      "pseudocode": "h_bin = min(int(h_t / h_max * h_bins), h_bins - 1)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Homeostatic reward prediction error (hRPE) — Q-learning variant",
+      "type": "algebraic",
+      "pseudocode": "h_bin_next = min(int(h_t_next / h_max * h_bins), h_bins - 1)\nmax_Q_next = max(Q.get((s_next, h_bin_next, a), 0.0) for a in all_actions)\ndelta_t = r_t + gamma * max_Q_next - Q.get((s_t, h_bin, a_t), 0.0)",
+      "source_postulate": "P1, P2"
+    },
+    {
+      "id": "R6",
+      "description": "Q-value update via TD learning",
+      "type": "update",
+      "pseudocode": "Q[(s_t, h_bin, a_t)] = Q.get((s_t, h_bin, a_t), 0.0) + alpha * delta_t",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax action selection over Q-values",
+      "type": "policy",
+      "pseudocode": "q_vals = [Q.get((s_t, h_bin, a), 0.0) for a in all_actions]\n# Filter: if no food at current position, set q_val for 'eat' to -1e9\nif not food_at_position:\n    q_vals[eat_index] = -1e9\nexp_vals = [exp(beta * q) for q in q_vals]\nsum_exp = sum(exp_vals)\nprobs = [e / sum_exp for e in exp_vals]\na_t = sample_from(all_actions, probs)",
+      "source_postulate": "P4"
+    }
+  ],
+  "decision_logic": {
+    "description": "The agent perceives its grid position and internal hunger state, discretizes hunger into bins, looks up Q-values for all actions in the joint state, applies softmax to select an action (with eating filtered out when no food is present), then after observing the outcome, updates internal state via metabolic drift/consumption, computes homeostatic reward as drive reduction, calculates the hRPE, and updates the Q-table.",
+    "pseudocode": [
+      "# --- decide(perception) ---",
+      "s_t = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_at_position = any(f['x'] == s_t[0] and f['y'] == s_t[1] for f in food_list)",
+      "",
+      "# Discretize hunger for tabular lookup",
+      "h_bin = min(int(h_t / h_max * h_bins), h_bins - 1)",
+      "",
+      "# Compute Q-values for all actions",
+      "all_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "q_vals = [Q.get((s_t, h_bin, a), 0.0) for a in all_actions]",
+      "",
+      "# Filter invalid eat action",
+      "if not food_at_position:",
+      "    q_vals[5] = -1e9  # index 5 = 'eat'",
+      "",
+      "# Softmax with numerical stability",
+      "max_q = max(q_vals)",
+      "exp_vals = [exp(beta * (q - max_q)) for q in q_vals]",
+      "sum_exp = sum(exp_vals)",
+      "probs = [e / sum_exp for e in exp_vals]",
+      "a_t = random_choice(all_actions, probs)",
+      "return Action(a_t)",
+      "",
+      "# --- update(action, reward, new_perception) ---",
+      "# Determine if food was consumed",
+      "ate_t = 1 if (action == 'eat' and new_perception.get('last_action_result', {}).get('consumed', False)) else 0",
+      "",
+      "# Update internal state (R2)",
+      "h_t_next = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "",
+      "# Compute homeostatic reward (R3)",
+      "D_before = m * abs(h_t - h_star) ** n",
+      "D_after = m * abs(h_t_next - h_star) ** n",
+      "r_t = D_before - D_after",
+      "",
+      "# Compute hRPE and update Q (R5, R6)",
+      "s_next = (new_perception['x'], new_perception['y'])",
+      "h_bin_old = min(int(h_t / h_max * h_bins), h_bins - 1)",
+      "h_bin_next = min(int(h_t_next / h_max * h_bins), h_bins - 1)",
+      "max_Q_next = max(Q.get((s_next, h_bin_next, a), 0.0) for a in all_actions)",
+      "delta_t = r_t + gamma * max_Q_next - Q.get((s_t, h_bin_old, action), 0.0)",
+      "Q[(s_t, h_bin_old, action)] = Q.get((s_t, h_bin_old, action), 0.0) + alpha * delta_t",
+      "",
+      "# Advance internal state",
+      "h_t = h_t_next"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "s_t (external_state)": "(perception['x'], perception['y'])",
+      "food_at_position": "any(f['x'] == x and f['y'] == y for f in perception['resources'].get('food', []))",
+      "food_list": "perception['resources'].get('food', [])",
+      "ate_t": "action_name == 'eat' and last_action_result.get('consumed', False)",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internally computed as drive reduction r_t = D(h_t) - D(h_{t+1}); environment reward from eat action (ConsumeEffect reward=1.0) is NOT used — the agent uses its own homeostatic reward signal."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases monotonically without eating due to metabolic drift",
+      "test_pseudocode": "run 50 steps with no food in grid → assert h_t increases each step by lambda_drift until h_max"
+    },
+    {
+      "id": "B2",
+      "description": "Eating reduces drive and produces positive homeostatic reward",
+      "test_pseudocode": "set h_t = 5.0, execute eat at food cell → assert h_t_next < h_t and r_t > 0"
+    },
+    {
+      "id": "B3",
+      "description": "State-dependent reward valuation (alliesthesia): eating near setpoint yields near-zero reward",
+      "test_pseudocode": "set h_t = 0.1, eat → assert r_t ≈ 0; set h_t = 8.0, eat → assert r_t >> 0"
+    },
+    {
+      "id": "B4",
+      "description": "Q-values converge so agent moves toward food when hungry",
+      "test_pseudocode": "train 1000 steps → verify agent in high-hunger state selects actions moving toward nearest food more often than away"
+    },
+    {
+      "id": "B5",
+      "description": "Agent does not seek food when sated (low drive → low Q-values for food-seeking)",
+      "test_pseudocode": "after training, set h_t ≈ 0 → assert agent mostly selects 'stay' or random movement, not directed food-seeking"
+    }
+  ],
+  "references": [
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811.",
+    "Sutton, R.S. & Barto, A.G. (1998). Reinforcement Learning: An Introduction. MIT Press.",
+    "Cabanac, M. (1971). Physiological role of pleasure. Science.",
+    "Hull, C.L. (1943). Principles of Behavior."
+  ]
+}

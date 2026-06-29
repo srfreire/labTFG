@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid as uuid_mod
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -51,8 +52,12 @@ create_memory = create_memory_once
 # See docs/specs/memory-refactor/phase-0-stop-lying.md §R1. Token caps stay
 # generous so a long importance batch or a verbose classification can
 # spell out its reasoning without truncation.
-_IMPORTANCE_MAX_TOKENS = 16384
-_CLASSIFY_MAX_TOKENS = 4096
+_IMPORTANCE_MAX_TOKENS = int(os.getenv("DECISIONLAB_IMPORTANCE_MAX_TOKENS", "16384"))
+_IMPORTANCE_BATCH_SIZE = 40
+_CLASSIFY_MAX_TOKENS = int(
+    os.getenv("DECISIONLAB_CONFLICT_CLASSIFY_MAX_TOKENS", "4096")
+)
+_DEFAULT_IMPORTANCE_SCORE = 5.0
 
 _DUPLICATE_THRESHOLD = 0.85
 # Above this cosine score, with near-equal length, the duplicate is obvious
@@ -100,26 +105,52 @@ async def _score_importance(
 ) -> dict[str, float]:
     """Score each fact's importance via the fast (Haiku) structured-output slot.
 
-    Returns ``{fact: score}`` for every fact the model successfully scored.
-    Schema violation raises ``StructuredOutputError`` (no silent default to
-    5.0 — that pre-rewrite fallback masked importance failures on every
-    cumulative-growth topic, see plan §1).
+    Returns ``{fact: score}`` for every input fact. A structured-output failure
+    falls back to neutral scores with a warning because the importance batch has
+    stage-wide blast radius: one malformed scorer response should not prevent
+    the memory agent from storing otherwise valid extracted facts.
     """
     if not facts:
         return {}
+    if len(facts) > _IMPORTANCE_BATCH_SIZE:
+        scores: dict[str, float] = {}
+        for start in range(0, len(facts), _IMPORTANCE_BATCH_SIZE):
+            batch = facts[start : start + _IMPORTANCE_BATCH_SIZE]
+            scores.update(await _score_importance(batch, client))
+        return scores
 
     facts_json = json.dumps(facts, ensure_ascii=False)
     user_message = IMPORTANCE_SCORING_USER.replace("{facts_json}", facts_json)
 
-    result = await call_structured(
-        client=client,
-        messages=[{"role": "user", "content": user_message}],
-        system=IMPORTANCE_SCORING_SYSTEM,
-        schema=_ImportanceScores,
-        max_tokens=_IMPORTANCE_MAX_TOKENS,
-        model=SETTINGS.knowledge_fast_model,
-    )
-    return {entry.fact: float(entry.importance) for entry in result.scores}
+    try:
+        result = await call_structured(
+            client=client,
+            messages=[{"role": "user", "content": user_message}],
+            system=IMPORTANCE_SCORING_SYSTEM,
+            schema=_ImportanceScores,
+            max_tokens=_IMPORTANCE_MAX_TOKENS,
+            model=SETTINGS.knowledge_fast_model,
+        )
+    except StructuredOutputError as exc:
+        logger.warning(
+            "Importance scoring failed; using neutral score %.1f for %d fact(s): %s",
+            _DEFAULT_IMPORTANCE_SCORE,
+            len(facts),
+            exc,
+        )
+        return dict.fromkeys(facts, _DEFAULT_IMPORTANCE_SCORE)
+
+    scores = {entry.fact: float(entry.importance) for entry in result.scores}
+    missing = [fact for fact in facts if fact not in scores]
+    if missing:
+        logger.warning(
+            "Importance scoring omitted %d/%d fact(s); using neutral score %.1f",
+            len(missing),
+            len(facts),
+            _DEFAULT_IMPORTANCE_SCORE,
+        )
+        scores.update(dict.fromkeys(missing, _DEFAULT_IMPORTANCE_SCORE))
+    return scores
 
 
 async def _find_duplicates(

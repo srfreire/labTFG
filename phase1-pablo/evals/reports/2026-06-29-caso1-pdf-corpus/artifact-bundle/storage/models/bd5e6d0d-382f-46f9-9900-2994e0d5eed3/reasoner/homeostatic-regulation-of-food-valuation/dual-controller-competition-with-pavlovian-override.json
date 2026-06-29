@@ -1,0 +1,370 @@
+{
+  "formulation_id": "dual-controller-competition-with-pavlovian-override",
+  "paradigm": "homeostatic-regulation-of-food-valuation",
+  "name": "Dual-Controller Competition with Pavlovian Override",
+  "description": "A three-system architecture in which a goal-directed controller (model-based, hunger-sensitive) competes with a habitual controller (model-free Q-learning, hunger-insensitive) via a shifting arbitration weight, plus a Pavlovian cue-driven override that triggers eating whenever food is at the agent's location regardless of internal state. The goal-directed system computes action values analytically from current hunger and food positions. The habitual system learns cached Q-values using TD-learning with unmodulated food reward (making it devaluation-insensitive). Arbitration weight shifts from goal-directed to habitual as eating experience accumulates. A Pavlovian probability injects a fixed chance of eating whenever food is present. This captures the full Rangel (2013) three-controller framework (Postulate P5), devaluation insensitivity of habits, and cue-driven overeating (Postulates P5, P6).",
+  "variables": [
+    {
+      "symbol": "E",
+      "name": "energy_store",
+      "description": "Normalized internal energy reserve. Depleted by basal metabolism each step, replenished by eating.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger_drive",
+      "description": "Motivational drive state. Rises linearly each step during fasting and drops after eating. Directly modulates the goal-directed controller's food valuation.",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "V_GD",
+      "name": "goal_directed_value",
+      "description": "Model-based action value computed from current hunger and expected outcomes. Sensitive to devaluation — when hunger is low, food value drops immediately.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 5.0]
+    },
+    {
+      "symbol": "Q_H",
+      "name": "habitual_q_value",
+      "description": "Cached stimulus-response Q-value learned via TD-learning with UNMODULATED reward. Not sensitive to current hunger — represents 'what food was worth historically' regardless of current state.",
+      "type": "dict",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "omega",
+      "name": "arbitration_weight",
+      "description": "Relative weight of the goal-directed controller in the value mixture. Starts high (novel situation → goal-directed dominance) and decays with eating experience (habitization). 1.0 = pure goal-directed, 0.0 = pure habitual.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "n_eat",
+      "name": "eating_experience_count",
+      "description": "Cumulative number of successful eat actions taken. Proxy for training repetitions that drive habitization of food-seeking behavior.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 100000]
+    },
+    {
+      "symbol": "pi_pav",
+      "name": "pavlovian_override_probability",
+      "description": "Probability that the Pavlovian system overrides the computed policy with an automatic eat response when food is at the agent's cell. Fixed constant, not modulated by hunger — this is the key feature capturing cue-driven overeating.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "delta",
+      "name": "habitual_prediction_error",
+      "description": "Reward prediction error for the habitual system's Q-value update. Uses unmodulated reward, so the habitual system doesn't know about current hunger.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "ate",
+      "name": "ate_flag",
+      "description": "Binary indicator: 1 if the agent successfully consumed food on the previous step, 0 otherwise.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_E",
+      "name": "basal_metabolic_cost",
+      "default": 0.01,
+      "source": "Jacquier (2016), adapted to grid timescale"
+    },
+    {
+      "symbol": "c_food",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized; represents substantial meal (Jacquier 2016 energy intake scaling)"
+    },
+    {
+      "symbol": "eta_H",
+      "name": "hunger_rise_rate",
+      "default": 0.02,
+      "source": "Adapted from Jacquier (2016) ghrelin pre-prandial rise dynamics"
+    },
+    {
+      "symbol": "kappa_H",
+      "name": "hunger_reduction_on_eating",
+      "default": 0.4,
+      "source": "Post-prandial satiation magnitude (Jacquier 2016: rapid ghrelin suppression)"
+    },
+    {
+      "symbol": "alpha_Q",
+      "name": "habitual_learning_rate",
+      "default": 0.05,
+      "source": "Slower than typical RL learning rate; reflects gradual stimulus-response caching in dorsolateral striatum (Rangel 2013)"
+    },
+    {
+      "symbol": "gamma",
+      "name": "discount_factor",
+      "default": 0.9,
+      "source": "Standard RL temporal discounting"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploration-exploitation balance for softmax"
+    },
+    {
+      "symbol": "lambda_omega",
+      "name": "habitization_rate",
+      "default": 0.002,
+      "source": "Rangel (2013): habitual controller gains dominance with repeated experience. Rate tuned so transition occurs over ~100-400 eat events."
+    },
+    {
+      "symbol": "omega_0",
+      "name": "initial_goal_directed_weight",
+      "default": 0.8,
+      "source": "Rangel (2013): novel actions are dominated by goal-directed control; 0.8 = strong initial GD bias"
+    },
+    {
+      "symbol": "p_pav",
+      "name": "pavlovian_override_strength",
+      "default": 0.2,
+      "source": "Rangel (2013): Pavlovian contribution is moderate but persistent; 20% override rate"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Rangel (2013) normalized value scale"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.02,
+      "source": "Small movement penalty to discourage aimless wandering"
+    },
+    {
+      "symbol": "E_set",
+      "name": "energy_set_point",
+      "default": 0.5,
+      "source": "Jacquier (2016) homeostatic set-point concept"
+    },
+    {
+      "symbol": "k_H",
+      "name": "hunger_sensitivity",
+      "default": 4.0,
+      "source": "Sigmoid steepness for mapping energy deficit to hunger drive"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: energy decreases by basal metabolic cost each step and increases when food is consumed.",
+      "type": "difference_equation",
+      "pseudocode": "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R2",
+      "description": "Hunger dynamics: hunger rises linearly each step during fasting and drops sharply after eating, modeling short-term appetitive drive.",
+      "type": "difference_equation",
+      "pseudocode": "H = clamp(H + eta_H - kappa_H * ate, 0.0, 1.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3a",
+      "description": "Goal-directed eat value: proportional to current hunger times base reward. Fully hunger-sensitive — a satiated agent (H ≈ 0) values eating at near zero.",
+      "type": "algebraic",
+      "pseudocode": "V_GD_eat = H * r_food",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R3b",
+      "description": "Goal-directed move value: hunger-scaled food value discounted by distance to nearest food after the move, plus step cost.",
+      "type": "algebraic",
+      "pseudocode": "V_GD_move_a = H * r_food / (1.0 + d_after_move_a) + c_step",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R3c",
+      "description": "Goal-directed stay value: baseline zero.",
+      "type": "algebraic",
+      "pseudocode": "V_GD_stay = 0.0",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R4",
+      "description": "Habitual Q-value update: TD-learning with UNMODULATED reward. The habitual system receives r_food regardless of hunger when eating, making it devaluation-insensitive. This is the key mechanistic distinction from the goal-directed controller.",
+      "type": "update",
+      "pseudocode": "R_H = r_food if ate == 1 else c_step\ndelta = R_H + gamma * max(Q_H[s_next, a'] for a' in actions) - Q_H[s_current, a_current]\nQ_H[s_current, a_current] = Q_H[s_current, a_current] + alpha_Q * delta",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R5",
+      "description": "Controller arbitration: goal-directed weight decays linearly with cumulative eating experience, modeling habitization. After enough experience, the habitual controller dominates.",
+      "type": "algebraic",
+      "pseudocode": "omega = max(omega_0 - lambda_omega * n_eat, 0.0)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R6",
+      "description": "Integrated value: weighted mixture of goal-directed and habitual action values for each action.",
+      "type": "algebraic",
+      "pseudocode": "V_int_a = omega * V_GD_a + (1.0 - omega) * Q_H[s, a]",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax base policy: probability of each action computed via softmax over integrated values.",
+      "type": "action_selection",
+      "pseudocode": "P_base(a) = exp(beta * V_int_a) / sum(exp(beta * V_int_j) for j in actions)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R8",
+      "description": "Pavlovian override: when food is present at the agent's cell, a fixed probability p_pav causes the agent to eat regardless of computed values. This models cue-driven consummatory behavior that is NOT modulated by internal state.",
+      "type": "mixture_policy",
+      "pseudocode": "if food_at_cell:\n    pi_pav = p_pav\nelse:\n    pi_pav = 0.0\nP_final(a) = (1.0 - pi_pav) * P_base(a) + pi_pav * (1.0 if a == 'eat' else 0.0)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "Three-system hybrid decision process. The goal-directed controller computes action values from current hunger (devaluation-sensitive). The habitual controller retrieves cached Q-values learned with unmodulated reward (devaluation-insensitive). An arbitration weight mixes the two, shifting toward habitual control with experience. A Pavlovian override injects a fixed probability of eating whenever food is present, regardless of hunger or computed values. The agent samples from the final mixture policy.",
+    "pseudocode": [
+      "# 1. Determine eating outcome from last step",
+      "ate = 1 if last_action_result indicates successful consumption else 0",
+      "if ate == 1: n_eat += 1",
+      "",
+      "# 2. Update internal physiological state",
+      "E = clamp(E - alpha_E + c_food * ate, 0.0, 1.0)",
+      "H = clamp(H + eta_H - kappa_H * ate, 0.0, 1.0)",
+      "",
+      "# 3. Discretize state for habitual Q-table",
+      "# State: (x, y, food_at_cell, nearest_food_dx_sign, nearest_food_dy_sign)",
+      "food_list = perception['resources']['food']",
+      "food_at_cell = any(f for f in food_list if f['x'] == x and f['y'] == y)",
+      "nearest = nearest_food(x, y, food_list)",
+      "dx_sign = sign(nearest.x - x) if nearest else 0",
+      "dy_sign = sign(nearest.y - y) if nearest else 0",
+      "s = (x, y, food_at_cell, dx_sign, dy_sign)",
+      "",
+      "# 4. Update habitual Q-values for PREVIOUS step (TD-learning with unmodulated reward)",
+      "if previous_state is not None:",
+      "    R_H = r_food if ate == 1 else c_step",
+      "    delta = R_H + gamma * max(Q_H[s, a'] for a' in actions) - Q_H[prev_s, prev_a]",
+      "    Q_H[prev_s, prev_a] += alpha_Q * delta",
+      "",
+      "# 5. Compute goal-directed values (hunger-sensitive, model-based)",
+      "V_GD = {}",
+      "if food_at_cell:",
+      "    V_GD['eat'] = H * r_food",
+      "else:",
+      "    # eat not meaningful if no food at cell",
+      "    pass",
+      "",
+      "for move_a in ['move_up', 'move_down', 'move_left', 'move_right']:",
+      "    new_pos = apply_move((x, y), move_a, grid_width, grid_height)",
+      "    d_after = manhattan_distance_to_nearest(new_pos, food_list)",
+      "    V_GD[move_a] = H * r_food / (1.0 + d_after) + c_step",
+      "",
+      "V_GD['stay'] = 0.0",
+      "",
+      "# 6. Compute arbitration weight (habitization with experience)",
+      "omega = max(omega_0 - lambda_omega * n_eat, 0.0)",
+      "",
+      "# 7. Compute integrated values for each available action",
+      "V_int = {}",
+      "for a in available_actions:",
+      "    gd_val = V_GD.get(a, 0.0)",
+      "    hab_val = Q_H.get((s, a), 0.0)",
+      "    V_int[a] = omega * gd_val + (1.0 - omega) * hab_val",
+      "",
+      "# 8. Softmax base policy over integrated values",
+      "max_v = max(V_int.values())",
+      "probs = {a: exp(beta * (v - max_v)) for a, v in V_int.items()}",
+      "total = sum(probs.values())",
+      "P_base = {a: p / total for a, p in probs.items()}",
+      "",
+      "# 9. Pavlovian override: if food is present, inject p_pav probability of eating",
+      "if food_at_cell:",
+      "    pi_pav = p_pav",
+      "    P_final = {}",
+      "    for a in available_actions:",
+      "        if a == 'eat':",
+      "            P_final[a] = (1.0 - pi_pav) * P_base.get(a, 0.0) + pi_pav",
+      "        else:",
+      "            P_final[a] = (1.0 - pi_pav) * P_base.get(a, 0.0)",
+      "else:",
+      "    P_final = P_base",
+      "",
+      "# 10. Sample action from final mixture policy",
+      "selected_action = random_choice(list(P_final.keys()), weights=list(P_final.values()))",
+      "",
+      "# 11. Store state and action for next step's Q-update",
+      "prev_s = s",
+      "prev_a = selected_action",
+      "return Action(selected_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "ate_flag": "1 if perception['last_action_result'] indicates eat success (resource consumed) else 0",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "food_at_cell": "any(f for f in perception['resources']['food'] if f['x'] == perception['x'] and f['y'] == perception['y'])",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with env reward 1.0. Goal-directed controller uses hunger-modulated internal value (R3a). Habitual controller uses raw unmodulated r_food = 1.0 (R4). This asymmetry is the core mechanism for devaluation insensitivity."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Goal-directed devaluation sensitivity: early in training (high omega), a satiated agent (low H) avoids eating even when on food.",
+      "test_pseudocode": "set n_eat = 0 (omega = 0.8), H = 0.05, place agent on food → assert P(eat) is low (< 0.3 excluding Pavlovian)"
+    },
+    {
+      "id": "B2",
+      "description": "Habitual devaluation insensitivity: after extensive experience (low omega), agent eats food regardless of hunger state.",
+      "test_pseudocode": "set n_eat = 400 (omega ≈ 0.0), H = 0.05, place agent on food → assert P_base(eat) is high (habitual Q drives eating)"
+    },
+    {
+      "id": "B3",
+      "description": "Pavlovian override causes eating even when satiated and in goal-directed mode.",
+      "test_pseudocode": "set n_eat = 0, H = 0.0, food at cell → assert P_final(eat) >= p_pav = 0.2 due to Pavlovian injection"
+    },
+    {
+      "id": "B4",
+      "description": "Habitization over time: omega decreases as n_eat increases, shifting behavior from goal-directed to habitual.",
+      "test_pseudocode": "track omega over 500 steps with periodic eating → assert omega decreases monotonically"
+    },
+    {
+      "id": "B5",
+      "description": "Hunger drives food seeking: when H is high, goal-directed values strongly favor moving toward food and eating.",
+      "test_pseudocode": "set H = 0.9, omega = 0.8, food at distance 3 → assert agent moves toward food (highest V_int for approach move)"
+    },
+    {
+      "id": "B6",
+      "description": "Three-system mixture produces richer behavior than any single controller: agent occasionally eats when satiated (Pavlovian), approaches food efficiently (GD), and develops habitual food-seeking patterns over time.",
+      "test_pseudocode": "run 1000 steps → verify eating events occur across all hunger levels (not just high H); verify approach efficiency improves over time"
+    },
+    {
+      "id": "B7",
+      "description": "Energy homeostasis maintained: energy oscillates around set-point as hunger drives eating cycles.",
+      "test_pseudocode": "run 500 steps → assert mean(E) is within ±0.2 of E_set"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357",
+    "Jacquier, M. (2016). Mathematical modeling of the hormonal regulation of food intake and body weight. Doctoral thesis, Université Claude Bernard Lyon 1. HAL: tel-01273347"
+  ]
+}

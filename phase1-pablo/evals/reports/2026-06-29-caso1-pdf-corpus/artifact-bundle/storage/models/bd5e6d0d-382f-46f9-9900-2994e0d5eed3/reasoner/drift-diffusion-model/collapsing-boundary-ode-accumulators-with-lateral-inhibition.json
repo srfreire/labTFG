@@ -1,0 +1,288 @@
+{
+  "formulation_id": "collapsing-boundary-ode-accumulators-with-lateral-inhibition",
+  "paradigm": "drift-diffusion-model",
+  "name": "Collapsing-Boundary ODE Accumulators with Lateral Inhibition",
+  "description": "Implements a biologically-inspired leaky competing accumulator (LCA) model with coupled ODEs, lateral inhibition between accumulators, and a time-dependent urgency signal that collapses the effective decision threshold. Based on Usher & McClelland (2001) and the collapsing-boundary extension described by Bogacz et al. (2006) and Gold & Shadlen (2007). Each action has a neural-like activation variable that receives perceptual input drive, leaks over time (self-decay), and is inhibited by competing accumulators. A linearly ramping urgency signal progressively lowers the decision threshold, ensuring the agent commits to an action under time pressure. The first accumulator to cross the collapsing threshold wins. This formulation captures postulates P1 (evidence accumulation to threshold), P3 (speed-accuracy trade-off via boundary), and P6 (neural ramp-to-threshold dynamics), and uniquely features inter-action competition and urgency gating absent in Formulations 1 and 2.",
+  "variables": [
+    {
+      "symbol": "x_i",
+      "name": "accumulator_activation",
+      "description": "Neural-like firing rate / activation level representing accumulated evidence for action i. Starts at 0 (resting state) and evolves via leaky competing accumulator dynamics. One per action (6 total).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "v_i",
+      "name": "input_drive",
+      "description": "Perceptual evidence signal (drift) for action i, combining proximity-based signal and learned reward trace.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "theta_t",
+      "name": "effective_threshold",
+      "description": "Time-dependent decision threshold that decreases from initial value 'a' toward theta_min as urgency increases.",
+      "type": "float",
+      "initial_value": 1.5,
+      "range": [0.3, 1.5]
+    },
+    {
+      "symbol": "u_t",
+      "name": "urgency_signal",
+      "description": "Linearly ramping urgency signal that drives the threshold collapse. Represents increasing pressure to commit to a decision.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "R",
+      "name": "chosen_action",
+      "description": "The action whose accumulator first crosses the collapsing threshold theta(t), or the argmax accumulator at timeout.",
+      "type": "str",
+      "initial_value": "stay",
+      "range": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"]
+    },
+    {
+      "symbol": "r_bar_i",
+      "name": "reward_trace",
+      "description": "Learned reward trace for action i, updated via temporal-difference rule after each step. Contributes to input drive.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "s_i",
+      "name": "perceptual_signal",
+      "description": "Raw perceptual signal for action i derived from resource proximity or resource presence.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "a",
+      "name": "initial_boundary",
+      "default": 1.5,
+      "source": "Ratcliff & McKoon (2008); initial decision threshold before urgency collapse"
+    },
+    {
+      "symbol": "kappa",
+      "name": "leak_rate",
+      "default": 0.15,
+      "source": "Usher & McClelland (2001); self-decay prevents runaway activation"
+    },
+    {
+      "symbol": "w",
+      "name": "lateral_inhibition_weight",
+      "default": 0.05,
+      "source": "Usher & McClelland (2001); competition strength between accumulators"
+    },
+    {
+      "symbol": "sigma",
+      "name": "noise_intensity",
+      "default": 0.1,
+      "source": "Standard scaling convention; Ratcliff (1978)"
+    },
+    {
+      "symbol": "dt",
+      "name": "integration_timestep",
+      "default": 0.01,
+      "source": "Euler discretization step for ODE integration; Bogacz et al. (2006)"
+    },
+    {
+      "symbol": "T_max",
+      "name": "max_deliberation_steps",
+      "default": 100,
+      "source": "Prevents indefinite deliberation; practical computational bound"
+    },
+    {
+      "symbol": "mu",
+      "name": "urgency_rate",
+      "default": 0.01,
+      "source": "Controls speed of threshold collapse; Bogacz et al. (2006) collapsing-boundary extension"
+    },
+    {
+      "symbol": "theta_min",
+      "name": "minimum_threshold",
+      "default": 0.3,
+      "source": "Floor for collapsing boundary (approx 0.2 * a); prevents collapse to zero"
+    },
+    {
+      "symbol": "k_v",
+      "name": "drift_scaling",
+      "default": 1.5,
+      "source": "Maps perceptual proximity signal to input drive units; linked to postulate P2"
+    },
+    {
+      "symbol": "alpha",
+      "name": "reward_trace_learning_rate",
+      "default": 0.1,
+      "source": "Standard RL learning rate for reward trace updates"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Input drive computation: combines scaled perceptual signal with learned reward trace to produce the input current for each accumulator.",
+      "type": "algebraic",
+      "pseudocode": "for each action i:\n  v_i = k_v * s_i + r_bar_i",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Leaky competing accumulator dynamics: Euler-discretized ODE with leak (self-decay), mutual lateral inhibition from other accumulators, and additive Gaussian noise. Activations are rectified to stay non-negative.",
+      "type": "ODE_euler",
+      "pseudocode": "sum_others = sum(x_j for j != i)\nx_i_new = x_i + dt * (v_i - kappa * x_i - w * sum_others) + sigma * sqrt(dt) * random_normal(0, 1)\nx_i = max(0.0, x_i_new)  # rectification",
+      "source_postulate": "P1, P6"
+    },
+    {
+      "id": "R3",
+      "description": "Urgency signal: linearly increasing pressure signal that grows with deliberation time.",
+      "type": "algebraic",
+      "pseudocode": "u_t = mu * t",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Collapsing effective boundary: the decision threshold decreases from initial value 'a' as urgency increases, with a minimum floor theta_min to prevent trivial decisions.",
+      "type": "algebraic",
+      "pseudocode": "theta_t = max(a - u_t, theta_min)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Boundary-crossing decision: the first accumulator to reach or exceed the time-varying threshold theta(t) determines the chosen action. Ties broken randomly.",
+      "type": "decision",
+      "pseudocode": "for t in range(1, T_max + 1):\n  compute u_t via R3, theta_t via R4\n  update all x_i via R2\n  winners = [i for i in actions if x_i >= theta_t]\n  if winners:\n    R = random_choice(winners)\n    break",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Timeout fallback: if no accumulator crosses the collapsing boundary within T_max steps, select the action with the highest activation.",
+      "type": "decision",
+      "pseudocode": "if no crossing by T_max:\n  R = argmax_i(x_i at T_max)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R7",
+      "description": "Reward trace update: temporal-difference update for the chosen action's reward trace after observing the environment reward.",
+      "type": "update",
+      "pseudocode": "r_bar_R = r_bar_R + alpha * (reward_observed - r_bar_R)",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Per-step decision: compute perceptual signals, form input drives with reward traces, run coupled ODE accumulators with leak and lateral inhibition under a collapsing threshold, and return the first action to cross the threshold. This is the most biologically realistic formulation, featuring neural-like competition (lateral inhibition), habituation (leak), and time pressure (urgency). After reward feedback, update the reward trace for the chosen action.",
+    "pseudocode": [
+      "# Step 1: Parse perception",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_on_cell = any(f['x'] == pos[0] and f['y'] == pos[1] for f in food_list)",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# Step 2: Compute perceptual signals s_i for each action",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "direction_deltas = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "for each action i:",
+      "  if i in direction_deltas:",
+      "    dx, dy = direction_deltas[i]",
+      "    neighbor = (pos[0]+dx, pos[1]+dy)",
+      "    d_i = min Manhattan distance from neighbor to any food (large number if no food)",
+      "    s_i = 1.0 / (1.0 + d_i)",
+      "  elif i == 'eat':",
+      "    s_i = 1.0 if food_on_cell else -0.5",
+      "  elif i == 'stay':",
+      "    s_i = 0.0",
+      "",
+      "# Step 3: Compute input drives via R1",
+      "v_i = k_v * s_i + r_bar[i]  # for each action i",
+      "",
+      "# Step 4: Initialize accumulators at neural resting state",
+      "x = {i: 0.0 for i in actions}",
+      "",
+      "# Step 5: Run coupled ODE race with collapsing boundary",
+      "chosen = None",
+      "for t in range(1, T_max + 1):",
+      "  # Compute urgency and threshold (R3, R4)",
+      "  u_t = mu * t",
+      "  theta_t = max(a - u_t, theta_min)",
+      "",
+      "  # Update each accumulator via leaky competing dynamics (R2)",
+      "  x_new = {}",
+      "  for i in actions:",
+      "    sum_others = sum(x[j] for j in actions if j != i)",
+      "    x_new[i] = x[i] + dt * (v_i - kappa * x[i] - w * sum_others) + sigma * sqrt(dt) * random_normal()",
+      "    x_new[i] = max(0.0, x_new[i])  # rectify",
+      "  x = x_new",
+      "",
+      "  # Check boundary crossing (R5)",
+      "  winners = [i for i in actions if x[i] >= theta_t]",
+      "  if winners:",
+      "    chosen = random_choice(winners)",
+      "    break",
+      "",
+      "# Step 6: Timeout fallback (R6)",
+      "if chosen is None:",
+      "  chosen = argmax over actions of x[i]",
+      "",
+      "# Step 7: Return chosen action",
+      "return Action(chosen)",
+      "",
+      "# Step 8 (in update method): Update reward trace via R7",
+      "r_bar[chosen] = r_bar[chosen] + alpha * (reward - r_bar[chosen])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']",
+      "food_on_cell": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "step_number": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect with reward 1.0; move/stay actions yield reward 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent navigates toward food: input drives for movement actions toward nearby food are higher, causing their accumulators to ramp faster and win the race.",
+      "test_pseudocode": "place food at (5,5), agent at (0,0) → over 50 steps, assert agent distance to food decreases on average"
+    },
+    {
+      "id": "B2",
+      "description": "Agent eats when on food: the eat action receives s_eat = 1.0 when food is on cell, giving it the strongest input drive and making its accumulator win quickly.",
+      "test_pseudocode": "place agent on food cell → run decide() 100 times → assert eat is chosen > 60% of the time"
+    },
+    {
+      "id": "B3",
+      "description": "Lateral inhibition creates winner-take-all competition: once one accumulator leads, it suppresses others, leading to more decisive action selection than independent accumulators.",
+      "test_pseudocode": "compare entropy of action distribution vs Formulation 1 under identical drift rates → lower entropy (more decisive)"
+    },
+    {
+      "id": "B4",
+      "description": "Collapsing boundary forces timely decisions: as urgency increases, theta(t) decreases, making it easier for any accumulator to cross, preventing indefinite deliberation in ambiguous situations.",
+      "test_pseudocode": "set all v_i equal (ambiguous) → assert decision is made before T_max in >95% of trials"
+    },
+    {
+      "id": "B5",
+      "description": "Leak prevents runaway activation: the kappa * x_i decay term ensures activations don't grow without bound even with high input drive.",
+      "test_pseudocode": "set very high v_i for one action → assert x_i stabilizes below a finite value (approx v_i / kappa)"
+    },
+    {
+      "id": "B6",
+      "description": "Reward traces bias future decisions: after repeatedly receiving eat rewards, r_bar_eat increases, giving eat a persistent input drive advantage.",
+      "test_pseudocode": "give 10 eat rewards → assert r_bar['eat'] > 0.5 and eat is chosen more frequently when on food"
+    }
+  ],
+  "references": [
+    "Ratcliff, R. (1978). A theory of memory retrieval. Psychological Review, 85(2), 59-108. DOI: 10.1037/0033-295X.85.2.59",
+    "Ratcliff, R., & McKoon, G. (2008). The diffusion decision model: Theory and data for two-choice decision tasks. Neural Computation, 20(4), 873-922. DOI: 10.1162/neco.2008.12-06-420",
+    "Bogacz, R., Brown, E., Moehlis, J., Holmes, P., & Cohen, J. D. (2006). The physics of optimal decision making. Psychological Review, 113(4), 700-765. DOI: 10.1037/0033-295X.113.4.700",
+    "Gold, J. I., & Shadlen, M. N. (2007). The neural basis of decision making. Annual Review of Neuroscience, 30, 535-574. DOI: 10.1146/annurev.neuro.29.051605.113038",
+    "Usher, M., & McClelland, J. L. (2001). The time course of perceptual choice: The leaky, competing accumulator model. Psychological Review, 108(3), 550-592. DOI: 10.1037/0033-295X.108.3.550"
+  ]
+}

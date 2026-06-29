@@ -15,12 +15,14 @@ to substring-match reliably.
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from typer.testing import CliRunner
 
 from decisionlab.cli import app
-from decisionlab.cli_eval import _parse_duration
+from decisionlab.cli_eval import _parse_duration, _preflight_llm
+from decisionlab.router import Stage
 
 runner = CliRunner()
 
@@ -51,11 +53,14 @@ class TestEvalHelp:
         assert result.exit_code == 0
         assert "--stages" in result.stdout
         assert "--no-reset" in result.stdout
+        assert "--eval-corpus" in result.stdout
+        assert "--export-bundle" in result.stdout
 
     def test_eval_topics_help(self):
         result = runner.invoke(app, ["eval", "topics", "--help"], env=_HELP_ENV)
         assert result.exit_code == 0
         assert "--env-spec" in result.stdout
+        assert "--eval-corpus" in result.stdout
 
     def test_eval_prune_help(self):
         result = runner.invoke(app, ["eval", "prune", "--help"], env=_HELP_ENV)
@@ -131,3 +136,26 @@ class TestParseDuration:
     def test_rejects_garbage(self, bad):
         with pytest.raises(ValueError):
             _parse_duration(bad)
+
+
+class TestLLMPreflight:
+    @pytest.mark.asyncio
+    async def test_skips_when_no_llm_stages(self):
+        client = MagicMock()
+        client.messages.create = AsyncMock()
+
+        await _preflight_llm(client, ())
+
+        client.messages.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_calls_researcher_model_before_llm_suite(self):
+        client = MagicMock()
+        client.messages.create = AsyncMock()
+
+        await _preflight_llm(client, (Stage.RESEARCH,))
+
+        client.messages.create.assert_awaited_once()
+        kwargs = client.messages.create.await_args.kwargs
+        assert kwargs["max_tokens"] == 1
+        assert kwargs["messages"][0]["content"] == "Reply OK."

@@ -15,7 +15,7 @@ import asyncio
 import logging
 import time
 import uuid
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -205,6 +205,7 @@ async def run_pipeline(
     project_root: Path,
     client: AsyncAnthropic,
     search: WebSearchPort,
+    paper_search: Callable[[dict], Awaitable[str]] | None = None,
     reports_root: Path = Path("evals/runs"),
     run_id: str | None = None,
     reset_usage: bool = True,
@@ -295,6 +296,7 @@ async def run_pipeline(
         client=client,
         state=state,
         search=search,
+        paper_search=paper_search,
         project_root=project_root,
         services=services,
         stop_after=stop_after,

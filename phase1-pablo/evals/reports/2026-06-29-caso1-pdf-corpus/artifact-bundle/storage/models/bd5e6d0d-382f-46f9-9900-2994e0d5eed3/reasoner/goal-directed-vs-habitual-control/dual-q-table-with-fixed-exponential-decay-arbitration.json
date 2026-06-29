@@ -1,0 +1,314 @@
+{
+  "formulation_id": "dual-q-table-with-fixed-exponential-decay-arbitration",
+  "paradigm": "goal-directed-vs-habitual-control",
+  "name": "Dual Q-Table with Fixed Exponential-Decay Arbitration",
+  "description": "Algebraic dual-system reinforcement learning agent maintaining two separate Q-tables: a model-free (habitual) Q-table updated by TD(0) and a model-based (goal-directed) Q-table computed prospectively from a learned transition model and hunger-modulated outcome desirability. The two value streams are blended via a deterministic arbitration weight that decays exponentially with state visit count, implementing the overtraining-to-habit shift (Rangel, Camerer & Montague, 2008; postulate P4). Early in training, goal-directed control dominates; after extensive exposure, habitual cached values take over. Outcome devaluation (e.g., satiation reducing hunger) immediately affects model-based values but not model-free values, reproducing the key behavioral signature of goal-directed vs. habitual control (postulate P5).",
+  "variables": [
+    {
+      "symbol": "s",
+      "name": "state",
+      "description": "Agent's current grid cell encoded as (x, y) tuple",
+      "type": "discrete",
+      "initial_value": "from perception (x, y)",
+      "range": ["(0,0)", "(grid_width-1, grid_height-1)"]
+    },
+    {
+      "symbol": "Q_MF",
+      "name": "model_free_q_table",
+      "description": "Cached habitual action values. Dictionary mapping (state, action) pairs to scalar values, updated incrementally by TD(0) prediction errors. Insensitive to outcome desirability changes (postulate P3).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "Q_MB",
+      "name": "model_based_q_value",
+      "description": "Goal-directed action values computed prospectively each step from the learned transition model and current hunger-modulated desirability. Not cached — recomputed every decision step (postulate P2).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "Q_net",
+      "name": "net_action_value",
+      "description": "Arbitrated blend of Q_MF and Q_MB, weighted by omega. Used for final action selection via softmax.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "h",
+      "name": "hunger_drive",
+      "description": "Internal physiological state representing current need. Rises each step without eating, drops upon consuming food. Modulates goal-directed outcome desirability r_D (postulate P2, assumption: state-dependent desirability).",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_D",
+      "name": "decision_time_desirability",
+      "description": "Current subjective value of each possible outcome, modulated by hunger h. For food outcomes: r_D = h * r_food. For non-food outcomes: r_D = c_step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "p_hat",
+      "name": "learned_transition_model",
+      "description": "Agent's estimate of action-outcome contingency p_hat(o|a,s). Dictionary mapping (state, action, outcome) triples to probabilities. Core element of goal-directed system (postulate P2).",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "delta",
+      "name": "td_prediction_error",
+      "description": "Temporal difference prediction error: delta = r_received + gamma * max_a' Q_MF(s', a') - Q_MF(s, a). Drives model-free learning (Rangel et al., 2008).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "omega",
+      "name": "arbitration_weight",
+      "description": "Proportion of goal-directed control in the value mixture. Computed as exp(-lambda * N(s)), decaying from 1.0 (full GD) toward 0.0 (full habit) as state visit count increases (postulate P4).",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "N",
+      "name": "visit_count",
+      "description": "Number of times the agent has visited each state s. Dictionary mapping states to integer counts. Primary driver of the arbitration weight decay.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, "infinity"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_MF",
+      "name": "model_free_learning_rate",
+      "default": 0.10,
+      "source": "Standard TD-learning range (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "alpha_T",
+      "name": "transition_model_learning_rate",
+      "default": 0.20,
+      "source": "Higher than alpha_MF — model-based systems update faster (Rangel, 2013; postulate P2)"
+    },
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount_factor",
+      "default": 0.95,
+      "source": "Standard RL discounting (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploitation level (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "lambda_habit",
+      "name": "habit_formation_rate",
+      "default": 0.05,
+      "source": "Controls speed of exponential decay of omega; tuned to match overtraining timeline (Rangel, Camerer & Montague, 2008; postulate P4)"
+    },
+    {
+      "symbol": "eta",
+      "name": "hunger_rise_rate",
+      "default": 0.02,
+      "source": "Per-step increase when not eating; biologically motivated hunger accumulation"
+    },
+    {
+      "symbol": "phi",
+      "name": "satiation_amount",
+      "default": 0.30,
+      "source": "Hunger reduction upon eating; provides meaningful satiation per food event"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Normalized reward unit matching env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.01,
+      "source": "Small penalty to encourage efficiency and discourage aimless wandering"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger dynamics: hunger rises each step by eta and drops by phi when food is consumed. Clipped to [0, 1].",
+      "type": "algebraic",
+      "pseudocode": "h = clip(h + eta - phi * ate_food, 0.0, 1.0)",
+      "source_postulate": "Assumption: state-dependent desirability; internal hunger modulates goal-directed valuation"
+    },
+    {
+      "id": "R2",
+      "description": "Decision-time desirability: subjective value of food outcome is hunger-modulated; non-food outcome incurs step cost.",
+      "type": "algebraic",
+      "pseudocode": "r_D_food = h * r_food\nr_D_nofood = c_step",
+      "source_postulate": "P2 — goal-directed value uses current desirability r^D(o|s)"
+    },
+    {
+      "id": "R3",
+      "description": "Model-based Q-value computation (prospective). For eat action at food location: sum over outcomes of p_hat(o|eat,s) * r_D(o). For move actions: c_step + gamma * max_a' Q_MF(s', a') where s' is the destination cell. For eat with no food: c_step. For stay: c_step.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  if a == 'eat' and food_at_position:\n    Q_MB[s][a] = p_hat['food'|'eat',s] * r_D_food + (1 - p_hat['food'|'eat',s]) * r_D_nofood\n  elif a in ['move_up','move_down','move_left','move_right']:\n    s_next = compute_next_state(s, a)\n    Q_MB[s][a] = c_step + gamma * max(Q_MF[s_next][a_prime] for a_prime in actions)\n  else:\n    Q_MB[s][a] = c_step",
+      "source_postulate": "P2 — V_GD(a|s) = sum_o p(o|a,s) * r^D(o|s)"
+    },
+    {
+      "id": "R4",
+      "description": "Transition model update: after observing outcome o_obs from action a in state s, update p_hat toward the observed outcome using learning rate alpha_T.",
+      "type": "algebraic",
+      "pseudocode": "p_hat[o_obs|a,s] = p_hat[o_obs|a,s] + alpha_T * (1.0 - p_hat[o_obs|a,s])\nfor o != o_obs:\n  p_hat[o|a,s] = p_hat[o|a,s] + alpha_T * (0.0 - p_hat[o|a,s])",
+      "source_postulate": "P2 — action-outcome contingency p(o|a,s) is learned and updated from experience"
+    },
+    {
+      "id": "R5",
+      "description": "TD prediction error: computed after observing reward r_received and transitioning to new state s'.",
+      "type": "algebraic",
+      "pseudocode": "delta = r_received + gamma * max(Q_MF[s_next][a_prime] for a_prime in actions) - Q_MF[s][a]",
+      "source_postulate": "P3 — habitual system uses TD learning; prediction error delta drives cached value updates"
+    },
+    {
+      "id": "R6",
+      "description": "Model-free Q-value update: incremental TD(0) update using the prediction error.",
+      "type": "algebraic",
+      "pseudocode": "Q_MF[s][a] = Q_MF[s][a] + alpha_MF * delta",
+      "source_postulate": "P3 — V_H(a|s) updated via incremental experience, not decomposed into contingency and desirability"
+    },
+    {
+      "id": "R7",
+      "description": "Arbitration weight: exponential decay based on state visit count. omega=1 at zero visits (full goal-directed), decays toward 0 (full habitual) with training.",
+      "type": "algebraic",
+      "pseudocode": "omega = exp(-lambda_habit * N[s])",
+      "source_postulate": "P4 — goal-directed control predominates early; habitual control predominates after extensive training"
+    },
+    {
+      "id": "R8",
+      "description": "Net action value: linear blend of model-based and model-free Q-values weighted by arbitration parameter omega.",
+      "type": "algebraic",
+      "pseudocode": "Q_net[s][a] = omega * Q_MB[s][a] + (1 - omega) * Q_MF[s][a]",
+      "source_postulate": "P1 — two dissociable valuation systems compete/cooperate via mixing"
+    },
+    {
+      "id": "R9",
+      "description": "Softmax action selection: probability of each action proportional to exponentiated net Q-value, controlled by inverse temperature beta.",
+      "type": "algebraic",
+      "pseudocode": "probs = softmax(beta * Q_net[s][a] for a in actions)\nselected_action = random_choice(actions, weights=probs)",
+      "source_postulate": "Assumption: common currency of value enters common action-selection mechanism"
+    },
+    {
+      "id": "R10",
+      "description": "Visit count increment: after each step in state s, increment the visit counter.",
+      "type": "algebraic",
+      "pseudocode": "N[s] = N[s] + 1",
+      "source_postulate": "P4 — training trial count is primary driver of habit formation"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Read current state s=(x,y), list of food resources, hunger h. (2) Compute hunger-modulated desirability r_D for food vs non-food outcomes (R2). (3) For each action, compute model-based Q_MB prospectively using learned transition model and r_D (R3). (4) Look up cached model-free Q_MF values for current state (R6 applied in prior steps). (5) Compute arbitration weight omega from visit count N(s) via exponential decay (R7). (6) Blend into Q_net = omega*Q_MB + (1-omega)*Q_MF (R8). (7) Select action via softmax over Q_net (R9). (8) After execution: update hunger (R1), transition model (R4), compute TD error (R5), update Q_MF (R6), increment N(s) (R10).",
+    "pseudocode": [
+      "# === DECIDE ===",
+      "s = (perception.x, perception.y)",
+      "food_positions = [(f['x'], f['y']) for f in perception.resources.get('food', [])]",
+      "food_here = s in food_positions",
+      "",
+      "# R2: Compute desirability",
+      "r_D_food = h * r_food",
+      "r_D_nofood = c_step",
+      "",
+      "# R3: Compute model-based Q for each action",
+      "for a in actions:",
+      "  if a == 'eat' and food_here:",
+      "    Q_MB[s][a] = p_hat.get((s,a,'food'), 0.5) * r_D_food + (1 - p_hat.get((s,a,'food'), 0.5)) * r_D_nofood",
+      "  elif a in ['move_up','move_down','move_left','move_right']:",
+      "    s_next = clamp_to_grid(apply_move(s, a))",
+      "    Q_MB[s][a] = c_step + gamma * max(Q_MF.get((s_next, a2), 0.0) for a2 in actions)",
+      "  else:  # stay or eat with no food",
+      "    Q_MB[s][a] = c_step",
+      "",
+      "# R7: Arbitration weight from visit count",
+      "omega = exp(-lambda_habit * N.get(s, 0))",
+      "",
+      "# R8: Blend",
+      "for a in actions:",
+      "  Q_net[a] = omega * Q_MB[s][a] + (1 - omega) * Q_MF.get((s, a), 0.0)",
+      "",
+      "# R9: Softmax selection",
+      "probs = softmax([beta * Q_net[a] for a in actions])",
+      "return random_choice(actions, probs)",
+      "",
+      "# === UPDATE (after action execution) ===",
+      "ate_food = (action == 'eat' and last_action_result.get('consumed', False))",
+      "r_received = r_food if ate_food else c_step",
+      "",
+      "# R1: Update hunger",
+      "h = clip(h + eta - phi * int(ate_food), 0.0, 1.0)",
+      "",
+      "# R4: Update transition model",
+      "o_obs = 'food' if ate_food else 'nofood'",
+      "p_hat[(s, action, o_obs)] = p_hat.get((s, action, o_obs), 0.5) + alpha_T * (1.0 - p_hat.get((s, action, o_obs), 0.5))",
+      "for o in outcomes where o != o_obs:",
+      "  p_hat[(s, action, o)] = p_hat.get((s, action, o), 0.5) + alpha_T * (0.0 - p_hat.get((s, action, o), 0.5))",
+      "",
+      "# R5-R6: TD update for model-free Q",
+      "s_next = (new_perception.x, new_perception.y)",
+      "delta = r_received + gamma * max(Q_MF.get((s_next, a2), 0.0) for a2 in actions) - Q_MF.get((s, action), 0.0)",
+      "Q_MF[(s, action)] = Q_MF.get((s, action), 0.0) + alpha_MF * delta",
+      "",
+      "# R10: Increment visit count",
+      "N[s] = N.get(s, 0) + 1"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "state_s": "(perception.x, perception.y)",
+      "food_positions": "perception.resources.food — list of {x, y, type, palatability} dicts",
+      "food_at_current_position": "any(f['x'] == perception.x and f['y'] == perception.y for f in perception.resources.get('food', []))",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step_number": "perception.step",
+      "ate_food": "action was 'eat' and perception.last_action_result indicates consumption"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action at food location → ConsumeEffect reward = 1.0; all other actions → internal step cost c_step = -0.01"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Goal-directed dominance in novel states: when visiting a state for the first time (N(s)=0), omega=1.0 so the agent relies entirely on model-based prospective computation, choosing actions that lead toward food based on hunger-modulated desirability.",
+      "test_pseudocode": "Place agent in new state with food nearby → assert omega == 1.0 → assert agent moves toward food when hungry"
+    },
+    {
+      "id": "B2",
+      "description": "Habit formation via overtraining: after many visits to the same state, omega decays toward 0 and the agent's behavior is dominated by cached Q_MF values regardless of current hunger level.",
+      "test_pseudocode": "Run agent for 200 steps in same area → assert omega < 0.1 for frequently visited states → assert Q_net approximately equals Q_MF"
+    },
+    {
+      "id": "B3",
+      "description": "Devaluation sensitivity (early training): when the agent is sated (h≈0) and in a novel state (high omega), it should avoid eating because Q_MB reflects the low current desirability of food.",
+      "test_pseudocode": "Set h=0.01, N(s)=0 → compute Q_MB for eat → assert Q_MB_eat ≈ 0.01 (very low) → assert agent prefers non-eat actions"
+    },
+    {
+      "id": "B4",
+      "description": "Devaluation insensitivity (late training): when the agent is sated but in an overtrained state (low omega), it may still eat because Q_MF reflects historically high rewards from eating.",
+      "test_pseudocode": "Set h=0.01, N(s)=100 → assert omega < 0.01 → Q_net dominated by Q_MF → if Q_MF[eat] was high from past experience, agent still eats"
+    },
+    {
+      "id": "B5",
+      "description": "Hunger drives food-seeking: with high hunger (h≈1.0) and food available, the goal-directed system assigns high value to eating, producing directed movement toward food or immediate eating.",
+      "test_pseudocode": "Set h=0.9, food at current position → assert Q_MB[eat] ≈ 0.9 → assert eat is most probable action"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience, 9, 545–556.",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724."
+  ]
+}

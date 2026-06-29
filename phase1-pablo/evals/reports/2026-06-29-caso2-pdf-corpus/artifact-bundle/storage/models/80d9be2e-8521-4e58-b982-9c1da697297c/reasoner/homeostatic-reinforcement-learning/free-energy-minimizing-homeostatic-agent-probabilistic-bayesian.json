@@ -1,0 +1,349 @@
+{
+  "formulation_id": "free-energy-minimizing-homeostatic-agent-probabilistic-bayesian",
+  "paradigm": "homeostatic-reinforcement-learning",
+  "name": "Free-Energy Minimizing Homeostatic Agent (Probabilistic/Bayesian)",
+  "description": "Active inference formulation where the agent maintains a probabilistic belief (Gaussian posterior) over its internal hunger state and a belief map over resource locations. Actions are selected by minimizing expected free energy, which decomposes into a pragmatic term (expected homeostatic drive reduction — connecting to Keramati & Gutkin 2014's equivalence between drive and negative log-probability per Friston 2010) and an epistemic term (information gain about resource locations, driving exploration of uncertain grid cells). This unifies homeostatic regulation with Bayesian inference and active exploration in a single principled framework. Based on Friston (2010) Free Energy Principle, Keramati & Gutkin (2014) postulates P1 and P2, and Petzschner et al. (2021) on computational interoception.",
+  "variables": [
+    {
+      "symbol": "h_t",
+      "name": "true_hunger",
+      "description": "True internal hunger state. Not directly observed — the agent receives a noisy interoceptive observation. Updated via metabolic drift and consumption.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 10.0]
+    },
+    {
+      "symbol": "mu_h",
+      "name": "believed_hunger_mean",
+      "description": "Mean of the agent's Gaussian posterior belief over its current hunger level. Updated each step via Bayesian fusion of prior prediction and noisy observation.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "sigma_h_sq",
+      "name": "believed_hunger_variance",
+      "description": "Variance of the agent's Gaussian posterior belief over hunger. Decreases with observations, increases with process noise during prediction.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.001, "Infinity"]
+    },
+    {
+      "symbol": "o_h",
+      "name": "hunger_observation",
+      "description": "Noisy interoceptive observation of hunger. Simulated as h_t + Gaussian noise with std sigma_obs. In the simulation, derived from the true h_t with added noise.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "s_t",
+      "name": "position",
+      "description": "Agent's current grid position (x, y).",
+      "type": "tuple",
+      "initial_value": [0, 0],
+      "range": "grid coordinates"
+    },
+    {
+      "symbol": "R_beliefs",
+      "name": "resource_belief_map",
+      "description": "A grid_width × grid_height map where each cell holds P(food present at cell). Initialized to a uniform prior (count/total_cells). Updated when cells are observed directly.",
+      "type": "2d_array",
+      "initial_value": "uniform prior based on food count / total cells",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "G_prag_a",
+      "name": "pragmatic_value",
+      "description": "Pragmatic (drive-reducing) component of expected free energy for action a. Negative expected drive after taking action a: favors actions that reduce expected hunger deviation from setpoint.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", 0.0]
+    },
+    {
+      "symbol": "G_epist_a",
+      "name": "epistemic_value",
+      "description": "Epistemic (uncertainty-reducing) component of expected free energy for action a. Sum of binary entropies of resource beliefs for cells that would become newly visible after action a. Higher = more information gain.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "Infinity"]
+    },
+    {
+      "symbol": "G_a",
+      "name": "expected_free_energy",
+      "description": "Total expected free energy for action a: G(a) = G_prag(a) + w_e * G_epist(a). Higher is better (we maximize G, or equivalently minimize -G).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "ate_t",
+      "name": "ate_food_flag",
+      "description": "Boolean (0 or 1) indicating successful food consumption this step.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h_star",
+      "name": "setpoint_prior_mean",
+      "default": 0.0,
+      "source": "Keramati & Gutkin (2014): ideal = no deficit; also the mean of the preferred-state prior p(h) in Friston (2010)"
+    },
+    {
+      "symbol": "sigma_p",
+      "name": "prior_std",
+      "default": 1.0,
+      "source": "Friston (2010): tighter prior = stronger homeostatic regulation; controls width of preferred-state distribution"
+    },
+    {
+      "symbol": "sigma_obs",
+      "name": "interoceptive_noise_std",
+      "default": 0.5,
+      "source": "Petzschner et al. (2021): interoceptive uncertainty in hunger perception"
+    },
+    {
+      "symbol": "sigma_process_sq",
+      "name": "process_noise_variance",
+      "default": 0.01,
+      "source": "Petzschner et al. (2021): uncertainty accumulation during prediction step"
+    },
+    {
+      "symbol": "K",
+      "name": "resource_nutritive_value",
+      "default": 3.0,
+      "source": "Per-resource hunger reduction upon eating"
+    },
+    {
+      "symbol": "lambda_drift",
+      "name": "metabolic_drift_rate",
+      "default": 0.1,
+      "source": "Per-timestep hunger increase"
+    },
+    {
+      "symbol": "h_max",
+      "name": "max_hunger",
+      "default": 10.0,
+      "source": "Simulation bound for internal state"
+    },
+    {
+      "symbol": "beta_G",
+      "name": "action_selection_inv_temperature",
+      "default": 5.0,
+      "source": "Controls policy determinism in action selection"
+    },
+    {
+      "symbol": "w_e",
+      "name": "epistemic_weight",
+      "default": 0.3,
+      "source": "Friston (2010): balances exploration (epistemic) vs. exploitation (pragmatic)"
+    },
+    {
+      "symbol": "kappa",
+      "name": "resource_belief_decay",
+      "default": 0.05,
+      "source": "Rate at which unvisited cells lose believed resource probability when observed empty"
+    },
+    {
+      "symbol": "initial_resource_prior",
+      "name": "initial_resource_belief",
+      "default": 0.05,
+      "source": "Prior probability of food at each cell; ≈ food_count / total_cells = 5/100"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Prediction step — propagate belief forward with metabolic drift and process noise",
+      "type": "update",
+      "pseudocode": "mu_h_prior = mu_h + lambda_drift\nsigma_h_sq_prior = sigma_h_sq + sigma_process_sq",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Generate noisy interoceptive observation (simulation-side, not agent-side)",
+      "type": "observation",
+      "pseudocode": "o_h = h_t + random_normal(0, sigma_obs)\n# In implementation: the agent uses its own h_t + noise as the observation",
+      "source_postulate": "Petzschner et al. (2021)"
+    },
+    {
+      "id": "R3",
+      "description": "Bayesian belief update — fuse prior prediction with noisy observation",
+      "type": "update",
+      "pseudocode": "# Kalman-style Gaussian fusion\nK_gain = sigma_h_sq_prior / (sigma_h_sq_prior + sigma_obs ** 2)\nmu_h = mu_h_prior + K_gain * (o_h - mu_h_prior)\nsigma_h_sq = (1 - K_gain) * sigma_h_sq_prior",
+      "source_postulate": "Friston (2010), Petzschner et al. (2021)"
+    },
+    {
+      "id": "R4",
+      "description": "Pragmatic value — negative expected drive under action a (drive = squared deviation / sigma_p^2)",
+      "type": "algebraic",
+      "pseudocode": "# For eat action (if food present):\nmu_after_eat = mu_h + lambda_drift - K\nG_prag_eat = -((mu_after_eat - h_star) ** 2 + sigma_h_sq) / (sigma_p ** 2)\n\n# For non-eat actions:\nmu_after_move = mu_h + lambda_drift\nG_prag_move = -((mu_after_move - h_star) ** 2 + sigma_h_sq) / (sigma_p ** 2)\n\n# For stay:\nG_prag_stay = G_prag_move  # same as movement (no eating)",
+      "source_postulate": "P1, P2; Friston (2010) drive ≡ negative log-prior"
+    },
+    {
+      "id": "R5",
+      "description": "Epistemic value — information gain about resource locations from visiting new cells",
+      "type": "algebraic",
+      "pseudocode": "# Binary entropy: H(p) = -p * ln(p) - (1-p) * ln(1-p)\ndef binary_entropy(p):\n    p = clip(p, 1e-9, 1 - 1e-9)\n    return -p * log(p) - (1 - p) * log(1 - p)\n\n# For movement action a: compute position after action\nnew_pos = (clip(x + dx, 0, grid_w-1), clip(y + dy, 0, grid_h-1))\n\n# Epistemic value = entropy of resource belief at the destination cell\n# (observing that cell will resolve uncertainty)\nG_epist_a = binary_entropy(R_beliefs[new_pos[0]][new_pos[1]])\n\n# For eat and stay: no new cell observed\nG_epist_eat = 0.0\nG_epist_stay = 0.0",
+      "source_postulate": "Friston (2010): epistemic affordance"
+    },
+    {
+      "id": "R6",
+      "description": "Combined expected free energy",
+      "type": "algebraic",
+      "pseudocode": "G_a = G_prag_a + w_e * G_epist_a",
+      "source_postulate": "Friston (2010)"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax action selection over expected free energy (maximize G)",
+      "type": "policy",
+      "pseudocode": "all_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']\nG_vals = [G_a for a in all_actions]  # computed via R4+R5+R6\n\n# If no food at position, set G(eat) = -1e9\nif not food_at_position:\n    G_vals[eat_index] = -1e9\n\nmax_G = max(G_vals)\nexp_vals = [exp(beta_G * (g - max_G)) for g in G_vals]\nsum_exp = sum(exp_vals)\nprobs = [e / sum_exp for e in exp_vals]\na_t = random_choice(all_actions, probs)",
+      "source_postulate": "Friston (2010)"
+    },
+    {
+      "id": "R8",
+      "description": "Internal state transition (true hunger update)",
+      "type": "update",
+      "pseudocode": "h_t = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R9",
+      "description": "Resource belief map update based on observation",
+      "type": "update",
+      "pseudocode": "# For current position: check if food is actually there\ncurrent_cell = (perception['x'], perception['y'])\nfood_here = any(f['x'] == current_cell[0] and f['y'] == current_cell[1] for f in food_list)\n\nif food_here:\n    R_beliefs[current_cell[0]][current_cell[1]] = 1.0\nelse:\n    # Decay belief for visited empty cell\n    R_beliefs[current_cell[0]][current_cell[1]] *= (1 - kappa)",
+      "source_postulate": "Friston (2010): belief updating"
+    }
+  ],
+  "decision_logic": {
+    "description": "The agent maintains a Gaussian belief over its hunger state (mu_h, sigma_h_sq) and a grid-wide resource belief map. Each step: (1) predict hunger forward via metabolic drift + process noise, (2) generate a noisy interoceptive observation and fuse it with the prediction via Bayesian update, (3) update resource beliefs based on what is currently visible, (4) for each candidate action compute pragmatic value (expected drive reduction) and epistemic value (information gain about resources), (5) combine into expected free energy G(a), (6) select action via softmax over G. After acting, update the true internal hunger state. This agent explores uncertain areas when hunger is low and exploits known food sources when hunger is high, with smooth transitions governed by the free energy decomposition.",
+    "pseudocode": [
+      "# --- decide(perception) ---",
+      "s_t = (perception['x'], perception['y'])",
+      "grid_w = perception['grid_width']",
+      "grid_h = perception['grid_height']",
+      "food_list = perception['resources'].get('food', [])",
+      "food_positions = set((f['x'], f['y']) for f in food_list)",
+      "food_at_position = s_t in food_positions",
+      "",
+      "# Step 1: Prediction (R1)",
+      "mu_h_prior = mu_h + lambda_drift",
+      "sigma_h_sq_prior = sigma_h_sq + sigma_process_sq",
+      "",
+      "# Step 2: Noisy observation and Bayesian update (R2, R3)",
+      "o_h = h_t + random_normal(0, sigma_obs)  # simulated interoceptive noise",
+      "K_gain = sigma_h_sq_prior / (sigma_h_sq_prior + sigma_obs ** 2)",
+      "mu_h = mu_h_prior + K_gain * (o_h - mu_h_prior)",
+      "sigma_h_sq = max((1 - K_gain) * sigma_h_sq_prior, 0.001)  # floor to avoid zero variance",
+      "",
+      "# Step 3: Update resource beliefs (R9)",
+      "if food_at_position:",
+      "    R_beliefs[s_t[0]][s_t[1]] = 1.0",
+      "else:",
+      "    R_beliefs[s_t[0]][s_t[1]] *= (1 - kappa)",
+      "",
+      "# Step 4: Evaluate each action",
+      "all_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "delta_map = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "G_vals = []",
+      "",
+      "for action_name in all_actions:",
+      "    if action_name == 'eat':",
+      "        if food_at_position:",
+      "            mu_after = mu_h + lambda_drift - K",
+      "            G_prag = -((mu_after - h_star)**2 + sigma_h_sq) / (sigma_p**2)",
+      "            G_epist = 0.0",
+      "        else:",
+      "            G_prag = -1e9",
+      "            G_epist = 0.0",
+      "    elif action_name == 'stay':",
+      "        mu_after = mu_h + lambda_drift",
+      "        G_prag = -((mu_after - h_star)**2 + sigma_h_sq) / (sigma_p**2)",
+      "        G_epist = 0.0",
+      "    else:  # movement",
+      "        dx, dy = delta_map[action_name]",
+      "        new_x = clip(s_t[0] + dx, 0, grid_w - 1)",
+      "        new_y = clip(s_t[1] + dy, 0, grid_h - 1)",
+      "        mu_after = mu_h + lambda_drift",
+      "        G_prag = -((mu_after - h_star)**2 + sigma_h_sq) / (sigma_p**2)",
+      "        # Epistemic: entropy of resource belief at destination",
+      "        p = clip(R_beliefs[new_x][new_y], 1e-9, 1 - 1e-9)",
+      "        G_epist = -p * log(p) - (1-p) * log(1-p)",
+      "",
+      "    G_total = G_prag + w_e * G_epist",
+      "    G_vals.append(G_total)",
+      "",
+      "# Step 5: Softmax action selection (R7)",
+      "max_G = max(G_vals)",
+      "exp_vals = [exp(beta_G * (g - max_G)) for g in G_vals]",
+      "sum_exp = sum(exp_vals)",
+      "probs = [e / sum_exp for e in exp_vals]",
+      "a_t = random_choice(all_actions, probs)",
+      "return Action(a_t)",
+      "",
+      "# --- update(action, reward, new_perception) ---",
+      "ate_t = 1 if (action == 'eat' and new_perception.get('last_action_result', {}).get('consumed', False)) else 0",
+      "",
+      "# Update true internal state (R8)",
+      "h_t = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "",
+      "# mu_h and sigma_h_sq persist for next step's prediction phase",
+      "# R_beliefs persists and will be updated next step"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "s_t (position)": "(perception['x'], perception['y'])",
+      "food_positions": "set((f['x'], f['y']) for f in perception['resources'].get('food', []))",
+      "food_at_position": "(x, y) in food_positions",
+      "grid_w": "perception['grid_width']",
+      "grid_h": "perception['grid_height']",
+      "ate_t": "action_name == 'eat' and last_action_result.get('consumed', False)",
+      "step": "perception['step']",
+      "o_h (hunger observation)": "h_t + random_normal(0, sigma_obs) — agent self-generates noisy observation from its own true h_t"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internally computed via expected free energy G(a). The environment reward from ConsumeEffect (reward=1.0) is NOT used — the agent is driven entirely by free energy minimization over its believed internal state and resource uncertainty."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Agent explores uncertain areas when hunger is low (epistemic drive dominates)",
+      "test_pseudocode": "set h_t ≈ 0 (sated), initialize R_beliefs with high entropy in distant cells → assert agent moves toward high-entropy cells rather than known food"
+    },
+    {
+      "id": "B2",
+      "description": "Agent exploits known food when hungry (pragmatic drive dominates)",
+      "test_pseudocode": "set h_t = 7.0, R_beliefs[food_cell] = 1.0 → assert agent moves toward food_cell and eats"
+    },
+    {
+      "id": "B3",
+      "description": "Bayesian belief tracks true hunger with interoceptive noise filtered out",
+      "test_pseudocode": "run 100 steps → assert abs(mu_h - h_t) < 2 * sigma_obs on average (belief is calibrated)"
+    },
+    {
+      "id": "B4",
+      "description": "Eating near setpoint yields near-zero pragmatic benefit (alliesthesia via free energy)",
+      "test_pseudocode": "set mu_h ≈ 0.1, compute G_prag(eat) vs G_prag(stay) → assert difference is very small"
+    },
+    {
+      "id": "B5",
+      "description": "Resource beliefs decay for empty cells, persist for food cells",
+      "test_pseudocode": "visit empty cell 20 times → assert R_beliefs[cell] → 0; visit food cell → assert R_beliefs[cell] = 1.0"
+    },
+    {
+      "id": "B6",
+      "description": "Smooth transition from exploration to exploitation as hunger rises",
+      "test_pseudocode": "sweep h_t from 0 to 10 → plot P(move_toward_known_food) vs P(move_toward_uncertain_cell) → assert crossover occurs"
+    }
+  ],
+  "references": [
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience.",
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811.",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C. & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences 44(1): 63-76.",
+    "Cabanac, M. (1971). Physiological role of pleasure. Science."
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "source_cache": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb",
+  "papers": [
+    {
+      "id": "0210dfd0b01c",
+      "title": "Computational Models of Interoception and Body Regulation",
+      "filename": "Petzschner_Koch_computationalmodels_bodyregulation_2021.pdf",
+      "source_archive": "Evaluacion_CASO2.zip",
+      "url": "eval-corpus://0210dfd0b01c/pdfs/Petzschner_Koch_computationalmodels_bodyregulation_2021.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/pdfs/Petzschner_Koch_computationalmodels_bodyregulation_2021.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/texts/Petzschner_Koch_computationalmodels_bodyregulation_2021.txt",
+      "snippet": "In order to survive, organisms must effectively respond to the challenge of maintaining their physiological integrity in the face of an ever-changing environment. Preserving this homeostasis critically relies on adaptive behavior. In this review, we consider recent frameworks that extend classical homeostatic control via reflex arcs to include more flexible forms of adaptive behavior and that take interoceptive context, experiences and expectations into account. Specifically, we define a landscape for computational models of interoception, body regulation and forecasting, Author Manuscript address these models\u2019 unique challenges in relation to translational research efforts, and disc",
+      "year": 2022,
+      "doi": "10.1016/j.tins.2020.09.012",
+      "authors": []
+    },
+    {
+      "id": "3a0cf621a263",
+      "title": "The free-energy principle: a unified brain theory?",
+      "filename": "Interoceptive_Active_Inference_IAI_2010.pdf",
+      "source_archive": "Evaluacion_CASO2.zip",
+      "url": "eval-corpus://3a0cf621a263/pdfs/Interoceptive_Active_Inference_IAI_2010.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/pdfs/Interoceptive_Active_Inference_IAI_2010.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/texts/Interoceptive_Active_Inference_IAI_2010.txt",
+      "snippet": "| A free-energy principle has been proposed recently that accounts for action, perception and learning. This Review looks at some key brain theories in the biological (for example, neural Darwinism) and physical (for example, information theory and optimal control theory) sciences from the free-energy perspective. Crucially, one key theme runs through each of these theories \u2014 optimization. Furthermore, if we look closely at what is optimized, the same quantity keeps emerging, namely value (expected reward, expected utility) or its complement, surprise (prediction error, expected cost). This is the quantity that is optimized under the free-energy principle, which suggests that several",
+      "year": 2010,
+      "doi": "10.1038/nrn2787",
+      "authors": []
+    },
+    {
+      "id": "8481dc824db5",
+      "title": "Homeostatic reinforcement learning for integrating reward collection and physiological stability",
+      "filename": "Homeostatic_reinforcement_learning_HRL_2014.pdf",
+      "source_archive": "Evaluacion_CASO2.zip",
+      "url": "eval-corpus://8481dc824db5/pdfs/Homeostatic_reinforcement_learning_HRL_2014.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/pdfs/Homeostatic_reinforcement_learning_HRL_2014.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/30e66d179fa52ebb/texts/Homeostatic_reinforcement_learning_HRL_2014.txt",
+      "snippet": "Efficient regulation of internal homeostasis and defending it against perturbations requires adaptive behavioral strategies. However, the computational principles mediating the interaction between homeostatic and associative learning processes remain undefined. Here we use a definition of primary rewards, as outcomes fulfilling physiological needs, to build a normative theory showing how learning motivated behaviors may be modulated by internal states. Within this framework, we mathematically prove that seeking rewards is equivalent to the fundamental objective of physiological stability, defining the notion of physiological rationality of behavior. We further suggest a formal basis f",
+      "year": 2014,
+      "doi": "10.7554/eLife.04811.001",
+      "authors": []
+    }
+  ]
+}

@@ -17,7 +17,7 @@ import logging
 import os
 import re
 import time
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -89,6 +89,7 @@ class SuiteSpec:
     source_path: Path | None = None
     suite_assertions: tuple[dict[str, Any], ...] = ()
     setup: tuple[SetupAction, ...] = ()
+    eval_corpus_paths: tuple[Path, ...] = ()
 
     @classmethod
     def from_yaml(cls, path: Path) -> SuiteSpec:
@@ -160,6 +161,13 @@ class SuiteSpec:
         suite_assertions = tuple(raw_suite_assertions)
 
         setup = tuple(_parse_setup(raw.get("setup"), suite_name=raw.get("name", "?")))
+        eval_corpus_paths = tuple(
+            _parse_eval_corpus_paths(
+                raw.get("eval_corpus"),
+                suite_name=raw.get("name", "?"),
+                base_dir=path.parent,
+            )
+        )
 
         return cls(
             name=raw.get("name", path.stem),
@@ -178,6 +186,7 @@ class SuiteSpec:
             source_path=path,
             suite_assertions=suite_assertions,
             setup=setup,
+            eval_corpus_paths=eval_corpus_paths,
         )
 
 
@@ -230,6 +239,32 @@ def _parse_setup(raw: object, *, suite_name: str) -> list[SetupAction]:
     return out
 
 
+def _parse_eval_corpus_paths(
+    raw: object,
+    *,
+    suite_name: str,
+    base_dir: Path,
+) -> list[Path]:
+    """Parse optional PDF-corpus zip paths from suite YAML."""
+    if raw is None:
+        return []
+    entries = [raw] if isinstance(raw, str) else raw
+    if not isinstance(entries, list) or not all(isinstance(p, str) for p in entries):
+        raise ValueError(
+            f"suite {suite_name!r}: eval_corpus must be a string or list of strings"
+        )
+    paths: list[Path] = []
+    for entry in entries:
+        path = Path(entry).expanduser()
+        if not path.is_absolute():
+            path = base_dir / path
+        path = path.resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"eval_corpus archive not found: {path}")
+        paths.append(path)
+    return paths
+
+
 # ---------------------------------------------------------------------------
 # Result types
 # ---------------------------------------------------------------------------
@@ -244,7 +279,11 @@ class TopicResult:
 
     @property
     def all_passed(self) -> bool:
-        return all(a.passed for outs in self.assertions.values() for a in outs)
+        return (
+            self.run.succeeded
+            and self.run.memory_succeeded
+            and all(a.passed for outs in self.assertions.values() for a in outs)
+        )
 
     def total_assertions(self) -> int:
         return sum(len(outs) for outs in self.assertions.values())
@@ -653,6 +692,7 @@ async def run_suite(
     services: Services,
     client: AsyncAnthropic,
     search: WebSearchPort,
+    paper_search: Callable[[dict], Awaitable[str]] | None = None,
     skip_kg_ops: bool = False,
 ) -> SuiteResult:
     """Execute a suite end-to-end. ``init_services()`` must have been called.
@@ -709,6 +749,7 @@ async def run_suite(
                 project_root=spec.project_root,
                 client=client,
                 search=search,
+                paper_search=paper_search,
                 reports_root=spec.reports_root,
                 reset_usage=False,  # accumulate across topics for budget tracking
                 approved_paradigms=spec.approved_paradigms or None,

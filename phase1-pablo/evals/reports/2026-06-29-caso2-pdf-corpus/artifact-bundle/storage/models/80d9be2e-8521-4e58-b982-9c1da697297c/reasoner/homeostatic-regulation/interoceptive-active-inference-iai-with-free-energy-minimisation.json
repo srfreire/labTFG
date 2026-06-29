@@ -1,0 +1,340 @@
+{
+  "formulation_id": "interoceptive-active-inference-iai-with-free-energy-minimisation",
+  "paradigm": "homeostatic-regulation",
+  "name": "Interoceptive Active Inference (IAI) with Free-Energy Minimisation",
+  "description": "Probabilistic Bayesian framework where the agent maintains a generative model of its internal energy state, infers its true energy under interoceptive noise via Kalman filtering, and selects actions by minimising expected free energy — a quantity that combines pragmatic value (drive toward homeostatic setpoint) and epistemic value (information gain about internal state). The agent does not learn action values; instead, it performs one-step lookahead over all available actions, simulating their predicted effect on the believed energy state, and selects the action that best reduces expected deviation from the setpoint while resolving uncertainty. Grounded in Friston (2010) Free Energy Principle and Petzschner et al. (2021) computational models of interoception.",
+  "variables": [
+    {
+      "symbol": "h",
+      "name": "true_energy_level",
+      "description": "Actual (hidden) physiological energy state. The agent cannot observe this directly; it receives a noisy observation.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu",
+      "name": "believed_energy_level",
+      "description": "Agent's posterior mean estimate of the true energy h(t), updated via Kalman filtering each step",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "sigma2_q",
+      "name": "posterior_variance",
+      "description": "Uncertainty about the internal state estimate; posterior variance from the Kalman filter",
+      "type": "float",
+      "initial_value": 0.04,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "mu_prior",
+      "name": "prior_prediction",
+      "description": "Predicted energy level before incorporating the new interoceptive observation, based on the generative model of energy dynamics",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "epsilon_int",
+      "name": "interoceptive_prediction_error",
+      "description": "Difference between the noisy interoceptive observation and the prior prediction; the Bayesian surprise signal",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "o",
+      "name": "interoceptive_observation",
+      "description": "Noisy sensory signal of energy level, simulated by adding Gaussian noise to the true hidden energy state",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "K_gain",
+      "name": "kalman_gain",
+      "description": "Kalman gain weighting new observation vs. prior prediction; high gain means observations dominate, low gain means prior dominates",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "G",
+      "name": "expected_free_energy",
+      "description": "Scalar objective for each candidate action; combines pragmatic value (setpoint-seeking) and epistemic value (uncertainty reduction). Lower is better.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h_star",
+      "name": "setpoint_preferred_state",
+      "default": 0.8,
+      "source": "Friston (2010), homeostatic prior — the preferred internal state"
+    },
+    {
+      "symbol": "sigma2_w",
+      "name": "process_noise_variance",
+      "default": 0.04,
+      "source": "Petzschner et al. (2021); controls uncertainty growth in the generative model between observations. Note: formulation listed this as sigma2_p (prior precision); here resolved as process noise variance for the Kalman filter."
+    },
+    {
+      "symbol": "sigma2_s",
+      "name": "sensory_noise_variance",
+      "default": 0.01,
+      "source": "Petzschner et al. (2021); interoceptive channel noise"
+    },
+    {
+      "symbol": "lambda_decay",
+      "name": "natural_energy_decay",
+      "default": 0.02,
+      "source": "Calibrated; metabolic drain per step"
+    },
+    {
+      "symbol": "c_eat",
+      "name": "eating_restoration",
+      "default": 0.3,
+      "source": "Calibrated; energy restored per food item consumed"
+    },
+    {
+      "symbol": "c_move",
+      "name": "movement_cost",
+      "default": 0.005,
+      "source": "Calibrated; extra metabolic cost per move action"
+    },
+    {
+      "symbol": "beta_G",
+      "name": "inverse_temperature_for_policy",
+      "default": 4.0,
+      "source": "Moderate action selection sharpness; Friston (2010) active inference softmax"
+    },
+    {
+      "symbol": "kappa",
+      "name": "epistemic_weight",
+      "default": 0.5,
+      "source": "Balances exploration (information gain) vs. exploitation (pragmatic value); Petzschner et al. (2021)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "True energy dynamics (generative model): energy decays each step, is reduced by movement cost, increased by eating, with additive process noise. This is the hidden state transition — the agent uses its model of this to make predictions.",
+      "type": "ODE_discrete",
+      "pseudocode": "moved = 1 if action in ['move_up','move_down','move_left','move_right'] else 0\nate = 1 if (action == 'eat' and last_action_result.get('consumed', False)) else 0\nh = clip(h - lambda_decay + c_eat * ate - c_move * moved + random_normal(0, sigma2_w), 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R2",
+      "description": "Interoceptive observation: the agent observes its energy through a noisy channel. The observation is the true energy plus Gaussian sensory noise.",
+      "type": "algebraic",
+      "pseudocode": "o = clip(h + random_normal(0, sigma2_s), 0.0, 1.0)",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R3a",
+      "description": "Prior prediction: predict the energy level based on last posterior and the action just taken, using the agent's internal generative model.",
+      "type": "algebraic",
+      "pseudocode": "moved_prev = 1 if prev_action in ['move_up','move_down','move_left','move_right'] else 0\nate_prev = 1 if (prev_action == 'eat' and prev_consumed) else 0\nmu_prior = clip(mu - lambda_decay + c_eat * ate_prev - c_move * moved_prev, 0.0, 1.0)",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R3b",
+      "description": "Prior variance propagation: uncertainty grows each step by the process noise variance.",
+      "type": "algebraic",
+      "pseudocode": "sigma2_q_prior = sigma2_q + sigma2_w",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R3c",
+      "description": "Kalman gain: balances trust between prior prediction and new observation based on their relative uncertainties.",
+      "type": "algebraic",
+      "pseudocode": "K_gain = sigma2_q_prior / (sigma2_q_prior + sigma2_s)",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R3d",
+      "description": "Bayesian state inference (posterior update): update believed energy by combining prior prediction with interoceptive observation weighted by Kalman gain.",
+      "type": "algebraic",
+      "pseudocode": "mu = clip(mu_prior + K_gain * (o - mu_prior), 0.0, 1.0)",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R4",
+      "description": "Posterior variance update: uncertainty decreases after incorporating the observation.",
+      "type": "algebraic",
+      "pseudocode": "sigma2_q = (1.0 - K_gain) * sigma2_q_prior",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Interoceptive prediction error: the surprise signal, computed as the difference between observation and prior prediction.",
+      "type": "algebraic",
+      "pseudocode": "epsilon_int = o - mu_prior",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R6",
+      "description": "Pragmatic value: negative expected squared deviation from setpoint after taking action a. Higher (less negative) is better — the action that brings believed energy closest to setpoint scores highest.",
+      "type": "algebraic",
+      "pseudocode": "# For candidate action a, predict what mu would be after taking it:\nmoved_a = 1 if a in ['move_up','move_down','move_left','move_right'] else 0\nate_a = 1 if (a == 'eat' and food_at_cell) else 0\nmu_predicted_a = clip(mu - lambda_decay + c_eat * ate_a - c_move * moved_a, 0.0, 1.0)\nV_prag_a = -((mu_predicted_a - h_star) ** 2)",
+      "source_postulate": "P3, P4"
+    },
+    {
+      "id": "R7",
+      "description": "Epistemic value: expected information gain from taking action a, measured as the expected reduction in posterior entropy. For most actions the epistemic value is similar; eating may differ because it changes the energy dynamics.",
+      "type": "algebraic",
+      "pseudocode": "sigma2_q_prior_a = sigma2_q + sigma2_w\nsigma2_q_post_a = (1.0 - sigma2_q_prior_a / (sigma2_q_prior_a + sigma2_s)) * sigma2_q_prior_a\nV_epist_a = 0.5 * ln(sigma2_q_prior_a / sigma2_q_post_a)",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R8",
+      "description": "Expected free energy: combines pragmatic and epistemic value. Lower G means a better action (agent minimises free energy).",
+      "type": "algebraic",
+      "pseudocode": "G_a = -V_prag_a - kappa * V_epist_a",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R9",
+      "description": "Action selection via softmax over negative expected free energy. Actions with lower G (better) get higher probability.",
+      "type": "algebraic",
+      "pseudocode": "logits = [-beta_G * G_a for a in available_actions]\nmax_logit = max(logits)\nexp_logits = [exp(l - max_logit) for l in logits]\nsum_exp = sum(exp_logits)\nprobs = [e / sum_exp for e in exp_logits]\naction = random_choice(available_actions, weights=probs)",
+      "source_postulate": "P3"
+    }
+  ],
+  "decision_logic": {
+    "description": "The agent first infers its internal energy state from a noisy interoceptive observation (Kalman filter), then evaluates each available action by simulating one step forward to compute pragmatic value (setpoint proximity) and epistemic value (information gain). Actions are selected by softmax over negative expected free energy. No Q-table or explicit value learning — the agent is model-based, re-computing action values each step from its generative model.",
+    "pseudocode": [
+      "# === PERCEPTION PHASE ===",
+      "food_list = perception['resources'].get('food', [])",
+      "food_here = any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_list)",
+      "current_x, current_y = perception['x'], perception['y']",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# === INTEROCEPTIVE INFERENCE (Kalman Filter) ===",
+      "# Simulate noisy observation of true energy (R2)",
+      "o = clip(h + random_normal(0, sqrt(sigma2_s)), 0.0, 1.0)",
+      "",
+      "# Prior prediction based on last action (R3a)",
+      "mu_prior = clip(mu - lambda_decay + c_eat * ate_prev - c_move * moved_prev, 0.0, 1.0)",
+      "",
+      "# Prior variance (R3b)",
+      "sigma2_q_prior = sigma2_q + sigma2_w",
+      "",
+      "# Kalman gain (R3c)",
+      "K_gain = sigma2_q_prior / (sigma2_q_prior + sigma2_s)",
+      "",
+      "# Posterior update (R3d)",
+      "mu = clip(mu_prior + K_gain * (o - mu_prior), 0.0, 1.0)",
+      "",
+      "# Posterior variance (R4)",
+      "sigma2_q = (1.0 - K_gain) * sigma2_q_prior",
+      "",
+      "# Prediction error (R5)",
+      "epsilon_int = o - mu_prior",
+      "",
+      "# === ACTION EVALUATION ===",
+      "available_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if food_here:",
+      "    available_actions.append('eat')",
+      "",
+      "G_values = {}",
+      "for a in available_actions:",
+      "    # Predict energy after action a (R6)",
+      "    moved_a = 1 if a in ['move_up','move_down','move_left','move_right'] else 0",
+      "    ate_a = 1 if (a == 'eat' and food_here) else 0",
+      "    mu_pred_a = clip(mu - lambda_decay + c_eat * ate_a - c_move * moved_a, 0.0, 1.0)",
+      "    V_prag_a = -((mu_pred_a - h_star) ** 2)",
+      "",
+      "    # Epistemic value (R7)",
+      "    s2_prior_a = sigma2_q + sigma2_w",
+      "    s2_post_a = (1.0 - s2_prior_a / (s2_prior_a + sigma2_s)) * s2_prior_a",
+      "    V_epist_a = 0.5 * ln(s2_prior_a / max(s2_post_a, 1e-10))",
+      "",
+      "    # Expected free energy (R8)",
+      "    G_values[a] = -V_prag_a - kappa * V_epist_a",
+      "",
+      "# === SPATIAL TIE-BREAKING FOR MOVEMENT ===",
+      "# Among movement actions with similar G, prefer those closer to nearest food",
+      "# This is not part of the formal free-energy calc but aids navigation",
+      "if food_list:",
+      "    nearest_food = min(food_list, key=lambda f: abs(f['x']-current_x)+abs(f['y']-current_y))",
+      "    for a in ['move_up','move_down','move_left','move_right']:",
+      "        if a in G_values:",
+      "            dx, dy = {'move_up':(0,-1),'move_down':(0,1),'move_left':(-1,0),'move_right':(1,0)}[a]",
+      "            nx = clip(current_x+dx, 0, grid_w-1)",
+      "            ny = clip(current_y+dy, 0, grid_h-1)",
+      "            d_new = abs(nx-nearest_food['x'])+abs(ny-nearest_food['y'])",
+      "            d_old = abs(current_x-nearest_food['x'])+abs(current_y-nearest_food['y'])",
+      "            # Tiny bonus for approaching food (breaks tie among equal-G moves)",
+      "            G_values[a] -= 0.001 * (d_old - d_new)",
+      "",
+      "# === ACTION SELECTION (R9) ===",
+      "actions_list = list(G_values.keys())",
+      "logits = [-beta_G * G_values[a] for a in actions_list]",
+      "max_logit = max(logits)",
+      "exp_logits = [exp(l - max_logit) for l in logits]",
+      "sum_exp = sum(exp_logits)",
+      "probs = [e / sum_exp for e in exp_logits]",
+      "action = random_choice(actions_list, weights=probs)",
+      "",
+      "# === STORE STATE FOR NEXT STEP ===",
+      "moved_prev = 1 if action in ['move_up','move_down','move_left','move_right'] else 0",
+      "ate_prev = 0  # will be set in update() based on last_action_result",
+      "",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_cell": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources'].get('food', []))",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']",
+      "consumed_food": "perception.get('last_action_result', {}).get('consumed', False)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internal expected free energy G(a) is the decision objective. The env ConsumeEffect reward (1.0) is NOT used for decision-making. True energy h is tracked internally and updated based on action outcomes."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Bayesian state tracking: believed energy mu tracks true energy h with a lag, smoothed by the Kalman filter. Posterior variance sigma2_q stabilises after a few steps.",
+      "test_pseudocode": "run 50 steps → assert abs(mu - h) < 0.15 on average; assert sigma2_q converges to a steady-state value"
+    },
+    {
+      "id": "B2",
+      "description": "Eating has highest pragmatic value when depleted: when mu is well below h_star, the eat action (which predicts +c_eat energy) produces the most negative G (best), so the agent strongly prefers eating when on food",
+      "test_pseudocode": "set mu=0.4, food_here=True → compute G for all actions → assert G['eat'] < G['stay'] < G['move_*']"
+    },
+    {
+      "id": "B3",
+      "description": "Satiation reduces eating preference: when mu is near h_star, eating would overshoot the setpoint, making V_prag for eat worse than stay. Agent prefers to stay.",
+      "test_pseudocode": "set mu=0.78, food_here=True → assert G['stay'] is comparable to or lower than G['eat']"
+    },
+    {
+      "id": "B4",
+      "description": "Uncertainty drives exploration: the epistemic value component means the agent is slightly more willing to take actions that could resolve state uncertainty, rather than always choosing the greedily pragmatic option",
+      "test_pseudocode": "compare action distributions with kappa=0 vs kappa=0.5 → assert non-zero kappa produces more variable action choices early on"
+    },
+    {
+      "id": "B5",
+      "description": "Navigation toward food: even though movement actions have similar pragmatic value to each other, the spatial tie-breaking bonus means the agent preferentially moves toward the nearest food source",
+      "test_pseudocode": "place agent far from food with mu=0.5 → run 20 steps → assert agent position moves closer to nearest food"
+    },
+    {
+      "id": "B6",
+      "description": "Prediction error signals surprise: when the interoceptive observation deviates substantially from the prior prediction (e.g., unexpected energy drop), epsilon_int is large, causing a larger posterior update",
+      "test_pseudocode": "inject a large noise sample → assert |epsilon_int| is large and |mu - mu_prior| > normal"
+    }
+  ],
+  "references": [
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience. DOI: 10.1038/nrn2787",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C. & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences 44(1): 63-76.",
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811. Referenced for energy dynamics calibration."
+  ]
+}

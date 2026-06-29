@@ -1,0 +1,415 @@
+{
+  "formulation_id": "active-inference-with-expected-free-energy-probabilistic-policy-selection",
+  "paradigm": "predictive-coding",
+  "name": "Active Inference with Expected Free Energy (Probabilistic Policy Selection)",
+  "description": "Full active inference agent using expected free energy (EFE) for policy selection. The agent maintains categorical beliefs over discrete hidden states (grid cells × food presence), updates beliefs via Bayesian filtering with a learned likelihood matrix A and deterministic transition matrices B. Actions are evaluated by their expected free energy — decomposed into a pragmatic component (KL-divergence from preferred outcomes, encoding goal-directed behavior) and an epistemic component (negative expected information gain, encoding curiosity/exploration). An interoceptive hunger state modulates preferred outcomes: when hungry, the agent strongly prefers food-related observations. This formulation uniquely captures the exploration–exploitation tradeoff inherent in active inference.",
+  "variables": [
+    {
+      "symbol": "o",
+      "name": "observation",
+      "description": "Discrete observation index encoding the agent's current percept. Observation space: {food_here, food_adjacent, food_visible_far, no_food_visible} × {just_ate, did_not_eat} = 8 observation categories.",
+      "type": "int",
+      "initial_value": 7,
+      "range": [0, 7]
+    },
+    {
+      "symbol": "s_belief",
+      "name": "belief_state",
+      "description": "Categorical probability distribution over K discrete hidden states. Each hidden state represents a (local_cell_index, food_present_flag) pair in a 5×5 local grid centered on the agent. K = 50 (25 cells × 2 food states).",
+      "type": "float[]",
+      "initial_value": "uniform: [1/K, ..., 1/K] for K=50",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "s_prior",
+      "name": "prior_belief",
+      "description": "Predicted state distribution before incorporating current observation. Computed by propagating posterior through transition model.",
+      "type": "float[]",
+      "initial_value": "uniform: [1/K, ..., 1/K]",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "eps",
+      "name": "prediction_error",
+      "description": "Discrepancy between observed and predicted observation likelihoods. Computed as the log-ratio of actual observation likelihood to predicted observation probability.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "G",
+      "name": "expected_free_energy",
+      "description": "Total expected free energy for a candidate action. Lower G means the action is more desirable (leads to preferred outcomes and/or reduces uncertainty).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "G_prag",
+      "name": "pragmatic_value",
+      "description": "Pragmatic component of EFE: KL-divergence between predicted observation distribution and preferred outcomes. Measures how far the predicted outcome is from the agent's goals.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "G_epist",
+      "name": "epistemic_value",
+      "description": "Epistemic component of EFE: negative expected information gain (mutual information between states and observations under the action). More negative = more informative action.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", 0.0]
+    },
+    {
+      "symbol": "H",
+      "name": "hunger",
+      "description": "Internal homeostatic state tracking energy depletion. Increases each step, reduced by eating. Modulates preferred outcome distribution C — high hunger makes food-related observations strongly preferred.",
+      "type": "float",
+      "initial_value": 0.3,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "C",
+      "name": "preferred_outcomes",
+      "description": "Preferred observation distribution encoding what the agent 'wants' to observe. Hunger-modulated: when hungry, probability mass concentrates on food_here observations. When sated, distribution is more uniform (allowing exploration).",
+      "type": "float[]",
+      "initial_value": "computed from H via sigmoid",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "A",
+      "name": "likelihood_matrix",
+      "description": "Observation likelihood matrix A[o, k] = P(observation o | hidden state k). Maps hidden states to expected observations. Initialized from grid topology and learned via Hebbian updates.",
+      "type": "float[][]",
+      "initial_value": "initialized from grid topology: food states → food_here observation, etc.",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "B",
+      "name": "transition_matrices",
+      "description": "Action-conditioned state transition matrices B_a[k', k] = P(state k' | state k, action a). Deterministic for movement actions (shift local grid center). Identity for stay/eat.",
+      "type": "dict of float[][]",
+      "initial_value": "deterministic transition matrices derived from grid movement rules",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "a",
+      "name": "action",
+      "description": "Discrete action selected via softmax over negative expected free energy.",
+      "type": "str",
+      "initial_value": "stay",
+      "range": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "beta_G",
+      "name": "policy_softmax_temperature",
+      "default": 4.0,
+      "source": "Friston (2010), controls exploration–exploitation tradeoff in policy selection"
+    },
+    {
+      "symbol": "omega",
+      "name": "epistemic_pragmatic_weight",
+      "default": 0.5,
+      "source": "Balanced weighting; Friston & Kiebel (2009). omega=0 is pure exploitation, omega=1 is pure exploration."
+    },
+    {
+      "symbol": "alpha_H",
+      "name": "hunger_accumulation_rate",
+      "default": 0.05,
+      "source": "Petzschner et al. (2021), interoceptive dynamics — hunger increases each step"
+    },
+    {
+      "symbol": "delta_H",
+      "name": "hunger_reduction_on_eating",
+      "default": 0.4,
+      "source": "Petzschner et al. (2021), homeostatic set-point recovery upon food consumption"
+    },
+    {
+      "symbol": "H_star",
+      "name": "homeostatic_setpoint",
+      "default": 0.0,
+      "source": "Zero hunger is ideal — deviations from setpoint drive behavior"
+    },
+    {
+      "symbol": "K",
+      "name": "num_hidden_states",
+      "default": 50,
+      "source": "5×5 local grid × 2 food states = 50 states for tractable inference"
+    },
+    {
+      "symbol": "N_obs",
+      "name": "num_observations",
+      "default": 8,
+      "source": "4 food proximity categories × 2 ate states = 8 discrete observations"
+    },
+    {
+      "symbol": "alpha_B",
+      "name": "likelihood_learning_rate",
+      "default": 0.05,
+      "source": "Friston (2010), slow learning rate for generative model parameters"
+    },
+    {
+      "symbol": "sigmoid_scale",
+      "name": "hunger_sigmoid_scale",
+      "default": 0.1,
+      "source": "Petzschner et al. (2021), controls sharpness of hunger-to-preference mapping"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Observation likelihood (generative model): maps hidden states to observation probabilities via likelihood matrix A.",
+      "type": "algebraic",
+      "pseudocode": "# P(o | s_k) = A[o, k]\n# A is an N_obs × K matrix, columns sum to 1\n# Initialize: for each hidden state k = (cell_idx, food_present):\n#   if food_present and cell_idx == center: A[obs_food_here, k] = 0.8\n#   if food_present and cell_idx is adjacent: A[obs_food_adjacent, k] = 0.6\n#   etc. with remaining probability spread over other observations",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "State transition model: deterministic movement shifts the local grid center. Eat and stay keep the same position but may change food_present state.",
+      "type": "algebraic",
+      "pseudocode": "# P(s_k' | s_k, a) = B_a[k', k]\n# For movement actions: shift local grid indices by action delta\n#   B_move_up[k', k] = 1 if k' is the state at (cell_x, cell_y - 1, food_flag)\n# For stay: B_stay = I (identity)\n# For eat: if food_present at center cell, transition to food_absent state\n#   B_eat[k_no_food, k_food_center] = 1.0 (food consumed)\n#   B_eat[k, k] = 1.0 for all other states",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R3",
+      "description": "Bayesian state estimation: posterior is proportional to likelihood times prior (discrete Bayes filter).",
+      "type": "algebraic",
+      "pseudocode": "# s_belief[k] ∝ A[o_observed, k] * s_prior[k]\nnumerator = [A[o_observed][k] * s_prior[k] for k in range(K)]\nZ = sum(numerator)\nif Z > 1e-10:\n    s_belief = [n / Z for n in numerator]\nelse:\n    s_belief = [1.0 / K] * K  # fallback to uniform if degenerate",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Prior prediction under policy: propagate current posterior through transition model for candidate action.",
+      "type": "algebraic",
+      "pseudocode": "# s_prior_next[k'] = sum_k B_a[k', k] * s_belief[k]\n# This is matrix-vector multiplication: s_prior_next = B_a @ s_belief\ndef predict_next_state(action, s_belief, B):\n    s_prior_next = [0.0] * K\n    for k_prime in range(K):\n        for k in range(K):\n            s_prior_next[k_prime] += B[action][k_prime][k] * s_belief[k]\n    return s_prior_next",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R5",
+      "description": "Preferred outcome distribution: hunger-modulated via sigmoid. When hungry, food-related observations are strongly preferred. When sated, preferences are more uniform (allowing curiosity-driven exploration).",
+      "type": "algebraic",
+      "pseudocode": "# sigmoid(x) = 1 / (1 + exp(-x))\nfood_preference = sigmoid(H / sigmoid_scale)  # approaches 1 when H is high\n# Observations 0,1 are food-related (food_here × ate/not_ate)\n# Observations 2-7 are non-food\nC = [0.0] * N_obs\nC[0] = food_preference * 0.5   # food_here, just_ate (most preferred when hungry)\nC[1] = food_preference * 0.3   # food_here, did_not_eat\nC[2] = food_preference * 0.15  # food_adjacent\nC[3] = food_preference * 0.05  # food_visible_far\nremaining = 1.0 - sum(C[:4])\nfor i in range(4, N_obs):\n    C[i] = remaining / (N_obs - 4)\n# Normalize C\ntotal_C = sum(C)\nC = [c / total_C for c in C]",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R6",
+      "description": "Expected free energy — pragmatic component: KL-divergence from predicted observation distribution to preferred outcome distribution. Low pragmatic G means predicted outcomes match goals.",
+      "type": "algebraic",
+      "pseudocode": "# Q(o | a) = sum_k A[o, k] * s_prior_next[k]  (predicted observation distribution)\nQ_o = [sum(A[o][k] * s_prior_next[k] for k in range(K)) for o in range(N_obs)]\n# G_prag = D_KL(Q_o || C) = sum_o Q_o[o] * ln(Q_o[o] / C[o])\nG_prag = 0.0\nfor o in range(N_obs):\n    if Q_o[o] > 1e-10:\n        G_prag += Q_o[o] * log(Q_o[o] / max(C[o], 1e-10))",
+      "source_postulate": "P3, P6"
+    },
+    {
+      "id": "R7",
+      "description": "Expected free energy — epistemic component: negative expected information gain (mutual information between hidden states and observations under the action). More negative means the action is more informative.",
+      "type": "algebraic",
+      "pseudocode": "# G_epist = -sum_k s_prior_next[k] * sum_o A[o,k] * ln(A[o,k] / Q_o[o])\nG_epist = 0.0\nfor k in range(K):\n    if s_prior_next[k] > 1e-10:\n        for o in range(N_obs):\n            if A[o][k] > 1e-10 and Q_o[o] > 1e-10:\n                G_epist -= s_prior_next[k] * A[o][k] * log(A[o][k] / Q_o[o])",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R8",
+      "description": "Total expected free energy: weighted combination of pragmatic and epistemic components.",
+      "type": "algebraic",
+      "pseudocode": "G = (1.0 - omega) * G_prag + omega * G_epist",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R9",
+      "description": "Policy (action) selection via softmax over negative expected free energy. Actions with lower EFE are more probable.",
+      "type": "algebraic",
+      "pseudocode": "# P(a) = exp(-beta_G * G(a)) / sum_j exp(-beta_G * G(j))\nneg_G = {a: -G_values[a] for a in actions}\nmax_neg_G = max(neg_G.values())\nexp_vals = {a: exp(beta_G * (v - max_neg_G)) for a, v in neg_G.items()}\ntotal = sum(exp_vals.values())\nprobs = {a: e / total for a, e in exp_vals.items()}\nselected = sample_from(probs)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R10",
+      "description": "Hunger dynamics (interoceptive state): hunger increases each step and is reduced when the agent eats. Models interoceptive prediction errors driving homeostatic behavior.",
+      "type": "update",
+      "pseudocode": "ate = 1 if (last_action == 'eat' and reward > 0) else 0\nH = clip(H + alpha_H - delta_H * ate, 0.0, 1.0)",
+      "source_postulate": "P6"
+    },
+    {
+      "id": "R11",
+      "description": "Likelihood matrix learning: Hebbian-like update of A matrix based on observed state–observation co-occurrences. Slowly improves the generative model over time.",
+      "type": "update",
+      "pseudocode": "# For observed observation o_obs and current posterior s_belief:\nfor k in range(K):\n    A[o_obs][k] += alpha_B * s_belief[k] * (1.0 - A[o_obs][k])\n# Renormalize columns of A so each column sums to 1\nfor k in range(K):\n    col_sum = sum(A[o][k] for o in range(N_obs))\n    if col_sum > 0:\n        for o in range(N_obs):\n            A[o][k] /= col_sum",
+      "source_postulate": "P2"
+    }
+  ],
+  "decision_logic": {
+    "description": "Active inference with expected free energy: (1) Encode observation into discrete category. (2) Update hunger state. (3) Bayesian belief update from observation. (4) Compute hunger-modulated preferred outcomes. (5) For each candidate action, predict next state, compute pragmatic and epistemic EFE components, combine into total EFE. (6) Select action via softmax over negative EFE. After action, learn likelihood matrix and propagate beliefs as next prior.",
+    "pseudocode": [
+      "# === decide(perception) ===",
+      "",
+      "# Step 1: Encode discrete observation",
+      "food_sources = perception['resources'].get('food', [])",
+      "agent_x, agent_y = perception['x'], perception['y']",
+      "last_result = perception.get('last_action_result', {})",
+      "",
+      "# Determine food proximity category",
+      "food_here = any(f['x'] == agent_x and f['y'] == agent_y for f in food_sources)",
+      "food_adjacent = any(abs(f['x']-agent_x) + abs(f['y']-agent_y) == 1 for f in food_sources)",
+      "food_visible = any(abs(f['x']-agent_x) + abs(f['y']-agent_y) <= 5 for f in food_sources)",
+      "just_ate = last_result.get('consumed', False) if isinstance(last_result, dict) else False",
+      "",
+      "# Map to observation index (0-7):",
+      "# 0: food_here + just_ate, 1: food_here + not_ate, 2: food_adjacent + just_ate,",
+      "# 3: food_adjacent + not_ate, 4: food_visible + just_ate, 5: food_visible + not_ate,",
+      "# 6: no_food + just_ate, 7: no_food + not_ate",
+      "if food_here:",
+      "    o_obs = 0 if just_ate else 1",
+      "elif food_adjacent:",
+      "    o_obs = 2 if just_ate else 3",
+      "elif food_visible:",
+      "    o_obs = 4 if just_ate else 5",
+      "else:",
+      "    o_obs = 6 if just_ate else 7",
+      "",
+      "# Step 2: Update hunger (R10)",
+      "ate = 1 if just_ate else 0",
+      "H = clip(H + alpha_H - delta_H * ate, 0.0, 1.0)",
+      "",
+      "# Step 3: Bayesian belief update (R3)",
+      "numerator = [A[o_obs][k] * s_prior[k] for k in range(K)]",
+      "Z = sum(numerator) + 1e-10",
+      "s_belief = [n / Z for n in numerator]",
+      "",
+      "# Step 4: Compute preferred outcomes (R5)",
+      "food_pref = 1.0 / (1.0 + exp(-H / sigmoid_scale))",
+      "C = [0.0] * N_obs",
+      "C[0] = food_pref * 0.5   # food_here + ate",
+      "C[1] = food_pref * 0.3   # food_here + not_ate",
+      "C[2] = food_pref * 0.1   # food_adjacent + ate",
+      "C[3] = food_pref * 0.05  # food_adjacent + not_ate",
+      "remaining = max(1.0 - sum(C[:4]), 0.01)",
+      "for i in range(4, N_obs):",
+      "    C[i] = remaining / (N_obs - 4)",
+      "total_C = sum(C)",
+      "C = [c / total_C for c in C]",
+      "",
+      "# Step 5: Evaluate each candidate action",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "G_values = {}",
+      "",
+      "for action in actions:",
+      "    # Special case: eat when no food believed present",
+      "    if action == 'eat':",
+      "        # Sum probability of states where food is at center",
+      "        food_belief = sum(s_belief[k] for k in food_at_center_states)",
+      "        if food_belief < 0.1:",
+      "            G_values['eat'] = 100.0  # strongly disfavored",
+      "            continue",
+      "",
+      "    # Predict next state distribution (R4)",
+      "    s_prior_next = matmul(B[action], s_belief)",
+      "",
+      "    # Predicted observation distribution",
+      "    Q_o = [sum(A[o][k] * s_prior_next[k] for k in range(K)) for o in range(N_obs)]",
+      "    Q_o = [max(q, 1e-10) for q in Q_o]  # avoid log(0)",
+      "    Q_sum = sum(Q_o)",
+      "    Q_o = [q / Q_sum for q in Q_o]",
+      "",
+      "    # Pragmatic EFE (R6): D_KL(Q_o || C)",
+      "    G_prag = sum(Q_o[o] * log(Q_o[o] / max(C[o], 1e-10)) for o in range(N_obs))",
+      "",
+      "    # Epistemic EFE (R7): negative mutual information",
+      "    G_epist = 0.0",
+      "    for k in range(K):",
+      "        if s_prior_next[k] > 1e-10:",
+      "            for o in range(N_obs):",
+      "                if A[o][k] > 1e-10:",
+      "                    G_epist -= s_prior_next[k] * A[o][k] * log(A[o][k] / Q_o[o])",
+      "",
+      "    # Total EFE (R8)",
+      "    G_values[action] = (1.0 - omega) * G_prag + omega * G_epist",
+      "",
+      "# Step 6: Action selection via softmax over -G (R9)",
+      "action_list = list(G_values.keys())",
+      "neg_G = [-G_values[a] for a in action_list]",
+      "max_nG = max(neg_G)",
+      "exp_vals = [exp(beta_G * (v - max_nG)) for v in neg_G]",
+      "total = sum(exp_vals)",
+      "probs = [e / total for e in exp_vals]",
+      "selected = random_choice(action_list, weights=probs)",
+      "return Action(selected)",
+      "",
+      "# === update(action, reward, new_perception) ===",
+      "",
+      "# Update hunger (R10)",
+      "ate = 1 if reward > 0 else 0",
+      "H = clip(H + alpha_H - delta_H * ate, 0.0, 1.0)",
+      "",
+      "# Learn likelihood matrix (R11)",
+      "for k in range(K):",
+      "    A[o_obs][k] += alpha_B * s_belief[k] * (1.0 - A[o_obs][k])",
+      "# Renormalize A columns",
+      "for k in range(K):",
+      "    col_sum = sum(A[o][k] for o in range(N_obs))",
+      "    if col_sum > 0:",
+      "        for o in range(N_obs):",
+      "            A[o][k] /= col_sum",
+      "",
+      "# Propagate posterior as next prior",
+      "# Use transition model for the action just taken",
+      "s_prior = matmul(B[action], s_belief)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "agent_position": "(perception['x'], perception['y'])",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_pos": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_sources)",
+      "food_adjacent": "any(abs(f['x']-x) + abs(f['y']-y) == 1 for f in food_sources)",
+      "food_within_range": "food items within Manhattan distance 5",
+      "just_ate": "perception.get('last_action_result', {}).get('consumed', False)",
+      "observation_index": "discrete encoding of (food_proximity_category × ate_flag) → 0..7",
+      "step": "perception['step']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 for food consumed); reward used to determine 'ate' flag for hunger update"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hungry agent seeks food: when H > 0.5, pragmatic EFE dominates and agent moves toward food",
+      "test_pseudocode": "set H=0.8, place food at (7,5), agent at (3,5) → assert agent moves right with high probability over 10 steps"
+    },
+    {
+      "id": "B2",
+      "description": "Sated agent explores: when H ≈ 0, epistemic EFE contributes more and agent visits unvisited areas",
+      "test_pseudocode": "set H=0.0 → run 50 steps → assert agent visits more unique cells than a purely exploitation agent"
+    },
+    {
+      "id": "B3",
+      "description": "Agent eats when on food and hungry",
+      "test_pseudocode": "place food at agent position, H=0.5 → assert 'eat' selected with probability > 0.8"
+    },
+    {
+      "id": "B4",
+      "description": "Hunger increases without eating and decreases after eating",
+      "test_pseudocode": "run 20 steps without food → assert H approaches 1.0; then eat → assert H decreases by delta_H"
+    },
+    {
+      "id": "B5",
+      "description": "Likelihood matrix A improves over time: prediction errors decrease as A is learned",
+      "test_pseudocode": "run 200 steps → assert mean prediction error at step 150-200 < mean at step 0-50"
+    },
+    {
+      "id": "B6",
+      "description": "Exploration–exploitation balance: omega parameter controls the tradeoff; omega=0 gives pure goal-seeking, omega=1 gives pure information-seeking",
+      "test_pseudocode": "set omega=0 → agent goes straight to food; set omega=1 → agent explores uniformly despite food presence"
+    },
+    {
+      "id": "B7",
+      "description": "Bayesian belief update correctly incorporates observations: posterior concentrates on states consistent with observation",
+      "test_pseudocode": "observe food_here → assert posterior probability on food-at-center states > 0.7"
+    }
+  ],
+  "references": [
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience. DOI: 10.1038/nrn2787",
+    "Friston, K. & Kiebel, S. (2009). Predictive coding under the free-energy principle. Philosophical Transactions of the Royal Society B, 364, 1211–1221.",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C., & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences. DOI: 10.1016/j.tins.2020.09.012",
+    "Rao, R.P. & Ballard, D.H. (1999). Predictive coding in the visual cortex. Nature Neuroscience, 2, 79–87."
+  ]
+}

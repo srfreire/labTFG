@@ -1,0 +1,307 @@
+{
+  "formulation_id": "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+  "paradigm": "predictive-coding",
+  "name": "Hierarchical Precision-Weighted Prediction Error Minimization (Gradient-Descent ODE)",
+  "description": "Continuous-time ODE-based gradient descent on a precision-weighted free energy functional with a two-level hierarchical generative model. Level-1 beliefs encode expected nearby resource presence; level-2 beliefs encode abstract environmental context (resource density). Beliefs are iteratively refined each tick via gradient descent on precision-weighted prediction errors. Actions are selected via softmax over predicted free energy reduction for each candidate action. Precision at each level adapts toward the empirical inverse variance of prediction errors, implementing an attention mechanism.",
+  "variables": [
+    {
+      "symbol": "s",
+      "name": "sensory_observation",
+      "description": "Encoded perception vector: [agent_x/grid_width, agent_y/grid_height, food_count_nearby/max_food, food_at_current_pos (0 or 1), avg_distance_to_food_normalized]. Normalized to [0,1] range for stable gradient computation.",
+      "type": "float[]",
+      "initial_value": [0.5, 0.5, 0.0, 0.0, 1.0],
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu_1",
+      "name": "level1_belief",
+      "description": "Level-1 belief state: agent's best estimate of immediate environmental state — predicted values for the same dimensions as sensory vector s. Updated via gradient descent on level-1 prediction error.",
+      "type": "float[]",
+      "initial_value": [0.5, 0.5, 0.0, 0.0, 1.0],
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu_2",
+      "name": "level2_belief",
+      "description": "Level-2 belief state: higher-order abstract context belief — encodes expected resource density and environmental quality as a scalar. Maps to level-1 predictions via generative model g_2.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "eps_1",
+      "name": "level1_prediction_error",
+      "description": "Level-1 prediction error vector: mismatch between sensory observation and level-1 prediction g_1(mu_1). Propagated upward to update beliefs.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "eps_2",
+      "name": "level2_prediction_error",
+      "description": "Level-2 prediction error vector: mismatch between level-1 belief and level-2 prediction g_2(mu_2). Encodes discrepancy between local state estimates and abstract context.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "Pi_1",
+      "name": "level1_precision",
+      "description": "Level-1 precision (inverse variance): weights sensory prediction errors. High precision means high attention to sensory signals. Adapted toward empirical inverse error variance.",
+      "type": "float",
+      "initial_value": 2.0,
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "Pi_2",
+      "name": "level2_precision",
+      "description": "Level-2 precision: weights higher-level prediction errors. High precision means strong confidence in abstract model. Adapted toward empirical inverse error variance.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "F",
+      "name": "free_energy",
+      "description": "Variational free energy: scalar objective combining precision-weighted squared prediction errors at both levels minus log-precision terms. Agent minimizes this through belief updates and action.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "a",
+      "name": "action",
+      "description": "Discrete action selected from available set via softmax over negative predicted free energy.",
+      "type": "str",
+      "initial_value": "stay",
+      "range": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "kappa",
+      "name": "inference_learning_rate",
+      "default": 0.5,
+      "source": "Rao & Ballard (1999), typical gradient step size for belief updates"
+    },
+    {
+      "symbol": "Pi_1_init",
+      "name": "initial_level1_precision",
+      "default": 2.0,
+      "source": "Friston (2010), moderate sensory confidence"
+    },
+    {
+      "symbol": "Pi_2_init",
+      "name": "initial_level2_precision",
+      "default": 1.0,
+      "source": "Friston (2010), lower prior confidence for higher-level beliefs"
+    },
+    {
+      "symbol": "eta_Pi",
+      "name": "precision_adaptation_rate",
+      "default": 0.1,
+      "source": "Friston (2010), slow precision learning rate"
+    },
+    {
+      "symbol": "N_iter",
+      "name": "inference_iterations_per_step",
+      "default": 5,
+      "source": "Prior pipeline run (knowledge backbone); balances accuracy vs. computation"
+    },
+    {
+      "symbol": "beta",
+      "name": "action_softmax_temperature",
+      "default": 4.0,
+      "source": "Standard active inference implementation parameter"
+    },
+    {
+      "symbol": "lam",
+      "name": "prediction_error_decay",
+      "default": 0.8,
+      "source": "Friston & Kiebel (2009), temporal smoothing dynamics"
+    },
+    {
+      "symbol": "sigma2_init",
+      "name": "initial_error_variance",
+      "default": 1.0,
+      "source": "Normalization default; prevents division by zero in precision adaptation"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Level-1 prediction error: mismatch between sensory observation and level-1 generative prediction. g_1(mu_1) is identity in simplest case (the belief IS the predicted sensory state).",
+      "type": "algebraic",
+      "pseudocode": "eps_1 = s - g_1(mu_1)\n# where g_1(mu_1) = mu_1 (identity mapping: belief directly predicts sensory vector)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Level-2 prediction error: mismatch between level-1 belief and level-2 top-down prediction. g_2(mu_2) maps abstract context scalar to expected level-1 state vector.",
+      "type": "algebraic",
+      "pseudocode": "# g_2 maps scalar mu_2 (resource density belief) to expected level-1 vector\n# g_2(mu_2) = [mu_1_pos_x, mu_1_pos_y, mu_2, mu_2, 1.0 - mu_2]\n# (position components pass through; resource dimensions predicted from mu_2)\ng_2_pred = [mu_1[0], mu_1[1], mu_2, mu_2, 1.0 - mu_2]\neps_2 = mu_1 - g_2_pred",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Variational free energy: precision-weighted sum of squared prediction errors minus log-precision regularization (Gaussian free energy under Laplace approximation).",
+      "type": "algebraic",
+      "pseudocode": "F = 0.5 * Pi_1 * dot(eps_1, eps_1) + 0.5 * Pi_2 * dot(eps_2, eps_2) - 0.5 * (ln(Pi_1) + ln(Pi_2))",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Level-1 belief update via gradient descent on F. Bottom-up term pulls beliefs toward sensory data; top-down term enforces consistency with level-2 predictions.",
+      "type": "ODE",
+      "pseudocode": "# Jacobian dg_1/dmu_1 = I (identity) for identity generative model\n# dmu_1_dt = kappa * (Pi_1 * dg_1_dmu_1^T @ eps_1 - Pi_2 * eps_2)\ndmu_1_dt = kappa * (Pi_1 * eps_1 - Pi_2 * eps_2)\nmu_1 = mu_1 + dmu_1_dt  # Euler integration, dt=1\nmu_1 = clip(mu_1, 0.0, 1.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Level-2 belief update via gradient descent on F. Driven by level-2 prediction error weighted by level-2 precision.",
+      "type": "ODE",
+      "pseudocode": "# dg_2/dmu_2 gives Jacobian of g_2 w.r.t. mu_2: [0, 0, 1, 1, -1]\ndg2_dmu2 = [0.0, 0.0, 1.0, 1.0, -1.0]\ndmu_2_dt = kappa * Pi_2 * dot(dg2_dmu2, eps_2)\nmu_2 = mu_2 + dmu_2_dt\nmu_2 = clip(mu_2, 0.0, 1.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R6",
+      "description": "Precision adaptation: precision at each level is driven toward the empirical inverse variance of recent prediction errors. Implements attention modulation.",
+      "type": "update",
+      "pseudocode": "# For level l in {1, 2}:\nerror_mag_sq_1 = dot(eps_1, eps_1)\nPi_1 = Pi_1 + eta_Pi * (1.0 / (error_mag_sq_1 + sigma2_init) - Pi_1)\nPi_1 = clip(Pi_1, 0.01, 100.0)\n\nerror_mag_sq_2 = dot(eps_2, eps_2)\nPi_2 = Pi_2 + eta_Pi * (1.0 / (error_mag_sq_2 + sigma2_init) - Pi_2)\nPi_2 = clip(Pi_2, 0.01, 100.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R7",
+      "description": "Predicted free energy for a candidate action: predicts sensory outcome of action and computes the free energy that would result.",
+      "type": "algebraic",
+      "pseudocode": "# For each candidate action a:\n# Predict next position after action\ndef predict_sensory(action, current_x, current_y, food_sources, grid_w, grid_h):\n    dx, dy = action_to_delta(action)  # move_up:(0,-1), etc.; eat/stay:(0,0)\n    new_x = clip(current_x + dx, 0, grid_w - 1)\n    new_y = clip(current_y + dy, 0, grid_h - 1)\n    # Encode predicted sensory vector at new position\n    food_at_new = 1.0 if any food at (new_x, new_y) else 0.0\n    nearby_count = count food within Manhattan distance 3 of (new_x, new_y)\n    avg_dist = average Manhattan distance to all food from (new_x, new_y), normalized by (grid_w + grid_h)\n    s_pred = [new_x / grid_w, new_y / grid_h, nearby_count / max_food_count, food_at_new, avg_dist]\n    return s_pred\n\ns_pred_a = predict_sensory(action, ...)\neps_pred = s_pred_a - mu_1  # predicted PE under current beliefs (g_1 = identity)\nF_pred_a = 0.5 * Pi_1 * dot(eps_pred, eps_pred) + 0.5 * Pi_2 * dot(eps_2, eps_2)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R8",
+      "description": "Action selection via softmax over negative predicted free energy. Lower predicted free energy means the action brings sensory states closer to current beliefs/predictions.",
+      "type": "algebraic",
+      "pseudocode": "# Compute F_pred for each action in [move_up, move_down, move_left, move_right, stay, eat]\n# For 'eat': if no food at current position (from perception), set F_pred_eat = 1e6 (strongly disfavored)\nneg_F = [-F_pred_a for each action a]\nlog_probs = [beta * nf for nf in neg_F]\nmax_lp = max(log_probs)\nprobs = [exp(lp - max_lp) for lp in log_probs]  # numerically stable softmax\nprobs = normalize(probs)\nselected_action = sample_from(probs)  # or argmax for deterministic"
+    }
+  ],
+  "decision_logic": {
+    "description": "At each tick: (1) Encode perception into sensory vector s. (2) Run N_iter iterations of gradient-descent inference: compute prediction errors (R1, R2), update level-1 beliefs (R4), update level-2 beliefs (R5). (3) Adapt precisions (R6). (4) For each candidate action, predict sensory outcome and compute predicted free energy (R7). (5) Select action via softmax over negative predicted free energy (R8). After action execution, the update() method incorporates reward feedback and re-runs inference with new perception.",
+    "pseudocode": [
+      "# === decide(perception) ===",
+      "s = encode_sensory(perception)  # [x/W, y/H, nearby_food/total, food_here, avg_dist_norm]",
+      "",
+      "# Inference loop: refine beliefs",
+      "for i in range(N_iter):",
+      "    eps_1 = s - mu_1                                         # R1: level-1 PE",
+      "    g_2_pred = [mu_1[0], mu_1[1], mu_2, mu_2, 1.0 - mu_2]  # R2: level-2 generative prediction",
+      "    eps_2 = mu_1 - g_2_pred                                  # R2: level-2 PE",
+      "    dmu_1 = kappa * (Pi_1 * eps_1 - Pi_2 * eps_2)           # R4: level-1 belief gradient",
+      "    mu_1 = clip(mu_1 + dmu_1, 0.0, 1.0)",
+      "    dg2_dmu2 = [0, 0, 1, 1, -1]",
+      "    dmu_2 = kappa * Pi_2 * dot(dg2_dmu2, eps_2)             # R5: level-2 belief gradient",
+      "    mu_2 = clip(mu_2 + dmu_2, 0.0, 1.0)",
+      "",
+      "# Precision adaptation (R6)",
+      "err_sq_1 = dot(eps_1, eps_1)",
+      "Pi_1 = clip(Pi_1 + eta_Pi * (1.0/(err_sq_1 + sigma2_init) - Pi_1), 0.01, 100.0)",
+      "err_sq_2 = dot(eps_2, eps_2)",
+      "Pi_2 = clip(Pi_2 + eta_Pi * (1.0/(err_sq_2 + sigma2_init) - Pi_2), 0.01, 100.0)",
+      "",
+      "# Free energy computation (R3)",
+      "F = 0.5 * Pi_1 * err_sq_1 + 0.5 * Pi_2 * err_sq_2 - 0.5 * (log(Pi_1) + log(Pi_2))",
+      "",
+      "# Evaluate each candidate action (R7)",
+      "food_sources = perception['resources'].get('food', [])",
+      "food_here = any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_sources)",
+      "F_pred = {}",
+      "for action in ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']:",
+      "    if action == 'eat' and not food_here:",
+      "        F_pred[action] = 1e6  # impossible/useless action",
+      "        continue",
+      "    if action == 'eat' and food_here:",
+      "        # Eating food brings sensory state closer to 'food_here=1' prediction",
+      "        s_pred = s.copy(); s_pred[3] = 1.0  # food consumed",
+      "        # After eating, nearby food count may decrease",
+      "    else:",
+      "        s_pred = predict_sensory(action, perception, food_sources)",
+      "    eps_pred = s_pred - mu_1",
+      "    F_pred[action] = 0.5 * Pi_1 * dot(eps_pred, eps_pred) + 0.5 * Pi_2 * dot(eps_2, eps_2)",
+      "",
+      "# Action selection via softmax (R8)",
+      "actions = list(F_pred.keys())",
+      "neg_F_vals = [-F_pred[a] for a in actions]",
+      "max_val = max(neg_F_vals)",
+      "exp_vals = [exp(beta * (v - max_val)) for v in neg_F_vals]",
+      "total = sum(exp_vals)",
+      "probs = [e / total for e in exp_vals]",
+      "selected = random_choice(actions, weights=probs)",
+      "return Action(selected)",
+      "",
+      "# === update(action, reward, new_perception) ===",
+      "# Incorporate reward as PE modulation:",
+      "if reward > 0:  # ate food successfully",
+      "    # Successful prediction → reduce PE, boost precision",
+      "    Pi_1 = clip(Pi_1 * 1.1, 0.01, 100.0)  # reward confirms sensory model",
+      "elif action == 'eat' and reward == 0:  # failed eat prediction",
+      "    Pi_1 = clip(Pi_1 * 0.9, 0.01, 100.0)  # prediction was wrong",
+      "",
+      "# Re-encode new perception and run one inference pass to prepare for next decide()",
+      "s = encode_sensory(new_perception)",
+      "for i in range(N_iter):",
+      "    # Same inference loop as in decide()",
+      "    eps_1 = s - mu_1",
+      "    g_2_pred = [mu_1[0], mu_1[1], mu_2, mu_2, 1.0 - mu_2]",
+      "    eps_2 = mu_1 - g_2_pred",
+      "    mu_1 = clip(mu_1 + kappa * (Pi_1 * eps_1 - Pi_2 * eps_2), 0.0, 1.0)",
+      "    dmu_2 = kappa * Pi_2 * dot([0,0,1,1,-1], eps_2)",
+      "    mu_2 = clip(mu_2 + dmu_2, 0.0, 1.0)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "agent_position": "(perception['x'], perception['y'])",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_pos": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_sources)",
+      "nearby_food_count": "count of food within Manhattan distance 3",
+      "avg_food_distance": "mean Manhattan distance to all food items, normalized by (grid_width + grid_height)",
+      "sensory_vector_s": "[x/grid_width, y/grid_height, nearby_food_count/total_food, food_at_current_pos, avg_food_distance]",
+      "last_ate": "perception['last_action_result'] indicates if consumption occurred"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 for food consumed)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Beliefs converge toward sensory observations: after N_iter iterations, mu_1 should closely track the actual sensory vector s",
+      "test_pseudocode": "run 10 inference iterations → assert norm(mu_1 - s) < 0.1 when Pi_1 >> Pi_2"
+    },
+    {
+      "id": "B2",
+      "description": "Agent moves toward food: when food is visible, predicted free energy is lower for actions that reduce distance to food",
+      "test_pseudocode": "place food at (5,5), agent at (3,5) → assert F_pred('move_right') < F_pred('move_left')"
+    },
+    {
+      "id": "B3",
+      "description": "Agent eats when on food: when food is at current position, eat action has lowest predicted free energy",
+      "test_pseudocode": "place food at agent's position → assert selected action is 'eat' with high probability"
+    },
+    {
+      "id": "B4",
+      "description": "Precision adapts to prediction error magnitude: persistently small errors increase precision, large errors decrease it",
+      "test_pseudocode": "run 50 steps in stable environment → assert Pi_1 increases; introduce sudden change → assert Pi_1 decreases"
+    },
+    {
+      "id": "B5",
+      "description": "Hierarchical influence: level-2 belief (resource density) modulates level-1 expectations about food presence in nearby cells",
+      "test_pseudocode": "set mu_2 high (resource-rich context) → assert mu_1 components for food presence are biased upward via top-down prediction"
+    }
+  ],
+  "references": [
+    "Rao, R.P. & Ballard, D.H. (1999). Predictive coding in the visual cortex. Nature Neuroscience, 2, 79–87.",
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience. DOI: 10.1038/nrn2787",
+    "Friston, K. & Kiebel, S. (2009). Predictive coding under the free-energy principle. Philosophical Transactions of the Royal Society B, 364, 1211–1221.",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C., & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences. DOI: 10.1016/j.tins.2020.09.012"
+  ]
+}

@@ -27,6 +27,10 @@ decisionlab eval pipeline "How do humans choose between speed and accuracy?"
 
 # Full pipeline (expensive — research → formalize → reason → build)
 decisionlab eval run evals/suites/full-pipeline.yaml
+
+# PDF-only corpus eval: web_search and search_papers see only zip PDFs
+LABTFG_EVAL_KG=1 decisionlab eval run evals/suites/caso1-pdf-corpus.yaml
+LABTFG_EVAL_KG=1 decisionlab eval run evals/suites/caso2-pdf-corpus.yaml
 ```
 
 After any suite the report lands in `evals/reports/<date>-<suite>/`
@@ -62,6 +66,27 @@ budget:
 If you set `stages` to include `reason` or `build`, also set
 `env_spec: evals/fixtures/env_spec_grid_10x10.json` (or any valid
 env_spec JSON for your environment).
+
+### PDF-only corpus mode
+
+Suites may declare `eval_corpus:` as a zip path or list of zip paths. Each
+zip must contain PDFs. In that mode the eval CLI replaces production
+web search with a local corpus provider:
+
+- `web_search` returns only web-like snippets from those PDFs.
+- `search_papers` returns corpus paper metadata plus extracted document text.
+- The report directory includes `artifact-bundle/` with copied corpus files,
+  generated storage artifacts, DB memory rows, and a KG snapshot when available.
+
+You can also pass corpus zips from the CLI:
+
+```bash
+decisionlab eval run evals/suites/my-suite.yaml \
+  --eval-corpus ~/Downloads/my-case.zip
+```
+
+When `reset_kg_before: true`, the usual eval KG safety guard applies: set
+`LABTFG_EVAL_KG=1` or point Neo4j at an eval-marked database.
 
 ## Programmatic use
 

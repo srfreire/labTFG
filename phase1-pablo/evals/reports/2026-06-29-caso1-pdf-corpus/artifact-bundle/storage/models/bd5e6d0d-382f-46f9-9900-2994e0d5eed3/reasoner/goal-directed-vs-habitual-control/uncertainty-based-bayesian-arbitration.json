@@ -1,0 +1,363 @@
+{
+  "formulation_id": "uncertainty-based-bayesian-arbitration",
+  "paradigm": "goal-directed-vs-habitual-control",
+  "name": "Uncertainty-Based Bayesian Arbitration",
+  "description": "Probabilistic dual-system reinforcement learning agent where both the model-free (habitual) and model-based (goal-directed) systems maintain Gaussian posterior beliefs over action values. The key differentiator from Formulation 1 is that arbitration is driven by relative uncertainty (inverse variance / precision) rather than a fixed training-count decay. When the model-free system has higher uncertainty than the model-based system, goal-directed control dominates (omega → 1); when model-free uncertainty is lower (well-practiced actions), habitual control dominates (omega → 0). This produces adaptive arbitration: the agent can re-engage goal-directed control even in familiar environments if conditions change and model-free predictions become unreliable. The model-free system uses Kalman-filter-style Bayesian updates; the model-based system computes value means and variances from the learned transition model. Based on Rangel, Camerer & Montague (2008) and Rangel (2013), postulates P1–P5.",
+  "variables": [
+    {
+      "symbol": "s",
+      "name": "state",
+      "description": "Agent's current grid cell encoded as (x, y) tuple",
+      "type": "discrete",
+      "initial_value": "from perception (x, y)",
+      "range": ["(0,0)", "(grid_width-1, grid_height-1)"]
+    },
+    {
+      "symbol": "mu_MF",
+      "name": "model_free_value_mean",
+      "description": "Posterior mean of the habitual action value for each (state, action) pair. Updated via Kalman-filter-style Bayesian TD updates. Represents the agent's best estimate of cached action value.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "sigma2_MF",
+      "name": "model_free_value_variance",
+      "description": "Posterior variance (uncertainty) of the habitual action value for each (state, action) pair. Starts at sigma2_0 (high uncertainty) and shrinks with experience via Kalman updates. Drives arbitration: lower variance = higher MF reliability.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.001, 10.0]
+    },
+    {
+      "symbol": "mu_MB",
+      "name": "model_based_value_mean",
+      "description": "Posterior mean of the goal-directed action value, computed prospectively each step from the learned transition model and current hunger-modulated desirability. Recomputed every decision step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "sigma2_MB",
+      "name": "model_based_value_variance",
+      "description": "Uncertainty of the goal-directed action value, computed from outcome variance in the transition model plus observation noise scaled by experience count. Decreases as the transition model becomes more certain.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.001, 10.0]
+    },
+    {
+      "symbol": "omega",
+      "name": "arbitration_weight",
+      "description": "Reliability-weighted proportion of goal-directed control. Computed per (state, action) via sigmoid of the difference in uncertainties: omega = sigmoid(kappa * (sigma2_MF - sigma2_MB)). When MF uncertainty > MB uncertainty, omega → 1 (favor GD). Adaptive and reversible.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu_hat",
+      "name": "fused_value_estimate",
+      "description": "Precision-weighted mean of model-based and model-free value estimates. Used as the final action value for softmax selection.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "h",
+      "name": "hunger_drive",
+      "description": "Internal physiological state representing current need. Modulates goal-directed outcome desirability. Rises each step, drops upon consuming food.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_D",
+      "name": "decision_time_desirability",
+      "description": "Current subjective value of each possible outcome, modulated by hunger. Food: r_D = h * r_food. Non-food: r_D = c_step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "p_hat",
+      "name": "learned_transition_model",
+      "description": "Agent's estimate of action-outcome contingency p_hat(o|a,s). Updated incrementally from observations.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "N_MB",
+      "name": "model_based_experience_count",
+      "description": "Number of times each (state, action) pair has been experienced, used to scale down model-based observation noise. Higher count = lower MB uncertainty.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, "infinity"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "sigma2_0",
+      "name": "prior_variance",
+      "default": 1.0,
+      "source": "Uninformative prior; standard Bayesian initialization for both systems"
+    },
+    {
+      "symbol": "mu_0",
+      "name": "prior_mean",
+      "default": 0.0,
+      "source": "Neutral prior — no initial preference for any action"
+    },
+    {
+      "symbol": "sigma2_obs_MF",
+      "name": "mf_observation_noise_variance",
+      "default": 0.50,
+      "source": "Reflects noisy experienced-reward signals in model-free learning (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "sigma2_obs_MB",
+      "name": "mb_observation_noise_variance",
+      "default": 0.25,
+      "source": "Lower noise — model-based uses structured knowledge and is inherently less noisy (Rangel, 2013)"
+    },
+    {
+      "symbol": "alpha_T",
+      "name": "transition_model_learning_rate",
+      "default": 0.20,
+      "source": "Model-based systems update faster (Rangel, 2013; postulate P2)"
+    },
+    {
+      "symbol": "kappa",
+      "name": "arbitration_sigmoid_sensitivity",
+      "default": 3.0,
+      "source": "Controls steepness of sigmoid arbitration; tuned for gradual transitions between control modes"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploitation level (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount_factor",
+      "default": 0.95,
+      "source": "Standard RL discounting (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "eta",
+      "name": "hunger_rise_rate",
+      "default": 0.02,
+      "source": "Per-step hunger increase when not eating"
+    },
+    {
+      "symbol": "phi",
+      "name": "satiation_amount",
+      "default": 0.30,
+      "source": "Hunger reduction upon eating"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Normalized reward unit matching env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.01,
+      "source": "Small penalty to encourage efficiency"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger dynamics: hunger rises each step by eta and drops by phi when food is consumed. Clipped to [0, 1].",
+      "type": "algebraic",
+      "pseudocode": "h = clip(h + eta - phi * ate_food, 0.0, 1.0)",
+      "source_postulate": "Assumption: state-dependent desirability; internal hunger modulates goal-directed valuation"
+    },
+    {
+      "id": "R2",
+      "description": "Decision-time desirability: subjective value of food outcome is hunger-modulated; non-food outcome incurs step cost.",
+      "type": "algebraic",
+      "pseudocode": "r_D_food = h * r_food\nr_D_nofood = c_step",
+      "source_postulate": "P2 — goal-directed value uses current desirability r^D(o|s)"
+    },
+    {
+      "id": "R3",
+      "description": "Model-based value mean: computed prospectively from learned transition model and current desirability. For eat at food: weighted sum of outcome desirabilities. For movement: step cost plus discounted bootstrap from MF at next state.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  if a == 'eat' and food_here:\n    mu_MB[s][a] = p_hat.get((s,a,'food'), 0.5) * r_D_food + (1 - p_hat.get((s,a,'food'), 0.5)) * r_D_nofood\n  elif a in ['move_up','move_down','move_left','move_right']:\n    s_next = clamp_to_grid(apply_move(s, a))\n    mu_MB[s][a] = c_step + gamma * max(mu_MF.get((s_next, a2), 0.0) for a2 in actions)\n  else:\n    mu_MB[s][a] = c_step",
+      "source_postulate": "P2 — V_GD(a|s) = sum_o p(o|a,s) * r^D(o|s)"
+    },
+    {
+      "id": "R4",
+      "description": "Model-based value variance: sum of outcome variance from the transition model plus observation noise scaled down by experience count. Captures both outcome stochasticity and estimation uncertainty.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  if a == 'eat' and food_here:\n    p_food = p_hat.get((s,a,'food'), 0.5)\n    outcome_var = p_food * (r_D_food - mu_MB[s][a])**2 + (1 - p_food) * (r_D_nofood - mu_MB[s][a])**2\n    sigma2_MB[s][a] = outcome_var + sigma2_obs_MB / (1 + N_MB.get((s,a), 0))\n  else:\n    sigma2_MB[s][a] = sigma2_obs_MB / (1 + N_MB.get((s,a), 0))",
+      "source_postulate": "P2 — model-based system maintains structured knowledge enabling uncertainty quantification"
+    },
+    {
+      "id": "R5a",
+      "description": "Model-free Kalman gain: ratio of prior variance to total variance (prior + observation noise). Controls how much the new observation shifts the posterior mean.",
+      "type": "algebraic",
+      "pseudocode": "K = sigma2_MF.get((s,a), sigma2_0) / (sigma2_MF.get((s,a), sigma2_0) + sigma2_obs_MF)",
+      "source_postulate": "P3 — habitual system updates via incremental experience; Bayesian formulation of TD learning"
+    },
+    {
+      "id": "R5b",
+      "description": "Model-free posterior mean update: Kalman-filtered TD update. The 'observation' is the TD target (r_received + gamma * max future MF mean).",
+      "type": "algebraic",
+      "pseudocode": "td_target = r_received + gamma * max(mu_MF.get((s_next, a2), 0.0) for a2 in actions)\nmu_MF[(s,a)] = mu_MF.get((s,a), 0.0) + K * (td_target - mu_MF.get((s,a), 0.0))",
+      "source_postulate": "P3 — V_H(a|s) updated via incremental experience (TD), not decomposed into contingency and desirability"
+    },
+    {
+      "id": "R5c",
+      "description": "Model-free posterior variance update: variance shrinks by factor (1-K) after each observation. Captures increasing confidence with experience.",
+      "type": "algebraic",
+      "pseudocode": "sigma2_MF[(s,a)] = (1 - K) * sigma2_MF.get((s,a), sigma2_0)",
+      "source_postulate": "P3 — habitual system's reliability increases with consistent experience"
+    },
+    {
+      "id": "R6",
+      "description": "Transition model update: after observing outcome o_obs from action a in state s, update p_hat toward the observed outcome.",
+      "type": "algebraic",
+      "pseudocode": "p_hat[(s,a,o_obs)] = p_hat.get((s,a,o_obs), 0.5) + alpha_T * (1.0 - p_hat.get((s,a,o_obs), 0.5))\nfor o != o_obs:\n  p_hat[(s,a,o)] = p_hat.get((s,a,o), 0.5) + alpha_T * (0.0 - p_hat.get((s,a,o), 0.5))",
+      "source_postulate": "P2 — action-outcome contingency p(o|a,s) is learned and updated from experience"
+    },
+    {
+      "id": "R7",
+      "description": "Uncertainty-based arbitration weight via sigmoid: when MF variance exceeds MB variance, sigmoid output > 0.5, favoring goal-directed. When MF variance is lower, sigmoid < 0.5, favoring habitual. Kappa controls sensitivity.",
+      "type": "algebraic",
+      "pseudocode": "omega[s][a] = 1.0 / (1.0 + exp(-kappa * (sigma2_MF.get((s,a), sigma2_0) - sigma2_MB.get((s,a), sigma2_0))))",
+      "source_postulate": "P1, P4 — two controllers compete; arbitration based on reliability (uncertainty) with adaptive, reversible dynamics"
+    },
+    {
+      "id": "R8",
+      "description": "Fused action value: precision-weighted combination of model-based and model-free value means, weighted by the arbitration parameter omega.",
+      "type": "algebraic",
+      "pseudocode": "mu_hat[s][a] = omega[s][a] * mu_MB[s][a] + (1 - omega[s][a]) * mu_MF.get((s,a), 0.0)",
+      "source_postulate": "P1 — two dissociable valuation systems cooperate via weighted mixing for action selection"
+    },
+    {
+      "id": "R9",
+      "description": "Softmax action selection over fused values.",
+      "type": "algebraic",
+      "pseudocode": "probs = softmax([beta * mu_hat[s][a] for a in actions])\nselected_action = random_choice(actions, weights=probs)",
+      "source_postulate": "Assumption: common currency of value enters common action-selection mechanism"
+    },
+    {
+      "id": "R10",
+      "description": "Increment model-based experience count for the executed (state, action) pair.",
+      "type": "algebraic",
+      "pseudocode": "N_MB[(s, a)] = N_MB.get((s, a), 0) + 1",
+      "source_postulate": "Tracking experience for MB variance scaling"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Read state s=(x,y), food resources, hunger h. (2) Compute hunger-modulated desirability r_D (R2). (3) For each action, compute model-based mean mu_MB and variance sigma2_MB from transition model (R3, R4). (4) Retrieve model-free posterior means mu_MF and variances sigma2_MF. (5) Compute per-action arbitration weight omega via sigmoid of variance difference (R7). (6) Fuse values into mu_hat (R8). (7) Select action via softmax (R9). (8) After execution: update hunger (R1), transition model (R6), MF posteriors via Kalman update (R5a-R5c), increment N_MB (R10).",
+    "pseudocode": [
+      "# === DECIDE ===",
+      "s = (perception.x, perception.y)",
+      "food_positions = [(f['x'], f['y']) for f in perception.resources.get('food', [])]",
+      "food_here = s in food_positions",
+      "",
+      "# R2: Compute desirability",
+      "r_D_food = h * r_food",
+      "r_D_nofood = c_step",
+      "",
+      "# R3-R4: Compute model-based mean and variance for each action",
+      "for a in actions:",
+      "  if a == 'eat' and food_here:",
+      "    p_f = p_hat.get((s, a, 'food'), 0.5)",
+      "    mu_MB[s][a] = p_f * r_D_food + (1 - p_f) * r_D_nofood",
+      "    outcome_var = p_f * (r_D_food - mu_MB[s][a])**2 + (1 - p_f) * (r_D_nofood - mu_MB[s][a])**2",
+      "    sigma2_MB[s][a] = outcome_var + sigma2_obs_MB / (1 + N_MB.get((s, a), 0))",
+      "  elif a in ['move_up','move_down','move_left','move_right']:",
+      "    s_next = clamp_to_grid(apply_move(s, a))",
+      "    mu_MB[s][a] = c_step + gamma * max(mu_MF.get((s_next, a2), 0.0) for a2 in actions)",
+      "    sigma2_MB[s][a] = sigma2_obs_MB / (1 + N_MB.get((s, a), 0))",
+      "  else:",
+      "    mu_MB[s][a] = c_step",
+      "    sigma2_MB[s][a] = sigma2_obs_MB / (1 + N_MB.get((s, a), 0))",
+      "",
+      "# R7: Compute per-action arbitration weight",
+      "for a in actions:",
+      "  s2_mf = sigma2_MF.get((s, a), sigma2_0)",
+      "  s2_mb = sigma2_MB[s][a]",
+      "  omega_a = 1.0 / (1.0 + exp(-kappa * (s2_mf - s2_mb)))",
+      "",
+      "# R8: Fuse values",
+      "  mu_hat_a = omega_a * mu_MB[s][a] + (1 - omega_a) * mu_MF.get((s, a), 0.0)",
+      "",
+      "# R9: Softmax selection",
+      "probs = softmax([beta * mu_hat_a for a in actions])",
+      "return random_choice(actions, probs)",
+      "",
+      "# === UPDATE (after action execution) ===",
+      "ate_food = (action == 'eat' and last_action_result.get('consumed', False))",
+      "r_received = r_food if ate_food else c_step",
+      "",
+      "# R1: Update hunger",
+      "h = clip(h + eta - phi * int(ate_food), 0.0, 1.0)",
+      "",
+      "# R6: Update transition model",
+      "o_obs = 'food' if ate_food else 'nofood'",
+      "p_hat[(s, action, o_obs)] = p_hat.get((s, action, o_obs), 0.5) + alpha_T * (1.0 - p_hat.get((s, action, o_obs), 0.5))",
+      "for o in outcomes where o != o_obs:",
+      "  p_hat[(s, action, o)] = p_hat.get((s, action, o), 0.5) + alpha_T * (0.0 - p_hat.get((s, action, o), 0.5))",
+      "",
+      "# R5a-R5c: Kalman-filter update for model-free posterior",
+      "s_next = (new_perception.x, new_perception.y)",
+      "K = sigma2_MF.get((s, action), sigma2_0) / (sigma2_MF.get((s, action), sigma2_0) + sigma2_obs_MF)",
+      "td_target = r_received + gamma * max(mu_MF.get((s_next, a2), 0.0) for a2 in actions)",
+      "mu_MF[(s, action)] = mu_MF.get((s, action), 0.0) + K * (td_target - mu_MF.get((s, action), 0.0))",
+      "sigma2_MF[(s, action)] = (1 - K) * sigma2_MF.get((s, action), sigma2_0)",
+      "",
+      "# R10: Increment MB experience count",
+      "N_MB[(s, action)] = N_MB.get((s, action), 0) + 1"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "state_s": "(perception.x, perception.y)",
+      "food_positions": "perception.resources.food — list of {x, y, type, palatability} dicts",
+      "food_at_current_position": "any(f['x'] == perception.x and f['y'] == perception.y for f in perception.resources.get('food', []))",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step_number": "perception.step",
+      "ate_food": "action was 'eat' and perception.last_action_result indicates consumption"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action at food location → ConsumeEffect reward = 1.0; all other actions → internal step cost c_step = -0.01"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Adaptive goal-directed dominance in novel states: in never-visited states, sigma2_MF is at prior (1.0) and sigma2_MB is also at prior (1.0), so omega ≈ 0.5. As the agent gains MB experience (transition model improves), sigma2_MB drops faster than sigma2_MF initially, pushing omega > 0.5 toward goal-directed control.",
+      "test_pseudocode": "Run agent for 20 steps in new area → assert sigma2_MB decreases faster than sigma2_MF for eat-at-food actions → assert omega > 0.5 for those actions"
+    },
+    {
+      "id": "B2",
+      "description": "Uncertainty-driven habit transition: after extensive experience, sigma2_MF shrinks to near zero via Kalman updates. When sigma2_MF < sigma2_MB, omega < 0.5 and habitual values dominate.",
+      "test_pseudocode": "Run 300 steps in stable environment → assert sigma2_MF < sigma2_MB for frequently visited (s,a) → assert omega < 0.3"
+    },
+    {
+      "id": "B3",
+      "description": "Reversible arbitration: if the environment changes (food moves), MB predictions update quickly but MF values become stale (high effective error), causing sigma2_MF to effectively increase relative to sigma2_MB, re-engaging goal-directed control.",
+      "test_pseudocode": "Train 200 steps → relocate food → assert omega increases for affected states as MF predictions become unreliable"
+    },
+    {
+      "id": "B4",
+      "description": "Devaluation sensitivity in goal-directed mode: when omega > 0.5, reducing hunger immediately lowers mu_MB for eat (since r_D_food = h * r_food), reducing the fused value and suppressing eating.",
+      "test_pseudocode": "Set h=0.05 with high omega → assert mu_hat[eat] is low → assert agent avoids eating"
+    },
+    {
+      "id": "B5",
+      "description": "Devaluation insensitivity in habitual mode: when omega < 0.5, mu_MF (which learned from past high-hunger eating) dominates, so reducing hunger does NOT immediately suppress eating.",
+      "test_pseudocode": "Set h=0.05 with low omega (overtrained) → assert mu_hat[eat] ≈ mu_MF[eat] (still high from past learning) → agent may still eat"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience, 9, 545–556.",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724."
+  ]
+}

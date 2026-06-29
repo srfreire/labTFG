@@ -1,0 +1,1092 @@
+HHS Public Access
+ Author manuscript
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+
+
+Author Manuscript
+ Published in final edited form as:
+ Nat Neurosci. 2013 December ; 16(12): 1717–1724. doi:10.1038/nn.3561.
+
+
+ Regulation of dietary choice by the decision-making circuitry
+ Antonio Rangel1,2
+ 1Humanities and Social Sciences, Caltech, Pasadena, California, USA
+
+ 2Computational and Neural Systems, Caltech, Pasadena, California, USA
+
+
+ Abstract
+
+
+Author Manuscript
+ To advance our understanding of how the brain makes food decisions, it is essential to combine
+ knowledge from two fields that have not yet been well integrated: the neuro-computational basis
+ of decision-making and the homeostatic regulators of feeding. This Review integrates these two
+ literatures from a neuro-computational perspective, with an emphasis in describing the variables
+ computed by different neural systems and how they affect dietary choice. We highlight what is
+ unique about feeding decisions, the mechanisms through which metabolic and endocrine factors
+ affect the decision-making circuitry, why making healthy food choices is difficult for many
+ people, and key processes at work in the obesity epidemic.
+
+
+ How do we choose what to eat? How is this decision different from choosing a pair of
+ shoes? Why is consistent dieting rare and difficult? These are basic questions in behavioral
+ neuroscience, and important ones, as our ability to address the obesity epidemic depends on
+
+
+Author Manuscript
+ our ability to answer them.
+
+ Solving these questions requires bringing together two areas of study that have been
+ separated for too long: the neuro-computational basis of decision-making1,2, and the
+ homeostatic regulation of feeding3. Decision-making research has focused on characterizing
+ the computational and neurobiological substrates of choice that are common to many
+ domains, from feeding to financial decisions to social exchange. In contrast, research on
+ homeostatic regulation has focused on characterizing systems that are specific to feeding,
+ and has paid limited attention to how they interact with the rest of the decision-making
+ circuitry.
+
+ Here we examine how advances in both fields have made possible the beginnings of a
+ synthesis with the potential to generate new insights, questions and applications. We review
+
+
+Author Manuscript
+ extensive evidence showing that a common set of processes is at work across virtually all of
+ the types of decisions that have been studied, including food choices1,2. At the same time, it
+ is well known that metabolic and endocrine factors have powerful effects on feeding3–5.
+
+
+ © 2013 Nature America, Inc. All rights reserved.
+ Correspondence should be addressed to A.R. (rangel@hss.caltech.edu).
+ COMPETING FINANCIAL INTERESTS
+ The authors declare no competing financial interests.
+ Reprints and permissions information is available online at http://www.nature.com/reprints/index.html.
+ Rangel Page 2
+
+
+ This strongly suggests that these factors exert their influence by modulating the operations
+
+
+Author Manuscript
+ of the decision-making circuitry.
+
+ Our Review takes a neuro-computational perspective, which requires characterizing the
+ variables computed by different neural systems and how they affect different types of
+ decisions. We integrate up-to-date knowledge from decision neuroscience with what is
+ known about the homeostatic regulation of feeding. We use this knowledge to propose
+ answers to the following questions: what is unique about feeding decisions and why is
+ making healthy food choices difficult to many people. Finally, we apply these concepts to
+ the problem of obesity.
+
+ Framework
+ Figure 1 provides a description of the different types of computations that take place before,
+
+
+Author Manuscript
+ during and after making a feeding decision. The rest of the Review is organized around this
+ framework. First, the organism needs to identify that it is in a decision situation and
+ represent the options and actions available. This step can be triggered by internal states (for
+ example, feeling of hunger) or by external ones (for example, sight of food). The fact that
+ most animals engage in feeding bouts suggests that they make food decisions at selected
+ situations, rather than at every instant. Second, the organism needs to choose among the
+ available options (for example, steak or salad?). As we will see, this often involves assigning
+ value to the different options and comparing those values to select one of them. Third, once
+ a choice is made and food is consumed, the organism evaluates the outcome. This involves
+ tracking the outcomes and states induced by previous food choices (for example, taste or
+ gastrointestinal discomfort), and assigning outcome values to the experience. Fourth, the
+ outcome information is used to learn how to make better decisions in the future by updating
+
+
+Author Manuscript
+ the representation, choice and state tracking systems. In particular, the organism uses the
+ outcome values to update the value assigned to foods in future decisions. Learning can also
+ affect the representation stage by changing how attention is deployed to different options.
+ Finally, food consumption changes internal states (for example, energy stores and hunger
+ levels), which affect how future choices are made through their effects on a variety of
+ homeostatic mechanisms.
+
+ Choice is guided by competing behavioral controllers
+ A sizable body of evidence has shown that decisions are controlled by three different
+ systems6: a Pavlovian controller, a habitual controller and a goal-directed controller. This
+ applies both to feeding and non-feeding decisions, but the distinction is especially central for
+ dietary choice.
+
+
+Author Manuscript
+ Pavlovian control
+ Organisms automatically deploy many types of pre-programmed responses when exposed to
+ specific stimuli. A famous example is the salivation response of Pavlov’s dogs when
+ exposed to food. These behaviors are hardwired because they are effective and
+ computationally simple responses to specific circumstances. With training, animals can also
+ learn to deploy the Pavlovian behaviors in response to novel stimuli if they are predictive of
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 3
+
+
+ the conditions that trigger the hardwired response. Thus, Pavlov’s dogs salivated not only to
+
+
+Author Manuscript
+ the sight of food, but also to the sound of a bell that predicted food.
+
+ The exact number of Pavlovian controllers is unknown and it is likely that different types of
+ responses involve different neural subsystems6. For example, odorants trigger highly
+ specific and stereotyped fear responses in rodents7, and each is expressed through different
+ pathways, from amygdala and hypothalamus to periaqueductal gray8. In contrast, lesions to
+ amygdala, orbitofrontal cortex (OFC) and ventral striatum (vStr) interfere with the
+ expression of appetitive Pavlovian responses such as conditioned approach to cues
+ associated with palatable foods9.
+
+ Two examples illustrate the role of Pavlovian control in feeding. Consummatory responses,
+ such as pecking at physically proximate food, likely affect the initiation, rate and
+ termination of eating. Preparatory behaviors, such as approaching cues that predict the
+
+
+Author Manuscript
+ delivery of food (for example, a restaurant sign), also influence when and what we eat.
+
+ Habitual control
+ More flexible behavioral responses can be generated using stimulus-action associations.
+ More concretely, let rO(a | s) denote the reward generated by taking action a in state s. With
+ repeated practice, and as long as the environment is stable, the habit system learns to assign
+ a value to each state-action pair, denoted by V(a | s), which is proportional to the present
+ discounted value of the rewards that follow10. The system then selects the actions with the
+ highest value when exposed to cues associated with a given state.
+
+ Notably, the habit system is a model-free controller: it assigns values to action-state pairs by
+ averaging the previous history of rewards without forming a model of the outcomes
+
+
+Author Manuscript
+ generated by each action. Given that its values are determined by previously experienced
+ rewards, it has difficulty learning the future consequences of actions (for example, delayed
+ health problems) that have not yet been experienced. This limits its ability to select optimal
+ actions in environments in which actions have substantial long-term consequences or in
+ settings with rapidly changing reward contingencies.
+
+ The dorsolateral striatum is critical for habitual control in both rodents11 and humans12,13.
+ This area is connected in loops with motor cortex, which provides a mechanism through
+ which cues can influence action selection6.
+
+ Two examples illustrate the role of habitual control in feeding. With sufficient training, rats
+ tend to forage in cue-dependent locations associated with the receipt of previous rewards.
+ Habits are likely to be in control in behaviors such as having a coffee at specific locations
+
+
+Author Manuscript
+ and following certain events (for example, lunch).
+
+ Goal-directed control
+ This controller allows for even more flexible behaviors by engaging in model-based
+ control6,14. Let p(o | a, s) denote the probability of obtaining outcome o when taking action
+ a in state s. This controller assigns a value to each action-state pair given by
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 4
+
+
+Author Manuscript
+ As shown in this expression, the model of the choice situation has two components: the
+ action-outcome associations represented by the probability function and the outcome-reward
+ associations represented in the reward function. The superscript denotes the fact that this is
+ the reward function used to evaluate potential outcomes at the time of decision.
+
+ In contrast with the habit system, values are now computed using the model of the action-
+ outcome-reward contingencies, which is a forward-looking process. In particular,
+ information about outcomes can be used to update values without having to experience them
+ first. Given this, values can reflect delayed consequences well before they are experienced
+ (for example, by assigning a low value to future health problems).
+
+
+Author Manuscript
+ Evidence for goal-directed control has been established in rats15 and humans16–18. This
+ requires showing that individuals prospectively modify their choices in response to changes
+ to the action (that is, p(o | a, s)) or the reward contingencies (that is, rD(o | s)). Consistent
+ with this, rats exhibit conditioned taste aversion, in which a previously favored action is no
+ longer taken after the food reward associated with it is devaluated by pairing it with illness
+ in a different context or by feeding to satiation15.
+
+ Several regions with distinct computational roles are thought to be involved in goal-directed
+ control. The dorsomedial striatum is involved in the representation of action-outcome
+ associations19. The hippocampus might have a similar function, although its role is not as
+ well understood20. A large number of human functional magnetic resonance imaging
+ (fMRI)21, monkey physiology22,23 and lesion studies24 have shown that areas of medial and
+
+
+Author Manuscript
+ central OFC, extending into ventromedial prefrontal cortex (vmPFC), compute the value of
+ potential outcomes at the time of choice (that is, rD(o | s)). Notably, the same areas have
+ been shown to assign value to a wide class of outcomes, from monetary payments to social
+ rewards, and even appetitive and aversive foods25. Consistent with the properties of the
+ goal-directed system, activity in the vmPFC decreases after outcomes are experimentally
+ devalued16,17. These value signals can be computed in a few hundred milliseconds, which
+ implies that the controller is capable of rapid decision-making26. A network of areas that
+ includes dorsolateral prefrontral cortex (dlPFC), pre-supplementary motor area and bilateral
+ inferior parietal sulcus take the vmPFC values as inputs, compares them to select a course of
+ action and modulates activity in motor cortex to implement it27,28. Finally, experiments with
+ insulalesioned rats suggest that it is involved in updating the value of food after changes in
+ physiological states29, likely through its connectivity with vmPFC.
+
+
+Author Manuscript
+ In humans, all aspects of feeding can be controlled by the goal-directed system. In
+ particular, we are able to control what, when and how we eat based on cognitive goals (for
+ example, lose weight), albeit not always successfully. Also, new information can influence
+ food choices in the absence of previous experience (for example, a friend’s
+ recommendation). This controller must also be closely coupled with homeostatic regulators
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 5
+
+
+ of feeding, as the values that it computes are sensitive to changes in the physiological states
+
+
+Author Manuscript
+ that they encode (for example, hunger and ghrelin levels).
+
+ Competition and interactions among controllers
+ A basic problem with having multiple controllers is that they might favor different actions30.
+ For example, in the presence of a plate full of tasty food, the Pavlovian system might
+ activate a consumatory eating response, whereas the goal-directed system might favor
+ stopping.
+
+ Evolving control
+ The strength with which the Pavlovian and habitual controllers are activated in response to
+ stimuli evolves over time, as the underlying associations have to be learned and updated.
+ Habitual control is deployed only after repeated training in both rodents15 and humans13. It
+
+
+Author Manuscript
+ is also highly context dependent, so that actions selected in one context or state might not be
+ chosen in another.
+
+ Computation of goal-directed values
+ To make good choices, the controller in charge needs to select the action that has the highest
+ value to the individual, taking into account both short and long-term consequences. For the
+ reasons described above, the Pavlovian and habitual systems may select actions inconsistent
+ with this long-term view. For example, they might favor eating dessert, as it generates a
+ strong and immediate hedonic response, while ignoring future health consequences, even if
+ this entails a decision-making mistake.
+
+ Given the limitations of Pavlovian and habitual control, it is critical to understand how goal-
+
+
+Author Manuscript
+ directed values are computed and the extent to which they correctly weight long-term
+ consequences. Figure 2 summarizes our current understanding of how these values are
+ computed: outcomes are mapped into a space of attributes, value is assigned to each of those
+ attributes on the basis of their individual contribution to reward and the attribute values are
+ summed to get an overall outcome value. This algorithm is able to compute the value of any
+ potential outcome, even unfamiliar ones, as long as it can be mapped to a space of basic
+ attributes to which it can assign value. Although Figure 2 lists some specific attributes as an
+ example, we emphasize that the actual dimensions used by this system remain unknown.
+
+ Notably, there seem to be two distinct types of attributes: those associated with basic and
+ immediate outcomes (for example, taste), and those associated with abstract and delayed
+ ones (for example, health). A good decision requires computing value signals in vmPFC that
+
+
+Author Manuscript
+ weight both types of attributes properly, including discounting future outcomes at an
+ appropriate rate. However, a human fMRI study comparing how healthy and unhealthy
+ eaters compute values suggests that this is not always done31. In particular, the vmPFC
+ value signals of healthy eaters reflected both the health and taste of foods, whereas in
+ unhealthy eaters they only reflected taste. In addition, in healthy eaters, but not in unhealthy
+ ones, the left dlPFC modulated activity in vmPFC in a way consistent with helping it take
+ into account the values of health attributes. Follow-up work has shown that giving non-
+ dieters a reminder to pay attention to health information improves the healthiness of their
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 6
+
+
+ food choices, and that the extent to which this happens is correlated with the degree to which
+
+
+Author Manuscript
+ the dlPFC-vmPFC network is activated32.
+
+ The mechanisms described here provide insight into why successful dieting is hard and rare.
+ The Pavlovian and habit systems ignore long-term consequences. They can be inhibited, but
+ only when the goal-directed system computes the correct overall value, detects a conflict
+ and inhibits the competing responses. In addition, the goal-directed system assigns the
+ correct value to food choices only when sufficient attention is paid to attributes such as
+ health. Dietary self-control is hard because all of these processes have to be deployed
+ correctly for it to occur and because we are constantly exposed to stimuli that trigger
+ competing urges through the Pavlovian and habitual systems.
+
+ Outcome evaluation
+
+
+Author Manuscript
+ After an action is taken, the brain keeps track of two types of information: the outcomes
+ generated by the different actions and their desirability. The first class of variables is used to
+ learn the action-outcome associations underlying goal-directed choice (that is, p(o | a, s)).
+ The hippocampus is thought to be involved in tracking these associations20.
+
+ The second class is used to learn the model-free action values used by the habit system and
+ the reward function rD(o | s) used by the goal-directed controller. To do this, an experienced
+ reward function rO(o | s) is computed at the time of outcome. Note that these are two distinct
+ computations: rD(o | s) is used at the time of decision to compute goal-directed values,
+ whereas rO(o | s) is computed at the time of outcome to evaluate the outcome of previous
+ decisions. This distinction parallels the well-known concepts of wanting and liking proposed
+ by Berridge33.
+
+
+Author Manuscript
+ To do this, the brain encodes a continuous stream of hedonic states, which provide a
+ measure of experienced reward at any given instant34. These hedonic signals measure the
+ short-term effect of actions, but do not reflect their delayed consequences. As a result, any
+ learning heavily influenced by these hedonic signals, as is the case in habitual control, will
+ not incorporate the value of future outcomes.
+
+ An influential series of studies have found a network of ‘hedonic spots’ in nucleus
+ accumbens (NAcc), ventral pallidum35 and brainstem. Notably, a pleasurable state is
+ registered only when all of the areas respond in concert36. In human fMRI studies, medial
+ and central OFC reliably correlate with subjective reports of hedonic experience37,38,
+ including to taste rewards. Medial OFC receives inputs from all of the five senses, as well as
+ at the insula, which can aid in the construction of these representations. OFC’s hedonic
+
+
+Author Manuscript
+ responses to basic stimuli such as liquids and odors depend not only on their chemistry and
+ the physiological state of the individual, but also on cognitive beliefs about the experience,
+ such as the price of a wine39. This suggests that OFC integrates multiple levels of
+ information to compute hedonic value.
+
+ The hedonic effect of food is mediated by μ-opioid transmission in at least NAcc, ventral
+ pallidum40 and basolateral amygdala41. However, it is not mediated by phasic dopamine
+ responses, which instead are involved in value learning.
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 7
+
+
+ Learning
+
+
+Author Manuscript
+ The brain utilizes the outcome tracking and hedonic signals to update how the three
+ controllers operate.
+
+ Habit learning
+ The habitual system updates its action values through the computation of a reward
+ prediction error (RPE) signal at the time of outcome given by
+
+
+ where the subscripts denote time, a is the action taken, s is the active state and o is the
+ current outcome generated by the action10. The RPE can then be used to update the action
+
+
+Author Manuscript
+ values by
+
+
+ where λ is a learning rate controlling the speed of learning.
+
+ The phasic responses of midbrain dopamine neurons have been shown to encode the
+ computation of RPE signals in a wide class of paradigms42–44, involving rewards as distinct
+ as food45,46, money and social outcomes47. According to the model, stronger hedonic
+ responses at outcome should lead to stronger dopaminergic responses, thereby increasing the
+ likelihood that the action just taken will be repeated in the future. Consistent with this, blood
+
+
+Author Manuscript
+ oxygen level–dependent (BOLD) responses in dorsal striatum after ingestion of palatable
+ food are proportional to subjects’ hedonic reports48. On the basis of rodent lesion49 and
+ human fMRI studies13,17, habit learning is thought to depend on the release of dopamine
+ RPE signals into dorsal striatum.
+
+ We emphasize again that the hedonic and phasic dopaminergic responses involve different
+ computations and systems. Consistent with this, hyper-dopaminergic mice consume more
+ sweet rewards, but do not seem to experience more pleasure from them50. In addition,
+ dopaminergic responses to food rewards can arise independently of taste signaling, which
+ suggests that post-ingestive mechanisms (for example, measures of caloric intake) can
+ trigger RPE activity directly51. Notably, a sizable body of evidence suggests that, in contrast
+ with the phasic responses, tonic dopamine levels influence activities that entail energy
+
+
+Author Manuscript
+ expenditure, such as exploration of the choice environment52.
+
+ Pavlovian learning
+ One important class of Pavlovian responses are those triggered by general appetitive (for
+ example, approach) and aversive (for example, withdrawal) stimuli. The central nucleus of
+ the amygdala and vStr have been shown to be involved in this type of learning.
+ Anatomically, the amygdala projects directly to the lateral hypothalamus and brainstem
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 8
+
+
+ nuclei associated with initiating conditioned autonomic reflexes53, and vStr sends indirect
+
+
+Author Manuscript
+ projections to motor nuclei in brainstem that have an analogous role9,54. In addition,
+ dopamine projections to these areas are necessary for Pavlovian learning to occur55.
+
+ Goal-directed learning
+ The goal-directed system needs to learn p(o | a, s) and rD(o | s). It is well-known that the
+ hippocampus and surrounding medial temporal lobe are important for learning stimulus-
+ stimulus associations, for generalizing knowledge among them and for establishing
+ ‘episodic’ memories even after single episodes20. The hippocampus is involved in learning
+ p(o | a, s), but not at test time20. Notably, dopamine neurons project to hippocampus and
+ modulate its plasticity56, which could help to prioritize which associations are learned on the
+ basis of their reward implications.
+
+ Much less is known about how rD(o | s) is learned. Although it is natural to speculate that
+
+
+Author Manuscript
+ dopamine is also involved here, the evidence suggests that, at most, it provides a partial
+ account6. For example, transgenic mice without dopamine are able to successfully learn the
+ location of food rewards57. There are also aspects of the reward function that are hard to
+ explain solely on the basis of the RPE account of dopamine. For example, it is easier to
+ establish aversive conditioning between flavors and toxins that induce illness than between
+ flavors and electric shocks58, which implies that rO(o | s) cannot be the sole driver of this
+ type of learning.
+
+ Homeostatic regulation of feeding
+ A unique aspect of feeding decisions is the existence of dedicated homeostatic systems that
+ regulate energy intake and stores. These systems include hormonal regulators of hunger,
+
+
+Author Manuscript
+ satiety and fat levels, such as leptin, ghrelin and insulin, among others3–5. A basic question
+ is whether the homeostatic systems provide a parallel system for controlling feeding
+ decisions or whether they operate by modulating the decision-making circuitry described
+ above. The former view is common in the literature, which often has made a distinction
+ between ‘homeostatic feeding’ and ‘hedonic feeding’. As others have previously4,5,59,60,
+ here we argue for the latter view.
+
+ Given the richness of the homeostatic regulators and the detailed pathways that have been
+ identified4,5,59,60, we do not attempt to be comprehensive in our discussion of how these
+ mechanisms interact with the decision-making circuitry. Instead, we showcase three
+ pathways that have been the subject of extensive investigation: leptin, ghrelin and the lateral
+ hypothalamus.
+
+
+Author Manuscript
+ Leptin is a circulating hormone secreted by adipocytes that signals the size of peripheral
+ energy stores. It provides a negative homeostatic feedback loop to decrease feeding as
+ energy stores increase. Consistent with this, meal size is reduced by exogenous
+ administration of leptin61, and leptin-deficient mice become obese62. Leptin receptors have
+ been found in many areas, including the hypothalamus63, ventral tegmental area (VTA)64
+ and hippocampus65. Rodent studies have found that leptin administration decreases the
+ firing of VTA dopamine neurons after food consumption64. Human fMRI studies have
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 9
+
+
+ found that leptin replacement down-modulates responses in the vStr when subjects are
+
+
+Author Manuscript
+ exposed to appetitive foods66. Notably, although leptin receptors are found in the taste
+ buds67, leptin can modulate dopamine responses even when food is administered
+ intragrastrically, which suggests that leptin’s effects on dopamine do not operate solely by
+ decreasing the reward experienced from food consumption68. Leptin reduces food intake by
+ enhancing response to satiety signals, similar to the release of cholecystokinin by the gut in
+ response to gastric distension69. The hippocampus is densely populated with leptin and
+ insulin receptors70, and administration of leptin into this region enhances long-term
+ potentiation71. Together, these findings suggest that leptin can reduce feeding by modulating
+ at least three different channels. First, it reduces phasic responses by dopamine neurons
+ associated with the computation of RPEs, which decrease future feeding by lowering the
+ habit values of food consumption. Second, it reduces the hedonic response to palatable food,
+ which reduces the value assigned to these foods by the habit and goal-directed systems.
+
+
+Author Manuscript
+ Third, it enhances the learning of action-outcome associations by the goal-directed system,
+ and, through this, its ability to control decisions.
+
+ Ghrelin is a peptide hormone secreted by the gut. It is thought to influence food initiation
+ and termination, as its concentration increases in parallel with hunger before meals and falls
+ with satiation afterwards72. Exogenous administration of ghrelin increases food intake in
+ animals73 and humans74. Ghrelin receptors are found in the hypothalamus73, VTA75, NAcc,
+ amygdala76 and hippocampus77. However, it does not seem to increase the hedonic
+ responses to food (as measured by licking responses at the time of consumption)78. Instead,
+ local ghrelin injections to rodent VTA increase dopamine release into the striatum, as well
+ as subsequent feeding75. Ghrelin administration also increases BOLD responses to food
+ pictures in areas such as OFC, striatum and amygdala, which control the computation of
+ value in goal-directed choice and influence the responses of appetitive Pavlovian
+
+
+Author Manuscript
+ controllers79. Ghrelin also modulates hippocampal activity and memory performance80.
+ Together, these findings suggest that ghrelin modulates feeding through (at least) the
+ following channels. First, it increases the goal-directed values assigned to food at meal
+ initiation and decreases them after satiation. Second, it modulates the computation of RPEs
+ by the dopamine system. Third, it modulates the activation of Pavlovian appetitive
+ responses, such as approaching food cues. Notably, ghrelin responses to food consumption
+ are modulated not only by the food’s nutritional content, but also by cognitive beliefs about
+ how much was consumed81, which suggests that these metabolic signals might be more
+ complex than commonly thought.
+
+ Neurons expressing orexin and melanin hormones in the lateral hypothalamus act as the
+ metabolic detectors and are critical for the regulation of feeding. Projections from lateral
+
+
+Author Manuscript
+ hypothalamus to caudolateral OFC (the secondary taste area) seem to carry satiety
+ information that can be used in the computation of hedonic and goal-directed values82. This
+ region also seems to be important for the control of feeding Pavlovian responses. For
+ example, electrical stimulation of lateral hypothalamus induces intense eating83, and this
+ effect can be blocked through leptin administration or feeding to satiation. These neurons
+ are also involved in goal-directed control through their projections to OFC, insula and
+ amygdala5.
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 10
+
+
+ Uniqueness of dietary choice
+
+
+Author Manuscript
+ Although the core decision-making circuitry is used to make both feeding and non-feeding
+ decisions, several properties of feeding make it a unique choice problem. First, feeding can
+ be regulated by any of the three controllers, and Pavlovian and habitual controllers are likely
+ to be important for feeding. In contrast, decisions such as which shoes to buy are mostly
+ under goal-directed control. Second, feeding decisions have to be made with high frequency.
+ This is important because it gives rise to the possibility of frequent and rapid learning, which
+ can help explain why animals exposed to highly palatable diets become rapidly habitized.
+ Third, feeding is modulated by dedicated homeostatic mechanisms. In contrast, analogous
+ homeostatic mechanisms have not been identified for any other behaviors, except those that
+ involve basic physiological drives such as breathing or hydration. Fourth, there are feeding-
+ specific Pavlovian mechanisms, which likely control consummatory behaviors such as
+ approaching food in hunger states. In contrast, dedicated Pavlovian controllers have not
+
+
+Author Manuscript
+ been identified for other consumption decisions. Fifth, feeding-related learning is
+ constrained in the type of associations that can be learned. This is exemplified by the
+ relative ease with which organisms learn associations between flavors and illness, even after
+ a single exposure58. In contrast, associations between flavors and other types of outcomes
+ are harder to learn. Sixth, consumption of sweet and fatty foods activates the hedonic
+ circuitry with unusual power. This is important because it can lead to a rapid transfer of
+ control to the Pavlovian and habit systems. Consistent with this, rats exhibit a strong
+ preference for a calorie-free saccharine solution over intravenous self-administration of
+ cocaine84, and blocking opioid receptors with naloxone reduces hyperphagia of highly
+ palatable foods, but has no effect on the consumption of regular food85. Also, conditioned
+ preferences for flavors associated with fat content administered intragastrically are hard to
+ extinguish and long-lived86.
+
+
+Author Manuscript
+ Other behavioral decisions share some of these properties, but only feeding combines all of
+ them (Table 1). This is important because it is the interaction of these features that makes
+ dietary choice difficult and unique. Understanding this uniqueness is essential to understand
+ why there is an obesity epidemic, but not an increase in decision mistakes in other domains.
+
+ Obesity
+ Obesity results from a sustained excess in calories consumed minus calories used. Thus, it is
+ affected by feeding decisions, energy consumption and metabolic factors that regulate how
+ excess calories are stored and used. Here we focus on the role of feeding decisions, which
+ some view as the critical and most challenging component of the equation.
+
+
+Author Manuscript
+ It is important to highlight that, from a neuroeconomic perspective, obesity is almost always
+ associated with mistakes in decision-making. A mistake occurs when an individual’s choice
+ does not maximize the net present value of rewards associated with the decision,
+ appropriately discounted. The fact that obesity is accompanied by frequent and (often)
+ unsuccessful attempts to lose weight demonstrates that individuals know that healthier
+ eating is the optimal option, but that they are unable to systematically make the choices
+ necessary to accomplish this goal.
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 11
+
+
+ Potential mechanisms
+
+
+Author Manuscript
+ In principle, excess food consumption can result from faulty processing in any of the
+ decision processes described above. For example, an individual who experiences unusually
+ large hedonic responses (rO(o | s)) or reward prediction errors (δt) after consuming fats or
+ sugars is likely to increase their consumption substantially, through all of the controllers,
+ which would result in obesity. Some traits seem to be associated with an increased incidence
+ of obesity, although cause and effect are often difficult to sort out in these studies. For
+ example, there is a positive correlation between body mass index and the discounting of
+ future monetary rewards87, and individuals with stronger sensitivity for rewards (of any
+ kind) exhibit stronger BOLD responses in OFC and NAcc when exposed to food images88.
+
+ Likely mechanisms
+ Although a wide range of mechanisms can be responsible for individual cases of obesity,
+
+
+Author Manuscript
+ two key facts suggest that the current obesity epidemic is likely attributable to a sub-set of
+ the potential mechanisms. First, healthy rats and humans only develop hyperphagia when
+ repeatedly exposed to cafeteria style diets89, which suggests that environmental variables are
+ critical. Second, obesity rates have increased over a short time span, which makes it highly
+ unlikely that a purely biological cause is at work.
+
+ Given these critical facts, and the findings reviewed above, we hypothesize that increases in
+ obesity result from a change in environmental factors and its interactions with the properties
+ of the feeding circuitry. First, there has been a substantial increase in food cues and
+ availability of unhealthy foods. For example, portion sizes have increased substantially90
+ and food prices have decreased91. Second, this has resulted in increased activation of
+ Pavlovian and habitual controllers, with all of the short-comings that this entails. Third, this
+
+
+Author Manuscript
+ has increased the demands placed on the goal-directed controller, making it more likely to
+ fail. This problem might be further exacerbated by lifestyle and work-place changes that
+ have led to increased cognitive demands and stress in many individuals. Consistent with
+ this, experiments have shown that cue-triggered Pavlovian and habitual control is more
+ likely to take over under cognitive load92, and an fMRI study of dieters32 showed that
+ attention is important to compute correct goal-directed values.
+
+ Vicious circles
+ These mechanisms give rise to three vicious circles that further worsen the problem (Fig. 3).
+ First, increased consumption of unhealthy foods impairs the ability of metabolic and
+ endocrine factors to restore homeostatic balance. This impairment can operate through
+ different channels. For example, elevated dietary fat (directly or indirectly) confers
+
+
+Author Manuscript
+ insensitivity to peptides that regulate body weight through their effect on the
+ hypothalamus93,94. Second, high-fat diets have been associated with the development of
+ cognitive impairments that can interfere with the performance of the goal-directed system,
+ further increasing the extent to which feeding is governed by habitual and Pavlovian
+ control95. Consistent with this, hippocampal damage produces hyperphagia in humans96,97
+ and rats98, and obese individuals have stronger BOLD responses to food cues in NAcc99.
+ Third, as Pavlovian and habitual control take over, behavior becomes more responsive to the
+ cues associated with these systems (for example, big portions) and less responsive to
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 12
+
+
+ cognitive factors (for example, prices, information or health goals). This introduces
+
+
+Author Manuscript
+ economic incentives for food suppliers to further increase the supply of cues (for example,
+ marketing) and unhealthy foods (for example, fat, salt and sugar content). This highlights
+ the importance of policies that target the source of the problem directly, through regulation
+ of the food environment100.
+
+ Final remarks
+ Substantial progress has been made toward understanding the neurocomputational basis of
+ decision-making, as well as the nature of the various systems that serve as homeostatic
+ regulators of feeding. The next challenge is to bring the two fields together. Here we have
+ tried to showcase that this integrative agenda is feasible, has the potential to generate new
+ insights and questions, and could substantially advance our understanding of diseases such
+ as obesity and anorexia. Needless to say, the work required to integrate these two fields has
+
+
+Author Manuscript
+ just begun.
+
+
+ Acknowledgments
+ The support of the National Science Foundation (AR3.SELFCNTRL-1-NSF.ARR1), the Lipper Foundation, and
+ the Betty and Gordon Moore Foundation is gratefully acknowledged.
+
+
+ References
+ 1. Rangel A, Camerer C, Montague PR. A framework for studying the neurobiology of value-based
+ decision making. Nat Rev Neurosci. 2008; 9:545–556. [PubMed: 18545266]
+ 2. Kable JW, Glimcher PW. The neurobiology of decision: consensus and controversy. Neuron. 2009;
+ 63:733–745. [PubMed: 19778504]
+ 3. Williams KW, Elmquist JK. From neuroanatomy to behavior: central integration of peripheral
+
+
+Author Manuscript
+ signals regulating feeding behavior. Nat Neurosci. 2012; 15:1350–1355. [PubMed: 23007190]
+ 4. Berthoud HR. Metabolic and hedonic drives in the neural control of appetite: who is the boss? Curr
+ Opin Neurobiol. 2011; 21:888–896. [PubMed: 21981809]
+ 5. Kenny PJ. Reward mechanisms in obesity: new insights and future directions. Neuron. 2011;
+ 69:664–679. [PubMed: 21338878]
+ 6. Daw, N.; O’Doherty, JP. Multiple systems for value learning. In: Glimcher, P.; Fehr, E., editors.
+ Neuroeconomics: Decision Making and the Brain. 2. Academic Press; New York: 2013.
+ 7. Stowers L, Cameron P, Keller JA. Ominous odors: olfactory control of instinctive fear and
+ aggression in mice. Curr Opin Neurobiol. 2013; 23:339–345. [PubMed: 23415829]
+ 8. Gross CT, Canteras NS. The many paths to fear. Nat Rev Neurosci. 2012; 13:651–658. [PubMed:
+ 22850830]
+ 9. Ostlund SB, Balleine BW. Orbitofrontal cortex mediates outcome encoding in pavlovian but not
+ instrumental conditioning. J Neurosci. 2007; 27:4819–4825. [PubMed: 17475789]
+ 10. Niv, Y.; Montague, PR. Theoretical and empirical studies of learning. In: Glimcher, PW.; Fehr, E.;
+
+
+Author Manuscript
+ Camerer, C.; Poldrack, R., editors. Neuroeconomics: Decision-Making and the Brain. Elsevier;
+ 2008.
+ 11. Yin HH, Knowlton BJ. The role of the basal ganglia in habit formation. Nat Rev Neurosci. 2006;
+ 7:464–476. [PubMed: 16715055]
+ 12. de Wit S, et al. Corticostriatal connectivity underlies individual differences in the balance between
+ habitual and goal-directed action control. J Neurosci. 2012; 32:12066–12075. [PubMed:
+ 22933790]
+ 13. Tricomi E, Balleine BW, O’Doherty JP. A specific role for posterior dorsolateral striatum in
+ human habit learning. Eur J Neurosci. 2009; 29:2225–2232. [PubMed: 19490086]
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 13
+
+
+ 14. Rangel A, Hare T. Neural computations associated with goal-directed choice. Curr Opin
+ Neurobiol. 2010; 20:262–270. [PubMed: 20338744]
+
+
+Author Manuscript
+ 15. Balleine BW, Dickinson A. Goal-directed instrumental action: contingency and incentive learning
+ and their cortical substrates. Neuropharmacology. 1998; 37:407–419. [PubMed: 9704982]
+ 16. Valentin VV, Dickinson A, O’Doherty JP. Determining the neural substrates of goal-directed
+ learning in the human brain. J Neurosci. 2007; 27:4019–4026. [PubMed: 17428979]
+ 17. de Wit S, Corlett PR, Aitken MR, Dickinson A, Fletcher PC. Differential engagement of the
+ ventromedial prefrontal cortex by goal-directed and habitual behavior toward food pictures in
+ humans. J Neurosci. 2009; 29:11330–11338. [PubMed: 19741139]
+ 18. Daw ND, Gershman SJ, Seymour B, Dayan P, Dolan RJ. Model-based influences on humans’
+ choices and striatal prediction errors. Neuron. 2011; 69:1204–1215. [PubMed: 21435563]
+ 19. Yin HH, Ostlund SB, Knowlton BJ, Balleine BW. The role of the dorsomedial striatum in
+ instrumental conditioning. Eur J Neurosci. 2005; 22:513–523. [PubMed: 16045504]
+ 20. Wimmer, EG.; Shohamy, D. The striatum and beyond: contributions of the hippocampus to
+ decision making. In: Delgado, M.; Phelps, EA.; Robbins, TW., editors. Attention and Performance
+ XXII. Oxford University Press; Oxford: 2011.
+
+
+Author Manuscript
+ 21. Rangel, A.; Clithero, J. The computation of stimulus values in simple choice. In: Glimcher, P.;
+ Fehr, E., editors. Neuroeconomics: Decision Making and the Brain. 2. Academic Press; 2013.
+ 22. Padoa-Schioppa C, Assad JA. Neurons in the orbitofrontal cortex encode economic value. Nature.
+ 2006; 441:223–226. [PubMed: 16633341]
+ 23. Wallis JD, Miller EK. Neuronal activity in primate dorsolateral and orbital prefrontal cortex during
+ performance of a reward preference task. Eur J Neurosci. 2003; 18:2069–2081. [PubMed:
+ 14622240]
+ 24. Camille N, Griffiths CA, Vo K, Fellows LK, Kable JW. Ventromedial frontal lobe damage disrupts
+ value maximization in humans. J Neurosci. 2011; 31:7527–7532. [PubMed: 21593337]
+ 25. Plassmann H, O’Doherty JP, Rangel A. Appetitive and aversive goal values are encoded in the
+ medial orbitofrontal cortex at the time of decision making. J Neurosci. 2010; 30:10799–10808.
+ [PubMed: 20702709]
+ 26. Harris A, Adolphs R, Camerer C, Rangel A. Dynamic construction of stimulus values in the
+ ventromedial prefrontal cortex. PLoS ONE. 2011; 6:e21074. [PubMed: 21695081]
+
+
+Author Manuscript
+ 27. Hare TA, Schultz W, Camerer CF, O’Doherty JP, Rangel A. Transformation of stimulus value
+ signals into motor commands during simple choice. Proc Natl Acad Sci USA. 2011; 108:18120–
+ 18125. [PubMed: 22006321]
+ 28. Basten U, Biele G, Heekeren HR, Fiebach CJ. How the brain integrates costs and benefits during
+ decision making. Proc Natl Acad Sci USA. 2010; 107:21767–21772. [PubMed: 21118983]
+ 29. Balleine BW, Dickinson A. The effect of lesions of the insular cortex on instrumental conditioning:
+ evidence for a role in incentive memory. J Neurosci. 2000; 20:8954–8964. [PubMed: 11102506]
+ 30. Daw ND, Niv Y, Dayan P. Uncertainty-based competition between prefrontal and dorsolateral
+ striatal systems for behavioral control. Nat Neurosci. 2005; 8:1704–1711. [PubMed: 16286932]
+ 31. Hare TA, Camerer C, Rangel A. Self-control in decision-making involves modulation of the
+ vMPFC valuation system. Science. 2009; 324:646–648. [PubMed: 19407204]
+ 32. Hare TA, Malmaud J, Rangel A. Focusing attention on the health aspects of foods changes value
+ signals in vmPFC and improves dietary choice. J Neurosci. 2011; 31:11077–11087. [PubMed:
+ 21795556]
+
+
+Author Manuscript
+ 33. Berridge KC. Pleasures of the brain. Brain Cogn. 2003; 52:106–128. [PubMed: 12812810]
+ 34. Kringelbach ML. The human orbitofrontal cortex: linking reward to hedonic experience. Nat Rev
+ Neurosci. 2005; 6:691–702. [PubMed: 16136173]
+ 35. Smith KS, Berridge KC. The ventral pallidum and hedonic reward: Neurochemical maps of
+ sucrose “liking” and food intake. J Neurosci. 2005; 25:8637–8649. [PubMed: 16177031]
+ 36. Smith KS, Berridge KC. Opioid limbic circuit for reward: Interaction between hedonic hotspots of
+ nucleus accumbens and ventral pallidum. J Neurosci. 2007; 27:1594–1605. [PubMed: 17301168]
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 14
+
+
+ 37. Kringelbach ML, O’Doherty J, Rolls ET, Andrews C. Activation of the human orbitofrontal cortex
+ to a liquid food stimulus is correlated with its subjective pleasantness. Cereb Cortex. 2003;
+
+
+Author Manuscript
+ 13:1064–1071. [PubMed: 12967923]
+ 38. Rolls ET, et al. Representations of pleasant and painful touch in the human orbitofrontal and
+ cingulate cortices. Cereb Cortex. 2003; 13:308–317. [PubMed: 12571120]
+ 39. Plassmann H, O’Doherty J, Shiv B, Rangel A. Marketing actions can modulate neural
+ representations of experienced pleasantness. Proc Natl Acad Sci USA. 2008; 105:1050–1054.
+ [PubMed: 18195362]
+ 40. Berridge KC, Robinson TE. Parsing reward. Trends Neurosci. 2003; 26:507–513. [PubMed:
+ 12948663]
+ 41. Wassum KM, Ostlund SB, Maidment NT, Balleine BW. Distinct opioid circuits determine the
+ palatability and the desirability of rewarding events. Proc Natl Acad Sci USA. 2009; 106:12512–
+ 12517. [PubMed: 19597155]
+ 42. Bayer HM, Glimcher PW. Midbrain dopamine neurons encode a quantitative reward prediction
+ error signal. Neuron. 2005; 47:129–141. [PubMed: 15996553]
+ 43. Knutson B, Adams CM, Fong GW, Hommer D. Anticipation of increasing monetary reward
+
+
+Author Manuscript
+ selectively recruits nucleus accumbens. J Neurosci. 2001; 21:RC159. [PubMed: 11459880]
+ 44. Pessiglione M, Seymour B, Flandin G, Dolan RJ, Frith CD. Dopamine-dependent prediction errors
+ underpin reward-seeking behaviour in humans. Nature. 2006; 442:1042–1045. [PubMed:
+ 16929307]
+ 45. Berns GS, McClure SM, Pagnoni G, Montague PR. Predictability modulates human brain response
+ to reward. J Neurosci. 2001; 21:2793–2798. [PubMed: 11306631]
+ 46. Cromwell HC, Schultz W. Effects of expectations for different reward magnitudes on neuronal
+ activity in primate striatum. J Neurophysiol. 2003; 89:2823–2838. [PubMed: 12611937]
+ 47. Lin A, Adolphs R, Rangel A. Social and monetary reward learning engage overlapping neural
+ substrates. Soc Cogn Affect Neurosci. 2012; 7:274–281. [PubMed: 21427193]
+ 48. Small DM, Jones-Gotman M, Dagher A. Feeding-induced dopamine release in dorsal striatum
+ correlates with meal pleasantness ratings in healthy human volunteers. Neuroimage. 2003;
+ 19:1709–1715. [PubMed: 12948725]
+ 49. Wang LP, et al. NMDA receptors in dopaminergic neurons are crucial for habit learning. Neuron.
+
+
+Author Manuscript
+ 2011; 72:1055–1066. [PubMed: 22196339]
+ 50. Pecina S, Cagniard B, Berridge KC, Aldridge JW, Zhuang X. Hyperdopaminergic mutant mice
+ have higher ‘wanting’ but not ‘liking’ for sweet rewards. Behav Pharmacol. 2004; 15:9395–9402.
+ 51. de Araujo IE, et al. Food reward in the absence of taste receptor signaling. Neuron. 2008; 57:930–
+ 941. [PubMed: 18367093]
+ 52. Beeler JA, Fraixer CRM, Zhuang X. Putting desire on a budget: dopamine and energy expenditure,
+ reconciling reward and resources. Front Integr Neurosci. 2012; 6:49. [PubMed: 22833718]
+ 53. Price JL, Amaral DG. An autoradiographic study of the projections of the central nucleus of the
+ monkey amygdala. J Neurosci. 1981; 1:1242–1259. [PubMed: 6171630]
+ 54. Parkinson JA, Olmstead MC, Burns LH, Robbins TW, Everitt BJ. Dissociation in effects of lesions
+ of the nucleus accumbens core and shell on appetitive Pavlovian approach behavior and the
+ potentiation of conditioned reinforcement and locomotor activity by D-Amphetamine. J Neurosci.
+ 1999; 19:2401–2411. [PubMed: 10066290]
+ 55. Parkinson JA, et al. Nucleus accumbens dopamine depletion impairs both acquisition and
+ performance of appetitive Pavlovian approach behaviour: implications for mesoaccumbens
+
+
+Author Manuscript
+ dopamine function. Behav Brain Res. 2002; 137:149–163. [PubMed: 12445721]
+ 56. Rossato JI, Bevilaqua LR, Izquierdo I, Medina JH, Cammarota M. Dopamine controls persistence
+ of long-term memory storage. Science. 2009; 325:1017–1020. [PubMed: 19696353]
+ 57. Cannon CM, Palmiter RD. Reward without dopamine. J Neurosci. 2003; 23:10827–10831.
+ [PubMed: 14645475]
+ 58. Garcia J, Koelling RA. Relation of cue to consequence in avoidance learning. Psychon Sci. 1966;
+ 4:123–124.
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 15
+
+
+ 59. Kelley AE, Baldo BA, Pratt WE, Will MJ. Corticostriatal-hypothalamic circuitry and food
+ motivation: integration of energy, action and reward. Physiol Behav. 2005; 86:773–795. [PubMed:
+
+
+Author Manuscript
+ 16289609]
+ 60. Morton GJ, Cummings DE, Baskin DG, Barsh GS, Schwartz MW. Central nervous system control
+ of food intake and body weight. Nature. 2006; 443:289–295. [PubMed: 16988703]
+ 61. Benoit SC, Clegg DJ, Seeley RJ, Woods SC. Insulin and leptin as adiposity signals. Recent Prog
+ Horm Res. 2004; 59:267–285. [PubMed: 14749506]
+ 62. Szczypka MS, Rainey MA, Palmiter RD. Dopamine is required for hyperphagia in Lep(ob/ob)
+ mice. Nat Genet. 2000; 25:102–104. [PubMed: 10802666]
+ 63. Dhillon H, et al. Leptin directly activates SF1 neurons in the VMH, and this action by leptin is
+ required for normal body-weight homeostasis. Neuron. 2006; 49:191–203. [PubMed: 16423694]
+ 64. Hommel JD, et al. Leptin receptor signaling in midbrain dopamine neurons regulates feeding.
+ Neuron. 2006; 51:801–810. [PubMed: 16982424]
+ 65. Elmquist JK, Bjorbaek C, Ahima RS, Flier JS, Saper CB. Distributions of leptin receptor mRNA
+ isoforms in the rat brain. J Comp Neurol. 1998; 395:535–547. [PubMed: 9619505]
+ 66. Farooqi IS, et al. Leptin regulates striatal regions and human eating behavior. Science. 2007;
+
+
+Author Manuscript
+ 317:1355. [PubMed: 17690262]
+ 67. Shigemura N, Miura H, Kusakabe Y, Hino A, Ninomiya Y. Expression of leptin receptor (Ob-R)
+ isoforms and signal transducers and activators of transcription (STATs) mRNAs in the mouse taste
+ buds. Arch Histol Cytol. 2003; 66:253–260. [PubMed: 14527166]
+ 68. Domingos AI, et al. Leptin regulates the reward value of nutrient. Nat Neurosci. 2011; 14:1562–
+ 1568. [PubMed: 22081158]
+ 69. Emond M, Schwartz GJ, Ladenheim EE, Moran TH. Central leptin modulates behavioral and
+ neural responsivity to CCK. Am J Physiol. 1999; 276:R1545–R1549. [PubMed: 10233050]
+ 70. Lathe R. Hormones and the hippocampus. J Endocrinol. 2001; 169:205–231. [PubMed: 11312139]
+ 71. Farr SA, Banks WA, Morley JE. Effects of leptin on memory processing. Peptides. 2006; 27:1420–
+ 1425. [PubMed: 16293343]
+ 72. Cummings DE, et al. A preprandial rise in plasma ghrelin levels suggests a role in meal initiation
+ in humans. Diabetes. 2001; 50:1714–1719. [PubMed: 11473029]
+ 73. Nakazato M, et al. A role for ghrelin in the central regulation of feeding. Nature. 2001; 409:194–
+
+
+Author Manuscript
+ 198. [PubMed: 11196643]
+ 74. Druce MR, et al. Ghrelin increases food intake in obese as well as lean subjects. Int J Obes (Lond).
+ 2005; 29:1130–1136. [PubMed: 15917842]
+ 75. Abizaid A, et al. Ghrelin modulates the activity and synaptic input organization of midbrain
+ dopamine neurons while promoting appetite. J Clin Invest. 2006; 116:3229–3239. [PubMed:
+ 17060947]
+ 76. Carlini VP, et al. Differential role of the hippocampus, amygdala, and dorsal raphe nucleus in
+ regulating feeding, memory, and anxiety-like behavioral responses to ghrelin. Biochem Biophys
+ Res Commun. 2004; 313:635–641. [PubMed: 14697239]
+ 77. Zigman JM, Jones JE, Lee CE, Saper CB, Elmquist JK. Expression of ghrelin receptor mRNA in
+ the rat and the mouse brain. J Comp Neurol. 2006; 494:528–548. [PubMed: 16320257]
+ 78. Overduin J, Figlewicz DP, Bennett-Jay J, Kittleson S, Cummings DE. Ghrelin increases the
+ motivation to eat, but does not alter food palatability. Am J Physiol Regul Integr Comp Physiol.
+ 2012; 303:R259–R269. [PubMed: 22673784]
+
+
+Author Manuscript
+ 79. Malik S, McGlone F, Bedrossian D, Dagher A. Ghrelin modulates brain activity in areas that
+ control appetitive behavior. Cell Metab. 2008; 7:400–409. [PubMed: 18460331]
+ 80. Diano S, et al. Ghrelin controls hippocampal spine synapse density and memory performance. Nat
+ Neurosci. 2006; 9:381–388. [PubMed: 16491079]
+ 81. Crum AJ, Corbin WR, Brownell KD, Salovey P. Mind over milkshakes: mindsets, not just
+ nutrients, determine ghrelin response. Health Psychol. 2011; 30:424–429. [PubMed: 21574706]
+ 82. Simon SA, de Araujo IE, Gutierrez R, Nicolelis MA. The neural mechanisms of gustation: a
+ distributed processing code. Nat Rev Neurosci. 2006; 7:890–901. [PubMed: 17053812]
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 16
+
+
+ 83. Margules DL, Olds J. Identical “feeding” and “rewarding” systems in the lateral hypothalamus of
+ rats. Science. 1962; 135:374–375. [PubMed: 14469788]
+
+
+Author Manuscript
+ 84. Lenoir M, Serre F, Cantin L, Ahmed SH. Intense Sweetness Surpasses Cocaine Reward. PLoS
+ ONE. 2007; 2:e698. [PubMed: 17668074]
+ 85. Apfelbaum M, Mandenoff A. Naltrexone suppresses hyperphagia induced in the rat by a highly
+ palatable diet. Pharmacol Biochem Behav. 1981; 15:89–91. [PubMed: 7291235]
+ 86. Drucker DB, Ackroff K, Sclafani A. Nutrient-conditioned flavor preference and acceptance in rats:
+ effects of deprivation state and nonreinforcement. Physiol Behav. 1994; 56:701–707. [PubMed:
+ 7800736]
+ 87. Ikeda S, Kang MI, Ohtake F. Hyperbolic discounting, the sign effect, and the body mass index. J
+ Health Econ. 2010; 29:268–284. [PubMed: 20167384]
+ 88. Beaver JD, et al. Individual differences in reward drive predict neural responses to images of food.
+ J Neurosci. 2006; 26:5160–5166. [PubMed: 16687507]
+ 89. Oswald KD, Murdaugh DL, King VL, Boggiano MM. Motivation for palatable food despite
+ consequences in an animal model of binge eating. Int J Eat Disord. 2011; 44:203–211. [PubMed:
+ 20186718]
+
+
+Author Manuscript
+ 90. Wansink, B. Mindless Eating: Why We Eat More Than We Think. Bantam; New York: 2010.
+ 91. Cutler DM, Glaeser EL, Shapiro JM. Why have Americans become more obese? J Econ Perspect.
+ 2003; 17:93–118.
+ 92. Mann T, Ward A. Attention, self-control and health behaviors. Curr Dir Psychol Sci. 2007;
+ 16:280–283.
+ 93. Clegg DJ, et al. Reduced anorexic effects of insulin in obesity-prone rats fed a moderate-fat diet.
+ Am J Physiol Regul Integr Comp Physiol. 2005; 288:R981–R986. [PubMed: 15604298]
+ 94. De Souza CT, et al. Consumption of a fat-rich diet activates a proinflammatory response and
+ induces insulin resistance in the hypothalamus. Endocrinology. 2005; 146:4192–4199. [PubMed:
+ 16002529]
+ 95. Kanoski SE, Meisel RL, Mullins AJ, Davidson TL. The effects of energy-rich diets on
+ discrimination reversal learning and on BDNF in the hippocampus and prefrontal cortex of the rat.
+ Behav Brain Res. 2007; 182:57–66. [PubMed: 17590450]
+ 96. Higgs S. Memory and its role in appetite regulation. Physiol Behav. 2005; 85:67–72. [PubMed:
+
+
+Author Manuscript
+ 15924907]
+ 97. Rozin P, Dow S, Moscovitch M, Rajaram S. What causes humans to begin and end a meal? A role
+ for memory for what has been eaten, as evidenced by a study of multiple meal eating in amnesic
+ patients. Psychol Sci. 1998; 9:392–396.
+ 98. Clifton PG, Vickers SP, Somerville EM. Little and often: ingestive behavior patterns following
+ hippocampal lesions in rats. Behav Neurosci. 1998; 112:502–511. [PubMed: 9676968]
+ 99. Rothemund Y, et al. Differential activation of the dorsal striatum by high-calorie visual food
+ stimuli in obese individuals. Neuroimage. 2007; 37:410–421. [PubMed: 17566768]
+ 100. Marteau TM, Hollands GJ, Fletcher PC. Changing human behavior to prevent disease: the
+ importance of targeting automatic processes. Science. 2012; 337:1492–1495. [PubMed:
+ 22997327]
+
+
+Author Manuscript
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 17
+
+
+Author Manuscript
+
+
+Author Manuscript
+ Figure 1.
+ Summary of computations that take place before, during and after decision-making.
+
+
+Author Manuscript
+
+
+Author Manuscript
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 18
+
+
+Author Manuscript
+
+
+Author Manuscript Figure 2.
+ Description of how the goal-directed system can compute the value of a stimulus; for
+ example, an ice-cream sundae. First, the item is mapped into the set of attributes that
+ describe it. Second, a value is assigned to each attribute based on the current physiological
+ state and the pleasure or pain associated with consumption of that attribute in the past. Third,
+ the attribute values are integrated to compute an overall value for the item. There are two
+ classes of attributes: basic attributes (such as sweetness or taste quality, depicted in blue)
+ that are taken into account by all decision-makers and more ‘abstract’ attributes (such as
+
+
+Author Manuscript
+ health, depicted in red) that are only taken into account by those who make healthy choices.
+ We emphasize that the actual attributes used by the goal-directed system have not been
+ identified, and the ones highlighted here were chosen solely for the purpose of providing an
+ example.
+
+
+Author Manuscript
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Rangel Page 19
+
+
+Author Manuscript
+
+
+Author Manuscript
+ Figure 3.
+ External (green) and internal (dark red) vicious circles in obesity.
+
+
+Author Manuscript
+
+
+Author Manuscript
+
+
+ Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+ Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+
+ Table 1
+
+ Properties of different decision problems
+ Rangel
+ Feeding Breathing Sex Consumption goods (for example, clothing) Drugs of abuse Kin altruism
+ Necessary and frequent consumption ✓ ✓ × × × ×
+ Regulated by multiple controllers ✓ Possible, but limited ✓ ✓ ✓ ✓
+ Dedicated homeostatic mechanisms ✓ ✓ ? × × ×
+ Dedicated Pavlovian controllers ✓ ✓ ? × × ?
+ Dedicated learning systems ✓ ? ? × × ?
+ Powerful activation of hedonic circuitry at consumption ✓ × ✓ × ✓ ×
+
+
+Nat Neurosci. Author manuscript; available in PMC 2014 June 12.
+
+
+ Page 20

@@ -21,6 +21,11 @@ def render_markdown(result: SuiteResult) -> str:
     if spec.source_path is not None:
         lines.append(f"_Source_: `{spec.source_path}`")
     lines.append(f"_Stages_: `{', '.join(s.value for s in spec.stages)}`")
+    if spec.eval_corpus_paths:
+        lines.append(
+            "_Eval corpus_: "
+            + ", ".join(f"`{path}`" for path in spec.eval_corpus_paths)
+        )
     lines.append(f"_Topics_: {len(spec.topics)} declared, {result.topics_run()} run")
     lines.append(f"_Duration_: {result.duration_ms / 1000:.1f}s")
     lines.append(f"_Cost (est.)_: ${result.total_usd:.2f}")
@@ -62,8 +67,14 @@ def render_markdown(result: SuiteResult) -> str:
         if run.memory_per_stage:
             lines.append("**Memory writes**:")
             for stage_name, payload in run.memory_per_stage.items():
+                status = payload.get("status", "ok")
+                error = payload.get("error")
+                status_bits = [f"status={status}"]
+                if error:
+                    status_bits.append(f"error={error}")
                 lines.append(
                     f"- `{stage_name}` — "
+                    f"{', '.join(status_bits)}, "
                     f"nodes_created={payload.get('nodes_created', 0)}, "
                     f"relations_created={payload.get('relations_created', 0)}, "
                     f"facts={payload.get('facts_stored', 0)}"
@@ -144,6 +155,7 @@ def render_json(result: SuiteResult) -> str:
             "stages": [s.value for s in spec.stages],
             "topics_declared": len(spec.topics),
             "source": str(spec.source_path) if spec.source_path else None,
+            "eval_corpus": [str(p) for p in spec.eval_corpus_paths],
         },
         "all_passed": result.all_passed,
         "duration_ms": result.duration_ms,
@@ -168,6 +180,8 @@ def render_json(result: SuiteResult) -> str:
                     "duration_ms": tr.run.duration_ms,
                     "failed_at": (tr.run.failed_at.value if tr.run.failed_at else None),
                     "error": tr.run.error,
+                    "memory_succeeded": tr.run.memory_succeeded,
+                    "memory_failures": tr.run.memory_failures,
                     "tool_call_log": [asdict(c) for c in tr.run.tool_call_log],
                 },
                 "timing": (

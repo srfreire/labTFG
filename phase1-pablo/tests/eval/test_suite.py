@@ -56,10 +56,13 @@ class TestSuiteSpecFromYaml:
     def test_full_pipeline_with_assertions(self, tmp_path):
         env = tmp_path / "env.json"
         env.write_text("{}")
+        corpus = tmp_path / "papers.zip"
+        corpus.write_text("zip placeholder")
         path = tmp_path / "full.yaml"
         path.write_text(
             "name: full\n"
             f"env_spec: {env}\n"
+            f"eval_corpus: {corpus.name}\n"
             "stages: [research, formalize, reason, build]\n"
             "reset_kg_before: true\n"
             "topics:\n"
@@ -93,6 +96,7 @@ class TestSuiteSpecFromYaml:
         )
         assert spec.max_paradigms == 2
         assert spec.max_formulations_per_paradigm == 2
+        assert spec.eval_corpus_paths == (corpus.resolve(),)
         topic = spec.topics[0]
         assert topic.expect["research"][0] == {"paradigm": "rl"}
         assert topic.expect["build"][0] == {"module_imports": "rl-q-learning"}
@@ -118,6 +122,20 @@ class TestSuiteSpecFromYaml:
         path.write_text("stages: [zoom]\ntopics: [foo]\n")
         with pytest.raises(ValueError, match="unknown stage"):
             SuiteSpec.from_yaml(path)
+
+    def test_eval_corpus_list_parses_relative_paths(self, tmp_path):
+        a = tmp_path / "a.zip"
+        b = tmp_path / "b.zip"
+        a.write_text("a")
+        b.write_text("b")
+        path = tmp_path / "corpus.yaml"
+        path.write_text(
+            "name: corpus\neval_corpus:\n  - a.zip\n  - b.zip\ntopics: [alpha]\n"
+        )
+
+        spec = SuiteSpec.from_yaml(path)
+
+        assert spec.eval_corpus_paths == (a.resolve(), b.resolve())
 
 
 class TestParseStages:
@@ -232,6 +250,32 @@ class TestRunSuite:
         assert captured["max_formulations_per_paradigm"] == 2
 
     @pytest.mark.asyncio
+    async def test_forwards_paper_search_to_runner(self, tmp_path, patch_kgadmin):
+        spec_path = tmp_path / "paper.yaml"
+        spec_path.write_text("name: s\ntopics: [alpha]\n")
+        spec = SuiteSpec.from_yaml(spec_path)
+        captured: dict = {}
+        paper_search = AsyncMock()
+
+        async def _stub(topic, **kw):
+            captured.update(kw)
+            return _fake_pipeline_result(topic)
+
+        with patch(
+            "decisionlab.eval.suite.run_pipeline", new=AsyncMock(side_effect=_stub)
+        ):
+            await run_suite(
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+                paper_search=paper_search,
+                skip_kg_ops=True,
+            )
+
+        assert captured["paper_search"] is paper_search
+
+    @pytest.mark.asyncio
     async def test_assertions_evaluated_per_stage(self, tmp_path, patch_kgadmin):
         spec_path = tmp_path / "asserts.yaml"
         spec_path.write_text(
@@ -266,6 +310,40 @@ class TestRunSuite:
         assert not outcomes[1].passed
         assert topic_result.failed_count() == 1
         assert not result.all_passed
+
+    @pytest.mark.asyncio
+    async def test_memory_failure_marks_topic_failed(self, tmp_path, patch_kgadmin):
+        spec_path = tmp_path / "memory-failed.yaml"
+        spec_path.write_text("name: s\ntopics: [alpha]\n")
+        spec = SuiteSpec.from_yaml(spec_path)
+
+        async def _stub(topic, **kw):
+            return _fake_pipeline_result(
+                topic,
+                memory_per_stage={
+                    "reasoner": {
+                        "status": "failed",
+                        "error": "extraction: timed out",
+                    }
+                },
+            )
+
+        with patch(
+            "decisionlab.eval.suite.run_pipeline", new=AsyncMock(side_effect=_stub)
+        ):
+            result = await run_suite(
+                spec,
+                services=_services(),
+                client=AsyncMock(),
+                search=AsyncMock(),
+                skip_kg_ops=True,
+            )
+
+        assert not result.topic_results[0].all_passed
+        assert not result.all_passed
+        assert result.topic_results[0].run.memory_failures == {
+            "reasoner": "extraction: timed out"
+        }
 
     @pytest.mark.asyncio
     async def test_kg_assertion_skipped_when_skip_kg_ops(self, tmp_path, patch_kgadmin):

@@ -34,6 +34,19 @@ def test_deep_researcher_registry_has_search_papers():
     assert "web_search" in dr.registry
 
 
+def test_deep_researcher_accepts_custom_paper_search():
+    client = AsyncMock()
+    paper_search = AsyncMock(return_value="corpus-only")
+
+    dr = DeepResearcher(
+        client=client,
+        search=MockWebSearch(),
+        paper_search=paper_search,
+    )
+
+    assert dr.registry["search_papers"] is paper_search
+
+
 @pytest.mark.asyncio
 async def test_deep_researcher_run_returns_summary():
     """DeepResearcher returns a concise summary, not the full report."""
