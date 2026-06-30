@@ -10,11 +10,12 @@ backend mediante WebSocket, de modo que cada paso del pipeline se refleja
 en la interfaz a medida que se produce, sin necesidad de \textit{polling}.
 
 La arquitectura lógica del sistema (Figura~\ref{fig:arquitectura}, en el
-Apéndice~\ref{ap:diagramas}) separa tres preocupaciones que estructuran
-el resto del capítulo: el \textbf{dominio de simulación} (qué se ejecuta), el
-\textbf{ciclo orquestado} (cómo se invoca cada paso y cómo se reacciona
-a sus salidas), y la \textbf{capa compartida de conocimiento} (qué
-memoria común usan ambas fases).
+Apéndice~\ref{ap:diagramas}) muestra las piezas coordinadas por el
+Orchestrator: agentes especializados, entorno de
+simulación, modelos cargados desde la primera fase y capa compartida de
+persistencia y recuperación. El capítulo desarrolla esas piezas desde el
+punto de vista del diseño de la segunda fase, no como inventario completo
+de todos los servicios del proyecto.
 
 Sobre esa estructura, el diseño de esta fase se apoya en tres decisiones
 principales:
@@ -24,67 +25,42 @@ principales:
 modela la sesión como una secuencia canónica de \textit{tool calls} y
 reserva al modelo de lenguaje únicamente las desviaciones puntuales, en
 lugar de delegarle la planificación completa.
-\item La \textbf{integración desacoplada con la primera fase}: un contrato
-mínimo resuelto por \textit{duck typing} y la carga dinámica de los
-modelos, que permite que ambas fases evolucionen sin coordinar sus
-versiones.
+\item La \textbf{carga dinámica de modelos}: la segunda fase descubre los
+modelos aceptados por la primera, los instancia bajo demanda y los ejecuta
+sin incorporarlos como dependencias estáticas del laboratorio.
 \item El \textbf{laboratorio como productor y consumidor de memoria
 compartida}: las observaciones de simulación se persisten en el
 Knowledge Backbone y se reutilizan después para contrastar el
 comportamiento observado con los postulados previos.
 \end{enumerate}
 
-Las secciones siguientes desarrollan estas decisiones junto con el dominio
-de simulación y la interfaz reactiva que las hacen operativas.
-
-\subsection{Problema de diseño}
-
-El problema de diseño de esta fase no es simular una política concreta, sino
-convertir modelos generados externamente en evidencia experimental
-comparable. Esa transformación obliga a coordinar varios cambios de
-representación, que recorren la sesión desde la petición conversacional hasta
-las memorias recuperables (Figura~\ref{fig:transformacion-fase2}, en el
-Apéndice~\ref{ap:diagramas}).
-
-Cada paso cambia la forma de la información. Una petición abierta del usuario
-se convierte en una especificación validable; la especificación se convierte
-en una ejecución con eventos; los eventos se condensan en trayectorias,
-episodios y métricas; el análisis transforma esos datos en interpretación; y
-las observaciones finales vuelven al Knowledge Backbone como memorias del
-\textit{namespace} \texttt{simulation}. Si esas fronteras no estuvieran
-separadas, un fallo de interpretación podría confundirse con un error del
-modelo, del entorno o de la persistencia. Por eso el diseño da tanta
-importancia a contratos pequeños, artefactos intermedios y puntos de
-observación explícitos.
+Las secciones siguientes separan las aportaciones propias de esta fase y las
+capas que materializan la sesión.
 
 \section{Aportaciones propias de la fase}
 
-Esta memoria documenta la segunda fase del proyecto, no la capa completa
-compartida por ambas fases. Por tanto, conviene separar con precisión qué
-partes se heredan o se comparten y qué partes constituyen la aportación
-principal de esta fase.
+La segunda fase parte de dos piezas que ya existen en el proyecto: los modelos
+generados por la primera fase y el Knowledge Backbone compartido. El trabajo de
+esta fase consiste en convertir esas piezas en un laboratorio utilizable: cargar
+los modelos, ejecutarlos en un entorno común, observar lo que hacen y dejar la
+sesión registrada para poder analizarla después.
 
-El Knowledge Backbone es una infraestructura compartida cuya consolidación
-inicial se documenta en la primera fase; la contribución de esta segunda no es
-redefinirlo, sino integrarse con él en los dos sentidos ---leer y escribir---,
-como se detalla más adelante en su propia sección.
+Sobre esa base, la aportación principal está en la sesión de simulación. El
+\textbf{Orchestrator} mantiene la conversación con el usuario y coordina a los
+agentes especializados: Architect para construir el entorno, Tracker para
+registrar la ejecución, Analyst para interpretar los resultados y Reporter para
+generar el informe. El canal \textbf{WebSocket} hace visible ese proceso en la
+interfaz, de modo que la simulación no queda reducida a una respuesta final del
+modelo, sino que puede seguirse paso a paso.
 
-La aportación propia se concentra en cuatro elementos. El primero es el
-\textbf{Orchestrator} de la sesión, que mantiene la conversación, registra
-herramientas, decide cuándo invocar a cada agente especializado, persiste el
-historial y gestiona la compactación del contexto. El segundo es el
-\textbf{canal WebSocket} que transforma el pipeline en un proceso observable
-desde la interfaz: el usuario no espera a un resultado final opaco, sino que
-ve cómo se construye el entorno, cómo avanza la simulación y qué agentes están
-trabajando. El tercero es la \textbf{ejecución comparativa de modelos} de la
-primera fase en un mismo entorno, con trazas de decisión, métricas y replay
-paso a paso. El cuarto es la \textbf{persistencia propia de la sesión}:
-conversaciones, experimentos, ejecuciones, informes y observaciones quedan
-registrados de forma que el resultado no dependa solo del estado efímero del
-navegador o de la ventana de contexto del modelo. La fase no se limita, por
-tanto, a añadir una capa de presentación sobre modelos ya existentes:
-implementa la cadena completa desde la petición conversacional hasta el informe
-persistido y las memorias recuperables.
+La fase también añade la comparación de varios modelos en el mismo entorno,
+con trazas de decisión, métricas y \textit{replay}. Esa parte es importante
+porque permite observar diferencias entre modelos sin cambiar las condiciones
+de la simulación. Por último, cada sesión deja persistidos sus datos principales:
+conversaciones, experimentos, ejecuciones, informes y observaciones. Así, el
+resultado no depende solo del estado del navegador ni de la ventana de contexto
+del modelo, y las observaciones pueden volver al Knowledge Backbone como memoria
+recuperable.
 
 \section{El dominio de simulación}
 
@@ -108,29 +84,42 @@ una misma simulación sin que el entorno tenga que conocer su naturaleza.
 
 El contrato \texttt{decide}, \texttt{update}, \texttt{get\_state}
 resulta familiar para quien haya trabajado con aprendizaje por refuerzo:
-\texttt{decide} resuelve la selección de acción dada una percepción ---un
-diccionario con la posición del agente (\texttt{x}, \texttt{y}), las
+\texttt{decide} resuelve la selección de acción dada una percepción, es
+decir, un diccionario con la posición del agente (\texttt{x}, \texttt{y}), las
 dimensiones de la rejilla (\texttt{grid\_width}, \texttt{grid\_height}),
 el paso actual (\texttt{step}), los recursos visibles (\texttt{resources})
-y el resultado de la última acción (\texttt{last\_action\_result})---,
+y el resultado de la última acción (\texttt{last\_action\_result});
 \texttt{update} aplica el ajuste interno tras recibir la recompensa, y
 \texttt{get\_state} expone el estado interno del modelo, incluida una
 clave \texttt{q\_values} que el laboratorio consume para las trazas de
 decisión y las gráficas de alternativas valoradas. La generalidad de esta
 interfaz permite acomodar tanto modelos clásicos basados en Q-learning
-\cite{sutton2018rl} como paradigmas no tabulares o
-estrategias deliberativas más elaboradas.
+como paradigmas no tabulares o estrategias deliberativas más elaboradas.
 
 \section{El Orchestrator y el ciclo de la sesión}
 
 El Orchestrator es la única pieza que entiende el pipeline en su
 conjunto. Mantiene el historial del chat, registra el catálogo de
 herramientas disponibles y despacha cada llamada al agente especializado
-correspondiente. La planificación global no se delega en el modelo de
+correspondiente. La interfaz refleja ese pipeline en el panel lateral, donde
+cada agente expone su estado de ejecución (Figura~\ref{fig:pipeline}) y muestra
+el avance en tiempo real mientras los agentes trabajan
+(Figura~\ref{fig:pipeline-accion}). La planificación global no se delega en el modelo de
 lenguaje, sino que se modela como una secuencia canónica de \textit{tool
-calls} sobre la que el LLM solo elige
-desviaciones puntuales: pedir una consulta adicional al Knowledge
+calls}. Sobre esa secuencia, el LLM solo elige desviaciones puntuales:
+pedir una consulta adicional al Knowledge
 Backbone, repetir un paso o descartar un intento fallido.
+
+El catálogo de herramientas combina llamadas de ejecución, como
+\texttt{create\_\allowbreak environment}, \texttt{run\_\allowbreak simulation},
+\texttt{analyze\_\allowbreak results} o \texttt{generate\_\allowbreak report},
+con llamadas de inspección. Estas últimas no lanzan una fase nueva del
+pipeline; recuperan detalle bajo demanda: episodios, trayectorias, eventos
+críticos, comparaciones del Analyst o una ventana de pasos alrededor de un
+instante de la simulación. Así, el Orchestrator puede responder a preguntas precisas del
+usuario sin introducir de nuevo todo el JSON del Tracker en el contexto del
+modelo. El catálogo completo de \textit{tool calls} expuestas a cada agente se
+recoge en el Apéndice~\ref{ap:toolcalls}.
 
 Este patrón corresponde a una composición
 centralizada con organización por capas en la taxonomía reciente de
@@ -144,16 +133,18 @@ Orchestrator y no se delegan a ningún agente especializado:
 \begin{enumerate}
 \item \textbf{Pre-recuperación de contexto.} Antes de invocar al
 Architect y al Reporter, el Orchestrator consulta el Knowledge Backbone
-mediante \texttt{\_get\_\allowbreak knowledge\_ctx} y entrega el resultado como
-parámetro \texttt{knowledge\_context} en la llamada; estos dos agentes
-no abren un canal propio al backbone. El Analyst es la excepción: tiene
-\texttt{retrieve\_context} declarada como \textit{tool call} y la invoca
-por su cuenta cuando necesita ampliar el contexto durante su análisis.
+mediante un paso interno de pre-recuperación y entrega el resultado como
+contexto de entrada; estos dos agentes no abren un canal propio al backbone.
+El Analyst es la excepción: tiene \texttt{retrieve\_context} declarada como
+\textit{tool call} y la invoca por su cuenta cuando necesita ampliar el
+contexto durante su análisis.
 \item \textbf{Persistencia diferida.} Tras recibir el JSON del Tracker,
 el Orchestrator lo pasa al \texttt{TrackerMemoryWriter} para que lo
 descomponga en hechos, calcule los \textit{embeddings} con Voyage en un
 único \textit{batch} y los inserte de forma coordinada en PostgreSQL,
-Qdrant denso y Qdrant \textit{sparse}.
+Qdrant denso y Qdrant \textit{sparse}. Si las credenciales de Voyage AI o
+ZeroEntropy no están configuradas, este escritor no participa y la sesión
+continúa sin escritura semántica indexada.
 \item \textbf{Transmisión en vivo.} Cada salida intermedia se publica en
 el canal WebSocket para que el cliente actualice la interfaz sin
 esperar al final del pipeline.
@@ -174,21 +165,17 @@ Esta combinación de plan fijo y desviaciones acotadas es lo que hace que
 una sesión sea a la vez previsible en coste y tolerante a los fallos
 puntuales propios de las salidas generativas.
 
-\paragraph{Autocompactación del historial.} El Orchestrator gestiona
-también su propia ventana de contexto. Una sesión larga acumula en el
-historial el chat con el usuario, los JSON del Tracker, las trazas de
-decisión y las memorias recuperadas del backbone, y ese volumen acaba
-degradando la precisión del modelo. Para acotarlo, el historial se
-autocompacta: cuando supera un umbral de mensajes o de caracteres, el
-Orchestrator sustituye los turnos más antiguos por un resumen de
-auditoría y conserva intactos los últimos turnos. El resumen es
-\emph{determinista} (no lo genera el LLM, sino que se construye por
-plantilla) y preserva el estado activo del pipeline (identificador del
-experimento, semilla, etapas ya completadas, peticiones recientes del
-usuario y herramientas invocadas), de modo que la compactación libera
-contexto sin romper la trazabilidad de la sesión ni obligar a
-reiniciarla. La motivación y la experiencia de uso de este mecanismo se
-detallan en el capítulo de desarrollo.
+\paragraph{Autocompactación del historial.} El Orchestrator también debe
+cuidar su propia ventana de contexto. Una sesión larga acumula conversación,
+salidas del Tracker, trazas de decisión y memorias recuperadas; si todo se
+mantiene en cada turno, el modelo empieza a trabajar con demasiado ruido.
+Para evitarlo, cuando el historial supera un umbral de mensajes o de
+caracteres, los turnos antiguos se sustituyen por un resumen de auditoría y
+los turnos recientes se conservan intactos. Ese resumen no lo escribe el
+LLM: se construye con una plantilla y guarda lo necesario para continuar
+(experimento activo, semilla, etapas completadas, peticiones recientes y
+herramientas invocadas). Así se libera contexto sin reiniciar la sesión ni
+perder la trazabilidad básica de lo ocurrido.
 
 \section{Agentes especializados}
 
@@ -217,7 +204,8 @@ Tracker & Qué ocurrió durante la ejecución y qué episodios son relevantes pa
 Analyst & Qué patrones aparecen en las trayectorias y cómo se relacionan con postulados previos. & Requiere combinar métricas, trazas internas, recuperación de conocimiento y comparación entre modelos. \\ \hline
 Reporter & Cómo presentar los resultados para que puedan revisarse fuera de la sesión interactiva. & Requiere sintetizar análisis, figuras, métricas y contexto en un documento auto-contenido. \\ \hline
 \end{tabular}
-\caption{Motivo de la división en cuatro agentes especializados.}
+\caption[División en agentes]{División en agentes. La tabla resume qué
+responsabilidad justifica cada agente especializado.}
 \label{tab:razon-agentes-fase2}
 \end{center}
 \end{table}
@@ -235,8 +223,8 @@ definido en \texttt{simlab.spec} antes de instanciar el
 de nivel superior: \texttt{grid} con \texttt{width} y \texttt{height};
 \texttt{actions}, una lista de acciones con su \texttt{name} y un
 \texttt{effect} discriminado (\texttt{MoveEffect}, \texttt{ConsumeEffect}
-o \texttt{NoopEffect}); y \texttt{resources}, una lista de tipos de
-recurso con sus propiedades y reglas de aparición. Un ejemplo
+o \texttt{NoopEffect}); y \texttt{resources}, con los tipos de
+recurso, sus propiedades y reglas de aparición. Un ejemplo
 representativo es una rejilla \(8 \times 8\) con acciones de movimiento
 y consumo, y un único tipo de recurso (comida) que añade energía al
 agente que lo consume.
@@ -249,19 +237,23 @@ descripción), de forma que la especificación generada no sea una simulación
 abstracta cualquiera, sino un entorno compatible con las políticas que se
 van a comparar. El Orchestrator conserva la capacidad de presentar esa
 propuesta al usuario y de repetir la generación si la especificación no
-encaja con la intención de la sesión.
+encaja con la intención de la sesión. El resultado se muestra en la interfaz
+como una tarjeta de especificación del entorno (Figura~\ref{fig:architect});
+el resto de la interacción se recoge en la galería del Apéndice~\ref{ap:ui}.
 
 \paragraph{Tracker.} Observa la simulación en bloque, una vez completada,
 y produce un JSON estructurado con los eventos por paso, las trayectorias
-por agente y los episodios significativos. Actúa como observador puro:
+por agente y los episodios significativos, que la interfaz resume como
+tarjetas de trayectoria por agente (Figura~\ref{fig:tracker}). Actúa como
+observador puro:
 no escribe en el Knowledge Backbone; esa
 responsabilidad recae en el Orchestrator, como se explicó arriba.
 
 La separación entre simulación y observación es deliberada. El motor emite
 eventos de bajo nivel (posición, acción, recompensa, percepción y estado
 interno) que el Tracker reorganiza en unidades más útiles para el análisis
----trayectoria de cada agente, recursos consumidos, cambios de energía,
-eventos críticos, episodios de interés y resumen agregado---, evitando que el
+como trayectoria de cada agente, recursos consumidos, cambios de energía,
+eventos críticos, episodios de interés y resumen agregado, evitando que el
 Analyst reconstruya la historia de la simulación desde una lista plana de
 eventos. Trabaja después de la ejecución, no durante cada paso, porque su
 salida depende de patrones que solo se aprecian en la trayectoria completa;
@@ -270,43 +262,60 @@ ocurrido. Esa frontera limpia entre \emph{observación} e \emph{interpretación}
 es la que permite que las memorias escritas después distingan hechos de
 simulación de conclusiones del análisis.
 
+Los eventos críticos se detectan mediante reglas deterministas antes de que el
+LLM interprete la ejecución. El detector marca consumos de recursos, riesgo de
+hambre por energía baja, muerte o terminación de un agente, saltos bruscos de
+energía, cambios de acción dominante en una ventana deslizante y caídas de
+confianza cuando se estrecha la diferencia entre los dos mayores
+\textit{Q-values}. De este modo, el Analyst recibe puntos de atención
+calculados por código y no episodios inventados por el modelo.
+
 \paragraph{Analyst.} Identifica patrones de comportamiento en los datos del
 Tracker, los contrasta con postulados previos y produce un análisis
-estructurado: es el punto donde la ejecución deja de ser una colección de
-eventos y pasa a convertirse en explicación. Su entrada no es la traza bruta,
+estructurado de patrones y comparaciones entre modelos
+(Figura~\ref{fig:patrones}): es el punto donde la ejecución deja de ser una
+colección de eventos y pasa a convertirse en explicación. Su entrada no es la traza bruta,
 sino el JSON del Tracker y las ventanas de detalle que el Orchestrator pone a
 disposición cuando hacen falta datos concretos; con ellas compara recompensas,
 acciones, evolución de variables internas y episodios críticos. Es el único
 agente especializado que invoca directamente \texttt{retrieve\_context} como
-herramienta ---el resto recibe el contexto pre-recuperado---, y la usa para
+herramienta; el resto recibe el contexto pre-recuperado. La usa para
 matizar la interpretación con conocimiento del backbone, no como sustituto de
 los datos observados.
 
 Además del análisis textual, el Analyst genera las visualizaciones que
-acompañan al informe ---curvas de evolución de las variables internas y de las
-recompensas, histogramas de acciones y trazas de decisión por agente---,
-producidas en \texttt{simlab.charts} a partir de los datos del Tracker. Cuando
-una sesión ejecuta varios modelos en el mismo entorno (comparativa
-\emph{multi-modelo}), o se contrasta con ejecuciones previas de paradigmas
-distintos (comparativa \emph{multi-paradigma}), produce gráficas comparadas y
-un análisis cruzado de las trayectorias (Figura~\ref{fig:analisis-charts}).
+acompañan al informe: curvas de evolución de variables internas y
+recompensas, histogramas de acciones y trazas de decisión por agente
+(Figura~\ref{fig:traces}), producidas en \texttt{simlab.charts} a partir de
+los datos del Tracker. La
+generación no se limita a una única pasada: cada llamada a
+\texttt{analyze\_results} puede crear nuevas gráficas, que se acumulan en la
+sesión y se muestran en la interfaz. El comportamiento por defecto es generar
+un conjunto pequeño que apoye el análisis; si el usuario pide explorar una
+variable, intervalo o comparación concreta, el Orchestrator vuelve a invocar
+al Analyst con ese foco. Cuando una sesión ejecuta varios modelos en el mismo
+entorno (comparativa \emph{multi-modelo}), o se contrasta con ejecuciones
+previas de paradigmas distintos (comparativa \emph{multi-paradigma}), produce
+gráficas comparadas y un análisis cruzado de las trayectorias
+(Figura~\ref{fig:analisis-charts}).
 
 Su salida mantiene una estructura estable para que pueda ser consumida por
 el Reporter: resumen de patrones, diferencias entre modelos, métricas
 principales, episodios destacados, referencias recuperadas y rutas de las
-figuras generadas. De este modo, la parte generativa del análisis queda
-encapsulada en un artefacto intermedio y el informe final no tiene que
+figuras generadas. La parte generativa del análisis queda así encapsulada en
+un artefacto intermedio y el informe final no tiene que
 volver a razonar desde los eventos brutos.
 
-\paragraph{Reporter.} Sintetiza los hallazgos del Analyst en un informe
-Markdown que se compila a PDF mediante una plantilla LaTeX
-(\texttt{report\_template.tex}) procesada por \textit{tectonic}. El
+\paragraph{Reporter.} Sintetiza los hallazgos del Analyst en un cuerpo
+LaTeX que se inserta en la plantilla \texttt{report\_template.tex} y se
+compila a PDF mediante \textit{tectonic}. El
 contexto del Knowledge Backbone, inyectado por el Orchestrator, le
 permite incluir referencias a los paradigmas subyacentes sin tener que
 abrir un canal independiente al backbone. El informe incorpora las
-gráficas y las tablas de métricas producidas por el Analyst.
+gráficas y las tablas de métricas producidas por el Analyst, y se descarga
+desde la propia interfaz (Figura~\ref{fig:reporter}).
 El nivel de detalle se modula desde la propia configuración del
-Reporter en función del modelo de lenguaje seleccionado: para modelos
+Reporter según el modelo de lenguaje seleccionado: para modelos
 con mayor capacidad de razonamiento se pide una redacción más extensa,
 con discusión cualitativa de los patrones, mientras que para modelos
 con presupuesto de salida más limitado el informe se reduce a las
@@ -333,8 +342,19 @@ descripción y la clave \texttt{s3\_model\_key} del archivo de código en
 MinIO) y carga el archivo Python correspondiente bajo demanda en un
 directorio temporal por sesión. A continuación importa dinámicamente
 las clases que cumplen el contrato esperado. La verificación se hace
-por \textit{duck typing}: basta con que la clase exponga los métodos
-\texttt{decide}, \texttt{update} y \texttt{get\_state}.
+por \textit{duck typing}: la segunda fase no impone ninguna clase base ni
+dependencia compartida entre ambos sistemas; el \texttt{Protocol}
+\texttt{runtime\_checkable} de \texttt{simlab.environment} solo aporta una
+comprobación estructural en la carga, y basta con que la clase exponga los
+métodos \texttt{decide}, \texttt{update} y \texttt{get\_state}.
+
+Cuando una simulación se ejecuta con semilla, el cargador intenta propagarla
+también al modelo. Si el constructor acepta un parámetro \texttt{seed}, se lo
+pasa explícitamente; si el módulo generado usa el módulo global
+\texttt{random}, lo sustituye durante la carga por un proxy con un generador
+sembrado. Esta medida no cambia el contrato público del modelo, pero reduce la
+variabilidad accidental y hace que la comparación multi-modelo dependa de la
+semilla de la sesión, no de inicializaciones implícitas en el archivo cargado.
 
 Esta decisión tiene tres efectos prácticos. Primero, la incorporación de
 un nuevo paradigma no requiere ningún cambio en el código de la segunda
@@ -347,8 +367,10 @@ que habilita comparativas \textit{multi-modelo} sin reconfiguración.
 \section{El Knowledge Backbone como capa compartida}
 
 El Knowledge Backbone es la capa de persistencia común a ambas fases del
-proyecto. Su estructura interna se documenta en la memoria de la primera
-fase; esta sección se centra en \emph{cómo} se usa desde el laboratorio.
+proyecto. Esta memoria no necesita reconstruir toda su definición interna:
+lo relevante para el diseño de la segunda fase es qué partes consulta el
+laboratorio, qué partes escribe y cómo se conserva la trazabilidad entre
+ellas.
 
 La capa de almacenamiento combina cuatro componentes con
 responsabilidades diferenciadas: PostgreSQL alberga los metadatos, el
@@ -356,73 +378,66 @@ historial de experimentos y la tabla
 \texttt{simulation\_observations}; MinIO guarda los artefactos binarios;
 Qdrant indexa los vectores densos y las representaciones \textit{sparse}
 (BM25 nativo) de las memorias; Neo4j mantiene el grafo de paradigmas,
-formulaciones y procedencia. Los \textit{embeddings} se delegan en Voyage AI y el
-\textit{reranking} en ZeroEntropy; ambos componentes externos son
-opcionales y su ausencia degrada la calidad de la recuperación sin
-interrumpir el pipeline.
+formulaciones y procedencia, que la interfaz expone como un panel navegable
+(Figura~\ref{fig:kg}). Los \textit{embeddings} se delegan en Voyage AI y el
+\textit{reranking} en ZeroEntropy; ambos se integran en una capa semántica
+externa y opcional que requiere las credenciales de los dos proveedores. Si
+esa capa no está disponible, no participa: el pipeline principal continúa, pero
+sin recuperación semántica, sin \textit{reranking} y sin escritura indexada de
+memorias de simulación en Qdrant.
 
 La separación entre estos almacenes responde al tipo de pregunta que debe
 poder responder el laboratorio: auditar una ejecución, descargar un informe,
 encontrar un postulado relacionado y recuperar una observación parecida no
 son operaciones del mismo tipo. La coherencia se mantiene mediante
-identificadores, claves de artefacto y \textit{UUIDs} compartidos.
+identificadores, claves de artefacto y \textit{UUIDs} compartidos. Los
+informes del Reporter también quedan almacenados como artefactos: al
+generarse un PDF, el Orchestrator guarda su clave en el estado de la sesión,
+actualiza el experimento y expone enlaces de descarga mediante
+\texttt{/api/reports/download} o la herramienta \texttt{get\_report\_links}.
 
-La combinación de grafo e índices vectoriales responde a las preguntas que
-el sistema necesita hacer. El grafo se ocupa de las relaciones explícitas
----qué paradigma propone qué formulación, qué modelo la implementa, de dónde
-viene cada postulado---, lo que permite encontrar todos los modelos asociados
-a un paradigma sin recurrir a búsquedas textuales aproximadas
-\cite{hogan2021knowledgegraphs}. Los índices vectoriales trabajan sobre el
-contenido: el denso compara el significado general de la consulta con el de
-las memorias y recupera fragmentos relevantes aunque usen otras palabras,
-mientras que el BM25 recompensa la coincidencia exacta de términos, clave
-cuando se busca un nombre concreto, un parámetro o una cita literal. Trabajos
-recientes sobre recuperación aumentada con grafos \cite{edge2024graphrag}
-muestran que combinar las tres vías ---semántica, léxica y relacional---
-responde mejor cuando la pregunta no apunta a un único documento, sino a un
-patrón distribuido por el corpus, exactamente lo que ocurre al contrastar el
-comportamiento de un modelo con varios paradigmas relacionados.
+El capítulo anterior explicó por qué se combinan búsqueda semántica,
+coincidencia léxica y grafo. Aquí la cuestión práctica es cómo se controla
+ese acceso. El Orchestrator pre-recupera contexto para el Architect
+y el Reporter, que reciben ese material como \texttt{knowledge\_context}. El
+Analyst, en cambio, dispone de \texttt{retrieve\_context} como herramienta
+propia para ampliar el contexto cuando una observación concreta lo requiere.
+El propio Orchestrator también registra esta herramienta en su catálogo, de
+modo que puede responder a preguntas conversacionales sobre paradigmas,
+formulaciones u observaciones sin obligar al usuario a navegar manualmente
+por los almacenes.
 
-El laboratorio es a la vez consumidor y productor del backbone, pero toda
-la interacción está mediada por el Orchestrator:
+Esa recuperación semántica se complementa con una vía relacional. Cuando el
+usuario pregunta por el historial de experimentos, modelos usados, mensajes
+previos o memorias persistidas, el Orchestrator puede invocar
+\texttt{query\_history}. Esta herramienta traduce la pregunta en lenguaje
+natural a una consulta SQL de solo lectura sobre PostgreSQL, valida que solo
+use tablas permitidas y devuelve una tabla en \textit{markdown}. Su papel no
+es sustituir a Qdrant ni al grafo, sino cubrir preguntas que la similitud de
+contenido resuelve peor: recuentos, listados, filtros por estado, cruces con
+\texttt{simulation\_observations} o consultas sobre lo que el usuario pidió
+en sesiones anteriores.
 
-\begin{itemize}
-\item \textbf{Consumo directo.} El Analyst dispone de
-\texttt{retrieve\_context} como herramienta accesible mediante \textit{tool
-calls}; lo utiliza para contrastar un patrón concreto con la literatura
-previa cuando lo considera necesario.
-\item \textbf{Consumo inyectado.} El Architect y el Reporter no acceden
-al backbone por su cuenta. El Orchestrator pre-recupera el contexto
-relevante con \texttt{\_get\_knowledge\_ctx} y lo entrega como parámetro
-\texttt{knowledge\_context} en la propia invocación. Esta indirección
-reduce la superficie de error y hace previsible el coste por llamada.
-\item \textbf{Producción.} Las observaciones del Tracker se persisten
-después de su recepción, no durante. El \texttt{TrackerMemoryWriter}
-recibe el JSON completo, lo descompone en hechos, calcula sus
-\textit{embeddings} en un único \textit{batch} y los inserta en
+Existe una segunda ruta NL-SQL, \texttt{query\_experiments}, pensada para
+consultas más ricas sobre experimentos. Comparte el mismo principio de SQL de
+solo lectura y validación previa, pero puede recuperar artefactos asociados a
+los experimentos desde MinIO y pedir una síntesis posterior en lenguaje natural.
+En la práctica, \texttt{query\_history} actúa como vía ligera para el chat y
+devuelve tablas acotadas, mientras que \texttt{query\_experiments} sirve para
+respuestas históricas con más contexto experimental.
+
+La escritura sigue el camino inverso. El Tracker no persiste nada durante su
+observación; entrega un JSON al Orchestrator, y este invoca al
+\texttt{TrackerMemoryWriter}. El escritor descompone la salida en hechos,
+calcula sus \textit{embeddings} en un único \textit{batch} y los inserta en
 \texttt{simulation\_observations}, \texttt{memories\_dense} y
 \texttt{memories\_sparse}, bajo el \textit{namespace} \texttt{simulation} y
-compartiendo el mismo \textit{UUID} entre los tres almacenes para que la
-tripleta sea \textit{joinable}. Cada observación queda así indexada a la vez
-por la vía densa y la \textit{sparse} descritas arriba.
-\end{itemize}
-
-Persistir las observaciones del Tracker junto a los postulados con los que
-dialogan, y no en un almacén aparte, responde a la misma lógica que motiva
-la recuperación aumentada con grafos \cite{edge2024graphrag}: el valor no
-reside solo en cada hecho aislado, sino en las relaciones entre las
-decisiones, sus resultados y las trazas que los produjeron.
-
-Esta doble condición de productor y consumidor es la aportación principal
-del laboratorio a la memoria compartida. Una observación extraída de una
-simulación no se agota en el informe de su sesión: queda persistida en el
-\textit{namespace} \texttt{simulation} y puede recuperarse en ejecuciones
-posteriores, incluso de paradigmas distintos. Así, cuando una sesión futura
-analiza un nuevo modelo, el Analyst puede contrastar su comportamiento con
-los postulados teóricos escritos por la primera fase y con observaciones
-empíricas de simulaciones anteriores. La separación por \textit{namespace}
-mantiene esa realimentación trazable: permite distinguir un postulado de la
-literatura de una observación generada por el laboratorio.
+con el mismo \textit{UUID} compartido. Así, una observación de simulación
+queda disponible para recuperación posterior sin confundirse con un postulado
+procedente de la literatura. En esta fase no se materializa como nodo de Neo4j:
+se mantiene como memoria indexada y fila tipada, enlazable por sus metadatos.
+El flujo de escritura y recuperación de estas observaciones se resume en la
+Figura~\ref{fig:memoria-simulacion}.
 
 \section{Capa de presentación reactiva}
 
@@ -440,10 +455,23 @@ de endpoints REST para descargar informes y consultar el Knowledge
 Backbone (\texttt{/api/reports/download} y \texttt{/api/knowledge/*}). El
 estado de la sesión se mantiene en memoria durante la ejecución y se
 persiste en PostgreSQL al cerrarse. Esa persistencia tiene un objetivo
-de auditoría y de reanudación interna del Orchestrator, no de cliente:
-el navegador no rehidrata sesiones pasadas al recargar la página, y la
-consulta del historial de experimentos se hace a través de las vistas
-del Knowledge Backbone, no a través del propio chat.
+de auditoría y trazabilidad, no de reanudación: el historial de chat se
+registra pero no se vuelve a cargar, de modo que el navegador no rehidrata
+sesiones pasadas al recargar la página. Ese historial sí puede consultarse
+después desde el propio chat mediante \texttt{query\_history}, y también
+desde las vistas del Knowledge Backbone cuando el usuario necesita una
+inspección manual.
+
+El WebSocket no transporta solo texto final del Orchestrator. También emite
+eventos de estado y observabilidad: \texttt{agent\_status} indica cuándo un
+agente empieza, termina o vuelve a reposo; \texttt{agent\_tool} muestra qué
+herramienta está invocando; las tarjetas intermedias publican la
+especificación del entorno, el replay de simulación, el resumen del Tracker
+y el análisis con sus gráficas; \texttt{env\_card\_update} refresca datos de
+reproducibilidad como semilla y número de pasos; y, cuando el Reporter
+genera un PDF, el mensaje final incluye los enlaces descargables. Esta
+emisión de eventos forma parte de la observabilidad del sistema: muestra qué
+hace cada agente sin esperar a que termine todo el pipeline.
 
 El frontend está construido sobre React 19, Vite y Tailwind CSS 4. La
 interfaz principal es un \textit{dashboard} en modo oscuro
@@ -463,5 +491,5 @@ alternativa de exponer el estado por REST y hacer \textit{polling} desde el
 navegador se descartó porque introducía latencia artificial, duplicaba
 consultas y convertía una sesión larga en una secuencia de cargas
 independientes. El precio es trasladar la sincronización al backend; el
-beneficio es que el usuario ve un proceso vivo ---el agente piensa, el entorno
-se construye, el modelo decide--- en lugar de cargas aisladas.
+beneficio es que el usuario ve un proceso vivo: el agente piensa, el entorno
+se construye y el modelo decide, en lugar de cargas aisladas.

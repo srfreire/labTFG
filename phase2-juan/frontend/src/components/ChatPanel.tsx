@@ -237,10 +237,10 @@ function MessageBubble({ msg, hideAvatar, showReplay = true }: {
         <div className="px-4 py-3 text-[15px] leading-[1.6] msg-content" style={bubbleStyle}>
           {msg.text && renderText(msg.text, isUser)}
           {msg.contextSummary && <ContextSummaryCard summary={msg.contextSummary} />}
-          {msg.card && <DataCard card={msg.card} color={dotColor} />}
-          {msg.reports && msg.reports.length > 0 && <ReportLinks reports={msg.reports} color={dotColor} />}
-          {msg.tracker && <TrackerCard tracker={msg.tracker} />}
-          {msg.analyst && <AnalystCard analyst={msg.analyst} />}
+          {msg.card && <div data-testid="env-card"><DataCard card={msg.card} color={dotColor} /></div>}
+          {msg.reports && msg.reports.length > 0 && <div data-testid="reporter-card"><ReportLinks reports={msg.reports} color={dotColor} /></div>}
+          {msg.tracker && <div data-testid="tracker-card"><TrackerCard tracker={msg.tracker} /></div>}
+          {msg.analyst && <div data-testid="analyst-card"><AnalystCard analyst={msg.analyst} /></div>}
           {msg.charts && (
             <div data-testid="analysis-charts">
               {msg.charts.map(chart => (

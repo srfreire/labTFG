@@ -1,10 +1,10 @@
 ----------------------------------------------------------------------------------------
 MODELO LATEX PARA EL TRABALLO DE FIN DE GRAO (MEMORIA, CARÁTULA DE CD y PRESENTACIÓN)
 
-El fichero principal de la memoria es: traballo.tex
+El fichero principal de la memoria es: JUANFREIREALVAREZ_TFG.tex
 
 PARA GALLEGO
-En traballo.tex, usar la linea 12: \usepackage[galician]{babel}
+En JUANFREIREALVAREZ_TFG.tex, usar la linea 12: \usepackage[galician]{babel}
 
 PARA CASTELLANO: cambiarla por linea 13: \usepackage[spanish]{babel}
 
@@ -20,17 +20,17 @@ Opción 1. Existen múltiples editores latex que integran el compilador
 
 Opción 2. Vía latex. Esta forma requiere ejecutar dos comandos:
 
-  1) latex traballo
-     latex traballo
+  1) latex JUANFREIREALVAREZ_TFG
+     latex JUANFREIREALVAREZ_TFG
      (hay que ejecutar dos veces para generar los índices, actualizar las referencias cruzadas, etc)
-     (se visualiza con: xdvi traballo.dvi)
+     (se visualiza con: xdvi JUANFREIREALVAREZ_TFG.dvi)
   
-  2) dvipdf traballo (convierte dvi en pdf)
-     o bien primero: dvips traballo (obtiene un postscript) y luego: ps2pdf traballo.ps (pasa a pdf)
+  2) dvipdf JUANFREIREALVAREZ_TFG (convierte dvi en pdf)
+     o bien primero: dvips JUANFREIREALVAREZ_TFG (obtiene un postscript) y luego: ps2pdf JUANFREIREALVAREZ_TFG.ps (pasa a pdf)
 
 Opción 3. Vía pdflatex. Ejecutar dos veces el siguiente comando para obtener un pdf con referencias actualizadas 
-  pdflatex traballo
-  pdflatex traballo
+  pdflatex JUANFREIREALVAREZ_TFG
+  pdflatex JUANFREIREALVAREZ_TFG
 
 Figuras. Los dos métodos trabajan con diferentes formatos de figuras:
 
@@ -42,8 +42,8 @@ Figuras. Los dos métodos trabajan con diferentes formatos de figuras:
   epstopdf (convierte de eps a pdf)
 
 No olvidarse de pasar el diccionario:
-   aspell --master=galician check traballo.tex
-   aspell --master=spanish check traballo.tex
+   aspell --master=galician check JUANFREIREALVAREZ_TFG.tex
+   aspell --master=spanish check JUANFREIREALVAREZ_TFG.tex
 
 Para el lenguaje gallego algunas palabras se parten mal (por ejemplo, inter-ese), se corrigen con el comando
    \hyphenation{in-te-re-se} (véase capitulos/introducion.tex)
@@ -60,4 +60,3 @@ Presentacion: presentacion.tex
 
 ------------------------------------------------
 Correcciones y sugerencias a: francisco.arguello@usc.es
-

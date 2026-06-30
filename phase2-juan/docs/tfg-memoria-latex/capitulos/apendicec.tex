@@ -1,58 +1,24 @@
-\chapter{Detalle de la batería de pruebas (Capa 1)}
+\chapter{Detalle de la batería de pruebas}
 \label{ap:capa1}
 
-Este apéndice desarrolla las comprobaciones de la primera capa de evaluación
----el núcleo determinista--- resumidas en el capítulo de pruebas. Son
-comprobaciones objetivas, binarias y reproducibles, ejecutadas sobre los seis
-agentes: los cuatro modelos de la primera fase y los dos \textit{baselines}.
+Este apéndice reúne el detalle que no cabe en el capítulo de pruebas sin
+cortar el ritmo de la memoria. No añade una segunda discusión metodológica:
+solo deja constancia de qué se comprobó, con qué resultado y qué parte queda
+como revisión manual.
 
-\section{Contrato observable de los modelos}
+\section{Núcleo determinista}
 
-Antes de medir comportamiento hay que garantizar que los modelos respetan el
-contrato común en tiempo de ejecución, no solo en sus pruebas unitarias. Se
-comprueban tres invariantes sobre cada modelo cargado dinámicamente:
+La primera capa se ejecuta sobre seis modelos: cuatro procedentes de la primera
+fase y dos \textit{baselines}. Antes de mirar si el comportamiento encaja con
+la teoría, se comprueba que todos respetan el contrato mínimo del laboratorio:
+\texttt{decide} no muta estado, \texttt{update} concentra los cambios tras la
+recompensa y \texttt{get\_state} expone \texttt{q\_values}. El resultado es
+6/6. También se repite cada ejecución con la misma semilla; en los seis casos
+la secuencia de acciones y eventos coincide byte a byte.
 
-\begin{enumerate}
-\item \textbf{\texttt{decide} es de solo lectura.} Invocar \texttt{decide} dos
-veces sobre la misma percepción no modifica el estado interno: el
-\texttt{get\_state} previo y posterior son idénticos. Esto evita que el modelo
-aprenda o cambie variables antes de que el entorno aplique la acción.
-\item \textbf{\texttt{update} es el único mutador.} El estado solo cambia tras
-recibir recompensa y nueva percepción.
-\item \textbf{\texttt{get\_state} expone \texttt{q\_values}.} La presencia de
-esta clave es lo que permite a la capa de observación representar alternativas
-de acción y confianza relativa de forma uniforme para cualquier modelo.
-\end{enumerate}
-
-Esta comprobación es binaria y no requiere juicio. Corresponde a las reglas
-mínimas de sanidad previas a cualquier ajuste de modelo de
-comportamiento~\cite{wilson2019tenrules}, trasladadas al contrato de ejecución
-del laboratorio. Ejecutada sobre los seis agentes, \textbf{los seis superan el
-contrato} (6/6): en todos, invocar \texttt{decide} dos veces sobre la misma
-percepción deja el estado inalterado y \texttt{get\_state} expone
-\texttt{q\_values}.
-
-\section{Determinismo del motor}
-
-El determinismo del motor sostiene la comparativa multi-modelo: con la misma
-semilla y la misma configuración, dos simulaciones producen eventos idénticos.
-La parte determinista del sistema es el motor; la variabilidad de los modelos
-de lenguaje se discute en las limitaciones. Esta propiedad se verifica de forma
-automática comparando dos ejecuciones byte a byte sobre la secuencia de eventos
-emitidos. Comprobada sobre los seis agentes (cada uno cargado e instanciado dos
-veces con la misma semilla), \textbf{las dos ejecuciones producen flujos de
-acciones idénticos en los seis casos} (6/6): la reproducibilidad del motor
----incluida la siembra del generador aleatorio de los modelos por el cargador
-dinámico--- queda garantizada.
-
-\section{Fidelidad de la persistencia: la tripleta \textit{joinable}}
-
-Cada observación de simulación debe materializarse de forma consistente en los
-tres almacenes del Knowledge Backbone: una fila en PostgreSQL, un vector denso
-en Qdrant y un vector \textit{sparse} en Qdrant, siempre bajo el mismo
-\textit{UUID}. La fidelidad del Tracker se mide como la igualdad entre el número
-de observaciones generadas y el incremento que produce la ejecución en cada uno
-de los tres almacenes.
+La persistencia se comprueba aparte porque una observación útil no basta con
+que exista en un JSON final. Debe quedar registrada con el mismo identificador
+en la tabla relacional y en los dos índices de recuperación.
 
 \begin{table}[H]
 \begin{center}
@@ -64,44 +30,57 @@ Filas nuevas en \texttt{simulation\_observations} (PostgreSQL) & $N$ \\ \hline
 Memorias densas escritas (Voyage, 1024 dim.) & $N$ \\ \hline
 Memorias \textit{sparse} escritas (BM25 nativo) & $N$ \\ \hline
 \end{tabular}
-\caption{Fidelidad de la persistencia: la igualdad $N=N=N$ valida la tripleta \textit{joinable} (ninguno de los tres almacenes queda desincronizado).}
+\caption[Fidelidad de la persistencia]{Fidelidad de la persistencia. La igualdad
+$N=N=N$ valida que PostgreSQL, Qdrant denso y Qdrant \textit{sparse} quedan
+sincronizados por el mismo \textit{UUID}.}
 \label{tab:joinable}
 \end{center}
 \end{table}
 
-La igualdad de las tres últimas filas, medida como el incremento que produce la
-ejecución sobre el estado previo del backbone, valida la \textbf{tripleta
-joinable} descrita en el diseño: la persistencia no deja ninguno de los tres
-almacenes desincronizado.
+\section{Regresión automática}
 
-\section{Suite de regresión}
-
-La suite automática se usa como red de regresión para asegurar que la
-evaluación de las capas superiores se apoya en un sistema estable. Combina
-\texttt{uv run pytest} para dominio, agentes, Orchestrator, persistencia,
-recuperación y carga de modelos; Playwright para la sesión completa del cliente
-web y las vistas del Knowledge Backbone; y compilación LaTeX para la propia
-memoria. Los cambios visibles en la interfaz se revisaron además manualmente
-sobre la aplicación viva, porque una prueba \textit{end-to-end} puede confirmar
-que un elemento existe sin juzgar su legibilidad.
+La suite de regresión combina pruebas unitarias y recorridos completos de la
+interfaz. Las pruebas de backend cubren dominio, agentes, Orchestrator,
+persistencia, recuperación, carga dinámica de modelos, escenarios dorados y
+fidelidad del Reporter. Playwright cubre tanto el modo \textit{mock} como la
+sesión real con backend levantado; esta última se mantiene separada porque
+depende de servicios vivos.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
 \textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
-Backend (\textit{pytest}, 38 archivos) & PASS & 353/353 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos, arnés de \textit{golden scenarios} y fidelidad del Reporter. \\ \hline
-Determinismo del motor (misma semilla) & PASS & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
-E2E web (modo \textit{mock}) & PASS & 4/4 & Pipeline completo en la interfaz (spec, simulación, \textit{replay}, análisis, informe) sin servicios externos. \\ \hline
-E2E web (sesión real y backbone) & Separada & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
+Backend (\textit{pytest}, 38 archivos) & PASA & 353/353 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos y Reporter. \\ \hline
+Determinismo del motor (misma semilla) & PASA & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
+E2E web (modo \textit{mock}) & PASA & 4/4 & Pipeline completo en interfaz sin servicios externos. \\ \hline
+E2E web (sesión real y backbone) & Manual & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
 \end{tabular}
-\caption{Resultado de la ejecución de la suite automatizada (red de regresión de la capa 1).}
+\caption[Suite automatizada]{Suite automatizada. Resultado del conjunto de
+regresión usado como base de la evaluación.}
 \label{tab:suite}
 \end{center}
 \end{table}
 
-Esta batería importa dinámicamente los modelos producidos por el Builder y
-comprueba que cumplen el \texttt{Protocol} declarado en
-\texttt{simlab.environment} antes de iniciar una simulación. No compara
-rendimiento con otros sistemas; sirve como evidencia interna de que los
-contratos técnicos del laboratorio se mantienen estables.
+Las comprobaciones visuales no se dan por cerradas solo porque el test encuentre
+un elemento en pantalla. Cuando afectan a legibilidad, navegación o lectura del
+Knowledge Backbone, se revisan también sobre la aplicación en ejecución.
+
+\section{Juicio externo y revisión humana}
+\label{ap:capa3}
+
+La capa 3 usa Codex como juez externo para revisar salidas abiertas mediante
+rúbricas separadas por dimensión. Esta revisión no sustituye al criterio humano:
+los jueces basados en modelos de lenguaje pueden acercarse al acuerdo humano en
+algunas tareas~\cite{zheng2023judge}, pero también arrastran sesgos de posición,
+verbosidad o autopreferencia~\cite{calm2024biases}. Una calibración formal
+exigiría salidas etiquetadas por el tutor o por el grupo de investigación, así
+que queda planteada como trabajo futuro.
+
+La parte ejecutable de esta capa se limita a la fidelidad factual del Reporter.
+El script \texttt{benchmark/faithfulness.py} compara el PDF con los datos de
+origen y busca magnitudes como comida consumida, pasos, recompensa total y
+energía final. En una prueba controlada, el informe fiel obtiene fidelidad
+$1{,}00$; un informe adversario con errores plantados baja a $0{,}33$. Además,
+se comprueba que el PDF entregado sea el compilado real con \texttt{tectonic} y
+no el documento de respaldo generado si falla LaTeX.

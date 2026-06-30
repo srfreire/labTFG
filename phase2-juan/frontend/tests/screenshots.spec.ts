@@ -1,4 +1,4 @@
-import { test } from '@playwright/test'
+import { test, type Page } from '@playwright/test'
 import path from 'node:path'
 
 // Carpeta de figuras de la memoria LaTeX
@@ -10,14 +10,26 @@ test.use({
   deviceScaleFactor: 2,
 })
 
-test('capturas para la memoria (modo mock)', async ({ page }) => {
-  // 1) Dashboard inicial — sidebar de agentes + chat de bienvenida
+// Captura el elemento identificado por su testid (recorte ajustado, sin el
+// "cromo" del chat) para que cada figura de detalle sea visualmente limpia.
+async function shotElement(page: Page, testid: string, file: string) {
+  const el = page.getByTestId(testid).first()
+  await el.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(500)
+  await el.screenshot({ path: path.join(FIG, file) })
+}
+
+test('galería de la interfaz para la memoria (modo mock)', async ({ page }) => {
   await page.goto('/?mock')
   await page.getByRole('heading', { name: 'DecisionLab' }).waitFor()
-  await page.waitForTimeout(800)
-  await page.screenshot({ path: path.join(FIG, 'ui-01-dashboard-inicial.png') })
+  // Oculta el badge MOCK de forma persistente: la UI es idéntica a la real,
+  // así que las figuras de la memoria no deben mostrar el indicador de demo.
+  await page.addStyleTag({
+    content: '[data-testid="mock-badge"]{display:none !important}',
+  })
 
-  // Dispara el pipeline mock completo, avanzando turno a turno por las sugerencias
+  // Ejecuta el pipeline mock completo, avanzando turno a turno por las
+  // sugerencias del Orchestrator hasta tener todas las salidas en pantalla.
   await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
   for (const label of [
     'Lanza la simulación',
@@ -32,38 +44,44 @@ test('capturas para la memoria (modo mock)', async ({ page }) => {
   await page
     .getByRole('button', { name: 'Muéstrame la evolución de la Q-table' })
     .waitFor({ timeout: 20_000 })
-  await page.waitForTimeout(1200) // deja asentar charts/animaciones
+  await page.waitForTimeout(1400) // deja asentar charts/animaciones
 
-  // 2) Panel lateral de agentes (lab floor + estados completados)
-  await page.getByRole('complementary').screenshot({
-    path: path.join(FIG, 'ui-02-panel-agentes.png'),
-  })
+  // --- Detalle por agente / feature -------------------------------------
+  // Cada figura captura su PROPIO elemento para que sean visualmente
+  // distintas y autocontenidas.
 
-  // Cada figura captura su PROPIO elemento (no el viewport), para que sean
-  // visualmente distintas. El mensaje del Analyst lleva charts y traces en la
-  // misma burbuja, así que un screenshot de viewport las solapaba.
+  // Architect — tarjeta de especificación del entorno
+  await shotElement(page, 'env-card', 'ui-02-architect-spec.png')
 
-  // 3) Simulación + replay (grid animado, eventos críticos, controles de step)
-  const sim = page.getByTestId('sim-replay')
-  await sim.scrollIntoViewIfNeeded()
+  // Simulación + replay (grid animado, eventos críticos, controles de step)
+  await shotElement(page, 'sim-replay', 'ui-03-simulacion-replay.png')
+
+  // Analyst — gráficas comparativas (energía, acciones y Q-values)
+  await shotElement(page, 'analysis-charts', 'ui-04-analisis-charts.png')
+
+  // Tracker — trayectorias por agente (pasos, recursos, acciones)
+  await shotElement(page, 'tracker-card', 'ui-05-tracker-trayectorias.png')
+
+  // Analyst — patrones detectados y comparaciones entre modelos
+  await shotElement(page, 'analyst-card', 'ui-06-analyst-patrones.png')
+
+  // Trazas de decisión (tarjetas pre/post por agente)
+  await shotElement(page, 'decision-traces', 'ui-07-decision-traces.png')
+
+  // Panel lateral del pipeline (estados de agentes + lab floor + entorno)
+  await page
+    .getByRole('complementary')
+    .first()
+    .screenshot({ path: path.join(FIG, 'ui-08-pipeline-panel.png') })
+
+  // --- Vista completa del laboratorio -----------------------------------
+  // Viewport con el panel lateral (pipeline completado) + el chat mostrando
+  // la simulación: la captura "completa" representativa del laboratorio.
+  await page.getByTestId('sim-replay').first().scrollIntoViewIfNeeded()
   await page.waitForTimeout(600)
-  await sim.screenshot({ path: path.join(FIG, 'ui-03-simulacion-replay.png') })
+  await page.screenshot({ path: path.join(FIG, 'ui-01-dashboard-inicial.png') })
 
-  // 4) Gráficas del Analyst (energía, acciones y Q-values) — solo el bloque de charts
-  const charts = page.getByTestId('analysis-charts')
-  await charts.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(600)
-  await charts.screenshot({ path: path.join(FIG, 'ui-04-analisis-charts.png') })
-
-  // 5) Trazas de decisión (tarjetas pre/post por agente) — solo el bloque de traces
-  const traces = page.getByTestId('decision-traces')
-  await traces.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await traces.screenshot({ path: path.join(FIG, 'ui-05-decision-traces.png') })
-
-  // NOTA: ui-06-reporter-pdf.png NO se genera aquí. Es una página real del
-  // informe PDF que produce el Reporter (rasterizada con pdftoppm), no una
-  // captura de la web — capturar el viewport del chat aquí salía casi idéntico
-  // a ui-05. No reintroducir una screenshot con ese nombre o se sobreescribiría
-  // la figura del PDF usada en la memoria (fig:reporter-pdf, cap. de diseño).
+  // NOTA: la figura del Reporter (ui-09-reporter-pdf.png) NO se genera aquí.
+  // Es una página real del informe PDF que produce el Reporter (rasterizada
+  // con pdftoppm), no una captura de la web.
 })

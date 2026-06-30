@@ -1,6 +1,6 @@
 %
 % Memoria del TFG redactada en castellano. Codificación UTF-8.
-% Compilación recomendada con tectonic: tectonic traballo.tex
+% Compilación recomendada con tectonic: tectonic JUANFREIREALVAREZ_TFG.tex
 %
 
 \documentclass[12pt,twoside,openright,a4paper]{book}
@@ -20,7 +20,15 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
 \usepackage{pgfgantt}
+\usepackage{pdflscape}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
+
+% Las paginas insertadas automaticamente para abrir capitulos en impar no
+% deben mostrar cabecera ni numero de pagina.
+\let\originalcleardoublepage\cleardoublepage
+\renewcommand{\cleardoublepage}{%
+  \clearpage{\pagestyle{empty}\originalcleardoublepage}%
+}
 
 % Maquetación para impresión a doble cara. Con book + twoside + openright,
 % LaTeX inserta páginas en blanco cuando hace falta para que cada capítulo
@@ -63,14 +71,10 @@
   frame=single
 }
 
-\addto\captionsspanish{\def\contentsname{Memoria tipo B -- Índice general}}
-
-
 \begin{document}
 \include{capitulos/00-titulo}
 \cleardoublepage
-\include{capitulos/00-certificacion}
-\cleardoublepage
+\pagenumbering{roman}
 \include{capitulos/00-agradecimientos}
 \cleardoublepage
 \include{capitulos/00-resumo}
@@ -113,6 +117,8 @@
 \include{capitulos/apendicee}
 \cleardoublepage
 \include{capitulos/apendicef}
+\cleardoublepage
+\include{capitulos/apendiceg}
 \cleardoublepage
 \include{capitulos/licenza}
 \cleardoublepage

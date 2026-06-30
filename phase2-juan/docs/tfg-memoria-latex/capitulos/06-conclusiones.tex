@@ -2,32 +2,16 @@
 
 \section{Cumplimiento de objetivos}
 
-El trabajo entrega la infraestructura prometida en la introducción: una
+El trabajo entrega la infraestructura descrita en la introducción: una
 plataforma sobre la que distintos modelos de decisión generados por la
 primera fase pueden ejecutarse en un entorno común y producir, en cada
 sesión, los cinco artefactos enumerados como objetivo general.
 
-\begin{itemize}
-\item La especificación del entorno se genera a partir de una
-descripción en lenguaje natural y se valida estructuralmente antes de
-ejecutarse.
-\item El registro del comportamiento de los modelos se mantiene a lo
-largo de la simulación con suficiente detalle para que sea analizable
-posteriormente.
-\item El análisis de patrones contrasta los datos observados con los
-postulados disponibles en el Knowledge Backbone.
-\item Los informes en PDF se generan automáticamente y contienen tanto
-las métricas como las referencias a los paradigmas analizados.
-\item Las observaciones de simulación se persisten como memorias
-reutilizables, con lo que la segunda fase pasa a ser también productora
-del backbone compartido, y no solo consumidora de él.
-\end{itemize}
-
-A esos artefactos hay que añadir un objetivo transversal igualmente
-cumplido: la integración con la primera fase se sostiene sobre el
-contrato \textit{duck-typed} que se describe a lo largo de la memoria,
-y ha permitido que ambas fases evolucionaran de forma independiente sin
-necesidad de coordinar publicaciones intermedias.
+En síntesis, el sistema genera la especificación del entorno, registra la
+ejecución, analiza los patrones, produce el informe y deja observaciones
+reutilizables en la memoria compartida. Además, la integración con la primera
+fase se mantuvo estable durante el desarrollo, sin obligar a coordinar
+publicaciones intermedias.
 
 Vista en conjunto, la segunda fase completa el recorrido iniciado por la
 primera. Allí el esfuerzo se concentra en pasar de un paradigma descrito en
@@ -36,25 +20,25 @@ partida es ese modelo ya construido y el objetivo es convertir su ejecución en
 una evidencia revisable: una trayectoria, un conjunto de métricas, una
 interpretación y una memoria que pueda recuperarse después. Esa continuidad
 permite que el proyecto no termine en la generación de código, sino en un ciclo
-de experimentación sobre los modelos generados.
+de experimentación sobre los modelos generados. En otras palabras, la primera
+fase valida la construcción del modelo; esta segunda fase valida que ese modelo
+pueda observarse, compararse y discutirse a partir de su comportamiento.
 
 \section{Conclusiones técnicas}
 
 La principal lección técnica es que, en este sistema, la \emph{forma} en
 que se conectan los componentes acabó importando más que las decisiones
-internas de cada uno. Las tres conclusiones que siguen lo desarrollan
-desde tres ángulos distintos.
+internas de cada uno. El sistema funciona porque cada frontera está bien
+acotada: los modelos se cargan mediante una interfaz mínima, el acceso al
+Knowledge Backbone pasa por el Orchestrator y la observación se separa de
+la escritura persistente.
 
 \paragraph{Contratos finos entre componentes que evolucionan a ritmos
 distintos.} La integración con la primera fase podría haber requerido
-un esquema cuidadosamente coordinado entre paquetes. En su lugar, se
-redujo a un contrato \textit{duck-typed} mínimo, verificado en tiempo
-de ejecución. Ese contrato es lo que ha hecho posible que las dos
-fases del proyecto se desarrollaran en paralelo durante meses sin
-coordinar publicaciones intermedias y sin pisarse en el esquema
-compartido. Cuando dos partes están obligadas a evolucionar a ritmos
-distintos, un contrato sencillo aguanta mejor que uno rígido y
-minucioso.
+un esquema cuidadosamente coordinado entre paquetes. En la práctica bastó
+con una frontera pequeña y fácil de comprobar en ejecución. Cuando dos
+partes evolucionan a ritmos distintos, esa sencillez aguanta mejor que un
+contrato rígido y minucioso.
 
 \paragraph{Centralizar el acceso al conocimiento merece la pena cuando
 el coste de cada consulta no es despreciable.} Una opción sencilla habría
@@ -64,8 +48,8 @@ con la única excepción del Analyst, dio un control fino sobre cuándo se
 consulta el backbone y con qué presupuesto, y un único punto en el que
 diagnosticar problemas de recuperación. La asimetría entre acceso
 directo y acceso inyectado, aparentemente complicada, resultó más
-útil en la práctica que un acceso uniforme: cada agente recibe el tipo
-de contexto que de verdad necesita.
+útil en la práctica que un acceso uniforme: cada agente recibe el contexto que
+necesita para su tarea.
 
 \paragraph{Separar la observación de la persistencia hace que el
 backbone se mantenga limpio.} El Tracker se diseñó como observador
@@ -85,9 +69,9 @@ conviene cerrar con las de mayor alcance. El sistema cumple los objetivos de
 esta fase, pero no debe interpretarse como una validación automática de teorías
 de decisión: permite ejecutar modelos, observar trayectorias y contrastar
 patrones con conocimiento previo, pero la adecuación científica de un modelo
-concreto sigue requiriendo revisión experta ---que un modelo cargue, decida y
+concreto sigue requiriendo revisión experta. Que un modelo cargue, decida y
 produzca una curva interpretable no significa que represente correctamente el
-paradigma del que procede---, y depende además de modelos de lenguaje y
+paradigma del que procede. Además, el sistema depende de modelos de lenguaje y
 servicios externos cuyas salidas, a diferencia del motor determinista, varían
 entre ejecuciones e introducen latencia y coste.
 
@@ -96,14 +80,17 @@ para comparar modelos en un entorno común y explicable, pero no cubre entornos
 continuos, escenarios multi-agente o tareas no espaciales, que exigirían
 extenderlo y revisar qué métricas son comparables. Y la escritura de
 conocimiento desde la segunda fase es aún conservadora: las observaciones se
-indexan en el \textit{namespace} \texttt{simulation} para recuperación, pero no
-siempre se materializan como nodos del grafo ---una decisión que evita
-contaminar el backbone con estructura relacional prematura, a costa de limitar
-por ahora las consultas multi-hop sobre resultados de simulación.
+indexan en el \textit{namespace} \texttt{simulation} para poder recuperarlas
+después, pero no se materializan como nodos del grafo. La decisión es
+deliberada: antes de añadir nodos y relaciones al backbone conviene tener claro
+cuáles serán estables y útiles. A cambio, por ahora no se pueden hacer
+consultas encadenadas complejas sobre resultados de simulación, como seguir
+desde un paradigma hasta una formulación, de ahí a un modelo concreto y después
+a todas las observaciones generadas por ese modelo.
 
 \section{Posibles ampliaciones}
 
-El sistema deja varias líneas naturales de continuación.
+El sistema deja varias líneas de continuación.
 
 \paragraph{Más paradigmas y otros tipos de entornos.} Cada nuevo modelo
 que la primera fase produzca queda automáticamente disponible para
@@ -120,6 +107,16 @@ cualitativas del Analyst. Una capa de métricas estandarizadas
 política) haría las comparativas más directas y abriría la puerta a
 un \textit{benchmark} reproducible para nuevos paradigmas.
 
+\paragraph{Reanudación de sesiones.} El historial de chat con el
+Orchestrator ya se persiste en PostgreSQL, pero hoy se emplea solo como
+rastro de auditoría: no se vuelve a cargar, de modo que al recargar la
+página o reconectar se inicia una sesión nueva. Cerrar este hueco
+requiere leer el historial almacenado, añadir un \textit{endpoint}
+que devuelva los mensajes de una sesión y rehidratarlos en la interfaz. Así
+se podría retomar una conversación
+anterior sin perder su contexto. Es la base natural sobre la que apoyar
+los hilos de conversación persistentes que se describen a continuación.
+
 \paragraph{Validación con el grupo de investigación y maduración del
 producto.} El sistema se ha construido con el grupo de investigación
 del tutor en mente, y el siguiente paso natural es ponerlo a su
@@ -128,15 +125,16 @@ estudiar, qué partes del informe les ahorran trabajo, qué echan en
 falta. A partir de esa retroalimentación, la línea de maduración como
 producto incluye una capa de gestión de usuarios y la posibilidad de
 mantener varios hilos de conversación persistentes con el
-Orchestrator, al estilo de un chat conversacional. A esto se
-suman decisiones operativas que quedaron fuera del alcance de esta
-fase (copias de seguridad del Knowledge Backbone, monitorización),
-pero que cualquier despliegue real exigirá abordar.
+Orchestrator, al estilo de un chat conversacional. En esa misma línea,
+también queda pendiente completar la validación experta de la evaluación
+descrita en el capítulo de pruebas: Codex funciona en esta memoria como
+juez externo y automatizable, pero la calibración definitiva debe hacerse
+contra el criterio del tutor y del grupo de investigación.
 
 \section{Una reflexión final}
 
 Si la implementación deja de ser la actividad dominante, aparece una
-pregunta bastante directa: ¿qué hacemos con ese margen recuperado? La
+pregunta bastante directa: ?`qué hacemos con ese margen recuperado? La
 respuesta más interesante no es hacer lo mismo más deprisa, sino abordar
 sistemas que antes habrían sido poco realistas para un único autor en el
 plazo de un trabajo de grado. Este propio TFG (un pipeline de cinco

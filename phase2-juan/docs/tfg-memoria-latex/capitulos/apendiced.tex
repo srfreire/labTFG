@@ -1,94 +1,145 @@
 \chapter{Catálogo de requisitos}
 \label{ap:requisitos}
 
-Este apéndice recoge el catálogo completo de requisitos funcionales y no
-funcionales de la segunda fase, resumidos en el capítulo de especificación de
-requisitos. Los requisitos funcionales se priorizan con la técnica MoSCoW
----imprescindible (\emph{Must}), recomendable (\emph{Should}) u opcional
-(\emph{Could}).
+Este apéndice recoge el catálogo completo de requisitos de la segunda fase.
+El capítulo de especificación resume los objetivos principales; aquí se deja
+la lista completa para poder consultar cada requisito, su prioridad MoSCoW y
+la evidencia con la que se valida en las pruebas.
 
 \section{Requisitos funcionales}
 
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{8.3cm}|>{\raggedright\arraybackslash}p{2.1cm}|} \hline
-\textbf{Código} & \textbf{Descripción} & \textbf{Prioridad} \\ \hline
-RF-01 & Cargar dinámicamente los modelos de decisión generados por la
-primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
-RF-02 & Generar especificaciones de entorno de simulación a partir de
-descripciones en lenguaje natural. & Must \\ \hline
-RF-03 & Ejecutar simulaciones con uno o varios modelos en el mismo
-entorno, soportando comparativas multi-modelo. & Must \\ \hline
-RF-04 & Registrar de forma estructurada los eventos, episodios y
-trayectorias de decisión producidos durante cada simulación. & Must \\ \hline
-RF-05 & Identificar patrones de comportamiento en los resultados y
-contrastarlos con postulados previos del Knowledge Backbone. & Must \\ \hline
-RF-06 & Generar, como parte del análisis, gráficas y visualizaciones
-sobre las trayectorias y métricas extraídas que se incorporan al informe
-final. & Should \\ \hline
-RF-07 & Generar informes en PDF con los resultados, la evidencia visual y
-las referencias a los paradigmas analizados. & Must \\ \hline
-RF-08 & Persistir las observaciones de simulación en el Knowledge Backbone
-como memorias reutilizables en ejecuciones posteriores. & Must \\ \hline
-RF-09 & Conservar el historial completo de experimentos y permitir su
-consulta, filtrado y comparativa. & Should \\ \hline
-RF-10 & Permitir la interacción con el sistema mediante un chat
-conversacional gestionado por el Orchestrator, con continuidad de la
-conversación dentro de la sesión y posibilidad de retomar pasos
-anteriores. & Must \\ \hline
-RF-11 & Permitir al Orchestrator recomendar al usuario qué hacer a
-continuación, qué modelos o paradigmas pueden encajar con el problema
-descrito y qué herramientas tiene disponibles. & Could \\ \hline
-RF-12 & Ofrecer una visualización del entorno de simulación con
-\textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
-RF-13 & Exponer vistas de inspección del Knowledge Backbone (grafo,
-memorias y procedencia) accesibles desde la propia interfaz web. & Could \\ \hline
-\end{tabular}
-\caption{Requisitos funcionales principales con su prioridad MoSCoW.}
-\end{center}
-\end{table}
+\begin{small}
+\begin{itemize}
+\item \textbf{RF-01: Carga dinámica de modelos.} Cargar dinámicamente los modelos
+de decisión generados por la primera fase, descubriéndolos sin intervención
+manual entre sesiones. \textit{Prioridad: Must}.
+\item \textbf{RF-02: Generación de entornos.} Generar especificaciones de entorno
+de simulación a partir de descripciones en lenguaje natural.
+\textit{Prioridad: Must}.
+\item \textbf{RF-03: Ejecución de simulaciones.} Ejecutar simulaciones con uno o
+varios modelos en el mismo entorno, soportando comparativas multi-modelo.
+\textit{Prioridad: Must}.
+\item \textbf{RF-04: Registro estructurado.} Registrar de forma estructurada los
+eventos, episodios y trayectorias de decisión producidos durante cada
+simulación. \textit{Prioridad: Must}.
+\item \textbf{RF-05: Identificación de patrones.} Identificar patrones de
+comportamiento en los resultados, incluyendo pasos concretos o eventos
+críticos, y contrastarlos con el Knowledge Backbone.
+\textit{Prioridad: Must}.
+\item \textbf{RF-06: Visualizaciones analíticas.} Generar, como parte del
+análisis, gráficas y visualizaciones sobre trayectorias y métricas para
+incorporarlas al informe final. \textit{Prioridad: Should}.
+\item \textbf{RF-07: Generación de informes.} Generar informes en PDF con los
+resultados, la evidencia visual y las referencias a los paradigmas
+analizados. \textit{Prioridad: Must}.
+\item \textbf{RF-08: Persistencia de observaciones.} Persistir las observaciones
+de simulación en el Knowledge Backbone como memorias reutilizables en
+ejecuciones posteriores. \textit{Prioridad: Must}.
+\item \textbf{RF-09: Historial de experimentos.} Conservar el historial completo de
+experimentos y permitir su consulta, filtrado y comparativa, también mediante
+preguntas en lenguaje natural resolubles con SQL. \textit{Prioridad: Should}.
+\item \textbf{RF-10: Interacción conversacional.} Permitir la interacción con el
+sistema mediante un chat conversacional gestionado por el Orchestrator, con
+continuidad de la conversación dentro de la sesión. \textit{Prioridad: Must}.
+\item \textbf{RF-11: Recomendaciones del Orchestrator.} Permitir al Orchestrator
+recomendar al usuario qué hacer a continuación, qué modelos encajan y qué
+herramientas tiene disponibles. \textit{Prioridad: Could}.
+\item \textbf{RF-12: Replay de simulación.} Ofrecer una visualización del entorno
+de simulación con \textit{replay} paso a paso y paneles de actividad por
+agente. \textit{Prioridad: Should}.
+\item \textbf{RF-13: Inspección del Knowledge Backbone.} Exponer vistas de
+inspección del Knowledge Backbone (grafo, memorias y procedencia) accesibles
+desde la propia interfaz web. \textit{Prioridad: Could}.
+\end{itemize}
+\end{small}
+
+\vspace{0.5\baselineskip}
 
 \section{Requisitos no funcionales}
 
+\begin{small}
 \begin{itemize}
-\item \textbf{RNF-01 --- Modularidad y desacoplamiento:} la integración con la primera
+\item \textbf{RNF-01: Modularidad y desacoplamiento.} La integración con la primera
 fase debe realizarse mediante un contrato mínimo (\textit{duck typing}),
 sin imponer dependencias de paquetes ni jerarquías de clases. Mientras
 RF-01 fija el \emph{qué} (cargar los modelos sin intervención manual),
 este requisito fija el \emph{cómo} (sin acoplar la evolución de las dos
 fases).
-\item \textbf{RNF-02 --- Extensibilidad de modelos:} la incorporación de nuevos
+\item \textbf{RNF-02: Extensibilidad de modelos.} La incorporación de nuevos
 modelos generados por la primera fase no debe requerir modificaciones en
 el código de la segunda fase.
-\item \textbf{RNF-03 --- Trazabilidad:} cada ejecución debe conservar su
+\item \textbf{RNF-03: Trazabilidad.} Cada ejecución debe conservar su
 configuración, sus eventos y sus artefactos finales con un identificador
 único, de modo que sea posible reproducirla o auditarla.
-\item \textbf{RNF-04 --- Reactividad:} el cliente web debe recibir actualizaciones del
+\item \textbf{RNF-04: Reactividad.} El cliente web debe recibir actualizaciones del
 estado de la simulación y de la actividad de cada agente en tiempo real,
 sin \textit{polling}, mediante WebSocket.
-\item \textbf{RNF-05 --- Degradación controlada:} si faltan componentes opcionales
-del backbone (\textit{reranker} o \textit{embeddings}), el sistema debe seguir funcionando,
-aunque la recuperación pierda calidad.
-\item \textbf{RNF-06 --- Determinismo:} para una misma semilla
+\item \textbf{RNF-05: Degradación controlada.} Si la capa semántica opcional
+(\textit{embeddings} y \textit{reranking}) no está disponible, el flujo
+principal debe seguir funcionando. En ese modo la capa semántica no participa:
+no hay recuperación semántica, \textit{reranking} ni escritura indexada de
+memorias de simulación en Qdrant.
+\item \textbf{RNF-06: Determinismo.} Para una misma semilla
 y configuración, el motor de simulación debe producir resultados
 idénticos, de modo que las comparativas entre modelos sean
 reproducibles y comparables entre sesiones.
-\item \textbf{RNF-07 --- Portabilidad de despliegue:} los servicios externos (PostgreSQL,
+\item \textbf{RNF-07: Portabilidad de despliegue.} Los servicios externos (PostgreSQL,
 MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
 mediante \texttt{docker compose}, sin pasos manuales de configuración
 específicos del entorno del desarrollador.
-\item \textbf{RNF-08 --- Configuración por entorno:} las credenciales y \textit{endpoints} de
+\item \textbf{RNF-08: Configuración por entorno.} Las credenciales y \textit{endpoints} de
 los servicios externos deben aislarse en variables de entorno, sin
 quedar embebidos en el código fuente ni en los artefactos versionados.
-\item \textbf{RNF-09 --- Observabilidad:} las acciones del Orchestrator y de los
+\item \textbf{RNF-09: Observabilidad.} Las acciones del Orchestrator y de los
 agentes especializados deben dejar traza en los \textit{logs} del
 \textit{backend} (emitidos por la salida estándar del proceso que sirve la
 API), suficientes para diagnosticar una sesión \textit{a posteriori} sin
 tener que reproducirla.
-\item \textbf{RNF-10 --- Acotación del contexto conversacional:} una sesión larga no
+\item \textbf{RNF-10: Acotación del contexto conversacional.} Una sesión larga no
 debe agotar la ventana de contexto del modelo. El historial del chat con
 el Orchestrator debe mantenerse dentro de un presupuesto acotado de forma
 automática, sin que el usuario tenga que reiniciar la sesión y sin perder
 la trazabilidad de las decisiones ya tomadas.
+\item \textbf{RNF-11: Recuperación relacional segura.} Las consultas en
+lenguaje natural sobre experimentos, modelos, observaciones y mensajes
+persistidos deben traducirse a SQL de solo lectura, limitarse a un conjunto
+explícito de tablas permitidas y aplicar un límite máximo de resultados. Si
+la pregunta queda fuera de ese alcance, el sistema debe rechazarla sin
+ejecutar SQL.
+\item \textbf{RNF-12: Contraste previo con predicciones.} Antes de ejecutar una
+simulación, el sistema debe poder recuperar las predicciones científicas
+asociadas al modelo o paradigma seleccionado en la primera fase, de modo que el
+análisis posterior pueda comparar la trayectoria observada con una expectativa
+formulada antes de ver los resultados.
 \end{itemize}
+\end{small}
+
+\clearpage
+\section{Trazabilidad de requisitos}
+\label{ap:trazabilidad-requisitos}
+
+La tabla siguiente conecta los objetivos operativos de esta segunda fase
+con los requisitos anteriores y con las evidencias usadas después en el
+capítulo de pruebas. Su finalidad es evitar que los requisitos queden como
+una lista declarativa: cada objetivo se vincula con una forma concreta de
+comprobar que el sistema lo cumple.
+
+\begin{table}[H]
+\begin{center}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{5.7cm}|} \hline
+\textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
+Cargar modelos de la primera fase sin acoplamiento rígido & RF-01, RNF-01, RNF-02 & Pruebas del \texttt{model\_loader}, contrato \texttt{DecisionModel} y escenario multi-modelo. \\ \hline
+Generar y validar entornos de simulación & RF-02, RF-03, RNF-06 & Tests de \texttt{simlab.spec} y \texttt{simlab.environment}; escenario con rejilla \(8\times8\), semilla fija y 30 pasos. \\ \hline
+Observar trayectorias y eventos de decisión & RF-04, RF-12, RNF-03 & Salida estructurada del Tracker, trazas de decisión por agente y pruebas de emisión de eventos en vivo mediante WebSocket. \\ \hline
+Analizar resultados y contrastarlos con conocimiento previo & RF-05, RF-06, RF-08, RNF-12 & \texttt{retrieve\_context}, pre-recuperación del Orchestrator, \texttt{read\_predictions} y gráficas del Analyst. \\ \hline
+Generar informes revisables & RF-07 & Informe PDF del Reporter, plantilla LaTeX, descarga REST y pruebas de generación y descarga de informes. \\ \hline
+Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10, RNF-11 & Tablas persistidas, \texttt{query\_history}/NL-SQL, autocompactación y escritura \(7=7=7\) en PostgreSQL y Qdrant. \\ \hline
+Ofrecer una interfaz reactiva de uso & RF-10, RF-11, RF-12, RF-13, RNF-04 & Playwright, vistas de inspección, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
+\end{tabular}
+\caption[Trazabilidad de requisitos]{Trazabilidad de requisitos. Cada objetivo
+operativo se vincula con sus requisitos y evidencias de validación.}
+\end{center}
+\end{table}
