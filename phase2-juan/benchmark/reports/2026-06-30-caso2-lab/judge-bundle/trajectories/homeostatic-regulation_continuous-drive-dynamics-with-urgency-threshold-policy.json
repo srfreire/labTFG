@@ -1,0 +1,1262 @@
+[
+  {
+    "step": 0,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.78,
+      "setpoint": 0.8,
+      "drive": 0.0004000000000000007,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0004000000000000007,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0012000000000000023,
+        "eat": 0.0004000000000000007,
+        "move_up": -0.0016250000000000032,
+        "move_down": -0.0016250000000000032,
+        "move_left": -0.0016250000000000032,
+        "move_right": -0.0016250000000000032
+      }
+    }
+  },
+  {
+    "step": 1,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.76,
+      "setpoint": 0.8,
+      "drive": 0.001600000000000003,
+      "previous_drive": 0.0004000000000000007,
+      "drive_velocity": 0.0012000000000000023,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0020000000000000035,
+        "eat": 0.001600000000000003,
+        "move_up": -0.0026250000000000045,
+        "move_down": -0.0026250000000000045,
+        "move_left": -0.0026250000000000045,
+        "move_right": -0.0026250000000000045
+      }
+    }
+  },
+  {
+    "step": 2,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.74,
+      "setpoint": 0.8,
+      "drive": 0.0036000000000000064,
+      "previous_drive": 0.001600000000000003,
+      "drive_velocity": 0.0020000000000000035,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.002800000000000005,
+        "eat": 0.0036000000000000064,
+        "move_up": -0.0036250000000000063,
+        "move_down": -0.0036250000000000063,
+        "move_left": -0.0036250000000000063,
+        "move_right": -0.0036250000000000063
+      }
+    }
+  },
+  {
+    "step": 3,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.72,
+      "setpoint": 0.8,
+      "drive": 0.006400000000000012,
+      "previous_drive": 0.0036000000000000064,
+      "drive_velocity": 0.002800000000000005,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.003600000000000006,
+        "eat": 0.006400000000000012,
+        "move_up": -0.004625000000000008,
+        "move_down": -0.004625000000000008,
+        "move_left": -0.004625000000000008,
+        "move_right": -0.004625000000000008
+      }
+    }
+  },
+  {
+    "step": 4,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7,
+      "setpoint": 0.8,
+      "drive": 0.010000000000000018,
+      "previous_drive": 0.006400000000000012,
+      "drive_velocity": 0.003600000000000006,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.004400000000000008,
+        "eat": 0.010000000000000018,
+        "move_up": -0.00562500000000001,
+        "move_down": -0.00562500000000001,
+        "move_left": -0.00562500000000001,
+        "move_right": -0.00562500000000001
+      }
+    }
+  },
+  {
+    "step": 5,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6799999999999999,
+      "setpoint": 0.8,
+      "drive": 0.014400000000000026,
+      "previous_drive": 0.010000000000000018,
+      "drive_velocity": 0.004400000000000008,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0052000000000000084,
+        "eat": 0.014400000000000026,
+        "move_up": -0.006625000000000011,
+        "move_down": -0.006625000000000011,
+        "move_left": -0.006625000000000011,
+        "move_right": -0.006625000000000011
+      }
+    }
+  },
+  {
+    "step": 6,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6599999999999999,
+      "setpoint": 0.8,
+      "drive": 0.019600000000000034,
+      "previous_drive": 0.014400000000000026,
+      "drive_velocity": 0.0052000000000000084,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.006000000000000012,
+        "eat": 0.019600000000000034,
+        "move_up": -0.007625000000000014,
+        "move_down": -0.007625000000000014,
+        "move_left": -0.007625000000000014,
+        "move_right": -0.007625000000000014
+      }
+    }
+  },
+  {
+    "step": 7,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6399999999999999,
+      "setpoint": 0.8,
+      "drive": 0.025600000000000046,
+      "previous_drive": 0.019600000000000034,
+      "drive_velocity": 0.006000000000000012,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.006800000000000014,
+        "eat": 0.025600000000000046,
+        "move_up": -0.008625000000000015,
+        "move_down": -0.008625000000000015,
+        "move_left": -0.008625000000000015,
+        "move_right": -0.008625000000000015
+      }
+    }
+  },
+  {
+    "step": 8,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6149999999999999,
+      "setpoint": 0.8,
+      "drive": 0.03422500000000006,
+      "previous_drive": 0.025600000000000046,
+      "drive_velocity": 0.008625000000000015,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.007800000000000015,
+        "eat": 0.03422500000000006,
+        "move_up": -0.009875000000000016,
+        "move_down": -0.009875000000000016,
+        "move_left": -0.009875000000000016,
+        "move_right": -0.009875000000000016
+      }
+    }
+  },
+  {
+    "step": 9,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5899999999999999,
+      "setpoint": 0.8,
+      "drive": 0.04410000000000008,
+      "previous_drive": 0.03422500000000006,
+      "drive_velocity": 0.009875000000000016,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.008800000000000016,
+        "eat": 0.04410000000000008,
+        "move_up": -0.011125000000000024,
+        "move_down": -0.011125000000000024,
+        "move_left": -0.011125000000000024,
+        "move_right": -0.011125000000000024
+      }
+    }
+  },
+  {
+    "step": 10,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5649999999999998,
+      "setpoint": 0.8,
+      "drive": 0.0552250000000001,
+      "previous_drive": 0.04410000000000008,
+      "drive_velocity": 0.011125000000000024,
+      "behavioural_mode": "EAT",
+      "q_values": {
+        "stay": -0.00980000000000001,
+        "eat": 0.0552250000000001,
+        "move_up": -0.012375000000000018,
+        "move_down": -0.012375000000000018,
+        "move_left": -0.012375000000000018,
+        "move_right": -0.012375000000000018
+      }
+    }
+  },
+  {
+    "step": 11,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "energy_level": 0.8449999999999998,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0552250000000001,
+      "drive_velocity": -0.0552250000000001,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 12,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8249999999999997,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": -1.1093356479670479e-31,
+        "move_down": -1.1093356479670479e-31,
+        "move_left": -1.1093356479670479e-31,
+        "move_right": -1.1093356479670479e-31
+      }
+    }
+  },
+  {
+    "step": 13,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8049999999999997,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0002250000000000104,
+        "eat": 0.0,
+        "move_up": -0.00040000000000001406,
+        "move_down": -0.00040000000000001406,
+        "move_left": -0.00040000000000001406,
+        "move_right": -0.00040000000000001406
+      }
+    }
+  },
+  {
+    "step": 14,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7849999999999997,
+      "setpoint": 0.8,
+      "drive": 0.0002250000000000104,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0002250000000000104,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0010000000000000152,
+        "eat": 0.0002250000000000104,
+        "move_up": -0.0013750000000000192,
+        "move_down": -0.0013750000000000192,
+        "move_left": -0.0013750000000000192,
+        "move_right": -0.0013750000000000192
+      }
+    }
+  },
+  {
+    "step": 15,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7649999999999997,
+      "setpoint": 0.8,
+      "drive": 0.0012250000000000255,
+      "previous_drive": 0.0002250000000000104,
+      "drive_velocity": 0.0010000000000000152,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0018000000000000164,
+        "eat": 0.0012250000000000255,
+        "move_up": -0.0023750000000000208,
+        "move_down": -0.0023750000000000208,
+        "move_left": -0.0023750000000000208,
+        "move_right": -0.0023750000000000208
+      }
+    }
+  },
+  {
+    "step": 16,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7449999999999997,
+      "setpoint": 0.8,
+      "drive": 0.003025000000000042,
+      "previous_drive": 0.0012250000000000255,
+      "drive_velocity": 0.0018000000000000164,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0026000000000000177,
+        "eat": 0.003025000000000042,
+        "move_up": -0.0033750000000000225,
+        "move_down": -0.0033750000000000225,
+        "move_left": -0.0033750000000000225,
+        "move_right": -0.0033750000000000225
+      }
+    }
+  },
+  {
+    "step": 17,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7249999999999996,
+      "setpoint": 0.8,
+      "drive": 0.00562500000000006,
+      "previous_drive": 0.003025000000000042,
+      "drive_velocity": 0.0026000000000000177,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.00340000000000002,
+        "eat": 0.00562500000000006,
+        "move_up": -0.004375000000000026,
+        "move_down": -0.004375000000000026,
+        "move_left": -0.004375000000000026,
+        "move_right": -0.004375000000000026
+      }
+    }
+  },
+  {
+    "step": 18,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7049999999999996,
+      "setpoint": 0.8,
+      "drive": 0.00902500000000008,
+      "previous_drive": 0.00562500000000006,
+      "drive_velocity": 0.00340000000000002,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.00420000000000002,
+        "eat": 0.00902500000000008,
+        "move_up": -0.005375000000000026,
+        "move_down": -0.005375000000000026,
+        "move_left": -0.005375000000000026,
+        "move_right": -0.005375000000000026
+      }
+    }
+  },
+  {
+    "step": 19,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6849999999999996,
+      "setpoint": 0.8,
+      "drive": 0.0132250000000001,
+      "previous_drive": 0.00902500000000008,
+      "drive_velocity": 0.00420000000000002,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0050000000000000235,
+        "eat": 0.0132250000000001,
+        "move_up": -0.006375000000000028,
+        "move_down": -0.006375000000000028,
+        "move_left": -0.006375000000000028,
+        "move_right": -0.006375000000000028
+      }
+    }
+  },
+  {
+    "step": 20,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6649999999999996,
+      "setpoint": 0.8,
+      "drive": 0.018225000000000123,
+      "previous_drive": 0.0132250000000001,
+      "drive_velocity": 0.0050000000000000235,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.005800000000000024,
+        "eat": 0.018225000000000123,
+        "move_up": -0.007375000000000027,
+        "move_down": -0.007375000000000027,
+        "move_left": -0.007375000000000027,
+        "move_right": -0.007375000000000027
+      }
+    }
+  },
+  {
+    "step": 21,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6449999999999996,
+      "setpoint": 0.8,
+      "drive": 0.024025000000000147,
+      "previous_drive": 0.018225000000000123,
+      "drive_velocity": 0.005800000000000024,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.0066000000000000225,
+        "eat": 0.024025000000000147,
+        "move_up": -0.008375000000000032,
+        "move_down": -0.008375000000000032,
+        "move_left": -0.008375000000000032,
+        "move_right": -0.008375000000000032
+      }
+    }
+  },
+  {
+    "step": 22,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6199999999999996,
+      "setpoint": 0.8,
+      "drive": 0.03240000000000018,
+      "previous_drive": 0.024025000000000147,
+      "drive_velocity": 0.008375000000000032,
+      "behavioural_mode": "EAT",
+      "q_values": {
+        "stay": -0.007600000000000023,
+        "eat": 0.03240000000000018,
+        "move_up": -0.00962500000000003,
+        "move_down": -0.00962500000000003,
+        "move_left": -0.00962500000000003,
+        "move_right": -0.00962500000000003
+      }
+    }
+  },
+  {
+    "step": 23,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "energy_level": 0.8999999999999995,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.03240000000000018,
+      "drive_velocity": -0.03240000000000018,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 24,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8799999999999994,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 25,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8599999999999994,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 26,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8399999999999994,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 27,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8199999999999994,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -4.437342591868191e-31,
+        "eat": 0.0,
+        "move_up": -2.5000000000006706e-05,
+        "move_down": -2.5000000000006706e-05,
+        "move_left": -2.5000000000006706e-05,
+        "move_right": -2.5000000000006706e-05
+      }
+    }
+  },
+  {
+    "step": 28,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7999999999999994,
+      "setpoint": 0.8,
+      "drive": 4.437342591868191e-31,
+      "previous_drive": 0.0,
+      "drive_velocity": 4.437342591868191e-31,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.00040000000000002734,
+        "eat": 4.437342591868191e-31,
+        "move_up": -0.0006250000000000344,
+        "move_down": -0.0006250000000000344,
+        "move_left": -0.0006250000000000344,
+        "move_right": -0.0006250000000000344
+      }
+    }
+  },
+  {
+    "step": 29,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7799999999999994,
+      "setpoint": 0.8,
+      "drive": 0.00040000000000002734,
+      "previous_drive": 4.437342591868191e-31,
+      "drive_velocity": 0.00040000000000002734,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.001200000000000029,
+        "eat": 0.00040000000000002734,
+        "move_up": -0.0016250000000000364,
+        "move_down": -0.0016250000000000364,
+        "move_left": -0.0016250000000000364,
+        "move_right": -0.0016250000000000364
+      }
+    }
+  },
+  {
+    "step": 30,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7599999999999993,
+      "setpoint": 0.8,
+      "drive": 0.0016000000000000562,
+      "previous_drive": 0.00040000000000002734,
+      "drive_velocity": 0.001200000000000029,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.00200000000000003,
+        "eat": 0.0016000000000000562,
+        "move_up": -0.002625000000000038,
+        "move_down": -0.002625000000000038,
+        "move_left": -0.002625000000000038,
+        "move_right": -0.002625000000000038
+      }
+    }
+  },
+  {
+    "step": 31,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7399999999999993,
+      "setpoint": 0.8,
+      "drive": 0.003600000000000086,
+      "previous_drive": 0.0016000000000000562,
+      "drive_velocity": 0.00200000000000003,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.002800000000000032,
+        "eat": 0.003600000000000086,
+        "move_up": -0.00362500000000004,
+        "move_down": -0.00362500000000004,
+        "move_left": -0.00362500000000004,
+        "move_right": -0.00362500000000004
+      }
+    }
+  },
+  {
+    "step": 32,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7199999999999993,
+      "setpoint": 0.8,
+      "drive": 0.006400000000000118,
+      "previous_drive": 0.003600000000000086,
+      "drive_velocity": 0.002800000000000032,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.003600000000000033,
+        "eat": 0.006400000000000118,
+        "move_up": -0.004625000000000041,
+        "move_down": -0.004625000000000041,
+        "move_left": -0.004625000000000041,
+        "move_right": -0.004625000000000041
+      }
+    }
+  },
+  {
+    "step": 33,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6999999999999993,
+      "setpoint": 0.8,
+      "drive": 0.010000000000000151,
+      "previous_drive": 0.006400000000000118,
+      "drive_velocity": 0.003600000000000033,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.004400000000000034,
+        "eat": 0.010000000000000151,
+        "move_up": -0.005625000000000043,
+        "move_down": -0.005625000000000043,
+        "move_left": -0.005625000000000043,
+        "move_right": -0.005625000000000043
+      }
+    }
+  },
+  {
+    "step": 34,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6799999999999993,
+      "setpoint": 0.8,
+      "drive": 0.014400000000000185,
+      "previous_drive": 0.010000000000000151,
+      "drive_velocity": 0.004400000000000034,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.005200000000000036,
+        "eat": 0.014400000000000185,
+        "move_up": -0.006625000000000046,
+        "move_down": -0.006625000000000046,
+        "move_left": -0.006625000000000046,
+        "move_right": -0.006625000000000046
+      }
+    }
+  },
+  {
+    "step": 35,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6599999999999993,
+      "setpoint": 0.8,
+      "drive": 0.01960000000000022,
+      "previous_drive": 0.014400000000000185,
+      "drive_velocity": 0.005200000000000036,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0060000000000000366,
+        "eat": 0.01960000000000022,
+        "move_up": -0.007625000000000048,
+        "move_down": -0.007625000000000048,
+        "move_left": -0.007625000000000048,
+        "move_right": -0.007625000000000048
+      }
+    }
+  },
+  {
+    "step": 36,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6399999999999992,
+      "setpoint": 0.8,
+      "drive": 0.025600000000000258,
+      "previous_drive": 0.01960000000000022,
+      "drive_velocity": 0.0060000000000000366,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.006800000000000039,
+        "eat": 0.025600000000000258,
+        "move_up": -0.008625000000000046,
+        "move_down": -0.008625000000000046,
+        "move_left": -0.008625000000000046,
+        "move_right": -0.008625000000000046
+      }
+    }
+  },
+  {
+    "step": 37,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6149999999999992,
+      "setpoint": 0.8,
+      "drive": 0.034225000000000304,
+      "previous_drive": 0.025600000000000258,
+      "drive_velocity": 0.008625000000000046,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.007800000000000043,
+        "eat": 0.034225000000000304,
+        "move_up": -0.009875000000000057,
+        "move_down": -0.009875000000000057,
+        "move_left": -0.009875000000000057,
+        "move_right": -0.009875000000000057
+      }
+    }
+  },
+  {
+    "step": 38,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5899999999999992,
+      "setpoint": 0.8,
+      "drive": 0.04410000000000036,
+      "previous_drive": 0.034225000000000304,
+      "drive_velocity": 0.009875000000000057,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.008800000000000037,
+        "eat": 0.04410000000000036,
+        "move_up": -0.011125000000000052,
+        "move_down": -0.011125000000000052,
+        "move_left": -0.011125000000000052,
+        "move_right": -0.011125000000000052
+      }
+    }
+  },
+  {
+    "step": 39,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5649999999999992,
+      "setpoint": 0.8,
+      "drive": 0.05522500000000041,
+      "previous_drive": 0.04410000000000036,
+      "drive_velocity": 0.011125000000000052,
+      "behavioural_mode": "EAT",
+      "q_values": {
+        "stay": -0.009800000000000045,
+        "eat": 0.05522500000000041,
+        "move_up": -0.012375000000000053,
+        "move_down": -0.012375000000000053,
+        "move_left": -0.012375000000000053,
+        "move_right": -0.012375000000000053
+      }
+    }
+  },
+  {
+    "step": 40,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "energy_level": 0.8449999999999991,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.05522500000000041,
+      "drive_velocity": -0.05522500000000041,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0
+      }
+    }
+  },
+  {
+    "step": 41,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.8249999999999991,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": 0.0,
+        "eat": 0.0,
+        "move_up": -9.98402083170343e-31,
+        "move_down": -9.98402083170343e-31,
+        "move_left": -9.98402083170343e-31,
+        "move_right": -9.98402083170343e-31
+      }
+    }
+  },
+  {
+    "step": 42,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.804999999999999,
+      "setpoint": 0.8,
+      "drive": 0.0,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.0,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.00022500000000003038,
+        "eat": 0.0,
+        "move_up": -0.0004000000000000407,
+        "move_down": -0.0004000000000000407,
+        "move_left": -0.0004000000000000407,
+        "move_right": -0.0004000000000000407
+      }
+    }
+  },
+  {
+    "step": 43,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.784999999999999,
+      "setpoint": 0.8,
+      "drive": 0.00022500000000003038,
+      "previous_drive": 0.0,
+      "drive_velocity": 0.00022500000000003038,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0010000000000000419,
+        "eat": 0.00022500000000003038,
+        "move_up": -0.0013750000000000524,
+        "move_down": -0.0013750000000000524,
+        "move_left": -0.0013750000000000524,
+        "move_right": -0.0013750000000000524
+      }
+    }
+  },
+  {
+    "step": 44,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.764999999999999,
+      "setpoint": 0.8,
+      "drive": 0.0012250000000000722,
+      "previous_drive": 0.00022500000000003038,
+      "drive_velocity": 0.0010000000000000419,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.001800000000000043,
+        "eat": 0.0012250000000000722,
+        "move_up": -0.002375000000000054,
+        "move_down": -0.002375000000000054,
+        "move_left": -0.002375000000000054,
+        "move_right": -0.002375000000000054
+      }
+    }
+  },
+  {
+    "step": 45,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.744999999999999,
+      "setpoint": 0.8,
+      "drive": 0.0030250000000001153,
+      "previous_drive": 0.0012250000000000722,
+      "drive_velocity": 0.001800000000000043,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.002600000000000045,
+        "eat": 0.0030250000000001153,
+        "move_up": -0.003375000000000056,
+        "move_down": -0.003375000000000056,
+        "move_left": -0.003375000000000056,
+        "move_right": -0.003375000000000056
+      }
+    }
+  },
+  {
+    "step": 46,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.724999999999999,
+      "setpoint": 0.8,
+      "drive": 0.00562500000000016,
+      "previous_drive": 0.0030250000000001153,
+      "drive_velocity": 0.002600000000000045,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.003400000000000046,
+        "eat": 0.00562500000000016,
+        "move_up": -0.004375000000000057,
+        "move_down": -0.004375000000000057,
+        "move_left": -0.004375000000000057,
+        "move_right": -0.004375000000000057
+      }
+    }
+  },
+  {
+    "step": 47,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.704999999999999,
+      "setpoint": 0.8,
+      "drive": 0.009025000000000206,
+      "previous_drive": 0.00562500000000016,
+      "drive_velocity": 0.003400000000000046,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0042000000000000474,
+        "eat": 0.009025000000000206,
+        "move_up": -0.0053750000000000586,
+        "move_down": -0.0053750000000000586,
+        "move_left": -0.0053750000000000586,
+        "move_right": -0.0053750000000000586
+      }
+    }
+  },
+  {
+    "step": 48,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6849999999999989,
+      "setpoint": 0.8,
+      "drive": 0.013225000000000254,
+      "previous_drive": 0.009025000000000206,
+      "drive_velocity": 0.0042000000000000474,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0050000000000000495,
+        "eat": 0.013225000000000254,
+        "move_up": -0.006375000000000061,
+        "move_down": -0.006375000000000061,
+        "move_left": -0.006375000000000061,
+        "move_right": -0.006375000000000061
+      }
+    }
+  },
+  {
+    "step": 49,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6649999999999989,
+      "setpoint": 0.8,
+      "drive": 0.018225000000000303,
+      "previous_drive": 0.013225000000000254,
+      "drive_velocity": 0.0050000000000000495,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.005800000000000048,
+        "eat": 0.018225000000000303,
+        "move_up": -0.007375000000000062,
+        "move_down": -0.007375000000000062,
+        "move_left": -0.007375000000000062,
+        "move_right": -0.007375000000000062
+      }
+    }
+  },
+  {
+    "step": 50,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6449999999999989,
+      "setpoint": 0.8,
+      "drive": 0.02402500000000035,
+      "previous_drive": 0.018225000000000303,
+      "drive_velocity": 0.005800000000000048,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.006600000000000054,
+        "eat": 0.02402500000000035,
+        "move_up": -0.008375000000000063,
+        "move_down": -0.008375000000000063,
+        "move_left": -0.008375000000000063,
+        "move_right": -0.008375000000000063
+      }
+    }
+  },
+  {
+    "step": 51,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.6199999999999989,
+      "setpoint": 0.8,
+      "drive": 0.032400000000000415,
+      "previous_drive": 0.02402500000000035,
+      "drive_velocity": 0.008375000000000063,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.007600000000000058,
+        "eat": 0.032400000000000415,
+        "move_up": -0.009625000000000071,
+        "move_down": -0.009625000000000071,
+        "move_left": -0.009625000000000071,
+        "move_right": -0.009625000000000071
+      }
+    }
+  },
+  {
+    "step": 52,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5949999999999989,
+      "setpoint": 0.8,
+      "drive": 0.042025000000000486,
+      "previous_drive": 0.032400000000000415,
+      "drive_velocity": 0.009625000000000071,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.008600000000000052,
+        "eat": 0.042025000000000486,
+        "move_up": -0.010875000000000065,
+        "move_down": -0.010875000000000065,
+        "move_left": -0.010875000000000065,
+        "move_right": -0.010875000000000065
+      }
+    }
+  },
+  {
+    "step": 53,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5699999999999988,
+      "setpoint": 0.8,
+      "drive": 0.05290000000000055,
+      "previous_drive": 0.042025000000000486,
+      "drive_velocity": 0.010875000000000065,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.00960000000000006,
+        "eat": 0.05290000000000055,
+        "move_up": -0.012125000000000073,
+        "move_down": -0.012125000000000073,
+        "move_left": -0.012125000000000073,
+        "move_right": -0.012125000000000073
+      }
+    }
+  },
+  {
+    "step": 54,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5449999999999988,
+      "setpoint": 0.8,
+      "drive": 0.06502500000000062,
+      "previous_drive": 0.05290000000000055,
+      "drive_velocity": 0.012125000000000073,
+      "behavioural_mode": "FORAGE",
+      "q_values": {
+        "stay": -0.010600000000000054,
+        "eat": 0.06502500000000062,
+        "move_up": -0.013375000000000081,
+        "move_down": -0.013375000000000081,
+        "move_left": -0.013375000000000081,
+        "move_right": -0.013375000000000081
+      }
+    }
+  },
+  {
+    "step": 55,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.5199999999999988,
+      "setpoint": 0.8,
+      "drive": 0.0784000000000007,
+      "previous_drive": 0.06502500000000062,
+      "drive_velocity": 0.013375000000000081,
+      "behavioural_mode": "EAT",
+      "q_values": {
+        "stay": -0.011600000000000055,
+        "eat": 0.0784000000000007,
+        "move_up": -0.014625000000000069,
+        "move_down": -0.014625000000000069,
+        "move_left": -0.014625000000000069,
+        "move_right": -0.014625000000000069
+      }
+    }
+  },
+  {
+    "step": 56,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "energy_level": 0.7999999999999987,
+      "setpoint": 0.8,
+      "drive": 1.7749370367472766e-30,
+      "previous_drive": 0.0784000000000007,
+      "drive_velocity": -0.0784000000000007,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.000400000000000054,
+        "eat": 1.7749370367472766e-30,
+        "move_up": -0.0006250000000000678,
+        "move_down": -0.0006250000000000678,
+        "move_left": -0.0006250000000000678,
+        "move_right": -0.0006250000000000678
+      }
+    }
+  },
+  {
+    "step": 57,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7799999999999987,
+      "setpoint": 0.8,
+      "drive": 0.000400000000000054,
+      "previous_drive": 1.7749370367472766e-30,
+      "drive_velocity": 0.000400000000000054,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0012000000000000554,
+        "eat": 0.000400000000000054,
+        "move_up": -0.0016250000000000695,
+        "move_down": -0.0016250000000000695,
+        "move_left": -0.0016250000000000695,
+        "move_right": -0.0016250000000000695
+      }
+    }
+  },
+  {
+    "step": 58,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7599999999999987,
+      "setpoint": 0.8,
+      "drive": 0.0016000000000001094,
+      "previous_drive": 0.000400000000000054,
+      "drive_velocity": 0.0012000000000000554,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0020000000000000573,
+        "eat": 0.0016000000000001094,
+        "move_up": -0.0026250000000000717,
+        "move_down": -0.0026250000000000717,
+        "move_left": -0.0026250000000000717,
+        "move_right": -0.0026250000000000717
+      }
+    }
+  },
+  {
+    "step": 59,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "energy_level": 0.7399999999999987,
+      "setpoint": 0.8,
+      "drive": 0.0036000000000001664,
+      "previous_drive": 0.0016000000000001094,
+      "drive_velocity": 0.0020000000000000573,
+      "behavioural_mode": "REST",
+      "q_values": {
+        "stay": -0.0028000000000000585,
+        "eat": 0.0036000000000001664,
+        "move_up": -0.0036250000000000726,
+        "move_down": -0.0036250000000000726,
+        "move_left": -0.0036250000000000726,
+        "move_right": -0.0036250000000000726
+      }
+    }
+  }
+]

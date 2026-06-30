@@ -1,0 +1,2942 @@
+[
+  {
+    "step": 0,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.4320103097979144,
+        "move_left": 1.420620409417095,
+        "move_right": 1.2821649111916453,
+        "stay": 0.8095313107098838,
+        "eat": 0.8566793629690895
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "noise_sample": {
+        "move_up": -0.04660231251040279,
+        "move_down": 1.5701009775725303,
+        "move_left": 2.2793298277051397,
+        "move_right": 0.024222471072236084,
+        "stay": -1.5480172023433727,
+        "eat": -0.3814535315402815
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_up",
+      "decision_time": 62,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 1,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 0.9850787994946428,
+        "move_left": 1.0596133565235164,
+        "move_right": 1.0631884255939166,
+        "stay": 0.6669897683671676,
+        "eat": 0.7391067890917772
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      },
+      "noise_sample": {
+        "move_up": -0.004472405252050842,
+        "move_down": 0.5070877079547295,
+        "move_left": 0.17812523394876037,
+        "move_right": 0.47215087449102583,
+        "stay": -1.6520145776078716,
+        "eat": -0.3786964985785043
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_up",
+      "decision_time": 42,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      }
+    }
+  },
+  {
+    "step": 2,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.4776256816098234,
+        "move_down": 1.4412517270637755,
+        "move_left": 1.4684889272814188,
+        "move_right": 1.5,
+        "stay": 0.790066811854947,
+        "eat": 1.4107218878794745
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "noise_sample": {
+        "move_up": 0.08271939204703793,
+        "move_down": 0.9455914774685565,
+        "move_left": 0.9500223106431492,
+        "move_right": -0.11439372251944577,
+        "stay": 1.173004223044158,
+        "eat": -0.8332830191287024
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_right",
+      "decision_time": 63,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 3,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9093283299713,
+        "move_down": 1.0007240951312748,
+        "move_left": 1.5,
+        "move_right": 1.0078454959393979,
+        "stay": 0.7641495476086236,
+        "eat": 0.7954649504110131
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      },
+      "noise_sample": {
+        "move_up": 1.1071147369922005,
+        "move_down": -1.9544836425267063,
+        "move_left": 1.6409564521979259,
+        "move_right": 1.0145343103570998,
+        "stay": 0.05597405665214314,
+        "eat": 1.332127920927453
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_left",
+      "decision_time": 33,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      }
+    }
+  },
+  {
+    "step": 4,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1868715169608528,
+        "move_down": 1.3014183508272896,
+        "move_left": 1.5,
+        "move_right": 1.3221252623785122,
+        "stay": 0.7721909107661149,
+        "eat": 1.352063869214853
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "noise_sample": {
+        "move_up": 0.4843782644284401,
+        "move_down": 0.46272803082578123,
+        "move_left": 1.1363739576155818,
+        "move_right": 1.3540701033107998,
+        "stay": 1.2535236917029877,
+        "eat": 0.20891898377787882
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_left",
+      "decision_time": 59,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 5,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.8851948577708539,
+        "move_down": 0.9712282876261242,
+        "move_left": 0.9087824174213406,
+        "move_right": 1.5,
+        "stay": 0.7526216330504705,
+        "eat": 0.7517918199215708
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      },
+      "noise_sample": {
+        "move_up": -1.4380721369176583,
+        "move_down": -0.43030333959351275,
+        "move_left": 1.0180981228925094,
+        "move_right": -1.1166969284106545,
+        "stay": 0.2591847588503371,
+        "eat": -0.7394984903590005
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_right",
+      "decision_time": 34,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      }
+    }
+  },
+  {
+    "step": 6,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.4741541678914327,
+        "move_down": 1.2030883760779443,
+        "move_left": 1.4243890500261736,
+        "move_right": 1.5,
+        "stay": 0.7552332397849015,
+        "eat": 1.3513352666421867
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "noise_sample": {
+        "move_up": -1.8123627680865058,
+        "move_down": -0.3040710215023877,
+        "move_left": -0.10925353679385184,
+        "move_right": 0.9996981134687726,
+        "stay": -0.7128596282859013,
+        "eat": 0.73053087605256
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_right",
+      "decision_time": 63,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 7,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0246938581250111,
+        "move_down": 1.0487197032725128,
+        "move_left": 1.5,
+        "move_right": 1.1091939396209185,
+        "stay": 0.6748285333609831,
+        "eat": 0.7285784341508834
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      },
+      "noise_sample": {
+        "move_up": 0.7439724211177066,
+        "move_down": -0.07551526569496889,
+        "move_left": 0.27001874618560334,
+        "move_right": 0.5254710258843971,
+        "stay": -2.3461154771154575,
+        "eat": -0.9263181527157239
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "chosen_action": "move_left",
+      "decision_time": 38,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0
+      }
+    }
+  },
+  {
+    "step": 8,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.3946347000872528,
+        "move_down": 1.3276214209549837,
+        "move_left": 1.3774878881334232,
+        "move_right": 1.3469555091265977,
+        "stay": 0.6871552652815851,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.09999999999999998
+      },
+      "noise_sample": {
+        "move_up": -0.858814718717823,
+        "move_down": 1.45181476647767,
+        "move_left": -1.166699536747472,
+        "move_right": 1.1481571472535435,
+        "stay": -0.23960220699857712,
+        "eat": 0.6339606922252383
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.09999999999999998
+      },
+      "chosen_action": "eat",
+      "decision_time": 65,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.09999999999999998
+      }
+    }
+  },
+  {
+    "step": 9,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9315911127152354,
+        "move_down": 1.0051020123380605,
+        "move_left": 1.0359285614099265,
+        "move_right": 1.5,
+        "stay": 0.7413970784236102,
+        "eat": 0.7449703735642542
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.09
+      },
+      "noise_sample": {
+        "move_up": -0.07768190743265865,
+        "move_down": 0.12995236464966803,
+        "move_left": 0.3852371407046828,
+        "move_right": 1.4881380360354026,
+        "stay": -1.0380495312025744,
+        "eat": 1.4197067502673166
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.08999999999999998
+      },
+      "chosen_action": "move_right",
+      "decision_time": 38,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.09
+      }
+    }
+  },
+  {
+    "step": 10,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.4798558063008107,
+        "move_down": 1.5,
+        "move_left": 1.49037127201488,
+        "move_right": 1.4598209054415756,
+        "stay": 0.7882669775480213,
+        "eat": 1.4464706200667814
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 1.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.08099999999999999
+      },
+      "noise_sample": {
+        "move_up": -0.08867144418612684,
+        "move_down": -0.13042946943129746,
+        "move_left": 0.8257034655309132,
+        "move_right": -0.8979577928090289,
+        "stay": -0.06424664492402596,
+        "eat": -1.6027915888339581
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.08099999999999999
+      },
+      "chosen_action": "move_down",
+      "decision_time": 81,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 1.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.08099999999999999
+      }
+    }
+  },
+  {
+    "step": 11,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 0.8923453522844503,
+        "move_left": 1.0346993534813718,
+        "move_right": 1.166104107156153,
+        "stay": 0.8196795158488754,
+        "eat": 0.883490344067416
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0729
+      },
+      "noise_sample": {
+        "move_up": 0.13205299126630773,
+        "move_down": -0.015727780147487613,
+        "move_left": -0.529651395128345,
+        "move_right": -0.9483932031493679,
+        "stay": 1.1382795708455993,
+        "eat": -0.7788499965088684
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.07289999999999999
+      },
+      "chosen_action": "move_up",
+      "decision_time": 40,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0729
+      }
+    }
+  },
+  {
+    "step": 12,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.4819460858079399,
+        "move_down": 1.5,
+        "move_left": 1.4969366843618848,
+        "move_right": 1.4157229406398208,
+        "stay": 0.6974823124908198,
+        "eat": 1.4964747693202565
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.06561
+      },
+      "noise_sample": {
+        "move_up": 1.075498317321793,
+        "move_down": -0.2672360623300756,
+        "move_left": -1.289289607711727,
+        "move_right": 0.3248195579579196,
+        "stay": 0.4898720738623198,
+        "eat": 0.08502289638377544
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.06561
+      },
+      "chosen_action": "move_down",
+      "decision_time": 71,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.06561
+      }
+    }
+  },
+  {
+    "step": 13,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 0.9734132327674211,
+        "move_left": 0.9196728096026435,
+        "move_right": 1.0731252370430453,
+        "stay": 0.6899087649118294,
+        "eat": 0.7863065570697925
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.059049
+      },
+      "noise_sample": {
+        "move_up": 0.08134254103182328,
+        "move_down": 0.12086043217681575,
+        "move_left": -1.6671959302607566,
+        "move_right": -0.24600712104155473,
+        "stay": 0.5386205684309929,
+        "eat": 0.6211028956000093
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.059049000000000004
+      },
+      "chosen_action": "move_up",
+      "decision_time": 35,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.059049
+      }
+    }
+  },
+  {
+    "step": 14,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.466117155077083,
+        "move_left": 1.3809372527775772,
+        "move_right": 1.4149761323452998,
+        "stay": 0.7867272001470804,
+        "eat": 1.4896612847764674
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0531441
+      },
+      "noise_sample": {
+        "move_up": -0.8875694197626371,
+        "move_down": -1.8261054676042094,
+        "move_left": -0.4036330819120447,
+        "move_right": -0.9577893133879465,
+        "stay": -0.9457638597888242,
+        "eat": -0.4662653130007389
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.05314410000000001
+      },
+      "chosen_action": "move_up",
+      "decision_time": 71,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0531441
+      }
+    }
+  },
+  {
+    "step": 15,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.2928370285789392,
+        "move_left": 1.3309804862468575,
+        "move_right": 1.4138843905927223,
+        "stay": 0.6448035042428346,
+        "eat": 1.3759279200834817
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.04782969
+      },
+      "noise_sample": {
+        "move_up": 1.4720940202210941,
+        "move_down": 1.1115435809642757,
+        "move_left": 0.257166359472406,
+        "move_right": -0.8500172199047868,
+        "stay": -1.047256620402961,
+        "eat": -1.43102617635514
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.04782969000000001
+      },
+      "chosen_action": "move_up",
+      "decision_time": 68,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.04782969
+      }
+    }
+  },
+  {
+    "step": 16,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.3096499057076307,
+        "move_down": 1.5,
+        "move_left": 1.369744133727901,
+        "move_right": 1.3579731170701894,
+        "stay": 0.6856228711455937,
+        "eat": 1.4134374607563664
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.04304672100000001
+      },
+      "noise_sample": {
+        "move_up": -2.112801959030111,
+        "move_down": 0.8571452501944914,
+        "move_left": 0.44404102239123566,
+        "move_right": 0.11609117144616996,
+        "stay": 0.7907650365807412,
+        "eat": -1.1271502260242174
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.04304672100000001
+      },
+      "chosen_action": "move_down",
+      "decision_time": 68,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.04304672100000001
+      }
+    }
+  },
+  {
+    "step": 17,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.084626992583712,
+        "move_left": 1.0559833016533435,
+        "move_right": 1.0552554870699487,
+        "stay": 0.7482811272234372,
+        "eat": 0.6617389679165285
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0387420489
+      },
+      "noise_sample": {
+        "move_up": 1.9325688340196359,
+        "move_down": 0.845360433009544,
+        "move_left": -0.3945827399554642,
+        "move_right": 0.10694931316701613,
+        "stay": 0.6610165564815244,
+        "eat": -0.4934156430418483
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.03874204890000001
+      },
+      "chosen_action": "move_up",
+      "decision_time": 35,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0387420489
+      }
+    }
+  },
+  {
+    "step": 18,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.2998254236030684,
+        "move_down": 1.5,
+        "move_left": 1.4764681600622598,
+        "move_right": 1.3905649422470334,
+        "stay": 0.7759418789811315,
+        "eat": 1.3623747169816496
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.03486784401000001
+      },
+      "noise_sample": {
+        "move_up": 0.05396485828805174,
+        "move_down": -0.47512977580146964,
+        "move_left": -0.005083434388703237,
+        "move_right": 1.1727716187508823,
+        "stay": -0.37208952750445173,
+        "eat": -0.3881953817655112
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.03486784401000001
+      },
+      "chosen_action": "move_down",
+      "decision_time": 61,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.03486784401000001
+      }
+    }
+  },
+  {
+    "step": 19,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.0413273468582949,
+        "move_left": 1.0780183582040839,
+        "move_right": 1.077205304365382,
+        "stay": 0.7011758107483864,
+        "eat": 0.7599188666856175
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.031381059609
+      },
+      "noise_sample": {
+        "move_up": 0.6965082915704366,
+        "move_down": 0.896903166632141,
+        "move_left": -0.5786613856223687,
+        "move_right": 0.6340229349033165,
+        "stay": -1.3262405089574376,
+        "eat": -1.7186270289326246
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.03138105960900001
+      },
+      "chosen_action": "move_up",
+      "decision_time": 38,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.031381059609
+      }
+    }
+  },
+  {
+    "step": 20,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.422048737481344,
+        "move_down": 1.4069253248101912,
+        "move_left": 1.3878628671799444,
+        "move_right": 1.284149771805322,
+        "stay": 0.7301962514279868,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.4,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.12824295364809998
+      },
+      "noise_sample": {
+        "move_up": -0.7213342117118317,
+        "move_down": 1.1501246652590718,
+        "move_left": 0.8028621684242807,
+        "move_right": -1.2227910348216389,
+        "stay": 0.5660675574774319,
+        "eat": 0.6116630973328852
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.12824295364809998
+      },
+      "chosen_action": "eat",
+      "decision_time": 69,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.4,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.12824295364809998
+      }
+    }
+  },
+  {
+    "step": 21,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.107238176004433,
+        "move_down": 1.3026996133522075,
+        "move_left": 1.200646050254887,
+        "move_right": 1.4636293345112212,
+        "stay": 0.5357338415503226,
+        "eat": 0.907879971732177
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.11541865828328998
+      },
+      "noise_sample": {
+        "move_up": 0.07157591749660351,
+        "move_down": -0.28476846430236397,
+        "move_left": 0.016443181176083798,
+        "move_right": 0.0844835394325052,
+        "stay": 0.12203731427845638,
+        "eat": 0.7131256997634449
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.11541865828328998
+      },
+      "chosen_action": "move_right",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.11541865828328998
+      }
+    }
+  },
+  {
+    "step": 22,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1276659486608922,
+        "move_down": 1.4327946647103027,
+        "move_left": 1.1121657347920901,
+        "move_right": 1.5,
+        "stay": 0.8420460605713749,
+        "eat": 0.7974371492041049
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.10387679245496098
+      },
+      "noise_sample": {
+        "move_up": 0.7523365225176418,
+        "move_down": -1.6091821327216214,
+        "move_left": 0.9725467480996155,
+        "move_right": 0.12168852816501737,
+        "stay": 1.0257123111376905,
+        "eat": -1.3389008714271222
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.10387679245496098
+      },
+      "chosen_action": "move_right",
+      "decision_time": 79,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.10387679245496098
+      }
+    }
+  },
+  {
+    "step": 23,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9565674510641449,
+        "move_down": 1.5,
+        "move_left": 0.9803824299885162,
+        "move_right": 0.9167808197945521,
+        "stay": 0.7148084200188387,
+        "eat": 0.7787222138736138
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0934891132094648
+      },
+      "noise_sample": {
+        "move_up": -0.06699501701671626,
+        "move_down": -0.430237319651357,
+        "move_left": -0.725168207032609,
+        "move_right": -1.893318066622731,
+        "stay": 1.5509468333272902,
+        "eat": -0.7087439419663611
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.09348911320946489
+      },
+      "chosen_action": "move_down",
+      "decision_time": 37,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.0934891132094648
+      }
+    }
+  },
+  {
+    "step": 24,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.3349185188980144,
+        "move_down": 1.4379843548983475,
+        "move_left": 1.4792262344283635,
+        "move_right": 1.4379529689539592,
+        "stay": 0.8056982599544785,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.18414020188851837
+      },
+      "noise_sample": {
+        "move_up": -1.6850626815730774,
+        "move_down": 0.14936434572659438,
+        "move_left": 0.00814197179558453,
+        "move_right": 0.5751977912901068,
+        "stay": -0.755701650743484,
+        "eat": -0.053458041751225455
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.18414020188851837
+      },
+      "chosen_action": "eat",
+      "decision_time": 74,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.18414020188851837
+      }
+    }
+  },
+  {
+    "step": 25,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.2242424746834641,
+        "move_down": 1.3689979849143243,
+        "move_left": 1.467347142741346,
+        "move_right": 1.0599849514308652,
+        "stay": 0.8733694840995909,
+        "eat": 0.7941610872289078
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.16572618169966655
+      },
+      "noise_sample": {
+        "move_up": -0.5459672630894421,
+        "move_down": 0.14509451408285662,
+        "move_left": 0.32315689052594776,
+        "move_right": -0.3698094979236686,
+        "stay": 1.0031814731951443,
+        "eat": -0.19152307148555803
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.16572618169966655
+      },
+      "chosen_action": "move_left",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.16572618169966655
+      }
+    }
+  },
+  {
+    "step": 26,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1573104839231623,
+        "move_down": 1.5,
+        "move_left": 1.1048119226531625,
+        "move_right": 1.1108198989147382,
+        "stay": 0.7226158379632603,
+        "eat": 0.9536541260830632
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.14915356352969988
+      },
+      "noise_sample": {
+        "move_up": 0.062161279598084644,
+        "move_down": 0.8678348621683097,
+        "move_left": 0.5837572049940002,
+        "move_right": 0.2722559567633772,
+        "stay": 0.4471963816794998,
+        "eat": -0.3254689582665373
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.14915356352969988
+      },
+      "chosen_action": "move_down",
+      "decision_time": 75,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.14915356352969988
+      }
+    }
+  },
+  {
+    "step": 27,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9213476080750492,
+        "move_down": 1.5,
+        "move_left": 1.0059363377578494,
+        "move_right": 1.1146146042139835,
+        "stay": 0.8524705214593478,
+        "eat": 0.7662093482526291
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1342382071767299
+      },
+      "noise_sample": {
+        "move_up": -1.3515881266495469,
+        "move_down": 1.179253086736517,
+        "move_left": -1.7858658282505488,
+        "move_right": 0.4114155404272885,
+        "stay": 0.4874548779031387,
+        "eat": 0.6549234358014933
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1342382071767299
+      },
+      "chosen_action": "move_down",
+      "decision_time": 39,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1342382071767299
+      }
+    }
+  },
+  {
+    "step": 28,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.4985116382263428,
+        "move_down": 1.3236969602568787,
+        "move_left": 1.3367618594484336,
+        "move_right": 1.2026067519565815,
+        "stay": 0.7873923122095043,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.22081438645905688
+      },
+      "noise_sample": {
+        "move_up": 0.16137876920571964,
+        "move_down": 0.25540045135887607,
+        "move_left": 1.9961217320408984,
+        "move_right": -0.9345816983391784,
+        "stay": 1.3529054632953674,
+        "eat": 0.21894605436542308
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.22081438645905688
+      },
+      "chosen_action": "eat",
+      "decision_time": 64,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.22081438645905688
+      }
+    }
+  },
+  {
+    "step": 29,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1925976156716667,
+        "move_down": 1.5,
+        "move_left": 1.1534063637262046,
+        "move_right": 1.1628501449465525,
+        "stay": 0.6847221681765812,
+        "eat": 0.7910536918108219
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.1987329478131512
+      },
+      "noise_sample": {
+        "move_up": -0.053304536288410975,
+        "move_down": 2.255682154305415,
+        "move_left": -0.204562142823365,
+        "move_right": -0.16235956370598956,
+        "stay": -0.17822377780427884,
+        "eat": 1.1274880221361256
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1987329478131512
+      },
+      "chosen_action": "move_down",
+      "decision_time": 91,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.1987329478131512
+      }
+    }
+  },
+  {
+    "step": 30,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.990055703131111,
+        "move_down": 1.1753782459859559,
+        "move_left": 1.5,
+        "move_right": 1.1573475557108346,
+        "stay": 0.6801660693136118,
+        "eat": 1.0051640580142331
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.1788596530318361
+      },
+      "noise_sample": {
+        "move_up": 1.0637034858858803,
+        "move_down": -1.726650128444735,
+        "move_left": 0.6299578121147086,
+        "move_right": -0.40603760391304494,
+        "stay": -0.06649241739675969,
+        "eat": -0.37467448793464747
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1788596530318361
+      },
+      "chosen_action": "move_left",
+      "decision_time": 83,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.1788596530318361
+      }
+    }
+  },
+  {
+    "step": 31,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9338008077849552,
+        "move_down": 1.007093156693482,
+        "move_left": 1.5,
+        "move_right": 1.0250059272641197,
+        "stay": 0.6509057435687253,
+        "eat": 0.8133272255257545
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1609736877286525
+      },
+      "noise_sample": {
+        "move_up": -0.07041613304231426,
+        "move_down": 1.8892335100989872,
+        "move_left": 1.0444948227583362,
+        "move_right": 0.15655630273453136,
+        "stay": -0.9447176775000982,
+        "eat": 0.8606438167406584
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1609736877286525
+      },
+      "chosen_action": "move_left",
+      "decision_time": 41,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1609736877286525
+      }
+    }
+  },
+  {
+    "step": 32,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.3111207839049364,
+        "move_down": 1.3081147443770342,
+        "move_left": 1.4412549890040995,
+        "move_right": 1.3015864063028537,
+        "stay": 0.7775680185784127,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.24487631895578724
+      },
+      "noise_sample": {
+        "move_up": -1.001392821624663,
+        "move_down": 0.5402073759727889,
+        "move_left": -0.6982661664302852,
+        "move_right": 1.4385551794027451,
+        "stay": -0.12189621578677359,
+        "eat": 0.3752124470717218
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.24487631895578724
+      },
+      "chosen_action": "eat",
+      "decision_time": 62,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.24487631895578724
+      }
+    }
+  },
+  {
+    "step": 33,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.0202194814633363,
+        "move_left": 1.1912767627589085,
+        "move_right": 0.9869313699945794,
+        "stay": 0.6667576355391037,
+        "eat": 0.8851776877636938
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.2203886870602085
+      },
+      "noise_sample": {
+        "move_up": 0.5099704846660682,
+        "move_down": -2.3463021474483137,
+        "move_left": -0.17989351046715987,
+        "move_right": -0.3210104218903917,
+        "stay": 0.013104855279923774,
+        "eat": 0.551986530943662
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.2203886870602085
+      },
+      "chosen_action": "move_up",
+      "decision_time": 63,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.2203886870602085
+      }
+    }
+  },
+  {
+    "step": 34,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.037255511177027,
+        "move_down": 1.1204734273346324,
+        "move_left": 1.5,
+        "move_right": 1.0189950411664073,
+        "stay": 0.7896381994840125,
+        "eat": 0.8545289251256954
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1983498183541876
+      },
+      "noise_sample": {
+        "move_up": 1.197241609915535,
+        "move_down": 2.3262973270462717,
+        "move_left": 2.0671133191044024,
+        "move_right": -0.011163594830763582,
+        "stay": -0.13900079684457206,
+        "eat": 0.15164962702931717
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.19834981835418766
+      },
+      "chosen_action": "move_left",
+      "decision_time": 36,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1983498183541876
+      }
+    }
+  },
+  {
+    "step": 35,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.3803082960406645,
+        "move_down": 1.3014263025893487,
+        "move_left": 1.36632839964906,
+        "move_right": 1.3434241754216123,
+        "stay": 0.7374574951043109,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.5,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.27851483651876885
+      },
+      "noise_sample": {
+        "move_up": 0.7017962253231027,
+        "move_down": -1.8705928793985542,
+        "move_left": -1.811308508315759,
+        "move_right": 1.939381111521454,
+        "stay": 1.004103223476763,
+        "eat": 0.4205402987696456
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.27851483651876885
+      },
+      "chosen_action": "eat",
+      "decision_time": 59,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.5,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.27851483651876885
+      }
+    }
+  },
+  {
+    "step": 36,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 0.9505349125159989,
+        "move_left": 0.9999395886595472,
+        "move_right": 1.456686669639454,
+        "stay": 0.794628552240339,
+        "eat": 0.8696685918211747
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 1.0,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.25066335286689195
+      },
+      "noise_sample": {
+        "move_up": 0.2745310834904272,
+        "move_down": -0.6208903357191686,
+        "move_left": -0.1442433389641853,
+        "move_right": -0.38697630782316245,
+        "stay": -0.425357622324724,
+        "eat": 0.2374186643728
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.25066335286689195
+      },
+      "chosen_action": "move_up",
+      "decision_time": 56,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 1.0,
+        "move_right": 2.0,
+        "stay": 0.0,
+        "eat": 0.25066335286689195
+      }
+    }
+  },
+  {
+    "step": 37,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0921933010271614,
+        "move_down": 1.050238477814189,
+        "move_left": 1.1104719670116754,
+        "move_right": 1.5,
+        "stay": 0.7669080724055222,
+        "eat": 0.7501748185357392
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2255970175802027
+      },
+      "noise_sample": {
+        "move_up": 0.506602714598472,
+        "move_down": -0.8008233304076344,
+        "move_left": 0.12041163837503881,
+        "move_right": 0.7709694345297069,
+        "stay": 0.9895239103141346,
+        "eat": 0.3894304805699391
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.22559701758020276
+      },
+      "chosen_action": "move_right",
+      "decision_time": 35,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2255970175802027
+      }
+    }
+  },
+  {
+    "step": 38,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.237364667174763,
+        "move_down": 1.4028454983700938,
+        "move_left": 1.330848274348644,
+        "move_right": 1.289793952034202,
+        "stay": 0.7072093496534121,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.30303731582218246
+      },
+      "noise_sample": {
+        "move_up": -1.135209156126855,
+        "move_down": -0.08978432157645999,
+        "move_left": 1.8439208813524348,
+        "move_right": -0.8120444227126515,
+        "stay": -0.9245644723351546,
+        "eat": 0.1199968640145275
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.30303731582218246
+      },
+      "chosen_action": "eat",
+      "decision_time": 60,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.30303731582218246
+      }
+    }
+  },
+  {
+    "step": 39,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.38248135097767,
+        "move_down": 1.1674561426057253,
+        "move_left": 1.1582873827530837,
+        "move_right": 1.5,
+        "stay": 0.8299514306742526,
+        "eat": 0.7401165144557941
+      },
+      "drift_rate": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.27273358423996424
+      },
+      "noise_sample": {
+        "move_up": 0.5174306424065818,
+        "move_down": 0.21788911384475915,
+        "move_left": 0.9813758334477082,
+        "move_right": 1.553723899407086,
+        "stay": -1.1142211122419363,
+        "eat": -0.24765598678923206
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.27273358423996424
+      },
+      "chosen_action": "move_right",
+      "decision_time": 64,
+      "q_values": {
+        "move_up": 2.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.27273358423996424
+      }
+    }
+  },
+  {
+    "step": 40,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 1.0182824484328454,
+        "move_left": 1.1014765295224183,
+        "move_right": 1.0308107325358637,
+        "stay": 0.7036888863510349,
+        "eat": 0.7611276581611638
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2454602258159677
+      },
+      "noise_sample": {
+        "move_up": -0.984737414554256,
+        "move_down": 0.14434790262485317,
+        "move_left": 0.37655211740832395,
+        "move_right": 0.5971450006084889,
+        "stay": 0.15369408211209362,
+        "eat": -0.1047237225207092
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.24546022581596783
+      },
+      "chosen_action": "move_up",
+      "decision_time": 37,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2454602258159677
+      }
+    }
+  },
+  {
+    "step": 41,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.2021129663838077,
+        "move_down": 1.2917652429896118,
+        "move_left": 1.28112927103148,
+        "move_right": 1.2304111635805532,
+        "stay": 0.7736583178739321,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.32091420323437103
+      },
+      "noise_sample": {
+        "move_up": 1.0720964845776801,
+        "move_down": 2.1865108728667155,
+        "move_left": -2.311684709625259,
+        "move_right": 0.022554394300798673,
+        "stay": -0.9699186724404942,
+        "eat": -0.09576463311722386
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.32091420323437103
+      },
+      "chosen_action": "eat",
+      "decision_time": 54,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 0.5,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.32091420323437103
+      }
+    }
+  },
+  {
+    "step": 42,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.5,
+        "move_down": 0.9124334565722267,
+        "move_left": 1.4734188831398702,
+        "move_right": 1.0412573142955925,
+        "stay": 0.7799743853748579,
+        "eat": 1.15996243317157
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.28882278291093394
+      },
+      "noise_sample": {
+        "move_up": 1.2590460771611114,
+        "move_down": -0.8254777645442261,
+        "move_left": 0.5259459421140574,
+        "move_right": 0.28312226937427976,
+        "stay": -0.5118565998849623,
+        "eat": 0.4816979763568102
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.28882278291093394
+      },
+      "chosen_action": "move_up",
+      "decision_time": 76,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.28882278291093394
+      }
+    }
+  },
+  {
+    "step": 43,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0276093135473892,
+        "move_down": 1.1384667460156812,
+        "move_left": 1.5,
+        "move_right": 1.0145617351582141,
+        "stay": 0.6930751281727621,
+        "eat": 0.9173986223531803
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2599405046198404
+      },
+      "noise_sample": {
+        "move_up": -0.12025741636527053,
+        "move_down": 0.9892816221658929,
+        "move_left": 1.3395484379907232,
+        "move_right": -1.4932534618620152,
+        "stay": 0.8675542861196542,
+        "eat": 2.3893467981219967
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.25994050461984053
+      },
+      "chosen_action": "move_left",
+      "decision_time": 37,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.2599405046198404
+      }
+    }
+  },
+  {
+    "step": 44,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.2176085861009798,
+        "move_down": 1.2931281825458472,
+        "move_left": 1.3401696118818156,
+        "move_right": 1.3356205971873354,
+        "stay": 0.8404102584134843,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.2857142857142857,
+        "move_down": 0.4,
+        "move_left": 0.4,
+        "move_right": 0.2857142857142857,
+        "stay": 0.0,
+        "eat": 0.33394645415785645
+      },
+      "noise_sample": {
+        "move_up": -1.8204965622954363,
+        "move_down": 0.12665163858261888,
+        "move_left": -0.438039673454916,
+        "move_right": -1.0302184704021433,
+        "stay": -1.9956906427537096,
+        "eat": -0.0434016891700117
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.33394645415785645
+      },
+      "chosen_action": "eat",
+      "decision_time": 55,
+      "q_values": {
+        "move_up": 0.2857142857142857,
+        "move_down": 0.4,
+        "move_left": 0.4,
+        "move_right": 0.2857142857142857,
+        "stay": 0.0,
+        "eat": 0.33394645415785645
+      }
+    }
+  },
+  {
+    "step": 45,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.076222627551419,
+        "move_down": 1.2193956422865766,
+        "move_left": 1.1417640300250564,
+        "move_right": 0.9447697770930017,
+        "stay": 0.6841355709908277,
+        "eat": 0.9125153483251062
+      },
+      "drift_rate": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.5,
+        "move_right": 0.3333333333333333,
+        "stay": 0.0,
+        "eat": 0.3005518087420708
+      },
+      "noise_sample": {
+        "move_up": -1.1328506765485034,
+        "move_down": 1.0440339586334033,
+        "move_left": -0.22700871229947367,
+        "move_right": 0.30730061561045374,
+        "stay": 1.3342372532250086,
+        "eat": 0.7183609930334593
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.3005518087420708
+      },
+      "chosen_action": "move_down",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.5,
+        "move_right": 0.3333333333333333,
+        "stay": 0.0,
+        "eat": 0.3005518087420708
+      }
+    }
+  },
+  {
+    "step": 46,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.136275473717865,
+        "move_down": 1.1659646437217694,
+        "move_left": 1.303727194970545,
+        "move_right": 0.8340571567737655,
+        "stay": 0.6116729434924376,
+        "eat": 1.0073482134254876
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.27049662786786377
+      },
+      "noise_sample": {
+        "move_up": -2.041109034404741,
+        "move_down": -0.310381469268029,
+        "move_left": 0.10230654607347217,
+        "move_right": 2.0226130192762457,
+        "stay": 0.7135609198907881,
+        "eat": 1.0003096146653572
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.27049662786786377
+      },
+      "chosen_action": "move_left",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.27049662786786377
+      }
+    }
+  },
+  {
+    "step": 47,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1430093913573844,
+        "move_down": 1.3335284058510906,
+        "move_left": 1.3362792969873287,
+        "move_right": 1.4139374175240962,
+        "stay": 0.8587644881337273,
+        "eat": 1.045717047393696
+      },
+      "drift_rate": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.5,
+        "move_right": 0.3333333333333333,
+        "stay": 0.0,
+        "eat": 0.2434469650810774
+      },
+      "noise_sample": {
+        "move_up": -0.1123558917574361,
+        "move_down": 0.5723403460549396,
+        "move_left": -1.7186437190580206,
+        "move_right": 2.0059327303267347,
+        "stay": -0.3904859615808284,
+        "eat": 2.0926724975207596
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.2434469650810774
+      },
+      "chosen_action": "move_right",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.5,
+        "move_right": 0.3333333333333333,
+        "stay": 0.0,
+        "eat": 0.2434469650810774
+      }
+    }
+  },
+  {
+    "step": 48,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0958591281923682,
+        "move_down": 1.2179298980113178,
+        "move_left": 1.3847676406755878,
+        "move_right": 0.9043464827606308,
+        "stay": 0.7774559005006056,
+        "eat": 1.1084516981986887
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.21910226857296966
+      },
+      "noise_sample": {
+        "move_up": 0.07582071837577758,
+        "move_down": -0.4566282430832576,
+        "move_left": 1.2446698660044548,
+        "move_right": -0.7115621177914954,
+        "stay": -0.31892828846378496,
+        "eat": -0.8202996979417656
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.21910226857296966
+      },
+      "chosen_action": "move_left",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.21910226857296966
+      }
+    }
+  },
+  {
+    "step": 49,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1485245136843003,
+        "move_down": 1.3947929618809065,
+        "move_left": 1.3963502507127634,
+        "move_right": 1.0506298747552543,
+        "stay": 0.7247537505391096,
+        "eat": 0.9259543099687331
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.1971920417156727
+      },
+      "noise_sample": {
+        "move_up": 0.17386538899808743,
+        "move_down": -1.2271191419326726,
+        "move_left": -0.721522429733119,
+        "move_right": -0.21246521892775516,
+        "stay": -0.5014369568038682,
+        "eat": 0.7230388297495418
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1971920417156727
+      },
+      "chosen_action": "move_left",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.1971920417156727
+      }
+    }
+  },
+  {
+    "step": 50,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0021385544819565,
+        "move_down": 1.4020389908865407,
+        "move_left": 1.5,
+        "move_right": 1.215159556644419,
+        "stay": 0.6082504150453437,
+        "eat": 0.7457024691881825
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.17747283754410542
+      },
+      "noise_sample": {
+        "move_up": 1.8686272129316777,
+        "move_down": 1.6003715348702314,
+        "move_left": 0.6554281011733814,
+        "move_right": 1.7512048337816808,
+        "stay": 1.8471471524166816,
+        "eat": -1.885904982412015
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.17747283754410542
+      },
+      "chosen_action": "move_left",
+      "decision_time": 69,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.17747283754410542
+      }
+    }
+  },
+  {
+    "step": 51,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0107542005650156,
+        "move_down": 1.5,
+        "move_left": 0.9777695697978313,
+        "move_right": 1.0018647523347182,
+        "stay": 0.7740326428053873,
+        "eat": 0.8965936999464482
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1597255537896949
+      },
+      "noise_sample": {
+        "move_up": -1.0451497041455604,
+        "move_down": -0.5070318330480267,
+        "move_left": -0.9451087585573927,
+        "move_right": -0.8842946678688757,
+        "stay": 0.7260636692439905,
+        "eat": 0.4340489382773142
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.15972555378969489
+      },
+      "chosen_action": "move_down",
+      "decision_time": 35,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1597255537896949
+      }
+    }
+  },
+  {
+    "step": 52,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.168464470685241,
+        "move_down": 1.3659289721397607,
+        "move_left": 1.4146254876174922,
+        "move_right": 1.1909473937971735,
+        "stay": 0.7976051390415049,
+        "eat": 1.5
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.24375299841072537
+      },
+      "noise_sample": {
+        "move_up": -1.5809872033345829,
+        "move_down": -1.5397613092505977,
+        "move_left": 0.412180592737406,
+        "move_right": 0.13249157493757285,
+        "stay": -0.3842641962182433,
+        "eat": 2.3292010505263536
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.24375299841072537
+      },
+      "chosen_action": "eat",
+      "decision_time": 61,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.24375299841072537
+      }
+    }
+  },
+  {
+    "step": 53,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 0.9537106859365758,
+        "move_down": 1.1697082056521557,
+        "move_left": 1.2222835557351057,
+        "move_right": 1.2384187652351384,
+        "stay": 0.6940288143625791,
+        "eat": 1.0028337315629914
+      },
+      "drift_rate": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.3333333333333333,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.21937769856965283
+      },
+      "noise_sample": {
+        "move_up": -0.7341738291030878,
+        "move_down": -0.007927091749412425,
+        "move_left": 0.5880986596884777,
+        "move_right": -1.2780385342149916,
+        "stay": -0.7013541101759027,
+        "eat": -1.3852062689373437
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.21937769856965283
+      },
+      "chosen_action": "move_right",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.3333333333333333,
+        "move_down": 0.5,
+        "move_left": 0.3333333333333333,
+        "move_right": 0.4,
+        "stay": 0.0,
+        "eat": 0.21937769856965283
+      }
+    }
+  },
+  {
+    "step": 54,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1704713844017192,
+        "move_down": 1.4036572885855503,
+        "move_left": 0.9996498461142836,
+        "move_right": 1.1361333819971526,
+        "stay": 0.865599522168932,
+        "eat": 0.8460522031503716
+      },
+      "drift_rate": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.4,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.19743992871268756
+      },
+      "noise_sample": {
+        "move_up": -0.30963774542401573,
+        "move_down": -0.5356121477882249,
+        "move_left": -0.02325322919598835,
+        "move_right": -2.458508328336729,
+        "stay": 0.47720491343716065,
+        "eat": 1.1219528807138561
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.19743992871268756
+      },
+      "chosen_action": "move_down",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.4,
+        "move_down": 0.6666666666666666,
+        "move_left": 0.4,
+        "move_right": 0.5,
+        "stay": 0.0,
+        "eat": 0.19743992871268756
+      }
+    }
+  },
+  {
+    "step": 55,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.044407041113636,
+        "move_down": 1.4896535826194404,
+        "move_left": 1.3058289738509934,
+        "move_right": 1.3129291985935794,
+        "stay": 0.7890569510415398,
+        "eat": 1.06097918176312
+      },
+      "drift_rate": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.17769593584141882
+      },
+      "noise_sample": {
+        "move_up": -0.6708456065378245,
+        "move_down": -0.22317478372675106,
+        "move_left": 1.5609436560279577,
+        "move_right": 0.29222428339177575,
+        "stay": -0.6411036219927378,
+        "eat": 0.5080384854206574
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.17769593584141882
+      },
+      "chosen_action": "move_down",
+      "decision_time": 100,
+      "q_values": {
+        "move_up": 0.5,
+        "move_down": 1.0,
+        "move_left": 0.5,
+        "move_right": 0.6666666666666666,
+        "stay": 0.0,
+        "eat": 0.17769593584141882
+      }
+    }
+  },
+  {
+    "step": 56,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.1349307725063311,
+        "move_down": 1.5,
+        "move_left": 1.189826919887436,
+        "move_right": 1.4848545784735983,
+        "stay": 0.9451412634849029,
+        "eat": 0.9608095903338986
+      },
+      "drift_rate": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.15992634225727695
+      },
+      "noise_sample": {
+        "move_up": -0.624724410034702,
+        "move_down": 1.3654591003695822,
+        "move_left": 0.5101586927063956,
+        "move_right": 0.10643311187760128,
+        "stay": 0.949242210357273,
+        "eat": 0.6330920454528502
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.15992634225727695
+      },
+      "chosen_action": "move_down",
+      "decision_time": 86,
+      "q_values": {
+        "move_up": 0.6666666666666666,
+        "move_down": 2.0,
+        "move_left": 0.6666666666666666,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.15992634225727695
+      }
+    }
+  },
+  {
+    "step": 57,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0538914280784262,
+        "move_down": 1.5,
+        "move_left": 0.9953283946131517,
+        "move_right": 1.2196869557824674,
+        "stay": 0.7564779118529962,
+        "eat": 0.810347066023523
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1439337080315493
+      },
+      "noise_sample": {
+        "move_up": 1.4742421868471607,
+        "move_down": 0.6220323636190369,
+        "move_left": 0.60890269557009,
+        "move_right": 2.2697707865803007,
+        "stay": 1.7049985038582365,
+        "eat": -0.3414416053938946
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.14393370803154926
+      },
+      "chosen_action": "move_down",
+      "decision_time": 40,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.1439337080315493
+      }
+    }
+  },
+  {
+    "step": 58,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.2064244390922616,
+        "move_down": 1.2273642049617923,
+        "move_left": 1.1766170303679457,
+        "move_right": 1.5,
+        "stay": 0.8300762153604028,
+        "eat": 1.3044026504296624
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.12954033722839434
+      },
+      "noise_sample": {
+        "move_up": -0.3925769723081005,
+        "move_down": -0.17623762792608955,
+        "move_left": -2.5507722918294022,
+        "move_right": 1.6188138806298,
+        "stay": 1.4940904698512254,
+        "eat": 0.24217538864499547
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.12954033722839434
+      },
+      "chosen_action": "move_right",
+      "decision_time": 53,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 0.6666666666666666,
+        "move_left": 2.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 0.12954033722839434
+      }
+    }
+  },
+  {
+    "step": 59,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "evidence_accumulator": {
+        "move_up": 1.0847102666747719,
+        "move_down": 1.029858207480783,
+        "move_left": 1.5,
+        "move_right": 1.12558259944547,
+        "stay": 0.8421805084546901,
+        "eat": 0.7308583005985168
+      },
+      "drift_rate": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.116586303505555
+      },
+      "noise_sample": {
+        "move_up": 0.0815263851725804,
+        "move_down": -0.45812351784463967,
+        "move_left": 2.627336208246325,
+        "move_right": 0.0850147826443529,
+        "stay": 1.0225628710054069,
+        "eat": -0.1261423958533744
+      },
+      "reward_history": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.1165863035055549
+      },
+      "chosen_action": "move_left",
+      "decision_time": 36,
+      "q_values": {
+        "move_up": 1.0,
+        "move_down": 1.0,
+        "move_left": 1.0,
+        "move_right": 1.0,
+        "stay": 0.0,
+        "eat": 1.116586303505555
+      }
+    }
+  }
+]

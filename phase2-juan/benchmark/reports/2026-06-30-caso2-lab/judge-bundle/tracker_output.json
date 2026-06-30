@@ -1,0 +1,96 @@
+{
+  "summary": "Simulación de 60 pasos con 4 agentes: uno falleció por agotamiento de energía (paso 18), dos lograron consumir recursos de forma exitosa, y uno no logró encontrar recursos.",
+  "trajectories": {
+    "continuous-drive-dynamics-with-urgency-threshold-policy": {
+      "steps_survived": 60,
+      "resources_consumed": 4,
+      "actions": {
+        "stay": 44,
+        "move_down": 7,
+        "eat": 4,
+        "move_right": 2,
+        "move_up": 1,
+        "move_left": 2
+      }
+    },
+    "drive-reduction-td-q-learning-model-free": {
+      "steps_survived": 60,
+      "resources_consumed": 2,
+      "actions": {
+        "move_right": 12,
+        "move_up": 14,
+        "move_down": 13,
+        "stay": 12,
+        "move_left": 7,
+        "eat": 2
+      }
+    },
+    "expected-free-energy-policy-selection-with-allostatic-prior-shifting": {
+      "steps_survived": 19,
+      "resources_consumed": 1,
+      "actions": {
+        "move_right": 5,
+        "move_up": 4,
+        "move_down": 5,
+        "stay": 3,
+        "eat": 1,
+        "move_left": 1
+      }
+    },
+    "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode": {
+      "steps_survived": 60,
+      "resources_consumed": 0,
+      "actions": {
+        "move_right": 12,
+        "move_up": 14,
+        "move_down": 16,
+        "stay": 10,
+        "move_left": 8
+      }
+    }
+  },
+  "episodes": [
+    {
+      "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
+      "type": "foraging_success",
+      "steps": [6, 11],
+      "description": "Cambio de estrategia exitoso: pasó de esperar (stay) a búsqueda activa (move_down en pasos 8-10) y consumió recurso en paso 11, retornando inmediatamente a estrategia de espera"
+    },
+    {
+      "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
+      "type": "exploitation",
+      "steps": [11, 60],
+      "description": "Estrategia de explotación dominante: 73% de acciones fueron 'stay', alternando con búsquedas breves que resultaron en 3 consumos adicionales (pasos 23, 40, 56)"
+    },
+    {
+      "agent": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+      "type": "starvation",
+      "steps": [0, 6],
+      "description": "Deterioro energético crítico: energía cayó de 0.45 a 0.26 en 6 pasos. El agente logró consumir un recurso en paso 6 que elevó energía a 0.56"
+    },
+    {
+      "agent": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+      "type": "starvation",
+      "steps": [6, 18],
+      "description": "Muerte por agotamiento: tras única alimentación, energía decayó continuamente de 0.56 a 0.0 en 12 pasos con exploración errática sin encontrar más recursos"
+    },
+    {
+      "agent": "drive-reduction-td-q-learning-model-free",
+      "type": "exploration",
+      "steps": [0, 24],
+      "description": "Exploración activa inicial: 81% de acciones fueron movimiento durante primeros 24 pasos, con cambio estratégico en paso 23 de 'stay' a 'move_up' que resultó en consumo exitoso"
+    },
+    {
+      "agent": "drive-reduction-td-q-learning-model-free",
+      "type": "foraging_success",
+      "steps": [24, 45],
+      "description": "Segunda alimentación exitosa en paso 45, seguida de pérdida de confianza en decisión (paso 46): gap entre Q-values cayó de 0.58 a 0.0"
+    },
+    {
+      "agent": "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+      "type": "foraging_failure",
+      "steps": [0, 60],
+      "description": "Exploración infructuosa completa: 83% de acciones fueron movimiento (60 de 72 acciones totales), alternando direcciones sin patrón aparente, sin lograr ningún consumo de recursos"
+    }
+  ]
+}

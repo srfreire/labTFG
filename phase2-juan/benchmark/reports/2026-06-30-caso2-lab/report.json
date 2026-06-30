@@ -1,0 +1,158 @@
+{
+  "case": "caso2",
+  "experiment_id": "7dc5ff08-b470-4294-9924-bbc045cc3162",
+  "seed": 42,
+  "steps": 60,
+  "env_spec": {
+    "grid": {
+      "width": 10,
+      "height": 10
+    },
+    "actions": [
+      "move_up",
+      "move_down",
+      "move_left",
+      "move_right",
+      "eat",
+      "stay"
+    ],
+    "resources": [
+      {
+        "type": "food",
+        "count": 8,
+        "regenerate": true
+      }
+    ]
+  },
+  "events": 199,
+  "models": [
+    {
+      "key": "homeostatic-regulation/continuous-drive-dynamics-with-urgency-threshold-policy",
+      "short": "Drive-dynamics ODE (urgencia)",
+      "events": 60,
+      "total_reward": 4.0,
+      "final_state_keys": [
+        "energy_level",
+        "setpoint",
+        "drive",
+        "previous_drive",
+        "drive_velocity",
+        "behavioural_mode",
+        "q_values"
+      ]
+    },
+    {
+      "key": "homeostatic-reinforcement-learning/drive-reduction-td-q-learning-model-free",
+      "short": "HRL drive-reduction (TD-Q)",
+      "events": 60,
+      "total_reward": 2.0,
+      "final_state_keys": [
+        "hunger_level",
+        "homeostatic_setpoint",
+        "drive",
+        "homeostatic_reward",
+        "q_table_size",
+        "hRPE",
+        "external_state",
+        "hunger_bin",
+        "ate_food_flag",
+        "q_values"
+      ]
+    },
+    {
+      "key": "interoceptive-active-inference/expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+      "short": "Active inference (EFE + alostasis)",
+      "events": 19,
+      "total_reward": 1.0,
+      "final_state_keys": [
+        "energy",
+        "mu_p",
+        "rho",
+        "o_t",
+        "q_s",
+        "C",
+        "prev_action",
+        "prev_obs",
+        "q_values"
+      ]
+    },
+    {
+      "key": "predictive-coding/hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+      "short": "Predictive coding jerárquico",
+      "events": 60,
+      "total_reward": 0.0,
+      "final_state_keys": [
+        "s",
+        "mu_1",
+        "mu_2",
+        "eps_1",
+        "eps_2",
+        "Pi_1",
+        "Pi_2",
+        "F",
+        "a",
+        "q_values"
+      ]
+    }
+  ],
+  "determinism": {
+    "key": "homeostatic-regulation/continuous-drive-dynamics-with-urgency-threshold-policy",
+    "identical": true
+  },
+  "joinable_triple": {
+    "written": 8,
+    "postgres_rows": 8,
+    "qdrant_dense": 8,
+    "qdrant_sparse": 8,
+    "consistent": true,
+    "all_zero": false,
+    "skipped_reason": null,
+    "episodes_filtered": 4
+  },
+  "charts_generated": 4,
+  "reporter": {
+    "pdf_key": "experiments/7dc5ff08-b470-4294-9924-bbc045cc3162/informe_final.pdf",
+    "pdf_produced": true,
+    "pdf_is_real_latex": true
+  },
+  "latency_per_stage": {
+    "architect": {
+      "seconds": 14.05,
+      "input_tokens": 4070,
+      "output_tokens": 705
+    },
+    "simulation": {
+      "seconds": 0.15,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "tracker": {
+      "seconds": 41.44,
+      "input_tokens": 53009,
+      "output_tokens": 2542
+    },
+    "kg_write": {
+      "seconds": 0.58,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "analyst": {
+      "seconds": 111.22,
+      "input_tokens": 177930,
+      "output_tokens": 5919
+    },
+    "reporter": {
+      "seconds": 29.88,
+      "input_tokens": 27763,
+      "output_tokens": 4404
+    }
+  },
+  "total_seconds": 197.62,
+  "usage": {
+    "input_tokens": 262772,
+    "output_tokens": 13570,
+    "calls": 21,
+    "seconds": 258.56,
+    "estimated_cost_usd": 0.9919
+  }
+}

@@ -1,0 +1,1622 @@
+[
+  {
+    "step": 0,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.1,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.010000000000000002,
+      "homeostatic_reward": -0.010000000000000002,
+      "q_table_size": 1,
+      "hRPE": -0.010000000000000002,
+      "external_state": [
+        5,
+        3
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 1,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.04000000000000001,
+      "homeostatic_reward": -0.030000000000000006,
+      "q_table_size": 2,
+      "hRPE": -0.030000000000000006,
+      "external_state": [
+        5,
+        2
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 2,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.30000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.09000000000000002,
+      "homeostatic_reward": -0.05000000000000002,
+      "q_table_size": 3,
+      "hRPE": -0.05000000000000002,
+      "external_state": [
+        5,
+        3
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.003000000000000001,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 3,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.4,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.16000000000000003,
+      "homeostatic_reward": -0.07,
+      "q_table_size": 4,
+      "hRPE": -0.07,
+      "external_state": [
+        5,
+        4
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 4,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.5,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.25,
+      "homeostatic_reward": -0.08999999999999997,
+      "q_table_size": 5,
+      "hRPE": -0.08999999999999997,
+      "external_state": [
+        6,
+        4
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 5,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.6,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.36,
+      "homeostatic_reward": -0.10999999999999999,
+      "q_table_size": 6,
+      "hRPE": -0.10999999999999999,
+      "external_state": [
+        7,
+        4
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 6,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.48999999999999994,
+      "homeostatic_reward": -0.12999999999999995,
+      "q_table_size": 7,
+      "hRPE": -0.12999999999999995,
+      "external_state": [
+        7,
+        4
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.012999999999999996,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 7,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.6399999999999999,
+      "homeostatic_reward": -0.14999999999999997,
+      "q_table_size": 8,
+      "hRPE": -0.14999999999999997,
+      "external_state": [
+        7,
+        3
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 8,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.8999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.8099999999999998,
+      "homeostatic_reward": -0.16999999999999993,
+      "q_table_size": 9,
+      "hRPE": -0.16999999999999993,
+      "external_state": [
+        6,
+        3
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 9,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.9999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.9999999999999998,
+      "homeostatic_reward": -0.18999999999999995,
+      "q_table_size": 10,
+      "hRPE": -0.18999999999999995,
+      "external_state": [
+        6,
+        2
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 10,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.0999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.2099999999999997,
+      "homeostatic_reward": -0.20999999999999996,
+      "q_table_size": 11,
+      "hRPE": -0.20999999999999996,
+      "external_state": [
+        6,
+        3
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 11,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.44,
+      "homeostatic_reward": -0.2300000000000002,
+      "q_table_size": 12,
+      "hRPE": -0.2300000000000002,
+      "external_state": [
+        7,
+        3
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 12,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.3,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.6900000000000002,
+      "homeostatic_reward": -0.2500000000000002,
+      "q_table_size": 13,
+      "hRPE": -0.2500000000000002,
+      "external_state": [
+        7,
+        2
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 13,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.4000000000000001,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.9600000000000004,
+      "homeostatic_reward": -0.27000000000000024,
+      "q_table_size": 14,
+      "hRPE": -0.27000000000000024,
+      "external_state": [
+        7,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 14,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.5000000000000002,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.2500000000000004,
+      "homeostatic_reward": -0.29000000000000004,
+      "q_table_size": 15,
+      "hRPE": -0.29000000000000004,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 15,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.6000000000000003,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.560000000000001,
+      "homeostatic_reward": -0.3100000000000005,
+      "q_table_size": 16,
+      "hRPE": -0.3100000000000005,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 16,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.7000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.8900000000000015,
+      "homeostatic_reward": -0.3300000000000005,
+      "q_table_size": 17,
+      "hRPE": -0.3300000000000005,
+      "external_state": [
+        9,
+        2
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 17,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.8000000000000005,
+      "homeostatic_setpoint": 0.0,
+      "drive": 3.2400000000000015,
+      "homeostatic_reward": -0.3500000000000001,
+      "q_table_size": 18,
+      "hRPE": -0.3500000000000001,
+      "external_state": [
+        8,
+        2
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 18,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.9000000000000006,
+      "homeostatic_setpoint": 0.0,
+      "drive": 3.610000000000002,
+      "homeostatic_reward": -0.37000000000000055,
+      "q_table_size": 19,
+      "hRPE": -0.37000000000000055,
+      "external_state": [
+        8,
+        2
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.037000000000000054,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 19,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.0000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 4.000000000000002,
+      "homeostatic_reward": -0.3899999999999997,
+      "q_table_size": 20,
+      "hRPE": -0.3899999999999997,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 20,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.1000000000000005,
+      "homeostatic_setpoint": 0.0,
+      "drive": 4.410000000000002,
+      "homeostatic_reward": -0.41000000000000014,
+      "q_table_size": 21,
+      "hRPE": -0.41000000000000014,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.041000000000000016,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 21,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.2000000000000006,
+      "homeostatic_setpoint": 0.0,
+      "drive": 4.8400000000000025,
+      "homeostatic_reward": -0.4300000000000006,
+      "q_table_size": 21,
+      "hRPE": -0.38900000000000057,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.07990000000000008,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 22,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.3000000000000007,
+      "homeostatic_setpoint": 0.0,
+      "drive": 5.290000000000004,
+      "homeostatic_reward": -0.45000000000000107,
+      "q_table_size": 22,
+      "hRPE": -0.45000000000000107,
+      "external_state": [
+        8,
+        2
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 23,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.400000000000001,
+      "homeostatic_setpoint": 0.0,
+      "drive": 5.760000000000004,
+      "homeostatic_reward": -0.47000000000000064,
+      "q_table_size": 23,
+      "hRPE": -0.47000000000000064,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.04500000000000011,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.07990000000000008,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 24,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "hunger_level": 0.0,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.0,
+      "homeostatic_reward": 5.760000000000004,
+      "q_table_size": 24,
+      "hRPE": 5.760000000000004,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 1,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 25,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.1,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.010000000000000002,
+      "homeostatic_reward": -0.010000000000000002,
+      "q_table_size": 25,
+      "hRPE": -0.010000000000000002,
+      "external_state": [
+        7,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 26,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.04000000000000001,
+      "homeostatic_reward": -0.030000000000000006,
+      "q_table_size": 26,
+      "hRPE": -0.030000000000000006,
+      "external_state": [
+        7,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 27,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.30000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.09000000000000002,
+      "homeostatic_reward": -0.05000000000000002,
+      "q_table_size": 27,
+      "hRPE": -0.05000000000000002,
+      "external_state": [
+        7,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.005000000000000002,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 28,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.4,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.16000000000000003,
+      "homeostatic_reward": -0.07,
+      "q_table_size": 28,
+      "hRPE": -0.07,
+      "external_state": [
+        7,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.005000000000000002,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.007000000000000001,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 29,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.5,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.25,
+      "homeostatic_reward": -0.08999999999999997,
+      "q_table_size": 29,
+      "hRPE": -0.08999999999999997,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 30,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.6,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.36,
+      "homeostatic_reward": -0.10999999999999999,
+      "q_table_size": 30,
+      "hRPE": -0.10999999999999999,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.011,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 31,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.48999999999999994,
+      "homeostatic_reward": -0.12999999999999995,
+      "q_table_size": 31,
+      "hRPE": -0.12999999999999995,
+      "external_state": [
+        9,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 32,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.6399999999999999,
+      "homeostatic_reward": -0.14999999999999997,
+      "q_table_size": 32,
+      "hRPE": -0.14999999999999997,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.012999999999999996,
+        "stay": -0.011,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 33,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.8999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.8099999999999998,
+      "homeostatic_reward": -0.16999999999999993,
+      "q_table_size": 32,
+      "hRPE": -0.15899999999999992,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.012999999999999996,
+        "stay": -0.026899999999999993,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 34,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.9999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.9999999999999998,
+      "homeostatic_reward": -0.18999999999999995,
+      "q_table_size": 33,
+      "hRPE": -0.18999999999999995,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": -0.0010000000000000002,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 35,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.0999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.2099999999999997,
+      "homeostatic_reward": -0.20999999999999996,
+      "q_table_size": 34,
+      "hRPE": -0.20999999999999996,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.03300000000000005,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 36,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.44,
+      "homeostatic_reward": -0.2300000000000002,
+      "q_table_size": 35,
+      "hRPE": -0.2300000000000002,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.03300000000000005,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.02300000000000002,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 37,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.3,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.6900000000000002,
+      "homeostatic_reward": -0.2500000000000002,
+      "q_table_size": 36,
+      "hRPE": -0.2500000000000002,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.03300000000000005,
+        "move_left": 0.0,
+        "move_right": -0.025000000000000022,
+        "stay": -0.02300000000000002,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 38,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.4000000000000001,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.9600000000000004,
+      "homeostatic_reward": -0.27000000000000024,
+      "q_table_size": 36,
+      "hRPE": -0.24700000000000022,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.03300000000000005,
+        "move_left": 0.0,
+        "move_right": -0.025000000000000022,
+        "stay": -0.04770000000000005,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 39,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.5000000000000002,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.2500000000000004,
+      "homeostatic_reward": -0.29000000000000004,
+      "q_table_size": 37,
+      "hRPE": -0.29000000000000004,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.031000000000000052,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 40,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.6000000000000003,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.560000000000001,
+      "homeostatic_reward": -0.3100000000000005,
+      "q_table_size": 38,
+      "hRPE": -0.3100000000000005,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.031000000000000052,
+        "stay": -0.031000000000000052,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 41,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.7000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 2.8900000000000015,
+      "homeostatic_reward": -0.3300000000000005,
+      "q_table_size": 39,
+      "hRPE": -0.3300000000000005,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 42,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.8000000000000005,
+      "homeostatic_setpoint": 0.0,
+      "drive": 3.2400000000000015,
+      "homeostatic_reward": -0.3500000000000001,
+      "q_table_size": 40,
+      "hRPE": -0.3500000000000001,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.03300000000000005,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.031000000000000052,
+        "stay": -0.031000000000000052,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 43,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.9000000000000006,
+      "homeostatic_setpoint": 0.0,
+      "drive": 3.610000000000002,
+      "homeostatic_reward": -0.37000000000000055,
+      "q_table_size": 41,
+      "hRPE": -0.37000000000000055,
+      "external_state": [
+        8,
+        2
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.03899999999999997,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.037000000000000054,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 44,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 2.0000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 4.000000000000002,
+      "homeostatic_reward": -0.3899999999999997,
+      "q_table_size": 41,
+      "hRPE": 0.19620000000000065,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 2,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.04500000000000011,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.07990000000000008,
+        "eat": 0.5760000000000004
+      }
+    }
+  },
+  {
+    "step": 45,
+    "action": "eat",
+    "reward": 1.0,
+    "state": {
+      "hunger_level": 0.0,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.0,
+      "homeostatic_reward": 4.000000000000002,
+      "q_table_size": 41,
+      "hRPE": 3.4240000000000013,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 1,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": -0.0010000000000000002,
+        "move_right": -0.020999999999999998,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 46,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.1,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.010000000000000002,
+      "homeostatic_reward": -0.010000000000000002,
+      "q_table_size": 42,
+      "hRPE": -0.010000000000000002,
+      "external_state": [
+        8,
+        0
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": -0.018999999999999996,
+        "move_left": 0.0,
+        "move_right": -0.012999999999999996,
+        "stay": -0.026899999999999993,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 47,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.04000000000000001,
+      "homeostatic_reward": -0.030000000000000006,
+      "q_table_size": 42,
+      "hRPE": -0.01100000000000001,
+      "external_state": [
+        8,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.0010000000000000002,
+        "move_down": 0.0,
+        "move_left": -0.0010000000000000002,
+        "move_right": -0.020999999999999998,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 48,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.30000000000000004,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.09000000000000002,
+      "homeostatic_reward": -0.05000000000000002,
+      "q_table_size": 42,
+      "hRPE": -0.02900000000000002,
+      "external_state": [
+        9,
+        1
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 49,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.4,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.16000000000000003,
+      "homeostatic_reward": -0.07,
+      "q_table_size": 43,
+      "hRPE": -0.07,
+      "external_state": [
+        9,
+        2
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 50,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.5,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.25,
+      "homeostatic_reward": -0.08999999999999997,
+      "q_table_size": 44,
+      "hRPE": -0.08999999999999997,
+      "external_state": [
+        9,
+        3
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 51,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.6,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.36,
+      "homeostatic_reward": -0.10999999999999999,
+      "q_table_size": 45,
+      "hRPE": -0.10999999999999999,
+      "external_state": [
+        9,
+        4
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 52,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.48999999999999994,
+      "homeostatic_reward": -0.12999999999999995,
+      "q_table_size": 46,
+      "hRPE": -0.12999999999999995,
+      "external_state": [
+        9,
+        5
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 53,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.7999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.6399999999999999,
+      "homeostatic_reward": -0.14999999999999997,
+      "q_table_size": 47,
+      "hRPE": -0.14999999999999997,
+      "external_state": [
+        9,
+        5
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.014999999999999998,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 54,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.8999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.8099999999999998,
+      "homeostatic_reward": -0.16999999999999993,
+      "q_table_size": 48,
+      "hRPE": -0.16999999999999993,
+      "external_state": [
+        9,
+        5
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": -0.016999999999999994,
+        "stay": -0.014999999999999998,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 55,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 0.9999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 0.9999999999999998,
+      "homeostatic_reward": -0.18999999999999995,
+      "q_table_size": 49,
+      "hRPE": -0.18999999999999995,
+      "external_state": [
+        8,
+        5
+      ],
+      "hunger_bin": 0,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 56,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.0999999999999999,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.2099999999999997,
+      "homeostatic_reward": -0.20999999999999996,
+      "q_table_size": 50,
+      "hRPE": -0.20999999999999996,
+      "external_state": [
+        8,
+        4
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 57,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.2,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.44,
+      "homeostatic_reward": -0.2300000000000002,
+      "q_table_size": 51,
+      "hRPE": -0.2300000000000002,
+      "external_state": [
+        8,
+        4
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": -0.02300000000000002,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 58,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.3,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.6900000000000002,
+      "homeostatic_reward": -0.2500000000000002,
+      "q_table_size": 52,
+      "hRPE": -0.2500000000000002,
+      "external_state": [
+        8,
+        3
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": 0.0,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 59,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "hunger_level": 1.4000000000000001,
+      "homeostatic_setpoint": 0.0,
+      "drive": 1.9600000000000004,
+      "homeostatic_reward": -0.27000000000000024,
+      "q_table_size": 53,
+      "hRPE": -0.27000000000000024,
+      "external_state": [
+        7,
+        3
+      ],
+      "hunger_bin": 1,
+      "ate_food_flag": 0,
+      "q_values": {
+        "move_up": -0.025000000000000022,
+        "move_down": 0.0,
+        "move_left": 0.0,
+        "move_right": 0.0,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  }
+]

@@ -1,0 +1,71 @@
+{
+  "grid": {
+    "width": 10,
+    "height": 10
+  },
+  "actions": [
+    {
+      "name": "move_up",
+      "effect": {
+        "type": "MoveEffect",
+        "dx": 0,
+        "dy": -1
+      }
+    },
+    {
+      "name": "move_down",
+      "effect": {
+        "type": "MoveEffect",
+        "dx": 0,
+        "dy": 1
+      }
+    },
+    {
+      "name": "move_left",
+      "effect": {
+        "type": "MoveEffect",
+        "dx": -1,
+        "dy": 0
+      }
+    },
+    {
+      "name": "move_right",
+      "effect": {
+        "type": "MoveEffect",
+        "dx": 1,
+        "dy": 0
+      }
+    },
+    {
+      "name": "eat",
+      "effect": {
+        "type": "ConsumeEffect",
+        "resource_type": "food",
+        "reward": 1
+      }
+    },
+    {
+      "name": "stay",
+      "effect": {
+        "type": "NoopEffect"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "type": "food",
+      "properties": {
+        "palatability": [
+          0.1,
+          1
+        ],
+        "energy_content": [
+          1,
+          10
+        ]
+      },
+      "count": 8,
+      "regenerate": true
+    }
+  ]
+}

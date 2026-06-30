@@ -1,0 +1,136 @@
+{
+  "summary": "Simulación de 60 pasos con 6 agentes de decisión heterogéneos compitiendo por recursos alimenticios, donde el agente de proceso de Wiener mostró dominio con 10 consumos mientras otros agentes tuvieron éxito limitado o nulo.",
+  "trajectories": {
+    "attribute-reweighting-algebraic-model": {
+      "steps_survived": 60,
+      "resources_consumed": 0,
+      "actions": {
+        "move_right": 13,
+        "move_up": 16,
+        "move_down": 15,
+        "move_left": 15,
+        "stay": 1
+      }
+    },
+    "classical-wiener-process-with-per-action-accumulators": {
+      "steps_survived": 60,
+      "resources_consumed": 10,
+      "actions": {
+        "move_up": 12,
+        "move_right": 11,
+        "move_left": 13,
+        "eat": 10,
+        "move_down": 14
+      }
+    },
+    "drive-reduction-ode-with-goal-directed-valuation": {
+      "steps_survived": 60,
+      "resources_consumed": 3,
+      "actions": {
+        "move_down": 4,
+        "eat": 3,
+        "stay": 47,
+        "move_left": 3,
+        "move_right": 2,
+        "move_up": 1
+      }
+    },
+    "dual-q-table-with-fixed-exponential-decay-arbitration": {
+      "steps_survived": 60,
+      "resources_consumed": 1,
+      "actions": {
+        "move_right": 13,
+        "move_up": 12,
+        "move_down": 11,
+        "stay": 11,
+        "eat": 6,
+        "move_left": 7
+      }
+    },
+    "rescorlawagner-cached-value-agent-with-softmax-action-selection": {
+      "steps_survived": 60,
+      "resources_consumed": 0,
+      "actions": {
+        "move_right": 15,
+        "move_up": 12,
+        "move_left": 8,
+        "move_down": 15,
+        "stay": 10
+      }
+    },
+    "weighted-linear-summation-with-state-dependent-attribute-weights-algebraic": {
+      "steps_survived": 60,
+      "resources_consumed": 1,
+      "actions": {
+        "move_left": 14,
+        "move_up": 18,
+        "move_down": 12,
+        "move_right": 8,
+        "eat": 2,
+        "stay": 6
+      }
+    }
+  },
+  "episodes": [
+    {
+      "agent": "classical-wiener-process-with-per-action-accumulators",
+      "type": "foraging_success",
+      "steps": [8, 52],
+      "description": "El agente de proceso de Wiener logró 10 consumos exitosos (pasos 8, 20, 24, 28, 32, 35, 38, 41, 44, 52), demostrando superioridad en la localización y explotación de recursos. Su acumulador de evidencia alcanzó el umbral de 1.5 repetidamente, permitiendo decisiones rápidas de consumo con tiempo promedio de decisión entre 36-65 pasos."
+    },
+    {
+      "agent": "classical-wiener-process-with-per-action-accumulators",
+      "type": "state_change",
+      "steps": [2, 58],
+      "description": "El agente experimentó caídas sistemáticas en la confianza de decisión (gap de Q-values bajando de 1.33 a valores cercanos a 0.0-0.26) en 17 ocasiones, indicando alta incertidumbre en su proceso de acumulación de evidencia estocástica, aunque esto no impidió su éxito en forrajeo."
+    },
+    {
+      "agent": "drive-reduction-ode-with-goal-directed-valuation",
+      "type": "exploitation",
+      "steps": [3, 35],
+      "description": "El agente de reducción de impulso consumió en los pasos 3, 10 y 35, pero adoptó una estrategia mayormente estática (47 acciones 'stay' de 60 totales). Tras consumir, su energía E subió de 0.47 a 0.99, mientras w_c (peso competitivo) bajó de 0.53 a 0.12, reflejando saciedad y reducción de motivación para buscar más recursos."
+    },
+    {
+      "agent": "drive-reduction-ode-with-goal-directed-valuation",
+      "type": "strategy_shift",
+      "step": 10,
+      "description": "Tras consumir en el paso 10 (E=0.99, H=0.12), el agente cambió inmediatamente de 'move_left' a 'stay', iniciando un período prolongado de inactividad (saciedad) que caracterizó el resto de su trayectoria."
+    },
+    {
+      "agent": "dual-q-table-with-fixed-exponential-decay-arbitration",
+      "type": "foraging_success",
+      "step": 53,
+      "description": "El agente de tabla Q dual logró su único consumo en el paso 53 con alto valor de acción (eat: 0.47), mostrando omega=0.95 (fuerte arbitraje hacia modelo libre). Post-consumo, su salud h bajó de 1.0 a 0.72 y el Q-value de 'eat' cayó a 0.0005, indicando actualización de expectativas."
+    },
+    {
+      "agent": "weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+      "type": "foraging_success",
+      "step": 53,
+      "description": "El agente de suma lineal ponderada consumió en el paso 53 con V_o=0.65. Sus pesos dependientes del estado mostraron w_abs=0.89 (dominancia de atributos abstractos) y w_imm=0.11 (atributos inmediatos). Tras el consumo, su confianza de decisión cayó dramáticamente (gap de Q-values de 0.63 a 0.01 en paso 54)."
+    },
+    {
+      "agent": "attribute-reweighting-algebraic-model",
+      "type": "foraging_failure",
+      "steps": [0, 59],
+      "description": "El agente de reponderación de atributos exploró activamente durante los 60 pasos (59 movimientos, 1 'stay') pero nunca logró consumir recursos. Mostró cambios frecuentes de estrategia (9 cambios detectados) y valores de acción relativamente bajos (0.4-0.6), sugiriendo dificultad para converger en ubicaciones de recursos."
+    },
+    {
+      "agent": "rescorlawagner-cached-value-agent-with-softmax-action-selection",
+      "type": "foraging_failure",
+      "steps": [0, 59],
+      "description": "El agente Rescorla-Wagner nunca consumió recursos a pesar de moverse activamente (50 movimientos). Sus Q-values se mantuvieron uniformemente negativos o nulos (-0.01 para movimientos, 0.0 para stay), y las acciones 'eat' estaban bloqueadas (Q=-1e9), indicando que nunca se posicionó correctamente sobre recursos."
+    },
+    {
+      "agent": "classical-wiener-process-with-per-action-accumulators",
+      "type": "exploitation",
+      "steps": [30, 44],
+      "description": "Entre los pasos 30-44, el agente de Wiener estableció un patrón de explotación intensiva consumiendo en los pasos 32, 35, 38, 41 y 44 (5 consumos en 15 pasos), demostrando capacidad de permanecer en zonas ricas en recursos y consumir eficientemente."
+    },
+    {
+      "agent": "dual-q-table-with-fixed-exponential-decay-arbitration",
+      "type": "strategy_shift",
+      "steps": [18, 23],
+      "description": "El agente cambió de 'move_right' a 'stay' (paso 18) y luego a 'move_up' (paso 23), reflejando ajustes en su arbitraje modelo-libre/modelo-basado mientras exploraba el entorno sin éxito hasta mucho después."
+    }
+  ]
+}

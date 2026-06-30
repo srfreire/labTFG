@@ -1,0 +1,1322 @@
+[
+  {
+    "step": 0,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5182365134728069,
+      "health_weight": 0.4132590520118913,
+      "taste_weight": 0.5867409479881087,
+      "dlpfc_coupling": 0.3554317533531521,
+      "conflict_signal": 0.599721043955799,
+      "goal_activation": 0.475,
+      "depletion_level": 0.0026518104023782532,
+      "q_values": {
+        "move_up": 0.42965908726453883,
+        "move_down": 0.42965908726453883,
+        "move_left": 0.5304433176105418,
+        "move_right": 0.5182365134728069,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 1,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.3895588149280705,
+      "health_weight": 0.4020588529673965,
+      "taste_weight": 0.5979411470326035,
+      "dlpfc_coupling": 0.3367647549456609,
+      "conflict_signal": 0.599721043955799,
+      "goal_activation": 0.45125,
+      "depletion_level": 0.0030635809958575594,
+      "q_values": {
+        "move_up": 0.3895588149280705,
+        "move_down": 0.48093680855317333,
+        "move_left": 0.48093680855317333,
+        "move_right": 0.46853213021008694,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 2,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4357377654810838,
+      "health_weight": 0.3918766583587401,
+      "taste_weight": 0.6081233416412599,
+      "dlpfc_coupling": 0.3197944305979002,
+      "conflict_signal": 0.599721043955799,
+      "goal_activation": 0.42868749999999994,
+      "depletion_level": 0.001438912667605579,
+      "q_values": {
+        "move_up": 0.4357377654810838,
+        "move_down": 0.4357377654810838,
+        "move_left": 0.5379478586186219,
+        "move_right": 0.5227319717192398,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 3,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.3945426228282236,
+      "health_weight": 0.3825798846389953,
+      "taste_weight": 0.6174201153610047,
+      "dlpfc_coupling": 0.30429980773165877,
+      "conflict_signal": 0.599721043955799,
+      "goal_activation": 0.40725312499999994,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.48708965781262165,
+        "move_down": 0.3945426228282236,
+        "move_left": 0.48708965781262165,
+        "move_right": 0.47221788219847166,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 4,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4362978855228565,
+      "health_weight": 0.38990637686010704,
+      "taste_weight": 0.610093623139893,
+      "dlpfc_coupling": 0.3165106281001784,
+      "conflict_signal": 0.8328873534524979,
+      "goal_activation": 0.38689046874999994,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.5386393648430327,
+        "move_down": 0.4362978855228565,
+        "move_left": 0.4362978855228565,
+        "move_right": 0.4362978855228565,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 5,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4991493593695342,
+      "health_weight": 0.3804110580171017,
+      "taste_weight": 0.6195889419828984,
+      "dlpfc_coupling": 0.30068509669516946,
+      "conflict_signal": 0.8328873534524979,
+      "goal_activation": 0.3675459453124999,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4877747281433195,
+        "move_down": 0.39509752979608886,
+        "move_left": 0.4991493593695342,
+        "move_right": 0.4877747281433195,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 6,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.44156165664481206,
+      "health_weight": 0.3713905051162466,
+      "taste_weight": 0.6286094948837534,
+      "dlpfc_coupling": 0.28565084186041095,
+      "conflict_signal": 0.8328873534524979,
+      "goal_activation": 0.34916864804687486,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.5451378477096445,
+        "move_down": 0.44156165664481206,
+        "move_left": 0.44156165664481206,
+        "move_right": 0.44156165664481206,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 7,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.49333093099427267,
+      "health_weight": 0.36282097986043427,
+      "taste_weight": 0.6371790201395657,
+      "dlpfc_coupling": 0.2713682997673904,
+      "conflict_signal": 0.8328873534524979,
+      "goal_activation": 0.3317102156445311,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.49333093099427267,
+        "move_down": 0.49333093099427267,
+        "move_left": 0.49333093099427267,
+        "move_right": 0.49333093099427267,
+        "stay": 0.0,
+        "eat": 0.5481454788825252
+      }
+    }
+  },
+  {
+    "step": 8,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5663605419528994,
+      "health_weight": 0.35467993086741256,
+      "taste_weight": 0.6453200691325874,
+      "dlpfc_coupling": 0.2577998847790209,
+      "conflict_signal": 0.8328873534524979,
+      "goal_activation": 0.31512470486230454,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.446312210082377,
+        "move_down": 0.446312210082377,
+        "move_left": 0.5663605419528994,
+        "move_right": 0.5510027284967617,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 9,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.3259130979186791,
+      "health_weight": 0.3440062160122706,
+      "taste_weight": 0.6559937839877295,
+      "dlpfc_coupling": 0.24001036002045098,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.2993684696191893,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3259130979186791,
+        "move_down": 0.4992739770456941,
+        "move_left": 0.5141112332085254,
+        "move_right": 0.4992739770456941,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 10,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4513935144563424,
+      "health_weight": 0.3368059052116571,
+      "taste_weight": 0.6631940947883429,
+      "dlpfc_coupling": 0.22800984201942842,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.2844000461382298,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4513935144563424,
+        "move_down": 0.4513935144563424,
+        "move_left": 0.5745227320514588,
+        "move_right": 0.5572759437732622,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 11,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5198817232022112,
+      "health_weight": 0.32996560995107416,
+      "taste_weight": 0.6700343900489258,
+      "dlpfc_coupling": 0.21660934991845696,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.2701800438313183,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.5198817232022112,
+        "move_down": 0.5198817232022112,
+        "move_left": 0.5198817232022112,
+        "move_right": 0.5198817232022112,
+        "stay": 0.0,
+        "eat": 0.577646359113568
+      }
+    }
+  },
+  {
+    "step": 12,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.47029718190628317,
+      "health_weight": 0.32346732945352047,
+      "taste_weight": 0.6765326705464796,
+      "dlpfc_coupling": 0.20577888242253412,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.25667104163975235,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.47029718190628317,
+        "move_down": 0.5806138048225717,
+        "move_left": 0.4513625947766186,
+        "move_right": 0.47029718190628317,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 13,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.31237031893183154,
+      "health_weight": 0.31729396298084445,
+      "taste_weight": 0.6827060370191556,
+      "dlpfc_coupling": 0.1954899383014074,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.24383748955776471,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.31237031893183154,
+        "move_down": 0.5250895904215127,
+        "move_left": 0.40626922037623675,
+        "move_right": 0.31237031893183154,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 14,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4514555124440586,
+      "health_weight": 0.3114292648318022,
+      "taste_weight": 0.6885707351681978,
+      "dlpfc_coupling": 0.185715441386337,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.23164561507987647,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.36567896507968756,
+        "move_down": 0.4514555124440586,
+        "move_left": 0.4514555124440586,
+        "move_right": 0.474749908378786,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 15,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.40634866498189803,
+      "health_weight": 0.3058578015902121,
+      "taste_weight": 0.694142198409788,
+      "dlpfc_coupling": 0.17642966931702014,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.22006333432588263,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.40634866498189803,
+        "move_down": 0.5016650184961704,
+        "move_left": 0.40634866498189803,
+        "move_right": 0.40634866498189803,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 16,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.45153937063892335,
+      "health_weight": 0.30056491151070147,
+      "taste_weight": 0.6994350884892986,
+      "dlpfc_coupling": 0.16760818585116913,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.20906016760958848,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.45153937063892335,
+        "move_down": 0.45153937063892335,
+        "move_left": 0.45153937063892335,
+        "move_right": 0.45153937063892335,
+        "stay": 0.0,
+        "eat": 0.5017104118210259
+      }
+    }
+  },
+  {
+    "step": 17,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5340315309862237,
+      "health_weight": 0.2955366659351664,
+      "taste_weight": 0.7044633340648336,
+      "dlpfc_coupling": 0.15922777655861067,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.19860715922910904,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.40642036373850743,
+        "move_down": 0.5340315309862237,
+        "move_left": 0.5017535354796387,
+        "move_right": 0.5340315309862237,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 18,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4823952675616137,
+      "health_weight": 0.2907598326384081,
+      "taste_weight": 0.7092401673615919,
+      "dlpfc_coupling": 0.15126638773068013,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.18867680126765357,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4823952675616137,
+        "move_down": 0.5955497130390293,
+        "move_left": 0.45161505265978874,
+        "move_right": 0.4823952675616137,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 19,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.29661714079084794,
+      "health_weight": 0.2862218410064877,
+      "taste_weight": 0.7137781589935124,
+      "dlpfc_coupling": 0.1437030683441461,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.17924296120427088,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.29661714079084794,
+        "move_down": 0.5378597919465841,
+        "move_left": 0.40648507186634725,
+        "move_right": 0.29661714079084794,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 20,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4516833556836197,
+      "health_weight": 0.2819107489561633,
+      "taste_weight": 0.7180892510438367,
+      "dlpfc_coupling": 0.1365179149269388,
+      "conflict_signal": 0.7744470258359855,
+      "goal_activation": 0.17028081314405732,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.365863518103732,
+        "move_down": 0.4516833556836197,
+        "move_left": 0.4516833556836197,
+        "move_right": 0.48566843068272186,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 21,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.439565940906707,
+      "health_weight": 0.2745080325490519,
+      "taste_weight": 0.7254919674509481,
+      "dlpfc_coupling": 0.12418005424841976,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.16176677248685445,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.439565940906707,
+        "move_down": 0.5426740011193913,
+        "move_left": 0.40656644522773194,
+        "move_right": 0.439565940906707,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 22,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6046723204018175,
+      "health_weight": 0.27078263092159927,
+      "taste_weight": 0.7292173690784007,
+      "dlpfc_coupling": 0.11797105153599877,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.15367843386251173,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4897845795254722,
+        "move_down": 0.6046723204018175,
+        "move_left": 0.45176924978730354,
+        "move_right": 0.4897845795254722,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 23,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.44198429320583205,
+      "health_weight": 0.2672434993755193,
+      "taste_weight": 0.7327565006244807,
+      "dlpfc_coupling": 0.11207249895919882,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.14599451216938614,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.44198429320583205,
+        "move_down": 0.5456596212417679,
+        "move_left": 0.40661691041037235,
+        "move_right": 0.44198429320583205,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 24,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5032133140077149,
+      "health_weight": 0.26388132440674333,
+      "taste_weight": 0.7361186755932567,
+      "dlpfc_coupling": 0.10646887401123888,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.13869478656091683,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3987932006313843,
+        "move_down": 0.49233728473010413,
+        "move_left": 0.49233728473010413,
+        "move_right": 0.5032133140077149,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 25,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5483541434022127,
+      "health_weight": 0.26068725818640615,
+      "taste_weight": 0.7393127418135939,
+      "dlpfc_coupling": 0.10114543031067694,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.131760047232871,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4441668561557923,
+        "move_down": 0.5483541434022127,
+        "move_left": 0.5483541434022127,
+        "move_right": 0.4425422439019208,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 26,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.40065929195360034,
+      "health_weight": 0.25765289527708585,
+      "taste_weight": 0.7423471047229142,
+      "dlpfc_coupling": 0.0960881587951431,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.12517204487122743,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.40065929195360034,
+        "move_down": 0.49464110117728444,
+        "move_left": 0.49464110117728444,
+        "move_right": 0.3987164342814933,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 27,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.36137066156668646,
+      "health_weight": 0.25477025051323154,
+      "taste_weight": 0.7452297494867685,
+      "dlpfc_coupling": 0.09128375085538594,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.11891344262766605,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.36137066156668646,
+        "move_down": 0.4461366192181314,
+        "move_left": 0.4461366192181314,
+        "move_right": 0.35921108548149255,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 28,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.39951007264248195,
+      "health_weight": 0.25203173798757,
+      "taste_weight": 0.7479682620124299,
+      "dlpfc_coupling": 0.08671956331261663,
+      "conflict_signal": 0.6606021006521626,
+      "goal_activation": 0.11296777049628275,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3236031588404104,
+        "move_down": 0.39951007264248195,
+        "move_left": 0.4023434393719002,
+        "move_right": 0.39951007264248195,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 29,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.44774734861269644,
+      "health_weight": 0.24993175071126456,
+      "taste_weight": 0.7500682492887354,
+      "dlpfc_coupling": 0.08321958451877422,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.1073193819714686,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3626753523762841,
+        "move_down": 0.44774734861269644,
+        "move_left": 0.44774734861269644,
+        "move_right": 0.3626753523762841,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 30,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.32701369653344536,
+      "health_weight": 0.2474351631757013,
+      "taste_weight": 0.7525648368242988,
+      "dlpfc_coupling": 0.0790586052928355,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.10195341287289517,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.32701369653344536,
+        "move_down": 0.4037206130042535,
+        "move_left": 0.4037206130042535,
+        "move_right": 0.32701369653344536,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 31,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.44936801366048745,
+      "health_weight": 0.24506340501691626,
+      "taste_weight": 0.7549365949830837,
+      "dlpfc_coupling": 0.07510567502819372,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.0968557422292504,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.36398809106499486,
+        "move_down": 0.44936801366048745,
+        "move_left": 0.44936801366048745,
+        "move_right": 0.36398809106499486,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 32,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.36610797884037194,
+      "health_weight": 0.24281023476607042,
+      "taste_weight": 0.7571897652339296,
+      "dlpfc_coupling": 0.07135039127678403,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.09201295511778788,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4051062816201147,
+        "move_down": 0.5001312118766849,
+        "move_left": 0.36610797884037194,
+        "move_right": 0.4051062816201147,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 33,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.0,
+      "health_weight": 0.2406697230277669,
+      "taste_weight": 0.7593302769722331,
+      "dlpfc_coupling": 0.06778287171294482,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.08741230736189849,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4057475974795069,
+        "move_down": 0.5009229598512431,
+        "move_left": 0.36612136155635844,
+        "move_right": 0.4057475974795069,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 34,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.557416800474526,
+      "health_weight": 0.23863623687637855,
+      "taste_weight": 0.7613637631236214,
+      "dlpfc_coupling": 0.06439372812729759,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.08304169199380357,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.45150760838436615,
+        "move_down": 0.557416800474526,
+        "move_left": 0.40681563904060614,
+        "move_right": 0.45150760838436615,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 35,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6202341641655708,
+      "health_weight": 0.23670442503255962,
+      "taste_weight": 0.7632955749674404,
+      "dlpfc_coupling": 0.06117404172093271,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.07888960739411338,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.5023896729741123,
+        "move_down": 0.6202341641655708,
+        "move_left": 0.45203228770089304,
+        "move_right": 0.5023896729741123,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 36,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.41810295350435783,
+      "health_weight": 0.23486920378093165,
+      "taste_weight": 0.7651307962190683,
+      "dlpfc_coupling": 0.05811533963488607,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.07494512702440771,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.41810295350435783,
+        "move_down": 0.5207348361476917,
+        "move_left": 0.5207348361476917,
+        "move_right": 0.41810295350435783,
+        "stay": 0.0,
+        "eat": 0.578594262386324
+      }
+    }
+  },
+  {
+    "step": 37,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.37610388299707215,
+      "health_weight": 0.23312574359188507,
+      "taste_weight": 0.7668742564081149,
+      "dlpfc_coupling": 0.05520957265314177,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.07119787067318732,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.46432578147786685,
+        "move_down": 0.37610388299707215,
+        "move_left": 0.5791110864200165,
+        "move_right": 0.37610388299707215,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 38,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.33833209193825836,
+      "health_weight": 0.2314694564122908,
+      "taste_weight": 0.7685305435877092,
+      "dlpfc_coupling": 0.05244909402048467,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.06763797713952795,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4176939406645165,
+        "move_down": 0.33833209193825836,
+        "move_left": 0.4176939406645165,
+        "move_right": 0.33833209193825836,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 39,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.37575417701900776,
+      "health_weight": 0.22989598359167626,
+      "taste_weight": 0.7701040164083237,
+      "dlpfc_coupling": 0.049826639319460436,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.06425607828255155,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4638940457024787,
+        "move_down": 0.37575417701900776,
+        "move_left": 0.37575417701900776,
+        "move_right": 0.37575417701900776,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 40,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.40688673979541135,
+      "health_weight": 0.22840118441209245,
+      "taste_weight": 0.7715988155879075,
+      "dlpfc_coupling": 0.047335307353487406,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.061043274368423966,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4173248065765596,
+        "move_down": 0.4120548848539518,
+        "move_left": 0.40688673979541135,
+        "move_right": 0.4173248065765596,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 41,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.37543856737380465,
+      "health_weight": 0.22698112519148783,
+      "taste_weight": 0.7730188748085122,
+      "dlpfc_coupling": 0.044968541985813036,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.057991110650002765,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.37543856737380465,
+        "move_down": 0.37543856737380465,
+        "move_left": 0.37543856737380465,
+        "move_right": 0.4635044041651909,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 42,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6270825804445499,
+      "health_weight": 0.22563206893191343,
+      "taste_weight": 0.7743679310680865,
+      "dlpfc_coupling": 0.04272011488652238,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.055091555117502626,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.6270825804445499,
+        "move_down": 0.6270825804445499,
+        "move_left": 0.6270825804445499,
+        "move_right": 0.6270825804445499,
+        "stay": 0.0,
+        "eat": 0.6967584227161665
+      }
+    }
+  },
+  {
+    "step": 43,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.5651187777746413,
+      "health_weight": 0.22435046548531776,
+      "taste_weight": 0.7756495345146822,
+      "dlpfc_coupling": 0.04058410914219626,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.05233697736162749,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.697677503425483,
+        "move_down": 0.5651187777746413,
+        "move_left": 0.5651187777746413,
+        "move_right": 0.5651187777746413,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 44,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6286955670894004,
+      "health_weight": 0.22313294221105187,
+      "taste_weight": 0.7768670577889482,
+      "dlpfc_coupling": 0.03855490368508645,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.049720128493546116,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.6286955670894004,
+        "move_down": 0.6286955670894004,
+        "move_left": 0.6286955670894004,
+        "move_right": 0.6286955670894004,
+        "stay": 0.0,
+        "eat": 0.6985506300993338
+      }
+    }
+  },
+  {
+    "step": 45,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.366238234934013,
+      "health_weight": 0.2219762951004993,
+      "taste_weight": 0.7780237048995007,
+      "dlpfc_coupling": 0.036627158500832126,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.04723412206886881,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.2966529702965505,
+        "move_down": 0.366238234934013,
+        "move_left": 0.366238234934013,
+        "move_right": 0.2966529702965505,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 46,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.2669926814322364,
+      "health_weight": 0.22087748034547433,
+      "taste_weight": 0.7791225196545257,
+      "dlpfc_coupling": 0.03479580057579052,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.04487241596542537,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.2669926814322364,
+        "move_down": 0.32962059436078567,
+        "move_left": 0.32962059436078567,
+        "move_right": 0.2669926814322364,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 47,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.3662516312610566,
+      "health_weight": 0.2198336063282006,
+      "taste_weight": 0.7801663936717994,
+      "dlpfc_coupling": 0.03305601054700099,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.0426287951671541,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.29666382132145586,
+        "move_down": 0.3662516312610566,
+        "move_left": 0.3662516312610566,
+        "move_right": 0.29666382132145586,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 48,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4069531459511209,
+      "health_weight": 0.2188419260117906,
+      "taste_weight": 0.7811580739882094,
+      "dlpfc_coupling": 0.03140321001965094,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.04049735540879639,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3296320482204079,
+        "move_down": 0.4069531459511209,
+        "move_left": 0.4069531459511209,
+        "move_right": 0.3296320482204079,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 49,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6147956405223688,
+      "health_weight": 0.21789982971120103,
+      "taste_weight": 0.782100170288799,
+      "dlpfc_coupling": 0.029833049518668393,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.03847248763835657,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.36626372144621355,
+        "move_down": 0.6147956405223688,
+        "move_left": 0.4521774338842142,
+        "move_right": 0.36626372144621355,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 50,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.41235090937794383,
+      "health_weight": 0.21700483822564098,
+      "taste_weight": 0.782995161774359,
+      "dlpfc_coupling": 0.02834139704273497,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.03654886325643874,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.406965907813231,
+        "move_down": 0.41235090937794383,
+        "move_left": 0.6836871905055455,
+        "move_right": 0.41235090937794383,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 51,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.45819221638025615,
+      "health_weight": 0.21615459631435893,
+      "taste_weight": 0.783845403685641,
+      "dlpfc_coupling": 0.02692432719059822,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.0347214200936168,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.615815160840982,
+        "move_down": 0.45819221638025615,
+        "move_left": 0.615815160840982,
+        "move_right": 0.45819221638025615,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 52,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.4069774253937854,
+      "health_weight": 0.215346866498641,
+      "taste_weight": 0.784653133501359,
+      "dlpfc_coupling": 0.025578110831068306,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.03298534908893595,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.4069774253937854,
+        "move_down": 0.41239397583830284,
+        "move_left": 0.6847633508418594,
+        "move_right": 0.41239397583830284,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 53,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.6667142084002767,
+      "health_weight": 0.21457952317370893,
+      "taste_weight": 0.7854204768262911,
+      "dlpfc_coupling": 0.02429920528951489,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.03133608163448915,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3711725170916145,
+        "move_down": 0.45823767542174626,
+        "move_left": 0.3711725170916145,
+        "move_right": 0.6667142084002767,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 54,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.28142999272090197,
+      "health_weight": 0.21385054701502348,
+      "taste_weight": 0.7861494529849765,
+      "dlpfc_coupling": 0.02308424502503914,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.029769277552764692,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3340706030882093,
+        "move_down": 0.41243284331877694,
+        "move_left": 0.28142999272090197,
+        "move_right": 0.41243284331877694,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 55,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.25310605503945616,
+      "health_weight": 0.2131580196642723,
+      "taste_weight": 0.7868419803357277,
+      "dlpfc_coupling": 0.021930032773787182,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.028280813675126457,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.25310605503945616,
+        "move_down": 0.3124766111598224,
+        "move_left": 0.25310605503945616,
+        "move_right": 0.3712057487874198,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 56,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.22764074719551147,
+      "health_weight": 0.2125001186810587,
+      "taste_weight": 0.7874998813189413,
+      "dlpfc_coupling": 0.02083353113509782,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.026866772991370132,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.22764074719551147,
+        "move_down": 0.28103795950063143,
+        "move_left": 0.22764074719551147,
+        "move_right": 0.33409901618812293,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 57,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.3712357403928842,
+      "health_weight": 0.21187511274700577,
+      "taste_weight": 0.7881248872529942,
+      "dlpfc_coupling": 0.01979185457834293,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.025523434341801626,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.3007009497182362,
+        "move_down": 0.3712357403928842,
+        "move_left": 0.2527708666361248,
+        "move_right": 0.3712357403928842,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 58,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.27064097379874386,
+      "health_weight": 0.21128135710965548,
+      "taste_weight": 0.7887186428903445,
+      "dlpfc_coupling": 0.018802261849425784,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.024247262624711545,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.27064097379874386,
+        "move_down": 0.33412465901079486,
+        "move_left": 0.2273541611106632,
+        "move_right": 0.33412465901079486,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 59,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "composite_chosen_value": 0.37126280781681575,
+      "health_weight": 0.2107172892541727,
+      "taste_weight": 0.7892827107458273,
+      "dlpfc_coupling": 0.017862148756954493,
+      "conflict_signal": 0.6858097042607415,
+      "goal_activation": 0.023034899493475966,
+      "depletion_level": 0.0,
+      "q_values": {
+        "move_up": 0.30072287433162076,
+        "move_down": 0.37126280781681575,
+        "move_left": 0.2524683591021183,
+        "move_right": 0.37126280781681575,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  }
+]

@@ -1,0 +1,2804 @@
+[
+  {
+    "step": 0,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.52,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 1,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.54,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 2,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.56,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.0,
+        "move_right": 0.3277322690821192,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 3,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.5800000000000001,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.0,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 4,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.6000000000000001,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 5,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.6200000000000001,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 6,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.6400000000000001,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 7,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.6600000000000001,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 8,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.6800000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 9,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.7000000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 10,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.7200000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 11,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.7400000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": 0.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19598074101581345,
+        "move_down": 0.19598074101581345,
+        "move_left": 0.0,
+        "move_right": 0.19598074101581345,
+        "stay": 0.20602888847627984,
+        "eat": 0.20602888847627984
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": 0.0
+      }
+    }
+  },
+  {
+    "step": 12,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.7600000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.0,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 13,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.7800000000000002,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.0,
+        "move_right": 0.3277322690821192,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -1000000000.0,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 14,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.8000000000000003,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 15,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.8200000000000003,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 16,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.8400000000000003,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 17,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.8600000000000003,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 18,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.8800000000000003,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 19,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.9000000000000004,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 20,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.9200000000000004,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 21,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.9400000000000004,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 22,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.9600000000000004,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 23,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 0.9800000000000004,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 24,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 25,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 26,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 27,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 28,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 29,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 30,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 31,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 32,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 33,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 34,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 35,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 36,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 37,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 38,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 39,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.24683611049740123,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 40,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.3277322690821192,
+        "move_right": 0.0,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 41,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 42,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.3277322690821192,
+        "move_right": 0.0,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 43,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 44,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.3277322690821192,
+        "move_right": 0.0,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 45,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 46,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.0,
+        "move_down": 0.3277322690821192,
+        "move_left": 0.3277322690821192,
+        "move_right": 0.0,
+        "stay": 0.34453546183576156,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -1000000000.0,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 47,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 48,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 49,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 50,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 51,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 52,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 53,
+    "action": "stay",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 54,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 55,
+    "action": "move_left",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 56,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.19796997249215914,
+        "move_down": 0.19796997249215914,
+        "move_left": 0.19796997249215914,
+        "move_right": 0.19796997249215914,
+        "stay": 0.20812011003136346,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -0.01,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 57,
+    "action": "move_right",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0,
+        "(7, 4)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 58,
+    "action": "move_up",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0,
+        "(7, 4)": 0.0,
+        "(7, 3)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  },
+  {
+    "step": 59,
+    "action": "move_down",
+    "reward": 0.0,
+    "state": {
+      "pavlovian_state_values": {
+        "(1, 1)": 0.0,
+        "(1, 0)": 0.0,
+        "(0, 0)": 0.0,
+        "(0, 1)": 0.0,
+        "(2, 1)": 0.0,
+        "(2, 0)": 0.0,
+        "(1, 2)": 0.0,
+        "(0, 2)": 0.0,
+        "(3, 0)": 0.0,
+        "(4, 0)": 0.0,
+        "(5, 0)": 0.0,
+        "(6, 0)": 0.0,
+        "(7, 0)": 0.0,
+        "(7, 1)": 0.0,
+        "(6, 1)": 0.0,
+        "(6, 2)": 0.0,
+        "(6, 3)": 0.0,
+        "(6, 4)": 0.0,
+        "(6, 5)": 0.0,
+        "(7, 5)": 0.0,
+        "(7, 4)": 0.0,
+        "(7, 3)": 0.0
+      },
+      "reward_prediction_error": 0.0,
+      "hunger_level": 1.0,
+      "reward_received": 0.0,
+      "pavlovian_action_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      },
+      "action_probabilities": {
+        "move_up": 0.24683611049740123,
+        "move_down": 0.24683611049740123,
+        "move_left": 0.24683611049740123,
+        "move_right": 0.0,
+        "stay": 0.25949166850779637,
+        "eat": 0.0
+      },
+      "q_values": {
+        "move_up": -0.01,
+        "move_down": -0.01,
+        "move_left": -0.01,
+        "move_right": -1000000000.0,
+        "stay": 0.0,
+        "eat": -1000000000.0
+      }
+    }
+  }
+]

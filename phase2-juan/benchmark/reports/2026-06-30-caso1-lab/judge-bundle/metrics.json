@@ -1,0 +1,185 @@
+{
+  "case": "caso1",
+  "experiment_id": "8157f739-0dbf-4421-9fd4-f6f017bdfcad",
+  "seed": 42,
+  "steps": 60,
+  "env_spec": {
+    "grid": {
+      "width": 8,
+      "height": 8
+    },
+    "actions": [
+      "move_up",
+      "move_down",
+      "move_left",
+      "move_right",
+      "eat",
+      "stay"
+    ],
+    "resources": [
+      {
+        "type": "food",
+        "count": 6,
+        "regenerate": true
+      }
+    ]
+  },
+  "events": 360,
+  "models": [
+    {
+      "key": "attribute-based-value-computation/weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+      "short": "Valor por atributos (algebraico)",
+      "events": 60,
+      "total_reward": 1.0,
+      "final_state_keys": [
+        "V_o",
+        "a_imm",
+        "a_abs",
+        "w_imm",
+        "w_abs",
+        "H_t",
+        "alpha_imm",
+        "alpha_abs",
+        "V_a",
+        "q_values"
+      ]
+    },
+    {
+      "key": "dlpfc-self-control-modulation/attribute-reweighting-algebraic-model",
+      "short": "Autocontrol dlPFC (reponderación)",
+      "events": 60,
+      "total_reward": 0.0,
+      "final_state_keys": [
+        "composite_chosen_value",
+        "health_weight",
+        "taste_weight",
+        "dlpfc_coupling",
+        "conflict_signal",
+        "goal_activation",
+        "depletion_level",
+        "q_values"
+      ]
+    },
+    {
+      "key": "drift-diffusion-model/classical-wiener-process-with-per-action-accumulators",
+      "short": "DDM (Wiener)",
+      "events": 60,
+      "total_reward": 10.0,
+      "final_state_keys": [
+        "evidence_accumulator",
+        "drift_rate",
+        "noise_sample",
+        "reward_history",
+        "chosen_action",
+        "decision_time",
+        "q_values"
+      ]
+    },
+    {
+      "key": "goal-directed-vs-habitual-control/dual-q-table-with-fixed-exponential-decay-arbitration",
+      "short": "Dirigido vs hábito (Q dual)",
+      "events": 60,
+      "total_reward": 1.0,
+      "final_state_keys": [
+        "h",
+        "omega",
+        "delta",
+        "Q_MF_size",
+        "p_hat_size",
+        "N_total_visits",
+        "q_values",
+        "last_Q_MB"
+      ]
+    },
+    {
+      "key": "homeostatic-regulation-of-food-valuation/drive-reduction-ode-with-goal-directed-valuation",
+      "short": "Homeostasis (drive-reduction ODE)",
+      "events": 60,
+      "total_reward": 3.0,
+      "final_state_keys": [
+        "E",
+        "H",
+        "w_c",
+        "w_e",
+        "d",
+        "ate",
+        "q_values"
+      ]
+    },
+    {
+      "key": "pavlovian-control-of-food-approach/rescorlawagner-cached-value-agent-with-softmax-action-selection",
+      "short": "Pavloviano (Rescorla-Wagner softmax)",
+      "events": 60,
+      "total_reward": 0.0,
+      "final_state_keys": [
+        "pavlovian_state_values",
+        "reward_prediction_error",
+        "hunger_level",
+        "reward_received",
+        "pavlovian_action_values",
+        "action_probabilities",
+        "q_values"
+      ]
+    }
+  ],
+  "determinism": {
+    "key": "attribute-based-value-computation/weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+    "identical": true
+  },
+  "joinable_triple": {
+    "written": 12,
+    "postgres_rows": 12,
+    "qdrant_dense": 12,
+    "qdrant_sparse": 12,
+    "consistent": true,
+    "all_zero": false,
+    "skipped_reason": null,
+    "episodes_filtered": 5
+  },
+  "charts_generated": 4,
+  "reporter": {
+    "pdf_key": "experiments/8157f739-0dbf-4421-9fd4-f6f017bdfcad/informe_final.pdf",
+    "pdf_produced": true,
+    "pdf_is_real_latex": true
+  },
+  "latency_per_stage": {
+    "architect": {
+      "seconds": 8.84,
+      "input_tokens": 3982,
+      "output_tokens": 703
+    },
+    "simulation": {
+      "seconds": 0.09,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "tracker": {
+      "seconds": 64.23,
+      "input_tokens": 92947,
+      "output_tokens": 3637
+    },
+    "kg_write": {
+      "seconds": 0.62,
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    "analyst": {
+      "seconds": 109.14,
+      "input_tokens": 202231,
+      "output_tokens": 6099
+    },
+    "reporter": {
+      "seconds": 84.72,
+      "input_tokens": 35964,
+      "output_tokens": 8127
+    }
+  },
+  "total_seconds": 267.97,
+  "usage": {
+    "input_tokens": 335124,
+    "output_tokens": 18566,
+    "calls": 23,
+    "seconds": 348.96,
+    "estimated_cost_usd": 1.2839
+  }
+}
