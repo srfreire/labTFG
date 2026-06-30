@@ -234,6 +234,35 @@ solo los artefactos aceptados por revisión humana podían consolidarse. Esta
 restricción ralentiza el flujo, pero evita que errores científicos o
 alucinaciones pasen a formar parte del conocimiento reutilizable del sistema.
 
+\subsection{Componentes implementados y tecnologías}
+
+La Tabla~\ref{tab:componentes-tecnologias} vincula los componentes software
+descritos en el diseño con las librerías, APIs y plataformas usadas en la
+implementación. La arquitectura separa los componentes funcionales de la
+tecnología concreta para que el sistema pueda cambiar de proveedor o de
+almacén sin modificar el contrato entre etapas.
+
+\begin{table}[H]
+\small
+\begin{center}
+\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{5.2cm}|} \hline
+\textbf{Componente} & \textbf{Tecnologías} & \textbf{Uso en la implementación} \\ \hline
+Interfaz web & React, Vite, Tailwind CSS, \texttt{@ppazosp/agrex} & Ejecuta la vista de seguimiento, revisión humana y reproducción de trazas del pipeline. \\ \hline
+API de fase 1 & FastAPI, WebSocket, Uvicorn & Expone el servidor del pipeline, la comunicación en tiempo real y los endpoints de artefactos. \\ \hline
+CLI y Router & Typer, Rich, Questionary, \texttt{agrex} & Lanza ejecuciones, controla la máquina de estados y registra la traza estructurada. \\ \hline
+Agentes y subagentes & Anthropic SDK, OpenRouter, Pydantic & Ejecuta llamadas LLM con herramientas, valida salidas estructuradas y mantiene contratos entre etapas. \\ \hline
+Herramientas de investigación & DDGS, búsqueda académica, corpus de evaluación & Busca fuentes, papers y contexto científico para el Researcher y el DeepResearcher. \\ \hline
+Artefactos & MinIO, API S3, \texttt{aioboto3} & Guarda informes, formulaciones, especificaciones, código, tests, estado y trazas. \\ \hline
+Persistencia relacional & PostgreSQL, SQLAlchemy async, asyncpg, Alembic & Guarda runs, modelos, metadatos, memoria aprobada, confianza, vigencia y auditoría. \\ \hline
+Grafo de conocimiento & Neo4j, driver asíncrono de Neo4j & Representa paradigmas, formulaciones, autores, papers, variables y relaciones científicas. \\ \hline
+Recuperación vectorial & Qdrant, Voyage AI, ZeroEntropy, BM25 nativo & Recupera conocimiento por similitud semántica, búsqueda léxica y reranking. \\ \hline
+Validación de modelos & uv, pytest, Python 3.12 & Ejecuta los tests generados por Builder y valida el contrato \texttt{DecisionModel}. \\ \hline
+\end{tabular}
+\caption{Componentes software y tecnologías de implementación.}
+\label{tab:componentes-tecnologias}
+\end{center}
+\end{table}
+
 \subsection{Criterios de aceptación}
 
 Cada tarea se redactó con criterios de aceptación concretos. Un criterio de

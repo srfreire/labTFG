@@ -18,7 +18,9 @@ def test_export_bundle_structure(tmp_path):
     )
     assert bundle.name == "judge-bundle"
     assert json.loads((bundle / "env_spec.json").read_text())["grid"]["width"] == 8
-    traj = json.loads((bundle / "trajectories" / "drift-diffusion-model_x.json").read_text())
+    traj = json.loads(
+        (bundle / "trajectories" / "drift-diffusion-model_x.json").read_text()
+    )
     assert traj[0]["action"] == "eat"
     assert (bundle / "analyst_findings.md").read_text().startswith("## Hallazgos")
     assert (bundle / "report.pdf").read_bytes() == b"%PDF-1.5 fake"
