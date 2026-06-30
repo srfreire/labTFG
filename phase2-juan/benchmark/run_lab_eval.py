@@ -222,8 +222,11 @@ async def main(case: str) -> None:
             "grid": spec.get("grid"),
             "actions": [a["name"] for a in spec.get("actions", [])],
             "resources": [
-                {"type": r["type"], "count": r.get("count"),
-                 "regenerate": r.get("regenerate")}
+                {
+                    "type": r["type"],
+                    "count": r.get("count"),
+                    "regenerate": r.get("regenerate"),
+                }
                 for r in spec.get("resources", [])
             ],
         }
@@ -361,9 +364,7 @@ async def main(case: str) -> None:
         report_pdf=report_pdf,
         metrics=result,
     )
-    prompt_template = (
-        Path(__file__).resolve().parent / "JUDGE_PROMPT.md"
-    ).read_text()
+    prompt_template = (Path(__file__).resolve().parent / "JUDGE_PROMPT.md").read_text()
     resolved = prompt_template.replace("{BUNDLE_DIR}", str(bundle.resolve()))
     (out_dir / "JUDGE_PROMPT.md").write_text(resolved, encoding="utf-8")
 
@@ -371,7 +372,7 @@ async def main(case: str) -> None:
     print("\n" + "=" * 70)
     print("Run del lab completa. Para el juicio, ejecuta Codex así:\n")
     print(f"  cd {bundle.resolve().parent}")
-    print(f"  codex exec \"$(cat JUDGE_PROMPT.md)\"")
+    print('  codex exec "$(cat JUDGE_PROMPT.md)"')
     print(f"\nCodex debe escribir el veredicto en: {out_dir.resolve()}/llm-judge.md")
     print("=" * 70)
 

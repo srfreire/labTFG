@@ -216,7 +216,9 @@ async def _wipe_minio(services, bundle: Path, *, dry_run: bool) -> None:
     for prefix in sorted(prefixes):
         keys = await services.storage.list(f"{prefix}/")
         if dry_run:
-            logger.info("restore: would delete %d MinIO objects under %s/", len(keys), prefix)
+            logger.info(
+                "restore: would delete %d MinIO objects under %s/", len(keys), prefix
+            )
             continue
         for key in keys:
             await services.storage.delete(key)
@@ -248,7 +250,9 @@ async def _restore_neo4j(services, bundle: Path, *, dry_run: bool) -> None:
     snap = json.loads(snaps[-1].read_text())
     n_nodes, n_rels = len(snap.get("nodes", [])), len(snap.get("relations", []))
     if dry_run:
-        logger.info("restore: would restore %d nodes / %d relations to Neo4j", n_nodes, n_rels)
+        logger.info(
+            "restore: would restore %d nodes / %d relations to Neo4j", n_nodes, n_rels
+        )
         return
     await kgadmin.restore(snap, services, reset_first=True)
     logger.info("restore: restored %d nodes / %d relations to Neo4j", n_nodes, n_rels)
@@ -298,7 +302,9 @@ async def _reindex_qdrant(services, *, dry_run: bool) -> None:
 
     live_ids = {str(m.id) for m in memories}
     if dry_run:
-        logger.info("restore: would re-index %d live memories into Qdrant", len(memories))
+        logger.info(
+            "restore: would re-index %d live memories into Qdrant", len(memories)
+        )
         return
 
     indexed = 0
@@ -307,7 +313,9 @@ async def _reindex_qdrant(services, *, dry_run: bool) -> None:
         vectors = await services.embeddings.embed_texts([m.content for m in batch])
         for memory, vector in zip(batch, vectors, strict=True):
             payload = _vector_payload(memory)
-            await services.vectors.upsert_dense("memories_dense", str(memory.id), vector, payload)
+            await services.vectors.upsert_dense(
+                "memories_dense", str(memory.id), vector, payload
+            )
             await services.vectors.upsert_sparse(
                 "memories_sparse", str(memory.id), memory.content, payload
             )
@@ -348,7 +356,9 @@ async def _delete_qdrant_orphans(services, *, live_ids: set[str]) -> None:
             if offset is None:
                 break
         if deleted:
-            logger.info("restore: deleted %d orphan points from %s", deleted, collection)
+            logger.info(
+                "restore: deleted %d orphan points from %s", deleted, collection
+            )
 
 
 # --------------------------------------------------------------------------- #
@@ -379,7 +389,9 @@ async def _main(bundle: Path, *, wipe: bool, dry_run: bool) -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("bundle", type=Path, help="Path to the artifact-bundle directory")
+    parser.add_argument(
+        "bundle", type=Path, help="Path to the artifact-bundle directory"
+    )
     parser.add_argument(
         "--no-wipe",
         dest="wipe",
