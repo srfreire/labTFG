@@ -1,6 +1,6 @@
 {
   "case": "caso1",
-  "experiment_id": "8157f739-0dbf-4421-9fd4-f6f017bdfcad",
+  "experiment_id": "0a19adc4-3ce3-4df2-b98b-6d3bc301cf50",
   "seed": 42,
   "steps": 60,
   "env_spec": {
@@ -126,60 +126,62 @@
     "key": "attribute-based-value-computation/weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
     "identical": true
   },
+  "grounding_fixes_tracker": [],
   "joinable_triple": {
-    "written": 12,
-    "postgres_rows": 12,
-    "qdrant_dense": 12,
-    "qdrant_sparse": 12,
+    "written": 13,
+    "postgres_rows": 13,
+    "qdrant_dense": 13,
+    "qdrant_sparse": 13,
     "consistent": true,
     "all_zero": false,
     "skipped_reason": null,
-    "episodes_filtered": 5
+    "episodes_filtered": 6
   },
-  "charts_generated": 4,
+  "grounding_fixes_analyst": [],
+  "charts_generated": 3,
   "reporter": {
-    "pdf_key": "experiments/8157f739-0dbf-4421-9fd4-f6f017bdfcad/informe_final.pdf",
+    "pdf_key": "experiments/0a19adc4-3ce3-4df2-b98b-6d3bc301cf50/informe_final.pdf",
     "pdf_produced": true,
     "pdf_is_real_latex": true
   },
   "latency_per_stage": {
     "architect": {
-      "seconds": 8.84,
+      "seconds": 11.05,
       "input_tokens": 3982,
       "output_tokens": 703
     },
     "simulation": {
-      "seconds": 0.09,
+      "seconds": 0.08,
       "input_tokens": 0,
       "output_tokens": 0
     },
     "tracker": {
-      "seconds": 64.23,
-      "input_tokens": 92947,
-      "output_tokens": 3637
+      "seconds": 59.76,
+      "input_tokens": 88164,
+      "output_tokens": 3410
     },
     "kg_write": {
-      "seconds": 0.62,
+      "seconds": 3.26,
       "input_tokens": 0,
       "output_tokens": 0
     },
     "analyst": {
-      "seconds": 109.14,
-      "input_tokens": 202231,
-      "output_tokens": 6099
+      "seconds": 91.23,
+      "input_tokens": 115857,
+      "output_tokens": 5063
     },
     "reporter": {
-      "seconds": 84.72,
-      "input_tokens": 35964,
-      "output_tokens": 8127
+      "seconds": 46.19,
+      "input_tokens": 28507,
+      "output_tokens": 6233
     }
   },
-  "total_seconds": 267.97,
+  "total_seconds": 211.89,
   "usage": {
-    "input_tokens": 335124,
-    "output_tokens": 18566,
-    "calls": 23,
-    "seconds": 348.96,
-    "estimated_cost_usd": 1.2839
+    "input_tokens": 236510,
+    "output_tokens": 15409,
+    "calls": 19,
+    "seconds": 284.62,
+    "estimated_cost_usd": 0.9407
   }
 }

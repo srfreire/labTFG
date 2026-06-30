@@ -30,6 +30,7 @@ from simlab.analyst import Analyst
 from simlab.architect import Architect
 from simlab.critical_events import critical_events_to_json, detect_critical_events
 from simlab.environment import Agent, Position
+from simlab.grounding import lint_analyst_output, lint_tracker_output
 from simlab.knowledge import ModelInfo, SimulationContext, build_writer_from_services
 from simlab.model_loader import discover_models, load_model
 from simlab.reporter import Reporter
@@ -300,6 +301,16 @@ async def main(case: str) -> None:
                 max_iterations=12,
             )
 
+        # Deterministic grounding: rewrite fabricated action counts in the
+        # Tracker's episode prose to ground truth BEFORE it propagates to the KG
+        # write, the Analyst, the Reporter and the judge bundle. Prompt hardening
+        # and injected facts both failed here (the LLM ignores numbers it has);
+        # this is the enforcement layer. See simlab/grounding.py.
+        tracker_output, tracker_fixes = lint_tracker_output(tracker_output, all_events)
+        result["grounding_fixes_tracker"] = tracker_fixes
+        for fix in tracker_fixes:
+            print(f"[grounding] tracker: {fix}")
+
         # 4. Persist the joinable triple, then count it in each store
         if svc.sim_memory_writer is not None:
             ctx = SimulationContext(
@@ -350,6 +361,12 @@ async def main(case: str) -> None:
                 # without letting the loop wander.
                 max_iterations=10,
             )
+        # Same grounding pass on the Analyst's single-agent pattern prose before
+        # it reaches the Reporter and the bundle.
+        analyst_output, analyst_fixes = lint_analyst_output(analyst_output, all_events)
+        result["grounding_fixes_analyst"] = analyst_fixes
+        for fix in analyst_fixes:
+            print(f"[grounding] analyst: {fix}")
         result["charts_generated"] = len(charts)
 
         # 6. Reporter

@@ -1,5 +1,5 @@
 {
-  "summary": "Simulación de 60 pasos con 4 agentes: uno falleció por agotamiento de energía (paso 18), dos lograron consumir recursos de forma exitosa, y uno no logró encontrar recursos.",
+  "summary": "Simulación de 60 pasos con 4 agentes de diferentes arquitecturas cognitivas, donde 3 agentes sobrevivieron completamente mientras uno murió por agotamiento de energía en el paso 18.",
   "trajectories": {
     "continuous-drive-dynamics-with-urgency-threshold-policy": {
       "steps_survived": 60,
@@ -52,45 +52,69 @@
   "episodes": [
     {
       "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
+      "type": "exploitation",
+      "steps": [0, 11],
+      "description": "Estrategia conservadora inicial: permaneció en reposo (modo REST) durante 7 pasos consecutivos con energía estable (0.68-0.66), hasta que su drive aumentó lo suficiente para activar búsqueda activa. Realizó 3 movimientos hacia abajo (pasos 8-10) y consumió recurso exitosamente en paso 11, demostrando umbral de urgencia eficaz."
+    },
+    {
+      "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
       "type": "foraging_success",
-      "steps": [6, 11],
-      "description": "Cambio de estrategia exitoso: pasó de esperar (stay) a búsqueda activa (move_down en pasos 8-10) y consumió recurso en paso 11, retornando inmediatamente a estrategia de espera"
+      "step": 11,
+      "description": "Primer consumo exitoso tras detectar umbral de drive crítico (drive=0.0144→0.0196). Transición inmediata de move_down a stay post-consumo, evidenciando cambio de modo conductual hacia explotación del recurso."
     },
     {
       "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
       "type": "exploitation",
-      "steps": [11, 60],
-      "description": "Estrategia de explotación dominante: 73% de acciones fueron 'stay', alternando con búsquedas breves que resultaron en 3 consumos adicionales (pasos 23, 40, 56)"
+      "steps": [11, 23],
+      "description": "Período de explotación pasiva de 11 pasos post-consumo, permaneciendo mayormente en stay hasta paso 22. Un movimiento estratégico (move_right) en paso 22 le permitió consumir nuevo recurso en paso 23, mostrando capacidad de búsqueda local eficiente."
+    },
+    {
+      "agent": "continuous-drive-dynamics-with-urgency-threshold-policy",
+      "type": "foraging_success",
+      "steps": [40, 56],
+      "description": "Dos consumos adicionales en pasos 40 y 56, manteniendo patrón de stay prolongado (dominancia de 73% stay en total). Estrategia de bajo gasto energético resultó en supervivencia completa con 4 recursos consumidos."
     },
     {
       "agent": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
       "type": "starvation",
       "steps": [0, 6],
-      "description": "Deterioro energético crítico: energía cayó de 0.45 a 0.26 en 6 pasos. El agente logró consumir un recurso en paso 6 que elevó energía a 0.56"
+      "description": "Crisis energética desde inicio: comenzó con energía 0.45 (bajo umbral crítico de 0.5) y declinó continuamente hasta 0.26 en paso 5. Exploración activa (4 movimientos en 6 pasos) sin consumo exitoso hasta estado crítico de severidad 0.99."
+    },
+    {
+      "agent": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+      "type": "foraging_success",
+      "step": 6,
+      "description": "Consumo exitoso en paso 6 al encontrarse en posición (4,3) con recurso disponible. La energía se recuperó de 0.26 a 0.56, pero el prior alostático mu_p=0.656 y valores de energía libre esperada no lograron reorientar su política hacia conservación sostenible."
     },
     {
       "agent": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
       "type": "starvation",
-      "steps": [6, 18],
-      "description": "Muerte por agotamiento: tras única alimentación, energía decayó continuamente de 0.56 a 0.0 en 12 pasos con exploración errática sin encontrar más recursos"
+      "steps": [7, 18],
+      "description": "Colapso post-recuperación: a pesar del consumo en paso 6, continuó exploración errática (11 movimientos en 12 pasos) sin localizar más recursos. Energía declinó linealmente de 0.51 a 0.0, alcanzando muerte por agotamiento en paso 18. Fallo crítico en balance exploración-explotación."
     },
     {
       "agent": "drive-reduction-td-q-learning-model-free",
       "type": "exploration",
       "steps": [0, 24],
-      "description": "Exploración activa inicial: 81% de acciones fueron movimiento durante primeros 24 pasos, con cambio estratégico en paso 23 de 'stay' a 'move_up' que resultó en consumo exitoso"
+      "description": "Exploración inicial activa con distribución balanceada de acciones (stay=12, move_up=14, move_right=12, etc.). Patrón de movimiento diversificado permitió descubrir y consumir primer recurso en paso 24, tras cambio estratégico de stay a move_up en paso 23."
     },
     {
       "agent": "drive-reduction-td-q-learning-model-free",
       "type": "foraging_success",
-      "steps": [24, 45],
-      "description": "Segunda alimentación exitosa en paso 45, seguida de pérdida de confianza en decisión (paso 46): gap entre Q-values cayó de 0.58 a 0.0"
+      "step": 45,
+      "description": "Segundo consumo en paso 45 tras exploración sostenida. Total de 2 recursos en 60 pasos muestra estrategia de aprendizaje Q menos eficiente que modelo basado en drives, pero suficiente para supervivencia completa."
+    },
+    {
+      "agent": "drive-reduction-td-q-learning-model-free",
+      "type": "state_change",
+      "step": 46,
+      "description": "Pérdida de confianza en decisión detectada en paso 46: el margen entre los dos mejores Q-values se estrechó bajo el umbral crítico, indicando exploración-explotación en equilibrio inestable en fase tardía de aprendizaje."
     },
     {
       "agent": "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
       "type": "foraging_failure",
       "steps": [0, 60],
-      "description": "Exploración infructuosa completa: 83% de acciones fueron movimiento (60 de 72 acciones totales), alternando direcciones sin patrón aparente, sin lograr ningún consumo de recursos"
+      "description": "Fracaso completo en forrajeo: 0 recursos consumidos en 60 pasos a pesar de exploración continua (83% movimientos, solo 17% stay). Patrón de movimiento errático (move_down=16, move_up=14, move_right=12) sin convergencia hacia recursos. Error de minimización de predicción jerárquica no logró optimizar política de búsqueda efectiva."
     }
   ]
 }

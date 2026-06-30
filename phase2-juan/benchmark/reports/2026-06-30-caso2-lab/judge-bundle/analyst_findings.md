@@ -4,127 +4,120 @@
       "id": "P1",
       "type": "estrategia",
       "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy"],
-      "description": "Estrategia de espera con intervención umbral: el agente permaneció inactivo el 73% del tiempo (44 de 60 acciones fueron 'stay'), activándose solo cuando su impulso interno superó un umbral crítico. En el paso 7 su drive alcanzó 0.0256 en modo FORAGE, desencadenando búsqueda dirigida (3 movimientos consecutivos hacia abajo) que culminó en alimentación exitosa en el paso 11. Tras cada consumo, el drive se reseteó a 0.0 y el agente retornó inmediatamente al modo REST, repitiendo el patrón 4 veces (pasos 11, 23, 40, 56)",
-      "evidence": "En el paso 6, drive=0.0144 con modo REST. En el paso 7, drive=0.0256 activó modo FORAGE. En el paso 8, drive=0.0342 intensificó búsqueda. Tras consumo en paso 11, drive volvió a 0.0 y modo cambió a REST. El agente consumió 4 recursos con eficiencia energética máxima: 4 recompensas / 60 pasos = 0.067 recompensas por paso"
+      "description": "Estrategia de conservación energética mediante umbral de urgencia: el agente permaneció en reposo hasta que su drive alcanzó un nivel crítico, momento en que activó búsqueda focalizada y logró 4 consumos exitosos con 73% de acciones stay",
+      "evidence": "En el paso 0 drive=0.0 con energía=0.78 mantuvo modo REST durante 6 pasos consecutivos. En paso 6 drive=0.014 cruzó el umbral y cambió a búsqueda activa. En paso 11 con drive=0.055 ejecutó eat exitosamente y el drive se reinició a 0.0, volviendo a modo REST inmediatamente"
     },
     {
       "id": "P2",
       "type": "estrategia",
       "agents": ["drive-reduction-td-q-learning-model-free"],
-      "description": "Exploración constante sin convergencia de aprendizaje: el agente mantuvo 80% de acciones de movimiento (58 de 60) distribuyéndose casi uniformemente entre direcciones (move_up=14, move_down=13, move_right=12, move_left=7). A pesar de dos consumos exitosos, su tabla Q no desarrolló preferencias claras. En el paso 23, antes del primer consumo, todos sus valores Q eran 0.0, indicando ausencia de aprendizaje acumulado tras 23 pasos de experiencia",
-      "evidence": "Paso 23: Q-values={move_up:0.0, move_down:0.0, move_left:0.0, move_right:0.0, stay:0.0, eat:0.0}, hunger_level=2.3, drive=5.29. Paso 46: tras segundo consumo, el agente mostró Q-values ligeramente negativos pero sin diferenciación entre acciones. Total: 2 recursos en 60 pasos = 0.033 recompensas por paso, mitad de eficiencia del modelo drive-dynamics"
+      "description": "Exploración activa con aprendizaje Q lento: el agente distribuyó acciones de forma balanceada durante fase temprana, logrando consumir recursos tras 24 pasos de exploración, pero con baja eficiencia general comparado con el modelo basado en drive continuo",
+      "evidence": "Distribución uniforme de movimientos con 20% stay vs 73% del agente de drive. Primer consumo en paso 24 tras exploración extensa. Drive evolucionó de 0.0 a 5.76 antes del consumo. Segundo consumo recién en paso 45. Total: 2 recursos en 60 pasos"
     },
     {
       "id": "P3",
-      "type": "temporal",
+      "type": "comportamiento",
       "agents": ["expected-free-energy-policy-selection-with-allostatic-prior-shifting"],
-      "description": "Colapso energético irreversible tras ventana crítica única: el agente inició con energía 0.45 y experimentó caída lineal (pérdida de 0.05 por paso) durante 6 pasos hasta alcanzar 0.26. Logró un único consumo en el paso 6 que elevó su energía a 0.56, pero nunca encontró un segundo recurso. La energía continuó decayendo hasta 0.01 en el paso 17 y llegó a 0.0 en el paso 18, terminando la simulación por agotamiento",
-      "evidence": "Energía: paso 0=0.45, paso 5=0.26, paso 6=0.56 (consumo), paso 11=0.31, paso 17=0.01, paso 18=0.0 (muerte). Durante los 12 pasos finales realizó 11 acciones de movimiento exploratorio sin patrón dirigido, con valores Q prácticamente idénticos entre acciones (diferencias menores a 0.0002 en el paso 17), sugiriendo decisiones cercanas al azar"
+      "description": "Fallo catastrófico post-recuperación en agente de energía libre esperada: tras consumir exitosamente en el paso 6 y recuperar energía de 0.26 a 0.56, el agente continuó explorando intensamente sin ajustar su política, resultando en muerte por agotamiento en el paso 18",
+      "evidence": "Entre pasos 0-6: energía cayó de 0.45 a 0.26. En paso 6 consumió y recuperó a 0.56. En paso 7 inmediatamente reanudó exploración con move_up. Entre pasos 7-18: realizó 11 movimientos sin nuevos consumos, energía declinó linealmente hasta 0.0. Los valores de energía libre esperada en todos los Q-values fueron uniformemente altos (>8.5) sin diferenciación clara entre acciones, indicando fallo del mecanismo de selección de política"
     },
     {
       "id": "P4",
       "type": "comportamiento",
       "agents": ["hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode"],
-      "description": "Exploración infructuosa con señal de error persistente: el agente ejecutó 83% de movimientos (50 de 60 acciones) alternando direcciones sin establecer patrones espaciales coherentes. Sus valores Q permanecieron en rango negativo estrecho (entre -0.05 y -0.09) durante toda la simulación, con diferencias mínimas entre acciones. Los errores de predicción (eps_1, eps_2) mostraron oscilaciones sin corrección sistemática, indicando que el sistema de minimización de error no convergió a una política efectiva",
-      "evidence": "Paso 0: Q-values entre -1.43 y -1.61, F=0.88. Paso 30: Q-values entre -0.076 y -0.089, F=0.12. A pesar de 30 pasos de ajuste gradiente, la señal F de energía libre solo disminuyó marginalmente y los Q-values mantuvieron rangos comprimidos. El agente no consumió ningún recurso en 60 pasos, eficiencia=0.0"
+      "description": "Exploración errática sin convergencia hacia objetivos: el agente mantuvo movimiento constante durante los 60 pasos sin lograr un solo consumo, con valores Q negativos uniformes que no reflejaron gradientes hacia recursos cercanos",
+      "evidence": "0 recursos consumidos en 60 pasos. Distribución de movimientos: 83% exploración activa. En paso 0: Q-values entre -1.42 y -1.61. En paso 30: Q-values entre -0.076 y -0.089, aún sin diferenciación clara. En paso 59 con recurso en posición (5,9) a distancia 2, Q-values entre -0.071 y -0.395 sin orientación espacial efectiva. El error de predicción eps_1 mostró valores pequeños indicando que el sistema no detectó discrepancias significativas"
     },
     {
       "id": "P5",
-      "type": "comportamiento",
-      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "drive-reduction-td-q-learning-model-free"],
-      "description": "Divergencia conductual entre modelos basados en impulso: ambos utilizan señal de 'drive' pero con dinámicas opuestas. El modelo continuous-drive mostró regulación homeostática perfecta (drive osciló entre 0.0 y 0.055, activando búsqueda solo al superar umbral). El modelo Q-learning mostró acumulación monotónica de drive (de 1.0 en paso 10 a valores crecientes) sin mecanismo de reseteo, generando exploración perpetua sin fases de descanso",
-      "evidence": "Continuous-drive paso 11: drive=0.055 antes de comer, 0.0 después. Q-learning paso 10: drive=1.0, paso 23: drive=5.29, paso 46: drive=0.0 solo tras consumo. La ausencia de regulación homeostática en Q-learning resultó en comportamiento de búsqueda constante menos eficiente (2 vs 4 consumos)"
+      "type": "temporal",
+      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy"],
+      "description": "Acoplamiento entre señal de drive y cambio conductual: el sistema mostró transiciones limpias entre modos REST y EAT basadas en umbrales de drive, con reinicio inmediato post-consumo",
+      "evidence": "En paso 11 pre-consumo: drive=0.055, modo=EAT, Q_eat=0.055 fue máximo. Post-consumo: drive=0.0, modo=REST, todos los Q-values=0.0. Velocidad del drive (drive_velocity) aumentó progresivamente: 0.0004 (paso 0) → 0.011 (paso 11), indicando acumulación gradual de urgencia homeostática"
     },
     {
       "id": "P6",
-      "type": "recursos",
-      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "drive-reduction-td-q-learning-model-free", "expected-free-energy-policy-selection-with-allostatic-prior-shifting", "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode"],
-      "description": "Desigualdad espacial en acceso a recursos: el agente continuous-drive inició en posición (1,0) cerca del cluster de recursos en y=2-3, permitiéndole encontrar comida rápidamente en movimientos cortos. El agente hierarchical-precision inició en (1,8), zona lejana del cluster principal, requiriendo navegación extensa sin éxito. El agente expected-free-energy inició en (2,1), encontró un recurso en (4,3) tras 6 pasos pero no pudo localizar un segundo a tiempo",
-      "evidence": "En el paso 10, ocho recursos estaban concentrados en región x=0-9, y=1-6. Continuous-drive alcanzó (1,3) tras 11 pasos. Hierarchical-precision estaba en (3,7) tras 10 pasos, lejos del cluster. Expected-free-energy murió en (6,3), rodeado de recursos que no localizó en 12 pasos post-consumo"
-    },
-    {
-      "id": "P7",
-      "type": "comportamiento",
-      "agents": ["drive-reduction-td-q-learning-model-free"],
-      "description": "Pérdida catastrófica de confianza en decisión: en el paso 46, inmediatamente después de su segundo consumo exitoso, el agente experimentó colapso completo en diferenciación de valores Q. Su tabla pasó de mostrar preferencias claras en el paso 45 (registradas por el detector de eventos con gap=0.576) a valores Q prácticamente uniformes (todos entre 0.0 y -0.027) en el paso 46. Este fenómeno indica que el evento de recompensa alta desestabilizó su función de valor en lugar de reforzarla",
-      "evidence": "El sistema de detección registró en paso 46: 'perdió confianza en su decisión: gap Q-values bajó de 0.58 a 0.00'. En el paso 46, hunger_level volvió a 0.0 tras el consumo, reseteando completamente su señal de drive y colapsando la diferenciación aprendida. Esto sugiere interferencia entre la señal homeostática (hunger) y el aprendizaje por refuerzo (Q-values)"
+      "type": "anomalía",
+      "agents": ["expected-free-energy-policy-selection-with-allostatic-prior-shifting"],
+      "description": "Colapso del prior alostático sin efecto protector: a pesar de tener mu_p=0.656 en el paso 7 post-recuperación, la distribución sobre estados observados concentró toda la certeza en estados observados inmediatos sin generar políticas conservadoras",
+      "evidence": "En paso 7: mu_p=0.656 (prior alto), pero q_s mostró concentración masiva en estado actual con valor 0.90. Los costos esperados C variaron poco entre acciones, con diferencias en rango -1.17 a -0.013. La acción elegida fue move_up en vez de stay o búsqueda conservadora local"
     }
   ],
   "comparisons": [
     {
       "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "drive-reduction-td-q-learning-model-free"],
-      "metric": "Recursos consumidos totales",
+      "metric": "Recursos consumidos",
       "values": {
         "continuous-drive-dynamics-with-urgency-threshold-policy": 4,
         "drive-reduction-td-q-learning-model-free": 2
       },
-      "insight": "El modelo de umbral homeostático superó al Q-learning en eficiencia de forrajeo (4 vs 2 consumos) porque alternó entre reposo y búsqueda dirigida, mientras que el Q-learning mantuvo exploración continua sin desarrollar patrones efectivos. La regulación por drive con reseteo post-consumo generó intervalos de búsqueda cortos y eficientes"
+      "insight": "El modelo de dinámicas continuas de drive con umbral de urgencia superó en eficiencia al Q-learning libre de modelo porque el umbral homeostático permitió conservar energía mediante reposo estratégico, mientras que el Q-learning exploró continuamente sin mecanismo de conservación innato"
     },
     {
-      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "expected-free-energy-policy-selection-with-allostatic-prior-shifting"],
-      "metric": "Proporción de acciones de espera",
+      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "drive-reduction-td-q-learning-model-free"],
+      "metric": "Proporción de acciones stay",
       "values": {
         "continuous-drive-dynamics-with-urgency-threshold-policy": 0.73,
-        "expected-free-energy-policy-selection-with-allostatic-prior-shifting": 0.16
+        "drive-reduction-td-q-learning-model-free": 0.20
       },
-      "insight": "El modelo continuous-drive conservó energía mediante espera estratégica (73% de acciones), mientras que el modelo free-energy mantuvo exploración activa (84% movimientos) hasta su muerte. La ausencia de modo de reposo en free-energy aceleró su colapso energético, demostrando que la exploración sin regulación homeostática es letal en entornos con escasez"
+      "insight": "La política de umbral generó comportamiento pasivo dominante hasta alcanzar necesidad crítica, mientras que el agente Q-learning mantuvo exploración activa constante, resultando en mayor gasto energético sin proporcional ganancia en recursos"
+    },
+    {
+      "agents": ["expected-free-energy-policy-selection-with-allostatic-prior-shifting", "continuous-drive-dynamics-with-urgency-threshold-policy"],
+      "metric": "Pasos sobrevividos",
+      "values": {
+        "expected-free-energy-policy-selection-with-allostatic-prior-shifting": 19,
+        "continuous-drive-dynamics-with-urgency-threshold-policy": 60
+      },
+      "insight": "El agente de energía libre esperada murió en el paso 18 porque sus valores Q uniformemente altos no diferenciaron entre acciones arriesgadas y conservadoras, mientras que el modelo de drive generó señales claras que acoplaron urgencia con acción"
     },
     {
       "agents": ["hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode", "drive-reduction-td-q-learning-model-free"],
-      "metric": "Recursos encontrados",
+      "metric": "Recursos consumidos con exploración activa",
       "values": {
         "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode": 0,
         "drive-reduction-td-q-learning-model-free": 2
       },
-      "insight": "Ambos modelos mantuvieron exploración constante (83% y 80% de movimientos respectivamente), pero el Q-learning logró 2 consumos mientras que el modelo jerárquico no encontró ninguno. La diferencia radica en la señal de refuerzo: Q-learning usó señal homeostática clara (hunger_level) que reaccionó a consumos, mientras que el modelo jerárquico minimizó error de predicción sin señal de recompensa explícita, resultando en exploración sin propósito"
-    },
-    {
-      "agents": ["continuous-drive-dynamics-with-urgency-threshold-policy", "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode"],
-      "metric": "Pasos sobrevividos",
-      "values": {
-        "continuous-drive-dynamics-with-urgency-threshold-policy": 60,
-        "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode": 60
-      },
-      "insight": "Ambos sobrevivieron los 60 pasos, pero con resultados opuestos: continuous-drive lo logró mediante 4 consumos exitosos, mientras que hierarchical-precision sobrevivió sin consumir nada, sugiriendo que su tasa de consumo de energía basal era suficientemente baja o inexistente. Esto indica diferencias fundamentales en los sistemas de supervivencia implementados"
+      "insight": "Ambos modelos exploraron intensamente, pero el Q-learning logró aprender asociaciones estado-acción-recompensa a partir de encuentros fortuitos, mientras que el minimizador de error de predicción jerárquico no generó gradientes efectivos hacia recursos a pesar de tener información perceptual equivalente"
     }
   ],
   "metrics": {
     "continuous-drive-dynamics-with-urgency-threshold-policy": {
-      "pasos sobrevividos": 60,
-      "recursos consumidos": 4,
-      "recompensa total": 4.0,
+      "pasos vivos": 60,
+      "recursos comidos": 4,
+      "tasa supervivencia": 1.0,
       "eficiencia forrajeo": 0.067,
-      "tasa movimiento": 0.27,
-      "tasa espera": 0.73
+      "proporción reposo": 0.73,
+      "recompensa total": 4.0
     },
     "drive-reduction-td-q-learning-model-free": {
-      "pasos sobrevividos": 60,
-      "recursos consumidos": 2,
-      "recompensa total": 2.0,
+      "pasos vivos": 60,
+      "recursos comidos": 2,
+      "tasa supervivencia": 1.0,
       "eficiencia forrajeo": 0.033,
-      "tasa movimiento": 0.8,
-      "tasa espera": 0.2
+      "proporción movimiento": 0.80,
+      "recompensa total": 2.0
     },
     "expected-free-energy-policy-selection-with-allostatic-prior-shifting": {
-      "pasos sobrevividos": 19,
-      "recursos consumidos": 1,
-      "recompensa total": 1.0,
-      "eficiencia forrajeo": 0.053,
+      "pasos vivos": 19,
+      "recursos comidos": 1,
+      "tasa supervivencia": 0.32,
       "energía inicial": 0.45,
       "energía final": 0.0,
-      "tasa caída energética": 0.024
+      "energía máxima alcanzada": 0.56,
+      "recompensa total": 1.0
     },
     "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode": {
-      "pasos sobrevividos": 60,
-      "recursos consumidos": 0,
-      "recompensa total": 0.0,
+      "pasos vivos": 60,
+      "recursos comidos": 0,
+      "tasa supervivencia": 1.0,
       "eficiencia forrajeo": 0.0,
-      "tasa movimiento": 0.83,
-      "rango valores Q": 0.032
+      "proporción movimiento": 0.83,
+      "recompensa total": 0.0
     }
   },
   "hypotheses": [
-    "Si se incrementa la densidad de recursos en el ambiente (de 8 a 16 recursos), se espera que el modelo hierarchical-precision logre al menos un consumo porque sus errores de predicción tendrían mayor oportunidad de correlacionarse con gradientes hacia comida, mientras que el modelo continuous-drive mantendría su alta eficiencia pero con intervalos de espera más cortos debido a mayor disponibilidad percibida",
-    "Si se modifica el modelo drive-reduction-td-q-learning para preservar su tabla Q después de consumos (en lugar de resetear con hunger_level), se espera que desarrolle preferencias espaciales estables y aumente su eficiencia de forrajeo a niveles cercanos al modelo continuous-drive, porque actualmente cada consumo borra su aprendizaje previo generando el patrón de exploración perpetua observado"
+    "Si se incrementa el umbral de urgencia del agente de drive continuo, se esperaría mayor conservación energética pero riesgo de iniciar búsqueda demasiado tarde cuando los recursos estén agotados o distantes",
+    "Si el agente de energía libre esperada incorpora un mecanismo de penalización por depleción energética en el cálculo de los costos C de cada acción, debería poder ajustar su política hacia conservación en estados de baja energía, evitando el colapso observado tras el paso 7"
   ]
 }

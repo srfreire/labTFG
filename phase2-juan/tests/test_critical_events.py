@@ -36,3 +36,36 @@ def test_detects_death_from_terminated_action_result():
             "data": {"termination_reason": "energy_depleted", "energy": 0.0},
         }
     ]
+
+
+def test_confidence_drop_description_has_no_unverifiable_number():
+    # The gap is a derived metric whose definition is not in the judge bundle;
+    # the description must stay qualitative so the Tracker/Analyst cannot repeat
+    # an unverifiable figure. The exact values live in `data` instead.
+    import re
+
+    events = [
+        Event(
+            step=10,
+            agent_id="qlearner",
+            action=Action("move_up"),
+            pre_state={"q_values": {"move_up": 0.80, "stay": 0.10}},  # gap 0.70
+        ),
+        Event(
+            step=11,
+            agent_id="qlearner",
+            action=Action("stay"),
+            pre_state={"q_values": {"move_up": 0.42, "stay": 0.40}},  # gap 0.02
+        ),
+    ]
+
+    critical = critical_events_to_json(detect_critical_events(events))
+    drops = [c for c in critical if c["type"] == "decision_confidence_drop"]
+
+    assert len(drops) == 1
+    assert not re.search(r"\d\.\d", drops[0]["description"])  # no decimal in prose
+    # The raw gap floats must NOT be exposed anywhere — list_critical_events feeds
+    # `data` to the agents, who would quote "el gap colapsó de 0.576 a 0.0".
+    assert "prev_gap" not in drops[0]["data"]
+    assert "new_gap" not in drops[0]["data"]
+    assert drops[0]["data"] == {}

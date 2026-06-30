@@ -194,11 +194,20 @@ def _detect_decision_confidence_drop(
                         agent_id=agent_id,
                         type="decision_confidence_drop",
                         severity=min(1.0, prev_gap / max(gap, 0.01)),
+                        # Qualitative only — NO numbers anywhere. The gap (top-2
+                        # over ALL q-values, threshold 0.5) is a derived metric
+                        # whose definition is not in the judge bundle and did not
+                        # match a naive read of the raw q_values. Surfacing the
+                        # floats (even in `data`, which list_critical_events feeds
+                        # to the agents) invited the Tracker/Analyst to repeat an
+                        # unverifiable figure like "el gap colapsó de 0.576 a 0.0".
+                        # So `data` carries no gap value at all.
                         description=(
-                            f"{agent_id} perdió confianza en su decisión: "
-                            f"gap Q-values bajó de {prev_gap:.2f} a {gap:.2f}"
+                            f"{agent_id} perdió margen de decisión: el intervalo "
+                            f"entre sus dos mejores Q-values se estrechó por "
+                            f"debajo del umbral"
                         ),
-                        data={"prev_gap": round(prev_gap, 4), "new_gap": round(gap, 4)},
+                        data={},
                     )
                 )
             prev_gap = gap
