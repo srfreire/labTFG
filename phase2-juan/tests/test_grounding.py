@@ -185,7 +185,9 @@ def test_skips_multi_agent_patterns():
             ]
         }
     )
-    out, corrections = lint_analyst_output(analyst, _hrl_events() + _hierarchical_events())
+    out, corrections = lint_analyst_output(
+        analyst, _hrl_events() + _hierarchical_events()
+    )
     assert not corrections
     assert "58 de 60" in json.loads(out)["patterns"][0]["description"]
 

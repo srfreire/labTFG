@@ -283,8 +283,7 @@ def test_strip_section_scaffolding_drops_english_generation_preamble():
         == "Contenido real."
     )
     assert (
-        _strip_section_scaffolding("Let me provide the analysis.\nTexto.")
-        == "Texto."
+        _strip_section_scaffolding("Let me provide the analysis.\nTexto.") == "Texto."
     )
     # Genuine Spanish prose starting mid-sentence is untouched.
     body = "El modelo Wiener consumió 10 recursos."

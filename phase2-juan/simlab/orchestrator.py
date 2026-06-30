@@ -825,9 +825,7 @@ def _build_env_facts(state: dict) -> dict | None:
     if tracker_raw:
         try:
             tdata = (
-                json.loads(tracker_raw)
-                if isinstance(tracker_raw, str)
-                else tracker_raw
+                json.loads(tracker_raw) if isinstance(tracker_raw, str) else tracker_raw
             )
             for agent_id, t in (tdata.get("trajectories") or {}).items():
                 if not isinstance(t, dict):

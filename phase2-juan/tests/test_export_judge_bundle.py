@@ -37,8 +37,12 @@ def test_export_bundle_serializes_tuple_keyed_state(tmp_path):
         env_spec={},
         trajectories={
             "goal-directed/dual-q": [
-                {"step": 0, "action": "eat", "reward": 1.0,
-                 "state": {"q_values": {(1, 2): 0.5, (3, 4): -0.1}}}
+                {
+                    "step": 0,
+                    "action": "eat",
+                    "reward": 1.0,
+                    "state": {"q_values": {(1, 2): 0.5, (3, 4): -0.1}},
+                }
             ]
         },
         tracker_output="{}",
@@ -46,7 +50,9 @@ def test_export_bundle_serializes_tuple_keyed_state(tmp_path):
         report_pdf=None,
         metrics={},
     )
-    traj = json.loads((bundle / "trajectories" / "goal-directed_dual-q.json").read_text())
+    traj = json.loads(
+        (bundle / "trajectories" / "goal-directed_dual-q.json").read_text()
+    )
     assert traj[0]["state"]["q_values"]["(1, 2)"] == 0.5
 
 
