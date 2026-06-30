@@ -1,0 +1,276 @@
+{
+  "formulation_id": "weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+  "paradigm": "attribute-based-value-computation",
+  "name": "Weighted Linear Summation with State-Dependent Attribute Weights (Algebraic)",
+  "description": "Static algebraic multi-attribute utility model where overall option value is a weighted linear sum of attribute values. Each food resource is decomposed into two attributes: an immediate attribute (proximity-based desirability) and an abstract attribute (palatability/quality). Attribute weights are dynamically modulated by internal hunger state and learnable attentional allocations. Actions are selected via softmax over computed action values. Attention allocations update via reward prediction error, enabling the agent to learn which attribute dimension is more predictive of reward. Grounded in Rangel (2013) postulates P1 (weighted linear summation), P3 (attentional modulation of weights), and P5 (immediate vs. abstract attribute distinction).",
+  "variables": [
+    {
+      "symbol": "V_o",
+      "name": "option_value",
+      "description": "Scalar subjective value of an option (resource), computed as weighted sum of attribute values. Proximate driver of action selection.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "a_imm",
+      "name": "immediate_attribute_value",
+      "description": "Attribute value for the immediate/proximity dimension. For movement actions: 1.0 - (manhattan_distance / max_distance), where max_distance = grid_width + grid_height - 2. For eat action on a resource: 1.0. For stay or actions with no reachable resource: 0.0.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "a_abs",
+      "name": "abstract_attribute_value",
+      "description": "Attribute value for the abstract/quality dimension. Mapped from the 'palatability' property of the nearest food resource targeted by the action, normalized to [-1, 1] via: a_abs = 2 * (palatability - 0.1) / 0.9 - 1. If no resource is targeted, a_abs = 0.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "w_imm",
+      "name": "immediate_weight",
+      "description": "Effective weight for the immediate attribute, computed from attentional allocation and hunger state. Always in [0, 1] and sums with w_abs to 1.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_abs",
+      "name": "abstract_weight",
+      "description": "Effective weight for the abstract attribute, computed from attentional allocation and temporal discount. Always in [0, 1] and sums with w_imm to 1.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "H_t",
+      "name": "hunger",
+      "description": "Internal physiological drive state. Rises by eta each step, drops by R_food when eating. 0 = fully sated, 1 = maximally hungry.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "alpha_imm",
+      "name": "attention_immediate",
+      "description": "Attentional allocation to the immediate attribute. Learned via reward prediction error. Sum of alpha_imm + alpha_abs = 1.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.05, 0.95]
+    },
+    {
+      "symbol": "alpha_abs",
+      "name": "attention_abstract",
+      "description": "Attentional allocation to the abstract attribute. Complement of alpha_imm. Learned via reward prediction error.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.05, 0.95]
+    },
+    {
+      "symbol": "V_a",
+      "name": "action_value",
+      "description": "Value of taking a specific action, derived from the option value of the resource it targets.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "beta",
+      "name": "softmax_inverse_temperature",
+      "default": 5.0,
+      "source": "Prior pipeline calibrations; typical range 1-10"
+    },
+    {
+      "symbol": "gamma_H",
+      "name": "hunger_influence_on_immediate_weight",
+      "default": 0.6,
+      "source": "Rangel (2013): hunger amplifies taste/hedonic weight"
+    },
+    {
+      "symbol": "delta",
+      "name": "temporal_discount_for_abstract_attributes",
+      "default": 0.7,
+      "source": "Rangel (2013): abstract attributes are down-weighted under low control"
+    },
+    {
+      "symbol": "eta",
+      "name": "hunger_rise_rate",
+      "default": 0.01,
+      "source": "Simulation convention (slow metabolic timescale)"
+    },
+    {
+      "symbol": "R_food",
+      "name": "hunger_restoration_from_eating",
+      "default": 0.3,
+      "source": "Simulation convention"
+    },
+    {
+      "symbol": "lam",
+      "name": "attention_learning_rate",
+      "default": 0.05,
+      "source": "Standard reinforcement learning rate for attentional updates"
+    },
+    {
+      "symbol": "epsilon",
+      "name": "minimum_attention",
+      "default": 0.05,
+      "source": "Prevents any attribute from being fully ignored (Rangel 2013: all attributes contribute)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Compute effective attribute weights from hunger state and attentional allocation. Hunger amplifies the immediate attribute weight; the abstract attribute is discounted by delta. Weights are normalized to sum to 1.",
+      "type": "algebraic",
+      "pseudocode": "unnorm_imm = alpha_imm * (1 + gamma_H * H_t)\nunnorm_abs = alpha_abs * delta\nZ = unnorm_imm + unnorm_abs\nw_imm = unnorm_imm / Z\nw_abs = unnorm_abs / Z",
+      "source_postulate": "P1, P3, P5"
+    },
+    {
+      "id": "R2",
+      "description": "Compute attribute values for each candidate action. Immediate attribute = proximity-based desirability. Abstract attribute = palatability-derived quality rating of the targeted resource.",
+      "type": "algebraic",
+      "pseudocode": "max_dist = grid_width + grid_height - 2\nfor each action a in available_actions:\n  if a == 'eat':\n    if food_at_agent_position:\n      a_imm = 1.0\n      a_abs = 2.0 * (food.palatability - 0.1) / 0.9 - 1.0\n    else:\n      a_imm = 0.0\n      a_abs = 0.0\n  elif a == 'stay':\n    a_imm = 0.0\n    a_abs = 0.0\n  else:  # movement action\n    target_pos = position + direction_delta(a)\n    nearest_food = find_nearest_food_from(target_pos, food_list)\n    if nearest_food is not None:\n      dist = manhattan_distance(target_pos, nearest_food)\n      a_imm = 1.0 - dist / max_dist\n      a_abs = 2.0 * (nearest_food.palatability - 0.1) / 0.9 - 1.0\n    else:\n      a_imm = 0.0\n      a_abs = 0.0",
+      "source_postulate": "P1, P4"
+    },
+    {
+      "id": "R3",
+      "description": "Compute option value as weighted linear sum of attribute values.",
+      "type": "algebraic",
+      "pseudocode": "V_a = w_imm * a_imm + w_abs * a_abs",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Softmax action selection over action values.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  logit_a = beta * V_a\nmax_logit = max(logits)\nfor each action a:\n  prob_a = exp(logit_a - max_logit)\nprob = prob / sum(prob)\nselected_action = random_choice(actions, weights=prob)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Hunger state update. Hunger rises by eta each step and drops by R_food when eating. Clipped to [0, 1].",
+      "type": "update",
+      "pseudocode": "ate = 1 if (action == 'eat' and last_action_result.consumed) else 0\nH_t = clip(H_t + eta - R_food * ate, 0, 1)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R6",
+      "description": "Attention allocation update via reward prediction error. Attributes that are more correlated with positive RPE gain attention. Attention floored at epsilon and renormalized.",
+      "type": "update",
+      "pseudocode": "RPE = reward - V_selected\nalpha_imm = alpha_imm + lam * RPE * a_imm_selected\nalpha_abs = alpha_abs + lam * RPE * a_abs_selected\nalpha_imm = max(epsilon, alpha_imm)\nalpha_abs = max(epsilon, alpha_abs)\ntotal = alpha_imm + alpha_abs\nalpha_imm = alpha_imm / total\nalpha_abs = alpha_abs / total",
+      "source_postulate": "P3"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each simulation step: (1) Read perception to get position, food locations, and hunger. (2) Compute attribute weights from hunger and attention via R1. (3) For each of the 6 available actions, compute immediate and abstract attribute values via R2. (4) Compute action values via R3. (5) Select action via softmax (R4). After action execution: (6) Update hunger via R5. (7) Update attention allocations via R6 using the reward prediction error.",
+    "pseudocode": [
+      "# --- DECIDE PHASE ---",
+      "food_list = perception['resources']['food']",
+      "pos = (perception['x'], perception['y'])",
+      "grid_w = perception['grid_width']",
+      "grid_h = perception['grid_height']",
+      "",
+      "# R1: Compute attribute weights",
+      "unnorm_imm = alpha_imm * (1 + gamma_H * H_t)",
+      "unnorm_abs = alpha_abs * delta",
+      "Z = unnorm_imm + unnorm_abs",
+      "w_imm = unnorm_imm / Z",
+      "w_abs = unnorm_abs / Z",
+      "",
+      "# R2 + R3: For each action, compute attribute values and action value",
+      "action_values = {}",
+      "action_attributes = {}",
+      "max_dist = grid_w + grid_h - 2",
+      "food_at_pos = [f for f in food_list if f['x'] == pos[0] and f['y'] == pos[1]]",
+      "",
+      "for action_name in ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']:",
+      "  if action_name == 'eat':",
+      "    if food_at_pos:",
+      "      a_imm = 1.0",
+      "      a_abs = 2.0 * (food_at_pos[0]['palatability'] - 0.1) / 0.9 - 1.0",
+      "    else:",
+      "      a_imm = 0.0; a_abs = 0.0",
+      "  elif action_name == 'stay':",
+      "    a_imm = 0.0; a_abs = 0.0",
+      "  else:",
+      "    dx, dy = direction_delta(action_name)  # move_up: (0,-1), etc.",
+      "    nx = clip(pos[0]+dx, 0, grid_w-1)",
+      "    ny = clip(pos[1]+dy, 0, grid_h-1)",
+      "    nearest = find_nearest_food((nx, ny), food_list)",
+      "    if nearest:",
+      "      dist = abs(nx - nearest['x']) + abs(ny - nearest['y'])",
+      "      a_imm = 1.0 - dist / max_dist",
+      "      a_abs = 2.0 * (nearest['palatability'] - 0.1) / 0.9 - 1.0",
+      "    else:",
+      "      a_imm = 0.0; a_abs = 0.0",
+      "  V_a = w_imm * a_imm + w_abs * a_abs",
+      "  action_values[action_name] = V_a",
+      "  action_attributes[action_name] = (a_imm, a_abs)",
+      "",
+      "# R4: Softmax action selection",
+      "selected_action = softmax_sample(action_values, beta)",
+      "store selected action's V_a, a_imm, a_abs for update phase",
+      "",
+      "# --- UPDATE PHASE (called after action execution) ---",
+      "# R5: Hunger update",
+      "ate = 1 if (selected_action == 'eat' and reward > 0) else 0",
+      "H_t = clip(H_t + eta - R_food * ate, 0.0, 1.0)",
+      "",
+      "# R6: Attention update via RPE",
+      "RPE = reward - V_selected",
+      "alpha_imm = alpha_imm + lam * RPE * a_imm_selected",
+      "alpha_abs = alpha_abs + lam * RPE * a_abs_selected",
+      "alpha_imm = max(epsilon, alpha_imm)",
+      "alpha_abs = max(epsilon, alpha_abs)",
+      "total = alpha_imm + alpha_abs",
+      "alpha_imm = alpha_imm / total",
+      "alpha_abs = alpha_abs / total"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {'x': int, 'y': int, 'type': 'food', 'palatability': float}",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "ate_food": "last_action_result.get('consumed', False) or (reward > 0 and action == 'eat')",
+      "food_palatability": "resource['palatability'] for each resource in food_sources"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action -> ConsumeEffect reward (1.0 on successful consumption)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases over time without eating, biasing the agent toward proximity-seeking (immediate attribute) behavior.",
+      "test_pseudocode": "run 50 steps with no food reachable -> assert H_t > 0.9; assert w_imm > w_abs"
+    },
+    {
+      "id": "B2",
+      "description": "After eating, hunger drops and the agent becomes relatively more quality-sensitive (abstract attribute weight increases).",
+      "test_pseudocode": "eat food at step T -> assert H_{T+1} < H_T; assert w_abs at T+1 > w_abs at T (relative to w_imm)"
+    },
+    {
+      "id": "B3",
+      "description": "Agent preferentially moves toward closer food (high immediate attribute) when very hungry.",
+      "test_pseudocode": "set H_t = 0.95, place two foods: near (dist=1, low palatability) and far (dist=5, high palatability) -> agent more likely to move toward near food"
+    },
+    {
+      "id": "B4",
+      "description": "Attention allocation shifts toward the attribute dimension that better predicts reward over time.",
+      "test_pseudocode": "run 200 steps in env where high-palatability food gives reward -> assert alpha_abs increases relative to initial value"
+    },
+    {
+      "id": "B5",
+      "description": "Agent eats food when standing on it and hungry.",
+      "test_pseudocode": "place agent on food, set H_t = 0.8 -> assert P(eat) is highest action probability"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717-1724. DOI: 10.1038/nn.3561",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience, 9(7), 545-556. DOI: 10.1038/nrn2357"
+  ]
+}

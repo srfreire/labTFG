@@ -1,0 +1,372 @@
+{
+  "formulation_id": "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+  "paradigm": "interoceptive-active-inference",
+  "name": "Expected Free-Energy Policy Selection with Allostatic Prior Shifting",
+  "description": "A discrete Bayesian active inference agent that evaluates candidate multi-step policies by their expected free energy G(π), which decomposes into pragmatic value (achieving energy states preferred by the interoceptive prior) and epistemic value (reducing uncertainty about resource locations). Crucially, the interoceptive prior μ_p(t) is not fixed but shifts allostatically based on environmental resource richness: in rich environments the agent raises its energy target, in scarce environments it lowers it to conserve. The agent maintains a learned transition model B(a) updated via Dirichlet counting, and performs Bayesian state inference over a discretized hidden state space. This is the most complete of the three formulations, implementing planning, exploration, allostasis, and model learning within a single free-energy framework.",
+  "variables": [
+    {
+      "symbol": "energy",
+      "name": "internal_energy",
+      "description": "Agent's internally tracked energy level. Increases when eating (by food palatability × gain), decreases each step by metabolic cost.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "o_t",
+      "name": "observation",
+      "description": "Discretized observation tuple: (distance_to_nearest_food_bin, energy_bin). Encodes what the agent perceives about its state.",
+      "type": "tuple",
+      "initial_value": null,
+      "range": "n_dist × n_energy discrete observations"
+    },
+    {
+      "symbol": "s_t",
+      "name": "hidden_state_belief",
+      "description": "Discretized hidden state: (distance_to_nearest_food_bin, energy_bin). Same space as observation but represents the agent's belief about the true state.",
+      "type": "tuple",
+      "initial_value": null,
+      "range": "n_dist × n_energy = 20 discrete states"
+    },
+    {
+      "symbol": "q_s",
+      "name": "state_posterior",
+      "description": "Approximate posterior probability distribution over hidden states. A vector of length |S| summing to 1.",
+      "type": "array",
+      "initial_value": "uniform(1/|S|)",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu_p",
+      "name": "allostatic_prior",
+      "description": "Dynamic interoceptive setpoint that shifts based on environmental resource richness. Higher in resource-rich contexts, lower in scarce contexts.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.3, 1.0]
+    },
+    {
+      "symbol": "C",
+      "name": "preference_vector",
+      "description": "Log-preference distribution over observations. Encodes how much the agent 'wants' each observation. Observations near the allostatic prior have highest (least negative) values.",
+      "type": "array",
+      "initial_value": "computed from mu_p via Eq. 2",
+      "range": ["-inf", 0.0]
+    },
+    {
+      "symbol": "G_pi",
+      "name": "expected_free_energy",
+      "description": "Expected free energy of a candidate policy π. Combines pragmatic (goal-directed) and epistemic (information-seeking) components over the planning horizon T.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "rho",
+      "name": "resource_richness",
+      "description": "Proportion of visible food resources relative to total visible cells. Used to modulate the allostatic prior.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "A",
+      "name": "likelihood_matrix",
+      "description": "P(observation | hidden state). In this discretized setting, initialized as near-identity (observation ≈ state) with small noise.",
+      "type": "matrix",
+      "initial_value": "near-identity with 0.9 on diagonal, 0.1/(|S|-1) off-diagonal",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "B",
+      "name": "transition_matrices",
+      "description": "Dictionary of transition matrices, one per action. B[a][s', s] = P(s' | s, a). Learned from experience via Dirichlet counting.",
+      "type": "dict_of_matrices",
+      "initial_value": "uniform prior (each column = 1/|S|), then updated from experience",
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "b_counts",
+      "name": "dirichlet_counts",
+      "description": "Dirichlet concentration parameters for transition model learning. One count matrix per action. B[a] is obtained by normalizing columns of b_counts[a].",
+      "type": "dict_of_matrices",
+      "initial_value": "ones (uniform Dirichlet prior)",
+      "range": [0.0, "inf"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "mu_p_base",
+      "name": "baseline_setpoint",
+      "default": 0.8,
+      "source": "Petzschner et al. (2021): survival-compatible energy prior"
+    },
+    {
+      "symbol": "mu_p_low",
+      "name": "low_setpoint",
+      "default": 0.5,
+      "source": "Reduced setpoint for resource-scarce environments; Petzschner et al. (2021) allostasis prediction"
+    },
+    {
+      "symbol": "lambda_allo",
+      "name": "allostatic_adaptation_rate",
+      "default": 0.1,
+      "source": "Petzschner et al. (2021): moderate adaptation speed for setpoint shifting"
+    },
+    {
+      "symbol": "w_prag",
+      "name": "pragmatic_weight",
+      "default": 1.0,
+      "source": "Weight on goal-achievement (pragmatic) term in expected free energy G"
+    },
+    {
+      "symbol": "w_epist",
+      "name": "epistemic_weight",
+      "default": 0.5,
+      "source": "Weight on information-gain (epistemic) term in G; encourages exploration (Friston, 2010)"
+    },
+    {
+      "symbol": "T",
+      "name": "planning_horizon",
+      "default": 3,
+      "source": "Number of steps to plan ahead; short horizon for computational tractability"
+    },
+    {
+      "symbol": "beta_G",
+      "name": "policy_inverse_temperature",
+      "default": 4.0,
+      "source": "Friston (2010): softmax temperature for policy selection"
+    },
+    {
+      "symbol": "alpha_learn",
+      "name": "transition_model_learning_rate",
+      "default": 0.05,
+      "source": "Rate at which Dirichlet counts for B matrices are incremented from experience"
+    },
+    {
+      "symbol": "n_energy",
+      "name": "energy_discretization_bins",
+      "default": 5,
+      "source": "Bins: [0-0.2), [0.2-0.4), [0.4-0.6), [0.6-0.8), [0.8-1.0]"
+    },
+    {
+      "symbol": "n_dist",
+      "name": "distance_discretization_bins",
+      "default": 4,
+      "source": "Bins: [at_resource(0), near(1-2), medium(3-5), far(6+)]"
+    },
+    {
+      "symbol": "eta",
+      "name": "preference_sharpness",
+      "default": 4.0,
+      "source": "Controls how strongly the agent prefers observations near the allostatic setpoint"
+    },
+    {
+      "symbol": "K_policies",
+      "name": "num_candidate_policies",
+      "default": 18,
+      "source": "6 first-actions × 3 heuristic continuations for tractable policy enumeration"
+    },
+    {
+      "symbol": "c_move",
+      "name": "metabolic_cost_move",
+      "default": 0.05,
+      "source": "Normalized energy cost per movement step"
+    },
+    {
+      "symbol": "c_stay",
+      "name": "metabolic_cost_stay",
+      "default": 0.02,
+      "source": "Minimal resting metabolic cost"
+    },
+    {
+      "symbol": "k_eat",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized resource gain; scaled by food palatability"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Internal energy dynamics: energy evolves based on action outcomes (eating gains energy scaled by palatability, movement and staying cost energy).",
+      "type": "algebraic",
+      "pseudocode": "if last_action == 'eat' and consumed:\n    energy = clip(energy + k_eat * food_palatability, 0, 1)\nelif last_action in ['move_up','move_down','move_left','move_right']:\n    energy = clip(energy - c_move, 0, 1)\nelse:\n    energy = clip(energy - c_stay, 0, 1)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Allostatic prior update: the interoceptive setpoint shifts toward a resource-context-dependent target. In rich environments (high ρ), the target approaches μ_p_base; in scarce environments (low ρ), it approaches μ_p_low.",
+      "type": "algebraic",
+      "pseudocode": "rho = len(food_list) / max(1, visible_cell_count)\ntarget = rho * mu_p_base + (1 - rho) * mu_p_low\nmu_p = mu_p + lambda_allo * (target - mu_p)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Preference vector update: recompute log-preferences over observations based on current allostatic prior. Observations with energy near μ_p(t) are most preferred.",
+      "type": "algebraic",
+      "pseudocode": "energy_bin_centers = [0.1, 0.3, 0.5, 0.7, 0.9]  # centers of 5 energy bins\nfor each observation o = (dist_bin, energy_bin_idx):\n    o_energy = energy_bin_centers[energy_bin_idx]\n    C[o] = -eta * (o_energy - mu_p) ** 2",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Observation encoding: discretize current perception into observation tuple.",
+      "type": "algebraic",
+      "pseudocode": "dist_to_nearest = min(manhattan_dist(pos, (f['x'], f['y'])) for f in food_list) if food_list else grid_width + grid_height\ndist_bin = digitize(dist_to_nearest, [0, 1, 3, 6])  # 4 bins: at(0), near(1-2), med(3-5), far(6+)\nenergy_bin = int(clip(energy * n_energy, 0, n_energy - 1))\no_t = (dist_bin, energy_bin)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Bayesian state inference: update posterior over hidden states given new observation and previous belief, using likelihood matrix A and transition matrix B for the last action taken.",
+      "type": "algebraic",
+      "pseudocode": "# Predict: propagate previous posterior through transition model\nif prev_action is not None:\n    predicted = B[prev_action] @ q_s  # matrix-vector product\nelse:\n    predicted = q_s  # first step\n# Update: incorporate observation likelihood\nlikelihood = A[o_t, :]  # row of A for current observation (likelihood of each state given o_t)\nq_s = normalize(likelihood * predicted)  # element-wise multiply, then normalize to sum to 1",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R6",
+      "description": "Policy enumeration: generate K candidate policies of length T. For each of the 6 first actions, generate 3 heuristic continuations.",
+      "type": "algorithmic",
+      "pseudocode": "policies = []\nfor first_action in ['move_up','move_down','move_left','move_right','stay','eat']:\n    # Continuation (a): repeat same action T times\n    policies.append([first_action] * T)\n    # Continuation (b): first_action, then move_toward_nearest_food, then eat\n    cont_b = [first_action] + [move_toward_food] * (T-2) + ['eat'] if T >= 2 else [first_action]\n    policies.append(cont_b)\n    # Continuation (c): first_action, then move_toward_nearest_food, then stay\n    cont_c = [first_action] + [move_toward_food] * (T-2) + ['stay'] if T >= 2 else [first_action]\n    policies.append(cont_c)\n# move_toward_food is resolved at enumeration time based on current position and nearest food",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R7",
+      "description": "Expected free energy computation for a policy π: sum over planning horizon of pragmatic value (risk: divergence from preferences) and epistemic value (negative ambiguity: information gain about states).",
+      "type": "algebraic",
+      "pseudocode": "G_pi = 0\nq_future = q_s.copy()  # start from current posterior\nfor tau in range(T):\n    action_tau = policy[tau]\n    # Predict future state distribution\n    q_future = B[action_tau] @ q_future\n    # Predicted observation distribution\n    q_obs = A @ q_future  # marginal over observations\n    \n    # Pragmatic term: expected log-preference mismatch (risk)\n    # = sum over observations of q_obs[o] * (log(q_obs[o]) - C[o])\n    pragmatic = sum(q_obs[o] * (log(q_obs[o] + 1e-10) - C[o]) for o in all_observations)\n    \n    # Epistemic term: negative expected ambiguity\n    # = sum over states of q_future[s] * H[A[:, s]]\n    # where H[A[:, s]] = -sum(A[o,s] * log(A[o,s]+1e-10) for o)\n    ambiguity = sum(q_future[s] * entropy_of_column(A, s) for s in all_states)\n    epistemic = -ambiguity  # negative ambiguity = information gain\n    \n    G_pi += w_prag * pragmatic + w_epist * epistemic",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R8",
+      "description": "Policy selection via softmax over negative expected free energy. The policy with lowest G (best pragmatic + epistemic value) is most likely selected.",
+      "type": "algebraic",
+      "pseudocode": "logits = [-beta_G * G[pi] for pi in policies]\nprobs = softmax(logits)\nselected_policy = sample_from(probs, policies)\nselected_action = selected_policy[0]  # execute first action of selected policy",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R9",
+      "description": "Transition model learning via Dirichlet count update. After observing a state transition, increment the corresponding count and renormalize.",
+      "type": "algebraic",
+      "pseudocode": "if prev_state is not None and prev_action is not None:\n    s_old_idx = state_to_index(prev_state)\n    s_new_idx = state_to_index(current_state)\n    a = prev_action\n    b_counts[a][s_new_idx, s_old_idx] += alpha_learn\n    # Renormalize column s_old_idx of B[a]\n    B[a][:, s_old_idx] = b_counts[a][:, s_old_idx] / sum(b_counts[a][:, s_old_idx])",
+      "source_postulate": "P3"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Update internal energy from last action result (R1). (2) Compute resource richness and update allostatic prior (R2). (3) Recompute preference vector C (R3). (4) Encode current observation (R4). (5) Perform Bayesian state inference (R5). (6) Enumerate candidate policies (R6). (7) For each policy, compute expected free energy G(π) via forward simulation of beliefs through learned transition model (R7). (8) Select policy via softmax and execute first action (R8). In update(): (9) Learn transition model from observed state transition (R9).",
+    "pseudocode": [
+      "# In decide(perception):",
+      "position = (perception['x'], perception['y'])",
+      "food_list = perception['resources']['food']",
+      "grid_w = perception['grid_width']",
+      "grid_h = perception['grid_height']",
+      "food_at_pos = any(f['x'] == position[0] and f['y'] == position[1] for f in food_list)",
+      "",
+      "# R1: Update energy from last action result (skip on first call)",
+      "if self.prev_action is not None:",
+      "    consumed = check_consumption(perception['last_action_result'])",
+      "    apply_energy_dynamics(consumed)  # per R1",
+      "",
+      "# R2: Allostatic prior update",
+      "visible_cell_count = grid_w * grid_h  # agent sees all resources in perception",
+      "rho = len(food_list) / max(1, visible_cell_count)",
+      "target = rho * mu_p_base + (1 - rho) * mu_p_low",
+      "mu_p = mu_p + lambda_allo * (target - mu_p)",
+      "",
+      "# R3: Update preference vector",
+      "energy_bin_centers = [0.1, 0.3, 0.5, 0.7, 0.9]",
+      "for each observation o = (d, e):",
+      "    C[o] = -eta * (energy_bin_centers[e] - mu_p) ** 2",
+      "",
+      "# R4: Encode observation",
+      "o_t = encode_observation(position, food_list, energy)",
+      "",
+      "# R5: Bayesian state update",
+      "if self.prev_action is not None:",
+      "    predicted = B[self.prev_action] @ q_s",
+      "else:",
+      "    predicted = q_s",
+      "likelihood = A[observation_to_index(o_t), :]",
+      "q_s = normalize(likelihood * predicted)",
+      "",
+      "# R6: Enumerate policies",
+      "nearest_food = find_nearest_food(position, food_list)",
+      "move_toward_food = get_best_move_toward(position, nearest_food)",
+      "policies = generate_policies(move_toward_food, T=3)",
+      "",
+      "# R7: Evaluate each policy",
+      "G = {}",
+      "for pi in policies:",
+      "    G[pi_id] = compute_expected_free_energy(pi, q_s, B, A, C, w_prag, w_epist)",
+      "",
+      "# R8: Select and execute",
+      "logits = {pi: -beta_G * G[pi] for pi in policies}",
+      "probs = softmax(logits)",
+      "selected_policy = sample_from(probs)",
+      "action = selected_policy[0]",
+      "",
+      "# Store for update",
+      "self.prev_action = action",
+      "self.prev_state = o_t",
+      "return action",
+      "",
+      "# In update(action, reward, new_perception):",
+      "# R9: Learn transition model",
+      "new_o = encode_observation(new_perception)",
+      "if self.prev_state is not None:",
+      "    s_old_idx = state_to_index(self.prev_state)",
+      "    s_new_idx = state_to_index(new_o)",
+      "    b_counts[action][s_new_idx, s_old_idx] += alpha_learn",
+      "    B[action][:, s_old_idx] = b_counts[action][:, s_old_idx] / sum(b_counts[action][:, s_old_idx])"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_position": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "food_palatability": "food['palatability'] for consumed food item (env_spec range [0.1, 1.0])",
+      "resource_richness_rho": "len(perception['resources']['food']) / (grid_width * grid_height)",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']",
+      "last_action_result": "perception['last_action_result'] — used to detect successful eat"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internal: expected free energy G(π) drives action selection. Env reward of 1.0 from eat is not directly used. The agent's motivation comes from minimizing G, which implicitly values eating when energy is below the allostatic prior."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Allostatic prior shifts downward in scarce environments (few food items) and upward in rich environments (many food items).",
+      "test_pseudocode": "Run agent in env with 1 food item vs 10 food items for 50 steps. Assert mu_p is lower with 1 food item and higher with 10."
+    },
+    {
+      "id": "B2",
+      "description": "Agent exhibits anticipatory food-seeking: moves toward food BEFORE energy is critically low, driven by expected free energy over the planning horizon.",
+      "test_pseudocode": "Set energy=0.6 (moderate), food 3 steps away. Assert agent starts moving toward food within first 2 steps (not waiting until energy is critically low)."
+    },
+    {
+      "id": "B3",
+      "description": "Epistemic exploration: agent visits unexplored areas to reduce uncertainty about where food is, even when not immediately hungry.",
+      "test_pseudocode": "Set energy=0.7 (healthy), high w_epist=2.0. Place food in unknown location. Assert agent explores more broadly than an agent with w_epist=0."
+    },
+    {
+      "id": "B4",
+      "description": "Transition model improves with experience: B[eat] at food location converges to correctly predict energy increase.",
+      "test_pseudocode": "Run 100 steps with repeated eating. Assert B['eat'][high_energy_state, at_food_low_energy_state] > 0.5."
+    },
+    {
+      "id": "B5",
+      "description": "Preference vector C shifts with allostatic prior: when mu_p is low (scarce environment), moderate energy observations become preferred over high energy observations.",
+      "test_pseudocode": "Set mu_p=0.5. Assert C[(any_dist, energy_bin=2)] > C[(any_dist, energy_bin=4)] (bin 2 center=0.5 is closer to setpoint)."
+    },
+    {
+      "id": "B6",
+      "description": "Multi-step planning produces better food acquisition than myopic (T=1) agents.",
+      "test_pseudocode": "Run agent with T=3 vs T=1 for 200 steps each. Assert T=3 agent eats more total food."
+    }
+  ],
+  "references": [
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience, 11, 127-138. DOI: 10.1038/nrn2787",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C., & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences, 44(1), 63-76. DOI: 10.1016/j.tins.2020.09.012",
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife, 3, e04811. DOI: 10.7554/eLife.04811.001"
+  ]
+}

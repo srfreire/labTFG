@@ -1,0 +1,267 @@
+{
+  "formulation_id": "attribute-reweighting-algebraic-model",
+  "paradigm": "dlpfc-self-control-modulation",
+  "name": "Attribute-Reweighting Algebraic Model (Rangel variant)",
+  "description": "Algebraic weighted-sum valuation model where dlPFC dynamically modulates the relative weights of hedonic (taste/palatability) vs. abstract (health) attributes in vmPFC composite chosen value computation. Conflict between immediate and long-term preferences triggers dlPFC engagement, which shifts attribute weights toward the health-beneficial option. A depletion mechanism limits sustained self-control. Action selection uses softmax over composite chosen values. Based on Rangel (2013) postulates P1 and P3: the vmPFC computes a composite value by summing attribute values, and the dlPFC modulates this computation by amplifying abstract/long-term attribute weights. Since the environment only provides 'palatability' on food resources, health is derived as an inverse proxy (health = 1 - palatability), creating the taste-health conflict central to the paradigm.",
+  "variables": [
+    {
+      "symbol": "CCV_a",
+      "name": "composite_chosen_value",
+      "description": "Weighted sum of taste and health attribute values for a candidate action/resource. The scalar value signal in vmPFC that is directly compared across options.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "w_h",
+      "name": "health_weight",
+      "description": "Current weight of the abstract/delayed (health) attribute in the vmPFC value computation. Modulated upward by dlPFC coupling.",
+      "type": "float",
+      "initial_value": 0.2,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_tau",
+      "name": "taste_weight",
+      "description": "Current weight of the immediate/hedonic (taste) attribute in the vmPFC value computation. Complement of health weight: w_tau = 1 - w_h.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "C",
+      "name": "dlpfc_coupling",
+      "description": "Degree of top-down modulation exerted by dlPFC on vmPFC at this decision step. Driven by conflict signal, goal activation, and remaining executive capacity.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "K",
+      "name": "conflict_signal",
+      "description": "Discrepancy between the tastiest and healthiest nearby resource options. Non-zero when the most palatable resource differs from the healthiest, quantified as the taste advantage of the temptation.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "G",
+      "name": "goal_activation",
+      "description": "Strength of the active long-term health-goal representation. Decays over time, boosted when the agent successfully chooses the healthy option.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "D",
+      "name": "depletion_level",
+      "description": "Current depletion of dlPFC resources. 0 = fresh/undepled, 1 = exhausted. Increases when dlPFC coupling is high, passively recovers when coupling is low.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "P_a",
+      "name": "action_probability",
+      "description": "Probability of selecting each candidate action, computed via softmax over composite chosen values.",
+      "type": "float",
+      "initial_value": null,
+      "range": [0.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "w_h0",
+      "name": "baseline_health_weight",
+      "default": 0.2,
+      "source": "Rangel (2013): vmPFC encodes primarily taste unless dlPFC is actively engaged"
+    },
+    {
+      "symbol": "w_tau0",
+      "name": "baseline_taste_weight",
+      "default": 0.8,
+      "source": "Rangel (2013): hedonic attribute dominates without top-down control"
+    },
+    {
+      "symbol": "gamma_C",
+      "name": "coupling_gain_on_health_weight",
+      "default": 0.6,
+      "source": "Derived from Rangel (2013) P1: dlPFC amplifies abstract attribute weight; max w_h = 0.2 + 0.6 = 0.8"
+    },
+    {
+      "symbol": "beta",
+      "name": "softmax_inverse_temperature",
+      "default": 5.0,
+      "source": "Standard value-based decision-making literature; validated in knowledge backbone (beta=5.0)"
+    },
+    {
+      "symbol": "alpha_D",
+      "name": "depletion_rate_per_control_event",
+      "default": 0.08,
+      "source": "Approximation from cognitive depletion assumption; knowledge backbone depletion rate"
+    },
+    {
+      "symbol": "beta_D",
+      "name": "passive_recovery_rate",
+      "default": 0.04,
+      "source": "Knowledge backbone: recovery approximately half the depletion speed"
+    },
+    {
+      "symbol": "lambda_K",
+      "name": "conflict_sensitivity",
+      "default": 1.5,
+      "source": "Derived from Rangel (2013) P4: conflict between systems triggers dlPFC engagement"
+    },
+    {
+      "symbol": "eta_G",
+      "name": "goal_decay_rate",
+      "default": 0.05,
+      "source": "Rangel (2013) assumption: goal activation decays without reinforcement"
+    },
+    {
+      "symbol": "goal_boost",
+      "name": "goal_boost_on_healthy_choice",
+      "default": 0.3,
+      "source": "Rangel (2013): successful self-control reinforces goal representation"
+    },
+    {
+      "symbol": "distance_discount",
+      "name": "distance_discount_factor",
+      "default": 0.9,
+      "source": "Standard temporal/spatial discounting for approach value in grid environments"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Compute conflict signal: measures disagreement between taste-best and health-best options among visible resources. If the tastiest resource is not the healthiest, K equals the taste advantage of the temptation over the health-optimal resource.",
+      "type": "algebraic",
+      "pseudocode": "taste_vals = {food_id: food.palatability for food in visible_foods}\nhealth_vals = {food_id: (1.0 - food.palatability) for food in visible_foods}\ntastiest_id = argmax(taste_vals)\nhealthiest_id = argmax(health_vals)\nif tastiest_id != healthiest_id:\n    K = taste_vals[tastiest_id] - taste_vals[healthiest_id]\nelse:\n    K = 0.0",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Compute dlPFC coupling strength: sigmoid of conflict signal, modulated by goal activation and remaining executive capacity (inverse of depletion).",
+      "type": "algebraic",
+      "pseudocode": "sigmoid_K = 1.0 / (1.0 + exp(-lambda_K * K))\nC = sigmoid_K * G * (1.0 - D)",
+      "source_postulate": "P1, P4"
+    },
+    {
+      "id": "R3",
+      "description": "Modulate attribute weights: health weight increases with dlPFC coupling from baseline; taste weight is the complement.",
+      "type": "algebraic",
+      "pseudocode": "w_h = w_h0 + gamma_C * C\nw_h = min(w_h, 1.0)\nw_tau = 1.0 - w_h",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R4",
+      "description": "Compute Composite Chosen Value for each candidate action. For 'eat' at a food location, CCV uses the food's attributes. For movement actions, CCV uses the best resource reachable one step in that direction, discounted by Manhattan distance. For 'stay' with no food, CCV = 0.",
+      "type": "algebraic",
+      "pseudocode": "for each action a in candidate_actions:\n    if a == 'eat' and food_at_position:\n        taste_a = food_at_position.palatability\n        health_a = 1.0 - food_at_position.palatability\n        CCV_a = w_tau * taste_a + w_h * health_a\n    elif a in ['move_up','move_down','move_left','move_right']:\n        target_pos = position + direction_delta(a)\n        nearest_food = nearest_food_from(target_pos, visible_foods)\n        if nearest_food is not None:\n            dist = manhattan_distance(target_pos, nearest_food)\n            taste_a = nearest_food.palatability\n            health_a = 1.0 - nearest_food.palatability\n            CCV_a = (w_tau * taste_a + w_h * health_a) * distance_discount ** dist\n        else:\n            CCV_a = 0.0\n    else:  # stay\n        CCV_a = 0.0",
+      "source_postulate": "P1, P3"
+    },
+    {
+      "id": "R5",
+      "description": "Softmax action selection over composite chosen values.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n    P_a = exp(beta * CCV_a) / sum(exp(beta * CCV_j) for j in candidate_actions)\nselected_action = sample from distribution P",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R6",
+      "description": "Update depletion level: increases proportionally to dlPFC coupling, decreases (recovery) proportionally to absence of coupling. Clamped to [0, 1].",
+      "type": "discrete_update",
+      "pseudocode": "D_new = D + alpha_D * C - beta_D * (1.0 - C)\nD = clamp(D_new, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R7",
+      "description": "Update goal activation: decays geometrically, boosted by 0.3 when the agent chose the healthier option on this step (ate the resource with lowest palatability, or moved toward it).",
+      "type": "discrete_update",
+      "pseudocode": "chose_healthy = (last_action == 'eat' and ate_food_palatability < 0.5)\nboost = goal_boost if chose_healthy else 0.0\nG_new = G * (1.0 - eta_G) + boost\nG = clamp(G_new, 0.0, 1.0)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Agent perceives its grid position and visible food resources (each having palatability). Health is derived as (1 - palatability). The agent computes conflict between taste-best and health-best options to trigger dlPFC engagement, modulates attribute weights, evaluates composite chosen values for all actions, then samples from a softmax distribution. After action execution, depletion and goal activation are updated.",
+    "pseudocode": [
+      "# 1. Parse perception",
+      "position = (perception.x, perception.y)",
+      "visible_foods = perception.resources.food",
+      "food_at_position = [f for f in visible_foods if f.x == position[0] and f.y == position[1]]",
+      "",
+      "# 2. Derive health attribute for each food (inverse of palatability)",
+      "for each food in visible_foods:",
+      "    food.health = 1.0 - food.palatability",
+      "    food.taste = food.palatability",
+      "",
+      "# 3. Compute conflict K via R1",
+      "K = compute_conflict(visible_foods)  # R1",
+      "",
+      "# 4. Compute dlPFC coupling C via R2",
+      "C = sigmoid(lambda_K * K) * G * (1.0 - D)  # R2",
+      "",
+      "# 5. Compute attribute weights via R3",
+      "w_h = w_h0 + gamma_C * C",
+      "w_tau = 1.0 - w_h",
+      "",
+      "# 6. Compute CCV for each action via R4",
+      "action_ccvs = {}",
+      "candidate_actions = ['move_up','move_down','move_left','move_right','stay']",
+      "if food_at_position:",
+      "    candidate_actions.append('eat')",
+      "for a in candidate_actions:",
+      "    action_ccvs[a] = compute_ccv(a, position, visible_foods, w_tau, w_h)  # R4",
+      "",
+      "# 7. Softmax action selection via R5",
+      "action = softmax_sample(action_ccvs, beta)  # R5",
+      "",
+      "# 8. Return chosen action",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception.x, perception.y)",
+      "visible_foods": "perception.resources.food  # list of {x, y, type, palatability}",
+      "food_at_position": "[f for f in perception.resources.food if f.x == perception.x and f.y == perception.y]",
+      "taste_of_food": "food.palatability  # direct mapping",
+      "health_of_food": "1.0 - food.palatability  # derived inverse proxy: low palatability = high health",
+      "ate_food": "perception.last_action_result  # check if eat was successful",
+      "grid_dims": "(perception.grid_width, perception.grid_height)"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 from env); agent internally values via CCV which weights taste vs health"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Conflict triggers dlPFC engagement: when high-palatability and low-palatability foods are both nearby, coupling C should increase",
+      "test_pseudocode": "place agent near foods with palatability 0.9 and 0.2 → assert C > 0.3"
+    },
+    {
+      "id": "B2",
+      "description": "Depletion accumulates under sustained conflict: after many conflict trials, D increases and C decreases",
+      "test_pseudocode": "run 50 steps with continuous conflict → assert D > 0.5 and C at step 50 < C at step 1"
+    },
+    {
+      "id": "B3",
+      "description": "Without conflict, agent prefers high-palatability food (taste-dominated)",
+      "test_pseudocode": "place only high-palatability foods → assert agent moves toward highest palatability"
+    },
+    {
+      "id": "B4",
+      "description": "With active dlPFC (high G, low D, high conflict), agent shifts preference toward low-palatability (healthy) food",
+      "test_pseudocode": "set G=1.0, D=0.0, place both food types → over 100 trials, assert fraction choosing low-palatability > 0.4"
+    },
+    {
+      "id": "B5",
+      "description": "Goal activation decays without healthy choices and recovers with healthy choices",
+      "test_pseudocode": "run 30 steps eating only high-palatability → assert G < 0.2; then eat low-palatability 5 times → assert G > 0.5"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357"
+  ]
+}

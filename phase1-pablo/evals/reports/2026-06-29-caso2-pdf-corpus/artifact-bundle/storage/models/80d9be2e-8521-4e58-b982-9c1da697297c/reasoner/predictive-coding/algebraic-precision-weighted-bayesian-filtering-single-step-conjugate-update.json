@@ -1,0 +1,344 @@
+{
+  "formulation_id": "algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update",
+  "paradigm": "predictive-coding",
+  "name": "Algebraic Precision-Weighted Bayesian Filtering (Single-Step Conjugate Update)",
+  "description": "A closed-form single-step Bayesian filtering agent using precision-weighted averaging (conjugate Gaussian inference). At each tick, the agent combines its prior prediction with sensory observation in one analytic step — no iterative gradient descent. The precision ratio between sensory and prior channels controls how much the agent trusts observations vs. its own predictions. A cell-value function evaluates movement actions based on believed resource proximity weighted by sensory precision. This is the computationally lightest predictive-coding formulation, with transparent closed-form solutions and interpretable precision dynamics.",
+  "variables": [
+    {
+      "symbol": "s",
+      "name": "sensory_observation",
+      "description": "Encoded perception vector: for each visible food item, a tuple of (relative_x, relative_y, palatability) flattened; plus binary food_at_current. Simplified to a fixed-length vector encoding local food map within d_max Manhattan distance.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "mu_hat",
+      "name": "posterior_belief",
+      "description": "Agent's posterior point estimate of local environmental state after Bayesian conjugate update. Same dimensionality as sensory vector s. Represents the agent's best guess of what is around it.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "pi_s",
+      "name": "sensory_precision",
+      "description": "Confidence in sensory observations (inverse observation noise variance). High values mean the agent trusts its sensors. Adapted toward empirical inverse prediction error variance.",
+      "type": "float",
+      "initial_value": 4.0,
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "pi_0",
+      "name": "prior_precision",
+      "description": "Confidence in prior predictions (inverse prior variance). High values mean the agent trusts its internal model. Slower to change than sensory precision.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.01, 100.0]
+    },
+    {
+      "symbol": "mu_0",
+      "name": "prior_prediction",
+      "description": "Expected state based on previous posterior and temporal transition model. Decays toward a default baseline expectation (no food) in the absence of confirming evidence.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "eps",
+      "name": "prediction_error",
+      "description": "Signed difference between current sensory observation and prior prediction. The core signal in predictive coding; drives belief updating and precision adaptation.",
+      "type": "float[]",
+      "initial_value": [0.0, 0.0, 0.0, 0.0, 0.0],
+      "range": [-2.0, 2.0]
+    },
+    {
+      "symbol": "w",
+      "name": "precision_weighted_surprise",
+      "description": "Scalar summary of how surprising the current observation is, weighted by the precision ratio. High w indicates the observation has substantially shifted the posterior.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "V",
+      "name": "cell_value",
+      "description": "Expected value for each candidate destination cell: precision-weighted reward proximity minus uncertainty-penalized distance. Used for movement action evaluation.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "a",
+      "name": "action",
+      "description": "Discrete action selected via softmax over cell values / action values.",
+      "type": "str",
+      "initial_value": "stay",
+      "range": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "pi_s_init",
+      "name": "initial_sensory_precision",
+      "default": 4.0,
+      "source": "Friston (2010), high sensory confidence — agent initially trusts its senses"
+    },
+    {
+      "symbol": "pi_0_init",
+      "name": "initial_prior_precision",
+      "default": 1.0,
+      "source": "Friston (2010), moderate prior confidence"
+    },
+    {
+      "symbol": "alpha_pi",
+      "name": "precision_learning_rate",
+      "default": 0.15,
+      "source": "Empirical; Friston (2010), precision adaptation dynamics"
+    },
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount_on_prior",
+      "default": 0.9,
+      "source": "Friston & Kiebel (2009), temporal dynamics — prior decays toward default"
+    },
+    {
+      "symbol": "beta",
+      "name": "action_softmax_temperature",
+      "default": 5.0,
+      "source": "Standard value for softmax action selection"
+    },
+    {
+      "symbol": "r_food",
+      "name": "reward_signal_for_eating",
+      "default": 1.0,
+      "source": "Normalization constant matching env_spec ConsumeEffect reward"
+    },
+    {
+      "symbol": "r_empty",
+      "name": "penalty_for_failed_eat",
+      "default": -0.5,
+      "source": "Encourages accurate predictions; penalizes eating when no food present"
+    },
+    {
+      "symbol": "d_max",
+      "name": "max_perception_distance",
+      "default": 5,
+      "source": "Grid-world design parameter; agent attends to food within this Manhattan distance"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Prior prediction via temporal transition model: posterior from last step decays toward default baseline. The default encodes 'no food nearby' — zero vector.",
+      "type": "algebraic",
+      "pseudocode": "s_default = [0.0, 0.0, 0.0, 0.0, 0.0]  # baseline: no food expected\nmu_0 = gamma * mu_hat_prev + (1.0 - gamma) * s_default",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Prediction error: signed difference between sensory observation and prior prediction.",
+      "type": "algebraic",
+      "pseudocode": "eps = s - mu_0",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Posterior belief via precision-weighted conjugate Gaussian averaging. This is the exact posterior mean when both likelihood and prior are Gaussian. The precision ratio determines whether the posterior tracks the observation or the prior prediction.",
+      "type": "algebraic",
+      "pseudocode": "mu_hat = (pi_s * s + pi_0 * mu_0) / (pi_s + pi_0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Posterior precision: sum of sensory and prior precisions (conjugate Gaussian property).",
+      "type": "algebraic",
+      "pseudocode": "pi_post = pi_s + pi_0",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Precision-weighted surprise: scalar summary of observation informativeness. High w means the observation substantially shifted the posterior.",
+      "type": "algebraic",
+      "pseudocode": "w = pi_s * dot(eps, eps) / (pi_s + pi_0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R6",
+      "description": "Sensory precision adaptation: driven toward empirical inverse variance of prediction errors. Small persistent errors increase precision (world is predictable); large errors decrease it.",
+      "type": "update",
+      "pseudocode": "eps_sq = dot(eps, eps)\npi_s = pi_s + alpha_pi * (1.0 / (eps_sq + 0.01) - pi_s)\npi_s = clip(pi_s, 0.01, 100.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R7",
+      "description": "Cell value for movement actions: combines precision-weighted believed resource value at the destination cell with uncertainty-penalized distance cost. The uncertainty penalty (1 - pi_s/(pi_s+pi_0)) increases when the agent is less sure of its sensory model, discouraging long-distance moves under uncertainty.",
+      "type": "algebraic",
+      "pseudocode": "# For each candidate destination cell c (from movement actions):\n# R_hat(c) = believed food value at cell c from posterior mu_hat\n# d(c) = Manhattan distance from current position to cell c (always 1 for single-step moves)\n# uncertainty_weight = 1.0 - pi_s / (pi_s + pi_0)\n#\n# Compute believed food presence at destination:\n# Extract from mu_hat or directly from posterior belief about food positions\ndef cell_value(dest_x, dest_y, food_sources, mu_hat, pi_s, pi_0):\n    # Direct resource check weighted by sensory confidence\n    food_at_dest = 0.0\n    for f in food_sources:\n        dist = abs(f['x'] - dest_x) + abs(f['y'] - dest_y)\n        if dist == 0:\n            food_at_dest = f.get('palatability', 1.0)\n    # Posterior-weighted food value: mix of direct observation and belief\n    R_hat_c = (pi_s * food_at_dest + pi_0 * mu_hat_food_component) / (pi_s + pi_0)\n    d_c = 1  # one-step move\n    uncertainty_weight = 1.0 - pi_s / (pi_s + pi_0)\n    V_c = pi_s * R_hat_c - uncertainty_weight * d_c\n    return V_c",
+      "source_postulate": "P2, P4"
+    },
+    {
+      "id": "R8",
+      "description": "Action probability via softmax over action values. Higher beta makes selection more deterministic.",
+      "type": "algebraic",
+      "pseudocode": "# Collect values for all actions:\n# V[eat], V[move_up], V[move_down], V[move_left], V[move_right], V[stay]\nvalues = {a: V_a for a, V_a in action_values.items()}\nmax_v = max(values.values())\nexp_vals = {a: exp(beta * (v - max_v)) for a, v in values.items()}\ntotal = sum(exp_vals.values())\nprobs = {a: e / total for a, e in exp_vals.items()}\nselected = sample_from(probs)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "Single-step Bayesian filtering with precision-weighted action evaluation. At each tick: (1) Compute prior prediction from last posterior via temporal decay (R1). (2) Compute prediction error (R2). (3) One-shot conjugate Bayesian update to get posterior (R3). (4) Compute surprise metric (R5). (5) Adapt sensory precision (R6). (6) Evaluate all actions via cell-value function (R7) and eat-value logic. (7) Select action via softmax (R8). No iterative loops — everything is one analytic step.",
+    "pseudocode": [
+      "# === decide(perception) ===",
+      "",
+      "# Step 1: Encode sensory observation",
+      "food_sources = perception['resources'].get('food', [])",
+      "agent_x, agent_y = perception['x'], perception['y']",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# Build sensory vector s: [food_here, nearest_food_dx, nearest_food_dy, food_density_nearby, avg_palatability]",
+      "food_here = 0.0",
+      "nearest_dx, nearest_dy = 0.0, 0.0",
+      "nearest_dist = d_max + 1",
+      "food_count_nearby = 0",
+      "total_palatability = 0.0",
+      "for f in food_sources:",
+      "    dx = f['x'] - agent_x",
+      "    dy = f['y'] - agent_y",
+      "    dist = abs(dx) + abs(dy)",
+      "    if dist == 0:",
+      "        food_here = 1.0",
+      "    if dist < nearest_dist:",
+      "        nearest_dist = dist",
+      "        nearest_dx = dx / max(grid_w, 1)",
+      "        nearest_dy = dy / max(grid_h, 1)",
+      "    if dist <= d_max:",
+      "        food_count_nearby += 1",
+      "        total_palatability += f.get('palatability', 0.5)",
+      "food_density = food_count_nearby / max(len(food_sources), 1)",
+      "avg_palat = total_palatability / max(food_count_nearby, 1)",
+      "s = [food_here, nearest_dx, nearest_dy, food_density, avg_palat]",
+      "",
+      "# Step 2: Prior prediction (R1)",
+      "s_default = [0.0, 0.0, 0.0, 0.0, 0.0]",
+      "mu_0 = [gamma * mh + (1.0 - gamma) * sd for mh, sd in zip(mu_hat, s_default)]",
+      "",
+      "# Step 3: Prediction error (R2)",
+      "eps = [s_i - mu0_i for s_i, mu0_i in zip(s, mu_0)]",
+      "",
+      "# Step 4: Posterior belief — one-shot conjugate update (R3)",
+      "mu_hat = [(pi_s * s_i + pi_0 * mu0_i) / (pi_s + pi_0) for s_i, mu0_i in zip(s, mu_0)]",
+      "",
+      "# Step 5: Precision-weighted surprise (R5)",
+      "eps_sq = sum(e * e for e in eps)",
+      "w = pi_s * eps_sq / (pi_s + pi_0)",
+      "",
+      "# Step 6: Adapt sensory precision (R6)",
+      "pi_s = pi_s + alpha_pi * (1.0 / (eps_sq + 0.01) - pi_s)",
+      "pi_s = clip(pi_s, 0.01, 100.0)",
+      "",
+      "# Step 7: Evaluate actions",
+      "action_values = {}",
+      "uncertainty_weight = 1.0 - pi_s / (pi_s + pi_0)",
+      "",
+      "# Eat action",
+      "if food_here > 0.5:",
+      "    action_values['eat'] = pi_s * r_food  # confident eating is highly valued",
+      "else:",
+      "    action_values['eat'] = r_empty  # penalize eating where no food believed",
+      "",
+      "# Stay action",
+      "action_values['stay'] = 0.0  # neutral baseline",
+      "",
+      "# Movement actions",
+      "move_deltas = {'move_up': (0, -1), 'move_down': (0, 1), 'move_left': (-1, 0), 'move_right': (1, 0)}",
+      "for action_name, (mdx, mdy) in move_deltas.items():",
+      "    dest_x = clip(agent_x + mdx, 0, grid_w - 1)",
+      "    dest_y = clip(agent_y + mdy, 0, grid_h - 1)",
+      "    # Believed food value at destination",
+      "    R_hat = 0.0",
+      "    for f in food_sources:",
+      "        if f['x'] == dest_x and f['y'] == dest_y:",
+      "            R_hat = f.get('palatability', 0.5)",
+      "            break",
+      "    # Also incorporate posterior belief about food direction",
+      "    # If destination is in the direction of believed nearest food, add value",
+      "    direction_bonus = 0.0",
+      "    if nearest_dist <= d_max:",
+      "        # Check if this move reduces distance to nearest food",
+      "        new_dist_to_nearest = abs((agent_x + mdx) - (agent_x + nearest_dx * grid_w)) + abs((agent_y + mdy) - (agent_y + nearest_dy * grid_h))",
+      "        old_dist = abs(nearest_dx * grid_w) + abs(nearest_dy * grid_h)",
+      "        if new_dist_to_nearest < old_dist:",
+      "            direction_bonus = mu_hat[3] * 0.5  # food density belief as bonus",
+      "    V_c = pi_s * (R_hat + direction_bonus) - uncertainty_weight * 1.0  # d=1 for single step",
+      "    action_values[action_name] = V_c",
+      "",
+      "# Step 8: Softmax action selection (R8)",
+      "actions = list(action_values.keys())",
+      "vals = [action_values[a] for a in actions]",
+      "max_v = max(vals)",
+      "exp_vals = [exp(beta * (v - max_v)) for v in vals]",
+      "total = sum(exp_vals)",
+      "probs = [e / total for e in exp_vals]",
+      "selected = random_choice(actions, weights=probs)",
+      "return Action(selected)",
+      "",
+      "# === update(action, reward, new_perception) ===",
+      "# Precision modulation from reward feedback",
+      "if reward > 0:",
+      "    pi_s = clip(pi_s + alpha_pi, 0.01, 100.0)  # reward confirms sensor accuracy",
+      "elif action == 'eat' and reward == 0:",
+      "    pi_s = clip(pi_s - alpha_pi, 0.01, 100.0)  # wrong prediction → reduce trust",
+      "# mu_hat persists as basis for next step's prior (R1 uses it)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "agent_position": "(perception['x'], perception['y'])",
+      "grid_size": "(perception['grid_width'], perception['grid_height'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_pos": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in food_sources)",
+      "food_palatability": "f.get('palatability', 0.5) for each food item f",
+      "sensory_vector_s": "[food_here, nearest_food_dx_norm, nearest_food_dy_norm, food_density_nearby, avg_palatability]",
+      "last_action_result": "perception.get('last_action_result', {})"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward (1.0 for food consumed)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Posterior tracks sensory observation when sensory precision is high (pi_s >> pi_0)",
+      "test_pseudocode": "set pi_s=10, pi_0=1 → assert norm(mu_hat - s) < 0.1 after update"
+    },
+    {
+      "id": "B2",
+      "description": "Posterior tracks prior prediction when prior precision is high (pi_0 >> pi_s)",
+      "test_pseudocode": "set pi_s=1, pi_0=10 → assert norm(mu_hat - mu_0) < 0.1 after update"
+    },
+    {
+      "id": "B3",
+      "description": "Agent eats when food is present at current position",
+      "test_pseudocode": "place food at agent position → assert 'eat' selected with probability > 0.8"
+    },
+    {
+      "id": "B4",
+      "description": "Agent moves toward nearest food when not on food",
+      "test_pseudocode": "place food at (7,5), agent at (3,5) → assert 'move_right' is most probable action"
+    },
+    {
+      "id": "B5",
+      "description": "Sensory precision increases in stable environment with small prediction errors",
+      "test_pseudocode": "run 50 steps in unchanging food layout → assert pi_s increases over time"
+    },
+    {
+      "id": "B6",
+      "description": "High uncertainty (low pi_s relative to pi_0) discourages long-distance movement via uncertainty_weight penalty",
+      "test_pseudocode": "set pi_s=0.5, pi_0=5 → assert movement values are lower than when pi_s=5, pi_0=1"
+    }
+  ],
+  "references": [
+    "Rao, R.P. & Ballard, D.H. (1999). Predictive coding in the visual cortex. Nature Neuroscience, 2, 79–87.",
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience. DOI: 10.1038/nrn2787",
+    "Friston, K. & Kiebel, S. (2009). Predictive coding under the free-energy principle. Philosophical Transactions of the Royal Society B, 364, 1211–1221."
+  ]
+}

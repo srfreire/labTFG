@@ -41,6 +41,7 @@ mathematical formulations in the report.
 mathematical frameworks. Superficial variations (same equations, different parameter names) \
 do NOT count.
 4. Call `write_file` with path `formulations/{slug}.md` and the complete output.
+5. After `write_file` succeeds, stop calling tools and return a concise completion summary.
 
 ## Constraints
 

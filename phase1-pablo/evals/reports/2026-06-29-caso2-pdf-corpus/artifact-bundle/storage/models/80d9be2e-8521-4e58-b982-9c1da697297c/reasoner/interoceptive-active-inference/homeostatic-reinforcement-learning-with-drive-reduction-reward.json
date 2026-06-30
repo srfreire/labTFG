@@ -1,0 +1,281 @@
+{
+  "formulation_id": "homeostatic-reinforcement-learning-with-drive-reduction-reward",
+  "paradigm": "interoceptive-active-inference",
+  "name": "Homeostatic Reinforcement Learning with Drive-Reduction Reward",
+  "description": "A value-based temporal-difference reinforcement learning agent where the reward signal is defined as drive reduction — the decrease in homeostatic displacement caused by an action. The drive D(h) is a power-law function of the distance between the agent's current energy level and a fixed homeostatic setpoint h*, formally equivalent to interoceptive surprise -ln p(h). The agent maintains a Q-table mapping discretized states (distance-to-nearest-food bin × energy bin) to action values, updated via TD(0). This implements the Keramati & Gutkin (2014) framework showing that maximizing discounted drive-reduction reward is mathematically dual to minimizing discounted homeostatic deviation, establishing 'physiological rationality'. An urgency mechanism increases exploitation when energy is critically low.",
+  "variables": [
+    {
+      "symbol": "h_t",
+      "name": "physiological_state",
+      "description": "Current energy level of the agent, normalized to [0,1]. Internally tracked: increases when eating, decreases each step by metabolic cost.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "h_star",
+      "name": "homeostatic_setpoint",
+      "description": "Ideal energy level the agent strives to maintain. Fixed throughout the simulation.",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "D_t",
+      "name": "drive",
+      "description": "Scalar homeostatic displacement: distance from setpoint raised to power n, scaled by m. Equivalent to surprise -ln p(h_t) under a Gaussian prior centered at h*.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "r_t",
+      "name": "primary_reward",
+      "description": "Drive reduction achieved by the last action: r(t) = D(h(t)) - D(h(t+1)). Positive when action moves agent closer to setpoint.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "Q",
+      "name": "action_value_table",
+      "description": "Q-table mapping (state_index, action_index) to expected discounted sum of future drive reductions. State is discretized as (distance_to_nearest_food_bin, energy_bin).",
+      "type": "dict",
+      "initial_value": "defaultdict(0.0)",
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "s_t",
+      "name": "state_representation",
+      "description": "Discretized state tuple: (distance_to_nearest_food_bin, energy_bin). 5 distance bins × 5 energy bins = 25 states.",
+      "type": "tuple",
+      "initial_value": null,
+      "range": "25 discrete states"
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h_star",
+      "name": "homeostatic_setpoint",
+      "default": 0.8,
+      "source": "Keramati & Gutkin (2014): high but sub-maximal setpoint reflecting optimal physiology"
+    },
+    {
+      "symbol": "m",
+      "name": "drive_sensitivity",
+      "default": 4.0,
+      "source": "Keramati & Gutkin (2014): multiplicative constant in drive function"
+    },
+    {
+      "symbol": "n",
+      "name": "drive_exponent",
+      "default": 2.0,
+      "source": "Keramati & Gutkin (2014): quadratic drive approximates Euclidean distance in homeostatic space"
+    },
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount_factor",
+      "default": 0.9,
+      "source": "Keramati & Gutkin (2014): must be strictly < 1 for physiological rationality (P5)"
+    },
+    {
+      "symbol": "alpha",
+      "name": "learning_rate_td",
+      "default": 0.1,
+      "source": "Standard RL convention for TD(0) step size"
+    },
+    {
+      "symbol": "beta",
+      "name": "action_inverse_temperature",
+      "default": 8.0,
+      "source": "Controls exploration-exploitation tradeoff; moderate exploitation bias"
+    },
+    {
+      "symbol": "beta_urgent",
+      "name": "urgency_inverse_temperature",
+      "default": 15.0,
+      "source": "Keramati & Gutkin (2014) / P5: temporal discounting forces rapid correction at low energy"
+    },
+    {
+      "symbol": "h_critical",
+      "name": "critical_energy_threshold",
+      "default": 0.2,
+      "source": "Threshold below which urgency mode activates (reduced exploration)"
+    },
+    {
+      "symbol": "c_move",
+      "name": "metabolic_cost_move",
+      "default": 0.05,
+      "source": "Normalized energy cost per movement step"
+    },
+    {
+      "symbol": "c_stay",
+      "name": "metabolic_cost_stay",
+      "default": 0.02,
+      "source": "Minimal resting metabolic cost"
+    },
+    {
+      "symbol": "k_eat",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized resource gain; scaled by food palatability from env_spec"
+    },
+    {
+      "symbol": "n_dist_bins",
+      "name": "distance_discretization_bins",
+      "default": 5,
+      "source": "Bins: [0 (at resource), 1-2, 3-4, 5-7, 8+]"
+    },
+    {
+      "symbol": "n_energy_bins",
+      "name": "energy_discretization_bins",
+      "default": 5,
+      "source": "Bins: [0-0.2), [0.2-0.4), [0.4-0.6), [0.6-0.8), [0.8-1.0]"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Physiological state dynamics: energy changes based on action outcome. Eating increases energy (scaled by food palatability), movement and staying decrease energy by metabolic costs.",
+      "type": "algebraic",
+      "pseudocode": "if last_action == 'eat' and consumed_food:\n    h_t = clip(h_t + k_eat * food_palatability, 0, 1)\nelif last_action in ['move_up','move_down','move_left','move_right']:\n    h_t = clip(h_t - c_move, 0, 1)\nelse:\n    h_t = clip(h_t - c_stay, 0, 1)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R2",
+      "description": "Drive function: homeostatic displacement equivalent to surprise. Quadratic in deviation from setpoint.",
+      "type": "algebraic",
+      "pseudocode": "D_t = m * abs(h_star - h_t) ** n",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R3",
+      "description": "Primary reward as drive reduction: positive when action moves the agent closer to the setpoint.",
+      "type": "algebraic",
+      "pseudocode": "D_old = m * abs(h_star - h_t_old) ** n\nD_new = m * abs(h_star - h_t_new) ** n\nr_t = D_old - D_new",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "State discretization: continuous state is binned into a discrete tuple for Q-table indexing.",
+      "type": "algebraic",
+      "pseudocode": "dist_to_nearest = min(manhattan_distance(pos, food_pos) for food_pos in food_list) if food_list else grid_width + grid_height\ndist_bin = digitize(dist_to_nearest, [0, 1, 3, 5, 8])  # bins: at(0), near(1-2), med(3-4), far(5-7), vfar(8+)\nenergy_bin = int(clip(h_t * n_energy_bins, 0, n_energy_bins - 1))\ns_t = (dist_bin, energy_bin)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "TD(0) Q-value update: temporal-difference learning with drive-reduction reward.",
+      "type": "algebraic",
+      "pseudocode": "td_target = r_t + gamma * max(Q[s_new, a_prime] for a_prime in available_actions)\ntd_error = td_target - Q[s_old, a_old]\nQ[s_old, a_old] = Q[s_old, a_old] + alpha * td_error",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R6",
+      "description": "Softmax action selection over Q-values, with urgency-modulated temperature when energy is critically low.",
+      "type": "algebraic",
+      "pseudocode": "effective_beta = beta_urgent if h_t < h_critical else beta\nlogits = [effective_beta * Q[s_t, a] for a in available_actions]\n# Mask eat if no food at current position: set logit to -inf\nif not food_at_current_position:\n    logits[eat_index] = -inf\nprobs = softmax(logits)\nselected_action = sample_from(probs, available_actions)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Read perception to get position and food locations. (2) Discretize state into (distance_bin, energy_bin) via R4. (3) Look up Q-values for all actions in current state. (4) Select action via softmax with urgency modulation (R6). After action execution in update(): (5) Update energy based on action result (R1). (6) Compute drive before and after (R2), then reward (R3). (7) Discretize new state (R4). (8) Update Q-table via TD(0) (R5).",
+    "pseudocode": [
+      "# In decide(perception):",
+      "position = (perception['x'], perception['y'])",
+      "food_list = perception['resources']['food']",
+      "food_at_pos = any(f['x'] == position[0] and f['y'] == position[1] for f in food_list)",
+      "",
+      "# R4: Discretize state",
+      "if food_list:",
+      "    dist_to_nearest = min(abs(f['x']-position[0]) + abs(f['y']-position[1]) for f in food_list)",
+      "else:",
+      "    dist_to_nearest = perception['grid_width'] + perception['grid_height']",
+      "dist_bin = digitize(dist_to_nearest, [0, 1, 3, 5, 8])",
+      "energy_bin = int(clip(h_t * n_energy_bins, 0, n_energy_bins - 1))",
+      "s_t = (dist_bin, energy_bin)",
+      "",
+      "# R6: Action selection with urgency",
+      "effective_beta = beta_urgent if h_t < h_critical else beta",
+      "logits = {a: effective_beta * Q.get((s_t, a), 0.0) for a in all_actions}",
+      "if not food_at_pos:",
+      "    logits['eat'] = -1e9",
+      "probs = softmax(logits)",
+      "action = sample_from(probs)",
+      "store s_old = s_t, h_old = h_t for update()",
+      "return action",
+      "",
+      "# In update(action, reward, new_perception):",
+      "# R1: Update energy",
+      "consumed = check_last_action_result(new_perception)",
+      "if action == 'eat' and consumed:",
+      "    food_pal = get_palatability_of_consumed_food()",
+      "    h_t = clip(h_t + k_eat * food_pal, 0, 1)",
+      "elif action in ['move_up','move_down','move_left','move_right']:",
+      "    h_t = clip(h_t - c_move, 0, 1)",
+      "else:",
+      "    h_t = clip(h_t - c_stay, 0, 1)",
+      "",
+      "# R2, R3: Drive and reward",
+      "D_old = m * abs(h_star - h_old) ** n",
+      "D_new = m * abs(h_star - h_t) ** n",
+      "r_t = D_old - D_new",
+      "",
+      "# R4: New state",
+      "s_new = discretize_state(new_perception, h_t)",
+      "",
+      "# R5: TD update",
+      "td_target = r_t + gamma * max(Q.get((s_new, a), 0.0) for a in all_actions)",
+      "td_error = td_target - Q.get((s_old, action), 0.0)",
+      "Q[(s_old, action)] = Q.get((s_old, action), 0.0) + alpha * td_error"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_position": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "food_palatability": "food['palatability'] for consumed food item (from env_spec: range [0.1, 1.0])",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "step": "perception['step']",
+      "last_action_result": "perception['last_action_result'] — used to detect successful eat"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internal drive-reduction reward r(t) = D(h_old) - D(h_new); NOT the env reward. Env reward of 1.0 from eat is ignored; the agent's motivational signal is purely homeostatic drive reduction."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Drive increases monotonically as energy drops below the setpoint h*=0.8.",
+      "test_pseudocode": "Run agent without food for 20 steps. Record D_t each step. Assert D_t is monotonically increasing."
+    },
+    {
+      "id": "B2",
+      "description": "Eating produces positive reward (drive reduction) when energy is below setpoint.",
+      "test_pseudocode": "Set h_t=0.3, execute eat with k_eat=0.3. Assert r_t > 0 (D decreased)."
+    },
+    {
+      "id": "B3",
+      "description": "Q-values for 'eat' at distance_bin=0 (at food) converge to high values over episodes.",
+      "test_pseudocode": "Run 200 steps with food available. Assert Q[(0, low_energy_bin), 'eat'] > Q[(0, low_energy_bin), 'stay']."
+    },
+    {
+      "id": "B4",
+      "description": "Urgency mode: when energy < 0.2, agent exploits more aggressively (less random exploration).",
+      "test_pseudocode": "Run agent with h_t=0.15. Record action entropy. Assert entropy is lower than when h_t=0.5."
+    },
+    {
+      "id": "B5",
+      "description": "Agent learns to navigate toward food: Q-values for movement toward food are higher than movement away from food in low-energy states.",
+      "test_pseudocode": "After 500 steps, inspect Q-table for (dist_bin=2, energy_bin=0). Assert Q for move_toward > Q for move_away."
+    },
+    {
+      "id": "B6",
+      "description": "Eating when already above setpoint produces negative reward (overshoot punishment).",
+      "test_pseudocode": "Set h_t=0.85 (above h*=0.8). Execute eat. Assert r_t < 0 (D increased due to overshoot)."
+    }
+  ],
+  "references": [
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife, 3, e04811. DOI: 10.7554/eLife.04811.001",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C., & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences, 44(1), 63-76. DOI: 10.1016/j.tins.2020.09.012"
+  ]
+}

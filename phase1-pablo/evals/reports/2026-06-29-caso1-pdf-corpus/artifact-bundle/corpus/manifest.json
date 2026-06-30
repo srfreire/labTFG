@@ -1,0 +1,44 @@
+{
+  "source_cache": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549",
+  "papers": [
+    {
+      "id": "f1fafb82f29c",
+      "title": "Regulation of dietary choice by the decision-making circuitry",
+      "filename": "decision_making_dietary_choice_Rangel_2013.pdf",
+      "source_archive": "Evaluacion_CASO1.zip",
+      "url": "eval-corpus://f1fafb82f29c/pdfs/decision_making_dietary_choice_Rangel_2013.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/pdfs/decision_making_dietary_choice_Rangel_2013.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/texts/decision_making_dietary_choice_Rangel_2013.txt",
+      "snippet": "Author Manuscript To advance our understanding of how the brain makes food decisions, it is essential to combine knowledge from two fields that have not yet been well integrated: the neuro-computational basis of decision-making and the homeostatic regulators of feeding. This Review integrates these two literatures from a neuro-computational perspective, with an emphasis in describing the variables computed by different neural systems and how they affect dietary choice. We highlight what is unique about feeding decisions, the mechanisms through which metabolic and endocrine factors affect the decision-making circuitry, why making healthy food choices is difficult for many people, and",
+      "year": 2014,
+      "doi": "10.1038/nn.3561",
+      "authors": []
+    },
+    {
+      "id": "6bdb5838ce80",
+      "title": "A framework for studying the neurobiology of value-based decision making",
+      "filename": "Rangel_08.pdf",
+      "source_archive": "Evaluacion_CASO1.zip",
+      "url": "eval-corpus://6bdb5838ce80/pdfs/Rangel_08.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/pdfs/Rangel_08.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/texts/Rangel_08.txt",
+      "snippet": "| Neuroeconomics is the study of the neurobiological and computational basis of value-based decision making. Its goal is to provide a biologically based account of human behaviour that can be applied in both the natural and the social sciences. This Review proposes a framework to investigate different aspects of the neurobiology of decision making. The framework allows us to bring together recent findings in the field, highlight some of the most important outstanding problems, define a common lexicon that bridges the different disciplines that inform neuroeconomics, and point the way to future applications. Value-based decision making is pervasive in nature. In this Review we propose",
+      "year": 2008,
+      "doi": "10.1038/nrn2357",
+      "authors": []
+    },
+    {
+      "id": "5a6c6bc57933",
+      "title": "Mathematical modeling of the hormonal regulation of food intake and body weight : applications to caloric restriction and leptin resistance",
+      "filename": "Thesis_Jacquier_2016.pdf",
+      "source_archive": "Evaluacion_CASO1.zip",
+      "url": "eval-corpus://5a6c6bc57933/pdfs/Thesis_Jacquier_2016.pdf",
+      "pdf_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/pdfs/Thesis_Jacquier_2016.pdf",
+      "text_path": "/Users/ppazosp/projects/labTFG/phase1-pablo/evals/corpus/fc50e2275ced7549/texts/Thesis_Jacquier_2016.txt",
+      "snippet": "Mathematical modeling of the hormonal regulation of food intake and body weight Applications to caloric restriction and leptin resistance The regulation of food intake and energy expenditure usually limits important loss or gain of body weight. Hormones (leptin, ghrelin, insulin) and nutrients (glucose, triglycerides) are among the main regulators of food intake. Leptin is also involved in leptin resistance, often associated with obesity and characterized by a reduced e cacy to regulate food intake. Mathematical models describing the dynamics of body weight have been used to assist clinical weight loss interventions or to study an experimentally inaccessible phe- nomenon, such as starvation",
+      "year": 2016,
+      "doi": null,
+      "authors": []
+    }
+  ]
+}

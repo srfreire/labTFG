@@ -1,0 +1,2321 @@
+{
+  "suite": {
+    "name": "caso2-pdf-corpus",
+    "stages": [
+      "research",
+      "formalize",
+      "reason",
+      "build"
+    ],
+    "topics_declared": 1,
+    "source": "evals/suites/caso2-pdf-corpus.yaml",
+    "eval_corpus": [
+      "/Users/ppazosp/Downloads/Evaluacion_CASO2.zip"
+    ]
+  },
+  "all_passed": true,
+  "duration_ms": 4961814,
+  "total_usd": 24.4715663,
+  "budget_exhausted": false,
+  "error": null,
+  "kg": {
+    "before": {
+      "total_nodes": 0,
+      "total_relations": 0,
+      "by_label": {},
+      "by_type": {}
+    },
+    "after": {
+      "total_nodes": 272,
+      "total_relations": 352,
+      "by_label": {
+        "Parameter": 127,
+        "Variable": 84,
+        "Equation": 14,
+        "Formulation": 12,
+        "Model": 12,
+        "Author": 6,
+        "Postulate": 5,
+        "Paradigm": 4,
+        "Paper": 4,
+        "BrainRegion": 4
+      },
+      "by_type": {
+        "HAS_PARAMETER": 127,
+        "USES_VARIABLE": 87,
+        "BELONGS_TO": 63,
+        "DERIVES_FROM": 24,
+        "USES_EQUATION": 14,
+        "IMPLEMENTS": 12,
+        "MODULATES": 10,
+        "SUPPORTS": 6,
+        "AUTHORED": 4,
+        "MEASURES": 4,
+        "CITES": 1
+      }
+    }
+  },
+  "topics": [
+    {
+      "topic": "PDF-corpus evaluation case 2. Using only the papers available through the eval web_search and search_papers tools, identify and investigate all decision-making paradigms that explain body regulation, homeostasis, interoception, active inference, and reinforcement learning in adaptive behavior. Treat the corpus as the complete literature universe: split, merge, and name paradigms according to the evidence in the papers, then carry every discovered paradigm and formulation forward.\n",
+      "run": {
+        "run_id": "80d9be2e-8521-4e58-b982-9c1da697297c",
+        "stages_run": [
+          "research",
+          "formalize",
+          "reason",
+          "build"
+        ],
+        "paradigms": [
+          "homeostatic-regulation",
+          "homeostatic-reinforcement-learning",
+          "interoceptive-active-inference",
+          "predictive-coding"
+        ],
+        "formulations": [
+          "homeostatic-regulation",
+          "homeostatic-reinforcement-learning",
+          "interoceptive-active-inference",
+          "predictive-coding"
+        ],
+        "reasoner_specs": [
+          "homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward",
+          "continuous-drive-dynamics-with-urgency-threshold-policy",
+          "interoceptive-active-inference-iai-with-free-energy-minimisation",
+          "drive-reduction-td-q-learning-model-free",
+          "continuous-drive-gradient-reactive-policy-algebraic-geometric",
+          "free-energy-minimizing-homeostatic-agent-probabilistic-bayesian",
+          "continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors",
+          "homeostatic-reinforcement-learning-with-drive-reduction-reward",
+          "expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+          "hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+          "algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update",
+          "active-inference-with-expected-free-energy-probabilistic-policy-selection"
+        ],
+        "memory_per_stage": {
+          "researcher": {
+            "status": "ok",
+            "nodes_created": 30,
+            "nodes_merged": 0,
+            "relations_created": 38,
+            "facts_stored": 24,
+            "duplicates_skipped": 0,
+            "conflicts_resolved": 0,
+            "duration_ms": 169174,
+            "kg_errors": [
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Relation BELONGS_TO: endpoint not found \u2014 Variable.id='homeostatic-regulation:h-t-physiological-state-vector' (from 'homeostatic-regulation:h-t-physiological-state-vector') or Paradigm.slug='homeostatic-regulation' (from 'homeostatic-regulation')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Variable.id='homeostatic-regulation:h-homeostatic-setpoint' (from 'homeostatic-regulation:h-homeostatic-setpoint') or Paradigm.slug='homeostatic-regulation' (from 'homeostatic-regulation')"
+            ],
+            "kg_error_count": 4,
+            "kg_health": {
+              "checked_nodes": 30,
+              "isolated_before": 0,
+              "isolated_after": 0,
+              "global_isolated_after": 0,
+              "inferred_relations_created": 0,
+              "warnings": []
+            },
+            "kg_review": {
+              "corrections_applied": 4,
+              "warnings": [
+                "Author 'Clark L. Hull' has only a BELONGS_TO edge to the paradigm but no AUTHORED edge to any Paper node. Hull (1943) is cited in the artifact but no Paper node for that work exists in the graph snapshot. Cannot safely add AUTHORED without a matching Paper node.",
+                "Author 'Walter B. Cannon' has only a BELONGS_TO edge to the paradigm but no AUTHORED edge to any Paper node. Cannon (1929) is cited in the artifact but no Paper node for that work exists in the graph snapshot. Cannot safely add AUTHORED without a matching Paper node.",
+                "Paper node 'Every good regulator of a system must be a model of that system' (Conant & Ashby 1970) has no Author nodes in the graph. Cannot add AUTHORED relations without Author nodes for Conant or Ashby.",
+                "Paper node 'Every good regulator of a system must be a model of that system' has no DOI property and is identified only by title; this may cause lookup/merge ambiguity in future runs.",
+                "Variable 'homeostatic-regulation:delta-t-homeostatic-reward-prediction-error' MEASURES BrainRegion 'Ventral Tegmental Area', but no Ventral Tegmental Area node appears in the graph snapshot nodes list \u2014 it may be truncated. If VTA node is absent, this relation is an orphan endpoint."
+              ],
+              "failed": false,
+              "error": null
+            }
+          },
+          "formalizer": {
+            "status": "ok",
+            "nodes_created": 137,
+            "nodes_merged": 5,
+            "relations_created": 160,
+            "facts_stored": 122,
+            "duplicates_skipped": 12,
+            "conflicts_resolved": 3,
+            "duration_ms": 800358,
+            "kg_errors": [
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Node Variable: no usable natural_key and no properties to hash",
+              "Relation MODULATES: endpoint not found \u2014 Variable.id='homeostatic-regulation:h-t' (from 'homeostatic-regulation:h-t') or Variable.id='homeostatic-regulation:d-t' (from 'homeostatic-regulation:d-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward' (from 'homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward') or Variable.id='homeostatic-regulation:h-t' (from 'homeostatic-regulation:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy' (from 'homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy') or Variable.id='homeostatic-regulation:h-t' (from 'homeostatic-regulation:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation' (from 'homeostatic-regulation:interoceptive-active-inference-iai-with-free-energy-minimisation') or Variable.id='homeostatic-regulation:h-t' (from 'homeostatic-regulation:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free') or Variable.id='homeostatic-reinforcement-learning:h-t' (from 'homeostatic-reinforcement-learning:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric') or Variable.id='homeostatic-reinforcement-learning:h-t' (from 'homeostatic-reinforcement-learning:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian' (from 'homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian') or Variable.id='homeostatic-reinforcement-learning:h-t' (from 'homeostatic-reinforcement-learning:h-t')",
+              "Relation MODULATES: endpoint not found \u2014 Variable.id='homeostatic-regulation:k-a' (from 'homeostatic-regulation:k-a') or Variable.id='homeostatic-regulation:h-t' (from 'homeostatic-regulation:h-t')",
+              "Relation USES_VARIABLE: endpoint not found \u2014 Formulation.id='interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting' (from 'interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting') or Variable.id='interoceptive-active-inference:h-d8a7f60b7fa4' (from 'interoceptive-active-inference:h-d8a7f60b7fa4')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update') or Paradigm.slug='predictive-coding' (from 'predictive-coding')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free') or Paradigm.slug='homeostatic-reinforcement-learning' (from 'homeostatic-reinforcement-learning')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric') or Paradigm.slug='homeostatic-reinforcement-learning' (from 'homeostatic-reinforcement-learning')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian' (from 'homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian') or Paradigm.slug='homeostatic-reinforcement-learning' (from 'homeostatic-reinforcement-learning')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors') or Paradigm.slug='interoceptive-active-inference' (from 'interoceptive-active-inference')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward') or Paradigm.slug='interoceptive-active-inference' (from 'interoceptive-active-inference')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting' (from 'interoceptive-active-inference:expected-free-energy-policy-selection-with-allostatic-prior-shifting') or Paradigm.slug='interoceptive-active-inference' (from 'interoceptive-active-inference')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode') or Paradigm.slug='predictive-coding' (from 'predictive-coding')",
+              "Relation BELONGS_TO: endpoint not found \u2014 Formulation.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection') or Paradigm.slug='predictive-coding' (from 'predictive-coding')"
+            ],
+            "kg_error_count": 22,
+            "kg_health": {
+              "checked_nodes": 137,
+              "isolated_before": 0,
+              "isolated_after": 0,
+              "global_isolated_after": 0,
+              "inferred_relations_created": 0,
+              "warnings": []
+            },
+            "kg_review": {
+              "corrections_applied": 0,
+              "warnings": [
+                "Clark L. Hull (Author node) has degree 1 with only a BELONGS_TO edge to the Homeostatic Regulation paradigm; no AUTHORED paper node for Hull (1943) exists in the graph snapshot. Hull (1943) is cited in Formulation 2 (Continuous Drive-Dynamics) but cannot be safely connected without a corresponding Paper node.",
+                "Walter B. Cannon (Author node) has degree 1 with only a BELONGS_TO edge to the Homeostatic Regulation paradigm; no AUTHORED paper node for Cannon (1929) exists in the graph snapshot. Cannon (1929) is cited in Formulation 2 but cannot be safely connected without a corresponding Paper node.",
+                "Formulation nodes for 'homeostatic-regulation:continuous-drive-dynamics-with-urgency-threshold-policy' and 'homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward' are listed in approved formulations but do not appear explicitly in the graph snapshot neighbor lists; verify these were written correctly and are not orphaned.",
+                "The graph snapshot is truncated; it is not possible to fully verify all USES_VARIABLE and HAS_PARAMETER edges for formulations under the 'homeostatic-regulation' and 'homeostatic-reinforcement-learning' paradigm namespaces. A full snapshot review is recommended."
+              ],
+              "failed": false,
+              "error": null
+            }
+          },
+          "reasoner": {
+            "status": "ok",
+            "nodes_created": 93,
+            "nodes_merged": 40,
+            "relations_created": 125,
+            "facts_stored": 378,
+            "duplicates_skipped": 50,
+            "conflicts_resolved": 6,
+            "duration_ms": 1959954,
+            "kg_errors": [
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:n' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:n') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:m' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:m') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:gamma' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:gamma') or Postulate.id='homeostatic-reinforcement-learning:P3' (from 'homeostatic-reinforcement-learning:P3')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:alpha' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:alpha') or Postulate.id='homeostatic-reinforcement-learning:P2' (from 'homeostatic-reinforcement-learning:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:beta' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:beta') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-star' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-star') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-max' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-max') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:k' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:k') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:lambda-drift' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:lambda-drift') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-bins' (from 'homeostatic-reinforcement-learning:drive-reduction-td-q-learning-model-free:h-bins') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:n' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:n') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:m' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:m') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:k' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:k') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:lambda-drift' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:lambda-drift') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-star' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-star') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-max' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:h-max') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:w-prox' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:w-prox') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:beta' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:beta') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:eta' (from 'homeostatic-reinforcement-learning:continuous-drive-gradient-reactive-policy-algebraic-geometric:eta') or Postulate.id='homeostatic-reinforcement-learning:P4' (from 'homeostatic-reinforcement-learning:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:h-star' (from 'homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:h-star') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:k' (from 'homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:k') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:lambda-drift' (from 'homeostatic-reinforcement-learning:free-energy-minimizing-homeostatic-agent-probabilistic-bayesian:lambda-drift') or Postulate.id='homeostatic-reinforcement-learning:P1' (from 'homeostatic-reinforcement-learning:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-s' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-s') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-p' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:pi-p') or Postulate.id='interoceptive-active-inference:P2' (from 'interoceptive-active-inference:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:kappa' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:kappa') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:mu-p-value' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:mu-p-value') or Postulate.id='interoceptive-active-inference:P2' (from 'interoceptive-active-inference:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:sigma-s' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:sigma-s') or Postulate.id='interoceptive-active-inference:P3' (from 'interoceptive-active-inference:P3')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:beta' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:beta') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:energy-gain-eat' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:energy-gain-eat') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-stay' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-stay') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move-toward' (from 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:c-move-toward') or Postulate.id='interoceptive-active-inference:P1' (from 'interoceptive-active-inference:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-star' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-star') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:m' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:m') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:gamma' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:gamma') or Postulate.id='interoceptive-active-inference:P5' (from 'interoceptive-active-inference:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:alpha' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:alpha') or Postulate.id='interoceptive-active-inference:P5' (from 'interoceptive-active-inference:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta') or Postulate.id='interoceptive-active-inference:P5' (from 'interoceptive-active-inference:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta-urgent' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:beta-urgent') or Postulate.id='interoceptive-active-inference:P5' (from 'interoceptive-active-inference:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-critical' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:h-critical') or Postulate.id='interoceptive-active-inference:P5' (from 'interoceptive-active-inference:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-move' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-move') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-stay' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:c-stay') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:k-eat' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:k-eat') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-dist-bins' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-dist-bins') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-energy-bins' (from 'interoceptive-active-inference:homeostatic-reinforcement-learning-with-drive-reduction-reward:n-energy-bins') or Postulate.id='interoceptive-active-inference:P4' (from 'interoceptive-active-inference:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:kappa' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:kappa') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-1-init' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-1-init') or Postulate.id='predictive-coding:P3' (from 'predictive-coding:P3')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-2-init' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:pi-2-init') or Postulate.id='predictive-coding:P3' (from 'predictive-coding:P3')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:eta-pi' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:eta-pi') or Postulate.id='predictive-coding:P4' (from 'predictive-coding:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:n-iter' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:n-iter') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:beta' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:beta') or Postulate.id='predictive-coding:P5' (from 'predictive-coding:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:lam' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:lam') or Postulate.id='predictive-coding:P1' (from 'predictive-coding:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:sigma2-init' (from 'predictive-coding:hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode:sigma2-init') or Postulate.id='predictive-coding:P4' (from 'predictive-coding:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-s-init' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-s-init') or Postulate.id='predictive-coding:P4' (from 'predictive-coding:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-0-init' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:pi-0-init') or Postulate.id='predictive-coding:P4' (from 'predictive-coding:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:alpha-pi' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:alpha-pi') or Postulate.id='predictive-coding:P4' (from 'predictive-coding:P4')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:gamma' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:gamma') or Postulate.id='predictive-coding:P1' (from 'predictive-coding:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:beta' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:beta') or Postulate.id='predictive-coding:P5' (from 'predictive-coding:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-food' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-food') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-empty' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:r-empty') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:d-max' (from 'predictive-coding:algebraic-precision-weighted-bayesian-filtering-single-step-conjugate-update:d-max') or Postulate.id='predictive-coding:P1' (from 'predictive-coding:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:beta-g' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:beta-g') or Postulate.id='predictive-coding:P5' (from 'predictive-coding:P5')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:omega' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:omega') or Postulate.id='predictive-coding:P3' (from 'predictive-coding:P3')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-h' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-h') or Postulate.id='predictive-coding:P6' (from 'predictive-coding:P6')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:delta-h' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:delta-h') or Postulate.id='predictive-coding:P6' (from 'predictive-coding:P6')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:h-star' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:h-star') or Postulate.id='predictive-coding:P6' (from 'predictive-coding:P6')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:k' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:k') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:n-obs' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:n-obs') or Postulate.id='predictive-coding:P1' (from 'predictive-coding:P1')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-b' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:alpha-b') or Postulate.id='predictive-coding:P2' (from 'predictive-coding:P2')",
+              "Relation DERIVES_FROM: endpoint not found \u2014 Parameter.id='predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:sigmoid-scale' (from 'predictive-coding:active-inference-with-expected-free-energy-probabilistic-policy-selection:sigmoid-scale') or Postulate.id='predictive-coding:P6' (from 'predictive-coding:P6')"
+            ],
+            "kg_error_count": 70,
+            "kg_health": {
+              "checked_nodes": 133,
+              "isolated_before": 0,
+              "isolated_after": 0,
+              "global_isolated_after": 0,
+              "inferred_relations_created": 0,
+              "warnings": []
+            },
+            "kg_review": {
+              "corrections_applied": 1,
+              "warnings": [
+                "Clark L. Hull (Author node) has degree=1 with only a BELONGS_TO edge to the Paradigm and no AUTHORED edge to any Paper node. No Hull paper node exists in the graph snapshot, so a paper connection cannot be safely added without creating a new node.",
+                "Walter B. Cannon (Author node) similarly has degree=1 with only a BELONGS_TO edge to the Paradigm and no AUTHORED edge to any Paper node in the snapshot. Cannot correct without creating new nodes.",
+                "The HAS_PARAMETER relations for parameters c-dec, c-eat, c-move, n, h-star of the HRL formulation appear only in the memory/content log but are not visible as explicit edges in the graph snapshot neighbors \u2014 these may be missing structural edges that the Memory Agent should have written but cannot be verified from the truncated snapshot."
+              ],
+              "failed": false,
+              "error": null
+            }
+          },
+          "builder": {
+            "status": "ok",
+            "nodes_created": 12,
+            "nodes_merged": 16,
+            "relations_created": 24,
+            "facts_stored": 132,
+            "duplicates_skipped": 8,
+            "conflicts_resolved": 0,
+            "duration_ms": 359535,
+            "kg_health": {
+              "checked_nodes": 28,
+              "isolated_before": 0,
+              "isolated_after": 0,
+              "global_isolated_after": 0,
+              "inferred_relations_created": 0,
+              "warnings": []
+            },
+            "kg_review": {
+              "corrections_applied": 0,
+              "warnings": [
+                "Model node 'homeostatic-regulation:homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward' appears to be the only Model node in this stage's artifact but the graph snapshot does not show it explicitly in the nodes list (only in relations_from_stage). Verify the Model node was written correctly with key 'id' matching the value used in BELONGS_TO and IMPLEMENTS relations.",
+                "Parameter node 'interoceptive-active-inference:continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors:p' (display_name='Prior precision', name='**\u03c0_p**') and node '...pi-p' (name='pi_p') appear to be duplicates of the same parameter (prior precision \u03c0_p) under the same formulation \u2014 one created at researcher stage and one at builder stage. These cannot be safely merged here but should be reviewed to avoid ambiguity.",
+                "Model -[CITES]-> Paper: source endpoint key is not canonical for its label"
+              ],
+              "failed": false,
+              "error": null
+            }
+          }
+        },
+        "usage": {
+          "anthropic/claude-haiku-4.5": {
+            "input_tokens": 204157,
+            "output_tokens": 163703,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "calls": 90
+          },
+          "anthropic/claude-sonnet-4.6": {
+            "input_tokens": 339293,
+            "output_tokens": 466660,
+            "cache_creation_input_tokens": 705991,
+            "cache_read_input_tokens": 2819911,
+            "calls": 280
+          },
+          "claude-haiku-4-5-20251001": {
+            "input_tokens": 31129,
+            "output_tokens": 2813,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "calls": 35
+          },
+          "anthropic/claude-opus-4.6": {
+            "input_tokens": 19820,
+            "output_tokens": 103372,
+            "cache_creation_input_tokens": 207677,
+            "cache_read_input_tokens": 415936,
+            "calls": 40
+          }
+        },
+        "duration_ms": 4961170,
+        "failed_at": null,
+        "error": null,
+        "memory_succeeded": true,
+        "memory_failures": {},
+        "tool_call_log": [
+          {
+            "name": "retrieve_knowledge",
+            "stage": "research",
+            "args_hash": "a7850325cb6f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6044.607292
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "9280e3c91ccb",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.589125
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "735b47b27266",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2.724792
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "f303029b4e64",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.631625
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "3e808dd75d69",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5.3925
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "7c1d962c54a8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3.211084
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "d0c536e08778",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2.234084
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "b88634139651",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5.337667
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "a3cb59abcd1e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3.329375
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "c04fa7a9d4e0",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2.08825
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "1628e7704e1a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3.909583
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "d33d94ead74a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8.048125
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "ca0671cbfb4a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3.979375
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "3c4b10c538d4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8.552584
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "c40b7cf2885e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3.147083
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "2fcbdb5c72de",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.084917
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "db80d6924ef9",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5.607917
+          },
+          {
+            "name": "search_papers",
+            "stage": "research",
+            "args_hash": "3c2ef4edd7db",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.98325
+          },
+          {
+            "name": "web_search",
+            "stage": "research",
+            "args_hash": "218e1dcd98ca",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5.603625
+          },
+          {
+            "name": "launch_deep_research",
+            "stage": "research",
+            "args_hash": "376d406edff3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 99612.062459
+          },
+          {
+            "name": "launch_deep_research",
+            "stage": "research",
+            "args_hash": "52d82755f4ea",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 100421.590208
+          },
+          {
+            "name": "launch_deep_research",
+            "stage": "research",
+            "args_hash": "23c843971a6f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 103683.982375
+          },
+          {
+            "name": "launch_deep_research",
+            "stage": "research",
+            "args_hash": "b572c72399c5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 110300.622792
+          },
+          {
+            "name": "read_report",
+            "stage": "research",
+            "args_hash": "b572c72399c5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 14.187917
+          },
+          {
+            "name": "read_report",
+            "stage": "research",
+            "args_hash": "23c843971a6f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 13.8625
+          },
+          {
+            "name": "read_report",
+            "stage": "research",
+            "args_hash": "376d406edff3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 17.263
+          },
+          {
+            "name": "read_report",
+            "stage": "research",
+            "args_hash": "52d82755f4ea",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 20.258125
+          },
+          {
+            "name": "read_file",
+            "stage": "formalize",
+            "args_hash": "0fb5a4924c1a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 48.974542
+          },
+          {
+            "name": "read_file",
+            "stage": "formalize",
+            "args_hash": "fb802ce28979",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 30.3675
+          },
+          {
+            "name": "read_file",
+            "stage": "formalize",
+            "args_hash": "ec8acad89628",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 12.442583
+          },
+          {
+            "name": "read_file",
+            "stage": "formalize",
+            "args_hash": "006a0c7092dc",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 4.094125
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "19b5bf2e39b9",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1356.505458
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "3f6ca2d48cb3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1181.5725
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "df74972b8bdf",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 4819.527792
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "5898ac6d6509",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5473.078041
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "3187d70366da",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5285.807042
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "fc3cb479e39f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5811.132334
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "38b847313426",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6399.76775
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "ab7ae2487dd0",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1355.485583
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "d67308432671",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1355.1515
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "35a6bcfe97a4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 11834.740709
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "f420431b49b8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1509.627542
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "a4177b9e8de2",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1530.034916
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "5685e3cceaff",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 860.473916
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "cf3d5d84bd63",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 865.231167
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "e843c9810b24",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 907.942208
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "formalize",
+            "args_hash": "32917f386da8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 910.647833
+          },
+          {
+            "name": "write_file",
+            "stage": "formalize",
+            "args_hash": "d616f5a0c362",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 95.70825
+          },
+          {
+            "name": "write_file",
+            "stage": "formalize",
+            "args_hash": "9ada5a175d18",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.343208
+          },
+          {
+            "name": "write_file",
+            "stage": "formalize",
+            "args_hash": "f8adae9dcec2",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 42.741417
+          },
+          {
+            "name": "write_file",
+            "stage": "formalize",
+            "args_hash": "73c8e43a582e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 49.755166
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "0fb5a4924c1a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8.543917
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "b1dc62a95912",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5.791834
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "62a5a5f31af1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8.285333
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "fb802ce28979",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8.503083
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "a9b3d7209e1a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6.116625
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "b1dc62a95912",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.643708
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "006a0c7092dc",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 12.710958
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "b1dc62a95912",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 13.205916
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "8c80ab8745ad",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 16.776709
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "b1dc62a95912",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6.297833
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "586d45a07325",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10.084375
+          },
+          {
+            "name": "read_file",
+            "stage": "reason",
+            "args_hash": "ec8acad89628",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 14.5435
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "3968634b5c9d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5233.870625
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "870c53a6fef3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1076.09675
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "be93fabc85a3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6852.404542
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "0861b103d7b8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6502.310084
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "9cbfb5700105",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7221.066417
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "9478703e7b12",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6240.754083
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "9b1d7e61cc9a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6072.723416
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "a2d432875cf4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7292.955667
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "2a414d893263",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6748.553083
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "62ab3b990e64",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 589.882292
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "0f063911f71e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10792.644375
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "f9735b314ec6",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6117.714708
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "0ab0a116341e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7927.520375
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "reason",
+            "args_hash": "845916513505",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 12829.706166
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "dd5fafc91cc5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 100.172917
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "1c6cf63ed508",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 43.046291
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "baf88adcb74f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 32.650042
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "641d6ed7c4b4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 52.758083
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "dabf8c0c2b6d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 29.263459
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "a35bc7f4c079",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 46.078
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "3add456c355d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 39.5505
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "c93b2810eb4b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 132.704417
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "52fce12e6c42",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 48.760708
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "9db88e85fa48",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 161.004125
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "a80640be430c",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 76.064541
+          },
+          {
+            "name": "write_file",
+            "stage": "reason",
+            "args_hash": "ab9b53c75e62",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 94.815375
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "5d17c87de13f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 21.828667
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "505e90dfaed7",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.397666
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "8641470cccaf",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10.366083
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "3d2a90803e2c",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6.310708
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "a67c8d5b2b82",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7.244792
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "46d2f55ff2a4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 17.151583
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "f7d04f4022d4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 13.362584
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "0ed90454d60d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 45.514125
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "b487c4283e58",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 40.881958
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "8e008b3afe95",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 44.855083
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "9a9235494fb2",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 55.483459
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "216418104571",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1289.567
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "0ed7af34bec1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1371.388583
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "e8007a6b5b9b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 290.539625
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "77a4814b5bf4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3380.587792
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "840485bcaa34",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3410.677125
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "8b8447ab5fe5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3415.452709
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "09206ce68fe6",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3420.738875
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "75a7bdf59d11",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3397.296583
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "ee7084dcc391",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3436.237
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "be61b9c5d3ec",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 3435.12175
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "581fb2b260f8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2937.264542
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "45e029c92e23",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 5327.300417
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "e822d1fc4667",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7174.162542
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "0c1e2014cd8b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 6889.13475
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "073e710d4b60",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 7727.858625
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "fd29049b0ea1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8405.630125
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "79f786105b79",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 8393.60425
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "fd0be27e169f",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2315.366209
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "3782a504e12e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10539.558541
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "242553cccd5e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 9484.749958
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "eaf55b666003",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2337.923834
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "2cfabded5b18",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 9505.307708
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "bc9abc880752",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 9768.127542
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "524f2e3fd0db",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10688.96
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "e9211939a029",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 9368.854083
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "a34bcc46e626",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 11367.912583
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "ca834fbf4e29",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1056.720208
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "d7a9227450c3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 12368.613417
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "de954bbc398d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 4881.871125
+          },
+          {
+            "name": "retrieve_knowledge",
+            "stage": "build",
+            "args_hash": "0c62877ef2a1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 4793.981083
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "60e37ccf57be",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 40.364042
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "f9ec66076273",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 69.772958
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "5e2330528596",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 21.971667
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "f5cd0d5ff346",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 30.557833
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "d16f6158e9fa",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 33.730334
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "da061df392ab",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 35.195375
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "0c7c9cae7ec5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 17.930375
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "8baab1dcffc7",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 25.093959
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "2e464273fecd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 36.473584
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "05efed6f25d3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 853.684
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "e41900166e3c",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 100.30775
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "2090679e3244",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 96.406375
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "e302f77d97fd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 19.346084
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3267d5b80814",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 951.972333
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3811df567f07",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 781.302292
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "47f0ae5413c1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 58.808833
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "d6d91a9a1b1d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 9.582834
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "2f391188312c",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 30.634958
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "084ca4162162",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 26.937667
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "ec819d096878",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 509.136416
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "de172c2ed329",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 22.385166
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d03f43a19d5d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 449.985334
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "a4897d17e790",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.991
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "76ce9e410f69",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 29.9355
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "756c02b98a52",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 451.473417
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "43c234d04c1e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 501.602042
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "0243887e3405",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.913916
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "bbe56d20c9fd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 32.835292
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "5cecdac3e112",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 515.062542
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d98c41b0e6a5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 480.608083
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "2f6343d7c856",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.987292
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "3c75d4d4359c",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 39.762042
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "642bdcffa418",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 32.010042
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "061b5f976c5a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 500.801875
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "3f1aae8d7efe",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.517125
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "05efed6f25d3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 477.565167
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "4dd06daa8252",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 67.975416
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "f8727d10881b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 503.151542
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "3a2571abc685",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 34.494709
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3811df567f07",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 608.612792
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d03f43a19d5d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 459.228791
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "5a16ad639703",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.5685
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "7c1852263344",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 31.668917
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "43c234d04c1e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 483.59225
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "756c02b98a52",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 410.798792
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "4ec2cf201367",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 129.941709
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3267d5b80814",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 437.052667
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "0e720bf5fb12",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 36.97525
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "51d051681ffd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 502.57625
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "6b2627c500c8",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 86.576333
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "72bde5671d55",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 83.954875
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "ec819d096878",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 835.920375
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "f8727d10881b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 531.963042
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "9cadd0c2f373",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 106.994166
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "5cecdac3e112",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 813.308917
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "9d5b2e1cfc69",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 44.011875
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "05efed6f25d3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 537.54325
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "e9d97d74e8f1",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 10.838166
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "4c71274c91cf",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 23.645916
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "f86cbda11ca6",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 36.693625
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d98c41b0e6a5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 739.020625
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "061b5f976c5a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1110.357125
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "d57c6f69e6a3",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 55.931958
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3811df567f07",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 529.988
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "d3205fca9937",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 51.194709
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "43c234d04c1e",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 655.155084
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "9dc1099f5279",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 33.7465
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "5cecdac3e112",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 750.129833
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "2447ac2afacd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 58.79475
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "793f17786622",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 77.681125
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "51d051681ffd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 2039.278583
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "ec819d096878",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 450.234333
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "43bad9df45b4",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 26.284792
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "c87fa54ac401",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 55.418833
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "ac1d6188cd11",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 32.785792
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "f8727d10881b",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 574.399458
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3267d5b80814",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 523.083375
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "becb6bdb40bb",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 27.206209
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "b7ee8c6a77f0",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 45.863417
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "5cecdac3e112",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 660.115917
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "7750d3e3f408",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 113.342667
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "061b5f976c5a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1018.914875
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "689040206c08",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 39.678458
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "51d051681ffd",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1949.18
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "7e5012852fd5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 40.161584
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d98c41b0e6a5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 701.268125
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "23b689064682",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 29.402792
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "3267d5b80814",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 621.3185
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "56d1d6a34199",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 48.487583
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "5cecdac3e112",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 734.322084
+          },
+          {
+            "name": "read_file",
+            "stage": "build",
+            "args_hash": "bece653886e9",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 21.902833
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "abeb7dc2ab20",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 46.406625
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "061b5f976c5a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1213.884958
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "a01c7d1cec80",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 98.695042
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "5accdecfa26d",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 53.019041
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "7623d49e2155",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 78.522458
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "061b5f976c5a",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 1586.2935
+          },
+          {
+            "name": "write_file",
+            "stage": "build",
+            "args_hash": "df37f69b31d9",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 48.755208
+          },
+          {
+            "name": "run_tests",
+            "stage": "build",
+            "args_hash": "d98c41b0e6a5",
+            "succeeded": true,
+            "details": null,
+            "duration_ms": 542.486209
+          }
+        ]
+      },
+      "timing": {
+        "stages": [
+          {
+            "stage": "classify_umbrella",
+            "duration_ms": 4178.09225,
+            "failed": false
+          },
+          {
+            "stage": "research",
+            "duration_ms": 241181.781375,
+            "failed": false
+          },
+          {
+            "stage": "review_research",
+            "duration_ms": 9.42525,
+            "failed": false
+          },
+          {
+            "stage": "memory_research",
+            "duration_ms": 169208.230292,
+            "failed": false
+          },
+          {
+            "stage": "formalize",
+            "duration_ms": 174167.458375,
+            "failed": false
+          },
+          {
+            "stage": "review_formalize",
+            "duration_ms": 85.873,
+            "failed": false
+          },
+          {
+            "stage": "memory_formalize",
+            "duration_ms": 800386.525333,
+            "failed": false
+          },
+          {
+            "stage": "get_env_spec",
+            "duration_ms": 9.199959,
+            "failed": false
+          },
+          {
+            "stage": "reason",
+            "duration_ms": 361041.253334,
+            "failed": false
+          },
+          {
+            "stage": "review_reason",
+            "duration_ms": 31.806209,
+            "failed": false
+          },
+          {
+            "stage": "memory_reason",
+            "duration_ms": 1960025.099542,
+            "failed": false
+          },
+          {
+            "stage": "build",
+            "duration_ms": 773752.011334,
+            "failed": false
+          },
+          {
+            "stage": "review_build",
+            "duration_ms": 42.933416,
+            "failed": false
+          },
+          {
+            "stage": "memory_build",
+            "duration_ms": 359578.51425,
+            "failed": false
+          },
+          {
+            "stage": "consolidation",
+            "duration_ms": 116832.848708,
+            "failed": false
+          }
+        ]
+      },
+      "tool_call_summary": {
+        "retrieve_knowledge": {
+          "calls": 60.0,
+          "p50_ms": 5327.300417,
+          "p95_ms": 11367.912583,
+          "avg_ms": 5348.15841875
+        },
+        "web_search": {
+          "calls": 9.0,
+          "p50_ms": 5.603625,
+          "p95_ms": 8.552584,
+          "avg_ms": 5.711958444444445
+        },
+        "search_papers": {
+          "calls": 9.0,
+          "p50_ms": 3.329375,
+          "p95_ms": 7.98325,
+          "avg_ms": 4.6719261111111114
+        },
+        "launch_deep_research": {
+          "calls": 4.0,
+          "p50_ms": 103683.982375,
+          "p95_ms": 110300.622792,
+          "avg_ms": 103504.5644585
+        },
+        "read_report": {
+          "calls": 4.0,
+          "p50_ms": 17.263,
+          "p95_ms": 20.258125,
+          "avg_ms": 16.392885500000002
+        },
+        "read_file": {
+          "calls": 31.0,
+          "p50_ms": 12.442583,
+          "p95_ms": 48.974542,
+          "avg_ms": 26.37557119354839
+        },
+        "write_file": {
+          "calls": 72.0,
+          "p50_ms": 40.364042,
+          "p95_ms": 106.994166,
+          "avg_ms": 52.502312527777775
+        },
+        "run_tests": {
+          "calls": 40.0,
+          "p50_ms": 574.399458,
+          "p95_ms": 1586.2935,
+          "avg_ms": 724.909318825
+        }
+      },
+      "assertions": {},
+      "all_passed": true
+    }
+  ],
+  "suite_assertions": []
+}

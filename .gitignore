@@ -14,6 +14,9 @@ exports/
 # Phase 1
 phase1-pablo/outputs/
 phase1-pablo/reports/
+phase1-pablo/evals/corpus/
+phase1-pablo/evals/reports/
+phase1-pablo/evals/runs/
 
 # Phase 2 — Python
 phase2-juan/.venv/

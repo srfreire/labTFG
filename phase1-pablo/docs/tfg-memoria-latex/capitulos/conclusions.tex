@@ -92,12 +92,26 @@ particular, la canonicalización de paradigmas, la detección de contradicciones
 la calibración de confianza son aspectos que pueden seguir refinándose con más
 ejecuciones y métricas.
 
+Las evals con corpus cerrado refuerzan otra limitación: la perfección técnica no
+implica perfección científica. Un modelo puede compilar, pasar tests, estar
+registrado en PostgreSQL y conservar trazas completas, pero seguir planteando
+dudas sobre taxonomía, fidelidad al corpus o fuerza de una formulación. Por eso
+los resultados deben entenderse como artefactos preparados para revisión
+experta, no como validaciones científicas definitivas.
+
 \section{Posibles ampliaciones}
 
 La primera línea futura es ampliar el conjunto de paradigmas y ejecutar más
 evaluaciones sobre problemas diversos. Esto permitiría medir mejor la
 generalidad del pipeline y detectar qué tipos de teorías son más difíciles de
 formalizar o implementar.
+
+También será necesario validar los resultados con expertos del dominio. Esa
+validación debería revisar si los paradigmas descubiertos son adecuados, si las
+formulaciones respetan la literatura y si los modelos generados capturan el
+mecanismo científico que declaran implementar. Las respuestas de los expertos
+pueden convertirse después en nuevas reglas de evaluación, ejemplos de memoria
+procedural y criterios de aceptación más estrictos.
 
 La segunda línea es comparar modelos generados contra implementaciones manuales
 o contra resultados esperados en simulaciones controladas. Esta evaluación

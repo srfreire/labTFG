@@ -1,0 +1,233 @@
+{
+  "formulation_id": "homeostatic-reinforcement-learning-hrl-with-drive-reduction-reward",
+  "paradigm": "homeostatic-regulation",
+  "name": "Homeostatic Reinforcement Learning (HRL) with Drive-Reduction Reward",
+  "description": "Algebraic drive-reduction framework integrated with tabular Q-learning. The agent maintains a scalar energy level that decays over time and is restored by eating food. Drive is defined as the convex distance between current energy and a setpoint; reward is defined as the reduction in drive produced by each action. A Q-table maps discretised (position, energy-bin) states to action values, updated via temporal-difference learning. Actions are selected by softmax over Q-values. Grounded in Keramati & Gutkin (2014) who proved that reward-maximisation and homeostatic stability are mathematically equivalent objectives under temporal discounting.",
+  "variables": [
+    {
+      "symbol": "h",
+      "name": "energy_level",
+      "description": "Scalar physiological variable representing the agent's current energy/nutrient store, normalised to [0,1]",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "description": "Ideal target value for the energy level; the equilibrium the agent seeks to maintain",
+      "type": "float",
+      "initial_value": 0.8,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "D",
+      "name": "drive",
+      "description": "Scalar motivational signal measuring absolute deviation from setpoint, raised to power n. Zero at setpoint, increases monotonically with deviation.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "r",
+      "name": "reward",
+      "description": "Drive reduction produced by the outcome at time t; positive when drive decreases (beneficial), negative when drive increases (harmful)",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "Q",
+      "name": "action_value_table",
+      "description": "Q-table mapping discretised state s (position + energy bin) to expected discounted sum of future drive-reductions for each action",
+      "type": "dict",
+      "initial_value": "defaultdict(0.0)",
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "delta",
+      "name": "td_error",
+      "description": "Temporal-difference reward prediction error; drives Q-value updates",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-inf", "inf"]
+    },
+    {
+      "symbol": "s",
+      "name": "external_state",
+      "description": "Discretised external state: tuple of (x, y, energy_bin) where energy_bin is a quantised version of h(t)",
+      "type": "tuple",
+      "initial_value": null,
+      "range": "discrete"
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "default": 0.8,
+      "source": "Keramati & Gutkin (2014), normalised energy target"
+    },
+    {
+      "symbol": "n",
+      "name": "drive_exponent",
+      "default": 2,
+      "source": "Keramati & Gutkin (2014), quadratic drive convexity ensures smooth gradient and accelerating urgency"
+    },
+    {
+      "symbol": "c_dec",
+      "name": "energy_decay_rate",
+      "default": 0.02,
+      "source": "Calibrated; represents metabolic cost per time step"
+    },
+    {
+      "symbol": "c_eat",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Calibrated; energy restored per food item consumed"
+    },
+    {
+      "symbol": "c_move",
+      "name": "movement_energy_cost",
+      "default": 0.005,
+      "source": "Calibrated; extra metabolic cost per move action"
+    },
+    {
+      "symbol": "gamma",
+      "name": "discount_factor",
+      "default": 0.95,
+      "source": "Keramati & Gutkin (2014), required strictly < 1 for homeostatic optimality"
+    },
+    {
+      "symbol": "alpha",
+      "name": "learning_rate",
+      "default": 0.1,
+      "source": "Standard Q-learning default"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploration-exploitation trade-off; Keramati & Gutkin (2014)"
+    },
+    {
+      "symbol": "n_energy_bins",
+      "name": "energy_discretisation_bins",
+      "default": 10,
+      "source": "Calibrated; discretises [0,1] into 10 bins for Q-table state"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Energy dynamics: energy decays each step by c_dec, is further reduced by c_move if the agent moved, and is increased by c_eat if the agent ate food. Clipped to [0,1].",
+      "type": "algebraic",
+      "pseudocode": "moved = 1 if action in ['move_up','move_down','move_left','move_right'] else 0\nate = 1 if (action == 'eat' and last_action_result.get('consumed', False)) else 0\nh = clip(h - c_dec - c_move * moved + c_eat * ate, 0.0, 1.0)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Drive function: convex deviation of energy from setpoint, raised to exponent n. Symmetric — both deficit and excess generate drive.",
+      "type": "algebraic",
+      "pseudocode": "D = abs(h - h_star) ** n",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Primary reward as drive reduction: the difference between drive before and after the action. Positive reward means the action reduced the drive.",
+      "type": "algebraic",
+      "pseudocode": "D_old = abs(h_old - h_star) ** n\nD_new = abs(h_new - h_star) ** n\nr = D_old - D_new",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R4",
+      "description": "Temporal-difference error: standard Q-learning TD(0) error using drive-reduction reward.",
+      "type": "algebraic",
+      "pseudocode": "delta = r + gamma * max(Q[s_new, a_] for a_ in all_actions) - Q[s_old, a_taken]",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R5",
+      "description": "Q-value update: standard tabular Q-learning update rule.",
+      "type": "algebraic",
+      "pseudocode": "Q[s_old, a_taken] = Q[s_old, a_taken] + alpha * delta",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R6",
+      "description": "Softmax action selection: actions are chosen stochastically with probability proportional to exponentiated Q-values, controlled by inverse temperature beta.",
+      "type": "algebraic",
+      "pseudocode": "logits = [beta * Q[s, a] for a in available_actions]\nprobs = softmax(logits)\naction = sample_from(available_actions, probs)",
+      "source_postulate": "P5"
+    }
+  ],
+  "decision_logic": {
+    "description": "The agent discretises its state, computes drive, selects actions via softmax over Q-values, and updates its Q-table using drive-reduction reward after each step.",
+    "pseudocode": [
+      "# --- State discretisation ---",
+      "energy_bin = int(clip(h * n_energy_bins, 0, n_energy_bins - 1))",
+      "s = (perception['x'], perception['y'], energy_bin)",
+      "",
+      "# --- Determine available actions ---",
+      "food_here = any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources'].get('food', []))",
+      "available_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay']",
+      "if food_here:",
+      "    available_actions.append('eat')",
+      "",
+      "# --- Softmax action selection (R6) ---",
+      "logits = [beta * Q.get((s, a), 0.0) for a in available_actions]",
+      "max_logit = max(logits)",
+      "exp_logits = [exp(l - max_logit) for l in logits]  # numerically stable",
+      "sum_exp = sum(exp_logits)",
+      "probs = [e / sum_exp for e in exp_logits]",
+      "action = random_choice(available_actions, weights=probs)",
+      "",
+      "# --- Return action ---",
+      "return Action(action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources'].get('food', [])",
+      "food_at_current_cell": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources'].get('food', []))",
+      "ate_food": "last_action_result.get('consumed', False) if last action was 'eat' else False",
+      "step": "perception['step']",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internal drive-reduction reward r = D(t) - D(t+1), computed from R3. The env reward from ConsumeEffect (1.0) is NOT used; the agent uses its own homeostatic reward signal."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases without eating: energy decays each step, causing drive to increase monotonically when no food is consumed",
+      "test_pseudocode": "run 50 steps without food nearby → assert h decreases each step and D increases each step"
+    },
+    {
+      "id": "B2",
+      "description": "Drive-proportional motivation: the agent becomes increasingly likely to move toward food as drive increases (Q-values for food-seeking actions accumulate more reward when drive is high)",
+      "test_pseudocode": "compare action distributions at h=0.3 vs h=0.7 → assert foraging probability is higher at h=0.3"
+    },
+    {
+      "id": "B3",
+      "description": "Satiation suppresses eating: when energy is at or above setpoint, eating produces zero or negative reward, so Q-values for eat decline relative to stay",
+      "test_pseudocode": "set h=0.9 (above setpoint 0.8) → assert r for eating is negative (drive increases because h moves further from h*)"
+    },
+    {
+      "id": "B4",
+      "description": "Learning improves efficiency: over many episodes, the agent learns shorter paths to food sources, reducing average drive over time",
+      "test_pseudocode": "compare mean drive in steps 1-100 vs steps 901-1000 → assert later drive is lower"
+    },
+    {
+      "id": "B5",
+      "description": "Q-values converge: after sufficient exploration, Q-value updates (delta) decrease in magnitude, indicating policy stabilisation",
+      "test_pseudocode": "compute mean |delta| over last 100 steps → assert it is smaller than mean |delta| over first 100 steps"
+    }
+  ],
+  "references": [
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811.",
+    "Hull, C.L. (1943). Principles of Behavior. Referenced for drive-reduction theory foundations.",
+    "Cannon, W.B. (1929). Organization for physiological homeostasis. Referenced for negative-feedback control origins."
+  ]
+}

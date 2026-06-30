@@ -59,6 +59,20 @@ class PipelineRunResult:
     def succeeded(self) -> bool:
         return self.failed_at is None
 
+    @property
+    def memory_failures(self) -> dict[str, str]:
+        """Memory Agent stages that recorded an unrecoverable failure."""
+        failures: dict[str, str] = {}
+        for stage, payload in self.memory_per_stage.items():
+            if payload.get("status") == "failed" or payload.get("failed") is True:
+                error = payload.get("error") or "memory stage failed"
+                failures[stage] = str(error)
+        return failures
+
+    @property
+    def memory_succeeded(self) -> bool:
+        return not self.memory_failures
+
     def total_nodes_created(self) -> int:
         """Sum of ``nodes_created`` across every memory stage in this run."""
         return sum(p.get("nodes_created", 0) for p in self.memory_per_stage.values())

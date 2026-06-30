@@ -251,6 +251,31 @@ async def test_importance_scoring_empty_facts():
     client.messages.create.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_importance_scoring_batches_large_fact_lists(monkeypatch):
+    """Large fact sets are scored in chunks to avoid one brittle stage-wide call."""
+    monkeypatch.setattr(
+        "decisionlab.knowledge.resolver._IMPORTANCE_BATCH_SIZE",
+        2,
+    )
+    client = _make_client(
+        [
+            [
+                {"fact": "fact a", "importance": 8, "reasoning": "core"},
+                {"fact": "fact b", "importance": 6, "reasoning": "useful"},
+            ],
+            [
+                {"fact": "fact c", "importance": 4, "reasoning": "context"},
+            ],
+        ]
+    )
+
+    scores = await _score_importance(["fact a", "fact b", "fact c"], client)
+
+    assert scores == {"fact a": 8.0, "fact b": 6.0, "fact c": 4.0}
+    assert client.messages.create.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # AC2: Duplicate detection + DUPLICATE classification
 # ---------------------------------------------------------------------------
@@ -701,40 +726,57 @@ async def test_sonnet_called_only_for_facts_with_duplicates():
 
 
 # ---------------------------------------------------------------------------
-# Phase B: structured-output failures raise loudly (no silent 5.0 default)
+# Phase B: structured-output failures warn and fall back to neutral importance
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_importance_scoring_validation_failure_raises():
+async def test_importance_scoring_validation_failure_warns_and_defaults(caplog):
     """A response whose tool input violates ``_ImportanceScores`` schema
-    raises StructuredOutputError. The pre-rewrite path silently defaulted
-    every fact to importance 5.0 on every cumulative-growth topic."""
-    from decisionlab.structured import StructuredOutputError
-
+    uses a visible neutral fallback so a scorer glitch does not drop an entire
+    memory stage."""
     bad = _make_tool_response("emit__ImportanceScores", {"not_scores": "wrong shape"})
     client = _make_client([bad])
 
-    with pytest.raises(StructuredOutputError):
-        await _score_importance(["fact a", "fact b"], client)
+    with caplog.at_level("WARNING", logger="decisionlab.knowledge.resolver"):
+        scores = await _score_importance(["fact a", "fact b"], client)
+
+    assert scores == {"fact a": 5.0, "fact b": 5.0}
+    assert "Importance scoring failed" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_importance_scoring_truncation_raises():
-    """Sonnet truncation surfaces as StructuredOutputError so the eval
-    trace shows the actual cause rather than "json.loads failed"."""
-    from decisionlab.structured import StructuredOutputError
-
+async def test_importance_scoring_truncation_warns_and_defaults(caplog):
+    """Truncation is logged and receives the same neutral fallback."""
     truncated = _make_tool_response(
         "emit__ImportanceScores",
         {"scores": []},
         stop_reason="max_tokens",
     )
-    truncated.usage = MagicMock(output_tokens=16384)
     client = _make_client([truncated])
 
-    with pytest.raises(StructuredOutputError, match="truncated at max_tokens"):
-        await _score_importance(["fact a", "fact b"], client)
+    with caplog.at_level("WARNING", logger="decisionlab.knowledge.resolver"):
+        scores = await _score_importance(["fact a", "fact b"], client)
+
+    assert scores == {"fact a": 5.0, "fact b": 5.0}
+    assert "Importance scoring failed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_importance_scoring_missing_fact_warns_and_defaults(caplog):
+    """A partial valid response keeps model-provided scores and defaults only
+    omitted facts."""
+    partial = _make_tool_response(
+        "emit__ImportanceScores",
+        {"scores": [{"fact": "fact a", "importance": 8, "reasoning": "core"}]},
+    )
+    client = _make_client([partial])
+
+    with caplog.at_level("WARNING", logger="decisionlab.knowledge.resolver"):
+        scores = await _score_importance(["fact a", "fact b"], client)
+
+    assert scores == {"fact a": 8.0, "fact b": 5.0}
+    assert "Importance scoring omitted 1/2 fact(s)" in caplog.text
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,351 @@
+{
+  "formulation_id": "ode-based-habit-strength-with-continuous-arbitration-dynamics",
+  "paradigm": "goal-directed-vs-habitual-control",
+  "name": "ODE-Based Habit Strength with Continuous Arbitration Dynamics",
+  "description": "Continuous-time ODE-inspired dual-system agent where habit strength, goal-directed value, and a depletable cognitive control capacity co-evolve over discrete Euler time steps. Unlike Formulations 1 and 2 which blend two value streams into a single Q-net, this formulation implements stochastic system selection: at each step, the agent probabilistically selects EITHER the goal-directed system OR the habitual system based on current cognitive control capacity C_t, then applies softmax within the selected system. Habit strengths H(s,a) grow via an ODE-like accumulation driven by positive reward and decay when unused. Cognitive control capacity C_t depletes each time the goal-directed system is engaged (modeling PFC executive effort cost) and recovers when habitual control is used. This produces emergent overtraining-to-habit dynamics: as habits strengthen and C_t depletes from repeated deliberation, the agent naturally falls back onto habitual control. Based on Rangel, Camerer & Montague (2008) and Rangel (2013), postulates P1–P5, with inspiration from ego-depletion / executive resource frameworks.",
+  "variables": [
+    {
+      "symbol": "s",
+      "name": "state",
+      "description": "Agent's current grid cell encoded as (x, y) tuple",
+      "type": "discrete",
+      "initial_value": "from perception (x, y)",
+      "range": ["(0,0)", "(grid_width-1, grid_height-1)"]
+    },
+    {
+      "symbol": "H",
+      "name": "habit_strength",
+      "description": "Continuously evolving stimulus-response association strength for each (state, action) pair. Grows when the action is executed and produces positive reward; decays slowly when not used. High H means strong habitual tendency. Not sensitive to current desirability — reflects historical reinforcement only (postulate P3).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 50.0]
+    },
+    {
+      "symbol": "V_GD",
+      "name": "goal_directed_value",
+      "description": "Prospectively computed action value from the learned transition model and current hunger-modulated desirability. Recomputed every step. Immediately sensitive to changes in hunger / outcome value (postulate P2).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 10.0]
+    },
+    {
+      "symbol": "C",
+      "name": "cognitive_control_capacity",
+      "description": "Depletable resource representing prefrontal executive function. Depleted by xi each time goal-directed deliberation is used; recovers toward C_max at rate rho when habitual control is used. When C < theta, goal-directed system cannot be engaged. Models the computational/metabolic cost of model-based planning (Rangel, Camerer & Montague, 2008).",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "h",
+      "name": "hunger_drive",
+      "description": "Internal physiological state representing current need. Modulates goal-directed desirability r_D. Rises each step, drops upon eating.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_D",
+      "name": "decision_time_desirability",
+      "description": "Current subjective value of each possible outcome, modulated by hunger. Food: r_D = h * r_food. Non-food: r_D = c_step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "p_hat",
+      "name": "learned_transition_model",
+      "description": "Agent's estimate of action-outcome contingency p_hat(o|a,s). Updated incrementally from observations. Core of the goal-directed system.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "U",
+      "name": "composite_action_urgency",
+      "description": "Action urgency signal used for final softmax selection. Set to either V_GD(s,a) or H(s,a) depending on which system was stochastically selected for this step.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-10.0, 50.0]
+    },
+    {
+      "symbol": "p_GD",
+      "name": "goal_directed_probability",
+      "description": "Probability of engaging the goal-directed system on this step. Equals C_t if C_t >= theta, else 0. Captures the gating role of cognitive control capacity.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "tau_H",
+      "name": "habit_accumulation_rate",
+      "default": 0.03,
+      "source": "Slow growth of S-R strength reflecting overtraining timescale (Rangel, Camerer & Montague, 2008; postulate P4)"
+    },
+    {
+      "symbol": "tau_D",
+      "name": "habit_decay_rate",
+      "default": 0.005,
+      "source": "Slow decay of unused habits; habits are persistent but not permanent"
+    },
+    {
+      "symbol": "alpha_T",
+      "name": "transition_model_learning_rate",
+      "default": 0.20,
+      "source": "Rapid model update for goal-directed system (Rangel, 2013; postulate P2)"
+    },
+    {
+      "symbol": "C_max",
+      "name": "max_cognitive_control_capacity",
+      "default": 1.0,
+      "source": "Normalized upper bound for cognitive control resource"
+    },
+    {
+      "symbol": "rho",
+      "name": "control_recovery_rate",
+      "default": 0.05,
+      "source": "Per-step recovery toward C_max when habitual action is taken; reflects PFC resource replenishment"
+    },
+    {
+      "symbol": "xi",
+      "name": "control_depletion_per_gd_use",
+      "default": 0.10,
+      "source": "Cost of using goal-directed deliberation; reflects computational expense of model-based planning (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "theta",
+      "name": "override_threshold",
+      "default": 0.15,
+      "source": "Minimum C_t required to engage goal-directed system; below this, only habitual control is available"
+    },
+    {
+      "symbol": "gamma",
+      "name": "temporal_discount_factor",
+      "default": 0.95,
+      "source": "Standard RL discounting (Rangel, Camerer & Montague, 2008)"
+    },
+    {
+      "symbol": "eta",
+      "name": "hunger_rise_rate",
+      "default": 0.02,
+      "source": "Per-step hunger increase when not eating"
+    },
+    {
+      "symbol": "phi",
+      "name": "satiation_amount",
+      "default": 0.30,
+      "source": "Hunger reduction upon eating"
+    },
+    {
+      "symbol": "r_food",
+      "name": "base_food_reward",
+      "default": 1.0,
+      "source": "Normalized reward unit matching env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "c_step",
+      "name": "step_cost",
+      "default": -0.01,
+      "source": "Small penalty to encourage efficiency"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Moderate exploitation for softmax within the selected system (Rangel, Camerer & Montague, 2008)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger dynamics: hunger rises each step by eta and drops by phi when food is consumed. Clipped to [0, 1].",
+      "type": "algebraic",
+      "pseudocode": "h = clip(h + eta - phi * ate_food, 0.0, 1.0)",
+      "source_postulate": "Assumption: state-dependent desirability; internal hunger modulates goal-directed valuation"
+    },
+    {
+      "id": "R2",
+      "description": "Decision-time desirability: subjective value of food outcome is hunger-modulated; non-food outcome incurs step cost.",
+      "type": "algebraic",
+      "pseudocode": "r_D_food = h * r_food\nr_D_nofood = c_step",
+      "source_postulate": "P2 — goal-directed value uses current desirability r^D(o|s)"
+    },
+    {
+      "id": "R3",
+      "description": "Goal-directed value (prospective): computed from learned transition model and current desirability. For eat at food: sum of p_hat * r_D. For movement: step cost plus discounted future value. Recomputed every step.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  if a == 'eat' and food_here:\n    V_GD[s][a] = p_hat.get((s,a,'food'), 0.5) * r_D_food + (1 - p_hat.get((s,a,'food'), 0.5)) * r_D_nofood\n  elif a in ['move_up','move_down','move_left','move_right']:\n    s_next = clamp_to_grid(apply_move(s, a))\n    # For GD movement values, estimate future value from habit strengths at destination\n    V_GD[s][a] = c_step + gamma * max(H.get((s_next, a2), 0.0) for a2 in actions) * r_D_food\n  else:\n    V_GD[s][a] = c_step",
+      "source_postulate": "P2 — V_GD(a|s) = sum_o p(o|a,s) * r^D(o|s)"
+    },
+    {
+      "id": "R4",
+      "description": "Habit strength ODE (discrete Euler step): H(s,a) accumulates from positive reward when the action is executed in state s, and decays at rate tau_D toward zero for all (s,a) pairs. Only positive rewards drive habit formation ([r]+).",
+      "type": "ODE",
+      "pseudocode": "# For the executed action in current state:\nH[(s, a_executed)] = H.get((s, a_executed), 0.0) + tau_H * max(r_received, 0.0) - tau_D * H.get((s, a_executed), 0.0)\n\n# For all other (s, a) pairs, apply passive decay:\nfor each (s_i, a_i) in H:\n  if (s_i, a_i) != (s, a_executed):\n    H[(s_i, a_i)] = H[(s_i, a_i)] - tau_D * H[(s_i, a_i)]\n\n# Ensure non-negative:\nH[(s_i, a_i)] = max(H[(s_i, a_i)], 0.0)",
+      "source_postulate": "P3, P4 — habits form slowly from repeated reinforcement; insensitive to current desirability; accumulated S-R association"
+    },
+    {
+      "id": "R5",
+      "description": "Cognitive control capacity dynamics: C_t recovers toward C_max when habitual control is used (no deliberation cost), and depletes by xi when goal-directed system is engaged. Clipped to [0, C_max].",
+      "type": "ODE",
+      "pseudocode": "if gd_was_used:\n  C = clip(C + rho * (C_max - C) - xi, 0.0, C_max)\nelse:\n  C = clip(C + rho * (C_max - C), 0.0, C_max)",
+      "source_postulate": "Rangel, Camerer & Montague (2008) — computational cost of model-based planning; PFC executive resource constraints"
+    },
+    {
+      "id": "R6",
+      "description": "System selection criterion: probability of engaging goal-directed system is C_t if above threshold theta; otherwise forced habitual. Captures cognitive gating.",
+      "type": "algebraic",
+      "pseudocode": "if C >= theta:\n  p_GD = C\nelse:\n  p_GD = 0.0",
+      "source_postulate": "P4 — goal-directed control requires cognitive resources; depleted resources force habitual default"
+    },
+    {
+      "id": "R7",
+      "description": "Composite action urgency via stochastic system selection: with probability p_GD, use goal-directed values V_GD; with probability 1-p_GD, use habit strengths H. This is NOT a blend — it's a binary switch per step.",
+      "type": "algebraic",
+      "pseudocode": "u = random_uniform(0, 1)\nif u < p_GD:\n  use_gd = True\n  for a in actions:\n    U[a] = V_GD[s][a]\nelse:\n  use_gd = False\n  for a in actions:\n    U[a] = H.get((s, a), 0.0)",
+      "source_postulate": "P1 — two dissociable controllers; not blended but selected (competitive)"
+    },
+    {
+      "id": "R8",
+      "description": "Softmax action selection over the urgency values from the selected system.",
+      "type": "algebraic",
+      "pseudocode": "probs = softmax([beta * U[a] for a in actions])\nselected_action = random_choice(actions, weights=probs)",
+      "source_postulate": "Assumption: common action-selection mechanism (softmax) within selected controller"
+    },
+    {
+      "id": "R9",
+      "description": "Transition model update: after observing outcome, update p_hat toward observed outcome.",
+      "type": "algebraic",
+      "pseudocode": "p_hat[(s, action, o_obs)] = p_hat.get((s, action, o_obs), 0.5) + alpha_T * (1.0 - p_hat.get((s, action, o_obs), 0.5))\nfor o != o_obs:\n  p_hat[(s, action, o)] = p_hat.get((s, action, o), 0.5) + alpha_T * (0.0 - p_hat.get((s, action, o), 0.5))",
+      "source_postulate": "P2 — action-outcome contingency p(o|a,s) is learned and updated from experience"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Read state s=(x,y), food resources, hunger h, cognitive control C. (2) Compute hunger-modulated desirability r_D (R2). (3) Check if C >= theta to determine if goal-directed system is available (R6). (4) Stochastically select system: draw uniform random, compare to p_GD (R7). (5) If GD selected: compute V_GD for all actions from transition model and r_D (R3), set U = V_GD. If habitual selected: retrieve H(s,a) for all actions, set U = H. (6) Select action via softmax over U (R8). (7) After execution: update hunger (R1), update habit strength H via ODE step (R4) — executed action gains from positive reward, all habits decay. (8) Update transition model (R9). (9) Update cognitive control C: deplete if GD was used, recover otherwise (R5).",
+    "pseudocode": [
+      "# === DECIDE ===",
+      "s = (perception.x, perception.y)",
+      "food_positions = [(f['x'], f['y']) for f in perception.resources.get('food', [])]",
+      "food_here = s in food_positions",
+      "",
+      "# R2: Compute desirability",
+      "r_D_food = h * r_food",
+      "r_D_nofood = c_step",
+      "",
+      "# R6: Determine p_GD from cognitive control capacity",
+      "if C >= theta:",
+      "  p_GD = C",
+      "else:",
+      "  p_GD = 0.0",
+      "",
+      "# R7: Stochastic system selection",
+      "u = random_uniform(0, 1)",
+      "if u < p_GD:",
+      "  use_gd = True",
+      "  # R3: Compute goal-directed values",
+      "  for a in actions:",
+      "    if a == 'eat' and food_here:",
+      "      V_GD_a = p_hat.get((s, a, 'food'), 0.5) * r_D_food + (1 - p_hat.get((s, a, 'food'), 0.5)) * r_D_nofood",
+      "    elif a in ['move_up','move_down','move_left','move_right']:",
+      "      s_next = clamp_to_grid(apply_move(s, a))",
+      "      best_future_H = max(H.get((s_next, a2), 0.0) for a2 in actions)",
+      "      V_GD_a = c_step + gamma * best_future_H * r_D_food if best_future_H > 0 else c_step",
+      "    else:",
+      "      V_GD_a = c_step",
+      "    U[a] = V_GD_a",
+      "else:",
+      "  use_gd = False",
+      "  # Retrieve habit strengths",
+      "  for a in actions:",
+      "    U[a] = H.get((s, a), 0.0)",
+      "",
+      "# R8: Softmax selection",
+      "probs = softmax([beta * U[a] for a in actions])",
+      "selected_action = random_choice(actions, probs)",
+      "# Store use_gd flag for update phase",
+      "return selected_action",
+      "",
+      "# === UPDATE (after action execution) ===",
+      "ate_food = (action == 'eat' and last_action_result.get('consumed', False))",
+      "r_received = r_food if ate_food else c_step",
+      "",
+      "# R1: Update hunger",
+      "h = clip(h + eta - phi * int(ate_food), 0.0, 1.0)",
+      "",
+      "# R4: Update habit strengths (ODE Euler step)",
+      "# Executed action in current state gets positive reinforcement",
+      "r_pos = max(r_received, 0.0)",
+      "H[(s, action)] = max(H.get((s, action), 0.0) + tau_H * r_pos - tau_D * H.get((s, action), 0.0), 0.0)",
+      "# All other habits decay passively",
+      "for (s_i, a_i) in H where (s_i, a_i) != (s, action):",
+      "  H[(s_i, a_i)] = max(H[(s_i, a_i)] - tau_D * H[(s_i, a_i)], 0.0)",
+      "",
+      "# R9: Update transition model",
+      "o_obs = 'food' if ate_food else 'nofood'",
+      "p_hat[(s, action, o_obs)] = p_hat.get((s, action, o_obs), 0.5) + alpha_T * (1.0 - p_hat.get((s, action, o_obs), 0.5))",
+      "for o in outcomes where o != o_obs:",
+      "  p_hat[(s, action, o)] = p_hat.get((s, action, o), 0.5) + alpha_T * (0.0 - p_hat.get((s, action, o), 0.5))",
+      "",
+      "# R5: Update cognitive control capacity",
+      "if use_gd:",
+      "  C = clip(C + rho * (C_max - C) - xi, 0.0, C_max)",
+      "else:",
+      "  C = clip(C + rho * (C_max - C), 0.0, C_max)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "state_s": "(perception.x, perception.y)",
+      "food_positions": "perception.resources.food — list of {x, y, type, palatability} dicts",
+      "food_at_current_position": "any(f['x'] == perception.x and f['y'] == perception.y for f in perception.resources.get('food', []))",
+      "grid_bounds": "(perception.grid_width, perception.grid_height)",
+      "step_number": "perception.step",
+      "ate_food": "action was 'eat' and perception.last_action_result indicates consumption"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action at food location → ConsumeEffect reward = 1.0; all other actions → internal step cost c_step = -0.01"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Initial goal-directed dominance: at step 0, C=1.0 (max), so p_GD = 1.0 and the agent always uses V_GD. The agent makes hunger-sensitive, deliberate food-seeking choices.",
+      "test_pseudocode": "At step 0 → assert C == 1.0 → assert p_GD == 1.0 → assert agent uses V_GD for all decisions"
+    },
+    {
+      "id": "B2",
+      "description": "Cognitive depletion drives habit transition: after many consecutive goal-directed decisions, C depletes below theta, forcing habitual control. The agent starts relying on habit strengths H(s,a).",
+      "test_pseudocode": "Run 20 consecutive GD decisions → C decreases by ~20*xi = 2.0 (but recovery offsets partially) → eventually C < theta → assert p_GD == 0 → assert agent uses H values"
+    },
+    {
+      "id": "B3",
+      "description": "Habit strengths accumulate for rewarded actions: eating at food locations produces positive reward, increasing H(s_food, eat) via the ODE. After many successful eats, H(s_food, eat) becomes large.",
+      "test_pseudocode": "Execute 'eat' at food location 50 times → assert H[(food_loc, eat)] > 1.0 → assert H is much larger for eat-at-food than other actions"
+    },
+    {
+      "id": "B4",
+      "description": "Devaluation sensitivity when GD active: if C is high and the agent is sated (h≈0), V_GD for eating is near zero (r_D_food ≈ 0), so the agent avoids eating even when food is present.",
+      "test_pseudocode": "Set h=0.05, C=1.0 → assert V_GD[eat] ≈ 0.05 (very low) → assert agent prefers non-eat actions"
+    },
+    {
+      "id": "B5",
+      "description": "Devaluation insensitivity when habitual: if C is low (below theta) and the agent is sated, it falls back on H(s,a). Since H reflects past positive reinforcement (not current hunger), the agent may still eat at food locations where H(s, eat) is high.",
+      "test_pseudocode": "Set h=0.05, C=0.05 (< theta) → assert p_GD == 0 → assert U[eat] = H[(s, eat)] which is high from past experience → agent still eats"
+    },
+    {
+      "id": "B6",
+      "description": "Cognitive control recovery during habitual episodes: when the agent uses habitual control (no GD depletion), C recovers toward C_max. After sufficient recovery, the agent can re-engage goal-directed control.",
+      "test_pseudocode": "Deplete C to 0.05 → run 30 habitual steps → assert C recovers above theta → assert p_GD > 0 → GD system re-engages"
+    },
+    {
+      "id": "B7",
+      "description": "Habit decay for unused actions: habit strengths for (state, action) pairs that are not executed slowly decay toward zero via the tau_D term, preventing permanent entrenchment.",
+      "test_pseudocode": "Build H[(s, eat)] = 1.0 → run 200 steps without visiting s → assert H[(s, eat)] has decayed significantly toward 0"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience, 9, 545–556.",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724."
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "formulation_id": "incentive-salience-dual-process-agent-wantingliking-dissociation",
+  "paradigm": "pavlovian-control-of-food-approach",
+  "name": "Incentive Salience Dual-Process Agent (Wanting–Liking Dissociation)",
+  "description": "A dual-channel Pavlovian agent maintaining separate 'wanting' (dopamine-mediated incentive salience) and 'liking' (opioid-mediated hedonic value) maps, each with independent learning dynamics. Wanting drives approach vigor proportional to hunger, while liking tracks hedonic experience modulated by alliesthesia (food pleasantness depends on hunger state). The two channels are combined via weighted summation for softmax action selection. This architecture captures the empirical dissociation between wanting and liking (e.g., high wanting with low liking in addiction-like states, or suppressed wanting in satiety despite unchanged liking). Different learning rates (fast wanting, slow liking) match neuropharmacological data on dopamine vs. opioid plasticity.",
+  "variables": [
+    {
+      "symbol": "W",
+      "name": "wanting_values",
+      "description": "Dictionary mapping grid cell (x,y) to incentive salience (wanting) value. Represents dopamine-mediated motivational attribution to each location as a conditioned stimulus.",
+      "type": "dict[tuple[int,int], float]",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "L",
+      "name": "liking_values",
+      "description": "Dictionary mapping grid cell (x,y) to hedonic (liking) value. Represents opioid-mediated pleasantness expectation for each location.",
+      "type": "dict[tuple[int,int], float]",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "delta_W",
+      "name": "wanting_prediction_error",
+      "description": "Reward prediction error driving the wanting channel update. Reflects dopaminergic phasic signal.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-2.0, 2.0]
+    },
+    {
+      "symbol": "delta_L",
+      "name": "liking_prediction_error",
+      "description": "Hedonic surprise driving the liking channel update. Reflects opioid-mediated hedonic mismatch. Target is hunger-modulated (alliesthesia).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-2.0, 2.0]
+    },
+    {
+      "symbol": "h_t",
+      "name": "hunger_level",
+      "description": "Internal deprivation state normalized to [0,1]. Modulates wanting multiplicatively and liking via alliesthesia power law.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_t",
+      "name": "reward_received",
+      "description": "Scalar food reward obtained at time t. 0 if no food eaten, r_food if food consumed.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "Q_total",
+      "name": "combined_action_values",
+      "description": "Weighted sum of wanting and liking contributions for each action. Recomputed each step.",
+      "type": "dict[str, float]",
+      "initial_value": 0.0,
+      "range": [-Infinity, Infinity]
+    },
+    {
+      "symbol": "P_a",
+      "name": "action_probabilities",
+      "description": "Softmax probability distribution over available actions. Recomputed each step from Q_total.",
+      "type": "dict[str, float]",
+      "initial_value": null,
+      "range": [0.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha_W",
+      "name": "wanting_learning_rate",
+      "default": 0.12,
+      "source": "Faster plasticity for dopamine-mediated learning; validated in prior pipeline run (confidence 0.58)"
+    },
+    {
+      "symbol": "alpha_L",
+      "name": "liking_learning_rate",
+      "default": 0.05,
+      "source": "Slower adaptation for opioid-mediated hedonic signal; validated in prior pipeline run (confidence 0.58)"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Standard softmax parameter; validated in prior pipeline runs"
+    },
+    {
+      "symbol": "mu",
+      "name": "hunger_wanting_gain",
+      "default": 1.5,
+      "source": "Multiplicative gating of wanting by hunger; Berridge & Robinson (2003) as cited in Rangel (2013); validated in prior pipeline run (confidence 0.57)"
+    },
+    {
+      "symbol": "lam",
+      "name": "alliesthesia_coefficient",
+      "default": 1.0,
+      "source": "Power-law exponent for hunger modulation of liking (pleasantness depends on deprivation); Rangel (2013)"
+    },
+    {
+      "symbol": "w_W",
+      "name": "wanting_weight",
+      "default": 0.6,
+      "source": "Relative contribution of wanting to combined value; wanting dominates approach behavior per incentive salience theory"
+    },
+    {
+      "symbol": "w_L",
+      "name": "liking_weight",
+      "default": 0.4,
+      "source": "Relative contribution of liking; w_W + w_L = 1.0"
+    },
+    {
+      "symbol": "r_food",
+      "name": "food_reward_magnitude",
+      "default": 1.0,
+      "source": "Matches env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "alpha_h",
+      "name": "hunger_increment_rate",
+      "default": 0.02,
+      "source": "Per-step hunger growth reflecting metabolic demand"
+    },
+    {
+      "symbol": "gamma_sat",
+      "name": "satiation_decrement",
+      "default": 0.20,
+      "source": "Hunger reduction upon eating; ~5 meals for full satiation"
+    },
+    {
+      "symbol": "c_step",
+      "name": "movement_cost",
+      "default": 0.01,
+      "source": "Small energetic cost of locomotion"
+    },
+    {
+      "symbol": "W_max",
+      "name": "max_wanting",
+      "default": 2.0,
+      "source": "Upper bound for wanting values; 2x max single-step reward"
+    },
+    {
+      "symbol": "L_max",
+      "name": "max_liking",
+      "default": 2.0,
+      "source": "Upper bound for liking values; 2x max single-step reward"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Wanting prediction error: difference between received reward and current wanting value of the occupied cell. Reflects dopaminergic RPE.",
+      "type": "algebraic",
+      "pseudocode": "delta_W = r_t - W.get((x, y), 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Wanting value update: W(s) is incremented by alpha_W times the wanting prediction error, clipped to [0, W_max].",
+      "type": "update",
+      "pseudocode": "W[(x, y)] = clip(W.get((x, y), 0.0) + alpha_W * delta_W, 0.0, W_max)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Liking prediction error (hedonic surprise): target is reward modulated by hunger via alliesthesia power law h^lambda. Food is more pleasant when hungry.",
+      "type": "algebraic",
+      "pseudocode": "delta_L = r_t * (h_t ** lam) - L.get((x, y), 0.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Liking value update: L(s) is incremented by alpha_L times the liking prediction error, clipped to [0, L_max]. Slower learning than wanting.",
+      "type": "update",
+      "pseudocode": "L[(x, y)] = clip(L.get((x, y), 0.0) + alpha_L * delta_L, 0.0, L_max)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Hunger dynamics: hunger increases by alpha_h each step and decreases by gamma_sat upon eating, clipped to [0, 1].",
+      "type": "update",
+      "pseudocode": "ate = 1.0 if (action == 'eat' and eat_succeeded) else 0.0\nh_t = clip(h_t + alpha_h - gamma_sat * ate, 0.0, 1.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R6",
+      "description": "Hunger-modulated wanting contribution to action value: wanting drives approach proportional to hunger × learned wanting of destination state.",
+      "type": "algebraic",
+      "pseudocode": "Q_W = mu * h_t * W.get(dest, 0.0)",
+      "source_postulate": "P1, P4"
+    },
+    {
+      "id": "R7",
+      "description": "Liking contribution to action value: hedonic value of destination state modulated by alliesthesia (hunger power law).",
+      "type": "algebraic",
+      "pseudocode": "Q_L = (h_t ** lam) * L.get(dest, 0.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "Combined Pavlovian action value: weighted sum of wanting and liking contributions minus movement cost.",
+      "type": "algebraic",
+      "pseudocode": "Q_total[a] = w_W * Q_W + w_L * Q_L - c_step * (1 if a is movement else 0)",
+      "source_postulate": "P1, P3"
+    },
+    {
+      "id": "R9",
+      "description": "Softmax action selection: action probabilities proportional to exp(beta * Q_total(a)).",
+      "type": "algebraic",
+      "pseudocode": "max_q = max(Q_total.values())\nfor a in actions:\n  P_a[a] = exp(beta * (Q_total[a] - max_q))\nZ = sum(P_a.values())\nfor a in actions:\n  P_a[a] = P_a[a] / Z\nselected_action = random_choice(actions, weights=P_a)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Dual-process Pavlovian agent: perceive environment, compute wanting and liking contributions for each action's destination state, combine via weighted sum, select via softmax. On update, maintain separate wanting (fast, dopaminergic) and liking (slow, opioidergic) learning channels. The wanting channel is gated by raw hunger; the liking channel is gated by alliesthesia (hunger power law). This produces dissociable approach patterns: high hunger amplifies wanting-driven approach even when liking is low, while satiety suppresses wanting but leaves liking relatively stable.",
+    "pseudocode": [
+      "# 1. PERCEIVE",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_positions = set((f['x'], f['y']) for f in food_list)",
+      "food_at_position = pos in food_positions",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# 2. COMPUTE DESTINATION CELLS",
+      "destinations = {",
+      "  'move_up':    (pos[0], pos[1] - 1),",
+      "  'move_down':  (pos[0], pos[1] + 1),",
+      "  'move_left':  (pos[0] - 1, pos[1]),",
+      "  'move_right': (pos[0] + 1, pos[1]),",
+      "  'stay':       pos,",
+      "  'eat':        pos",
+      "}",
+      "",
+      "# 3. COMPUTE Q_total(a) for each action (R6, R7, R8)",
+      "Q_total = {}",
+      "for action_name, dest in destinations.items():",
+      "  dx, dy = dest",
+      "  # Check action availability",
+      "  if action_name == 'eat' and not food_at_position:",
+      "    Q_total['eat'] = -1e9",
+      "    continue",
+      "  if action_name in ['move_up','move_down','move_left','move_right']:",
+      "    if not (0 <= dx < grid_w and 0 <= dy < grid_h):",
+      "      Q_total[action_name] = -1e9",
+      "      continue",
+      "  # Wanting contribution",
+      "  Q_W = mu * h_t * W.get(dest, 0.0)",
+      "  # Liking contribution",
+      "  Q_L = (h_t ** lam) * L.get(dest, 0.0)",
+      "  # Combined value",
+      "  is_movement = action_name in ['move_up','move_down','move_left','move_right']",
+      "  Q_total[action_name] = w_W * Q_W + w_L * Q_L - c_step * (1.0 if is_movement else 0.0)",
+      "",
+      "# 4. SOFTMAX ACTION SELECTION (R9)",
+      "max_q = max(Q_total.values())",
+      "exp_vals = {a: exp(beta * (q - max_q)) for a, q in Q_total.items()}",
+      "Z = sum(exp_vals.values())",
+      "P_a = {a: v / Z for a, v in exp_vals.items()}",
+      "selected_action = random_choice(list(P_a.keys()), weights=list(P_a.values()))",
+      "",
+      "# 5. RETURN action",
+      "return Action(selected_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food'] — list of dicts with 'x', 'y', 'type', 'palatability'",
+      "food_at_position": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "ate_food": "last_action_result — check if eat action succeeded (consumed == true)",
+      "reward_received": "reward argument in update() method; 1.0 from ConsumeEffect on successful eat",
+      "palatability": "food_list[i]['palatability'] — available but not currently used; could modulate r_t in extended version"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward = 1.0; all other actions yield reward = 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Wanting–liking dissociation: after extensive training, W(s) converges faster than L(s) due to alpha_W > alpha_L",
+      "test_pseudocode": "train agent at food cell for 20 steps → assert W[(x,y)] > L[(x,y)]"
+    },
+    {
+      "id": "B2",
+      "description": "Hunger suppresses approach via wanting channel: in sated state, approach probability decreases even with high W(s)",
+      "test_pseudocode": "set W[(5,5)]=1.5, h_t=0.05 → assert P(approach (5,5)) is low; set h_t=0.9 → assert P(approach (5,5)) is high"
+    },
+    {
+      "id": "B3",
+      "description": "Alliesthesia modulates liking: food consumed when hungry generates higher liking PE than when sated",
+      "test_pseudocode": "set h_t=0.9, eat → delta_L = 1.0 * 0.9^1.0 - L ≈ 0.9; set h_t=0.1, eat → delta_L = 1.0 * 0.1^1.0 - L ≈ 0.1"
+    },
+    {
+      "id": "B4",
+      "description": "Dual extinction: without food, both W and L decay toward 0, but at different rates",
+      "test_pseudocode": "train W and L at (5,5), remove food, visit 30 times → assert both decrease; W decreases faster than L"
+    },
+    {
+      "id": "B5",
+      "description": "Combined channel produces approach: even if wanting is low, high liking can still drive approach (and vice versa)",
+      "test_pseudocode": "set W[(3,3)]=0.0, L[(3,3)]=1.5, h_t=0.5 → assert some approach to (3,3) occurs via liking channel"
+    },
+    {
+      "id": "B6",
+      "description": "Hunger dynamics: hunger increases without eating, decreases with eating",
+      "test_pseudocode": "run 50 steps without food → assert h_t increases; eat 3 times → assert h_t decreases by ~0.6"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Berridge, K. C., & Robinson, T. E. (2003). Parsing reward. As cited in Rangel (2013) for wanting–liking dissociation and hunger–wanting coupling parameter μ."
+  ]
+}

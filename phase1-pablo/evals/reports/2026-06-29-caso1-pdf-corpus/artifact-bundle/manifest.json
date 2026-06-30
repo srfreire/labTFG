@@ -1,0 +1,24 @@
+{
+  "suite": "caso1-pdf-corpus",
+  "topics": [
+    "PDF-corpus evaluation case 1. Using only the papers available through the eval web_search and search_papers tools, identify and investigate all decision-making paradigms that explain human dietary choice, valuation, reward, and self-control in food decisions. Treat the corpus as the complete literature universe: split, merge, and name paradigms according to the evidence in the papers, then carry every discovered paradigm and formulation forward.\n"
+  ],
+  "created_at": "2026-06-29T14:10:07.081023",
+  "run_ids": [
+    "bd5e6d0d-382f-46f9-9900-2994e0d5eed3"
+  ],
+  "storage_prefixes": [
+    "research/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/",
+    "models/bd5e6d0d-382f-46f9-9900-2994e0d5eed3/"
+  ],
+  "sections": {
+    "corpus": "evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle/corpus/manifest.json",
+    "storage": {
+      "file_count": 78,
+      "root": "evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle/storage"
+    },
+    "database": "evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle/database",
+    "kg_snapshot": "evals/reports/2026-06-29-caso1-pdf-corpus/artifact-bundle/kg_snapshot_2026-06-29.json"
+  },
+  "errors": []
+}

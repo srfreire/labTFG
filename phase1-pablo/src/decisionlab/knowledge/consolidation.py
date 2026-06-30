@@ -8,6 +8,7 @@ knowledge.
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid as uuid_mod
 from datetime import UTC, datetime, timedelta
@@ -51,8 +52,10 @@ _REFLECTION_SIMILARITY_THRESHOLD = 0.85
 _PRUNE_CONFIDENCE = 0.2
 _PRUNE_AGE_DAYS = 90
 
-_REFLECTION_MAX_TOKENS = 4096
-_CONTRADICTION_MAX_TOKENS = 4096
+_REFLECTION_MAX_TOKENS = int(os.getenv("DECISIONLAB_REFLECTION_MAX_TOKENS", "4096"))
+_CONTRADICTION_MAX_TOKENS = int(
+    os.getenv("DECISIONLAB_CONTRADICTION_MAX_TOKENS", "4096")
+)
 
 
 class _ReflectionEmission(BaseModel):

@@ -120,6 +120,7 @@ class _FakeRouter:
         self.memory_results: dict[str, dict] = {}
         # Capture constructor kwargs for assertions.
         self.kwargs = _kw
+        type(self).last_kwargs = _kw
 
     async def run(self):
         # Simulate one full pipeline run: mark approved paradigms, record
@@ -165,6 +166,7 @@ def patch_run_row():
 async def test_happy_path_returns_populated_result(tmp_path, patch_run_row):
     client = AsyncMock()
     search = AsyncMock()
+    paper_search = AsyncMock()
     with patch("decisionlab.eval.runner.Router", _FakeRouter):
         result = await run_pipeline(
             "homeostasis under uncertainty",
@@ -173,6 +175,7 @@ async def test_happy_path_returns_populated_result(tmp_path, patch_run_row):
             project_root=tmp_path,
             client=client,
             search=search,
+            paper_search=paper_search,
             reports_root=tmp_path / "reports",
             run_id="11111111-1111-4111-8111-111111111111",
         )
@@ -187,6 +190,7 @@ async def test_happy_path_returns_populated_result(tmp_path, patch_run_row):
     assert result.total_nodes_created() == 7
     assert result.total_relations_created() == 3
     assert result.duration_ms >= 0
+    assert _FakeRouter.last_kwargs["paper_search"] is paper_search
 
 
 @pytest.mark.asyncio

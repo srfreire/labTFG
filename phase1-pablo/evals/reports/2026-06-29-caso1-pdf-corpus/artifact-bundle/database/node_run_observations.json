@@ -1,0 +1,3033 @@
+[
+  {
+    "id": "94982282-c3aa-4e2d-8019-1dd193305d98",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.062099"
+  },
+  {
+    "id": "bb2ce593-6610-4b19-a06a-3cb6ac69b872",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:lam",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.111417"
+  },
+  {
+    "id": "36048f46-8544-4303-be01-a7b5ed7ca695",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:k-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.568817"
+  },
+  {
+    "id": "05b40a5a-739b-40fa-bde7-9589d61a4cfb",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:alpha-q",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.627549"
+  },
+  {
+    "id": "bfbf58c1-7ef4-4d36-a87a-eaba6029ebf3",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:alpha-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.850963"
+  },
+  {
+    "id": "c16ecc81-8986-4a76-bf3b-2f37e18f9aca",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.892086"
+  },
+  {
+    "id": "87a9dd61-1759-46b1-9eb1-cb1b0ce6be5e",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:sigma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.948652"
+  },
+  {
+    "id": "3a602a5c-603d-44dc-b506-8c00336c81ed",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:k-eat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.992238"
+  },
+  {
+    "id": "a82ea9b6-23e5-4c65-bf8d-8709dc32a543",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:z-rel",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.044044"
+  },
+  {
+    "id": "2ee341ba-e1fa-44e0-8c87-57e5074043e3",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:lambda-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.083512"
+  },
+  {
+    "id": "400fa3fa-ba34-4f6b-9850-413617788031",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:lambda-habit",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.329902"
+  },
+  {
+    "id": "472f6485-f994-47cf-8774-67cc9a97b4fe",
+    "label": "Paradigm",
+    "key_value": "goal-directed-vs-habitual-control",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.374463"
+  },
+  {
+    "id": "691fcc69-c4ad-486e-9b22-3c38d32d174a",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.625647"
+  },
+  {
+    "id": "64466178-ef0a-4fa5-819d-42e92ae8b148",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:lambda-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.763134"
+  },
+  {
+    "id": "e282172d-fee9-4cac-9a5c-4143676ab95f",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:alpha",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.807279"
+  },
+  {
+    "id": "2347ed02-4517-4f85-8d23-c9f6944d229b",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:gamma-sat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.161423"
+  },
+  {
+    "id": "1b85efd7-7f92-4b47-a88a-c11f8b7e3ed2",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:lam",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.236978"
+  },
+  {
+    "id": "4a9d3f18-8869-4915-addd-b7ac6bf785d9",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:gamma-sat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.290228"
+  },
+  {
+    "id": "9e984b5f-1dd9-4ec8-907a-7106949f59ed",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:hunger-overri",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.457087"
+  },
+  {
+    "id": "91529b12-70a2-41c2-af9e-9008c81cbf0f",
+    "label": "Model",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.034268"
+  },
+  {
+    "id": "0d881a12-bc66-460d-b0e7-ad43a216aefc",
+    "label": "Model",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.072463"
+  },
+  {
+    "id": "437e2e87-b9b6-4aad-b3a6-711fe292ca6d",
+    "label": "Model",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.097241"
+  },
+  {
+    "id": "baba2104-13cb-467f-b535-1dfd22573ded",
+    "label": "Model",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.124155"
+  },
+  {
+    "id": "c4838bcf-210b-4a79-a271-28fcdb71bfc5",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:gamma-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.074994"
+  },
+  {
+    "id": "730d6988-ea9a-40ef-92d8-6e9fe95db071",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:epsilon",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.119916"
+  },
+  {
+    "id": "f0e833f6-9b31-41ad-9a0b-94d76b75a337",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:c-k",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.583497"
+  },
+  {
+    "id": "7e454883-7074-4c86-80fb-f71c74110f06",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.638551"
+  },
+  {
+    "id": "c4c76707-a0c1-4518-a8dd-17c51553d6b7",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:goal-boost",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.802096"
+  },
+  {
+    "id": "c9c86e03-8a06-4ea5-a7cf-7d83a67082c5",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:beta-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.859755"
+  },
+  {
+    "id": "908280d0-9dfb-49a5-b17a-4c247ec0243c",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:w-h-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.907375"
+  },
+  {
+    "id": "eb5bdcfd-aecb-46a1-a168-8ff0262aa6d7",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:z0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.956394"
+  },
+  {
+    "id": "90b7b546-a0f7-4f76-a18e-4d0299a6229a",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.001144"
+  },
+  {
+    "id": "1cdeaf67-c687-4271-92a3-9465f4b543f9",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:w-p",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.092313"
+  },
+  {
+    "id": "21313998-37ce-4f93-a61f-a59aedb16607",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:alpha-mf",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.259982"
+  },
+  {
+    "id": "9c0aa033-2000-452b-82c9-055f61c74129",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.658549"
+  },
+  {
+    "id": "83c85ac2-73d5-4686-aa52-2793a3b61656",
+    "label": "Paradigm",
+    "key_value": "homeostatic-regulation-of-food-valuation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.735371"
+  },
+  {
+    "id": "1388c6a3-050c-4476-9566-c6fb1d2859f8",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:kappa-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.771822"
+  },
+  {
+    "id": "fd91491a-4f1b-4677-a21f-bdbf2b38243b",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.818059"
+  },
+  {
+    "id": "e0f1bdd6-4ded-46d1-85c7-ce219657c8e9",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:alpha",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.024799"
+  },
+  {
+    "id": "2ac7b3ed-1e6b-4349-b98c-0879d2a2f833",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:mu",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.170862"
+  },
+  {
+    "id": "c4bccbb0-ee01-44eb-b0c2-67696c61a864",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:delta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.085757"
+  },
+  {
+    "id": "5e323e1c-c27a-40dc-8c73-1ea70a38f011",
+    "label": "Paradigm",
+    "key_value": "attribute-based-value-computation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.160644"
+  },
+  {
+    "id": "0aab913a-28b1-488c-ac27-baa966d2fafe",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:phi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.594099"
+  },
+  {
+    "id": "6e717de5-21a4-4dcf-a10f-49af7c9b1c9a",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:distance-discount",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.829156"
+  },
+  {
+    "id": "dc52207a-07fa-4352-88e4-aae3a3f7ce93",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:dt",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.963725"
+  },
+  {
+    "id": "9d22e588-2f1e-4fff-bd77-70a1b0528edb",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:w-q",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.101460"
+  },
+  {
+    "id": "a730ff6c-80ba-4c28-83f6-23a530a43179",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:alpha-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.271481"
+  },
+  {
+    "id": "3e733f83-01d3-46ad-8568-4cf530baff4f",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:phi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.347403"
+  },
+  {
+    "id": "daa78791-8cba-4004-bb84-ab3cd460b18f",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:alpha-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.525978"
+  },
+  {
+    "id": "645bec07-ce7a-4fd8-8ea4-c40d3b9774b0",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.592357"
+  },
+  {
+    "id": "b68a3ea3-51ea-41b1-b7e8-46d848114d05",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.668838"
+  },
+  {
+    "id": "29bc80d2-0ca1-4c57-a1bb-4012efaa7500",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:k-l",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.781098"
+  },
+  {
+    "id": "69b28251-3fec-4997-9d1c-e4402963837e",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.828924"
+  },
+  {
+    "id": "15b84306-e268-4197-b9aa-c36dcf577f37",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.108752"
+  },
+  {
+    "id": "4793baf2-4871-4497-9688-6916b2de7150",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.179509"
+  },
+  {
+    "id": "8ffd86cd-72a6-4c06-8d60-32389804a50d",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:alpha-l",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.214997"
+  },
+  {
+    "id": "b1725416-2151-4727-8ef7-1e0d9b0fe892",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:w-l",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.256453"
+  },
+  {
+    "id": "21746a60-2b1f-4511-98e7-1aa7c1374859",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:w-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.306731"
+  },
+  {
+    "id": "83c53f0f-76fc-43e0-8f5a-ea7fff763e5b",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.103712"
+  },
+  {
+    "id": "fc4b2329-a207-4492-ab30-2e0f0184c3be",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.618418"
+  },
+  {
+    "id": "415f4d50-b2ed-4b04-9dd8-0bad287ce44a",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:w-tau0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.684678"
+  },
+  {
+    "id": "691e0c6e-1968-4585-9b84-09393210bba0",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:alpha-q",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.884287"
+  },
+  {
+    "id": "8cd0795c-31c2-4e7f-8eb9-298c61815265",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.940583"
+  },
+  {
+    "id": "2fc5bffd-4a1a-4200-b49c-e7943cf484bc",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:k-res",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.983864"
+  },
+  {
+    "id": "088f51ed-6e6c-4f3a-bde8-82da9f07f6af",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.036294"
+  },
+  {
+    "id": "d18188a0-eeff-42b5-a289-d89d51b82887",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:k-v",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.075118"
+  },
+  {
+    "id": "5d45f1d8-6042-4529-8b3b-d8a4c9db7d85",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:dt",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.187250"
+  },
+  {
+    "id": "10ac3ea7-6825-4caf-a2ee-793e83630fe7",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.290088"
+  },
+  {
+    "id": "8e4dfbcc-1b8c-4770-9a85-bbeea5a1528f",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.365114"
+  },
+  {
+    "id": "853efba4-c9b9-487a-be78-8a01e24de67f",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:phi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.613888"
+  },
+  {
+    "id": "c8ad4735-c8da-4650-86b1-142a00402b2a",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:c-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.755465"
+  },
+  {
+    "id": "02ad5c30-e374-4e08-bcd8-e34da423401a",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:w-l",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.798416"
+  },
+  {
+    "id": "730f60f2-fdc0-446a-8c60-30f6748eade7",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.850287"
+  },
+  {
+    "id": "e355909c-c40c-4955-8694-7227b759be8e",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:alpha-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.152053"
+  },
+  {
+    "id": "3f63f8f7-9db3-4e96-8fb4-48f2ea0ede8e",
+    "label": "Paradigm",
+    "key_value": "pavlovian-control-of-food-approach",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.195871"
+  },
+  {
+    "id": "cff28a9e-3460-406a-8696-a42b6b50ec54",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:mu",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.228682"
+  },
+  {
+    "id": "ddb55b66-1b63-4a8f-b540-62b14dbf0c51",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:alpha-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.280312"
+  },
+  {
+    "id": "13e391a3-44b9-46d8-af5b-d48b5dc6e2f5",
+    "label": "Model",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.186341"
+  },
+  {
+    "id": "9652067b-0b70-419e-ad83-8b84c48f517e",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.547356"
+  },
+  {
+    "id": "c9383407-14d2-42fd-9d5d-62d73d3e95af",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:w-h0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.674848"
+  },
+  {
+    "id": "f60ade3d-ca43-4ccd-9787-e2936716ed14",
+    "label": "Paradigm",
+    "key_value": "dlpfc-self-control-modulation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.836470"
+  },
+  {
+    "id": "992559a7-880b-4dab-b0d5-3b1b896d6a5e",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:epsilon",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.876831"
+  },
+  {
+    "id": "e8c5db66-72ef-4bb7-bb13-57a54919b917",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:t-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:18.976279"
+  },
+  {
+    "id": "3bf4c923-f7eb-4f09-8b06-8567d0386050",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:epsilon",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.112195"
+  },
+  {
+    "id": "4cdc1a9f-ef92-4757-b9ea-1511a45d7045",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.280547"
+  },
+  {
+    "id": "d7de2e97-3b33-40cb-95a9-764d88b0618b",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.355546"
+  },
+  {
+    "id": "b5b1a829-0d7e-4c99-9517-f31351f20bb6",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:c-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.534277"
+  },
+  {
+    "id": "a70b22e2-f2dc-4247-a3d3-e10c1b7bb136",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:alpha-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.747896"
+  },
+  {
+    "id": "2fc4f7fc-65db-4371-a07e-eca58e9136a5",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:w-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.790548"
+  },
+  {
+    "id": "3d75d19f-1eab-4abb-92df-9c641f5b06d4",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:19.839334"
+  },
+  {
+    "id": "58b819ee-c666-4e49-b5ad-ad6886b6dddf",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.141002"
+  },
+  {
+    "id": "aeda12fa-ca9c-4cf6-8230-069793095832",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection:r-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.188332"
+  },
+  {
+    "id": "3d93174b-bbf6-4673-b50d-9846c84e1ea5",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.221614"
+  },
+  {
+    "id": "34c2adca-1d3e-4ae9-a205-ba81a8457bb6",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.267435"
+  },
+  {
+    "id": "8384ae58-b1c9-404b-a4ee-297129703488",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:l-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.315915"
+  },
+  {
+    "id": "3ee53a62-e8be-4692-bb38-15179d6faadd",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:alpha-w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.208344"
+  },
+  {
+    "id": "c098efea-504d-4552-b719-7906c6934967",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:w-w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.246532"
+  },
+  {
+    "id": "b1e90e51-03ad-46b1-90b3-3ceb3d9a9cec",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.298914"
+  },
+  {
+    "id": "2059b91a-9f44-4901-85df-9299457e3c19",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T11:32:20.409534"
+  },
+  {
+    "id": "4e6bc3d2-46df-4a00-bf6b-3756c24eda75",
+    "label": "Model",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:46.965687"
+  },
+  {
+    "id": "34ee9672-5620-4783-9972-fed11e39228d",
+    "label": "Model",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.059302"
+  },
+  {
+    "id": "08c08b24-f66b-430e-9895-903c345837a6",
+    "label": "Model",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.082128"
+  },
+  {
+    "id": "8dbfe4f5-0ffa-41c5-957a-596b73b45750",
+    "label": "Model",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.108124"
+  },
+  {
+    "id": "08e3c27a-e395-4437-b57a-107ad28f9461",
+    "label": "Model",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.137064"
+  },
+  {
+    "id": "f1a3505d-e2b0-445b-bec3-798f8eab16ef",
+    "label": "Model",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.147168"
+  },
+  {
+    "id": "9131239a-754d-4afb-ac6b-65d77a3a6a5a",
+    "label": "Model",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.174142"
+  },
+  {
+    "id": "e3075f70-01af-4e43-99bc-e7921d403a6e",
+    "label": "Model",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.200088"
+  },
+  {
+    "id": "0cc16dbb-d97b-47fb-951f-3d1efe47e955",
+    "label": "Model",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.161381"
+  },
+  {
+    "id": "38397aaa-dcc8-44cf-9edd-006adf5f72fe",
+    "label": "Model",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T12:02:47.228419"
+  },
+  {
+    "id": "126fb5ca-b062-4617-b147-721eecb803f4",
+    "label": "Paradigm",
+    "key_value": "drift-diffusion-model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.592846"
+  },
+  {
+    "id": "103d351a-1cfa-4fa7-8a06-39963c3270fb",
+    "label": "Author",
+    "key_value": "Antonio Rangel",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.651991"
+  },
+  {
+    "id": "dae8a1d5-4bb3-47b7-a236-806275fc2abb",
+    "label": "Author",
+    "key_value": "Colin Camerer",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.671212"
+  },
+  {
+    "id": "18c1955b-d50a-4919-9e75-63ca763730f9",
+    "label": "Author",
+    "key_value": "P. Read Montague",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.712688"
+  },
+  {
+    "id": "07235664-6ccc-4eeb-9975-e96ffccb6650",
+    "label": "Author",
+    "key_value": "Roger Ratcliff",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.725450"
+  },
+  {
+    "id": "9c0f6b83-c910-43df-ba1d-6835dae5ecdc",
+    "label": "Author",
+    "key_value": "Rafal Bogacz",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.762306"
+  },
+  {
+    "id": "d4ea99ca-3a1e-4b3c-84c1-4c528fcb0eae",
+    "label": "Author",
+    "key_value": "Joshua Gold",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.774328"
+  },
+  {
+    "id": "2062c78f-b7ce-48bb-bc43-61985b4bf5f4",
+    "label": "Author",
+    "key_value": "Michael Shadlen",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.785216"
+  },
+  {
+    "id": "8618217c-81b5-4d00-a56f-763ca42145eb",
+    "label": "Paper",
+    "key_value": "10.1038/nrn2357",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.834361"
+  },
+  {
+    "id": "4ae83de7-5dbe-4aaa-bb7d-e30f72934536",
+    "label": "Paper",
+    "key_value": "10.1038/nn.3561",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.845810"
+  },
+  {
+    "id": "578da045-ebe0-4c6e-95b7-62679b656536",
+    "label": "Paper",
+    "key_value": "10.1037/0033-295X.85.2.59",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.856609"
+  },
+  {
+    "id": "c2ca6ffa-bb54-4c8b-9aca-76def7aefb6b",
+    "label": "Paper",
+    "key_value": "10.1037/0033-295X.113.4.700",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.896684"
+  },
+  {
+    "id": "fe60a3ce-60db-4853-b6a5-1116bab4810c",
+    "label": "Paper",
+    "key_value": "10.1146/annurev.neuro.29.051605.113038",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.906641"
+  },
+  {
+    "id": "e5e22639-eae2-47ea-887b-b6fe273f3110",
+    "label": "Paper",
+    "key_value": "10.1073/pnas.0805903105",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.917379"
+  },
+  {
+    "id": "1b3af87e-b57f-4a86-a5bb-81bd255a4819",
+    "label": "BrainRegion",
+    "key_value": "vmPFC / medial OFC",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.952392"
+  },
+  {
+    "id": "c3bd190b-0544-47c5-bb19-c694f1cee5af",
+    "label": "BrainRegion",
+    "key_value": "dlPFC",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:49.998061"
+  },
+  {
+    "id": "58d5d122-5982-4df3-b4f9-9801831bbd85",
+    "label": "BrainRegion",
+    "key_value": "Lateral Intraparietal Cortex (LIP)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.018071"
+  },
+  {
+    "id": "f3a063b2-ff0e-4158-b99a-c0ef386a2b8a",
+    "label": "BrainRegion",
+    "key_value": "Pre-SMA",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.031374"
+  },
+  {
+    "id": "9c303308-5079-4b83-a6d9-f54d3b8402d0",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:v-drift-rate",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.072247"
+  },
+  {
+    "id": "655b867c-01d7-440a-9a0a-bc482c2c9d7b",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:a-boundary-separation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.082807"
+  },
+  {
+    "id": "18465630-402d-4082-94f8-06528ea1c8c9",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:t0-non-decision-time",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.119478"
+  },
+  {
+    "id": "e8f31efc-96f7-498a-9820-6c75d9373141",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:rt-response-time",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.155121"
+  },
+  {
+    "id": "18186baa-f8d8-426e-8512-530451cb9806",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P1",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.191655"
+  },
+  {
+    "id": "1f106607-db79-432b-a45d-bc6e2e135c57",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P2",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.201245"
+  },
+  {
+    "id": "0c1d04f0-b918-4d9a-9642-5656477ab6b2",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P3",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.210496"
+  },
+  {
+    "id": "0627dc43-d75c-4448-8237-5e3e2acb903d",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P4",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.221129"
+  },
+  {
+    "id": "6c408659-fce4-4f61-a580-c8b3e368c334",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P5",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.230202"
+  },
+  {
+    "id": "ce19b2f6-eac4-4efa-9d6a-be4cbdb728fa",
+    "label": "Postulate",
+    "key_value": "drift-diffusion-model:P6",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:33:50.239406"
+  },
+  {
+    "id": "89c03f25-f9e1-4da1-92ce-9eff6d787d09",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:v-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.193650"
+  },
+  {
+    "id": "aebaa3dd-daff-497d-8af2-68c93b1e81bd",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:a-i-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.239884"
+  },
+  {
+    "id": "d35e74a7-c591-4de7-8250-92b04420f683",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:w-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.250343"
+  },
+  {
+    "id": "5b70727c-c95b-4a24-8a21-ca312f930cd1",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:alpha-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.303705"
+  },
+  {
+    "id": "2cc2cce7-b17a-48bd-899b-134a38564a5f",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:v-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.314577"
+  },
+  {
+    "id": "9461ab46-0e3a-48c0-ae65-7141e36bc417",
+    "label": "Formulation",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.354538"
+  },
+  {
+    "id": "21fbfe86-b4ed-4372-8949-698af7acc240",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:weighted-linear-summation-with-state-dependent-attribute-weights-algebraic:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.393576"
+  },
+  {
+    "id": "809818c0-1d4e-43a5-99ea-4aeb452478bd",
+    "label": "Formulation",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.420441"
+  },
+  {
+    "id": "fdc93177-4dfd-4dc0-b502-ee514bca8db5",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:e-a-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.454910"
+  },
+  {
+    "id": "796fa0cb-4536-42ad-a1ed-b8e2edfbc25c",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:mu-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.522825"
+  },
+  {
+    "id": "4f34d0f1-6dc2-4938-9130-0149dfdedea0",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:sigma-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.578722"
+  },
+  {
+    "id": "32570494-f909-4432-ba01-a3d94b7adaeb",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:conflict-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.609753"
+  },
+  {
+    "id": "15f2ad2c-3416-4c77-96af-eca4e96542ac",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.641852"
+  },
+  {
+    "id": "c8b533d1-7ab2-4307-8642-5334dfe097a3",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:r-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.676544"
+  },
+  {
+    "id": "113a45c7-50d4-431e-937c-7c5303c0e27b",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:rpe",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.686831"
+  },
+  {
+    "id": "55ecc618-4ddc-442f-9c4b-c6a3e1f55970",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.714585"
+  },
+  {
+    "id": "a24a20c6-6b96-4b26-b8c3-cb0864c10724",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:ate-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.743878"
+  },
+  {
+    "id": "f11bfe8b-0c2f-46ad-b6eb-a0735f0e63f7",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:theta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.774231"
+  },
+  {
+    "id": "caa0536c-78af-43e8-a631-d9572acaf3b0",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:sigma-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.804818"
+  },
+  {
+    "id": "3decc6ef-fbe2-49f5-966d-bf09f57cab57",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:kappa",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.814176"
+  },
+  {
+    "id": "08fedbb4-3d80-4583-9b21-34b228e97ad4",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:t-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.851181"
+  },
+  {
+    "id": "896405a7-e4b8-4e2d-b686-f97d22d58817",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:beta-w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.864253"
+  },
+  {
+    "id": "67026a54-697b-4ea1-987f-e745a54a1f08",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:h-f0370450f479",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.896881"
+  },
+  {
+    "id": "0c011641-af4e-4170-8b0c-c884be167026",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.906701"
+  },
+  {
+    "id": "fea35b6e-e1c7-4afb-9fd8-1da2edfe2dbe",
+    "label": "Equation",
+    "key_value": "w_{\\text{imm}} = \\frac{1 + H_t}{2 + H_t}, \\qquad w_{\\text{abs}} = \\frac{1}{2 + H_t}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.935240"
+  },
+  {
+    "id": "845b2ff3-36e1-4749-a62f-dfed1aff08f4",
+    "label": "Equation",
+    "key_value": "\\mu_a = w_{\\text{imm}} \\cdot a_{\\text{imm}}(o_a) + w_{\\text{abs}} \\cdot a_{\\text{abs}}(o_a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.943678"
+  },
+  {
+    "id": "78c3ba77-c71e-40e8-bbba-10279517d88f",
+    "label": "Equation",
+    "key_value": "\\text{conflict}(o_a) = |a_{\\text{imm}}(o_a) - a_{\\text{abs}}(o_a)|",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.952290"
+  },
+  {
+    "id": "5caf110d-7295-439f-8c13-9728748dcb2d",
+    "label": "Equation",
+    "key_value": "\\sigma_a = \\sigma_0 \\cdot \\big(1 + \\kappa \\cdot \\text{conflict}(o_a)\\big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.960293"
+  },
+  {
+    "id": "4f3b76d7-8b64-467e-bada-7b250bc3ad97",
+    "label": "Equation",
+    "key_value": "E_a(t+1) = E_a(t) + \\mu_a + \\sigma_a \\cdot \\xi_t, \\quad \\xi_t \\sim \\mathcal{N}(0, 1)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:06.987503"
+  },
+  {
+    "id": "7f6fbba6-d3ea-4de2-8cab-d475b58bc263",
+    "label": "Equation",
+    "key_value": "a^* = \\begin{cases} a & \\text{if } \\exists\\, t \\leq T_{\\max}: E_a(t) \\geq \\theta \\text{ (first hit)} \\\\ \\arg\\max_a E_a(T",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.015072"
+  },
+  {
+    "id": "0891840e-5b98-440e-acf0-0d96eaefbb69",
+    "label": "Equation",
+    "key_value": "w_i \\leftarrow w_i + \\beta_w \\cdot \\text{RPE} \\cdot a_i(o^*), \\quad \\text{RPE} = r_t - \\mu_{a^*}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.024239"
+  },
+  {
+    "id": "34731a56-00d9-4214-9311-70bcb8c56209",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:attribute-based-evidence-accumulation-drift-diffusion:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.066789"
+  },
+  {
+    "id": "9dd9ef33-42d3-4e43-9a98-d1b16869b95f",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:k-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.102325"
+  },
+  {
+    "id": "135b0399-ede3-4ff0-b64f-60a9dde8c250",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:w-imm-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.110031"
+  },
+  {
+    "id": "53eaf543-8ac5-436c-a73a-5f685d0b6133",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:w-abs-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.137816"
+  },
+  {
+    "id": "9bd95548-29e2-4732-9dce-535118f30a4b",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:tau-w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.198990"
+  },
+  {
+    "id": "fbd29599-8599-462b-81f8-d68646072bed",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:w-tau-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.263565"
+  },
+  {
+    "id": "5b550552-f21e-4320-b33b-fd30d7f7c76a",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:p-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.301885"
+  },
+  {
+    "id": "5c89c165-3acc-4599-9138-9f503546c332",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:alpha-d",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.347782"
+  },
+  {
+    "id": "dc5ad59b-2691-4608-bd25-35eb55e970f5",
+    "label": "Equation",
+    "key_value": "C(t) = \\sigma\\!\\bigl(\\lambda_K \\cdot K(t)\\bigr) \\cdot G(t) \\cdot \\bigl(1 - D(t)\\bigr), \\qquad \\sigma(x) = \\frac{1}{1 + e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.396086"
+  },
+  {
+    "id": "e665f986-f2f7-4eb0-afdd-5782fbd63675",
+    "label": "Equation",
+    "key_value": "G(t{+}1) = G(t) \\cdot (1 - \\eta_G) + \\text{boost}(t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.441211"
+  },
+  {
+    "id": "5d02f20e-1f33-4861-a445-6ac9e3f97d40",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:v-g-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.542217"
+  },
+  {
+    "id": "355a6047-f590-4c0a-bed0-35ca099e7307",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:theta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.576400"
+  },
+  {
+    "id": "2e6547fd-9f37-46f5-a3ce-b68e005cfa6f",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:g-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.610842"
+  },
+  {
+    "id": "c1835ab4-6d3f-42c2-9698-b471df99570e",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:p-engage-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.689652"
+  },
+  {
+    "id": "a7bd6be7-a695-4566-98c0-2ffe191edfd0",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:beta-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.729890"
+  },
+  {
+    "id": "76737b7b-b618-47aa-a5d5-38c578947985",
+    "label": "Equation",
+    "key_value": "\\pi_I(a \\mid s) = \\frac{\\exp\\bigl(\\beta_I \\cdot \\text{Taste}(a) \\cdot \\gamma^{d(a)}\\bigr)}{\\sum_j \\exp\\bigl(\\beta_I \\cdo",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.784825"
+  },
+  {
+    "id": "993069eb-6f9c-4612-a7c2-29f43f93dac2",
+    "label": "Equation",
+    "key_value": "\\pi(a \\mid s) = p_{\\text{engage}}(t) \\cdot \\pi_G(a \\mid s) + \\bigl(1 - p_{\\text{engage}}(t)\\bigr) \\cdot \\pi_I(a \\mid s)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.844148"
+  },
+  {
+    "id": "c962b010-8315-4e87-b6dd-b606de08a30d",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:pi-amids",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.908100"
+  },
+  {
+    "id": "a55b333f-934c-4849-98ba-b07138086256",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:r",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.033341"
+  },
+  {
+    "id": "15e09f78-38a6-41fc-858e-c7ac172341cd",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:p-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.078482"
+  },
+  {
+    "id": "fa4c0913-4308-4df1-87c1-855c09504b40",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:r-obs",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.211625"
+  },
+  {
+    "id": "c7e4fdc6-c449-4944-9624-2c76f12d305b",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:lambda",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.276415"
+  },
+  {
+    "id": "8e856b0e-777c-423f-a280-1ff50e995cc6",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:r-bar-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.312076"
+  },
+  {
+    "id": "5ecdf3aa-8e45-4873-9c9a-92540eb39d78",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.341928"
+  },
+  {
+    "id": "f434f435-06cf-4e3e-b7a1-e24ce2e51f4b",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:alpha",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.368359"
+  },
+  {
+    "id": "efc3d9d2-ea18-46db-b681-41281bffcfd3",
+    "label": "Equation",
+    "key_value": "R = \\arg\\min_i \\bigl\\{ t : x_i(t) \\geq \\theta(t) \\bigr\\}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.456668"
+  },
+  {
+    "id": "8154bed9-4309-4804-9207-176ecddfaa58",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.526100"
+  },
+  {
+    "id": "b0adba03-f0bf-46d4-a9fa-e0a72994a14c",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.629788"
+  },
+  {
+    "id": "4fb36b09-44b8-4b7b-b936-e7f46d498df5",
+    "label": "Formulation",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.745269"
+  },
+  {
+    "id": "f7b73c77-43d5-43d5-a743-d307e98dd2dc",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:sigma2-mf-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.840950"
+  },
+  {
+    "id": "9f2e6ec9-cc14-415e-89f7-6f89b9c6c332",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:p-o-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.938307"
+  },
+  {
+    "id": "3858656e-f5e3-45fc-9792-e37f68c6bbfd",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:alpha-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.016771"
+  },
+  {
+    "id": "2805e92b-9cd5-45a1-9a8f-ec941ff8fd3b",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:phi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.105760"
+  },
+  {
+    "id": "1c5d9bdd-f012-46fa-901d-98f7023e9ff1",
+    "label": "Equation",
+    "key_value": "K = \\frac{\\sigma^2_{MF}(s,a)}{\\sigma^2_{MF}(s,a) + \\sigma^2_{obs,MF}}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.165499"
+  },
+  {
+    "id": "8ccedf63-3978-4a6a-90b3-b1b0415a6f69",
+    "label": "Equation",
+    "key_value": "\\hat{\\mu}(s,a) = \\omega(s,a) \\cdot \\mu_{MB}(s,a) + \\big(1 - \\omega(s,a)\\big) \\cdot \\mu_{MF}(s,a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.204422"
+  },
+  {
+    "id": "746f211f-af86-4ba1-9611-64862186d148",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:u-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.296237"
+  },
+  {
+    "id": "d743ac10-e2bb-45a7-abbf-384a05212322",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:xi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.362777"
+  },
+  {
+    "id": "6e2bacd2-316b-4c42-be83-8a78e8fcc011",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:e-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.414488"
+  },
+  {
+    "id": "66a6ed50-ac6d-46ec-8ef2-e45fbc67166a",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:ate-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.528500"
+  },
+  {
+    "id": "4dbcc99b-5d4f-494d-a576-12db5f5bdaed",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:h-f0370450f479",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.557295"
+  },
+  {
+    "id": "26785521-db37-4e1a-a646-36312b4fa24e",
+    "label": "Equation",
+    "key_value": "H_t = \\sigma\\!\\Big(k_H \\cdot (E_{\\text{set}} - E_t)\\Big) = \\frac{1}{1 + \\exp\\!\\big(-k_H \\,(E_{\\text{set}} - E_t)\\big)}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.603090"
+  },
+  {
+    "id": "55fb360c-183d-473e-b66f-091be999af83",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.641955"
+  },
+  {
+    "id": "bf399e8a-fb3a-4e4b-8b5d-89ac96264711",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:v-gd-t-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.748789"
+  },
+  {
+    "id": "5db2decf-5e93-48c0-913e-e8413bd9d052",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:alpha-q",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.879940"
+  },
+  {
+    "id": "fe7e9a57-6b71-4a8e-b790-cf2d303f6217",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:p-pav",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.978081"
+  },
+  {
+    "id": "06a0ce98-81ed-4711-b7ba-04e14d7cae55",
+    "label": "Equation",
+    "key_value": "H_{t+1} = \\text{clamp}\\!\\Big(H_t + \\eta_H - \\kappa_H \\cdot \\text{ate}_t,\\; 0,\\; 1\\Big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.077917"
+  },
+  {
+    "id": "01cad4c5-69bd-4d84-a688-9bf6b3de7e0b",
+    "label": "Equation",
+    "key_value": "\\delta_t = R^H_t + \\gamma \\max_{a'} Q^H(s_{t+1}, a') - Q^H(s_t, a_t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.116747"
+  },
+  {
+    "id": "e0477f36-a3d4-4175-a9ec-de041daef7c5",
+    "label": "Equation",
+    "key_value": "P_{\\text{final}}(a \\mid s_t) = \\big(1 - \\pi^P_t(\\text{eat})\\big) \\cdot P_{\\text{base}}(a \\mid s_t) + \\pi^P_t(\\text{eat})",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.144952"
+  },
+  {
+    "id": "92eacb5a-c08e-489d-850c-09c1afbd4f60",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:p-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.188832"
+  },
+  {
+    "id": "86827683-572e-407f-82f2-32181ef76954",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:delta-w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.257175"
+  },
+  {
+    "id": "d7574d02-77e2-4f12-91a2-ef80de7f1c02",
+    "label": "Formulation",
+    "key_value": "pavlovian-control-of-food-approach:incentive-salience-dual-process-agent-wantingliking-dissociation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.320057"
+  },
+  {
+    "id": "3a582238-4ad3-4d02-a086-45cb0b9439ac",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:v-perceived-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.420519"
+  },
+  {
+    "id": "21eda024-62d7-40a6-af91-21073255126e",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:theta-approac",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.513827"
+  },
+  {
+    "id": "46abf4a9-f9fb-4d23-a43a-6518f5774c3d",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:dt",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.554684"
+  },
+  {
+    "id": "3816c5af-06dd-41d9-817e-20b3050d2651",
+    "label": "Equation",
+    "key_value": "E(t) = \\mu \\cdot H(t) \\cdot V_{\\text{perceived}}(t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.630174"
+  },
+  {
+    "id": "9d2efe50-4275-42cc-9d9f-d56d02675ea2",
+    "label": "Formulation",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.171735"
+  },
+  {
+    "id": "02cd9873-185d-4d26-a046-78157289ed6e",
+    "label": "Formulation",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.235963"
+  },
+  {
+    "id": "b06562ab-6cb8-40ca-a8a4-8a8c591f4958",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:k-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.279809"
+  },
+  {
+    "id": "f45a80ed-00e8-47ec-a09f-c3274df699ff",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:w-tau-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.320576"
+  },
+  {
+    "id": "75af0195-2d33-4676-873c-6a4635d8efa1",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:lambda-k",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.368225"
+  },
+  {
+    "id": "644ea847-a99e-466e-a9d4-fbc4a9fd32f1",
+    "label": "Equation",
+    "key_value": "\\text{CCV}(a) = w_\\tau(t) \\cdot \\text{Taste}(a) + w_h(t) \\cdot \\text{Health}(a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.414272"
+  },
+  {
+    "id": "208ac61d-73ff-4487-90a1-8cee2ce32511",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:taste-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.476467"
+  },
+  {
+    "id": "7918df9e-e06e-4360-abe3-46aeb1e87d1f",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:omega-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.554608"
+  },
+  {
+    "id": "9778c57d-5475-4b09-b26f-ab022b8d1713",
+    "label": "Formulation",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.591028"
+  },
+  {
+    "id": "5b9ed52f-900e-42e7-ae20-4801575e330a",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:beta-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.708823"
+  },
+  {
+    "id": "dce0d978-3dab-4e9c-9a91-5de992c4c85d",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:phi",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.742778"
+  },
+  {
+    "id": "e65d87cf-8feb-456e-8710-4eecf032cce6",
+    "label": "Equation",
+    "key_value": "\\ell(t) = \\begin{cases} 0.9 & \\text{if } \\arg\\max_a \\pi_I(a|s) \\neq \\arg\\max_a \\pi_G(a|s) \\\\ 0.1 & \\text{otherwise} \\end",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.819269"
+  },
+  {
+    "id": "5f4282b0-6595-44db-a65d-0c6926e39b2f",
+    "label": "Equation",
+    "key_value": "r_{\\text{eff}}(t) = \\text{Taste}(\\text{eaten}) + w_h \\cdot \\text{Health}(\\text{eaten}) - \\kappa \\cdot p_{\\text{engage}}(",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.861219"
+  },
+  {
+    "id": "febc804a-a852-4262-b0d0-83c0a95c579f",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:x-i-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.954695"
+  },
+  {
+    "id": "5ddc3ab2-1a34-4fa1-b68f-d907c7564d2b",
+    "label": "Formulation",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.049154"
+  },
+  {
+    "id": "fced009c-8d3b-486a-baeb-8175517d02ab",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:pi-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.114810"
+  },
+  {
+    "id": "ec1c0d12-4834-4e89-997a-3a1f483135b0",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:sigma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.246575"
+  },
+  {
+    "id": "6abf631b-6486-452e-9584-16f6fee8d7a5",
+    "label": "Formulation",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.289647"
+  },
+  {
+    "id": "3244f001-3fb5-4bd4-9187-0335d7379de1",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:kappa",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.323940"
+  },
+  {
+    "id": "7acb0ae5-36a5-4280-8be9-c54b7f064aa2",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:mu",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.352556"
+  },
+  {
+    "id": "e19cf717-4d54-424a-9e3c-dcae5be991bb",
+    "label": "Equation",
+    "key_value": "x_i(t\\!+\\!1) = x_i(t) + \\Delta t \\Bigl[\\, v_i - \\kappa \\, x_i(t) - w \\!\\sum_{j \\neq i} x_j(t) \\,\\Bigr] + \\sigma \\sqrt{\\D",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.416719"
+  },
+  {
+    "id": "bb9abd01-0253-4035-b999-736b4b674284",
+    "label": "Equation",
+    "key_value": "\\bar{r}_i \\leftarrow \\bar{r}_i + \\alpha\\bigl(r_{\\text{obs}} - \\bar{r}_i\\bigr)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.472960"
+  },
+  {
+    "id": "3ea4e562-7c83-44e2-8b45-ab55e089a9c9",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:q-mf-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.562432"
+  },
+  {
+    "id": "cbab9d4e-bdee-40e1-84d1-fd7ce5f701eb",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:delta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.673203"
+  },
+  {
+    "id": "f13602b3-1a7a-4154-8ebe-e359e6010d8e",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:hatp-omida-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.782273"
+  },
+  {
+    "id": "cf721702-db41-415d-9312-62bdc012131b",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:sigma2-mb-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.857097"
+  },
+  {
+    "id": "d4e4d7d7-758b-4ebd-a435-f7261f8e4155",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:mu-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.973090"
+  },
+  {
+    "id": "09374cbc-ac79-49eb-aa2d-8ff8ecc06844",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.054625"
+  },
+  {
+    "id": "a9d23b0d-466d-4031-aa8b-42d000a969d5",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.136273"
+  },
+  {
+    "id": "ae15ec25-a97c-460b-904d-bc6bc7d5fedc",
+    "label": "Equation",
+    "key_value": "\\sigma^2_{MF}(s,a) \\leftarrow (1 - K) \\cdot \\sigma^2_{MF}(s,a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.185040"
+  },
+  {
+    "id": "ee75cbf6-883d-4cc4-844b-6310947be91e",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.216812"
+  },
+  {
+    "id": "de17a021-35f5-4bbc-8554-c97bed6e1306",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:c-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.276979"
+  },
+  {
+    "id": "95a3f7f3-0e8b-43f1-98b2-8c6d056ecabe",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:tau-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.331957"
+  },
+  {
+    "id": "9d305718-6424-4632-8d66-d178917748c3",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.373066"
+  },
+  {
+    "id": "d8ce5de2-88e1-4f53-ac27-ad8ae7890363",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:w-c-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.489717"
+  },
+  {
+    "id": "c331c888-921c-4f9d-beeb-da2cd1a5556c",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:c-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.541120"
+  },
+  {
+    "id": "ded575c8-e16f-4039-85e0-a0beb3b30b90",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.575702"
+  },
+  {
+    "id": "44ce19c5-2c9e-47ac-bf92-6d5e13c8c76f",
+    "label": "Equation",
+    "key_value": "V_{\\text{eat}}(t) = w_{c,t} \\cdot r_{\\text{food}} \\cdot H_t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.618305"
+  },
+  {
+    "id": "20b76c1c-f586-4f01-b2f7-94ae0bed64eb",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:delta-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.678284"
+  },
+  {
+    "id": "82541c32-facf-4744-a910-908cc4dbeee8",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:l-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.719584"
+  },
+  {
+    "id": "c9d0c89e-bf74-45dd-8250-74f665bb9309",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:p-t-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.769057"
+  },
+  {
+    "id": "c47bfd6c-2a5d-47d4-b26b-743dede48db7",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:c-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.859547"
+  },
+  {
+    "id": "c2c09afb-f884-4909-86ce-7f8dbd382150",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.933296"
+  },
+  {
+    "id": "236fa0f9-884a-4ce8-b9c9-5c046fc3e4d1",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:c-step",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.031033"
+  },
+  {
+    "id": "1ad9039c-80fa-4a8f-8f71-c7976b579e34",
+    "label": "Equation",
+    "key_value": "V^{GD}_t(\\text{move}_a) = \\frac{H_t \\cdot r_{\\text{food}}}{1 + d_t(a)} + c_{\\text{step}}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.097174"
+  },
+  {
+    "id": "e4f9b1e1-69f6-444c-8eb1-34725865e963",
+    "label": "Equation",
+    "key_value": "\\omega_t = \\max\\!\\Big(\\omega_0 - \\lambda_\\omega \\cdot n_{\\text{eat}},\\; 0\\Big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.126380"
+  },
+  {
+    "id": "fdad0a2f-4221-4ae4-b297-581c85f84613",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:pi-p-t-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.163251"
+  },
+  {
+    "id": "763fbeac-3edb-4254-919b-cea40a850091",
+    "label": "Formulation",
+    "key_value": "pavlovian-control-of-food-approach:rescorlawagner-cached-value-agent-with-softmax-action-selection",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.230183"
+  },
+  {
+    "id": "8689d7e9-8ea7-49e1-bb67-7527ec9930a7",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:r-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.294791"
+  },
+  {
+    "id": "9c94c659-e759-4c51-aa64-55093df2bc83",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:v-s-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.352729"
+  },
+  {
+    "id": "340cad6e-cb32-4e32-a072-c34a70684d26",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:c-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.468782"
+  },
+  {
+    "id": "40a038a6-5195-4108-9d3e-23cac1bb29be",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:h-f0370450f47",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.532292"
+  },
+  {
+    "id": "cadfa6f0-6c4b-4091-96e3-ec34f387cf03",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:eta-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.181256"
+  },
+  {
+    "id": "22bea22c-0a79-4477-bdb7-d0a8ad1c8f3b",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:ccv-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.245221"
+  },
+  {
+    "id": "0b4859b3-1da3-4f01-ad79-d948977e8bd5",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:g-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.286218"
+  },
+  {
+    "id": "a93dc788-24f4-4dd0-b8c8-7c3395bd3ba0",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:gamma-c",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.329564"
+  },
+  {
+    "id": "e796d96c-4cd7-4632-b620-a91b40d541dc",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:eta-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.380313"
+  },
+  {
+    "id": "51830d4c-e663-4b45-8514-b7a9e5cafb47",
+    "label": "Equation",
+    "key_value": "P(a) = \\frac{\\exp\\bigl(\\beta \\cdot \\text{CCV}(a)\\bigr)}{\\sum_j \\exp\\bigl(\\beta \\cdot \\text{CCV}(j)\\bigr)}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.422542"
+  },
+  {
+    "id": "2ecc7129-137a-4c3b-982e-b32beecfd62f",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:e-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.504310"
+  },
+  {
+    "id": "05c4cc98-fb3b-4f72-9800-b34c0faaf6fc",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:ctrl-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.562753"
+  },
+  {
+    "id": "8f848a04-2d4a-4bc4-938f-ed87d31dc155",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:b-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.598170"
+  },
+  {
+    "id": "9d9a8f96-490e-4252-94c7-6325ca3455eb",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:l-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.628322"
+  },
+  {
+    "id": "1c3b8044-789f-48c8-b5cf-086463a3e78c",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:beta-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.716791"
+  },
+  {
+    "id": "0265c42d-8a41-4b73-a170-d9a3f63eee9d",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:w-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.752084"
+  },
+  {
+    "id": "a0fc69c0-164f-4dcb-beab-394f4ab4f80d",
+    "label": "Equation",
+    "key_value": "b(t) = \\frac{\\ell(t) \\cdot b(t{-}1)}{\\ell(t) \\cdot b(t{-}1) + \\bigl(1 - \\ell(t)\\bigr) \\cdot \\bigl(1 - b(t{-}1)\\bigr)}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.827881"
+  },
+  {
+    "id": "cbb4fd44-5b8b-42c2-9113-dfb16848f4ec",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:pi-i-amids",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.890296"
+  },
+  {
+    "id": "b30c4db4-b6c3-4e5b-9d97-b4e75f193791",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:v-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.970749"
+  },
+  {
+    "id": "1ffa5afb-2c25-4e5b-a69d-dd29f4936e26",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:classical-wiener-process-with-per-action-accumulators:deltat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.057446"
+  },
+  {
+    "id": "e5831643-9c88-49ae-af3a-5b5eabc75ffd",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:q-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.142208"
+  },
+  {
+    "id": "510e2f6f-cb0e-4f4c-8ebf-13fb39a4f30d",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.256914"
+  },
+  {
+    "id": "5b0516c5-53da-4815-9ba3-671adf8296f8",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:theta-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.298870"
+  },
+  {
+    "id": "f61b970c-1ee8-4adf-a0c4-6e44f749cf35",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:w",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.329846"
+  },
+  {
+    "id": "6a59a5f2-9d51-4f7f-8974-13be2889da88",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:theta-min",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.357500"
+  },
+  {
+    "id": "e27e1fbd-b60f-4f74-b167-5f1445f60bcc",
+    "label": "Equation",
+    "key_value": "u(t) = \\mu \\, t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.445903"
+  },
+  {
+    "id": "7ba84b9a-9993-4ee8-92b2-ce4137607031",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:deltat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.481358"
+  },
+  {
+    "id": "374c61a3-2ce9-4900-8157-9af2da319e80",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:q-mb-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.572312"
+  },
+  {
+    "id": "c06ef425-d57f-4abc-8a55-67076b645f87",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:omega",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.727782"
+  },
+  {
+    "id": "9ed57499-bf7e-4768-b9e6-5b283636e00b",
+    "label": "Formulation",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.788046"
+  },
+  {
+    "id": "dcf09e2d-80c1-4b5e-ae9b-54cb72d4e220",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:omega-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.885485"
+  },
+  {
+    "id": "3e63f060-b2c7-4cc0-b506-2c9e4961e444",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:sigma2-obs-mf",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.998624"
+  },
+  {
+    "id": "515a261e-6aef-4d2e-a53e-886eb085eca9",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.086582"
+  },
+  {
+    "id": "624cceae-1318-4fc1-9aa7-b1b294d3353b",
+    "label": "Equation",
+    "key_value": "\\mu_{MB}(s, a) = \\sum_{o \\in O} \\hat{p}(o \\mid a, s) \\cdot r^D(o)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.145096"
+  },
+  {
+    "id": "adb919de-a87f-47d9-b13a-65cf706a824e",
+    "label": "Equation",
+    "key_value": "\\hat{p}(o \\mid a,s) \\leftarrow \\hat{p}(o \\mid a,s) + \\alpha_T\\Big(\\mathbb{1}[o = o_{obs}] - \\hat{p}(o \\mid a,s)\\Big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.192135"
+  },
+  {
+    "id": "19a32d4d-79c4-4be7-a8f7-c8c0942151fb",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:hatmu-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.244346"
+  },
+  {
+    "id": "4bb29b07-8176-4cda-ad2a-d25c6661362c",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:tau-d",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.341598"
+  },
+  {
+    "id": "52e6bac9-6834-4073-8a9d-77be4e4cb1b3",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:w-e-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.497493"
+  },
+  {
+    "id": "aad2a957-dab7-4a31-9cac-bf64d7b79de2",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:e-set",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.546837"
+  },
+  {
+    "id": "ad01e32c-f75f-4a97-a9b0-ea3d2e7dd02c",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:theta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.585422"
+  },
+  {
+    "id": "389076cd-5986-4a31-86b0-4e5ff97598b8",
+    "label": "Equation",
+    "key_value": "V_{\\text{move}}(a, t) = \\frac{w_{c,t} \\cdot r_{\\text{food}} \\cdot H_t}{1 + d_t(a)} + c_{\\text{step}} \\cdot w_{e,t}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.626495"
+  },
+  {
+    "id": "f3142481-8716-4e42-92a6-991ab238303f",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:r-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.687400"
+  },
+  {
+    "id": "8db35183-a719-4f54-82de-98f3bc4dc58b",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:m-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.728692"
+  },
+  {
+    "id": "e3df48c6-a6c7-4ef5-9dd9-19fa29604080",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:omega-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.778506"
+  },
+  {
+    "id": "878898e3-2dad-4da9-928a-9e9314f90e45",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.867239"
+  },
+  {
+    "id": "cec5c264-0ab1-4853-8440-c2ca64d80ea7",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:lambda-omega",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.959458"
+  },
+  {
+    "id": "eb3ece46-b8c0-4deb-a797-51304d60a44a",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:e-set",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.036514"
+  },
+  {
+    "id": "742f8bcc-3dd1-4704-8a0b-ac63eb05476c",
+    "label": "Equation",
+    "key_value": "V^{GD}_t(\\text{stay}) = 0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.105510"
+  },
+  {
+    "id": "e99dbeec-4551-4b11-8ede-f54a1fe9883c",
+    "label": "Equation",
+    "key_value": "V^{\\text{int}}_t(a) = \\omega_t \\cdot V^{GD}_t(a) + (1 - \\omega_t) \\cdot Q^H(s_t, a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.131631"
+  },
+  {
+    "id": "57e7c1b3-978d-41c7-b56f-6fba8b9e5e40",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:v-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.171896"
+  },
+  {
+    "id": "1f08ed15-4e7e-4264-bdff-962f1a660427",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:w-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.239919"
+  },
+  {
+    "id": "15c88812-cf14-4f0c-b5dc-9a767564b3c7",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:q-total-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.304056"
+  },
+  {
+    "id": "e2b1829c-826a-456d-b44c-313af46b7147",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:k-sat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.476841"
+  },
+  {
+    "id": "eed6014d-57a7-4883-b8a7-3fc974bd43f7",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.539882"
+  },
+  {
+    "id": "2bddc373-1da8-4d43-8268-8176879377e9",
+    "label": "Equation",
+    "key_value": "\\frac{dV(s)}{dt} = \\alpha_V \\cdot \\big(r(t) - V(s)\\big) \\cdot \\mathbb{1}[\\text{at } s] - \\eta \\cdot V(s) \\cdot \\mathbb{1",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.614142"
+  },
+  {
+    "id": "a1f67995-da00-49c9-a7b1-f00795b01c5f",
+    "label": "Parameter",
+    "key_value": "attribute-based-value-computation:ode-based-dynamic-attribute-valuation-with-cognitive-control:tau-k",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.193552"
+  },
+  {
+    "id": "e0c9f545-b453-4625-9b68-b94fa83ff6a0",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:w-h-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.254270"
+  },
+  {
+    "id": "4ad05cc1-7f36-46c2-a52c-158df3eaa1a7",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:d-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.292972"
+  },
+  {
+    "id": "49d2e2d4-fd0d-4895-83c1-e7151aeeb745",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:beta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.339541"
+  },
+  {
+    "id": "4b803574-bd2c-4caf-83c9-4210ebe5ff28",
+    "label": "Equation",
+    "key_value": "K(t) = \\left| \\arg\\max_a \\text{Taste}(a) \\neq \\arg\\max_a \\text{Health}(a) \\right| \\cdot \\left| \\max_a \\text{Taste}(a) - ",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.387593"
+  },
+  {
+    "id": "61011778-924b-4c5d-8c26-72780eafc835",
+    "label": "Equation",
+    "key_value": "D(t{+}1) = \\text{clamp}\\!\\Bigl(D(t) + \\alpha_D \\cdot C(t) - \\beta_D \\cdot \\bigl(1 - C(t)\\bigr),\\; 0,\\; 1\\Bigr)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.431859"
+  },
+  {
+    "id": "6f8c5128-682a-4b7c-bb7e-9e9317f18766",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:v-i-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.533488"
+  },
+  {
+    "id": "50086c38-1d85-413a-bb38-a546479e1c07",
+    "label": "Formulation",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.569745"
+  },
+  {
+    "id": "5b67e06d-f8a4-40b9-97c9-9a35ecd822ba",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:i-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.604800"
+  },
+  {
+    "id": "bea8a3f0-0073-4ea1-a721-d415abfecc67",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:r-eff-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.655848"
+  },
+  {
+    "id": "341308e8-0ce6-418c-96ae-5cc21b553cab",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:alpha-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.723728"
+  },
+  {
+    "id": "d5439ae8-ccba-4f17-a7b3-dc4e681bf15d",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:w-tau",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.760819"
+  },
+  {
+    "id": "e137d7b6-8d02-4154-824e-ac10de6fda0b",
+    "label": "Equation",
+    "key_value": "p_{\\text{engage}}(t) = b(t) \\cdot E(t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.836434"
+  },
+  {
+    "id": "64ef0ccc-aea9-44c6-90eb-58880a78cf06",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:pi-g-amids",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.899294"
+  },
+  {
+    "id": "9f14a045-1bcd-486f-a5a5-d4e607522451",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:i-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.003298"
+  },
+  {
+    "id": "40370196-5487-409c-9c5c-3f8bab7d7793",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:xi-i-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.067991"
+  },
+  {
+    "id": "e4737d6f-916e-4f4f-9c41-3ae4dcef7162",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:s-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.181830"
+  },
+  {
+    "id": "188c5621-642d-4058-9465-eb578b537593",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection:alpha",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.266144"
+  },
+  {
+    "id": "3e387912-372c-4ada-af67-dbd6f181ec78",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:u-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.305423"
+  },
+  {
+    "id": "653fc54d-8eeb-4491-b95e-8f78ffc0a4be",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:sigma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.335996"
+  },
+  {
+    "id": "53692392-114c-425a-af92-fd523a809b25",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:k-v",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.363111"
+  },
+  {
+    "id": "16b393d5-6d04-4f9e-a0c3-7dadecb4f28d",
+    "label": "Equation",
+    "key_value": "\\theta(t) = \\max\\!\\bigl(a - u(t),\\; \\theta_{\\min}\\bigr)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.451421"
+  },
+  {
+    "id": "305215f4-80b7-4e6f-ac22-f99dc741e843",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.515780"
+  },
+  {
+    "id": "f2b8d5b6-eb3f-4c53-9de7-14a1110bba80",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:q-net-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.600871"
+  },
+  {
+    "id": "c95fd1ed-f90d-4916-927a-b8975d90fdeb",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:n-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.737323"
+  },
+  {
+    "id": "be16367d-2da4-4df8-8d5d-e7776aef8635",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:mu-mf-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.814993"
+  },
+  {
+    "id": "9a9db3fb-4f80-4025-933d-8ea33ac8ea45",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:mu-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.913413"
+  },
+  {
+    "id": "e65937dc-6b2b-41ae-bd93-8016ebd9059f",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:sigma2-obs-mb",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.007343"
+  },
+  {
+    "id": "503ccd0d-c63b-457a-9c24-6236418f3757",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:h-f0370450f479",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.097111"
+  },
+  {
+    "id": "0b9e40bc-5371-478a-a585-7e6277143e61",
+    "label": "Equation",
+    "key_value": "\\sigma^2_{MB}(s,a) = \\sum_{o} \\hat{p}(o|a,s)\\big(r^D(o) - \\mu_{MB}(s,a)\\big)^2 + \\frac{\\sigma^2_{obs,MB}}{1 + N_{MB}(s,a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.154578"
+  },
+  {
+    "id": "a979528e-d070-4202-a37e-a3502dde7bb5",
+    "label": "Equation",
+    "key_value": "\\omega(s,a) = \\sigma\\!\\Big(\\kappa \\cdot \\big(\\sigma^2_{MF}(s,a) - \\sigma^2_{MB}(s,a)\\big)\\Big) = \\frac{1}{1 + \\exp\\!\\big",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.198989"
+  },
+  {
+    "id": "55741cb2-69a5-4b0e-a749-7e20032864cb",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:rho",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.353459"
+  },
+  {
+    "id": "26a31a7e-f294-40ed-b19c-235dad848165",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.385383"
+  },
+  {
+    "id": "d9c72973-2ba1-404c-bf64-079e60c7a0dd",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:d-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.503468"
+  },
+  {
+    "id": "ad9b6c67-e78e-4e45-a07d-559704c9f9a3",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:k-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.552066"
+  },
+  {
+    "id": "079afaa2-66e2-4489-8549-5fc850e94ffa",
+    "label": "Equation",
+    "key_value": "E_{t+1} = \\text{clamp}\\!\\Big(E_t - \\alpha_E + c_{\\text{food}} \\cdot \\text{ate}_t,\\; 0,\\; 1\\Big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.594792"
+  },
+  {
+    "id": "e9e592d5-e9b9-4530-b5c6-c99ac70fe57f",
+    "label": "Equation",
+    "key_value": "V_{\\text{stay}}(t) = 0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.634834"
+  },
+  {
+    "id": "6d162637-9fa4-484f-8d8d-b569a6fb03fd",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation-of-food-valuation:hormonal-modulation-with-softmax-reinforcement-learning",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.695465"
+  },
+  {
+    "id": "86f8d1ec-e3e7-4fb2-ae81-a95da883e815",
+    "label": "Formulation",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.738328"
+  },
+  {
+    "id": "7fe8dace-6d23-4fa3-845b-30285de59841",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:n-eat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.785937"
+  },
+  {
+    "id": "a1162a1b-f996-4f81-aac4-7b095422512f",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:kappa-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.873685"
+  },
+  {
+    "id": "c4403492-3602-40eb-affc-236d09af9f44",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:omega-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.968924"
+  },
+  {
+    "id": "70136e06-bec0-42ef-9260-1e9cd4b2c6fb",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:k-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.066687"
+  },
+  {
+    "id": "6917a872-e945-4e5b-9415-80a05cf44a22",
+    "label": "Equation",
+    "key_value": "R^H_t = \\begin{cases} r_{\\text{food}} & \\text{if } \\text{ate}_t = 1 \\\\ c_{\\text{step}} & \\text{otherwise} \\end{cases}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.111987"
+  },
+  {
+    "id": "50dd9d2e-236d-4b2c-a233-12e45889b87d",
+    "label": "Equation",
+    "key_value": "P_{\\text{base}}(a \\mid s_t) = \\frac{\\exp\\!\\big(\\beta \\cdot V^{\\text{int}}_t(a)\\big)}{\\sum_j \\exp\\!\\big(\\beta \\cdot V^{\\t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.138073"
+  },
+  {
+    "id": "14793522-38af-4629-9f95-c82de3374a51",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:q-pav-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.180947"
+  },
+  {
+    "id": "136ef90b-8bdb-478b-b34d-d275ec4e4558",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:l-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.248637"
+  },
+  {
+    "id": "cd07a467-4d9e-4f42-abe0-05dd3e4222e9",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:d-min",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.389167"
+  },
+  {
+    "id": "470a0d8a-204f-4ffb-896f-187ce0e0b7ba",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:mu",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.504243"
+  },
+  {
+    "id": "bae0bcb6-27dc-4868-8248-58773ea0eb2d",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:v-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.546853"
+  },
+  {
+    "id": "6e0561fa-c7dc-4a36-b1cb-1871c3d98427",
+    "label": "Equation",
+    "key_value": "V(s_t) \\leftarrow \\text{clip}\\!\\Big(V(s_t) + \\alpha_V \\cdot (r_t - V(s_t)) - \\eta \\cdot V(s_t) \\cdot \\mathbb{1}[r_t = 0]",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.621369"
+  },
+  {
+    "id": "85c0d82b-1bf1-471f-ab27-36868f84de16",
+    "label": "Variable",
+    "key_value": "attribute-based-value-computation:q-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.225802"
+  },
+  {
+    "id": "3ac2a2b9-c6ed-4bf3-b92b-a132a56de615",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:c-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.272354"
+  },
+  {
+    "id": "8ff06f1d-f446-4a07-a972-69f9131d82cc",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:w-h-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.310591"
+  },
+  {
+    "id": "5e9d43b4-49b6-4d3e-a253-b2ffe428d575",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:beta-d",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.361973"
+  },
+  {
+    "id": "f85c3724-ca4d-4702-a760-6508e98d7e09",
+    "label": "Equation",
+    "key_value": "w_h(t) = w_{h,0} + \\gamma_C \\cdot C(t), \\qquad w_\\tau(t) = 1 - w_h(t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.407015"
+  },
+  {
+    "id": "84b82215-26bd-4a33-8ce2-be2c71a30576",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:attribute-reweighting-algebraic-model:health-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.466235"
+  },
+  {
+    "id": "a01478e8-8f64-4f0c-9528-730cc345793c",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:v-a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.548315"
+  },
+  {
+    "id": "132c6aba-f292-44ef-9e28-6e4f0562fe82",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:executive-resource-ode-with-dual-value-arbitration:w-tau-g",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.583228"
+  },
+  {
+    "id": "73e03a89-736c-4334-9928-e3df0ee6a5fd",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:a-s",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.616942"
+  },
+  {
+    "id": "e68e09b2-e208-4bb3-9156-fedbf8f60aeb",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:b-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.701062"
+  },
+  {
+    "id": "f11b8679-4989-4e41-84d3-9eba7a761b02",
+    "label": "Parameter",
+    "key_value": "dlpfc-self-control-modulation:bayesian-conflict-gated-stochastic-control:kappa",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.735463"
+  },
+  {
+    "id": "573ac6ec-6551-4371-b447-ba423e51ead0",
+    "label": "Equation",
+    "key_value": "\\pi_G(a \\mid s) = \\frac{\\exp\\Bigl(\\beta_G \\cdot \\bigl[w_\\tau \\cdot \\text{Taste}(a) + w_h \\cdot \\text{Health}(a)\\bigr] \\c",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.809864"
+  },
+  {
+    "id": "597d623d-e42f-40f3-80c1-4b5f6c2274d9",
+    "label": "Equation",
+    "key_value": "E(t{+}1) = \\text{clamp}\\!\\Bigl(E(t) + \\beta_E \\cdot (1 - E(t)) - \\alpha_E \\cdot p_{\\text{engage}}(t),\\; 0,\\; 1\\Bigr)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.852525"
+  },
+  {
+    "id": "afa59fc3-f32e-488e-9fd7-b7fdd213ae5a",
+    "label": "Variable",
+    "key_value": "dlpfc-self-control-modulation:ell-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:07.917604"
+  },
+  {
+    "id": "66b862e7-ebe2-4ed0-9ea3-4febaef8ace9",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:t-d",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.040335"
+  },
+  {
+    "id": "5c20b2f7-a294-4ca8-a53f-e79660b67098",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:t-bar-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.107266"
+  },
+  {
+    "id": "7d81e38f-65da-40a3-b2c7-c1c1f73cbcdd",
+    "label": "Formulation",
+    "key_value": "drift-diffusion-model:algebraic-closed-form-ddm-with-softmax-action-selection",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.219607"
+  },
+  {
+    "id": "c24a998a-4898-4f47-922a-0b447f8e5619",
+    "label": "Variable",
+    "key_value": "drift-diffusion-model:bart-i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.283128"
+  },
+  {
+    "id": "a34e0364-fc19-4ea0-82e2-79a620faccfd",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.318293"
+  },
+  {
+    "id": "504c4a7f-6ee4-4370-b702-9252420031bc",
+    "label": "Parameter",
+    "key_value": "drift-diffusion-model:collapsing-boundary-ode-accumulators-with-lateral-inhibition:t-max",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.347564"
+  },
+  {
+    "id": "5d78df75-3b13-46a1-8d43-becdefbf1dbd",
+    "label": "Equation",
+    "key_value": "v_i = k_v \\cdot s_i + \\bar{r}_i",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.392564"
+  },
+  {
+    "id": "adc86bc0-084f-42c4-9325-9b2958f965f3",
+    "label": "Equation",
+    "key_value": "\\text{if } \\forall i,\\; x_i(t) < \\theta(t)\\;\\;\\forall t \\leq T_{\\max}: \\quad R = \\arg\\max_i \\, x_i(T_{\\max})",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.464498"
+  },
+  {
+    "id": "186532d8-8b21-4266-a150-44e6c1754911",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.534667"
+  },
+  {
+    "id": "36389293-0731-4782-a882-6358c34d18fd",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:r-d-o",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.640156"
+  },
+  {
+    "id": "e884ac77-3c84-4a73-8981-4c06b6dc0bc7",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:dual-q-table-with-fixed-exponential-decay-arbitration:eta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.754047"
+  },
+  {
+    "id": "0430a633-d54b-4f52-8728-5f37d38c920b",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:mu-mb-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.849419"
+  },
+  {
+    "id": "14b058ce-b384-4ee9-9142-45813d783ff7",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:sigma2-0",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:08.963643"
+  },
+  {
+    "id": "625a301f-5b26-4b8b-a2db-c5e05e1f1a63",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:kappa",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.044235"
+  },
+  {
+    "id": "4eae5418-9b50-433c-9472-24cfcfdd4810",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:uncertainty-based-bayesian-arbitration:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.112159"
+  },
+  {
+    "id": "051663f7-77f5-465a-aae8-56e18cb30dd3",
+    "label": "Equation",
+    "key_value": "\\mu_{MF}(s,a) \\leftarrow \\mu_{MF}(s,a) + K \\cdot \\Big(r_{recv} + \\gamma \\max_{a'} \\mu_{MF}(s',a') - \\mu_{MF}(s,a)\\Big)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.176146"
+  },
+  {
+    "id": "63b485c4-edc4-4c51-9803-4fb778fc955c",
+    "label": "Equation",
+    "key_value": "P(a \\mid s) = \\frac{\\exp\\!\\big(\\beta \\, \\hat{\\mu}(s,a)\\big)}{\\sum_{j \\in A} \\exp\\!\\big(\\beta \\, \\hat{\\mu}(s,j)\\big)}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.209180"
+  },
+  {
+    "id": "257ea2e0-a19c-41c8-aca1-c9bbbd9196fa",
+    "label": "Variable",
+    "key_value": "goal-directed-vs-habitual-control:v-gd-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.268086"
+  },
+  {
+    "id": "ae7a9a54-2a53-4226-8c3c-d92a6b8a9434",
+    "label": "Formulation",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.305583"
+  },
+  {
+    "id": "edb65867-f90a-48a0-a7fd-2191f2bd1cf3",
+    "label": "Parameter",
+    "key_value": "goal-directed-vs-habitual-control:ode-based-habit-strength-with-continuous-arbitration-dynamics:theta",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.368295"
+  },
+  {
+    "id": "ee0d3de4-75bf-4b73-af0d-9250d25ed0df",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:v-t-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.458848"
+  },
+  {
+    "id": "52c95dd9-7c2b-40c2-966f-5899667dfe5c",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:alpha-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.534699"
+  },
+  {
+    "id": "48ecfaf1-48ec-43c4-80fd-1718ef1e79f3",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:drive-reduction-ode-with-goal-directed-valuation:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.567287"
+  },
+  {
+    "id": "494d2cf6-e8e9-4de2-91a3-a403c8c61f8c",
+    "label": "Equation",
+    "key_value": "w_{c,t} = H_t, \\qquad w_{e,t} = 1 - H_t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.610779"
+  },
+  {
+    "id": "870d337b-4de3-4719-8634-cccf8a74c3ea",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:q-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.667785"
+  },
+  {
+    "id": "8e2ece25-d936-418c-a71b-2dfbf9b7c9a9",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:g-t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.708895"
+  },
+  {
+    "id": "b13693c4-6470-4d6a-8ccf-cdcac9a4e034",
+    "label": "Variable",
+    "key_value": "homeostatic-regulation-of-food-valuation:q-h-s-a",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.758966"
+  },
+  {
+    "id": "bf550dd3-89dd-4c47-9562-acce3a6ce328",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:alpha-e",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.815686"
+  },
+  {
+    "id": "ab06b40f-5211-40e7-8f8d-43e9b5d3cae5",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:gamma",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:09.905244"
+  },
+  {
+    "id": "ca57de62-392d-40c6-8cf4-22d62d6bcee0",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:r-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.004073"
+  },
+  {
+    "id": "79d302ac-0e8a-4708-9dc8-23ebfbc36cfd",
+    "label": "Equation",
+    "key_value": "V^{GD}_t(\\text{eat}) = H_t \\cdot r_{\\text{food}}",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.087694"
+  },
+  {
+    "id": "250193f8-a60d-471a-a810-f2c04813ec8f",
+    "label": "Equation",
+    "key_value": "Q^H(s_t, a_t) \\leftarrow Q^H(s_t, a_t) + \\alpha_Q \\, \\delta_t",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.121468"
+  },
+  {
+    "id": "7419dfa8-069e-4a10-9c43-d2dced4829b0",
+    "label": "Parameter",
+    "key_value": "homeostatic-regulation-of-food-valuation:dual-controller-competition-with-pavlovian-override:eta-h",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.153303"
+  },
+  {
+    "id": "de6c7670-4163-405e-9330-75b2873909d2",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:d-s-s-food",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.221122"
+  },
+  {
+    "id": "917cbc7e-5d73-4b9a-b0d3-b5fa8b0a0f04",
+    "label": "Variable",
+    "key_value": "pavlovian-control-of-food-approach:delta-l",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.266018"
+  },
+  {
+    "id": "a5aff631-cc7c-4cd5-89fc-2908411c9bc1",
+    "label": "Formulation",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.343627"
+  },
+  {
+    "id": "02925470-a4a7-4abb-a0a4-f53002f38856",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:alpha-v",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.457607"
+  },
+  {
+    "id": "9645c889-de03-4bb7-8c0f-2fca726c5548",
+    "label": "Parameter",
+    "key_value": "pavlovian-control-of-food-approach:ode-based-continuous-drive-dynamics-with-deterministic-threshold-policy:theta-eat",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.523541"
+  },
+  {
+    "id": "31bbdf75-f8c0-492e-a143-559153b580d4",
+    "label": "Equation",
+    "key_value": "\\frac{dH}{dt} = c_H \\cdot (1 - H) - k_{\\text{sat}} \\cdot \\text{intake}(t)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.580038"
+  },
+  {
+    "id": "32b96050-062a-4b30-88c5-9f4676f837e0",
+    "label": "Equation",
+    "key_value": "H_{t+1} = H_t + dt \\cdot \\Big[c_H \\cdot (1 - H_t) - k_{\\text{sat}} \\cdot \\mathbb{1}[\\text{ate}_t]\\Big]",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.605322"
+  },
+  {
+    "id": "8cca3410-3339-425f-a8fa-e2d5b70e6252",
+    "label": "Equation",
+    "key_value": "a^* = \\arg\\max_{a \\in \\text{moves}} V(s_a)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.646004"
+  },
+  {
+    "id": "a3a09df3-aa89-4c3e-8173-4ed5d15c2fb7",
+    "label": "Equation",
+    "key_value": "V_{\\text{perceived}}(t) = \\max_{s \\in \\text{visible}} V(s)",
+    "run_id": "bd5e6d0d-382f-46f9-9900-2994e0d5eed3",
+    "observed_at": "2026-06-29T10:49:10.637642"
+  }
+]

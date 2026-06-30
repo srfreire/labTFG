@@ -170,6 +170,29 @@ Builder. Si la causa es una mala spec, se debe volver a Reasoner.
 \end{center}
 \end{table}
 
+\section{Evidencias de las evals con corpus cerrado}
+
+Las evals con corpus cerrado se guardan en el repositorio como evidencia
+auditable. Cada carpeta de caso conserva PDFs, texto extraído, exportaciones de
+base de datos, snapshot del grafo, artefactos de storage, trazas y manifiestos.
+Los informes de juez se guardan fuera del bundle del caso para no modificar los
+resultados originales.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{7cm}|} \hline
+\textbf{Ruta} & \textbf{Contenido} \\ \hline
+\path{phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus} & Bundle completo del CASO1: corpus, artefactos, reportes, snapshot KG y exportaciones de infraestructura lógica. \\ \hline
+\path{phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus} & Bundle completo del CASO2: corpus, artefactos, reportes, snapshot KG y exportaciones de infraestructura lógica. \\ \hline
+\path{phase1-pablo/evals/judge-reports/2026-06-29-caso1-llm-judge.md} & Informe del juez LLM para CASO1, con veredicto, evidencias, problemas y puntuación. \\ \hline
+\path{phase1-pablo/evals/judge-reports/2026-06-29-caso2-llm-judge.md} & Informe del juez LLM para CASO2, con veredicto, evidencias, problemas y puntuación. \\ \hline
+\path{phase1-pablo/evals/infra-snapshots/2026-06-29-pdf-corpus-evals.json} & Snapshot de infraestructura usado en las 2 evals: contenedores TFG, puertos, runs, costes, duraciones y tamaño de bundles. \\ \hline
+\end{tabular}
+\caption{Rutas de evidencias de las evals con corpus cerrado.}
+\end{center}
+\end{table}
+
 \section{Uso de la memoria}
 
 Cuando la memoria está disponible, los agentes pueden consultar conocimiento de

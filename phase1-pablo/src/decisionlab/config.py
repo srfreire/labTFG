@@ -119,13 +119,13 @@ class Settings:
             formalizer=_load(
                 "FORMALIZER",
                 model="anthropic/claude-opus-4.6",
-                max_iterations=5,
+                max_iterations=8,
                 max_tokens=16384,
             ),
             reasoner=_load(
                 "REASONER",
                 model="anthropic/claude-opus-4.6",
-                max_iterations=5,
+                max_iterations=8,
                 max_tokens=16384,
             ),
             builder=_load(

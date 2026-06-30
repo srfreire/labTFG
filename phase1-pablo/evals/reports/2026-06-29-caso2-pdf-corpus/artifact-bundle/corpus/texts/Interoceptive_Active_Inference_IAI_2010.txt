@@ -1,0 +1,1035 @@
+Nature Reviews Neuroscience | Aop, published online 13 January 2010; doi:10.1038/nrn2787 REVIEWS
+
+
+ The free-energy principle:
+ a unified brain theory?
+ Karl Friston
+ Abstract | A free-energy principle has been proposed recently that accounts for action,
+ perception and learning. This Review looks at some key brain theories in the biological (for
+ example, neural Darwinism) and physical (for example, information theory and optimal
+ control theory) sciences from the free-energy perspective. Crucially, one key theme runs
+ through each of these theories — optimization. Furthermore, if we look closely at what is
+ optimized, the same quantity keeps emerging, namely value (expected reward, expected
+ utility) or its complement, surprise (prediction error, expected cost). This is the quantity that
+ is optimized under the free-energy principle, which suggests that several global brain
+ theories might be unified within a free-energy framework.
+
+
+Free energy
+ Despite the wealth of empirical data in neuroscience, Motivation: resisting a tendency to disorder. The
+An information theory measure there are relatively few global theories about how the defining characteristic of biological systems is that
+that bounds or limits (by being brain works. A recently proposed free-energy principle they maintain their states and form in the face of a
+greater than) the surprise on for adaptive systems tries to provide a unified account constantly changing environment 3–6. From the point
+sampling some data, given a
+ of action, perception and learning. Although this prin- of view of the brain, the environment includes both
+generative model.
+ ciple has been portrayed as a unified brain theory 1, its the external and the internal milieu. This maintenance
+Homeostasis capacity to unify different perspectives on brain function of order is seen at many levels and distinguishes bio-
+The process whereby an open has yet to be established. This Review attempts to place logical from other self-organizing systems; indeed, the
+or closed system regulates its some key theories within the free-energy framework, in physiology of biological systems can be reduced almost
+internal environment to
+maintain its states within
+ the hope of identifying common themes. I first review entirely to their homeostasis7. More precisely, the rep-
+bounds. the free-energy principle and then deconstruct several ertoire of physiological and sensory states in which an
+ global brain theories to show how they all speak to the organism can be is limited, and these states define the
+Entropy same underlying idea. organism’s phenotype. Mathematically, this means that
+The average surprise of
+ the probability of these (interoceptive and exterocep-
+outcomes sampled from a
+probability distribution or
+ The free-energy principle tive) sensory states must have low entropy; in other
+density. A density with low The free-energy principle (BOX 1) says that any self- words, there is a high probability that a system will
+entropy means that, on organizing system that is at equilibrium with its environ- be in any of a small number of states, and a low prob-
+average, the outcome is ment must minimize its free energy 2. The principle is ability that it will be in the remaining states. Entropy
+relatively predictable. Entropy
+is therefore a measure of
+ essentially a mathematical formulation of how adaptive is also the average self information or ‘ surprise ’ 8
+uncertainty. systems (that is, biological agents, like animals or brains) (more formally, it is the negative log-probability of an
+ resist a natural tendency to disorder 3–6. What follows is outcome). Here, ‘a fish out of water’ would be in a sur-
+ a non-mathematical treatment of the motivation and prising state (both emotionally and mathematically).
+ implications of the principle. We will see that although the A fish that frequently forsook water would have high
+ motivation is quite straightforward, the implications are entropy. Note that both surprise and entropy depend
+The Wellcome Trust Centre
+ complicated and diverse. This diversity allows the prin- on the agent: what is surprising for one agent (for
+for Neuroimaging,
+University College London, ciple to account for many aspects of brain structure and example, being out of water) may not be surprising
+Queen Square, London, function and lends it the potential to unify different per- for another. Biological agents must therefore mini-
+WC1N 3BG, UK. spectives on how the brain works. In subsequent sections, mize the long-term average of surprise to ensure that
+e‑mail: I discuss how the principle can be applied to neuronal their sensory entropy remains low. In other words,
+k.friston@fil.ion.ucl.ac.uk
+doi:10.1038/nrn2787
+ systems as viewed from these perspectives. This Review biological systems somehow manage to violate the
+Published online starts in a rather abstract and technical way but then tries fluctuation theorem, which generalizes the second law
+13 January 2010 to unpack the basic idea in more familiar terms. of thermodynamics9.
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 1
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+ Box 1 | The free-energy principle
+ Part a of the figure shows the dependencies among the a
+ quantities that define free energy. These include the
+ Environment Agent
+ internal states of the brain μ(t) and quantities describing its
+ exchange with the environment: sensory signals (and their Sensations
+ motion) s̃(t) = [s,s′,s″…]T plus action a(t). The environment s~ = g(x~, ϑ) + z~
+ is described by equations of motion, which specify the
+ trajectory of its hidden states. The causes ϑ ⊃ {x̃, θ, γ } of
+ External states Internal states
+ sensory input comprise hidden states x̃(t), parameters θ
+ and precisions γ controlling the amplitude of the random ẋ~ = f(x~, a, ϑ) + w~ μ = arg min F(s~, μ)
+ fluctuations z̃(t) and w̃(t). Internal brain states and action
+ minimize free energy F(s̃,μ), which is a function of sensory Action or control signals
+ input and a probabilistic representation q(ϑ|μ) of its causes.
+ a = arg min F(s~, μ)
+ This representation is called the recognition density and is
+ encoded by internal states μ.
+ The free energy depends on two probability densities:
+ b
+ the recognition density q(ϑ|μ) and one that generates Free-energy bound on surprise
+ sensory samples and their causes, p(s̃,ϑ|m). The latter F = −<ln p(s~, ϑ | m)> + <ln q(ϑ | μ)>
+ q q
+ represents a probabilistic generative model (denoted by
+ m), the form of which is entailed by the agent or brain. Action minimizes prediction errors
+ Part b of the figure provides alternative expressions for the F = D(q(ϑ | μ) || p(ϑ)) − <ln p(s~ (a) | ϑ, m)> q
+ free energy to show what its minimization entails: action
+ can reduce free energy only by increasing accuracy (that is, a = arg max Accuracy
+ selectively sampling data that are predicted). Conversely,
+ optimizing brain states makes the representation an Perception optimizes predictions
+ approximate conditional density on the causes of sensory F = D(q(ϑ | μ) || p(ϑ | s~ )) − ln p(s~ | m)
+Surprise
+(Surprisal or self information.)
+ input. This enables action to avoid surprising sensory μ = arg max Divergence
+The negative log-probability of encounters. A more formal description is provided below.
+an outcome. An improbable optimizing the sufficient statistics (representations)
+outcome (for example, water Optimizing the recognition density makes it a posterior or conditional density on the causes of Nature Reviews
+ sensory Neuroscience
+ data:| this can be
+flowing uphill) is therefore
+ seen by expressing the free energy as surprise –In p(s̃,| m) plus a Kullback-Leibler divergence between the recognition and
+surprising.
+ conditional densities (encoded by the ‘internal states’ in the figure). Because this difference is always positive, minimizing
+Fluctuation theorem free energy makes the recognition density an approximate posterior probability. This means the agent implicitly infers or
+(A term from statistical represents the causes of its sensory samples in a Bayes-optimal fashion. At the same time, the free energy becomes a tight
+mechanics.) Deals with the bound on surprise, which is minimized through action.
+probability that the entropy optimizing action
+of a system that is far from the
+ Acting on the environment by minimizing free energy enforces a sampling of sensory data that is consistent with the
+thermodynamic equilibrium
+will increase or decrease over
+ current representation. This can be seen with a second rearrangement of the free energy as a mixture of accuracy and
+a given amount of time. It complexity. Crucially, action can only affect accuracy (encoded by the ‘external states’ in the figure). This means that
+states that the probability of the brain will reconfigure its sensory epithelia to sample inputs that are predicted by the recognition density — in other
+the entropy decreasing words, to minimize prediction error.
+becomes exponentially smaller
+with time.
+
+Attractor In short, the long-term (distal) imperative — of main- crucially, free energy can be evaluated because it is a
+A set to which a dynamical taining states within physiological bounds — translates function of two things to which the agent has access: its
+system evolves after a long into a short-term (proximal) avoidance of surprise. sensory states and a recognition density that is encoded
+enough time. Points that
+ surprise here relates not just to the current state, which by its internal states (for example, neuronal activity
+get close to the attractor
+remain close, even under cannot be changed, but also to movement from one state and connection strengths). The recognition density is a
+small perturbations. to another, which can change. This motion can be com- probabilistic representation of what caused a particular
+ plicated and itinerant (wandering) provided that it revis- sensation.
+Kullback-Leibler divergence its a small set of states, called a global random attractor10, This (variational) free-energy construct was
+(Or information divergence,
+information gain or cross
+ that are compatible with survival (for example, driving a introduced into statistical physics to convert difficult
+entropy.) A non-commutative car within a small margin of error). It is this motion that probability-density integration problems into eas-
+measure of the non-negative the free-energy principle optimizes. ier optimization problems 11. It is an information
+difference between two so far, all we have said is that biological agents must theoretic quantity (like surprise), as opposed to a
+probability distributions.
+ avoid surprises to ensure that their states remain within thermodynamic quantity. variational free energy has
+Recognition density physiological bounds (see supplementary information s1 been exploited in machine learning and statistics to
+(Or ‘approximating conditional (box) for a more formal argument). But how do they solve many inference and learning problems12–14. In this
+density’.) An approximate do this? A system cannot know whether its sensations setting, surprise is called the (negative) model evidence.
+probability distribution of the are surprising and could not avoid them even if it did This means that minimizing surprise is the same as
+causes of data (for example,
+sensory input). It is the product
+ know. This is where free energy comes in: free energy is maximizing the sensory evidence for an agent’s exist-
+of inference or inverting a an upper bound on surprise, which means that if agents ence, if we regard the agent as a model of its world. In
+generative model. minimize free energy, they implicitly minimize surprise. the present context, free energy provides the answer to
+
+
+2 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+ REVIEWS
+
+ a fundamental question: how do self-organizing adap- In summary, the free energy rests on a model of how
+ tive systems avoid surprising states? They can do this by sensory data are generated and on a recognition density
+ minimizing their free energy. so what does this involve? on the model’s parameters (that is, sensory causes). Free
+ energy can be reduced only by changing the recognition
+ Implications: action and perception. Agents can density to change conditional expectations about what is
+ suppress free energy by changing the two things it depends sampled or by changing sensory samples (that is, sensory
+Generative model on: they can change sensory input by acting on the world input) so that they conform to expectations. In what fol-
+A probabilistic model (joint or they can change their recognition density by chang- lows, I consider these implications in light of some key
+density) of the dependencies
+ ing their internal states. This distinction maps nicely theories about the brain.
+between causes and
+consequences (data), from onto action and perception (BOX 1). one can see what this
+which samples can be means in more detail by considering three mathematically The Bayesian brain hypothesis
+generated. It is usually equivalent formulations of free energy (see supplementary The Bayesian brain hypothesis17 uses Bayesian probability
+specified in terms of the information s2 (box) for a mathematical treatment). theory to formulate perception as a constructive process
+likelihood of data, given their
+causes (parameters of a model)
+ The first formulation expresses free energy as energy based on internal or generative models. The underlying
+and priors on the causes. minus entropy. This formulation is important for three idea is that the brain has a model of the world18–22 that
+ reasons. First, it connects the concept of free energy as it tries to optimize using sensory inputs23–28. This idea is
+Conditional density used in information theory with concepts used in sta- related to analysis by synthesis20 and epistemological autom-
+(Or posterior density.) The
+ tistical thermodynamics. second, it shows that the free ata19. In this view, the brain is an inference machine that
+probability distribution of
+causes or model parameters, energy can be evaluated by an agent because the energy actively predicts and explains its sensations18,22,25. central
+given some data; that is, a is the surprise about the joint occurrence of sensations to this hypothesis is a probabilistic model that can gener-
+probabilistic mapping from and their perceived causes, whereas the entropy is sim- ate predictions, against which sensory samples are tested
+observed data to causes. ply that of the agent’s own recognition density. Third, it to update beliefs about their causes. This generative
+Prior
+ shows that free energy rests on a generative model of the model is decomposed into a likelihood (the probability of
+The probability distribution or world, which is expressed in terms of the probability of a sensory data, given their causes) and a prior (the a priori
+density of the causes of data sensation and its causes occurring together. This means probability of those causes). perception then becomes the
+that encodes beliefs about that an agent must have an implicit generative model of process of inverting the likelihood model (mapping from
+those causes before observing
+ how causes conspire to produce sensory data. It is this causes to sensations) to access the posterior probability of
+the data.
+ model that defines both the nature of the agent and the the causes, given sensory data (mapping from sensations
+Bayesian surprise quality of the free-energy bound on surprise. to causes). This inversion is the same as minimizing the
+A measure of salience based The second formulation expresses free energy as difference between the recognition and posterior densi-
+on the Kullback-Leibler surprise plus a divergence term. The (perceptual) diver- ties to suppress free energy. Indeed, the free-energy for-
+divergence between the
+recognition density (which
+ gence is just the difference between the recognition den- mulation was developed to finesse the difficult problem
+encodes posterior beliefs) and sity and the conditional density (or posterior density) of the of exact inference by converting it into an easier optimi-
+the prior density. It causes of a sensation, given the sensory signals. This con- zation problem11–14. This has furnished some powerful
+measures the information that ditional density represents the best possible guess about approximation techniques for model identification and
+can be recognized in the data.
+ the true causes. The difference between the two densities comparison (for example, variational Bayes or ensemble
+Bayesian brain hypothesis is always non-negative and free energy is therefore an learning 29). There are many interesting issues that attend
+The idea that the brain uses upper bound on surprise. Thus, minimizing free energy the Bayesian brain hypothesis, which can be illuminated
+internal probabilistic by changing the recognition density (without changing by the free-energy principle; we will focus on two.
+(generative) models to update sensory data) reduces the perceptual divergence, so that The first is the form of the generative model and
+posterior beliefs, using sensory
+information, in an
+ the recognition density becomes the conditional density how it manifests in the brain. one criticism of Bayesian
+(approximately) Bayes-optimal and the free energy becomes surprise. treatments is that they ignore the question of how prior
+fashion. The third formulation expresses free energy as com- beliefs, which are necessary for inference, are formed27.
+ plexity minus accuracy, using terms from the model However, this criticism dissolves with hierarchical
+Analysis by synthesis
+ comparison literature. complexity is the difference generative models, in which the priors themselves are
+Any strategy (in speech coding)
+in which the parameters of a between the recognition density and the prior density optimized26,28. In hierarchical models, causes in one
+signal coder are evaluated by on causes; it is also known as Bayesian surprise15 and is the level generate subordinate causes in a lower level; sen-
+decoding (synthesizing) the difference between the prior density — which encodes sory data per se are generated at the lowest level (BOX 2).
+signal and comparing it with beliefs about the state of the world before sensory data are Minimizing the free energy effectively optimizes empiri-
+the original input signal.
+ assimilated — and posterior beliefs, which are encoded cal priors (that is, the probability of causes at one level,
+Epistemological automata by the recognition density. Accuracy is simply the sur- given those in the level above). crucially, because empir-
+Possibly the first theory for why prise about sensations that are expected under the recog- ical priors are linked hierarchically, they are informed
+top-down influences (mediated nition density. This formulation shows that minimizing by sensory data, enabling the brain to optimize its prior
+by backward connections in
+ free energy by changing sensory data (without changing expectations online. This optimization makes every level
+the brain) might be important
+in perception and cognition. the recognition density) must increase the accuracy of in the hierarchy accountable to the others, furnishing an
+ an agent’s predictions. In short, the agent will selectively internally consistent representation of sensory causes at
+Empirical prior sample the sensory inputs that it expects. This is known multiple levels of description. Not only do hierarchical
+A prior induced by hierarchical as active inference16. An intuitive example of this process models have a key role in statistics (for example, ran-
+models; empirical priors
+provide constraints on the
+ (when it is raised into consciousness) would be feeling dom effects and parametric empirical Bayes models30,31),
+recognition density in the usual our way in darkness: we anticipate what we might touch they may also be used by the brain, given the hierarchical
+way but depend on the data. next and then try to confirm those expectations. arrangement of cortical sensory areas32–34.
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 3
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+Box 2 | Hierarchical message passing in the brain The second issue is the form of the recognition den-
+ sity that is encoded by physical attributes of the brain,
+ ξv(i) = Πv(i) εv(i) = Πv(i) (μ(iv – 1) – g(μ (i) )) such as synaptic activity, efficacy and gain. In general,
+ any density is encoded by its sufficient statistics (for exam-
+ ξx(i) = Πx(i) εx(i) = Πx(i) (Dμ(ix ) – f(μ (i) ))
+ ple, the mean and variance of a Gaussian form). The way
+ the brain encodes these statistics places important con-
+ Sensory ξv(3) straints on the sorts of schemes that underlie recognition:
+ ξv(1)
+ input ξv(2) ξx(2) they range from free-form schemes (for example, particle
+ Backward:
+ ξx(1) predictions filtering 26 and probabilistic population codes 35–38),
+ Forward:
+ prediction which use a vast number of sufficient statistics, to sim-
+ error pler forms, which make stronger assumptions about
+ μv(2) the shape of the recognition density, so that it can be
+ s~(t)
+ μv(1)
+ μx(2) encoded with a small number of sufficient statistics. The
+ μx(1) simplest assumed form is Gaussian, which requires only
+ the conditional mean or expectation — this is known
+ Lower cortical areas Higher cortical areas as the Laplace assumption39, under which the free energy
+ Synaptic plasticity μ̇v(i) = Dμv(i) − (∂vε(i) )Tξ (i) − ξv(i + 1) Synaptic gain is just the difference between the model’s predictions
+ �μθ ij = −∂θ ijεTξ μ̇x(i) = Dμx(i) − (∂xε(i) )Tξ (i) �μγi = ½tr(∂γi Π(ξξT − Π(μγ))) and the sensations or representations that are predicted.
+ Minimizing free energy then corresponds to explaining
+The figure details a neuronal architecture that optimizes the conditional expectations of away prediction errors. This is known as predictive coding
+causes in hierarchical models of sensory input. It shows the putative cells of origin of forward and has become a popular framework for understand-
+ Naturea lower
+ Reviews Neuroscience
+ | (for
+driving connections that convey prediction error (grey arrows) from area ing neuronal message passing among different levels of
+example, the lateral geniculate nucleus) to a higher area (for example, V1), and nonlinear cortical hierarchies40. In this scheme, prediction error
+backward connections (black arrows) that construct predictions41. These predictions try to units compare conditional expectations with top-down
+explain away prediction error in lower levels. In this scheme, the sources of forward and
+ predictions to elaborate a prediction error. This predic-
+backward connections are superficial and deep pyramidal cells (upper and lower triangles),
+respectively, where state units are black and error units are grey. The equations represent a
+ tion error is passed forward to drive the units in the
+gradient descent on free energy using the generative model below. The two upper equations level above that encode conditional expectations which
+describe the formation of prediction error encoded by error units, and the two lower optimize top-down predictions to explain away (reduce)
+equations represent recognition dynamics, using a gradient descent on free energy. prediction error in the level below. Here, explaining
+Generative models in the brain away just means countering excitatory bottom-up
+To evaluate free energy one needs a generative model of how the sensorium is caused. inputs to a prediction error neuron with inhibitory syn-
+Such models p(s̃,ϑ) = p(s̃ | ϑ) p(ϑ) combine the likelihood p(s̃ | ϑ) of getting some data given aptic inputs that are driven by top-down predictions
+their causes and the prior beliefs about these causes, p(ϑ). The brain has to explain (see BOX 2 and REFS 41,42 for detailed discussion). The
+complicated dynamics on continuous states with hierarchical or deep causal structure reciprocal exchange of bottom-up prediction errors and
+and may use models with the following form top-down predictions proceeds until prediction error
+ is minimized at all levels and conditional expectations
+ U I Z  X   θ   \  X Ks  I Z K X K  θ K  \ K are optimized. This scheme has been invoked to explain
+ … …
+ Z· 
+  H Z  X   θ   Y  Z· K  H Z K X K  θ K  Y K many features of early visual responses40,43 and provides
+ a plausible account of repetition suppression and mis-
+ Here, g(i) and f(i) are continuous nonlinear functions of (hidden and causal) states, with
+ Nature Reviews
+parameters θ(i). The random fluctuations Neuroscience
+ | w(t)(i)
+ z(t)(i) and play the part of observation match responses in electrophysiology 44. FIGURE 1 pro-
+noise at the sensory level and state noise at higher levels. Causal states v(t)(i) link vides an example of perceptual categorization that uses
+hierarchical levels, where the output of one level provides input to the next. Hidden this scheme.
+states x(t)(i) link dynamics over time and endow the model with memory. Message passing of this sort is consistent with func-
+Gaussian assumptions about the random fluctuations specify the likelihood tional asymmetries in real cortical hierarchies45, where
+and Gaussian assumptions about state noise furnish empirical priors in terms of forward connections (which convey prediction errors)
+predicted motion. These assumptions are encoded by their precision (or inverse are driving and backwards connections (which model
+variance), П(i)(γ), which are functions of precision parameters γ. the nonlinear generation of sensory input) have both
+recognition dynamics and prediction error driving and modulatory characteristics46. This asym-
+If we assume that neuronal activity encodes the conditional expectation of states, then metrical message passing is also a characteristic feature
+recognition can be formulated as a gradient descent on free energy. Under Gaussian of adaptive resonance theory 47,48, which has formal simi-
+assumptions, these recognition dynamics can be expressed compactly in terms larities to predictive coding.
+of precision-weighted prediction errors ξ(i) = П(i)(ε)(i) on the causal states and motion of
+ In summary, the theme underlying the Bayesian brain
+hidden states. The ensuing equations (see the figure) suggest two neuronal populations
+that exchange messages: causal or hidden-state units encoding expected states and and predictive coding is that the brain is an inference
+error units encoding prediction error. Under hierarchical models, error units receive engine that is trying to optimize probabilistic representa-
+messages from the state units in the same level and the level above, whereas state units tions of what caused its sensory input. This optimization
+are driven by error units in the same level and the level below. These provide bottom-up can be finessed using a (variational free-energy) bound
+messages that drive conditional expectations μ(i) towards better predictions, which on surprise. In short, the free-energy principle entails
+explain away prediction error. These top-down predictions correspond to g(μ(i)) and f(μ(i)). the Bayesian brain hypothesis and can be implemented
+This scheme suggests that the only connections that link levels are forward connections by the many schemes considered in this field. Almost
+conveying prediction error to state units and reciprocal backward connections that invariably, these involve some form of message passing
+mediate predictions. See REFS 42,130 for details. Figure is modified from REF. 42. or belief propagation among brain areas or units. This
+
+
+4 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+ REVIEWS
+
+ a Perceptual inference allows us to connect the free-energy principle to another
+ Vocal centre Syrinx Sonogram principled approach to sensory processing, namely
+ information theory.
+
+ The principle of efficient coding
+ The principle of efficient coding suggests that the brain
+ optimizes the mutual information (that is, the mutual
+ predictability) between the sensorium and its internal
+ v=
+ v1 representation, under constraints on the efficiency of
+ v2 those representations. This line of thinking was articu-
+ lated by Barlow 49 in terms of a redundancy reduction
+ principle (or principle of efficient coding) and formal-
+ ized later in terms of the infomax principle50. It has been
+ 18x2 − 18x1 applied in machine learning 51, leading to methods
+ ẋ = f(x, v) = v1 x1 − 2x3 x1 − x2 like independent component analysis52, and in neuro-
+ 2 x1 x2 − v2 x3 biology, contributing to an understanding of the nature
+ of neuronal responses53–56. This principle is extremely
+ b Perceptual categorization effective in predicting the empirical characteristics of
+ Song a Song b Song c classical receptive fields53 and provides a principled
+ 5,000
+ explanation for sparse coding 55 and the segregation of
+ processing streams in visual hierarchies57. It has been
+
+
+Frequency (Hz)
+ 4,000
+ extended to cover dynamics and motion trajectories58,59
+ and even used to infer the metabolic constraints on neu-
+ 3,000 ronal processing 60.
+ At its simplest, the infomax principle says that
+ 2,000
+ 0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0
+ neuronal activity should encode sensory information in
+ Time (s) an efficient and parsimonious fashion. It considers the
+ mapping between one set of variables (sensory states)
+ c 50 3.5 and another (variables representing those states). At
+ c
+ 40 µv1 first glance, this seems to preclude a probabilistic repre-
+ 3
+ a b
+ sentation, because this would involve mapping between
+ 30
+
+
+ Estimated causes
+ b sensory states and a probability density. However, the
+ 2.5 a
+ 20 infomax principle can be applied to the sufficient sta-
+ c v2
+ 10 tistics of a recognition density. In this context, the info-
+ 2
+ max principle becomes a special case of the free-energy
+ 0
+ µ v1 principle, which arises when we ignore uncertainty
+ 1.5
+ –10 in probabilistic representations (and when there is no
+ action); see supplementary information s3 (box) for
+ –20 1
+ 0 0.2 0.4 0.6 0.8 1 10 15 20 25 30 35 mathematical details). This is easy to see by noting that
+ Time (s) v1 sensory signals are generated by causes. This means that it
+Figure 1 | Birdsongs and perceptual categorization. a | The generative model of is sufficient to represent the causes to predict these
+birdsong used in this simulation comprises a Lorenz attractor with two control parameters signals. More formally, the infomax principle can be
+ Nature Reviews | Neuroscience
+(or causal states) (v1,v2), which, in turn, delivers two control parameters (not shown) to a understood in terms of the decomposition of free energy
+synthetic syrinx to produce ‘chirps’ that were modulated in amplitude and frequency (an into complexity and accuracy: mutual information is
+example is shown as a sonogram). The chirps were then presented as a stimulus to a
+ optimized when conditional expectations maximize
+synthetic bird to see whether it could infer the underlying causal states and thereby
+categorize the song. This entails minimizing free energy by changing the internal accuracy (or minimize prediction error), and efficiency
+representation (μv1,μv2) of the control parameters. Examples of this perceptual inference or is assured by minimizing complexity. This ensures that
+categorization are shown below. b | Three simulated songs are shown in sonogram format. no excessive parameters are applied in the generative
+Each comprises a series of chirps, the frequency and number of which fall progressively model and leads to a parsimonious representation of
+from song a to song c, as a causal state (known as the Raleigh number; v1 in part a) is sensory data that conforms to prior constraints on their
+decreased. c | The graph on the left depicts the conditional expectations (μv1,μv2) of the causes. Interestingly, advanced model-optimization
+causal states, shown as a function of peristimulus time for the three songs. It shows that techniques use free-energy optimization to eliminate
+the causes are identified after around 600 ms with high conditional precision (90% redundant model parameters61, suggesting that free-
+confidence intervals are shown in grey). The graph on the right shows the conditional energy optimization might provide a nice explanation
+density on the causes shortly before the end of the peristimulus time (that is, the dotted
+ for the synaptic pruning and homeostasis that take place
+line in the left panel). The blue dots correspond to conditional expectations and the grey
+areas correspond to the 90% conditional confidence regions. Note that these encompass in the brain during neurodevelopment 62 and sleep63.
+the true values (red dots) of (v1,v2) that were used to generate the songs. These results The infomax principle pertains to a forward mapping
+illustrate the nature of perceptual categorization under the inference scheme in BOX 2: from sensory input to representations. How does this
+here, recognition corresponds to mapping from a continuously changing and chaotic square with optimizing generative models, which map
+sensory input to a fixed point in perceptual space. Figure is reproduced, with permission, from causes to sensory inputs? These perspectives can be
+from REF. 130 © (2009) Elsevier. reconciled by noting that all recognition schemes based
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 5
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+ on infomax can be cast as optimizing the parameters of a by synaptic efficacy (these are μθ in BOX 2) have to be
+ generative model64. For example, in sparse coding mod- optimized. This corresponds to optimizing connection
+ els55, the implicit priors posit independent causes that strengths in the brain — that is, plasticity that under-
+ are sampled from a heavy-tailed or sparse distribution42. lines learning. so what form would this learning take? It
+ The fact that these models predict empirically observed transpires that a gradient descent on free energy (that is,
+ receptive fields so well suggests that we are endowed changing connections to reduce free energy) is formally
+ with (or acquire) prior expectations that the causes of identical to Hebbian plasticity 28,42 (BOX 2). This is because
+ our sensations are largely independent and sparse. the parameters of the generative model determine how
+ In summary, the principle of efficient coding says expected states (synaptic activity) are mixed to form pre-
+ that the brain should optimize the mutual information dictions. put simply, when the presynaptic predictions
+ between its sensory signals and some parsimonious and postsynaptic prediction errors are highly correlated,
+ neuronal representations. This is the same as optimizing the connection strength increases, so that predictions
+ the parameters of a generative model to maximize the can suppress prediction errors more efficiently.
+ accuracy of predictions, under complexity constraints. In short, the formation of cell assemblies reflects the
+ Both are mandated by the free-energy principle, which encoding of causal regularities. This is just a restate-
+ can be regarded as a probabilistic generalization of the ment of cell assembly theory in the context of a specific
+ infomax principle. We now turn to more biologically implementation (predictive coding) of the free-energy
+Sufficient statistics
+ inspired ideas about brain function that focus on neu- principle. It should be acknowledged that the learning
+Quantities that are sufficient to
+parameterize a probability ronal dynamics and plasticity. This takes us deeper into rule in predictive coding is really a delta rule, which
+density (for example, mean and neurobiological mechanisms and the implementation of rests on Hebbian mechanisms; however, Hebb’s wider
+covariance of a Gaussian the theoretical principles outlined above. notions of cell assemblies were formulated from a non-
+density). statistical perspective. Modern reformulations suggest
+Laplace assumption
+ The cell assembly and correlation theory that both inference on states (that is, perception) and
+(Or Laplace approximation or The cell assembly theory was proposed by Hebb65 and inference on parameters (that is, learning) minimize
+method.) A saddle-point entails Hebbian — or associative — plasticity, which is a free energy (that is, minimize prediction error) and
+approximation of the integral cornerstone of use-dependent or experience-dependent serve to bound surprising exchanges with the world. so
+of an exponential function, that
+ plasticity 66, the correlation theory of von de Malsburg 67,68 what about synchronization and the selective enabling
+uses a second-order Taylor
+expansion. When the function and other formal refinements to Hebbian plasticity of synapses?
+is a probability density, the per se69. The cell assembly theory posits that groups of
+implicit assumption is that interconnected neurons are formed through a strength- Biased competition and attention
+the density is approximately ening of synaptic connections that depends on corre- causal regularities encoded by synaptic efficacy
+Gaussian.
+ lated pre- and postsynaptic activity; that is, ‘cells that fire control the deterministic evolution of states in the world.
+Predictive coding together wire together’. This enables the brain to distil However, stochastic (that is, random) fluctuations in
+A tool used in signal processing statistical regularities from the sensorium. The correla- these states play an important part in generating sen-
+for representing a signal using tion theory considers the selective enabling of synaptic sory data. Their amplitude is usually represented as pre-
+a linear predictive (generative)
+ efficacy and its plasticity (also known as metaplastic- cision (or inverse variance), which encodes the reliability
+model. It is a powerful speech
+analysis technique and was ity 70) by fast synchronous activity induced by different of prediction errors. precision is important, especially
+first considered in vision to perceptual attributes of the same object (for example, a in hierarchical schemes, because it controls the relative
+explain lateral interactions in red bus in motion). This resolves a putative deficiency influence of bottom-up prediction errors and top-down
+the retina. of classical plasticity, which cannot ascribe a presynaptic predictions. so how is precision encoded in the brain?
+Infomax
+ input to a particular cause (for example, redness) in the In predictive coding, precision modulates the amplitude
+An optimization principle for world67. The correlation theory underpins theoretical of prediction errors (these are μγ in BOX 2), so that pre-
+neural networks (or functions) treatments of synchronized brain activity and its role in diction errors with high precision have a greater impact
+that map inputs to outputs. It associating or binding attributes to specific objects or on units that encode conditional expectations. This
+says that the mapping should
+ causes68,71. Another important field that rests on associa- means that precision corresponds to the synaptic gain of
+maximize the Shannon mutual
+information between the inputs tive plasticity is the use of attractor networks as models prediction error units. The most obvious candidates for
+and outputs, subject to of memory formation and retrieval72–74. so how do corre- controlling gain (and implicitly encoding precision) are
+constraints and/or noise lations and associative plasticity figure in the free-energy classical neuromodulators like dopamine and acetylcho-
+processes. formulation? line, which provides a nice link to theories of attention
+Stochastic
+ Hitherto, we have considered only inference on states and uncertainty 75–77. Another candidate is fast synchro-
+Governed by random effects. of the world that cause sensory signals, whereby condi- nized presynaptic input that lowers effective postsynaptic
+ tional expectations about states are encoded by synaptic membrane time constants and increases synchronous
+Biased competition activity. However, the causes covered by the recognition gain78. This fits comfortably with the correlation theory
+An attentional effect mediated
+ density are not restricted to time-varying states (for and speaks to recent ideas about the role of synchronous
+by competitive interactions
+among neurons representing example, the motion of an object in the visual field): activity in mediating attentional gain79,80.
+visual stimuli; these they also include time-invariant regularities that endow In summary, the optimization of expected precision
+interactions can be biased in the world with causal structure (for example, objects in terms of synaptic gain links attention to synaptic gain
+favour of behaviourally relevant fall with constant acceleration). These regularities are and synchronization. This link is central to theories of
+stimuli by both spatial and
+non-spatial and both
+ parameters of the generative model and have to be attentional gain and biased competition80–85, particularly
+bottom-up and top-down inferred by the brain — in other words, the conditional in the context of neuromodulation86,87. The theories
+processes. expectations of these parameters that may be encoded considered so far have dealt only with perception.
+
+
+6 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+ REVIEWS
+
+ However, from the point of view of the free-energy value or surprise is determined by the form of an agent’s
+ principle, perception just makes free energy a good generative model and its implicit priors — these specify
+ proxy for surprise. To actually reduce surprise we need the value of sensory states and, crucially, are heritable
+ to act. In the next section, we retain a focus on cell through genetic and epigenetic mechanisms. This means
+ assemblies but move to the selection and reinforcement that prior expectations (that is, the primary repertoire)
+ of stimulus–response links. can prescribe a small number of attractive states with
+ innate value. In turn, this enables natural selection to
+ Neural Darwinism and value learning optimize prior expectations and ensure they are con-
+ In the theory of neuronal group selection88, the emergence sistent with the agent’s phenotype. put simply, valuable
+ of neuronal assemblies is considered in the light of selec- states are just the states that the agent expects to fre-
+ tive pressure. The theory has four elements: epigenetic quent. These expectations are constrained by the form of
+ mechanisms create a primary repertoire of neuronal its generative model, which is specified genetically and
+ connections, which are refined by experience-dependent fulfilled behaviourally, under active inference.
+ plasticity to produce a secondary repertoire of neuro- It is important to appreciate that prior expectations
+ nal groups. These are selected and maintained through include not just what will be sampled from the world but
+ reentrant signalling among neuronal groups. As in cell also how the world is sampled. This means that natural
+ assembly theory, plasticity rests on correlated pre- and selection may equip agents with the prior expectation
+ postsynaptic activity, but here it is modulated by value. that they will explore their environment until states
+ value is signalled by ascending neuromodulatory trans- with innate value are encountered. We will look at this
+ mitter systems and controls which neuronal groups more closely in the next section, where priors on motion
+ are selected and which are not. The beauty of neural through state space are cast in terms of policies in
+ Darwinism is that it nests distinct selective processes reinforcement learning.
+ within each other. In other words, it eschews a single unit Both neural Darwinism and the free-energy principle
+ of selection and exploits the notion of meta-selection try to understand somatic changes in an individual in
+ (the selection of selective mechanisms; for example, see the context of evolution: neural Darwinism appeals to
+ REF. 89). In this context, (neuronal) value confers evolu- selective processes, whereas the free energy formulation
+ tionary value (that is, adaptive fitness) by selecting neu- considers the optimization of ensemble or population
+ ronal groups that meditate adaptive stimulus–stimulus dynamics in terms of entropy and surprise. The key
+ associations and stimulus–response links. The capacity theme that emerges here is that (heritable) prior expecta-
+ of value to do this is assured by natural selection, in the tions can label things as innately valuable (unsurprising);
+ sense that neuronal value systems are themselves subject but how can simply labelling states engender adaptive
+ to selective pressure. behaviour? In the next section, we return to reinforce-
+ This theory, particularly value-dependent learning90, ment learning and related formulations of action that try
+ has deep connections with reinforcement learning and to explain adaptive behaviour purely in terms of labels
+ related approaches in engineering (see below), such as or cost functions.
+Reentrant signalling
+ dynamic programming and temporal difference mod-
+Reciprocal message passing
+among neuronal groups. els91,92. This is because neuronal value systems reinforce Optimal control theory and game theory
+ connections to themselves, thereby enabling the brain value is central to theories of brain function that are
+Reinforcement learning to label a sensory state as valuable if, and only if, it leads to based on reinforcement learning and optimum con-
+An area of machine learning another valuable state. This ensures that agents move trol. The basic notion that underpins these treatments
+concerned with how an agent
+maximizes long-term reward.
+ through a succession of states that have acquired value to is that the brain optimizes value, which is expected
+Reinforcement learning access states (rewards) with genetically specified innate reward or utility (or its complement — expected loss
+algorithms attempt to find a value. In short, the brain maximizes value, which may be or cost). This is seen in behavioural psychology as rein-
+policy that maps states of the reflected in the discharge of value systems (for example, forcement learning 98, in computational neuroscience
+world to actions performed by
+ dopaminergic systems92–96). so how does this relate to and machine learning as variants of dynamic program-
+the agent.
+ the optimization of free energy? ming such as temporal difference learning 99–101, and in
+Optimal control theory The answer is simple: value is inversely proportional economics as expected utility theory 102. The notion of
+An optimization method to surprise, in the sense that the probability of a pheno- an expected reward or cost is crucial here; this is the
+(based on the calculus of type being in a particular state increases with the value cost expected over future states, given a particular policy
+variations) for deriving an
+optimal control law in a
+ of that state. Furthermore, the evolutionary value of that prescribes action or choices. A policy specifies the
+dynamical system. A control a phenotype is the negative surprise averaged over all states to which an agent will move from any given state
+problem includes a cost the states it experiences, which is simply its negative (‘motion through state space in continuous time’). This
+function that is a function of entropy. Indeed, the whole point of minimizing free policy has to access sparse rewarding states using a cost
+state and control variables.
+ energy (and implicitly entropy) is to ensure that agents function, which only labels states as costly or not. The
+Bellman equation spend most of their time in a small number of valuable problem of how the policy is optimized is formalized
+(Or dynamic programming states. This means that free energy is the complement of in optimal control theory as the Bellman equation and its
+equation.) Named after value, and its long-term average is the complement of variants99 (see supplementary information s4 (box)),
+Richard Bellman, it is a adaptive fitness (also known as free fitness in evolution- which express value as a function of the optimal policy
+necessary condition for
+optimality associated with
+ ary biology 97). But how do agents know what is valu- and a cost function. If one can solve the Bellman equa-
+dynamic programming in able? In other words, how does one generation tell the tion, one can associate each sensory state with a value
+optimal control theory. next which states have value (that is, are unsurprising)? and optimize the policy by ensuring that the next state
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 7
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+Optimal decision theory is the most valuable of the available states. In general, because it explains why agents must minimize expected
+(Or game theory.) An area of it is impossible to solve the Bellman equation exactly, cost. Furthermore, free energy provides a quantitative
+applied mathematics but several approximations exist, ranging from simple and seamless connection between the cost functions
+concerned with identifying the Rescorla–Wagner models98 to more comprehensive for- of reinforcement learning and value in evolutionary
+values, uncertainties and other
+constraints that determine an
+ mulations like Q-learning 100. cost also has a key role in biology. Finally, the dynamical perspective provides a
+optimal decision. Bayesian decision theory, in which optimal decisions mechanistic insight into how policies are specified in the
+ minimize expected cost in the context of uncertainty brain: according to the principle of optimality99 cost is the
+Gradient ascent about outcomes; this is central to optimal decision theory rate of change of value (see supplementary information
+(Or method of steepest
+ (game theory) and behavioural economics102–104. s4 (box)), which depends on changes in sensory states.
+ascent.) A first-order
+optimization scheme that finds
+ so what does free energy bring to the table? If one This suggests that optimal policies can be prescribed by
+a maximum of a function by assumes that the optimal policy performs a gradient prior expectations about the motion of sensory states.
+changing its arguments in ascent on value, then it is easy to show that value is put simply, priors induce a fixed-point attractor, and
+proportion to the gradient of inversely proportional to surprise (see supplementary when the states arrive at the fixed point, value will stop
+the function at the current
+value. In short, a hill-climbing
+ information s4 (box)). This means that free energy is changing and cost will be minimized. A simple exam-
+scheme. The opposite scheme (an upper bound on) expected cost, which makes sense ple is shown in FIG. 2, in which a cued arm movement
+is a gradient descent. as optimal control theory assumes that action mini- is simulated using only prior expectations that the arm
+ mizes expected cost, whereas the free-energy principle will be drawn to a fixed point (the target). This figure
+ states that it minimizes free energy. This is important illustrates how computational motor control105–109 can
+ be formulated in terms of priors and the suppression of
+ sensory prediction errors (K.J.F., J. Daunizeau, J. Kilner
+ and s.J. Kiebel, unpublished observations). More gener-
+ Predictions
+ ξ(2)
+ v Prediction errors ally, it shows how rewards and goals can be considered
+ ξx(1) as prior expectations that an action is obliged to fulfil16
+ μv(1) (see also REF. 110). It also suggests how natural selection
+ ξv(1) μx(1) could optimize behaviour through the genetic specifi-
+ cation of inheritable or innate priors that constrain the
+ Movement learning of empirical priors (BOX 2) and subsequent goal-
+ V trajectory directed action.
+ svisual = + wvisual
+ J It should be noted that just expecting to be attracted
+ (0, 0)
+ Motor to some states may not be sufficient to attain those states.
+ signals x1 This is because one may have to approach attractors vicar-
+ iously through other states (for example, to avoid obsta-
+ x1 cles) or conform to physical constraints on action. These
+ sprop = + wprop J1
+ x2
+ V = (v1, v2 , v3) are some of the more difficult problems of accessing
+ ξv(1) distal rewards that reinforcement learning and opti-
+ x2 J2
+ Action
+ mum control contend with. In these circumstances,
+ a J = J1 + J2 = ( j1, j2 ) an examination of the density dynamics, on which the
+ ȧ = −∂aεTξ Jointed arm free-energy principle is based, suggests that it is sufficient
+Figure 2 | A demonstration of cued reaching movements. The lower right part of the to keep moving until an a priori attractor is encountered
+figure shows a motor plant, comprising a two-jointed arm with two hidden states, each of (see supplementary information s5 (box)). This entails
+which corresponds to a particular angular position of the two joints; the
+ Nature current
+ Reviews | position
+ Neuroscience destroying unexpected (costly) fixed points in the envi-
+of the finger (red circle) is the sum of the vectors describing the location of each joint. ronment by making them unstable (like shifting to a new
+Here, causal states in the world are the position and brightness of the target (green position when sitting uncomfortably). Mathematically,
+circle). The arm obeys Newtonian mechanics, specified in terms of angular inertia and this means adopting a policy that ensures a positive
+friction. The left part of the figure illustrates that the brain senses hidden states directly divergence in costly states (intuitively, this is like being
+in terms of proprioceptive input (Sprop) that signals the angular positions (x1,x2) of the
+ pushed through a liquid with negative viscosity or
+joints and indirectly through seeing the location of the finger in space (J1,J2). In addition,
+through visual input (Svisual) the agent senses the target location (v1,v2) and brightness (v3). friction). see FIG. 3 for a solution to the classical
+Sensory prediction errors are passed to higher brain levels to optimize the conditional mountain car problem using a simple prior that induces
+expectations of hidden states (that is, the angular position of the joints) and causal (that this sort of policy. This prior is on motion through state
+is, target) states. The ensuing predictions are sent back to suppress sensory prediction space (that is, changes in states) and enforces exploration
+errors. At the same time, sensory prediction errors are also trying to suppress themselves until an attractive state is found. priors of this sort may
+by changing sensory input through action. The grey and black lines denote reciprocal provide a principled way to understand the exploration–
+message passing among neuronal populations that encode prediction error and exploitation trade-off111–113 and related issues in evolu-
+conditional expectations; this architecture is the same as that depicted in BOX 2. The tionary biology 114. The implicit use of priors to induce
+blue lines represent descending motor control signals from sensory prediction-error dynamical instability also provides a key connection
+units. The agent’s generative model included priors on the motion of hidden states that
+ to dynamical systems theory approaches to the brain
+effectively engage an invisible elastic band between the finger and target (when the
+target is illuminated). This induces a prior expectation that the finger will be drawn to that emphasize the importance of itinerant dynamics,
+the target, when cued appropriately. The insert shows the ensuing movement trajectory metastability, self-organized criticality and winner-
+caused by action. The red circles indicate the initial and final positions of the finger, less competition115–123. These dynamical phenomena
+which reaches the target (green circle) quickly and smoothly; the blue line is the have a key role in synergetic and autopoietic accounts of
+simulated trajectory. adaptive behaviour 5,124,125.
+
+
+8 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+ REVIEWS
+
+ a b
+ The mountain car problem Loss functions (priors) Conditional expectations
+ 0.7 5 30
+
+ 0.6 0 25
+ −c(t)
+ 0.5 –5 20
+
+
+ Estimated states
+ 0.4 –10 15
+ Height
+ c(x)
+ Force –15
+ 0.3 ϕ(x) 10
+
+ 0.2 –20 5
+ μ(t)x
+ 0.1 –25 0
+
+ 0 –30 –5
+ -2 -1 0 1 2 –2 –1 0 1 2 0 20 40 60 80 100 120
+ Position (x) Position (x) Time (seconds)
+
+Principle of optimality
+An optimal policy has
+ Equations of motion Trajectories Action
+the property that whatever the
+initial state and initial decision, 2 3
+ ẋ x′
+the remaining decisions must f= = x′
+constitute an optimal policy ẋ′ −∇xϕ − 1⁄8 x′ + σ(a) 2
+with regard to the state 1
+ 1 a(t)
+
+
+ Control signal
+resulting from the first decision.
+
+
+ Velocity
+ 0 0
+Exploration–exploitation
+trade-off
+ –1
+Involves a balance between
+ –1
+exploration (of uncharted –2
+territory) and exploitation (of
+current knowledge). In –2 –3
+reinforcement learning, it has –2 –1 0 1 2 0 20 40 60 80 100 120
+been studied mainly through Position (x) Time (seconds)
+the multi-armed bandit
+problem. Figure 3 | solving the mountain car problem with prior expectations. a | How paradoxical but adaptive behaviour (for
+ example, moving away from a target to ensure that it is secured later) emerges from simple priors Nature Reviews
+ on the motion Neuroscience
+ | of hidden
+Dynamical systems theory states in the world. Shown is the landscape or potential energy function (with a minimum at position x = –0.5) that exerts
+An area of applied forces on a mountain car. The car is shown at the target position on the hill at x =1, indicated by the red circle. The equations
+mathematics that describes of motion of the car are shown below the plot. Crucially, at x = 0 the force on the car cannot be overcome by the agent,
+the behaviour of complex
+ because a squashing function –1≤σ≤1 is applied to action to prevent it being greater than 1. This means that the agent can
+(possibly chaotic) dynamical
+ access the target only by starting halfway up the left hill to gain enough momentum to carry it up the other side. b | The
+systems as described by
+differential or difference
+ results of active inference under priors that destabilize fixed points outside the target domain. The priors are encoded in a
+equations. cost function c(x) (top left), which acts like negative friction. When ‘friction’ is negative the car expects to go faster (see
+ Supplementary information S5 (box) for details). The inferred hidden states (upper right: position in blue, velocity in green
+Synergetics and negative dissipation in red) show that the car explores its landscape until it encounters the target, and that friction then
+Concerns the self-organization increases (that is, cost decreases) dramatically to prevent the car from escaping the target (by falling down the hill). The
+of patterns and structures in ensuing trajectory is shown in blue (bottom left). The paler lines provide exemplar trajectories from other trials, with
+open systems far from different starting positions. In the real world, friction is constant. However, the car ‘expects’ friction to change as it changes
+thermodynamic equilibrium. It
+ position, thus enforcing exploration or exploitation. These expectations are fulfilled by action (lower right).
+rests on the order parameter
+concept, which was generalized
+by Haken to the enslaving
+principle: that is, the dynamics
+of fast-relaxing (stable) modes In summary, optimal control and decision (game) Conclusions and future directions
+are completely determined by theory start with the notion of cost or utility and try to Although contrived to highlight commonalities, this
+the ‘slow’ dynamics of order construct value functions of states, which subsequently Review suggests that many global theories of brain
+parameters (the amplitudes of guide action. The free-energy formulation starts with function can be united under a Helmholtzian percep-
+unstable modes).
+ a free-energy bound on the value of states, which is tive of the brain as a generative model of the world it
+Autopoietic specified by priors on the motion of hidden environ- inhabits18,20,21,25 (FIG. 4); notable examples include the
+Referring to the fundamental mental states. These priors can incorporate any cost integration of the Bayesian brain and computational
+dialectic between structure function to ensure that costly states are avoided. states motor control theory, the objective functions shared
+and function.
+ with minimum cost can be set (by learning or evolu- by predictive coding and the infomax principle,
+Helmholtzian tion) in terms of prior expectations about motion and hierarchical inference and theories of attention, the
+Refers to a device or scheme the attractors that ensue. In this view, the problem of embedding of perception in natural selection and
+that uses a generative model to finding sparse rewards in the environment is nature’s the link between optimum control and more exotic
+furnish a recognition density solution to the problem of how to minimize the entropy phenomena in dynamical systems theory. The constant
+and learns hidden structures in
+data by optimizing the
+ (average surprise or free energy) of an agent’s states: by theme in all these theories is that the brain optimizes
+parameters of generative ensuring they occupy a small set of attracting (that is, a (free-energy) bound on surprise or its complement,
+models. rewarding) states. value. This manifests as perception (so as to change
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 9
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+
+ Attention and biased competition Computational motor control
+ μγ = arg min ∫dtF ȧ = −∂aεTξ
+ Optimization of synaptic gain Minimization of sensory
+ representing the precision prediction errors
+ (salience) of predictions
+ Predictive coding and hierarchical inference
+ μ̇v(i) = Dμv(i) − ∂vε (i) Tξ (i) − ξv (i + 1)
+ Associative plasticity
+ Minimization of prediction error
+ �μθ ij = −∂θ ijεTξ Optimal control and value learning
+ with recurrent message passing
+ Optimization of synaptic efficacy a, μ = arg max V (s~ | m)
+ The Bayesian brain hypothesis Optimization of a free-energy
+ Perceptual learning and memory μ = arg min D (q(ϑ) || (p(ϑ | s~ ))
+ KL
+ bound on surprise or value
+
+ μθ = arg min ∫dtF Minimizing the difference between a
+ recognition density and the conditional
+ Optimization of synaptic efficacy density on sensory causes
+ to represent causal structure
+ in the sensorium
+ The free-energy principle
+ Infomax and the redundancy
+ a, μ, m = arg min F (s~, μ | m) minimization principle
+ Probabilistic neuronal coding
+ q(ϑ ) = N ( μ, Σ)
+ Minimization of the free energy of μ = arg max {I (s~, μ ) − H(μ)}
+ sensations and the representation
+ Encoding a recognition density of their causes Maximization of the mutual
+ in terms of conditional information between sensations
+ expectations and uncertainty and representations
+ Model selection and evolution
+ m = arg min ∫dtF
+ Optimizing the agent’s model and
+ priors through neurodevelopment
+ and natural selection
+
+
+ Figure 4 | The free-energy principle and other theories. Some of the theoretical constructs considered in this Review
+ and how they relate to the free-energy principle (centre). The variables are described in BOXESNature Reviews
+ 1,2 and | Neuroscience
+ a full explanation
+ of the equations can be found in the Supplementary information S1–S4 (boxes).
+
+
+ predictions) or action (so as to change the sensations to old problems that might call for a reappraisal of
+ that are predicted). crucially, these predictions depend conventional notions, particularly in reinforcement
+ on prior expectations (that furnish policies), which learning and motor control.
+ are optimized at different (somatic and evolutionary) If the arguments underlying the free-energy principle
+ timescales and define what is valuable. hold, then the real challenge is to understand how it
+ What does the free-energy principle portend for the manifests in the brain. This speaks to a greater appre-
+ future? If its main contribution is to integrate estab- ciation of hierarchical message passing 41, the func-
+ lished theories, then the answer is probably ‘not a lot’. tional role of specific neurons and microcircuits and
+ conversely, it may provide a framework in which cur- the dynamics they support (for example, what is the
+ rent debates could be resolved, for example whether relationship between predictive coding, attention
+ dopamine encodes reward prediction error or sur- and dynamic coordination in the brain?129). Beyond
+ prise126,127 — this is particularly important for under- neuroscience, many exciting applications in engineering,
+ standing conditions like addiction, parkinson’s disease robotics, embodied cognition and evolutionary biology
+ and schizophrenia. Indeed, the free-energy formulation suggest themselves; although fanciful, it is not difficult to
+ has already been used to explain the positive symptoms imagine building little free-energy machines that garner
+ of schizophrenia in terms of false inference128. The free- and model sensory information (like our children) to
+ energy formulation could also provide new approaches maximize the evidence for their own existence.
+
+
+1. Huang, G. Is this a unified theory of the brain? paper focuses on perception and the Physics, Chemistry and Biology 3rd edn (Springer,
+ New Scientist 2658, 30–33 (2008). neurobiological infrastructures involved. New York, 1983).
+2. Friston K., Kilner, J. & Harrison, L. A free energy 3. Ashby, W. R. Principles of the self-organising dynamic 6. Kauffman, S. The Origins of Order: Self‑Organization
+ principle for the brain. J. Physiol. Paris 100, 70–87 system. J. Gen. Psychol. 37, 125–128 (1947). and Selection in Evolution (Oxford Univ. Press, Oxford,
+ (2006). 4. Nicolis, G. & Prigogine, I. Self‑Organisation in Non‑ 1993).
+ An overview of the free-energy principle that Equilibrium Systems (Wiley, New York, 1977). 7. Bernard, C. Lectures on the Phenomena Common
+ describes its motivation and relationship to 5. Haken, H. Synergistics: an Introduction. Non‑ to Animals and Plants (Thomas, Springfield,
+ generative models and predictive coding. This Equilibrium Phase Transition and Self‑Organisation in 1974).
+
+
+10 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+ REVIEWS
+
+8. Applebaum, D. Probability and Information: an 36. Zemel, R., Dayan, P. & Pouget, A. Probabilistic 60. Laughlin, S. B. Efficiency and complexity in neural
+ Integrated Approach (Cambridge Univ. Press, interpretation of population code. Neural Comput. 10, coding. Novartis Found. Symp. 239, 177–187
+ Cambridge, UK, 2008). 403–430 (1998). (2001).
+9. Evans, D. J. A non-equilibrium free energy theorem 37. Paulin, M. G. Evolution of the cerebellum as a 61. Tipping, M. E. Sparse Bayesian learning and the
+ for deterministic systems. Mol. Physics 101, neuronal machine for Bayesian state estimation. Relevance Vector Machine. J. Machine Learn. Res. 1,
+ 15551–11554 (2003). J. Neural Eng. 2, S219–S234 (2005). 211–244 (2001).
+10. Crauel, H. & Flandoli, F. Attractors for random 38. Ma, W. J., Beck, J. M., Latham, P. E. & Pouget, A. 62. Paus, T., Keshavan, M. & Giedd, J. N. Why do many
+ dynamical systems. Probab. Theory Relat. Fields 100, Bayesian inference with probabilistic population psychiatric disorders emerge during adolescence?
+ 365–393 (1994). codes. Nature Neurosci. 9, 1432–1438 (2006). Nature Rev. Neurosci. 9, 947–957 (2008).
+11. Feynman, R. P. Statistical Mechanics: a Set of Lectures 39. Friston, K., Mattout, J., Trujillo-Barreto, N., 63. Gilestro, G. F., Tononi, G. & Cirelli, C. Widespread
+ (Benjamin, Reading, Massachusetts, 1972). Ashburner, J. & Penny, W. Variational free energy and changes in synaptic markers as a function of sleep and
+12. Hinton, G. E. & von Cramp, D. Keeping neural the Laplace approximation. Neuroimage 34, wakefulness in Drosophila. Science 324, 109–112
+ networks simple by minimising the description length 220–234 (2007). (2009).
+ of weights. Proc. 6th Annu. ACM Conf. Computational 40. Rao, R. P. & Ballard, D. H. Predictive coding in the 64. Roweis, S. & Ghahramani, Z. A unifying review of
+ Learning Theory 5–13 (1993). visual cortex: a functional interpretation of some linear Gaussian models. Neural Comput. 11, 305–345
+13. MacKay. D. J. C. Free-energy minimisation algorithm extra-classical receptive field effects. Nature Neurosci. (1999).
+ for decoding and cryptoanalysis. Electron. Lett. 31, 2, 79–87 (1998). 65. Hebb, D. O. The Organization of Behaviour (Wiley,
+ 445–447 (1995). Applies predictive coding to cortical processing to New York, 1949).
+14. Neal, R. M. & Hinton, G. E. in Learning in Graphical provide a compelling account of extra-classical 66. Paulsen, O. & Sejnowski, T. J. Natural patterns of
+ Models (ed. Jordan, M. I.) 355–368 (Kluwer receptive fields in the visual system. It emphasizes activity and long-term synaptic plasticity. Curr. Opin.
+ Academic, Dordrecht, 1998). the importance of top-down projections in Neurobiol. 10, 172–179 (2000).
+15. Itti, L. & Baldi, P. Bayesian surprise attracts human providing predictions, by modelling perceptual 67. von der Malsburg, C. The Correlation Theory of Brain
+ attention. Vision Res. 49, 1295–1306 (2009). inference. Function. Internal Report 81–82, Dept. Neurobiology,
+16. Friston, K., Daunizeau, J. & Kiebel, S. Active inference 41. Mumford, D. On the computational architecture of the Max-Planck-Institute for Biophysical Chemistry
+ or reinforcement learning? PLoS ONE 4, e6421 neocortex. II. The role of cortico-cortical loops. Biol. (1981).
+ (2009). Cybern. 66, 241–251 (1992). 68. Singer, W. & Gray, C. M. Visual feature integration and
+17. Knill, D. C. & Pouget, A. The Bayesian brain: the role 42. Friston, K. Hierarchical models in the brain. PLoS the temporal correlation hypothesis. Annu. Rev.
+ of uncertainty in neural coding and computation. Comput. Biol. 4, e1000211 (2008). Neurosci. 18, 555–586 (1995).
+ Trends Neurosci. 27, 712–719 (2004). 43. Murray, S. O., Kersten, D., Olshausen, B. A., Schrater, P. 69. Bienenstock, E. L., Cooper, L. N. & Munro, P. W.
+ A nice review of Bayesian theories of perception & Woods, D. L. Shape perception reduces activity in Theory for the development of neuron selectivity:
+ and sensorimotor control. Its focus is on Bayes human primary visual cortex. Proc. Natl Acad. Sci. orientation specificity and binocular interaction in
+ optimality in the brain and the implicit nature of USA 99, 15164–15169 (2002). visual cortex. J. Neurosci. 2, 32–48 (1982).
+ neuronal representations. 44. Garrido, M. I., Kilner, J. M., Kiebel, S. J. & Friston, 70. Abraham, W. C. & Bear, M. F. Metaplasticity: the
+18. von Helmholtz, H. in Treatise on Physiological Optics K. J. Dynamic causal modeling of the response to plasticity of synaptic plasticity. Trends Neurosci. 19,
+ Vol. III 3rd edn (Voss, Hamburg, 1909). frequency deviants. J. Neurophysiol. 101, 126–130 (1996).
+19. MacKay, D. M. in Automata Studies (eds Shannon, 2620–2631 (2009). 71. Pareti, G. & De Palma, A. Does the brain oscillate?
+ C. E. & McCarthy, J.) 235–251 (Princeton Univ. Press, 45. Sherman, S. M. & Guillery, R. W. On the actions that The dispute on neuronal synchronization. Neurol. Sci.
+ Princeton, 1956). one nerve cell can have on another: distinguishing 25, 41–47 (2004).
+20. Neisser, U. Cognitive Psychology “drivers” from “modulators”. Proc. Natl Acad. Sci. USA 72. Leutgeb, S., Leutgeb, J. K., Moser, M. B. & Moser, E. I.
+ (Appleton-Century-Crofts, New York, 1967). 95, 7121–7126 (1998). Place cells, spatial maps and the population code for
+21. Gregory, R. L. Perceptual illusions and brain models. 46. Angelucci, A. & Bressloff, P. C. Contribution of memory. Curr. Opin. Neurobiol. 15, 738–746
+ Proc. R. Soc. Lond. B Biol. Sci. 171, 179–196 (1968). feedforward, lateral and feedback connections to the (2005).
+22. Gregory, R. L. Perceptions as hypotheses. Philos. classical receptive field center and extra-classical 73. Durstewitz, D. & Seamans, J. K. Beyond bistability:
+ Trans. R. Soc. Lond. B Biol. Sci. 290, 181–197 (1980). receptive field surround of primate V1 neurons. biophysics and temporal dynamics of working memory.
+23. Ballard, D. H., Hinton, G. E. & Sejnowski, T. J. Parallel Prog. Brain Res. 154, 93–120 (2006). Neuroscience 139, 119–133 (2006).
+ visual computation. Nature 306, 21–26 (1983). 47. Grossberg, S. Towards a unified theory of neocortex: 74. Anishchenko, A. & Treves, A. Autoassociative memory
+24. Kawato, M., Hayakawa, H. & Inui, T. A forward-inverse laminar cortical circuits for vision and cognition. retrieval and spontaneous activity bumps in small-
+ optics model of reciprocal connections between visual Prog. Brain Res. 165, 79–104 (2007). world networks of integrate-and-fire neurons.
+ areas. Network: Computation in Neural Systems 4, 48. Grossberg, S. & Versace, M. Spikes, synchrony, and J. Physiol. Paris 100, 225–236 (2006).
+ 415–422 (1993). attentive learning by laminar thalamocortical circuits. 75. Abbott, L. F., Varela, J. A., Sen, K. & Nelson, S. B.
+25. Dayan, P., Hinton, G. E. & Neal, R. M. The Helmholtz Brain Res. 1218, 278–312 (2008). Synaptic depression and cortical gain control. Science
+ machine. Neural Comput. 7, 889–904 (1995). 49. Barlow, H. in Sensory Communication (ed. Rosenblith, W.) 275, 220–224 (1997).
+ This paper introduces the central role of generative 217–234 (MIT Press, Cambridge, Massachusetts, 76. Yu, A. J. & Dayan, P. Uncertainty, neuromodulation
+ models and variational approaches to hierarchical 1961). and attention. Neuron 46, 681–692 (2005).
+ self-supervised learning and relates this to the 50. Linsker, R. Perceptual neural organisation: some 77. Doya, K. Metalearning and neuromodulation. Neural
+ function of bottom-up and top-down cortical approaches based on network models and Netw. 15, 495–506 (2002).
+ processing pathways. information theory. Annu. Rev. Neurosci. 13, 78. Chawla, D., Lumer, E. D. & Friston, K. J. The
+26. Lee, T. S. & Mumford, D. Hierarchical Bayesian 257–281 (1990). relationship between synchronization among neuronal
+ inference in the visual cortex. J. Opt. Soc. Am. A Opt. 51. Oja, E. Neural networks, principal components, and populations and their mean activity levels. Neural
+ Image Sci. Vis. 20, 1434–1448 (2003). subspaces. Int. J. Neural Syst. 1, 61–68 (1989). Comput. 11, 1389–1411 (1999).
+27. Kersten, D., Mamassian, P. & Yuille, A. Object 52. Bell, A. J. & Sejnowski, T. J. An information 79. Fries, P., Womelsdorf, T., Oostenveld, R. & Desimone, R.
+ perception as Bayesian inference. Annu. Rev. Psychol. maximisation approach to blind separation and blind The effects of visual stimulation and selective visual
+ 55, 271–304 (2004). de-convolution. Neural Comput. 7, 1129–1159 attention on rhythmic neuronal synchronization in
+28. Friston, K. J. A theory of cortical responses. Philos. (1995). macaque area V4. J. Neurosci. 28, 4823–4835
+ Trans. R. Soc. Lond. B Biol. Sci. 360, 815–836 53. Atick, J. J. & Redlich, A. N. What does the retina know (2008).
+ (2005). about natural scenes? Neural Comput. 4, 196–210 80. Womelsdorf, T. & Fries, P. Neuronal coherence during
+29. Beal, M. J. Variational Algorithms for Approximate (1992). selective attentional processing and sensory-motor
+ Bayesian Inference. Thesis, University College London 54. Optican, L. & Richmond, B. J. Temporal encoding of integration. J. Physiol. Paris 100, 182–193 (2006).
+ (2003). two-dimensional patterns by single units in primate 81. Desimone, R. Neural mechanisms for visual memory
+30. Efron, B. & Morris, C. Stein’s estimation rule and its inferior cortex. III Information theoretic analysis. and their role in attention. Proc. Natl Acad. Sci. USA
+ competitors – an empirical Bayes approach. J. Am. J. Neurophysiol. 57, 132–146 (1987). 93, 13494–13499 (1996).
+ Stats. Assoc. 68, 117–130 (1973). 55. Olshausen, B. A. & Field, D. J. Emergence of simple- A nice review of mnemonic effects (such as
+31. Kass, R. E. & Steffey, D. Approximate Bayesian cell receptive field properties by learning a sparse repetition suppression) on neuronal responses and
+ inference in conditionally independent hierarchical code for natural images. Nature 381, 607–609 how they bias the competitive interactions between
+ models (parametric empirical Bayes models). J. Am. (1996). stimulus representations in the cortex. It provides
+ Stat. Assoc. 407, 717–726 (1989). 56. Simoncelli, E. P. & Olshausen, B. A. Natural image a good perspective on attentional mechanisms in
+32. Zeki, S. & Shipp, S. The functional logic of cortical statistics and neural representation. Annu. Rev. the visual system that is empirically grounded.
+ connections. Nature 335, 311–317 (1988). Neurosci. 24, 1193–1216 (2001). 82. Treisman, A. Feature binding, attention and object
+ Describes the functional architecture of cortical A nice review of information theory in visual perception. Philos. Trans. R. Soc. Lond. B Biol. Sci.
+ hierarchies with a focus on patterns of anatomical processing. It covers natural scene statistics and 353, 1295–1306 (1998).
+ connections in the visual cortex. It emphasizes the empirical tests of the efficient coding hypothesis in 83. Maunsell, J. H. & Treue, S. Feature-based attention in
+ role of functional segregation and integration (that individual neurons and populations of neurons. visual cortex. Trends Neurosci. 29, 317–322 (2006).
+ is, message passing among cortical areas). 57. Friston, K. J. The labile brain. III. Transients and 84. Spratling, M. W. Predictive-coding as a model of
+33. Felleman, D. J. & Van Essen, D. C. Distributed spatio-temporal receptive fields. Philos. Trans. R. Soc. biased competition in visual attention. Vision Res. 48,
+ hierarchical processing in the primate cerebral cortex. Lond. B Biol. Sci. 355, 253–265 (2000). 1391–1408 (2008).
+ Cereb. Cortex 1, 1–47 (1991). 58. Bialek, W., Nemenman, I. & Tishby, N. Predictability, 85. Reynolds, J. H. & Heeger, D. J. The normalization
+34. Mesulam, M. M. From sensation to cognition. Brain complexity, and learning. Neural Comput. 13, model of attention. Neuron 61, 168–185 (2009).
+ 121, 1013–1052 (1998). 2409–2463 (2001). 86. Schroeder, C. E., Mehta, A. D. & Foxe, J. J.
+35. Sanger, T. Probability density estimation for the 59. Lewen, G. D., Bialek, W. & de Ruyter van Steveninck, Determinants and mechanisms of attentional
+ interpretation of neural population codes. R. R. Neural coding of naturalistic motion stimuli. modulation of neural processing. Front. Biosci. 6,
+ J. Neurophysiol. 76, 2790–2793 (1996). Network 12, 317–329 (2001). D672–D684 (2001).
+
+
+NATuRE REvIEWs | NeuroscieNce ADvANcE oNlINE puBlIcATIoN | 11
+
+ © 2010 Macmillan Publishers Limited. All rights reserved
+REVIEWS
+
+87. Hirayama, J., Yoshimoto, J. & Ishii, S. Bayesian 106. Todorov, E. & Jordan, M. I. Smoothness maximization 119. Bressler, S. L. & Tognoli, E. Operational principles of
+ representation learning in the cortex regulated by along a predefined path accurately predicts the speed neurocognitive networks. Int. J. Psychophysiol. 60,
+ acetylcholine. Neural Netw. 17, 1391–1400 (2004). profiles of complex arm movements. J. Neurophysiol. 139–148 (2006).
+88. Edelman, G. M. Neural Darwinism: selection and 80, 696–714 (1998). 120. Werner, G. Brain dynamics across levels of
+ reentrant signaling in higher brain function. Neuron 107. Tseng, Y. W., Diedrichsen, J., Krakauer, J. W., organization. J. Physiol. Paris 101, 273–279 (2007).
+ 10, 115–125 (1993). Shadmehr, R. & Bastian, A. J. Sensory prediction- 121. Pasquale, V., Massobrio, P., Bologna, L. L.,
+89. Knobloch, F. Altruism and the hypothesis of meta- errors drive cerebellum-dependent adaptation of Chiappalone, M. & Martinoia, S. Self-organization and
+ selection in human evolution. J. Am. Acad. reaching. J. Neurophysiol. 98, 54–62 (2007). neuronal avalanches in networks of dissociated cortical
+ Psychoanal. 29, 339–354 (2001). 108. Bays, P. M. & Wolpert, D. M. Computational neurons. Neuroscience 153, 1354–1369 (2008).
+90. Friston, K. J., Tononi, G., Reeke, G. N. Jr, Sporns, O. & principles of sensorimotor control that minimize 122. Kitzbichler, M. G., Smith, M. L., Christensen, S. R. &
+ Edelman, G. M. Value-dependent selection in the uncertainty and variability. J. Physiol. 578, 387–396 Bullmore, E. Broadband criticality of human brain
+ brain: simulation in a synthetic neural model. (2007). network synchronization. PLoS Comput. Biol. 5,
+ Neuroscience 59, 229–243 (1994). A nice overview of computational principles in e1000314 (2009).
+91. Sutton, R. S. & Barto, A. G. Toward a modern theory of motor control. Its focus is on representing 123. Rabinovich, M., Huerta, R. & Laurent, G. Transient
+ adaptive networks: expectation and prediction. uncertainty and optimal estimation when dynamics for neural processing. Science 321 48–50
+ Psychol. Rev. 88, 135–170 (1981). extracting the sensory information required for (2008).
+92. Montague, P. R., Dayan, P., Person, C. & Sejnowski, motor planning. 124. Tschacher, W. & Hake, H. Intentionality in non-
+ T. J. Bee foraging in uncertain environments using 109. Shadmehr, R. & Krakauer, J. W. A computational equilibrium systems? The functional aspects of self-
+ predictive Hebbian learning. Nature 377, 725–728 neuroanatomy for motor control. Exp. Brain Res. 185, organised pattern formation. New Ideas Psychol. 25,
+ (1995). 359–381 (2008). 1–15 (2007).
+ A computational treatment of behaviour that 110. Verschure, P. F., Voegtlin, T. & Douglas, R. J. 125. Maturana, H. R. & Varela, F. De máquinas y seres
+ combines ideas from optimal control theory and Environmentally mediated synergy between vivos (Editorial Universitaria, Santiago, 1972).
+ dynamic programming with the neurobiology of perception and behaviour in mobile robots. Nature English translation available in Maturana, H. R. &
+ reward. This provided an early example of value 425, 620–624 (2003). Varela, F. in Autopoiesis and Cognition (Reidel,
+ learning in the brain. 111. Cohen, J. D., McClure, S. M. & Yu, A. J. Should I stay Dordrecht, 1980).
+93. Schultz, W. Predictive reward signal of dopamine or should I go? How the human brain manages the 126. Fiorillo, C. D., Tobler, P. N. & Schultz, W. Discrete
+ neurons. J. Neurophysiol. 80, 1–27 (1998). trade-off between exploitation and exploration. Philos. coding of reward probability and uncertainty by
+94. Daw, N. D. & Doya, K. The computational Trans. R. Soc. Lond. B Biol. Sci. 362, 933–942 dopamine neurons. Science 299, 1898–1902
+ neurobiology of learning and reward. Curr. Opin. (2007). (2003).
+ Neurobiol. 16, 199–204 (2006). 112. Ishii, S., Yoshida, W. & Yoshimoto, J. Control of 127. Niv, Y., Duff, M. O. & Dayan, P. Dopamine,
+95. Redgrave, P. & Gurney, K. The short-latency dopamine exploitation-exploration meta-parameter in uncertainty and TD learning. Behav. Brain Funct. 1, 6
+ signal: a role in discovering novel actions? Nature Rev. reinforcement learning. Neural Netw. 15, 665–687 (2005).
+ Neurosci. 7, 967–975 (2006). (2002). 128. Fletcher, P. C. & Frith, C. D. Perceiving is believing: a
+96. Berridge, K. C. The debate over dopamine’s role in 113. Usher, M., Cohen, J. D., Servan-Schreiber, D., Bayesian approach to explaining the positive
+ reward: the case for incentive salience. Rajkowski, J. & Aston-Jones, G. The role of locus symptoms of schizophrenia. Nature Rev. Neurosci. 10,
+ Psychopharmacology (Berl.) 191, 391–431 (2007). coeruleus in the regulation of cognitive performance. 48–58 (2009).
+97. Sella, G. & Hirsh, A. E. The application of statistical Science 283, 549–554 (1999). 129. Phillips, W. A. & Silverstein, S. M. Convergence of
+ physics to evolutionary biology. Proc. Natl Acad. Sci. 114. Voigt, C. A., Kauffman, S. & Wang, Z. G. Rational biological and psychological perspectives on cognitive
+ USA 102, 9541–9546 (2005). evolutionary design: the theory of in vitro protein coordination in schizophrenia. Behav. Brain Sci. 26,
+98. Rescorla, R. A. & Wagner, A. R. in Classical evolution. Adv. Protein Chem. 55, 79–160 (2000). 65–82 (2003).
+ Conditioning II: Current Research and Theory (eds 115. Freeman, W. J. Characterization of state transitions in 130. Friston, K. & Kiebel, S. Cortical circuits for perceptual
+ Black, A. H. & Prokasy, W. F.) 64–99 (Appleton spatially distributed, chaotic, nonlinear, dynamical inference. Neural Netw. 22, 1093–1104 (2009).
+ Century Crofts, New York, 1972). systems in cerebral cortex. Integr. Physiol. Behav. Sci.
+99. Bellman, R. On the Theory of Dynamic Programming. 29, 294–306 (1994). Acknowledgments
+ Proc. Natl Acad. Sci. USA 38, 716–719 (1952). 116. Tsuda, I. Toward an interpretation of dynamic neural This work was funded by the Wellcome Trust. I would like to
+100. Watkins, C. J. C. H. & Dayan, P. Q-learning. Mach. activity in terms of chaotic dynamical systems. Behav. thank my colleagues at the Wellcome Trust Centre for
+ Learn. 8, 279–292 (1992). Brain Sci. 24, 793–810 (2001). Neuroimaging, the Institute of Cognitive Neuroscience and the
+101. Todorov, E. in Advances in Neural Information 117. Jirsa, V. K., Friedrich, R., Haken, H. & Kelso, J. A. Gatsby Computational Neuroscience Unit for collaborations
+ Processing Systems (eds Scholkopf, B., Platt, J. & A theoretical model of phase transitions in the human and discussions.
+ Hofmann T.) 19, 1369–1376 (MIT Press, 2006). brain. Biol. Cybern. 71, 27–35 (1994).
+102. Camerer, C. F. Behavioural studies of strategic thinking This paper develops a theoretical model (based on Competing interests statement
+ in games. Trends Cogn. Sci. 7, 225–231 (2003). synergetics and nonlinear oscillator theory) that The author declares no competing financial interests.
+103. Smith, J. M. & Price, G. R. The logic of animal conflict. reproduces observed dynamics and suggests a
+ Nature 246, 15–18 (1973). formulation of biophysical coupling among brain
+104. Nash, J. Equilibrium points in n-person games. systems. SUPPLEMENTARY INFORMATION
+ Proc. Natl Acad. Sci. USA 36, 48–49 (1950). 118. Breakspear, M. & Stam, C. J. Dynamics of a See online article: S1 (box) | S2 (box) | S3 (box) | S4 (box) |
+105. Wolpert, D. M. & Miall, R. C. Forward models for neural system with a multiscale architecture. Philos. S5 (box)
+ physiological motor control. Neural Netw. 9, Trans. R. Soc. Lond. B Biol. Sci. 360, 1051–1074 All liNks Are AcTive iN The oNliNe pdf
+ 1265–1279 (1996). (2005).
+
+
+12 | ADvANcE oNlINE puBlIcATIoN www.nature.com/reviews/neuro
+
+ © 2010 Macmillan Publishers Limited. All rights reserved

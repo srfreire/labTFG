@@ -1,0 +1,18 @@
+{
+  "available_actions": [
+    {"name": "move_up", "effect": {"type": "MoveEffect", "dx": 0, "dy": -1, "reward": 0.0}},
+    {"name": "move_down", "effect": {"type": "MoveEffect", "dx": 0, "dy": 1, "reward": 0.0}},
+    {"name": "move_left", "effect": {"type": "MoveEffect", "dx": -1, "dy": 0, "reward": 0.0}},
+    {"name": "move_right", "effect": {"type": "MoveEffect", "dx": 1, "dy": 0, "reward": 0.0}},
+    {"name": "stay", "effect": {"type": "NoopEffect", "reward": 0.0}},
+    {"name": "eat", "effect": {"type": "ConsumeEffect", "resource_type": "food", "reward": 1.0}}
+  ],
+  "resource_types": {
+    "food": {
+      "properties": {"palatability": [0.1, 1.0]},
+      "count": 5,
+      "regenerate": true
+    }
+  },
+  "grid": {"width": 10, "height": 10}
+}

@@ -1614,3 +1614,49 @@ async def test_extract_accepts_json_encoded_list_fields():
     assert len(result.relations) == 1
     assert result.relations[0].rel_type == "IMPLEMENTS"
     assert result.facts == ["TabularQLearningModel passes its generated tests."]
+
+
+@pytest.mark.asyncio
+async def test_formalizer_extract_accepts_json_encoded_list_fields():
+    """Formalizer extraction should tolerate OpenRouter stringified list fields."""
+    payload = {
+        "nodes": json.dumps(
+            [
+                {
+                    "label": "Formulation",
+                    "properties": {
+                        "slug": "weighted-food-utility",
+                        "name": "Weighted food utility",
+                        "paradigm_slug": "attribute-based-value-computation",
+                    },
+                    "natural_key": "slug",
+                }
+            ]
+        )
+        + "\n}",
+        "relations": json.dumps(
+            [
+                {
+                    "from_label": "Formulation",
+                    "from_key_value": "weighted-food-utility",
+                    "to_label": "Paradigm",
+                    "to_key_value": "attribute-based-value-computation",
+                    "rel_type": "BELONGS_TO",
+                }
+            ]
+        ),
+        "facts": json.dumps(["Weighted utility maps food attributes to choice."]),
+    }
+    client = _make_client([payload])
+
+    result = await extract(
+        "formalizer",
+        "## Formulation 1: Weighted food utility\n\nEquation: U = w r",
+        "run-1",
+        client,
+    )
+
+    assert any(node.label == "Formulation" for node in result.nodes)
+    assert len(result.relations) == 1
+    assert result.relations[0].rel_type == "BELONGS_TO"
+    assert result.facts == ["Weighted utility maps food attributes to choice."]

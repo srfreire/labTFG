@@ -1,0 +1,304 @@
+{
+  "formulation_id": "continuous-drive-gradient-reactive-policy-algebraic-geometric",
+  "paradigm": "homeostatic-reinforcement-learning",
+  "name": "Continuous Drive-Gradient Reactive Policy (Algebraic/Geometric)",
+  "description": "A memoryless, reactive policy that selects actions by computing the immediate expected drive reduction for each candidate action using a gradient-descent heuristic over the drive landscape. No Q-table or learned values are maintained — the agent computes one-step-ahead utility for each action by combining (a) the immediate drive change from eating, (b) the proximity gain toward the nearest food source weighted by current drive level (implementing alliesthesia from Cabanac 1971), and (c) the metabolic cost of staying still. Based on Keramati & Gutkin (2014) postulates P1 and P4, and Hull's (1943) drive-reduction theory. This yields a fast, interpretable agent that explicitly demonstrates state-dependent reward valuation without requiring learning.",
+  "variables": [
+    {
+      "symbol": "h_t",
+      "name": "hunger_level",
+      "description": "Current hunger deficit level. 0 = fully sated, higher = hungrier. Increases by metabolic drift each step, decreases when food is consumed.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 10.0]
+    },
+    {
+      "symbol": "h_star",
+      "name": "homeostatic_setpoint",
+      "description": "Ideal internal state (no deficit). Fixed constant.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 0.0]
+    },
+    {
+      "symbol": "D_t",
+      "name": "drive",
+      "description": "Scalar deviation cost: D(h_t) = m * |h_t - h*|^n. Monotonically increasing with deficit.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "Infinity"]
+    },
+    {
+      "symbol": "s_t",
+      "name": "position",
+      "description": "Agent's current grid position (x, y).",
+      "type": "tuple",
+      "initial_value": [0, 0],
+      "range": "grid coordinates"
+    },
+    {
+      "symbol": "R",
+      "name": "resource_positions",
+      "description": "Set of (x, y) positions currently containing food resources, read from perception.",
+      "type": "list",
+      "initial_value": [],
+      "range": "list of coordinate tuples"
+    },
+    {
+      "symbol": "d_nearest",
+      "name": "nearest_food_distance",
+      "description": "Manhattan distance from a position to the nearest food resource.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, "grid_width + grid_height"]
+    },
+    {
+      "symbol": "U_a",
+      "name": "action_utility",
+      "description": "Computed utility for each candidate action, combining drive reduction and proximity gain.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "delta_D_eat",
+      "name": "eat_drive_reduction",
+      "description": "Immediate drive reduction from eating at current position: D(h_t) - D(clip(h_t + lambda_drift - K, 0, h_max)).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": ["-Infinity", "Infinity"]
+    },
+    {
+      "symbol": "Prox_a",
+      "name": "proximity_gain",
+      "description": "Change in distance to nearest food from taking movement action a: d_nearest(s_t) - d_nearest(s_t + delta(a)). Positive = getting closer.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [-1, 1]
+    },
+    {
+      "symbol": "ate_t",
+      "name": "ate_food_flag",
+      "description": "Boolean (0 or 1) indicating successful food consumption this step.",
+      "type": "int",
+      "initial_value": 0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "n",
+      "name": "drive_exponent",
+      "default": 2,
+      "source": "Keramati & Gutkin (2014): quadratic drive"
+    },
+    {
+      "symbol": "m",
+      "name": "drive_scaling",
+      "default": 1.0,
+      "source": "Keramati & Gutkin (2014)"
+    },
+    {
+      "symbol": "K",
+      "name": "resource_nutritive_value",
+      "default": 3.0,
+      "source": "Per-resource hunger reduction"
+    },
+    {
+      "symbol": "lambda_drift",
+      "name": "metabolic_drift_rate",
+      "default": 0.1,
+      "source": "Per-timestep hunger increase"
+    },
+    {
+      "symbol": "h_star",
+      "name": "setpoint",
+      "default": 0.0,
+      "source": "Keramati & Gutkin (2014): no-deficit ideal"
+    },
+    {
+      "symbol": "h_max",
+      "name": "max_hunger",
+      "default": 10.0,
+      "source": "Simulation bound"
+    },
+    {
+      "symbol": "w_prox",
+      "name": "proximity_weight",
+      "default": 0.5,
+      "source": "Tuned: relative weight of approach behavior vs. immediate drive reduction"
+    },
+    {
+      "symbol": "beta",
+      "name": "softmax_inv_temperature",
+      "default": 5.0,
+      "source": "Controls stochasticity of action selection"
+    },
+    {
+      "symbol": "eta",
+      "name": "satiation_threshold",
+      "default": 0.5,
+      "source": "Drive level below which eating is suppressed; prevents over-consumption (Cabanac 1971 alliesthesia)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Drive function — quadratic deviation from setpoint",
+      "type": "algebraic",
+      "pseudocode": "D_t = m * abs(h_t - h_star) ** n",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Immediate drive reduction from eating (one-step lookahead with metabolic drift included)",
+      "type": "algebraic",
+      "pseudocode": "h_after_eat = clip(h_t + lambda_drift - K, 0, h_max)\ndelta_D_eat = D(h_t) - D(h_after_eat)\n# where D(x) = m * abs(x - h_star) ** n",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R3",
+      "description": "Proximity gain for movement action — reduction in Manhattan distance to nearest food",
+      "type": "algebraic",
+      "pseudocode": "# Compute position after action\ndelta_map = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}\nnew_pos = (clip(s_t[0] + dx, 0, grid_w-1), clip(s_t[1] + dy, 0, grid_h-1))\n\n# d_nearest(pos) = min Manhattan distance from pos to any food in R\n# If R is empty, d_nearest = grid_width + grid_height (large fallback)\nd_current = d_nearest(s_t)\nd_after = d_nearest(new_pos)\nProx_a = d_current - d_after",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Drive-weighted proximity utility for movement (alliesthesia modulation)",
+      "type": "algebraic",
+      "pseudocode": "U_move_a = w_prox * D_t * Prox_a\n# When D_t ≈ 0 (sated), U_move ≈ 0 regardless of proximity → alliesthesia",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R5",
+      "description": "Utility of eating — gated by satiation threshold",
+      "type": "algebraic",
+      "pseudocode": "if food_at_position and D_t > eta:\n    U_eat = delta_D_eat\nelse:\n    U_eat = -1e9  # effectively impossible",
+      "source_postulate": "P1, P4"
+    },
+    {
+      "id": "R6",
+      "description": "Utility of staying — always incurs metabolic drift cost",
+      "type": "algebraic",
+      "pseudocode": "D_after_stay = m * abs(h_t + lambda_drift - h_star) ** n\nU_stay = -(D_after_stay - D_t)\n# Always <= 0: staying only costs drive",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R7",
+      "description": "Softmax action selection over all utilities",
+      "type": "policy",
+      "pseudocode": "utilities = [U_move_up, U_move_down, U_move_left, U_move_right, U_stay, U_eat]\nmax_u = max(utilities)\nexp_vals = [exp(beta * (u - max_u)) for u in utilities]\nsum_exp = sum(exp_vals)\nprobs = [e / sum_exp for e in exp_vals]\na_t = random_choice(all_actions, probs)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "Internal state update after action (metabolic drift + consumption)",
+      "type": "update",
+      "pseudocode": "h_t = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Reactive (memoryless) policy: the agent perceives its position, hunger, and food locations, then computes a one-step utility for every action. Eating utility is the immediate drive reduction, gated by a satiation threshold to prevent over-consumption. Movement utility is the proximity gain toward the nearest food, multiplied by current drive (so a sated agent is indifferent — alliesthesia). Staying incurs metabolic drift cost. Action is sampled via softmax over utilities. No Q-table or learning is involved; after acting, only the internal hunger state is updated.",
+    "pseudocode": [
+      "# --- decide(perception) ---",
+      "s_t = (perception['x'], perception['y'])",
+      "grid_w = perception['grid_width']",
+      "grid_h = perception['grid_height']",
+      "food_list = perception['resources'].get('food', [])",
+      "R = [(f['x'], f['y']) for f in food_list]",
+      "food_at_position = (s_t[0], s_t[1]) in [(f['x'], f['y']) for f in food_list]",
+      "",
+      "# Compute current drive (R1)",
+      "D_t = m * abs(h_t - h_star) ** n",
+      "",
+      "# Helper: nearest food distance",
+      "def d_nearest(pos, R):",
+      "    if not R: return grid_w + grid_h",
+      "    return min(abs(pos[0]-r[0]) + abs(pos[1]-r[1]) for r in R)",
+      "",
+      "# Evaluate movement actions (R3, R4)",
+      "delta_map = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "utilities = {}",
+      "d_current = d_nearest(s_t, R)",
+      "for action_name, (dx, dy) in delta_map.items():",
+      "    new_x = clip(s_t[0] + dx, 0, grid_w - 1)",
+      "    new_y = clip(s_t[1] + dy, 0, grid_h - 1)",
+      "    d_after = d_nearest((new_x, new_y), R)",
+      "    Prox_a = d_current - d_after",
+      "    utilities[action_name] = w_prox * D_t * Prox_a",
+      "",
+      "# Evaluate stay (R6)",
+      "D_after_stay = m * abs(h_t + lambda_drift - h_star) ** n",
+      "utilities['stay'] = -(D_after_stay - D_t)",
+      "",
+      "# Evaluate eat (R2, R5)",
+      "if food_at_position and D_t > eta:",
+      "    h_after_eat = clip(h_t + lambda_drift - K, 0, h_max)",
+      "    D_after_eat = m * abs(h_after_eat - h_star) ** n",
+      "    utilities['eat'] = D_t - D_after_eat",
+      "else:",
+      "    utilities['eat'] = -1e9",
+      "",
+      "# Softmax action selection (R7)",
+      "all_actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "u_vals = [utilities[a] for a in all_actions]",
+      "max_u = max(u_vals)",
+      "exp_vals = [exp(beta * (u - max_u)) for u in u_vals]",
+      "sum_exp = sum(exp_vals)",
+      "probs = [e / sum_exp for e in exp_vals]",
+      "a_t = random_choice(all_actions, probs)",
+      "return Action(a_t)",
+      "",
+      "# --- update(action, reward, new_perception) ---",
+      "ate_t = 1 if (action == 'eat' and new_perception.get('last_action_result', {}).get('consumed', False)) else 0",
+      "h_t = clip(h_t + lambda_drift - K * ate_t, 0, h_max)",
+      "# No Q-table update — reactive policy. Optionally refresh R from new_perception."
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "s_t (position)": "(perception['x'], perception['y'])",
+      "R (resource_positions)": "[(f['x'], f['y']) for f in perception['resources'].get('food', [])]",
+      "food_at_position": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "ate_t": "action_name == 'eat' and last_action_result.get('consumed', False)",
+      "grid_w": "perception['grid_width']",
+      "grid_h": "perception['grid_height']"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "Internally computed as drive reduction utilities. Environment reward from ConsumeEffect (reward=1.0) is NOT used — the agent relies on its own homeostatic utility computation."
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "When hungry (high drive), agent moves toward nearest food",
+      "test_pseudocode": "set h_t = 8.0, place food 5 cells away → run 5 steps → assert Manhattan distance to food decreases"
+    },
+    {
+      "id": "B2",
+      "description": "When sated (low drive), agent is indifferent to food location (alliesthesia)",
+      "test_pseudocode": "set h_t = 0.0 → compute utilities for movement actions → assert all U_move ≈ 0 regardless of food proximity"
+    },
+    {
+      "id": "B3",
+      "description": "Agent eats when on food cell and hungry, but refuses to eat when sated (satiation gate)",
+      "test_pseudocode": "set h_t = 5.0 on food cell → assert eat selected with high probability; set h_t = 0.2 (< eta=0.5) → assert eat NOT selected"
+    },
+    {
+      "id": "B4",
+      "description": "Hunger drifts upward without food consumption",
+      "test_pseudocode": "run 50 steps without eating → assert h_t = min(50 * lambda_drift, h_max)"
+    },
+    {
+      "id": "B5",
+      "description": "Drive-proportional approach speed: higher hunger leads to more directed movement toward food",
+      "test_pseudocode": "compare P(move_toward_food) at h_t=2 vs h_t=8 → assert P is higher at h_t=8"
+    }
+  ],
+  "references": [
+    "Keramati, M. & Gutkin, B. (2014). Homeostatic reinforcement learning for integrating reward collection and physiological stability. eLife 3:e04811.",
+    "Hull, C.L. (1943). Principles of Behavior.",
+    "Cabanac, M. (1971). Physiological role of pleasure. Science."
+  ]
+}

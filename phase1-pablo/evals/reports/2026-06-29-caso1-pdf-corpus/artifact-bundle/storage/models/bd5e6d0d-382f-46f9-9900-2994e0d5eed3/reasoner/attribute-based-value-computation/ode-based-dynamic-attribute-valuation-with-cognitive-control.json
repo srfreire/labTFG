@@ -1,0 +1,346 @@
+{
+  "formulation_id": "ode-based-dynamic-attribute-valuation-with-cognitive-control",
+  "paradigm": "attribute-based-value-computation",
+  "name": "ODE-Based Dynamic Attribute Valuation with Cognitive Control",
+  "description": "Continuous-time ODE system (Euler-discretized) where attribute weights, hunger state, and a cognitive control (self-regulation) variable co-evolve. The cognitive control variable K represents dlPFC engagement that dynamically up-weights abstract/quality attributes, creating a self-regulation mechanism. When K is high, the agent favors high-palatability food (long-term quality); when K depletes, behavior shifts toward proximity-seeking (immediate reward). Attribute weights track equilibrium targets via exponential smoothing, introducing inertia — the agent cannot instantly switch behavioral strategies. A Q-learning component captures environmental structure and is blended with attribute-based values for action selection. Grounded in Rangel (2013) on dlPFC top-down modulation (P3, P5) and Rangel, Camerer & Montague (2008) on dual goal-directed/habitual systems.",
+  "variables": [
+    {
+      "symbol": "H_t",
+      "name": "hunger",
+      "description": "Internal physiological hunger drive. Rises slowly each step (metabolic cost), drops by R_food when food is consumed. Drives up the equilibrium target for w_imm.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "K_t",
+      "name": "cognitive_control",
+      "description": "Self-regulation / dlPFC engagement level. Passively recovers toward resting level K_0, depleted by c_K each decision step. Higher K boosts the abstract attribute weight.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_imm",
+      "name": "immediate_weight",
+      "description": "Dynamic weight for the immediate (proximity/hedonic) attribute. Tracks equilibrium target w_imm_star via exponential smoothing with time constant tau_w.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_abs",
+      "name": "abstract_weight",
+      "description": "Dynamic weight for the abstract (palatability/quality) attribute. Tracks equilibrium target w_abs_star. Always sums with w_imm to approximately 1.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_imm_star",
+      "name": "immediate_weight_target",
+      "description": "Equilibrium target for w_imm, computed from competition between hunger (favoring immediate) and cognitive control (favoring abstract).",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "w_abs_star",
+      "name": "abstract_weight_target",
+      "description": "Equilibrium target for w_abs, complement of w_imm_star.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "V_o",
+      "name": "option_value",
+      "description": "Attribute-based value of an option (resource), computed as weighted sum of immediate and abstract attribute values.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "Q_a",
+      "name": "q_value",
+      "description": "Learned action-value from TD(0) Q-learning. Captures environmental structure (e.g., which directions tend to lead to rewards). Indexed by (state_bin, action).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "U_a",
+      "name": "blended_action_value",
+      "description": "Final action value blending attribute-based V(o_a) with learned Q(a). Equal weighting: U(a) = 0.5 * V(o_a) + 0.5 * Q(a).",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-5.0, 5.0]
+    },
+    {
+      "symbol": "a_imm",
+      "name": "immediate_attribute_value",
+      "description": "Proximity-based desirability of the resource targeted by an action. Same mapping as other formulations.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "a_abs",
+      "name": "abstract_attribute_value",
+      "description": "Quality/palatability attribute of the targeted resource. Derived from food palatability property.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "eta_H",
+      "name": "hunger_rise_rate",
+      "default": 0.01,
+      "source": "Simulation metabolic timescale"
+    },
+    {
+      "symbol": "R_food",
+      "name": "hunger_restoration_from_eating",
+      "default": 0.3,
+      "source": "Simulation convention"
+    },
+    {
+      "symbol": "tau_K",
+      "name": "cognitive_control_recovery_time_constant",
+      "default": 50.0,
+      "source": "Rangel (2013): dlPFC engagement is effortful and recovers slowly"
+    },
+    {
+      "symbol": "K_0",
+      "name": "resting_cognitive_control_level",
+      "default": 0.5,
+      "source": "Moderate baseline self-regulation"
+    },
+    {
+      "symbol": "c_K",
+      "name": "control_depletion_per_step",
+      "default": 0.02,
+      "source": "Models ego-depletion / cognitive cost of abstract attribute processing (Rangel 2013)"
+    },
+    {
+      "symbol": "phi",
+      "name": "control_boost_to_abstract_weight",
+      "default": 1.5,
+      "source": "Rangel (2013): dlPFC amplifies health/abstract attribute weighting"
+    },
+    {
+      "symbol": "tau_w",
+      "name": "weight_dynamics_time_constant",
+      "default": 5.0,
+      "source": "Determines how quickly weights track state changes; moderate inertia"
+    },
+    {
+      "symbol": "beta",
+      "name": "softmax_inverse_temperature",
+      "default": 5.0,
+      "source": "Standard action selection parameter"
+    },
+    {
+      "symbol": "alpha_Q",
+      "name": "q_learning_rate",
+      "default": 0.1,
+      "source": "Standard TD learning rate"
+    },
+    {
+      "symbol": "gamma",
+      "name": "q_discount_factor",
+      "default": 0.9,
+      "source": "Standard temporal discounting for Q-learning"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Hunger dynamics (Euler-discretized ODE). Hunger rises by eta_H each step and drops by R_food when food is consumed. Clipped to [0, 1].",
+      "type": "ODE",
+      "pseudocode": "# dH/dt = eta_H - R_food * ate\nate = 1 if (action == 'eat' and consumed) else 0\nH_t = clip(H_t + eta_H - R_food * ate, 0.0, 1.0)",
+      "source_postulate": "P5"
+    },
+    {
+      "id": "R2",
+      "description": "Cognitive control dynamics (Euler-discretized ODE). K passively recovers toward resting level K_0 with time constant tau_K, and is depleted by c_K every step (representing the ongoing cost of deliberation).",
+      "type": "ODE",
+      "pseudocode": "# dK/dt = (K_0 - K) / tau_K - c_K\nK_t = clip(K_t + (K_0 - K_t) / tau_K - c_K, 0.0, 1.0)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R3",
+      "description": "Compute equilibrium target weights from hunger-control competition. Hunger pushes w_imm_star up; cognitive control pushes w_abs_star up. Targets always sum to 1.",
+      "type": "algebraic",
+      "pseudocode": "denom = 2.0 + H_t + phi * K_t\nw_imm_star = (1.0 + H_t) / denom\nw_abs_star = (1.0 + phi * K_t) / denom",
+      "source_postulate": "P3, P5"
+    },
+    {
+      "id": "R4",
+      "description": "Weight dynamics (Euler-discretized exponential tracking ODE). Weights smoothly track their targets with time constant tau_w, introducing inertia.",
+      "type": "ODE",
+      "pseudocode": "# dw_i/dt = (w_i_star - w_i) / tau_w\nw_imm = w_imm + (w_imm_star - w_imm) / tau_w\nw_abs = w_abs + (w_abs_star - w_abs) / tau_w",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R5",
+      "description": "Compute attribute values for each candidate action. Immediate attribute = proximity to nearest food. Abstract attribute = palatability-derived quality.",
+      "type": "algebraic",
+      "pseudocode": "max_dist = grid_width + grid_height - 2\nfor each action a in available_actions:\n  if a == 'eat':\n    if food_at_agent_position:\n      a_imm = 1.0\n      a_abs = 2.0 * (food.palatability - 0.1) / 0.9 - 1.0\n    else:\n      a_imm = 0.0; a_abs = 0.0\n  elif a == 'stay':\n    a_imm = 0.0; a_abs = 0.0\n  else:  # movement\n    next_pos = position + direction_delta(a)\n    nearest = find_nearest_food(next_pos, food_list)\n    if nearest:\n      dist = manhattan_distance(next_pos, nearest)\n      a_imm = 1.0 - dist / max_dist\n      a_abs = 2.0 * (nearest.palatability - 0.1) / 0.9 - 1.0\n    else:\n      a_imm = 0.0; a_abs = 0.0",
+      "source_postulate": "P1, P4"
+    },
+    {
+      "id": "R6",
+      "description": "Option value as weighted linear sum of attribute values using current (inertia-smoothed) weights.",
+      "type": "algebraic",
+      "pseudocode": "V_o_a = w_imm * a_imm_a + w_abs * a_abs_a",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R7",
+      "description": "Blended action value combining attribute-based value (goal-directed) with learned Q-value (experiential). Equal weighting reflects dual-system arbitration from Rangel, Camerer & Montague (2008).",
+      "type": "algebraic",
+      "pseudocode": "U_a = 0.5 * V_o_a + 0.5 * Q_a",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R8",
+      "description": "Softmax action selection over blended action values.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n  logit_a = beta * U_a\nmax_logit = max(logits)\nfor each action a:\n  prob_a = exp(logit_a - max_logit)\nprob = prob / sum(prob)\nselected_action = random_choice(actions, weights=prob)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R9",
+      "description": "Q-value update via TD(0) Q-learning after action execution and observation of reward and new state.",
+      "type": "update",
+      "pseudocode": "# State discretization for Q-table: bin position into (x, y) cells\nstate = (perception['x'], perception['y'])\nnew_state = (new_perception['x'], new_perception['y'])\nmax_Q_next = max(Q[(new_state, a_prime)] for a_prime in all_actions)\nQ[(state, selected_action)] += alpha_Q * (reward + gamma * max_Q_next - Q[(state, selected_action)])",
+      "source_postulate": "P4"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each simulation step: (1) Read perception for position, food, and derive internal state. (2) Update ODEs: hunger (R1), cognitive control (R2), weight targets (R3), weights (R4) — this is the Euler integration step. (3) For each action, compute attribute values (R5), option values (R6). (4) Retrieve Q-values and compute blended values (R7). (5) Select action via softmax (R8). After execution: (6) Update Q-values via TD learning (R9). Key differentiator: the ODE dynamics create temporal inertia in weights, and cognitive control depletion causes gradual drift from quality-seeking to proximity-seeking behavior over extended decision episodes.",
+    "pseudocode": [
+      "# --- DECIDE PHASE ---",
+      "food_list = perception['resources']['food']",
+      "pos = (perception['x'], perception['y'])",
+      "grid_w = perception['grid_width']",
+      "grid_h = perception['grid_height']",
+      "max_dist = grid_w + grid_h - 2",
+      "",
+      "# R2: Update cognitive control (ODE step)",
+      "K_t = clip(K_t + (K_0 - K_t) / tau_K - c_K, 0.0, 1.0)",
+      "",
+      "# R3: Compute target weights from hunger-control competition",
+      "denom = 2.0 + H_t + phi * K_t",
+      "w_imm_star = (1.0 + H_t) / denom",
+      "w_abs_star = (1.0 + phi * K_t) / denom",
+      "",
+      "# R4: Smooth weight tracking (ODE step)",
+      "w_imm = w_imm + (w_imm_star - w_imm) / tau_w",
+      "w_abs = w_abs + (w_abs_star - w_abs) / tau_w",
+      "",
+      "# R5: Compute attribute values for each action",
+      "actions = ['move_up', 'move_down', 'move_left', 'move_right', 'stay', 'eat']",
+      "deltas = {'move_up': (0,-1), 'move_down': (0,1), 'move_left': (-1,0), 'move_right': (1,0)}",
+      "food_at_pos = [f for f in food_list if f['x'] == pos[0] and f['y'] == pos[1]]",
+      "",
+      "action_V = {}",
+      "for a in actions:",
+      "  if a == 'eat':",
+      "    if food_at_pos:",
+      "      a_imm = 1.0",
+      "      a_abs = 2.0 * (food_at_pos[0]['palatability'] - 0.1) / 0.9 - 1.0",
+      "    else:",
+      "      a_imm = 0.0; a_abs = 0.0",
+      "  elif a == 'stay':",
+      "    a_imm = 0.0; a_abs = 0.0",
+      "  else:",
+      "    dx, dy = deltas[a]",
+      "    nx = clip(pos[0]+dx, 0, grid_w-1)",
+      "    ny = clip(pos[1]+dy, 0, grid_h-1)",
+      "    nearest = find_nearest_food((nx, ny), food_list)",
+      "    if nearest:",
+      "      dist = abs(nx-nearest['x']) + abs(ny-nearest['y'])",
+      "      a_imm = 1.0 - dist / max_dist",
+      "      a_abs = 2.0 * (nearest['palatability'] - 0.1) / 0.9 - 1.0",
+      "    else:",
+      "      a_imm = 0.0; a_abs = 0.0",
+      "",
+      "  # R6: Compute option value",
+      "  V_o = w_imm * a_imm + w_abs * a_abs",
+      "",
+      "  # R7: Blend with Q-value",
+      "  state_key = (pos[0], pos[1])",
+      "  Q_val = Q_table.get((state_key, a), 0.0)",
+      "  U_a = 0.5 * V_o + 0.5 * Q_val",
+      "  action_V[a] = U_a",
+      "",
+      "# R8: Softmax action selection",
+      "selected_action = softmax_sample(action_V, beta)",
+      "return Action(selected_action)",
+      "",
+      "# --- UPDATE PHASE (called after action execution with reward, new_perception) ---",
+      "# R1: Hunger update",
+      "ate = 1 if (selected_action == 'eat' and reward > 0) else 0",
+      "H_t = clip(H_t + eta_H - R_food * ate, 0.0, 1.0)",
+      "",
+      "# R9: Q-value TD update",
+      "state_key = (perception['x'], perception['y'])",
+      "new_state_key = (new_perception['x'], new_perception['y'])",
+      "max_Q_next = max(Q_table.get((new_state_key, a), 0.0) for a in actions)",
+      "current_Q = Q_table.get((state_key, selected_action), 0.0)",
+      "Q_table[(state_key, selected_action)] = current_Q + alpha_Q * (reward + gamma * max_Q_next - current_Q)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {'x': int, 'y': int, 'type': 'food', 'palatability': float}",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "ate_food": "last_action_result.get('consumed', False) or (reward > 0 and action == 'eat')",
+      "food_palatability": "resource['palatability'] for each resource in food_sources",
+      "step": "perception['step']  # used for tracking Q-table state"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action -> ConsumeEffect reward (1.0 on successful consumption)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Cognitive control depletes over sustained decision-making, causing gradual shift from quality-seeking to proximity-seeking behavior.",
+      "test_pseudocode": "run 200 steps without eating -> assert K_t < K_0; assert w_imm > w_abs; assert w_imm increased from initial value"
+    },
+    {
+      "id": "B2",
+      "description": "After a period of rest (not depleting K much), cognitive control recovers and the agent again prefers high-palatability food even if further away.",
+      "test_pseudocode": "deplete K to 0.1 then run 100 steps with easy food -> assert K_t recovers toward K_0; assert w_abs increases"
+    },
+    {
+      "id": "B3",
+      "description": "Weight inertia (tau_w) means sudden changes in hunger or K do not instantly reconfigure behavior — there is a smooth transition period.",
+      "test_pseudocode": "set H_t = 0.9 suddenly (was 0.2) -> assert w_imm does not jump to new equilibrium immediately; assert |w_imm(t+1) - w_imm(t)| < |w_imm_star - w_imm(t)|"
+    },
+    {
+      "id": "B4",
+      "description": "Q-learning component allows the agent to learn spatial structure (e.g., food tends to appear in certain areas), complementing the attribute-based computation.",
+      "test_pseudocode": "run 500 steps in stable environment -> assert Q-values near food locations are higher; assert agent navigates toward food more efficiently over time"
+    },
+    {
+      "id": "B5",
+      "description": "Hungry agent (high H_t) with depleted cognitive control (low K_t) strongly prefers the nearest food regardless of palatability.",
+      "test_pseudocode": "set H_t=0.95, K_t=0.05, two foods: near(low palatability) and far(high palatability) -> assert agent moves toward near food > 70% of trials"
+    },
+    {
+      "id": "B6",
+      "description": "Agent eats food when on the same cell, as the blended value of eat is high (V_o has a_imm=1.0 and Q learns positive value for eating).",
+      "test_pseudocode": "place agent on food, H_t=0.5, K_t=0.5 -> assert eat action selected with high probability"
+    }
+  ],
+  "references": [
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717-1724. DOI: 10.1038/nn.3561",
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience, 9(7), 545-556. DOI: 10.1038/nrn2357"
+  ]
+}

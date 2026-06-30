@@ -102,6 +102,34 @@ class TestRenderMarkdown:
         md = render_markdown(result)
         assert "Budget exhausted" in md
 
+    def test_memory_failure_status_rendered(self):
+        run = PipelineRunResult(
+            run_id="r-memory",
+            topic="alpha",
+            stages_run=(Stage.RESEARCH,),
+            memory_per_stage={
+                "reasoner": {
+                    "status": "failed",
+                    "error": "extraction: timed out",
+                }
+            },
+        )
+        result = SuiteResult(
+            suite=_spec(),
+            topic_results=(TopicResult(topic="alpha", run=run, assertions={}),),
+            pre_stats=None,
+            post_stats=None,
+            total_usd=0.0,
+            duration_ms=0,
+            budget_exhausted=False,
+        )
+
+        md = render_markdown(result)
+
+        assert "**Overall**: FAIL" in md
+        assert "status=failed" in md
+        assert "error=extraction: timed out" in md
+
 
 class TestRenderJson:
     def test_returns_parseable_json(self):
@@ -117,6 +145,62 @@ class TestRenderJson:
         data = json.loads(s)
         assert data["kg"]["before"]["total_nodes"] == 10
         assert data["kg"]["after"]["total_nodes"] == 15
+
+    def test_failed_run_without_assertions_is_not_passed(self):
+        run = PipelineRunResult(
+            run_id="r-failed",
+            topic="alpha",
+            stages_run=(Stage.RESEARCH,),
+            failed_at=Stage.RESEARCH,
+            error="provider limit exceeded",
+        )
+        result = SuiteResult(
+            suite=_spec(),
+            topic_results=(TopicResult(topic="alpha", run=run, assertions={}),),
+            pre_stats=None,
+            post_stats=None,
+            total_usd=0.0,
+            duration_ms=0,
+            budget_exhausted=False,
+        )
+
+        data = json.loads(render_json(result))
+
+        assert result.all_passed is False
+        assert data["all_passed"] is False
+        assert data["topics"][0]["all_passed"] is False
+
+    def test_memory_failure_without_assertions_is_not_passed(self):
+        run = PipelineRunResult(
+            run_id="r-memory",
+            topic="alpha",
+            stages_run=(Stage.RESEARCH,),
+            memory_per_stage={
+                "reasoner": {
+                    "status": "failed",
+                    "error": "extraction: timed out",
+                }
+            },
+        )
+        result = SuiteResult(
+            suite=_spec(),
+            topic_results=(TopicResult(topic="alpha", run=run, assertions={}),),
+            pre_stats=None,
+            post_stats=None,
+            total_usd=0.0,
+            duration_ms=0,
+            budget_exhausted=False,
+        )
+
+        data = json.loads(render_json(result))
+
+        assert result.all_passed is False
+        assert data["all_passed"] is False
+        assert data["topics"][0]["all_passed"] is False
+        assert data["topics"][0]["run"]["memory_succeeded"] is False
+        assert data["topics"][0]["run"]["memory_failures"] == {
+            "reasoner": "extraction: timed out"
+        }
 
     def test_kg_section_null_without_stats(self):
         s = render_json(_suite_result(with_kg_growth=False))

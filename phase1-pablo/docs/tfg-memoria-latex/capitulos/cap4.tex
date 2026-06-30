@@ -40,9 +40,10 @@ Deep reports del sample-run & 7 informes & Researcher y DeepResearcher producen 
 Formulaciones del sample-run & 7 documentos & Formalizer convierte investigación en variables, parámetros, ecuaciones y lógicas de decisión. \\ \hline
 Specs del Reasoner & 24 specs JSON & Reasoner adapta formulaciones al entorno y genera contratos implementables. \\ \hline
 Builder del sample-run & 2 modelos + 2 tests & Builder genera código Python autocontenido y pruebas asociadas. \\ \hline
-Tests de fase 1 & 112 archivos & Tests unitarios y de integración de agentes, runtime, herramientas, memoria, evals y servidor. \\ \hline
+Tests de fase 1 & 113 archivos & Tests unitarios y de integración de agentes, runtime, herramientas, memoria, evals y servidor. \\ \hline
 Tests de shared & 18 archivos & Tests de infraestructura compartida usada por la fase 1: settings, storage, base de datos, grafo, vectores y memorias. \\ \hline
-Suites YAML & 8 suites & Evals reproducibles para smoke, pipeline completo, canonicalización, recuperación, memoria temporal y crecimiento acumulativo. \\ \hline
+Suites YAML & 10 suites & Evals reproducibles para smoke, pipeline completo, corpus PDF, canonicalización, recuperación, memoria temporal y crecimiento acumulativo. \\ \hline
+Evals con corpus cerrado & 2 casos, 6 PDFs & Ejecuciones completas con búsqueda simulada, bundles de artefactos, snapshots de infraestructura y 2 informes de juez LLM. \\ \hline
 \end{tabular}
 \caption{Evidencias versionadas usadas para validar la fase 1.}
 \end{center}
@@ -268,6 +269,61 @@ El propio arnés cuenta con pruebas automáticas para el parseo de suites YAML, 
 ejecución de etapas, las aserciones, el cálculo de tiempos, los límites de
 presupuesto y la generación de reportes. Esto evita que una eval falle por un
 error del marco de evaluación en lugar de por una regresión del sistema evaluado.
+
+\subsection{Evaluación con corpus cerrado de papers}
+
+La evaluación más exigente de la fase 1 se hizo con 2 casos basados en PDFs. En
+cada caso, el sistema solo podía acceder a los papers incluidos en el ZIP de
+entrada. Para simular una búsqueda web controlada, las herramientas
+\texttt{web\_search} y \texttt{search\_papers} devolvían metadatos y snippets
+de esos documentos. Cuando el pipeline necesitaba leer un paper, la herramienta
+de papers devolvía el texto extraído completo.
+
+Esta configuración mide algo distinto a una ejecución normal. El objetivo no
+era pedir un paradigma concreto, sino comprobar si el pipeline podía descubrir
+los paradigmas relevantes, proponer formulaciones, razonar sobre un entorno,
+generar modelos y conservar todos los artefactos usando solo un corpus cerrado.
+Después se usó un LLM como juez, con el mismo prompt y la misma rúbrica para los
+2 casos. El juez revisó fidelidad al corpus, calidad de paradigmas,
+formulaciones, modelos, memoria, trazabilidad y advertencias.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{2.45cm}|>{\raggedright\arraybackslash}p{2.05cm}|>{\raggedright\arraybackslash}p{5.65cm}|} \hline
+\textbf{Caso} & \textbf{Resultado} & \textbf{Tiempo / coste} & \textbf{Evidencia generada} \\ \hline
+CASO1 & Pipeline: PASS. Juez: pass con reservas, 72/100. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs del Reasoner, 15 modelos registrados y KG de 433 nodos y 518 relaciones. \\ \hline
+CASO2 & Pipeline: PASS. Juez: pass con reservas, 78/100. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs del Reasoner, 12 modelos registrados y KG de 272 nodos y 352 relaciones. \\ \hline
+\end{tabular}
+\caption{Resultados de las evals con corpus cerrado de papers.}
+\end{center}
+\end{table}
+
+El resultado de ambos casos fue positivo, pero no perfecto. Esto es importante:
+el pipeline puede ser técnicamente correcto y aun así necesitar revisión
+científica. En CASO1, el juez detectó una spec inválida
+\path{bayesian-conflict-gated-stochastic-control}, un desajuste de registro
+en un modelo DDM, una ruta de test registrada que no existía y 173 errores de
+escritura en el grafo durante Formalizer y Reasoner. En CASO2, el juez destacó
+solapamientos de taxonomía entre homeostasis, HRL, active inference y
+predictive coding, duplicados de archivos de modelo, endpoints de postulado
+ausentes y 96 errores de endpoint en escritura de grafo.
+
+Por tanto, el veredicto pass con reservas debe leerse como una señal de
+utilidad, no como una certificación científica final. Los artefactos son
+reproducibles, auditables y suficientemente ricos para que un experto los
+revise. Sin embargo, la aceptación definitiva de paradigmas y formulaciones
+debe depender de validación experta.
+
+Las rutas versionadas de estas evidencias son:
+
+\begin{itemize}
+\item \path{phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus};
+\item \path{phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus};
+\item \path{phase1-pablo/evals/judge-reports/2026-06-29-caso1-llm-judge.md};
+\item \path{phase1-pablo/evals/judge-reports/2026-06-29-caso2-llm-judge.md};
+\item \path{phase1-pablo/evals/infra-snapshots/2026-06-29-pdf-corpus-evals.json}.
+\end{itemize}
 
 \section{Pruebas técnicas}
 

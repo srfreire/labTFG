@@ -1,0 +1,240 @@
+{
+  "formulation_id": "rescorlawagner-cached-value-agent-with-softmax-action-selection",
+  "paradigm": "pavlovian-control-of-food-approach",
+  "name": "Rescorla–Wagner Cached-Value Agent with Softmax Action Selection",
+  "description": "A Pavlovian agent that learns cached state values V(s) for each grid cell via the Rescorla–Wagner (TD(0)) prediction-error rule, then selects actions stochastically via softmax over hunger-modulated Pavlovian action values. The agent does NOT learn action–outcome mappings (no Q(s,a) table); instead, action values are derived from the Pavlovian values of destination states, implementing the 'prepared behavior' constraint (P3). Approach is hardwired toward high-value states, and hunger multiplicatively gates the effective value, capturing state-dependent Pavlovian responding (P4).",
+  "variables": [
+    {
+      "symbol": "V",
+      "name": "pavlovian_state_values",
+      "description": "Dictionary mapping grid cell (x,y) to cached expected reward. Represents the learned CS–US associative strength for each location.",
+      "type": "dict[tuple[int,int], float]",
+      "initial_value": 0.0,
+      "range": [0.0, 2.0]
+    },
+    {
+      "symbol": "delta_t",
+      "name": "reward_prediction_error",
+      "description": "Signed difference between received reward and predicted value at time t. Positive when reward exceeds expectation, negative otherwise. Encodes the dopaminergic RPE signal.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-2.0, 2.0]
+    },
+    {
+      "symbol": "h_t",
+      "name": "hunger_level",
+      "description": "Internal deprivation state normalized to [0,1]. Increases each step by alpha_h and decreases by gamma_sat upon eating. Modulates Pavlovian value gain.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "r_t",
+      "name": "reward_received",
+      "description": "Scalar food reward obtained at time t. 0 if no food eaten, r_food if food consumed via eat action.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "Q_Pav",
+      "name": "pavlovian_action_values",
+      "description": "Effective value of each action under Pavlovian control, computed as hunger-modulated V(s_a) minus movement cost. Not stored persistently; recomputed each step.",
+      "type": "dict[str, float]",
+      "initial_value": 0.0,
+      "range": [-Infinity, Infinity]
+    },
+    {
+      "symbol": "P_a",
+      "name": "action_probabilities",
+      "description": "Softmax probability distribution over available actions. Recomputed each step from Q_Pav values.",
+      "type": "dict[str, float]",
+      "initial_value": null,
+      "range": [0.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "alpha",
+      "name": "learning_rate",
+      "default": 0.15,
+      "source": "Empirically validated range 0.01–0.5 for Pavlovian conditioning; Rescorla & Wagner (1972) as cited in Rangel (2013)"
+    },
+    {
+      "symbol": "beta",
+      "name": "inverse_temperature",
+      "default": 5.0,
+      "source": "Standard softmax exploration parameter; validated in prior pipeline runs"
+    },
+    {
+      "symbol": "r_food",
+      "name": "food_reward_magnitude",
+      "default": 1.0,
+      "source": "Matches env_spec ConsumeEffect reward of 1.0"
+    },
+    {
+      "symbol": "alpha_h",
+      "name": "hunger_increment_rate",
+      "default": 0.02,
+      "source": "Per-step hunger growth reflecting metabolic demand; calibrated for 10x10 grid"
+    },
+    {
+      "symbol": "gamma_sat",
+      "name": "satiation_decrement",
+      "default": 0.20,
+      "source": "Hunger reduction upon eating; calibrated so ~5 meals achieve full satiation from h=1.0"
+    },
+    {
+      "symbol": "mu",
+      "name": "hunger_value_gain",
+      "default": 1.5,
+      "source": "Wanting–hunger coupling; Berridge & Robinson (2003) as cited in Rangel (2013)"
+    },
+    {
+      "symbol": "c_step",
+      "name": "movement_cost",
+      "default": 0.01,
+      "source": "Small energetic cost of locomotion to break ties against aimless movement"
+    },
+    {
+      "symbol": "R_max",
+      "name": "maximum_value",
+      "default": 2.0,
+      "source": "Upper bound on V(s) for numerical stability; 2x the maximum single-step reward"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Reward prediction error: the signed difference between received reward and the cached Pavlovian value of the current cell.",
+      "type": "algebraic",
+      "pseudocode": "delta_t = r_t - V.get((x, y), 0.0)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R2",
+      "description": "Pavlovian value update via Rescorla–Wagner rule: V(s) is incremented proportionally to the prediction error, clipped to [0, R_max].",
+      "type": "update",
+      "pseudocode": "V[(x, y)] = clip(V.get((x, y), 0.0) + alpha * delta_t, 0.0, R_max)",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R3",
+      "description": "Hunger dynamics: hunger increases by alpha_h each step and decreases by gamma_sat when the agent eats, clipped to [0, 1].",
+      "type": "update",
+      "pseudocode": "ate = 1.0 if (action == 'eat' and eat_succeeded) else 0.0\nh_t = clip(h_t + alpha_h - gamma_sat * ate, 0.0, 1.0)",
+      "source_postulate": "P4"
+    },
+    {
+      "id": "R4",
+      "description": "Hunger-modulated Pavlovian action value: each action's value is the hunger-scaled V of its destination state, minus a small movement cost for movement actions.",
+      "type": "algebraic",
+      "pseudocode": "for each action a in available_actions:\n  if a == 'eat' and food_at_position:\n    Q_Pav[a] = mu * h_t * V.get((x, y), 0.0)\n  elif a == 'eat' and not food_at_position:\n    Q_Pav[a] = -1e9  # unavailable\n  elif a == 'stay':\n    Q_Pav[a] = mu * h_t * V.get((x, y), 0.0)\n  elif a is movement to valid cell (x_a, y_a):\n    Q_Pav[a] = mu * h_t * V.get((x_a, y_a), 0.0) - c_step\n  elif a is movement to invalid cell (out of bounds):\n    Q_Pav[a] = -1e9  # unavailable",
+      "source_postulate": "P1, P3"
+    },
+    {
+      "id": "R5",
+      "description": "Softmax action selection: action probabilities are proportional to exp(beta * Q_Pav(a)), implementing stochastic Pavlovian approach biased toward high-value states.",
+      "type": "algebraic",
+      "pseudocode": "max_q = max(Q_Pav.values())  # for numerical stability\nfor a in available_actions:\n  P_a[a] = exp(beta * (Q_Pav[a] - max_q))\nZ = sum(P_a.values())\nfor a in available_actions:\n  P_a[a] = P_a[a] / Z\nselected_action = random_choice(actions, weights=P_a)",
+      "source_postulate": "P1, P3"
+    }
+  ],
+  "decision_logic": {
+    "description": "Pavlovian agent decision cycle: perceive environment, compute destination-state values for all actions, apply hunger modulation, select action via softmax, then update cached values and hunger after observing outcome. The agent has no model of action-outcome contingencies — it only learns state values V(s) and is hardwired to approach high-V states.",
+    "pseudocode": [
+      "# 1. PERCEIVE",
+      "pos = (perception['x'], perception['y'])",
+      "food_list = perception['resources'].get('food', [])",
+      "food_positions = set((f['x'], f['y']) for f in food_list)",
+      "food_at_position = pos in food_positions",
+      "grid_w, grid_h = perception['grid_width'], perception['grid_height']",
+      "",
+      "# 2. COMPUTE DESTINATION CELLS for each action",
+      "destinations = {",
+      "  'move_up':    (pos[0], pos[1] - 1),",
+      "  'move_down':  (pos[0], pos[1] + 1),",
+      "  'move_left':  (pos[0] - 1, pos[1]),",
+      "  'move_right': (pos[0] + 1, pos[1]),",
+      "  'stay':       pos,",
+      "  'eat':        pos",
+      "}",
+      "",
+      "# 3. COMPUTE Q_Pav(a) for each action (R4)",
+      "Q_Pav = {}",
+      "for action_name, dest in destinations.items():",
+      "  if action_name == 'eat':",
+      "    if food_at_position:",
+      "      Q_Pav['eat'] = mu * h_t * V.get(pos, 0.0)",
+      "    else:",
+      "      Q_Pav['eat'] = -1e9",
+      "  elif action_name == 'stay':",
+      "    Q_Pav['stay'] = mu * h_t * V.get(pos, 0.0)",
+      "  else:  # movement action",
+      "    dx, dy = dest",
+      "    if 0 <= dx < grid_w and 0 <= dy < grid_h:",
+      "      Q_Pav[action_name] = mu * h_t * V.get(dest, 0.0) - c_step",
+      "    else:",
+      "      Q_Pav[action_name] = -1e9",
+      "",
+      "# 4. SOFTMAX ACTION SELECTION (R5)",
+      "max_q = max(Q_Pav.values())",
+      "exp_vals = {a: exp(beta * (q - max_q)) for a, q in Q_Pav.items()}",
+      "Z = sum(exp_vals.values())",
+      "P_a = {a: v / Z for a, v in exp_vals.items()}",
+      "selected_action = random_choice(list(P_a.keys()), weights=list(P_a.values()))",
+      "",
+      "# 5. RETURN action",
+      "return Action(selected_action)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food'] — list of dicts with 'x', 'y', 'type', 'palatability'",
+      "food_at_position": "any(f['x'] == perception['x'] and f['y'] == perception['y'] for f in perception['resources']['food'])",
+      "grid_dimensions": "(perception['grid_width'], perception['grid_height'])",
+      "ate_food": "last_action_result — check if eat action succeeded (consumed == true)",
+      "reward_received": "reward argument in update() method; 1.0 from ConsumeEffect on successful eat"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward = 1.0; all other actions yield reward = 0.0"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Hunger increases without eating: hunger grows by alpha_h=0.02 per step toward 1.0",
+      "test_pseudocode": "run 50 steps without food available → assert h_t > initial_h_t and h_t approx initial_h_t + 50*0.02*(1 accounting for clip)"
+    },
+    {
+      "id": "B2",
+      "description": "Value learning at food locations: after eating at a cell, V(s) increases toward r_food=1.0",
+      "test_pseudocode": "place food at (5,5), agent eats 10 times at (5,5) → assert V[(5,5)] > 0.8"
+    },
+    {
+      "id": "B3",
+      "description": "Approach bias toward high-V cells: agent preferentially moves toward cells with higher learned V values",
+      "test_pseudocode": "set V[(3,3)]=1.0, V[(7,7)]=0.0, agent at (5,5) → over 100 trials, assert more move_left/move_up chosen than move_right/move_down"
+    },
+    {
+      "id": "B4",
+      "description": "Hunger modulates approach: higher hunger increases probability of approach actions to food-rich cells",
+      "test_pseudocode": "set h_t=0.1 vs h_t=0.9, same V map → assert P(approach_food) is higher when h_t=0.9"
+    },
+    {
+      "id": "B5",
+      "description": "Extinction: when food is removed from a previously rewarded cell, V(s) decreases over time",
+      "test_pseudocode": "train V[(5,5)]=1.0, then agent visits (5,5) 20 times without food → assert V[(5,5)] < 0.5"
+    },
+    {
+      "id": "B6",
+      "description": "Softmax stochasticity: with moderate beta, agent occasionally explores non-optimal directions",
+      "test_pseudocode": "set clear value gradient, run 100 decisions → assert at least some non-greedy actions selected"
+    }
+  ],
+  "references": [
+    "Rangel, A., Camerer, C., & Montague, P. R. (2008). A framework for studying the neurobiology of value-based decision making. Nature Reviews Neuroscience. DOI: 10.1038/nrn2357",
+    "Rangel, A. (2013). Regulation of dietary choice by the decision-making circuitry. Nature Neuroscience, 16(12), 1717–1724. DOI: 10.1038/nn.3561",
+    "Rescorla, R. A., & Wagner, A. R. (1972). A theory of Pavlovian conditioning: Variations in the effectiveness of reinforcement and nonreinforcement. As cited in Rangel (2013)."
+  ]
+}

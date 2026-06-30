@@ -113,6 +113,7 @@ class DeepResearcher:
         run_id: str | None = None,
         knowledge_tool_schema: dict[str, Any] | None = None,
         knowledge_tool_handler: Callable[[dict], Awaitable[str]] | None = None,
+        paper_search: Callable[[dict], Awaitable[str]] | None = None,
     ):
         self.client = client
         self.run_id = run_id
@@ -121,7 +122,7 @@ class DeepResearcher:
         self.tools: list[dict[str, Any]] = [WEB_SEARCH_SCHEMA, SEARCH_PAPERS_SCHEMA]
         self.registry: dict[str, Callable[[dict], Awaitable[str]]] = {
             "web_search": create_web_search(search),
-            "search_papers": create_search_papers(),
+            "search_papers": paper_search or create_search_papers(),
         }
 
         self._has_knowledge = False

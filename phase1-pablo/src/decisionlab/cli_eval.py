@@ -56,10 +56,54 @@ def _client():
     return anthropic.AsyncAnthropic()
 
 
+async def _preflight_llm(client, stages: tuple[Stage, ...]) -> None:
+    """Fail fast on unusable LLM credentials before mutating eval state."""
+    if not stages:
+        return
+    from decisionlab.config import SETTINGS
+
+    await client.messages.create(
+        model=SETTINGS.researcher.model,
+        messages=[{"role": "user", "content": "Reply OK."}],
+        max_tokens=1,
+    )
+
+
 def _search():
     from decisionlab.adapters import default_search_chain
 
     return default_search_chain()
+
+
+def _eval_search(eval_corpus: list[Path] | tuple[Path, ...]):
+    """Return (web_search, paper_search, corpus) for normal or PDF-only evals."""
+    paths = tuple(eval_corpus or ())
+    if not paths:
+        return _search(), None, None
+
+    from decisionlab.eval.corpus import EvalPaperCorpus
+
+    corpus = EvalPaperCorpus.from_archives(paths)
+    console.print(
+        f"[dim]Eval corpus enabled: {len(corpus.papers)} PDF(s), "
+        f"cache={corpus.root}[/dim]"
+    )
+    return corpus.web_search(), corpus.create_search_papers(), corpus
+
+
+def _merged_eval_corpus_paths(
+    spec: SuiteSpec, cli_paths: list[Path] | None
+) -> list[Path]:
+    """Combine suite-declared and CLI-supplied corpus paths, preserving order."""
+    out: list[Path] = []
+    seen: set[Path] = set()
+    for path in (*spec.eval_corpus_paths, *(cli_paths or [])):
+        resolved = Path(path).expanduser().resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        out.append(resolved)
+    return out
 
 
 async def _with_shared(coro_factory):
@@ -96,6 +140,20 @@ def _run(coro_factory) -> None:
             "and your network.[/bold red]"
         )
         raise typer.Exit(code=2) from None
+    except (anthropic.PermissionDeniedError, anthropic.RateLimitError):
+        console.print(
+            "[bold red]LLM provider denied the request. Check provider quota, "
+            "key limits, ANTHROPIC_API_KEY, and ANTHROPIC_BASE_URL.[/bold red]"
+        )
+        raise typer.Exit(code=2) from None
+    except anthropic.APIStatusError as exc:
+        if getattr(exc, "status_code", None) in {402, 403, 429}:
+            console.print(
+                "[bold red]LLM provider denied the request. Check provider quota, "
+                "key limits, ANTHROPIC_API_KEY, and ANTHROPIC_BASE_URL.[/bold red]"
+            )
+            raise typer.Exit(code=2) from None
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +227,17 @@ def cli_eval_run(
         "--report",
         help="Where to write report.md/json (default: evals/reports/<date>-<name>)",
     ),
+    eval_corpus: list[Path] = typer.Option(
+        None,
+        "--eval-corpus",
+        exists=True,
+        help="Zip file with PDF papers; repeat to restrict web/search_papers to a corpus.",
+    ),
+    export_bundle: bool = typer.Option(
+        False,
+        "--export-bundle",
+        help="Copy run storage, DB memory rows, KG snapshot, and corpus into the report dir.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """Run an eval suite end-to-end and write a markdown + JSON report."""
@@ -183,12 +252,30 @@ def cli_eval_run(
         spec = _replace_reset(spec, False)
 
     out_dir = report_dir or _suite_report_dir(spec.name)
+    corpus_paths = _merged_eval_corpus_paths(spec, eval_corpus)
 
     async def _factory(services):
+        search, paper_search, corpus = _eval_search(corpus_paths)
+        client = _client()
+        await _preflight_llm(client, spec.stages)
         result = await run_suite(
-            spec, services=services, client=_client(), search=_search()
+            spec,
+            services=services,
+            client=client,
+            search=search,
+            paper_search=paper_search,
         )
         write_report(result, out_dir)
+        if export_bundle or corpus is not None:
+            from decisionlab.eval.export import export_suite_artifacts
+
+            bundle = await export_suite_artifacts(
+                result,
+                services=services,
+                out_dir=out_dir / "artifact-bundle",
+                corpus=corpus,
+            )
+            console.print(f"[dim]Artifact bundle: {bundle}[/dim]")
         _print_suite_summary(result, out_dir)
         if not result.all_passed:
             raise typer.Exit(code=1)
@@ -211,6 +298,12 @@ def cli_eval_topics(
     reset_kg: bool = typer.Option(
         False, "--reset-kg", help="Wipe the KG before the first topic"
     ),
+    eval_corpus: list[Path] = typer.Option(
+        None,
+        "--eval-corpus",
+        exists=True,
+        help="Zip file with PDF papers; repeat to restrict web/search_papers to a corpus.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """Bulk-populate: run each line of *file* as a topic, no assertions."""
@@ -229,6 +322,9 @@ def cli_eval_topics(
         return
 
     async def _factory(services):
+        search, paper_search, _corpus = _eval_search(eval_corpus or [])
+        client = _client()
+        await _preflight_llm(client, stage_seq)
         if reset_kg:
             n = await kgadmin.reset(services, confirm=True)
             console.print(f"[dim]KG reset: deleted {n} nodes[/dim]")
@@ -240,8 +336,9 @@ def cli_eval_topics(
                 stages=stage_seq,
                 env_spec_path=env_spec,
                 project_root=Path("evals/runs"),
-                client=_client(),
-                search=_search(),
+                client=client,
+                search=search,
+                paper_search=paper_search,
                 reset_usage=False,
             )
             ok = "[green]ok[/green]" if result.succeeded else "[red]fail[/red]"
@@ -265,6 +362,17 @@ def cli_eval_pipeline(
         "research", "--stages", help="Comma-separated stages (default: research)"
     ),
     env_spec: Path | None = typer.Option(None, "--env-spec", help="env_spec.json"),
+    eval_corpus: list[Path] = typer.Option(
+        None,
+        "--eval-corpus",
+        exists=True,
+        help="Zip file with PDF papers; repeat to restrict web/search_papers to a corpus.",
+    ),
+    export_bundle: bool = typer.Option(
+        False,
+        "--export-bundle",
+        help="Copy run storage, DB memory rows, KG snapshot, and corpus into evals/reports.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ):
     """One-shot: run a single topic non-interactively, print summary."""
@@ -277,15 +385,29 @@ def cli_eval_pipeline(
         raise typer.Exit(code=2)
 
     async def _factory(services):
+        search, paper_search, corpus = _eval_search(eval_corpus or [])
+        client = _client()
+        await _preflight_llm(client, stage_seq)
         result = await run_pipeline(
             topic,
             services=services,
             stages=stage_seq,
             env_spec_path=env_spec,
             project_root=Path("evals/runs"),
-            client=_client(),
-            search=_search(),
+            client=client,
+            search=search,
+            paper_search=paper_search,
         )
+        if export_bundle or corpus is not None:
+            from decisionlab.eval.export import export_pipeline_artifacts
+
+            bundle = await export_pipeline_artifacts(
+                result,
+                services=services,
+                out_dir=Path("evals/reports") / result.run_id / "artifact-bundle",
+                corpus=corpus,
+            )
+            console.print(f"[dim]Artifact bundle: {bundle}[/dim]")
         console.rule(f"[bold]{topic}")
         console.print(f"run_id: {result.run_id}")
         console.print(f"paradigms: {list(result.paradigms)}")

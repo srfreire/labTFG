@@ -1,0 +1,286 @@
+{
+  "formulation_id": "continuous-free-energy-gradient-descent-with-precision-weighted-prediction-errors",
+  "paradigm": "interoceptive-active-inference",
+  "name": "Continuous Free-Energy Gradient Descent with Precision-Weighted Prediction Errors",
+  "description": "A continuous-time ODE system (discretized per step) where the agent maintains a belief state μ(t) representing its estimate of its own physiological (energy) state. The belief evolves via gradient descent on variational free energy F, which is the precision-weighted sum of squared sensory and prior prediction errors. Actions are selected by evaluating the predicted free energy under each candidate action and applying softmax selection. This implements the core perception-action loop of active inference: the agent simultaneously updates its internal model (perceptual inference via belief update) and selects actions to make sensory input conform to its interoceptive prior (active inference). The agent has no persistent Q-table or transition model — it relies purely on real-time prediction error minimization with a one-step lookahead.",
+  "variables": [
+    {
+      "symbol": "s_t",
+      "name": "interoceptive_observation",
+      "description": "Noisy sensory signal reflecting the agent's internal energy state. Derived from internal energy tracking plus Gaussian noise. Normalized to [0, 1].",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu",
+      "name": "belief_state",
+      "description": "Agent's current best estimate (posterior mean) of its hidden physiological state (energy level). Updated each step via gradient descent on free energy.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "mu_p",
+      "name": "interoceptive_prior",
+      "description": "Fixed prior belief about the ideal physiological state compatible with survival. Represents the 'fully sated' energy target.",
+      "type": "float",
+      "initial_value": 1.0,
+      "range": [0.0, 1.0]
+    },
+    {
+      "symbol": "eps_s",
+      "name": "sensory_prediction_error",
+      "description": "Mismatch between the interoceptive observation and the belief state: s(t) - mu(t). Positive means observation exceeds belief.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "eps_p",
+      "name": "prior_prediction_error",
+      "description": "Mismatch between the belief state and the interoceptive prior: mu(t) - mu_p. Positive means belief exceeds the setpoint.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [-1.0, 1.0]
+    },
+    {
+      "symbol": "F",
+      "name": "variational_free_energy",
+      "description": "Precision-weighted sum of squared prediction errors. Proxy for surprise; the quantity the agent minimizes via both perception and action.",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0.0, "inf"]
+    },
+    {
+      "symbol": "energy",
+      "name": "internal_energy",
+      "description": "Agent's internally tracked energy level. Increases when eating (by food palatability), decreases each step by metabolic cost. This is the hidden physiological state from which s(t) is derived.",
+      "type": "float",
+      "initial_value": 0.5,
+      "range": [0.0, 1.0]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "pi_s",
+      "name": "sensory_precision",
+      "default": 1.0,
+      "source": "Friston (2010): inverse variance of sensory noise; normalized default"
+    },
+    {
+      "symbol": "pi_p",
+      "name": "prior_precision",
+      "default": 2.0,
+      "source": "Petzschner et al. (2021): priors over survival-compatible states are typically strong"
+    },
+    {
+      "symbol": "kappa",
+      "name": "belief_learning_rate",
+      "default": 0.5,
+      "source": "Friston (2010): gradient descent step size on F; standard predictive coding convention"
+    },
+    {
+      "symbol": "mu_p_value",
+      "name": "interoceptive_setpoint_value",
+      "default": 1.0,
+      "source": "Represents fully sated energy level; normalized"
+    },
+    {
+      "symbol": "sigma_s",
+      "name": "sensory_noise_std",
+      "default": 0.2,
+      "source": "Petzschner et al. (2021): interoceptive signals are inherently noisy"
+    },
+    {
+      "symbol": "beta",
+      "name": "action_inverse_temperature",
+      "default": 5.0,
+      "source": "Controls stochasticity of action selection; moderate exploitation bias"
+    },
+    {
+      "symbol": "energy_gain_eat",
+      "name": "energy_gain_from_eating",
+      "default": 0.3,
+      "source": "Normalized resource gain; scaled by food palatability property from env_spec"
+    },
+    {
+      "symbol": "c_move",
+      "name": "metabolic_cost_move",
+      "default": 0.05,
+      "source": "Normalized energy cost per movement step"
+    },
+    {
+      "symbol": "c_stay",
+      "name": "metabolic_cost_stay",
+      "default": 0.02,
+      "source": "Minimal resting metabolic cost"
+    },
+    {
+      "symbol": "c_move_toward",
+      "name": "metabolic_cost_move_toward_food",
+      "default": 0.03,
+      "source": "Reduced anticipatory cost when moving toward nearest resource (Petzschner et al., 2021: anticipatory regulation)"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "description": "Internal energy dynamics: energy decreases each step by metabolic cost and increases when eating. This is the hidden physiological state the agent must infer.",
+      "type": "algebraic",
+      "pseudocode": "if last_action == 'eat' and last_action_result.consumed:\n    energy = clip(energy + energy_gain_eat * food_palatability, 0, 1)\nelif last_action in ['move_up','move_down','move_left','move_right']:\n    energy = clip(energy - c_move, 0, 1)\nelse:  # stay or failed eat\n    energy = clip(energy - c_stay, 0, 1)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R2",
+      "description": "Interoceptive observation: the agent receives a noisy readout of its internal energy state.",
+      "type": "algebraic",
+      "pseudocode": "s_t = clip(energy + random_normal(0, sigma_s), 0, 1)",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R3",
+      "description": "Sensory prediction error: mismatch between observation and belief.",
+      "type": "algebraic",
+      "pseudocode": "eps_s = s_t - mu",
+      "source_postulate": "P3"
+    },
+    {
+      "id": "R4",
+      "description": "Prior prediction error: mismatch between belief and interoceptive prior (setpoint).",
+      "type": "algebraic",
+      "pseudocode": "eps_p = mu - mu_p",
+      "source_postulate": "P2"
+    },
+    {
+      "id": "R5",
+      "description": "Variational free energy: precision-weighted sum of squared prediction errors.",
+      "type": "algebraic",
+      "pseudocode": "F = 0.5 * pi_s * eps_s**2 + 0.5 * pi_p * eps_p**2",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R6",
+      "description": "Belief update via gradient descent on free energy. The belief μ is pulled toward both the sensory observation (by sensory error) and the prior setpoint (by prior error), weighted by their respective precisions.",
+      "type": "ODE_discretized",
+      "pseudocode": "mu = clip(mu + kappa * (pi_s * eps_s - pi_p * eps_p), 0, 1)",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R7",
+      "description": "Predicted sensory outcome for each candidate action. Eating predicts energy increase; moving predicts small decrease; moving toward nearest food has reduced cost (anticipatory regulation).",
+      "type": "algebraic",
+      "pseudocode": "for each action a in available_actions:\n    if a == 'eat' and food_at_current_position:\n        s_pred[a] = clip(s_t + energy_gain_eat, 0, 1)\n    elif a in ['move_up','move_down','move_left','move_right']:\n        if a == direction_toward_nearest_food:\n            s_pred[a] = s_t - c_move_toward\n        else:\n            s_pred[a] = s_t - c_move\n    elif a == 'stay':\n        s_pred[a] = s_t - c_stay\n    if a == 'eat' and not food_at_current_position:\n        s_pred[a] = s_t - c_stay  # failed eat = stay",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R8",
+      "description": "Predicted free energy under each action: uses predicted sensory outcome to compute expected free energy.",
+      "type": "algebraic",
+      "pseudocode": "for each action a:\n    F_pred[a] = 0.5 * pi_s * (s_pred[a] - mu)**2 + 0.5 * pi_p * (mu - mu_p)**2",
+      "source_postulate": "P1"
+    },
+    {
+      "id": "R9",
+      "description": "Softmax action selection over negative predicted free energy.",
+      "type": "algebraic",
+      "pseudocode": "logits = [-beta * F_pred[a] for a in available_actions]\nprobs = softmax(logits)\nselected_action = sample_from(probs, available_actions)",
+      "source_postulate": "P1"
+    }
+  ],
+  "decision_logic": {
+    "description": "Each step: (1) Update internal energy based on last action result (R1). (2) Generate noisy interoceptive observation from energy (R2). (3) Compute sensory and prior prediction errors (R3, R4). (4) Compute current free energy (R5). (5) Update belief state via gradient descent (R6). (6) For each of the 6 available actions, predict sensory outcome (R7) and compute predicted free energy (R8). (7) Select action via softmax over negative predicted free energy (R9). The direction_toward_nearest_food is computed by finding the food resource with minimum Manhattan distance and determining which single-step action reduces that distance.",
+    "pseudocode": [
+      "# In decide(perception):",
+      "position = (perception['x'], perception['y'])",
+      "food_list = perception['resources']['food']",
+      "food_at_pos = any(f['x'] == position[0] and f['y'] == position[1] for f in food_list)",
+      "",
+      "# R1: Update energy from last action (in update() or at start of decide if first call)",
+      "# R2: Generate noisy observation",
+      "s_t = clip(energy + random_normal(0, sigma_s), 0, 1)",
+      "",
+      "# R3, R4: Prediction errors",
+      "eps_s = s_t - mu",
+      "eps_p = mu - mu_p",
+      "",
+      "# R5: Current free energy (for monitoring)",
+      "F = 0.5 * pi_s * eps_s**2 + 0.5 * pi_p * eps_p**2",
+      "",
+      "# R6: Belief update",
+      "mu = clip(mu + kappa * (pi_s * eps_s - pi_p * eps_p), 0, 1)",
+      "",
+      "# R7: Find nearest food, compute direction_toward_nearest_food",
+      "nearest_food = min(food_list, key=lambda f: manhattan_dist(position, (f['x'], f['y'])))",
+      "direction_toward_nearest_food = get_best_move_toward(position, (nearest_food['x'], nearest_food['y']))",
+      "",
+      "# R7: Predict sensory outcome for each action",
+      "s_pred = {}",
+      "for a in ['move_up','move_down','move_left','move_right','stay','eat']:",
+      "    if a == 'eat' and food_at_pos:",
+      "        s_pred[a] = clip(s_t + energy_gain_eat, 0, 1)",
+      "    elif a == 'eat' and not food_at_pos:",
+      "        s_pred[a] = s_t - c_stay",
+      "    elif a in ['move_up','move_down','move_left','move_right']:",
+      "        if a == direction_toward_nearest_food:",
+      "            s_pred[a] = s_t - c_move_toward",
+      "        else:",
+      "            s_pred[a] = s_t - c_move",
+      "    else:",
+      "        s_pred[a] = s_t - c_stay",
+      "",
+      "# R8: Predicted free energy per action",
+      "F_pred = {}",
+      "for a in actions:",
+      "    F_pred[a] = 0.5 * pi_s * (s_pred[a] - mu)**2 + 0.5 * pi_p * (mu - mu_p)**2",
+      "",
+      "# R9: Softmax selection",
+      "logits = {a: -beta * F_pred[a] for a in actions}",
+      "probs = softmax(logits)",
+      "return sample_action(probs)"
+    ]
+  },
+  "env_mapping": {
+    "perception_to_variables": {
+      "position": "(perception['x'], perception['y'])",
+      "food_sources": "perception['resources']['food']  # list of {x, y, type, palatability}",
+      "food_at_current_position": "any(f['x'] == x and f['y'] == y for f in perception['resources']['food'])",
+      "step": "perception['step']",
+      "grid_dims": "(perception['grid_width'], perception['grid_height'])",
+      "last_action_consumed": "perception['last_action_result'] — check for consumption success"
+    },
+    "actions_used": ["move_up", "move_down", "move_left", "move_right", "stay", "eat"],
+    "reward_source": "eat action → ConsumeEffect reward=1.0; energy is internally tracked (not from env reward directly)"
+  },
+  "expected_behaviors": [
+    {
+      "id": "B1",
+      "description": "Belief state converges toward interoceptive observation over time as gradient descent minimizes sensory prediction error.",
+      "test_pseudocode": "Set energy=0.3, mu=0.8. Run 20 steps without eating. Assert |mu - energy| decreases over steps."
+    },
+    {
+      "id": "B2",
+      "description": "Agent preferentially moves toward food when energy is low (high prior prediction error pulls belief below setpoint, making eat action minimize predicted free energy).",
+      "test_pseudocode": "Set energy=0.2, place food 3 steps away. Run 10 steps. Assert agent reaches food and eats."
+    },
+    {
+      "id": "B3",
+      "description": "Agent stays or wanders when energy is high (near setpoint) because predicted free energy is similar across actions.",
+      "test_pseudocode": "Set energy=0.95, mu_p=1.0. Run 20 steps. Assert agent does NOT urgently seek food; movement is less directed."
+    },
+    {
+      "id": "B4",
+      "description": "Higher prior precision pi_p increases urgency of seeking food when energy is low.",
+      "test_pseudocode": "Run two agents with pi_p=1.0 vs pi_p=4.0 both at energy=0.3. Assert high-pi_p agent reaches food faster on average."
+    },
+    {
+      "id": "B5",
+      "description": "Free energy decreases after eating (energy gain reduces prediction errors relative to setpoint).",
+      "test_pseudocode": "Record F before and after successful eat action. Assert F_after < F_before."
+    }
+  ],
+  "references": [
+    "Friston, K. (2010). The free-energy principle: a unified brain theory? Nature Reviews Neuroscience, 11, 127-138. DOI: 10.1038/nrn2787",
+    "Petzschner, F.H., Garfinkel, S.N., Paulus, M.P., Koch, C., & Khalsa, S.S. (2021). Computational Models of Interoception and Body Regulation. Trends in Neurosciences, 44(1), 63-76. DOI: 10.1016/j.tins.2020.09.012"
+  ]
+}
