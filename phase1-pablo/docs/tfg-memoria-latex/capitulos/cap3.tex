@@ -29,19 +29,22 @@ manual de piezas locales hacia el diseño y control de un sistema más amplio.
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=9mm and 10mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.1cm] (entry) {Usuario / CLI / Web / Evaluaciones};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of entry, text width=4.3cm] (router) {Router\\estados, revisión\\trazas};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below left=15mm and 18mm of router, text width=3.9cm] (agents) {Agentes\\Researcher\\Formalizer\\Reasoner\\Builder};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=15mm of router, text width=3.9cm] (artifacts) {Artefactos\\MinIO + PostgreSQL\\estado, trazas\\modelos};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below right=15mm and 18mm of router, text width=3.9cm] (memory) {Memoria\\Neo4j + Qdrant\\ciclo de vida};
-\draw[tfgarrow] (entry) -- (router);
-\draw[tfgarrow] (router) -- (agents);
-\draw[tfgarrow] (router) -- (artifacts);
-\draw[tfgarrow] (router) -- (memory);
-\end{tikzpicture}}
-\caption{Arquitectura lógica del sistema.}
+\includegraphics[width=\textwidth]{figuras/phase1-system-architecture}
+\caption{Arquitectura de sistema y entornos de ejecución.}
+\label{fig:phase1-system-architecture}
+\end{figure}
+
+La arquitectura de sistema distingue los entornos de ejecución: el usuario
+opera desde CLI, web o evaluaciones; la interfaz corre en el navegador; el
+servidor de fase 1 ejecuta FastAPI, el Router, los agentes y las herramientas;
+los almacenes compartidos corren como servicios externos al proceso; y las APIs
+externas se invocan solo desde el runtime de agentes.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figuras/phase1-software-architecture}
+\caption{Arquitectura software por componentes.}
+\label{fig:phase1-software-architecture}
 \end{figure}
 
 Esta separación responde a una necesidad práctica: las salidas de los modelos
@@ -54,23 +57,15 @@ correcto.
 
 El problema no es solo generar código, sino transformar conocimiento científico
 en comportamiento simulado. Esa transformación tiene varios cambios de
-representación:
+representación. La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo
+como una actividad completa, con las revisiones humanas separadas de los pasos
+automáticos del sistema.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.92\textwidth}{!}{%
-\begin{tikzpicture}[node distance=5mm and 8mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.8cm] (problem) {Problema en lenguaje natural};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of problem, text width=3.8cm] (paradigms) {Paradigmas científicos};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of paradigms, text width=3.8cm] (formulas) {Formulaciones matemáticas};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formulas, text width=3.8cm] (specs) {Specs adaptadas al entorno};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, left=of specs, text width=3.8cm] (models) {Modelos Python + pruebas};
-\draw[tfgarrow] (problem) -- (paradigms);
-\draw[tfgarrow] (paradigms) -- (formulas);
-\draw[tfgarrow] (formulas) -- (specs);
-\draw[tfgarrow] (specs) -- (models);
-\end{tikzpicture}}
-\caption{Transformación conceptual del pipeline.}
+\includegraphics[width=\textwidth]{figuras/phase1-pipeline-activity}
+\caption{Actividad del pipeline con revisión humana.}
+\label{fig:phase1-pipeline-activity}
 \end{figure}
 
 Cada cambio de representación reduce ambigüedad. La investigación decide qué
@@ -82,55 +77,19 @@ un único agente, sería difícil saber si un fallo procede de una mala fuente
 bibliográfica, una formulación incoherente, una mala adaptación al entorno o un
 bug en Python.
 
-\section{Orquestación del pipeline}
+\section{Router}
 
-\subsection{Router y máquina de estados}
+\subsection{Responsabilidad y flujo de control}
 
 El Router es el coordinador central. Se implementa como una máquina de estados
 explícita, no como una planificación libre de un LLM. Esta decisión permite
 reanudar ejecuciones, registrar eventos, controlar revisiones humanas y colocar
 la escritura de memoria solo después de que una salida haya sido aceptada.
 
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=8mm and 7mm]
-\node[tfgsmallbox, fill=tfgBlue!12, draw=tfgBlue] (c) {CLASSIFY};
-\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, right=of c] (r) {RESEARCH};
-\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of r] (rr) {REVIEW};
-\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rr] (mr) {MEMORY};
-
-\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of r] (f) {FORMALIZE};
-\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of f] (rf) {REVIEW};
-\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rf] (mf) {MEMORY};
-\node[tfgsmallbox, fill=tfgBlue!12, draw=tfgBlue, below=of f] (env) {GET ENV};
-
-\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of env] (reason) {REASON};
-\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of reason] (rreason) {REVIEW};
-\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rreason] (mreason) {MEMORY};
-
-\node[tfgsmallbox, fill=tfgGreen!12, draw=tfgGreen, below=of reason] (build) {BUILD};
-\node[tfgsmallbox, fill=tfgOrange!15, draw=tfgOrange, right=of build] (rbuild) {REVIEW};
-\node[tfgsmallbox, fill=tfgPurple!13, draw=tfgPurple, right=of rbuild] (mbuild) {MEMORY};
-\node[tfgsmallbox, fill=tfgRed!10, draw=tfgRed, right=of mbuild] (done) {DONE};
-
-\draw[tfgarrow] (c) -- (r);
-\draw[tfgarrow] (r) -- (rr);
-\draw[tfgarrow] (rr) -- (mr);
-\draw[tfgarrow] (r) -- (f);
-\draw[tfgarrow] (f) -- (rf);
-\draw[tfgarrow] (rf) -- (mf);
-\draw[tfgarrow] (f) -- (env);
-\draw[tfgarrow] (env) -- (reason);
-\draw[tfgarrow] (reason) -- (rreason);
-\draw[tfgarrow] (rreason) -- (mreason);
-\draw[tfgarrow] (reason) -- (build);
-\draw[tfgarrow] (build) -- (rbuild);
-\draw[tfgarrow] (rbuild) -- (mbuild);
-\draw[tfgarrow] (mbuild) -- (done);
-\end{tikzpicture}}
-\caption{Máquina de estados simplificada.}
-\end{figure}
+La actividad general de la Figura~\ref{fig:phase1-pipeline-activity} resume
+esas transiciones. El Router no decide de nuevo el orden del pipeline en cada
+turno: avanza por estados conocidos y solo activa rutas de corrección cuando
+una revisión o una validación lo exige.
 
 Las etapas \texttt{MEMORY\_*} son condicionales: se ejecutan cuando la
 infraestructura de memoria está disponible. Si Neo4j, Qdrant o los embeddings no
@@ -144,7 +103,9 @@ Además, emite trazas de agentes, herramientas y artefactos. Esto permite
 reconstruir qué ocurrió en una ejecución concreta y continuar desde el estado
 persistido si el proceso se interrumpe.
 
-\subsection{Por qué hay cuatro agentes principales}
+\section{Agentes, subagentes y herramientas}
+
+\subsection{Componentes de generación}
 
 El sistema tiene cuatro agentes principales de generación:
 \textit{Researcher}, \textit{Formalizer}, \textit{Reasoner} y
@@ -154,14 +115,20 @@ cuatro agentes se debe a que cada uno resuelve un tipo de problema distinto.
 
 \begin{table}[H]
 \begin{center}
-\begin{tabular}{|p{2.6cm}|p{4.2cm}|p{5.6cm}|} \hline
-\textbf{Agente} & \textbf{Pregunta que resuelve} & \textbf{Razón de separación} \\ \hline
-Researcher & Qué paradigmas científicos explican el problema. & Requiere búsqueda, lectura de literatura y síntesis científica. \\ \hline
-Formalizer & Cómo se expresan esos paradigmas con variables, parámetros y ecuaciones. & Requiere razonamiento matemático y comparación entre formulaciones alternativas. \\ \hline
-Reasoner & Cómo se implementa una formulación en un entorno concreto. & Requiere mapear conceptos abstractos a percepciones, acciones y recompensas reales. \\ \hline
-Builder & Cómo se traduce una especificación a código probado. & Requiere escribir Python, respetar contratos, generar tests y corregir fallos ejecutables. \\ \hline
+\begin{tabular}{|p{3.3cm}|p{9.0cm}|} \hline
+\textbf{Componente} & \textbf{Descripción} \\ \hline
+Classifier & Intenta asociar la entrada a un paradigma ya conocido antes de lanzar la investigación completa. \\ \hline
+Researcher & Identifica paradigmas científicos relevantes, coordina la búsqueda y sintetiza el informe global. \\ \hline
+DeepResearcher & Investiga un paradigma concreto con contexto propio y produce un informe profundo. \\ \hline
+Formalizer & Coordina la formalización de los paradigmas aprobados. \\ \hline
+Formalizer SubAgent & Genera variables, parámetros, ecuaciones y lógica de decisión para un paradigma. \\ \hline
+Reasoner & Adapta las formulaciones seleccionadas al entorno de simulación disponible. \\ \hline
+Reasoner SubAgent & Produce una especificación de comportamiento para una formulación concreta. \\ \hline
+Builder & Coordina la generación de modelos Python y pruebas. \\ \hline
+Builder SubAgent & Implementa una especificación, ejecuta pruebas y corrige fallos locales. \\ \hline
+MemoryAgent & Consolida artefactos aceptados en la memoria y prepara conocimiento para futuras ejecuciones. \\ \hline
 \end{tabular}
-\caption{Motivo de la división en cuatro agentes principales.}
+\caption{Agentes, subagentes y componentes auxiliares.}
 \end{center}
 \end{table}
 
@@ -172,66 +139,20 @@ entorno usa acciones inexistentes, se corrige el Reasoner. Si el código falla,
 se corrige el Builder. Un agente monolítico mezclaría estos niveles y haría más
 difícil diagnosticar los errores.
 
-\section{Agentes, subagentes y herramientas}
-
 \subsection{Workflow de agentes}
 
 El sistema de agentes se entiende mejor como un flujo de reducción progresiva
 de ambigüedad. Cada agente transforma la salida anterior en un artefacto más
 estructurado, y cada punto de revisión humana decide qué ramas continúan.
 
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  node distance=7mm and 7mm,
-  agentnode/.style={tfgbox, font=\scriptsize, minimum height=10mm, text width=3.05cm},
-  reviewnode/.style={diamond, aspect=2.1, draw=tfgOrange, fill=tfgOrange!15,
-    thick, align=center, font=\scriptsize, inner sep=1pt, text width=1.9cm},
-  sharednode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=12.6cm}
-]
-\node[agentnode, fill=tfgBlue!12, draw=tfgBlue] (problem) {Problema\\en lenguaje natural};
-\node[agentnode, fill=tfgGreen!12, draw=tfgGreen, right=of problem] (research) {Classifier + Researcher\\DeepResearchers\\\texttt{report.md}, \texttt{deep/*.md}};
-\node[reviewnode, right=of research] (review1) {revisión\\paradigmas};
-\node[agentnode, fill=tfgOrange!15, draw=tfgOrange, right=of review1] (formalizer) {Formalizer\\subagentes por paradigma\\\texttt{formulations/*.md}};
-\node[reviewnode, right=of formalizer] (review2) {revisión\\formulaciones};
-
-\node[agentnode, fill=tfgPurple!13, draw=tfgPurple, below=15mm of formalizer] (reasoner) {Reasoner\\subagentes por paradigma\\specs JSON};
-\node[agentnode, fill=tfgBlue!12, draw=tfgBlue, right=of reasoner] (env) {\texttt{env\_spec.json}\\acciones, percepciones\\y recompensas};
-\node[reviewnode, left=of reasoner] (review3) {revisión\\specs};
-\node[agentnode, fill=tfgRed!10, draw=tfgRed, left=of review3] (builder) {Builder\\subagentes por spec\\modelo + tests};
-\node[reviewnode, left=of builder] (review4) {revisión\\modelos};
-\node[agentnode, fill=tfgLight, draw=tfgGray, left=of review4] (registered) {Modelos registrados\\contrato\\\texttt{DecisionModel}};
-
-\node[sharednode, fill=tfgLight, draw=tfgGray, below=12mm of review3] (shared)
-{Infraestructura transversal: artefactos en MinIO, metadatos en PostgreSQL,
-trazas Agrex, memoria con \texttt{retrieve\_knowledge} y rutas de rerun};
-
-\draw[tfgarrow] (problem) -- (research);
-\draw[tfgarrow] (research) -- (review1);
-\draw[tfgarrow] (review1) -- (formalizer);
-\draw[tfgarrow] (formalizer) -- (review2);
-\draw[tfgarrow] (review2) |- (env);
-\draw[tfgarrow] (env) -- (reasoner);
-\draw[tfgarrow] (reasoner) -- (review3);
-\draw[tfgarrow] (review3) -- (builder);
-\draw[tfgarrow] (builder) -- (review4);
-\draw[tfgarrow] (review4) -- (registered);
-
-\draw[tfgarrow, dashed] (shared.north) -- (research.south);
-\draw[tfgarrow, dashed] (shared.north) -- (formalizer.south);
-\draw[tfgarrow, dashed] (shared.north) -- (reasoner.south);
-\draw[tfgarrow, dashed] (shared.north) -- (builder.south);
-\end{tikzpicture}}
-\caption{Workflow completo del sistema de agentes de la fase 1.}
-\end{figure}
-
-La figura separa tres ideas. Primero, el flujo principal avanza desde una
-entrada abierta hasta código probado. Segundo, los agentes principales no
-siempre ejecutan el trabajo directamente: Researcher, Formalizer, Reasoner y
-Builder delegan ramas independientes en subagentes. Tercero, la infraestructura
-transversal mantiene artefactos, trazas, memoria y rutas de repetición, de modo
-que cada salida pueda auditarse y corregirse en el nivel adecuado.
+La Figura~\ref{fig:phase1-software-architecture} separa los componentes de
+grano grueso: entradas, Router, agentes, herramientas y adaptadores de
+persistencia. La Figura~\ref{fig:phase1-pipeline-activity} muestra el mismo
+pipeline como actividad. Juntas aclaran tres ideas. Primero, el flujo principal
+avanza desde una entrada abierta hasta código probado. Segundo, Researcher,
+Formalizer, Reasoner y Builder delegan ramas independientes en subagentes.
+Tercero, la infraestructura transversal mantiene artefactos, trazas, memoria y
+rutas de repetición para auditar y corregir cada salida en el nivel adecuado.
 
 \subsubsection{Classifier}
 
@@ -542,6 +463,27 @@ Construcción & Rechazar un modelo concreto. & Reejecuta Builder solo para la fo
 \end{center}
 \end{table}
 
+\section{Diseño de interfaz}
+
+La interfaz web se diseña para hacer visible el estado del pipeline, no solo
+para lanzar una ejecución. El usuario necesita ver tres cosas durante una
+sesión larga: qué está haciendo el sistema, qué artefacto debe revisar y qué
+evidencia queda después del run. Por eso la interfaz se organiza en tres vistas
+principales: dashboard de ejecución, pantalla de revisión humana y vista de
+historial, memoria y resultados.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figuras/phase1-interface-wireframes}
+\caption{Wireframes de las vistas principales de la interfaz.}
+\label{fig:phase1-interface-wireframes}
+\end{figure}
+
+El dashboard combina chat, grafo de ejecución y estado de agentes. La pantalla
+de revisión muestra el artefacto en curso y las acciones posibles: aprobar,
+rechazar o pedir rerun. La vista posterior al run permite revisar trazas,
+artefactos, memoria y resultados sin depender del contexto efímero del chat.
+
 \section{Artefactos, persistencia e integración}
 
 \subsection{Artefactos y persistencia}
@@ -644,44 +586,13 @@ conocimiento reutilizable y lo vuelve a inyectar en agentes futuros.
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  node distance=7mm and 8mm,
-  memnode/.style={tfgbox, font=\scriptsize, minimum height=9mm, text width=3.45cm},
-  storenode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=2.85cm}
-]
-\node[memnode, fill=tfgBlue!12, draw=tfgBlue] (accepted) {Artefacto aceptado\\tras revisión humana};
-\node[memnode, fill=tfgPurple!13, draw=tfgPurple, right=of accepted] (router) {Router\\estado \texttt{MEMORY\_*}\\run y etapa};
-\node[memnode, fill=tfgGreen!12, draw=tfgGreen, right=of router, text width=4.15cm] (memoryagent) {MemoryAgent\\extrae, canonicaliza\\escribe y resuelve};
-\node[memnode, fill=tfgRed!10, draw=tfgRed, right=of memoryagent] (consolidation) {Consolidación\\reflexiones, decay\\supersesión};
-
-\node[storenode, fill=tfgLight, draw=tfgGray, below left=13mm and 31mm of memoryagent] (minio) {MinIO\\artefactos\\completos};
-\node[storenode, fill=tfgGreen!12, draw=tfgGreen, right=of minio] (neo4j) {Neo4j\\entidades\\y relaciones};
-\node[storenode, fill=tfgOrange!15, draw=tfgOrange, right=of neo4j] (qdrant) {Qdrant\\denso\\+ BM25};
-\node[storenode, fill=tfgPurple!13, draw=tfgPurple, right=of qdrant] (postgres) {PostgreSQL\\ciclo de vida\\y confianza};
-
-\node[memnode, fill=tfgOrange!15, draw=tfgOrange, below=16mm of qdrant, text width=4.15cm] (retrieve) {\texttt{retrieve\_knowledge}\\rewrite, fusión RRF\\rerank / CRAG};
-\node[memnode, fill=tfgLight, draw=tfgGray, right=of retrieve] (context) {Contexto filtrado\\por relevancia, confianza\\y vigencia};
-\node[memnode, fill=tfgBlue!12, draw=tfgBlue, right=of context] (agents) {Agentes futuros\\Researcher, Formalizer\\Reasoner, Builder};
-
-\draw[tfgarrow] (accepted) -- (router);
-\draw[tfgarrow] (router) -- (memoryagent);
-\draw[tfgarrow] (memoryagent) -- (consolidation);
-\draw[tfgarrow] (memoryagent.south west) -- (minio.north);
-\draw[tfgarrow] (memoryagent.south) -- (neo4j.north);
-\draw[tfgarrow] (memoryagent.south) -- (qdrant.north);
-\draw[tfgarrow] (memoryagent.south east) -- (postgres.north);
-\draw[tfgarrow] (consolidation.south) -- (postgres.north);
-\draw[tfgarrow] (neo4j.south) -- (retrieve.north west);
-\draw[tfgarrow] (qdrant.south) -- (retrieve.north);
-\draw[tfgarrow] (postgres.south) -- (retrieve.north east);
-\draw[tfgarrow] (retrieve) -- (context);
-\draw[tfgarrow] (context) -- (agents);
-\end{tikzpicture}}
-\caption{Flujo completo del sistema de memoria y recuperación.}
+\includegraphics[width=\textwidth]{figuras/phase1-memory-architecture}
+\caption{Sistema de memoria y recuperación.}
+\label{fig:phase1-memory-architecture}
 \end{figure}
 
-La parte superior de la figura representa la escritura: el Router solo activa
+La parte superior de la Figura~\ref{fig:phase1-memory-architecture} representa
+la escritura: el Router solo activa
 memoria después de una revisión aceptada, el MemoryAgent transforma el artefacto
 y los almacenes guardan piezas distintas del conocimiento. La parte inferior
 representa la lectura: \texttt{retrieve\_knowledge} combina grafo, búsqueda
@@ -695,24 +606,8 @@ ejecución empieza desde cero. Con memoria, los resultados aceptados se
 transforman en conocimiento reutilizable: paradigmas, variables, postulados,
 formulaciones, parámetros, modelos, relaciones y hechos textuales.
 
-La regla central es:
-
-\begin{figure}[H]
-\centering
-\resizebox{0.82\textwidth}{!}{%
-\begin{tikzpicture}[node distance=7mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.5cm] (output) {Salida de agente};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of output, text width=3.5cm] (review) {Revisión humana};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of review, text width=3.5cm] (accepted) {Artefacto aceptado};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, right=of accepted, text width=3.5cm] (memory) {Memoria};
-\draw[tfgarrow] (output) -- (review);
-\draw[tfgarrow] (review) -- (accepted);
-\draw[tfgarrow] (accepted) -- (memory);
-\end{tikzpicture}}
-\caption{Regla de escritura en memoria.}
-\end{figure}
-
-El sistema no guarda cualquier borrador generado por un LLM. Solo escribe en la
+La regla central es que el sistema no guarda cualquier borrador generado por un
+LLM. Solo escribe en la
 memoria después de la revisión humana. Esta decisión reduce ruido, evita
 persistir formulaciones rechazadas y hace que la memoria sea explicable: lo que
 hay en ella procede de artefactos aceptados.
@@ -773,28 +668,8 @@ no en simple ruido de logs.
 
 El MemoryAgent no es un agente libre que decide qué hacer en cada turno. Es un
 \textit{fixed pipeline} determinista que usa modelos de lenguaje para tareas concretas, pero
-mantiene fijo el flujo de control:
-
-\begin{figure}[H]
-\centering
-\resizebox{0.9\textwidth}{!}{%
-\begin{tikzpicture}[node distance=7mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=5.4cm] (accepted) {Artefacto aceptado};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of accepted, text width=5.4cm] (extract) {Extracción estructurada\\nodos, relaciones y hechos};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=of extract, text width=5.4cm] (canon) {Canonicalización y normalización};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of canon, text width=5.4cm] (graph) {Neo4j\\escritura y revisión del grafo};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of graph, text width=5.4cm] (resolve) {Resolución de duplicados\\y conflictos};
-\node[tfgbox, fill=tfgLight, draw=tfgGray, below left=8mm and 7mm of resolve, text width=3.9cm] (pg) {PostgreSQL\\ciclo de vida};
-\node[tfgbox, fill=tfgLight, draw=tfgGray, below right=8mm and 7mm of resolve, text width=3.9cm] (qdrant) {Qdrant\\dense + BM25};
-\draw[tfgarrow] (accepted) -- (extract);
-\draw[tfgarrow] (extract) -- (canon);
-\draw[tfgarrow] (canon) -- (graph);
-\draw[tfgarrow] (graph) -- (resolve);
-\draw[tfgarrow] (resolve) -- (pg);
-\draw[tfgarrow] (resolve) -- (qdrant);
-\end{tikzpicture}}
-\caption{Flujo interno del MemoryAgent.}
-\end{figure}
+mantiene fijo el flujo de control mostrado en la ruta de escritura de la
+Figura~\ref{fig:phase1-memory-architecture}.
 
 La extracción convierte el artefacto aceptado en varios tipos de salida:
 
@@ -963,27 +838,9 @@ La herramienta \texttt{retrieve\_knowledge} combina varias señales:
 
 \begin{figure}[H]
 \centering
-\resizebox{0.88\textwidth}{!}{%
-\begin{tikzpicture}[node distance=8mm and 9mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=4.8cm] (query) {Consulta del agente};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, below=of query, text width=4.8cm] (rewrite) {Reescritura de consulta};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below left=10mm and 7mm of rewrite, text width=3.6cm] (dense) {Qdrant denso};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below=10mm of rewrite, text width=3.6cm] (bm25) {Qdrant BM25};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, below right=10mm and 7mm of rewrite, text width=3.6cm] (kg) {Neo4j local\\2-hop};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=22mm of rewrite, text width=4.8cm] (fusion) {Fusión RRF\\+ reranking};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, below=of fusion, text width=4.8cm] (crag) {CRAG / fallback web\\si hay baja confianza};
-\node[tfgbox, fill=tfgLight, draw=tfgGray, below=of crag, text width=4.8cm] (context) {Contexto inyectado\\al agente};
-\draw[tfgarrow] (query) -- (rewrite);
-\draw[tfgarrow] (rewrite) -- (dense);
-\draw[tfgarrow] (rewrite) -- (bm25);
-\draw[tfgarrow] (rewrite) -- (kg);
-\draw[tfgarrow] (dense) -- (fusion);
-\draw[tfgarrow] (bm25) -- (fusion);
-\draw[tfgarrow] (kg) -- (fusion);
-\draw[tfgarrow] (fusion) -- (crag);
-\draw[tfgarrow] (crag) -- (context);
-\end{tikzpicture}}
-\caption{Flujo de recuperación de conocimiento.}
+\includegraphics[width=\textwidth]{figuras/phase1-retrieval-activity}
+\caption{Actividad de recuperación de conocimiento.}
+\label{fig:phase1-retrieval-activity}
 \end{figure}
 
 La búsqueda densa captura similitud semántica. BM25 captura coincidencias
