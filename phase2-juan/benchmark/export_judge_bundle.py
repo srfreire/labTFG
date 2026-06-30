@@ -26,16 +26,16 @@ def export_judge_bundle(
     (bundle / "trajectories").mkdir(parents=True, exist_ok=True)
 
     (bundle / "env_spec.json").write_text(
-        json.dumps(env_spec, indent=2, ensure_ascii=False)
+        json.dumps(env_spec, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     for key, records in trajectories.items():
         safe = key.replace("/", "_")
         (bundle / "trajectories" / f"{safe}.json").write_text(
-            json.dumps(records, indent=2, ensure_ascii=False)
+            json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8"
         )
-    (bundle / "analyst_findings.md").write_text(analyst_findings)
+    (bundle / "analyst_findings.md").write_text(analyst_findings, encoding="utf-8")
     (bundle / "metrics.json").write_text(
-        json.dumps(metrics, indent=2, ensure_ascii=False)
+        json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     if report_pdf is not None:
         (bundle / "report.pdf").write_bytes(report_pdf)

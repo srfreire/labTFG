@@ -143,7 +143,7 @@ def _build_env(spec: dict):
 
 async def _simulate(spec: dict, keys, models, storage):
     """Build a fresh env, add one agent per model, run STEPS. Returns
-    (events, agent_to_model, agent_ids_by_key)."""
+    (env, events, agent_to_model, agent_ids_by_key)."""
     env = _build_env(spec)
     rng = random.Random(SEED)
     agent_to_model: dict[str, ModelInfo] = {}
@@ -252,8 +252,10 @@ async def main(case: str) -> None:
             )
         result["models"] = models_summary
 
-        # 2b. Determinism check: re-simulate the first model, compare trajectory
-        _, ev2, _, ids2 = await _simulate(spec, keys[:1], models, svc.storage)
+        # 2b. Determinism check: re-simulate the full set with the same seed,
+        # compare the first model's trajectory (agents share the env's resource
+        # pool + RNG, so a solo re-run would not reproduce the multi-agent run).
+        _, ev2, _, ids2 = await _simulate(spec, keys, models, svc.storage)
         rerun = _trajectory_for(ev2, ids2[keys[0]])
         result["determinism"] = {
             "key": keys[0],
@@ -363,7 +365,7 @@ async def main(case: str) -> None:
         Path(__file__).resolve().parent / "JUDGE_PROMPT.md"
     ).read_text()
     resolved = prompt_template.replace("{BUNDLE_DIR}", str(bundle.resolve()))
-    (out_dir / "JUDGE_PROMPT.md").write_text(resolved)
+    (out_dir / "JUDGE_PROMPT.md").write_text(resolved, encoding="utf-8")
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
     print("\n" + "=" * 70)
