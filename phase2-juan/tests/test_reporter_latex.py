@@ -6,8 +6,10 @@ import pytest
 from simlab.reporter import (
     Reporter,
     _build_standard_report_text,
+    _env_facts_note,
     _prepare_latex_body,
     _render_env_section,
+    _strip_section_scaffolding,
 )
 
 
@@ -112,6 +114,30 @@ Texto final.
     assert "</invoke>" not in out
 
 
+def test_strip_section_scaffolding_drops_preamble_and_comment_lines():
+    body = (
+        "Basándome en el contexto, aquí está el contenido para Resumen ejecutivo:\n"
+        "% Sección: Resultados de la Simulación\n"
+        "El experimento comparó seis modelos en una rejilla 8x8.\n"
+        "% LaTeX body content for Conclusiones section\n"
+        "El modelo Wiener logró 10 consumos."
+    )
+
+    out = _strip_section_scaffolding(body)
+
+    assert "Basándome en el contexto" not in out
+    assert "% Sección" not in out
+    assert "% LaTeX body content" not in out
+    assert out.startswith("El experimento comparó seis modelos")
+    assert "El modelo Wiener logró 10 consumos." in out
+
+
+def test_strip_section_scaffolding_preserves_genuine_content():
+    body = "El agente comió en el paso 5.\nLuego exploró el borde superior."
+
+    assert _strip_section_scaffolding(body) == body
+
+
 def test_prepare_latex_body_removes_content_wrappers():
     body = r"\section{Fin}Texto.\end{content}"
 
@@ -206,6 +232,93 @@ def test_render_env_section_skips_missing_fields():
     assert r"\section{Entorno y modelo}" in out  # no crash on sparse facts
 
 
+def test_env_facts_note_pins_authoritative_foraging_total():
+    # Judge CASO2 caught "9 eventos de forrajeo" when trajectories sum to 7.
+    # The note must hand the LLM the exact total so it stops summing by eye.
+    facts = {
+        "grid_w": 10,
+        "grid_h": 10,
+        "models": ["Continuo", "Q-learning", "Active-inf", "Jerárquico"],
+        "consumption": {
+            "Continuo": 4,
+            "Q-learning": 2,
+            "Active-inf": 1,
+            "Jerárquico": 0,
+        },
+        "total_consumed": 7,
+    }
+    note = _env_facts_note(facts)
+    assert "Total de consumos observados: 7" in note
+    assert "Continuo: 4" in note and "Jerárquico: 0" in note
+    # Judge CASO1 caught "10 de 15 recursos" (consumptions read as env resources)
+    # and a miscount of zero-consumption models. The note must pin both — and the
+    # zero-count is derived from the consumption dict itself (here: only
+    # "Jerárquico" at 0), so it stays correct no matter who built env_facts.
+    assert "NO el número de recursos del entorno" in note
+    assert "Modelos con 0 consumos: exactamente 1 (Jerárquico)" in note
+
+
+def test_env_facts_note_pins_per_model_action_distribution():
+    # Judge CASO2 caught "46 movimientos antes del paso 24" and CASO1 attributed
+    # a consumption to the wrong algebraic model. Handing the LLM the exact
+    # per-model action counts removes the room to invent them.
+    facts = {
+        "grid_w": 8,
+        "grid_h": 8,
+        "actions_by_model": {
+            "DDM (Wiener)": {"move_up": 12, "eat": 10, "move_left": 13},
+            "Reponderación": {"move_right": 13, "stay": 1},
+        },
+    }
+    note = _env_facts_note(facts)
+    assert "Distribución de acciones por modelo" in note
+    assert "DDM (Wiener): move_up=12, eat=10, move_left=13" in note
+    assert "Reponderación: move_right=13, stay=1" in note
+
+
+def test_strip_section_scaffolding_drops_english_generation_preamble():
+    # Judge CASO1 flagged an "I'll write..." remnant leaking into the PDF.
+    assert (
+        _strip_section_scaffolding("I'll write the section.\nContenido real.")
+        == "Contenido real."
+    )
+    assert (
+        _strip_section_scaffolding("Let me provide the analysis.\nTexto.")
+        == "Texto."
+    )
+    # Genuine Spanish prose starting mid-sentence is untouched.
+    body = "El modelo Wiener consumió 10 recursos."
+    assert _strip_section_scaffolding(body) == body
+
+
+def test_strip_section_scaffolding_removes_embedded_sections_and_meta_paragraph():
+    # Judge CASO2: an exec-summary body leaked "Según tus instrucciones, debo
+    # escribir SOLO el contenido del body, sin incluir el heading ..." carrying
+    # embedded \section{} commands that spawned a phantom "2." and a duplicated
+    # "Resumen ejecutivo" in the table of contents.
+    leak = (
+        r"Este es un informe de sección única (\section{}). Según tus "
+        r"instrucciones, debo escribir SOLO el contenido del body, sin incluir "
+        r"el heading \section{Resumen ejecutivo} (que será añadido por el "
+        r"orquestador)." + "\n\n---\n\nEste experimento compara cuatro modelos."
+    )
+    out = _strip_section_scaffolding(leak)
+    assert "\\section" not in out
+    assert "instrucciones" not in out.lower()
+    assert out == "Este experimento compara cuatro modelos."
+    # \subsection must survive — only top-level \section is stripped.
+    sub = "\\subsection{Detalle}\nTexto real."
+    assert "\\subsection{Detalle}" in _strip_section_scaffolding(sub)
+
+
+def test_env_facts_note_omits_consumption_when_absent():
+    # Production path (orchestrator) has no per-model consumption — the note must
+    # degrade cleanly instead of emitting an empty or "None" foraging line.
+    note = _env_facts_note({"grid_w": 8, "grid_h": 8, "total_consumed": None})
+    assert "forrajeos exitosos" not in note.lower()
+    assert "Rejilla: 8x8" in note
+
+
 def test_render_env_section_drops_malformed_resources_instead_of_fabricating():
     facts = {
         "grid_w": 8,
@@ -237,6 +350,54 @@ def test_build_env_facts_from_real_state():
     assert facts["grid_w"] == 8 and facts["grid_h"] == 8 and facts["steps"] == 30
     assert facts["models"] == ["drive_reduction_rl"]
     assert facts["actions"] == ["eat", "stay"]
+
+
+def test_build_env_facts_populates_consumption_from_tracker_output():
+    # Regression: _env_facts_note reads consumption/total_consumed, but
+    # _build_env_facts never set them — the exact-total guidance was dead code
+    # and the LLM invented "10 de 15 recursos" and miscounted zero-consumption
+    # models. Pull the authoritative per-model counts from the Tracker output.
+    import json
+
+    from simlab.orchestrator import _build_env_facts
+
+    state = {
+        "spec": {"grid": {"width": 8, "height": 8}},
+        "replay": {"grid_width": 8, "grid_height": 8, "total_steps": 60},
+        "tracker_output": json.dumps(
+            {
+                "trajectories": {
+                    "wiener": {"resources_consumed": 10},
+                    "dualq": {"resources_consumed": 1},
+                    "attr-rw": {"resources_consumed": 0},
+                    "rescorla": {"resources_consumed": 0},
+                }
+            }
+        ),
+    }
+    facts = _build_env_facts(state)
+    assert facts["consumption"] == {
+        "wiener": 10,
+        "dualq": 1,
+        "attr-rw": 0,
+        "rescorla": 0,
+    }
+    assert facts["total_consumed"] == 11
+
+
+def test_build_env_facts_tolerates_missing_or_malformed_tracker_output():
+    from simlab.orchestrator import _build_env_facts
+
+    base = {
+        "spec": {"grid": {"width": 8, "height": 8}},
+        "replay": {"grid_width": 8, "grid_height": 8, "total_steps": 60},
+    }
+    # No tracker output yet → no consumption keys, but facts still returned.
+    facts = _build_env_facts(base)
+    assert facts is not None and "total_consumed" not in facts
+    # Malformed JSON must not crash the report path.
+    facts = _build_env_facts({**base, "tracker_output": "{not json"})
+    assert facts is not None and "total_consumed" not in facts
 
 
 def test_build_env_facts_returns_none_when_core_facts_missing():

@@ -168,7 +168,7 @@ def _summarize_events(events: list[Event]) -> dict:
 
 GET_SIMULATION_EVENTS_TOOL = {
     "name": "get_simulation_events",
-    "description": "Get all events from the simulation. Returns raw events if <= 500, otherwise a summary with global metrics.",
+    "description": "Get all events from the simulation. Returns raw events when the set is small, otherwise a summary with global metrics (agents, events_per_agent, action_counts) — then drill in with get_agent_trajectory or get_event_window.",
     "input_schema": {
         "type": "object",
         "properties": {},
@@ -264,6 +264,16 @@ GET_EVENT_WINDOW_TOOL = {
 
 _MAX_WINDOW_RADIUS = 30
 
+# Cap on the serialized payload of a single "dump everything" tool result. The
+# count guard below (500 events) is blind to per-event weight: models with heavy
+# internal state (dual Q-tables, per-action DDM accumulators) carry kilobytes of
+# model_state per step, so a few hundred full events alone can exceed the model's
+# context window. ~120k chars ≈ 30k tokens — well under the 200k limit, leaving
+# room for the system prompt, tool schemas, and conversation history. When the
+# full dump would exceed this, fall back to the summary; the Tracker then drills
+# in with get_agent_trajectory / get_event_window on bounded slices.
+_MAX_EVENTS_PAYLOAD_CHARS = 120_000
+
 LIST_CRITICAL_EVENTS_TOOL = {
     "name": "list_critical_events",
     "description": (
@@ -341,10 +351,18 @@ def build_simulation_tools(
     # --- Tool implementations (closures over `events` and `by_agent`) ---
 
     async def get_simulation_events(params: dict) -> str:
-        """Return all events, or a summary if there are too many."""
+        """Return all events, or a summary if the payload is too large.
+
+        Falls back to the summary on either a high event count or a heavy
+        serialized payload (heavy per-event model_state can blow the context
+        window well under the count threshold).
+        """
         if len(events) > 500:
             return json.dumps(_summarize_events(events))
-        return json.dumps([_event_to_dict(e) for e in events])
+        payload = json.dumps([_event_to_dict(e) for e in events])
+        if len(payload) > _MAX_EVENTS_PAYLOAD_CHARS:
+            return json.dumps(_summarize_events(events))
+        return payload
 
     async def get_agent_trajectory(params: dict) -> str:
         """Return events for one agent — compact by default, sliceable, summarizable."""

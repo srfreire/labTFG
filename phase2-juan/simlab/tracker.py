@@ -19,7 +19,11 @@ from simlab.utils import extract_text
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 DEFAULT_MAX_ITERATIONS = 8
-DEFAULT_MAX_TOKENS = 2048
+# The final answer is a structured JSON observation (summary + one trajectory
+# block per model + episodes). With several models in one run this exceeds a
+# small cap and the loop returns truncated, unparseable JSON — so size for a
+# multi-model observation, not a single agent.
+DEFAULT_MAX_TOKENS = 8192
 
 
 # ---------------------------------------------------------------------------

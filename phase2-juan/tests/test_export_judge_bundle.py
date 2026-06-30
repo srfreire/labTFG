@@ -12,6 +12,7 @@ def test_export_bundle_structure(tmp_path):
                 {"step": 0, "action": "eat", "reward": 1.0, "state": {"v": 0.2}}
             ]
         },
+        tracker_output='{"summary": "ok", "trajectories": {}, "episodes": []}',
         analyst_findings="## Hallazgos\nLos modelos difieren.",
         report_pdf=b"%PDF-1.5 fake",
         metrics={"case": "caso1", "seed": 42},
@@ -22,9 +23,31 @@ def test_export_bundle_structure(tmp_path):
         (bundle / "trajectories" / "drift-diffusion-model_x.json").read_text()
     )
     assert traj[0]["action"] == "eat"
+    assert json.loads((bundle / "tracker_output.json").read_text())["summary"] == "ok"
     assert (bundle / "analyst_findings.md").read_text().startswith("## Hallazgos")
     assert (bundle / "report.pdf").read_bytes() == b"%PDF-1.5 fake"
     assert json.loads((bundle / "metrics.json").read_text())["seed"] == 42
+
+
+def test_export_bundle_serializes_tuple_keyed_state(tmp_path):
+    # A Q-table keyed by (state, action) tuples is not JSON-serializable raw;
+    # the bundle must normalize keys to strings instead of crashing.
+    bundle = export_judge_bundle(
+        tmp_path,
+        env_spec={},
+        trajectories={
+            "goal-directed/dual-q": [
+                {"step": 0, "action": "eat", "reward": 1.0,
+                 "state": {"q_values": {(1, 2): 0.5, (3, 4): -0.1}}}
+            ]
+        },
+        tracker_output="{}",
+        analyst_findings="x",
+        report_pdf=None,
+        metrics={},
+    )
+    traj = json.loads((bundle / "trajectories" / "goal-directed_dual-q.json").read_text())
+    assert traj[0]["state"]["q_values"]["(1, 2)"] == 0.5
 
 
 def test_export_bundle_omits_pdf_when_none(tmp_path):
@@ -32,6 +55,7 @@ def test_export_bundle_omits_pdf_when_none(tmp_path):
         tmp_path,
         env_spec={},
         trajectories={},
+        tracker_output="{}",
         analyst_findings="x",
         report_pdf=None,
         metrics={},

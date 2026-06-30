@@ -50,6 +50,25 @@ CASO1_SHORT = {
 }
 
 
+# CASO2 (homeostasis / interocepción) — one representative formulation per
+# paradigm. The domain has 4 paradigms (vs CASO1's 6), each contributing a
+# distinct mechanism family: ODE drive dynamics, model-free RL, active
+# inference, and hierarchical predictive coding.
+CASO2 = [
+    "homeostatic-regulation/continuous-drive-dynamics-with-urgency-threshold-policy",
+    "homeostatic-reinforcement-learning/drive-reduction-td-q-learning-model-free",
+    "interoceptive-active-inference/expected-free-energy-policy-selection-with-allostatic-prior-shifting",
+    "predictive-coding/hierarchical-precision-weighted-prediction-error-minimization-gradient-descent-ode",
+]
+
+CASO2_SHORT = {
+    CASO2[0]: "Drive-dynamics ODE (urgencia)",
+    CASO2[1]: "HRL drive-reduction (TD-Q)",
+    CASO2[2]: "Active inference (EFE + alostasis)",
+    CASO2[3]: "Predictive coding jerárquico",
+}
+
+
 def require_models(models: dict, keys: Iterable[str]) -> None:
     """Fail early with an actionable message if a required model is missing.
 

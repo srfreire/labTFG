@@ -89,6 +89,26 @@ def test_get_simulation_events_summarizes_large():
     assert result["total_events"] == 501
 
 
+def test_get_simulation_events_summarizes_heavy_payload():
+    # Few events, but each carries a heavy model_state (e.g. dual Q-tables) — the
+    # count guard (500) would pass them through, yet the full dump would blow the
+    # context window. The size guard must fall back to the summary instead.
+    big_q_table = {f"state_{i}": [0.1, 0.2, 0.3] for i in range(2000)}
+    events = [
+        Event(
+            step=i,
+            agent_id=f"agent_{i % 3}",
+            action=Action(name="move_up"),
+            outcome={"action_result": {}, "reward": 0.0, "model_state": big_q_table},
+        )
+        for i in range(20)
+    ]
+    _, registry = build_simulation_tools(events)
+    result = json.loads(asyncio.run(registry["get_simulation_events"]({})))
+    assert "total_events" in result
+    assert result["total_events"] == 20
+
+
 def test_get_agent_trajectory():
     events = _make_events()
     _, registry = build_simulation_tools(events)

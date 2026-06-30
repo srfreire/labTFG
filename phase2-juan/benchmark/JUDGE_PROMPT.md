@@ -16,6 +16,9 @@ correcta.
 ## Material a revisar (léelo entero antes de puntuar)
 - `{BUNDLE_DIR}/env_spec.json` — el entorno que generó el Architect.
 - `{BUNDLE_DIR}/trajectories/*.json` — una trayectoria por modelo (ground truth).
+- `{BUNDLE_DIR}/tracker_output.json` — la observación cruda del Tracker (resumen,
+  trayectorias y episodios). Contrástala con las trayectorias para juzgar la
+  fidelidad de observación (criterio 2).
 - `{BUNDLE_DIR}/analyst_findings.md` — el análisis comparativo del Analyst.
 - `{BUNDLE_DIR}/report.pdf` — el informe del Reporter (si existe).
 - `{BUNDLE_DIR}/metrics.json` — métricas duras (tripleta joinable, determinismo,

@@ -56,6 +56,65 @@ if TYPE_CHECKING:
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Meta-preamble the LLM prepends despite "start directly with the section's
+# content" — e.g. "Basándome en el contexto, aquí está el contenido para X:".
+# Matched only as a LEADING line so genuine prose is never touched.
+_SECTION_PREAMBLE_RE = re.compile(
+    r"^\s*(?:"
+    r"bas[áa]ndome en|based on the context|"
+    r"este es un (?:formato|informe)|this is a (?:special )?(?:format|section)|"
+    r"aqu[íi] (?:est[áa]|tienes) el contenido|here(?:'s| is) the (?:content|section)|"
+    r"a continuaci[óo]n|seg[uú]n (?:tus|las) instruccion|"
+    # English first-person generation preambles ("I'll write the section…",
+    # "Let me write…", "Here is the section…") — judge CASO1 flagged an
+    # "I'll write..." remnant leaking into the PDF.
+    r"i(?:'ll| will| am going to| can)\b|let me\b|i'll provide|sure[,!]"
+    r")",
+    re.IGNORECASE,
+)
+
+# A LEADING paragraph that talks ABOUT the section/instructions rather than the
+# report — judge CASO2 saw "Este es un informe de sección única (...). Según tus
+# instrucciones, debo escribir SOLO el contenido del body, sin incluir el
+# heading ... (que será añadido por el orquestador)." leak into the PDF, carrying
+# embedded \section{} commands that corrupted the table of contents.
+_META_PARAGRAPH_RE = re.compile(
+    r"seg[uú]n\s+(?:tus|las)\s+instruccion|debo escribir|"
+    r"sin incluir el\s+(?:heading|encabezado|t[íi]tulo|section)|"
+    r"a[ñn]adid[oa] por el orquestador|informe de secci[óo]n [úu]nica|"
+    r"based on the context|i'?ll write|let me write",
+    re.IGNORECASE,
+)
+
+
+def _strip_section_scaffolding(text: str) -> str:
+    """Remove LLM scaffolding the section prompt asked it to omit.
+
+    Leaks observed in real reports: (1) raw LaTeX comment lines (``% ...``) —
+    author notes the escaper later turns into a literal ``\\%``; (2) a
+    meta-preamble line/paragraph such as "Según tus instrucciones, debo escribir
+    SOLO el contenido del body..." before the real section body. Strip both
+    before the LaTeX sanitizer runs.
+
+    Note: this runs on whole documents too (via ``_prepare_latex_body`` in the
+    ``compile_report`` path), so it must NOT strip ``\\section{...}`` — those are
+    legitimate there. Per-section bodies drop stray headings separately in
+    ``generate_section``.
+    """
+    # (1) Drop LaTeX comment lines and (2a) leading preamble/blank lines.
+    lines = [ln for ln in text.split("\n") if not ln.lstrip().startswith("%")]
+    while lines and (_SECTION_PREAMBLE_RE.match(lines[0]) or not lines[0].strip()):
+        lines.pop(0)
+    text = "\n".join(lines)
+    # (3b) Drop a leading paragraph that is meta-commentary about the instructions
+    # (only the first one, only when real content follows, so prose is never lost).
+    paras = re.split(r"\n\s*\n", text, maxsplit=1)
+    if len(paras) == 2 and _META_PARAGRAPH_RE.search(paras[0]):
+        text = paras[1]
+    # Drop a leftover horizontal-rule artifact ("---"/"—") now at the top.
+    text = re.sub(r"^\s*(?:-{2,}|—)\s*(?:\n|$)", "", text.lstrip("\n"))
+    return text.strip("\n")
+
 
 def _fix_markdown_in_latex(content: str) -> str:
     """Convert Markdown remnants to valid LaTeX"""
@@ -68,6 +127,7 @@ def _fix_markdown_in_latex(content: str) -> str:
 
 def _prepare_latex_body(content: str) -> str:
     """Normalize LLM-produced report body before injecting it into the template."""
+    content = _strip_section_scaffolding(content)
     content = _fix_markdown_in_latex(content)
     content = _flatten_text_commands(content)
     content = re.sub(r"(?m)^.*(?:antml:parameter|</?invoke\b).*$", "", content)
@@ -177,6 +237,52 @@ def _env_facts_note(env_facts: dict) -> str:
         lines.append("- Acciones: " + ", ".join(env_facts["actions"]))
     if env_facts.get("models"):
         lines.append("- Modelos comparados: " + ", ".join(env_facts["models"]))
+    consumption = env_facts.get("consumption")
+    total = env_facts.get("total_consumed")
+    if total is not None:
+        per_model = "; ".join(f"{m}: {c}" for m, c in (consumption or {}).items())
+        lines.append(
+            f"- Consumos observados por modelo: {per_model}"
+            if per_model
+            else "- Consumos observados por modelo"
+        )
+        lines.append(
+            f"- Total de consumos observados: {total} (cifra EXACTA; no la "
+            "recalcules ni la sumes de memoria, usa este total). Es el número "
+            "de forrajeos exitosos, NO el número de recursos del entorno (los "
+            "recursos regeneran, así que no hay un total fijo): no escribas "
+            f"frases como «{total} de N recursos», «{total} sobre los N recursos "
+            "disponibles» ni «X% de los recursos disponibles». Si das un "
+            "porcentaje, que sea «X% de los consumos observados»"
+        )
+        if consumption:
+            # Derive the zero-consumers from the per-model dict itself so the
+            # count is always consistent with the figures above, regardless of
+            # which path built env_facts (orchestrator vs lab-eval runner).
+            zero_models = sorted(m for m, c in consumption.items() if c == 0)
+            lines.append(
+                f"- Modelos con 0 consumos: exactamente {len(zero_models)}"
+                + (f" ({', '.join(zero_models)})" if zero_models else "")
+                + ". Usa este conteo exacto; no agrupes modelos por familia "
+                "(p.ej. «los algebraicos») para afirmar éxito o fracaso: cita "
+                "el consumo exacto de cada modelo tal como aparece arriba"
+            )
+    actions_by_model = env_facts.get("actions_by_model")
+    if isinstance(actions_by_model, dict) and actions_by_model:
+        # Authoritative per-model action counts so the report stops inventing
+        # figures like "46 movimientos direccionales" or attributing a
+        # consumption to the wrong model. eat == consumos; everything else is
+        # movement/reposo. These are the EXACT totals over the whole run.
+        lines.append(
+            "- Distribución de acciones por modelo (conteos EXACTOS sobre toda "
+            "la simulación; 'eat' = consumos, el resto son movimientos/reposo; "
+            "no inventes ni recalcules estos conteos):"
+        )
+        for m, acts in actions_by_model.items():
+            breakdown = ", ".join(
+                f"{a}={n}" for a, n in acts.items() if isinstance(n, int)
+            )
+            lines.append(f"  · {m}: {breakdown}")
     if env_facts.get("seed") is not None:
         lines.append(f"- Semilla: {env_facts['seed']}")
     if not lines:
@@ -632,6 +738,18 @@ What do the results tell us about the decision-making paradigms? What improvemen
 - NEVER use \\textbf{} or \\textit{} inside section/subsection titles
 - Avoid nested formatting commands — keep it simple
 - If a character causes issues, remove it rather than trying to escape it
+- NO INVENTES cifras ni pasos: los números de paso concretos, los valores de \
+estado (drive, energía, Q-values) y las afirmaciones sobre lo que un agente \
+percibió deben provenir de los hallazgos del Analyst o del bloque DATOS DEL \
+EXPERIMENTO. Si un dato no aparece ahí, descríbelo de forma cualitativa en vez \
+de inventar un paso o un valor. No reformules «consumos» como «recursos del \
+entorno»
+- NO escribas una cifra de «gap» o «diferencia» numérica entre Q-values (p.ej. \
+«el gap colapsó de 0.63 a 0.01»), AUNQUE el Analyst la mencione. El laboratorio \
+no expone una definición canónica de gap, así que cualquier número de ese tipo es \
+no verificable. Reescríbelo SIEMPRE en forma cualitativa: «la ventaja de eat sobre \
+moverse se estrechó tras el consumo». Sí puedes citar Q-values crudos concretos \
+(p.ej. «Q_eat=0.47») si aparecen en los hallazgos del Analyst
 
 ## Knowledge context usage
 
@@ -1052,6 +1170,10 @@ class Reporter:
             "Wrap every math expression in $...$; never use \\(...\\) or $$...$$. "
             "Escape \\_  \\%  \\&  \\#  \\$ outside math. "
             "Do not use \\cite{}, \\ref{}, \\label{}. "
+            "Do not write conversational preambles "
+            "(e.g. 'Basándome en el contexto...', 'A continuación...') nor LaTeX "
+            "comment lines (lines starting with %): start directly with report "
+            "content. "
             "Keep the section under 450 words."
         )
         if env_facts:
@@ -1098,11 +1220,17 @@ class Reporter:
                     max_tokens=SECTION_MAX_TOKENS,
                     cache_control={"type": "ephemeral"},
                 )
-            body = _prepare_latex_body(_llm_latex_text(response))
-            # The LLM often re-emits its own \section{...} despite the prompt;
-            # drop a leading section header so we don't get duplicate entries
-            # in the table of contents.
-            body = re.sub(r"^\s*\\section\*?\{[^{}]*\}\s*", "", body, count=1)
+            body = _prepare_latex_body(
+                _strip_section_scaffolding(_llm_latex_text(response))
+            )
+            # The orchestrator adds this section's heading below, so the body
+            # must carry NO \section of its own. The LLM re-emits them anyway,
+            # and embedded ones (e.g. inside a leaked meta-preamble) spawn
+            # phantom/duplicate entries in the table of contents — judge CASO2
+            # saw a blank "2." and a duplicated "Resumen ejecutivo". Strip every
+            # top-level \section here (this is the per-section path; \subsection
+            # is untouched and whole-document compile_report content is not).
+            body = re.sub(r"\\section\*?\{[^{}]*\}", "", body)
             return f"\\section{{{title}}}\n\n{body}"
 
         # Run sections concurrently — they are independent, and sequential

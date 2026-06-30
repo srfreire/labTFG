@@ -815,6 +815,34 @@ def _build_env_facts(state: dict) -> dict | None:
             facts["steps"],
         )
         return None
+    # Authoritative per-model consumption, read from the Tracker's structured
+    # trajectories. Without this the Reporter's "consumos exactos" guidance is
+    # dead code (the keys are never populated) and the LLM invents totals like
+    # "10 de 15 recursos" and miscounts which models consumed nothing.
+    tracker_raw = state.get("tracker_output")
+    consumption: dict[str, int] = {}
+    actions_by_model: dict[str, dict] = {}
+    if tracker_raw:
+        try:
+            tdata = (
+                json.loads(tracker_raw)
+                if isinstance(tracker_raw, str)
+                else tracker_raw
+            )
+            for agent_id, t in (tdata.get("trajectories") or {}).items():
+                if not isinstance(t, dict):
+                    continue
+                if t.get("resources_consumed") is not None:
+                    consumption[agent_id] = t["resources_consumed"]
+                if isinstance(t.get("actions"), dict) and t["actions"]:
+                    actions_by_model[agent_id] = t["actions"]
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            consumption, actions_by_model = {}, {}
+    if consumption:
+        facts["consumption"] = consumption
+        facts["total_consumed"] = sum(consumption.values())
+    if actions_by_model:
+        facts["actions_by_model"] = actions_by_model
     return facts
 
 

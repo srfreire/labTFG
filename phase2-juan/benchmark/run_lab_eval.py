@@ -40,7 +40,14 @@ from benchmark.export_judge_bundle import export_judge_bundle
 from benchmark.faithfulness import is_fallback_report
 from benchmark.lab_report import write_report
 from benchmark.llm_meter import MeteredClient
-from benchmark.model_keys import CASO1, CASO1_SHORT, REPORTS, require_models
+from benchmark.model_keys import (
+    CASO1,
+    CASO1_SHORT,
+    CASO2,
+    CASO2_SHORT,
+    REPORTS,
+    require_models,
+)
 from shared.services import init_services, shutdown_services
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -61,6 +68,22 @@ CASES: dict[str, dict] = {
             "acciones disponibles son: move_up, move_down, move_left, move_right "
             "(mover una celda), eat (consume comida en la celda actual, recompensa "
             "según su valor) y stay. Devuelve la especificación del entorno."
+        ),
+    },
+    "caso2": {
+        "keys": CASO2,
+        "short": CASO2_SHORT,
+        "architect_prompt": (
+            "Diseña un entorno de rejilla 10x10 para estudiar la regulación "
+            "homeostática y la defensa de un punto de equilibrio (setpoint) "
+            "mediante la ingesta. Debe haber recursos de tipo 'food' (al menos 8 "
+            "unidades que regeneran al consumirse), cada uno con atributos de "
+            "valor observables, en particular 'palatability' y 'energy_content' "
+            "(cuánta energía aporta al consumirse, para reducir el déficit "
+            "interno del agente). Las acciones disponibles son: move_up, "
+            "move_down, move_left, move_right (mover una celda), eat (consume "
+            "comida en la celda actual, recompensa según su valor nutricional) y "
+            "stay. Devuelve la especificación del entorno."
         ),
     },
 }
@@ -272,6 +295,9 @@ async def main(case: str) -> None:
                 "Observa la simulación y reporta trayectorias y episodios clave.",
                 all_events,
                 critical_events=critical,
+                # 6-model runs (CASO1) occasionally need >8 agentic iterations to
+                # finish the observation; the default cap aborts the whole run.
+                max_iterations=12,
             )
 
         # 4. Persist the joinable triple, then count it in each store
@@ -296,7 +322,12 @@ async def main(case: str) -> None:
                 "postgres_rows": pg,
                 "qdrant_dense": dense,
                 "qdrant_sparse": sparse,
+                # Only a non-trivial consistency: 0==0==0==0 is vacuous, so flag
+                # it explicitly rather than letting `consistent: true` mask an
+                # empty write.
                 "consistent": (pg == written == dense == sparse),
+                "all_zero": written == 0,
+                "skipped_reason": wr.skipped_reason,
                 "episodes_filtered": wr.episodes_filtered,
             }
         else:
@@ -314,12 +345,64 @@ async def main(case: str) -> None:
                 experiment_id=exp_id,
                 charts_accumulator=charts,
                 critical_events=critical,
-                max_iterations=8,
+                # 6-model comparisons (CASO1) occasionally exceed 8 agentic
+                # iterations and abort the whole run; 10 absorbs that variance
+                # without letting the loop wander.
+                max_iterations=10,
             )
         result["charts_generated"] = len(charts)
 
         # 6. Reporter
-        reporter = Reporter(client=client, storage=svc.storage, db=svc.db)
+        # Pin the real spec into the report so the LLM cannot invent the grid
+        # size / action set / resource count (judge CASO1 flagged "5x5", "5
+        # acciones", "5 recursos" — all hallucinated because env_facts was None).
+        grid = spec.get("grid") or {}
+        # Authoritative per-model + total consumption, so the Reporter quotes the
+        # real foraging-success count instead of summing by eye (judge CASO2:
+        # "9 eventos de forrajeo" when the trajectories sum to 7). tracker.run()
+        # returns a JSON *string*; parse it into its own var so we don't clobber
+        # the per-model `trajectories` dict the judge bundle is built from. The
+        # Tracker keys trajectories by formulation (the part after "/").
+        try:
+            tracker_trajs = json.loads(tracker_output).get("trajectories", {})
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            tracker_trajs = {}
+        consumption = {}
+        actions_by_model = {}
+        for k in keys:
+            traj = tracker_trajs.get(k) or tracker_trajs.get(k.split("/")[-1]) or {}
+            consumed = traj.get("resources_consumed")
+            if consumed is not None:
+                consumption[cfg["short"].get(k, k)] = consumed
+            acts = traj.get("actions")
+            if isinstance(acts, dict) and acts:
+                actions_by_model[cfg["short"].get(k, k)] = acts
+        env_facts = {
+            "grid_w": grid.get("width"),
+            "grid_h": grid.get("height"),
+            "resources": [
+                {"type": r["type"], "count": r.get("count")}
+                for r in spec.get("resources", [])
+            ],
+            "steps": STEPS,
+            "actions": [a["name"] for a in spec.get("actions", [])],
+            "models": [cfg["short"].get(k, k) for k in keys],
+            "consumption": consumption,
+            "total_consumed": sum(consumption.values()) if consumption else None,
+            "actions_by_model": actions_by_model,
+            "seed": SEED,
+        }
+        # Sonnet, not the Haiku default: the eval measures report FIDELITY, and
+        # Haiku reliably leaks chatty meta-monologues ("¿Qué puedo hacer?",
+        # "Según tus instrucciones..."), stray \section commands and deliberation
+        # into the LaTeX body — confounding the judge's fidelity read with output
+        # hygiene. This mirrors the production quality="detailed" path.
+        reporter = Reporter(
+            client=client,
+            storage=svc.storage,
+            db=svc.db,
+            model="anthropic/claude-sonnet-4-5",
+        )
         try:
             with _Stage("reporter", client.usage, stages):
                 await reporter.run(
@@ -329,6 +412,7 @@ async def main(case: str) -> None:
                     run_id=models[keys[0]].run_id or "",
                     experiment_id=exp_id,
                     charts=charts,
+                    env_facts=env_facts,
                 )
         except Exception as exc:
             result["reporter_error"] = f"{type(exc).__name__}: {exc}"
@@ -360,6 +444,7 @@ async def main(case: str) -> None:
         out_dir,
         env_spec=env_spec_full,
         trajectories=trajectories,
+        tracker_output=tracker_output,
         analyst_findings=analyst_output or "(sin salida del Analyst)",
         report_pdf=report_pdf,
         metrics=result,

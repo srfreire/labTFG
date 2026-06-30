@@ -12,12 +12,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from simlab.tools import _make_serializable
+
 
 def export_judge_bundle(
     out_dir: Path,
     *,
     env_spec: dict,
     trajectories: dict[str, list[dict]],
+    tracker_output: str,
     analyst_findings: str,
     report_pdf: bytes | None,
     metrics: dict,
@@ -25,13 +28,21 @@ def export_judge_bundle(
     bundle = out_dir / "judge-bundle"
     (bundle / "trajectories").mkdir(parents=True, exist_ok=True)
 
+    # The Tracker's raw observation — the judge needs it to assess observation
+    # fidelity (rubric criterion 2) directly, not just via the joinable triple.
+    (bundle / "tracker_output.json").write_text(tracker_output, encoding="utf-8")
+
     (bundle / "env_spec.json").write_text(
         json.dumps(env_spec, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     for key, records in trajectories.items():
         safe = key.replace("/", "_")
+        # Per-step model_state can carry non-JSON keys (e.g. a Q-table keyed by
+        # (state, action) tuples). Normalize before dumping — same helper the
+        # simulation tools use, so the bundle matches what the agents observed.
         (bundle / "trajectories" / f"{safe}.json").write_text(
-            json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8"
+            json.dumps(_make_serializable(records), indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
     (bundle / "analyst_findings.md").write_text(analyst_findings, encoding="utf-8")
     (bundle / "metrics.json").write_text(

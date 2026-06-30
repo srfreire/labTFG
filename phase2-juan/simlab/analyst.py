@@ -24,7 +24,9 @@ if TYPE_CHECKING:
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-4-5"
 DEFAULT_MAX_ITERATIONS = 8
-DEFAULT_MAX_TOKENS = 3072
+# Comparative findings across several models don't fit a small cap — a truncated
+# final answer yields an incomplete report. Size for a multi-model comparison.
+DEFAULT_MAX_TOKENS = 8192
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +223,31 @@ Only include this section if you actually queried past experiments. Do NOT fabri
 - Patterns should include at least one about INTERNAL dynamics (Q-values, drive, error signals)
 - At least one pattern should be a type "anomaly" if something unexpected happened
 - Hypotheses should be specific enough to test: "Si aumentamos X, esperamos que Y cambie porque Z"
+- PROHIBIDO emitir una CIFRA DERIVADA inventada. Un "gap" o "diferencia" entre \
+Q-values, una "caída de confianza a 0.14", un "colapso a 0.01", etc. NO se \
+escriben como número salvo que cites en la MISMA frase los valores crudos exactos \
+que leíste de get_agent_state/get_decision_trace en ese paso y de los que se \
+deriva (p.ej. "Q_eat=0.47 vs Q_move=0.33, diferencia 0.14 en el paso 53"). Si no \
+tienes esos valores crudos delante, describe el gap de forma CUALITATIVA ("la \
+ventaja de eat sobre moverse se estrechó") y NO pongas número. Reportar un número \
+derivado no anclado se considera un error grave
+- Usa marco OBSERVACIONAL, no causal-histórico fuerte: prefiere "en este caso se \
+observa..." a afirmaciones como "superioridad empírica", "desafía la primacía \
+histórica" o "colapso catastrófico". Limita las conclusiones a lo que muestran \
+estas trayectorias y esta semilla
+- PASOS EXACTOS: cuando cites un valor en un paso concreto (p.ej. "en el paso 10 \
+drive=0.055" o "energía=0.0 en el paso 18"), ese par (paso, valor) DEBE provenir \
+de un get_agent_state / get_decision_trace en ESE mismo paso. No desplaces ni \
+aproximes el índice del paso; si el cambio conductual ocurre en el paso 10, no \
+escribas "paso 6". Si no estás seguro del paso exacto, di un rango ("entre los \
+pasos 9 y 11") en vez de un número concreto inventado
+- PERCEPCIÓN: no afirmes lo que un agente "percibió" (p.ej. "todos veían 8 \
+recursos") salvo que lo cites desde los campos de percepción de un decision_trace. \
+Si no lo verificaste, omítelo
+- ETIQUETAS NARRATIVAS: no uses etiquetas conductuales fuertes ("territorialidad", \
+"ansiedad", "planificación") salvo que las respaldes con datos concretos \
+(posiciones, valores, conteos). Prefiere describir la conducta observada antes \
+que ponerle un nombre interpretativo
 
 ## Comparison guidelines
 
