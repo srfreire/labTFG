@@ -1,0 +1,89 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam component {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+}
+skinparam database {
+  BorderColor #166534
+  BackgroundColor #ECFDF5
+}
+skinparam artifact {
+  BorderColor #7C2D12
+  BackgroundColor #FFF7ED
+}
+skinparam package {
+  BorderColor #64748B
+  BackgroundColor #F8FAFC
+}
+
+package "Interaccion" {
+  [CLI decisionlab] as CLI
+  [Interfaz web] as Web
+  [API\nFastAPI + WebSocket] as API
+}
+
+package "Orquestacion" {
+  [Router\nmaquina de estados] as Router
+  [Run state\ntrazas y eventos] as RunState
+}
+
+package "Pipeline de agentes" {
+  [Classifier] as Classifier
+  [Researcher] as Researcher
+  [Formalizer] as Formalizer
+  [Reasoner] as Reasoner
+  [Builder] as Builder
+  [Subagentes\nDeepResearcher y auxiliares] as Subagents
+}
+
+package "Herramientas" {
+  [Busqueda web] as Search
+  [Ficheros y tests] as Files
+  [retrieve_knowledge] as Retrieve
+}
+
+package "Sistema de memoria" {
+  [MemoryAgent] as MemoryAgent
+  [Consolidacion] as Consolidation
+  [Adaptadores KG] as KGAdapter
+}
+
+database "Persistencia\nPostgreSQL\nMinIO\nNeo4j\nQdrant" as Store
+artifact "Artefactos generados\nDecisionModel\npytest\ntrace.json" as Artifacts
+
+CLI --> API
+Web --> API
+API --> Router
+Router --> Classifier
+Router --> RunState
+
+Classifier --> Researcher
+Researcher --> Formalizer
+Formalizer --> Reasoner
+Reasoner --> Builder
+Researcher --> Subagents
+
+Researcher --> Search
+Builder --> Files
+Classifier --> Retrieve
+Researcher --> Retrieve
+Formalizer --> Retrieve
+Reasoner --> Retrieve
+Builder --> Retrieve
+
+Retrieve --> MemoryAgent
+MemoryAgent --> Consolidation
+MemoryAgent --> KGAdapter
+Consolidation --> Store
+KGAdapter --> Store
+RunState --> Store
+Builder --> Artifacts
+Artifacts --> Store
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+|Equipo|
+start
+:Define idea inicial;
+
+repeat
+  |Codex|
+  :Itera especificacion tecnica;
+  |Linear|
+  :Divide diseno en fases;
+  :Crea tareas con criterios;
+  |Agentes|
+  :Ejecutan tareas autonomas;
+  :Entregan evidencias;
+  |Equipo|
+  :Revisa resultados;
+repeat while (Hay nuevas decisiones?) is (si)
+->no;
+|Equipo|
+:Cierra plan operativo;
+stop
+@enduml

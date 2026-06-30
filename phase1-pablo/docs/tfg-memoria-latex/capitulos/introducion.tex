@@ -182,20 +182,7 @@ continuar.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=5mm,
-  introflow/.style={tfgbox, font=\footnotesize, minimum height=8mm, text width=4.9cm}
-]
-\node[introflow, fill=tfgBlue!12, draw=tfgBlue] (input) {Descripción del problema};
-\node[introflow, fill=tfgGreen!12, draw=tfgGreen, below=of input] (research) {Investigación científica};
-\node[introflow, fill=tfgOrange!16, draw=tfgOrange, below=of research] (formalize) {Formalización matemática};
-\node[introflow, fill=tfgPurple!13, draw=tfgPurple, below=of formalize] (reason) {Adaptación al entorno};
-\node[introflow, fill=tfgRed!10, draw=tfgRed, below=of reason] (build) {Modelo Python + pruebas};
-\draw[tfgarrow] (input) -- (research);
-\draw[tfgarrow] (research) -- (formalize);
-\draw[tfgarrow] (formalize) -- (reason);
-\draw[tfgarrow] (reason) -- (build);
-\end{tikzpicture}
+\includegraphics[width=0.38\textwidth]{figuras/phase1-main-transformation}
 \caption{Transformación principal del sistema desarrollado.}
 \end{figure}
 

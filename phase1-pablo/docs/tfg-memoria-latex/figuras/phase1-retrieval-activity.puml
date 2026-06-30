@@ -1,0 +1,37 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF3C7
+  DiamondBorderColor #92400E
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+start
+:Agente llama retrieve_knowledge;
+:Reescribe consulta;
+fork
+  :Busca en Qdrant dense;
+fork again
+  :Busca en Qdrant BM25;
+fork again
+  :Recupera vecindario en Neo4j;
+end fork
+:Fusiona resultados con RRF;
+:Aplica filtros de confianza y vigencia;
+if (Confianza suficiente?) then (si)
+  :Construye contexto;
+else (no)
+  :Activa CRAG o fallback web;
+  :Reevalua evidencias;
+endif
+:Inyecta contexto en el agente;
+stop
+@enduml

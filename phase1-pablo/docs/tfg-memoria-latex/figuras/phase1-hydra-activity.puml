@@ -1,0 +1,50 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF3C7
+  DiamondBorderColor #92400E
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+|Linear|
+start
+:Publica tareas con criterios;
+
+|Hydra|
+:Lee estado global;
+:Selecciona oleada de tareas;
+
+|Agentes trabajadores|
+fork
+  :Agente 1 trabaja en task A;
+fork again
+  :Agente 2 trabaja en task B;
+fork again
+  :Agente N trabaja en task N;
+end fork
+:Entregan commits, tests y notas;
+
+|Hydra|
+:Revisa evidencias;
+if (Bloqueo humano?) then (si)
+  |Equipo|
+  :Decide criterio o prioridad;
+  |Hydra|
+  :Actualiza plan;
+else (no)
+  :Prepara PR;
+endif
+
+|CI y revision|
+:Ejecuta checks;
+:Fusiona o crea follow-up;
+stop
+@enduml

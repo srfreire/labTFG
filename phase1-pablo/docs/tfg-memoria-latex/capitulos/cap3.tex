@@ -42,9 +42,16 @@ externas se invocan solo desde el runtime de agentes.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-software-architecture}
-\caption{Arquitectura software por componentes.}
+\includegraphics[width=0.92\textwidth,height=0.76\textheight,keepaspectratio]{figuras/phase1-software-architecture}
+\caption{Arquitectura software por subsistemas.}
 \label{fig:phase1-software-architecture}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figuras/phase1-data-flow}
+\caption{Flujo de datos de alto nivel.}
+\label{fig:phase1-data-flow}
 \end{figure}
 
 Esta separación responde a una necesidad práctica: las salidas de los modelos
@@ -63,7 +70,7 @@ automáticos del sistema.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-pipeline-activity}
+\includegraphics[height=0.78\textheight,keepaspectratio]{figuras/phase1-pipeline-activity}
 \caption{Actividad del pipeline con revisión humana.}
 \label{fig:phase1-pipeline-activity}
 \end{figure}
@@ -134,12 +141,12 @@ MemoryAgent & Consolida artefactos aceptados en la memoria y prepara conocimient
 
 Esta división permite que la revisión humana intervenga con precisión. Si la
 investigación omite un paradigma, se corrige en la etapa de investigación. Si la
-formulación matemática es mala, se rerunea la formalización. Si la adaptación al
-entorno usa acciones inexistentes, se corrige el Reasoner. Si el código falla,
-se corrige el Builder. Un agente monolítico mezclaría estos niveles y haría más
-difícil diagnosticar los errores.
+formulación matemática es mala, se vuelve a ejecutar la formalización. Si la
+adaptación al entorno usa acciones inexistentes, se corrige el Reasoner. Si el
+código falla, se corrige el Builder. Un agente monolítico mezclaría estos niveles
+y haría más difícil diagnosticar los errores.
 
-\subsection{Workflow de agentes}
+\subsection{Flujo de agentes}
 
 El sistema de agentes se entiende mejor como un flujo de reducción progresiva
 de ambigüedad. Cada agente transforma la salida anterior en un artefacto más
@@ -327,7 +334,7 @@ models/{run_id}/builder/{paradigm}/test_{formulation}.py
 El modelo generado debe ser autocontenido y cumplir el contrato de modelo
 esperado. El Builder también genera pruebas y ejecuta
 \texttt{uv run pytest}. Si las pruebas fallan, el subagente puede corregir el
-código y rerunear los tests hasta un límite de intentos.
+código y volver a ejecutar los tests hasta un límite de intentos.
 
 Además, el Builder valida implementabilidad antes de escribir código. Si la
 lógica de decisión es ambigua, si usa claves de percepción inexistentes o si los
@@ -401,7 +408,7 @@ Deep researcher & \texttt{search\_papers}, \texttt{web\_search}; \texttt{retriev
 Formalizer sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer informes profundos, escribir formulaciones y recuperar patrones matemáticos ya validados. \\ \hline
 Reasoner sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer investigación, formulaciones y entorno; escribir specs JSON; reutilizar rangos de parámetros y mapeos de entorno. \\ \hline
 Builder sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{run\_tests}, \texttt{retrieve\_knowledge} & Leer specs, escribir modelo y tests, ejecutar validación real y recuperar patrones de implementación previos. \\ \hline
-MemoryAgent & extracción estructurada, escritura en grafo, indexado vectorial, resolución de conflictos & No es un agente conversacional abierto; ejecuta un \textit{fixed pipeline} para persistir conocimiento aceptado. \\ \hline
+MemoryAgent & extracción estructurada, escritura en grafo, indexado vectorial, resolución de conflictos & No es un agente conversacional abierto; ejecuta un pipeline fijo para persistir conocimiento aceptado. \\ \hline
 \end{tabular}
 \caption{Herramientas disponibles por agente.}
 \end{center}
@@ -429,8 +436,8 @@ terminal, interfaz web o pruebas automáticas.
 Investigación & Aprobar paradigmas o pedir investigar uno adicional. & Evita que el pipeline continúe con marcos científicos irrelevantes o incompletos. \\ \hline
 Formalización & Seleccionar paradigmas y formulaciones concretas. & Reduce variantes matemáticas a las que tienen sentido para implementar. \\ \hline
 Entorno & Proporcionar \texttt{env\_spec.json}. & El sistema necesita una definición autoritativa de acciones, percepciones y recompensas. \\ \hline
-Razonamiento & Aprobar specs JSON, rechazarlas o rerunear formalización. & Distingue errores de adaptación al entorno de errores matemáticos previos. \\ \hline
-Construcción & Aprobar modelos generados, rechazar código o rerunear Reasoner. & Separa problemas de implementación de problemas de especificación. \\ \hline
+Razonamiento & Aprobar specs JSON, rechazarlas o pedir una nueva formalización. & Distingue errores de adaptación al entorno de errores matemáticos previos. \\ \hline
+Construcción & Aprobar modelos generados, rechazar código o pedir una nueva ejecución de Reasoner. & Separa problemas de implementación de problemas de especificación. \\ \hline
 \end{tabular}
 \caption{Puntos de revisión humana del pipeline.}
 \end{center}
@@ -456,7 +463,7 @@ etapa responsable del artefacto rechazado
 Investigación & Pedir un paradigma adicional. & Lanza un DeepResearcher nuevo y vuelve a revisar la investigación. \\ \hline
 Razonamiento & Rehacer formalización de un paradigma. & Ejecuta Formalizer y después Reasoner para ese paradigma. \\ \hline
 Razonamiento & Rechazar una spec. & Reejecuta Reasoner para el paradigma afectado. \\ \hline
-Construcción & Pedir rerun de Reasoner. & Regenera specs y vuelve a Builder para el paradigma. \\ \hline
+Construcción & Pedir una nueva ejecución de Reasoner. & Regenera specs y vuelve a Builder para el paradigma. \\ \hline
 Construcción & Rechazar un modelo concreto. & Reejecuta Builder solo para la formulación afectada. \\ \hline
 \end{tabular}
 \caption{Rutas de corrección durante la revisión humana.}
@@ -468,27 +475,41 @@ Construcción & Rechazar un modelo concreto. & Reejecuta Builder solo para la fo
 La interfaz web se diseña para hacer visible el estado del pipeline, no solo
 para lanzar una ejecución. El usuario necesita ver tres cosas durante una
 sesión larga: qué está haciendo el sistema, qué artefacto debe revisar y qué
-evidencia queda después del run. Por eso la interfaz se organiza en tres vistas
-principales: dashboard de ejecución, pantalla de revisión humana y vista de
-historial, memoria y resultados.
+evidencia queda después de la ejecución. Por eso la interfaz se organiza en
+tres vistas principales: panel de ejecución, pantalla de revisión humana y vista
+de historial, memoria y resultados.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-interface-wireframes}
-\caption{Wireframes de las vistas principales de la interfaz.}
-\label{fig:phase1-interface-wireframes}
+\includegraphics[width=0.72\textwidth]{figuras/phase1-interface-use-cases}
+\caption{Casos de uso de la interfaz web.}
+\label{fig:phase1-interface-use-cases}
 \end{figure}
 
 El dashboard combina chat, grafo de ejecución y estado de agentes. La pantalla
 de revisión muestra el artefacto en curso y las acciones posibles: aprobar,
-rechazar o pedir rerun. La vista posterior al run permite revisar trazas,
-artefactos, memoria y resultados sin depender del contexto efímero del chat.
+rechazar o pedir una nueva ejecución. La vista posterior a la ejecución permite
+revisar trazas, artefactos, memoria y resultados sin depender del contexto
+efímero del chat.
+
+El diseño de la vista principal se concretó en el wireframe de la
+Figura~\ref{fig:phase1-agrex-main-wireframe}. Esta plantilla no muestra una
+ejecución real. Define la organización de la pantalla: navegación temporal a la
+izquierda, lienzo central de Agrex, panel de inspección y revisión a la derecha,
+y controles de reproducción en la zona inferior.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{figuras/phase1-agrex-main-wireframe}
+\caption{Wireframe de la vista principal de Agrex.}
+\label{fig:phase1-agrex-main-wireframe}
+\end{figure}
 
 \section{Artefactos, persistencia e integración}
 
 \subsection{Artefactos y persistencia}
 
-El sistema es \textit{storage-first}: los artefactos reales se guardan en MinIO
+El sistema prioriza la persistencia de artefactos: los artefactos reales se guardan en MinIO
 y sus metadatos se registran en PostgreSQL. Esto evita depender de carpetas
 locales y permite que CLI, servidor web y evaluaciones compartan el mismo modelo
 de persistencia.
@@ -578,6 +599,23 @@ Además, \texttt{get\_state} debe exponer variables internas y una clave
 \texttt{q\_values}. Esta información permite a la fase de simulación visualizar
 alternativas de acción, confianza relativa y evolución de puntuaciones internas.
 
+El contrato no se limita a la firma de los métodos. También impone invariantes
+verificables que el Builder debe cubrir con pruebas.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
+\textbf{Invariante} & \textbf{Condición esperada} & \textbf{Evidencia} \\ \hline
+Acción válida & \texttt{decide} devuelve una acción presente en el entorno. & Tests generados por Builder y ejecución con percepciones de ejemplo. \\ \hline
+Lectura sin mutación & \texttt{decide} no modifica el estado interno del modelo. & Comparación de \texttt{get\_state} antes y después de decidir. \\ \hline
+Actualización acotada & \texttt{update} concentra el aprendizaje o cambio de estado. & Tests sobre recompensa, nueva percepción y variables internas. \\ \hline
+Estado serializable & \texttt{get\_state} devuelve datos inspeccionables por la fase 2. & Importación dinámica y serialización en reportes de simulación. \\ \hline
+\end{tabular}
+\caption{Invariantes verificables del contrato \texttt{DecisionModel}.}
+\end{center}
+\end{table}
+
 \section{Sistema de memoria y conocimiento}
 
 El sistema de memoria no es solo una base de datos para guardar textos. Es un
@@ -586,7 +624,7 @@ conocimiento reutilizable y lo vuelve a inyectar en agentes futuros.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-memory-architecture}
+\includegraphics[width=0.68\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-memory-architecture}
 \caption{Sistema de memoria y recuperación.}
 \label{fig:phase1-memory-architecture}
 \end{figure}
@@ -667,7 +705,7 @@ no en simple ruido de logs.
 \subsection{MemoryAgent}
 
 El MemoryAgent no es un agente libre que decide qué hacer en cada turno. Es un
-\textit{fixed pipeline} determinista que usa modelos de lenguaje para tareas concretas, pero
+pipeline determinista que usa modelos de lenguaje para tareas concretas, pero
 mantiene fijo el flujo de control mostrado en la ruta de escritura de la
 Figura~\ref{fig:phase1-memory-architecture}.
 
@@ -711,6 +749,23 @@ PostgreSQL es la fuente de verdad para confianza y validez temporal. Neo4j
 guarda relaciones, pero no decide si una memoria está vigente. Qdrant permite
 buscar, pero sus payloads no son la fuente de verdad de la confianza. MinIO
 conserva el texto completo de los artefactos originales.
+
+La memoria también introduce riesgos propios. El diseño los trata como problemas
+de identidad, confianza y procedencia, no solo como problemas de almacenamiento.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
+\textbf{Riesgo} & \textbf{Efecto posible} & \textbf{Mitigación de diseño} \\ \hline
+Duplicado semántico & El mismo paradigma aparece con varios slugs y fragmenta la recuperación. & Canonicalización, paradigmas paraguas y evals de \texttt{slug-accuracy}. \\ \hline
+Contradicción & Una memoria posterior invalida una decisión previa sin dejar rastro. & Ciclo de vida en PostgreSQL, supersesión y validez temporal. \\ \hline
+Relación incompleta & El grafo conserva nodos, pero pierde la conexión con paper, postulado o modelo. & Snapshots de KG, revisión de endpoints y evals con corpus cerrado. \\ \hline
+Recuperación irrelevante & Un agente recibe memoria parecida pero no útil para la etapa actual. & Recuperación híbrida, reranking y CRAG cuando la confianza baja. \\ \hline
+\end{tabular}
+\caption{Riesgos principales del sistema de memoria y mitigaciones.}
+\end{center}
+\end{table}
 
 Las observaciones recuperables se persisten como contenido de memoria, con su
 \texttt{namespace}, \texttt{memory\_type}, etapa y ejecución de origen. Cuando
@@ -838,7 +893,7 @@ La herramienta \texttt{retrieve\_knowledge} combina varias señales:
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-retrieval-activity}
+\includegraphics[width=0.76\textwidth]{figuras/phase1-retrieval-activity}
 \caption{Actividad de recuperación de conocimiento.}
 \label{fig:phase1-retrieval-activity}
 \end{figure}
@@ -911,11 +966,11 @@ Las decisiones más importantes del diseño son:
 problema abierto, investigación científica, formulación matemática, adaptación
 al entorno y código ejecutable;
 \item usar un Router determinista con estados persistidos, revisión humana y
-rutas de rerun, en lugar de dejar que un agente planificador global decida todo
+rutas de nueva ejecución, en lugar de dejar que un agente planificador global decida todo
 el flujo;
 \item dividir el trabajo en subagentes por paradigma, formulación o spec para
 reducir contexto, evitar contaminación entre ramas y aislar fallos;
-\item adoptar una estrategia \textit{storage-first}: los artefactos completos
+\item adoptar una estrategia centrada en artefactos persistentes: los artefactos completos
 viven en MinIO, los metadatos en PostgreSQL y la reanudación comprueba que el
 estado apunta a artefactos realmente existentes;
 \item separar conocimiento semántico, relaciones y ciclo de vida: Neo4j mantiene

@@ -1,0 +1,63 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam package {
+  BorderColor #334155
+  BackgroundColor #F8FAFC
+}
+skinparam component {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+}
+skinparam database {
+  BorderColor #166534
+  BackgroundColor #ECFDF5
+}
+
+package "Escritura" {
+  component "Artefacto aceptado" as Accepted
+  component "Extractor" as Extractor
+  component "Canonicalizador" as Canon
+  component "Resolver de conflictos" as Resolver
+  component "Consolidacion" as Consolidation
+}
+
+package "Almacenes" {
+  database "MinIO\nartefacto completo" as MinIO
+  database "PostgreSQL\nconfianza y vigencia" as PG
+  database "Neo4j\ngrafo" as Neo4j
+  database "Qdrant\ndense + BM25" as Qdrant
+}
+
+package "Lectura" {
+  component "retrieve_knowledge" as Retrieve
+  component "Contexto filtrado" as Context
+  component "Agentes futuros" as FutureAgents
+}
+
+Accepted -down-> Extractor
+Extractor -down-> Canon
+Canon -down-> Resolver
+Resolver -down-> Consolidation
+
+Consolidation -down-> MinIO
+Consolidation -down-> PG
+Consolidation -down-> Neo4j
+Consolidation -down-> Qdrant
+
+Neo4j -down-> Retrieve : relaciones
+Qdrant -down-> Retrieve : candidatos
+PG -down-> Retrieve : confianza
+MinIO -[hidden]right- PG
+PG -[hidden]right- Neo4j
+Neo4j -[hidden]right- Qdrant
+
+Retrieve -down-> Context
+Context -down-> FutureAgents
+@enduml

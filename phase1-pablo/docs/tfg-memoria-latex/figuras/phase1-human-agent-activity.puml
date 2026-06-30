@@ -1,0 +1,38 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+|Humano|
+start
+:Define arquitectura y prioridades;
+:Fija criterios de aceptacion;
+
+|Agentes|
+:Implementan cambios;
+:Ejecutan pruebas;
+:Entregan evidencias y gaps;
+
+|Humano|
+:Revisa evidencias;
+while (Resultado aceptado?) is (no)
+  :Ajusta criterios;
+  |Agentes|
+  :Repiten tarea afectada;
+  :Ejecutan pruebas;
+  :Entregan evidencias y gaps;
+  |Humano|
+  :Revisa evidencias;
+endwhile (si)
+:Aprueba merge o cierre;
+stop
+@enduml

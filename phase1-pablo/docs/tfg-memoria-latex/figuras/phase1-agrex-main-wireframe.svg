@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .shell { fill: #ffffff; stroke: #111827; stroke-width: 2; }
+      .panel { fill: #ffffff; stroke: #64748b; stroke-width: 2; }
+      .panel-soft { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 2; }
+      .placeholder { fill: none; stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 10 8; }
+      .line { stroke: #475569; stroke-width: 2; fill: none; }
+      .wire { stroke: #0f766e; stroke-width: 3; fill: none; }
+      .node { fill: #ffffff; stroke: #0f766e; stroke-width: 3; }
+      .node-muted { fill: #f8fafc; stroke: #64748b; stroke-width: 2; }
+      .text { font-family: Arial, Helvetica, sans-serif; fill: #111827; font-size: 28px; }
+      .label { font-family: Arial, Helvetica, sans-serif; fill: #334155; font-size: 21px; }
+      .small { font-family: Arial, Helvetica, sans-serif; fill: #475569; font-size: 18px; }
+      .tiny { font-family: Arial, Helvetica, sans-serif; fill: #64748b; font-size: 15px; }
+      .badge { fill: #ccfbf1; stroke: #0f766e; stroke-width: 2; }
+      .status { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; }
+      .warn { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
+      .dark { fill: #e2e8f0; stroke: #64748b; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1000"/>
+
+  <text class="text" x="80" y="78">Wireframe de la vista principal de Agrex</text>
+  <text class="label" x="80" y="112">Seguimiento de una ejecución multiagente con revisión humana y reproducción temporal</text>
+
+  <rect class="shell" x="80" y="150" width="1440" height="760" rx="18"/>
+  <rect class="panel-soft" x="80" y="150" width="1440" height="58" rx="18"/>
+  <circle class="dark" cx="118" cy="179" r="10"/>
+  <circle class="dark" cx="148" cy="179" r="10"/>
+  <circle class="dark" cx="178" cy="179" r="10"/>
+  <text class="label" x="220" y="187">DecisionLab / Agrex run viewer</text>
+
+  <rect class="status" x="1140" y="166" width="112" height="28" rx="14"/>
+  <text class="tiny" x="1164" y="186">Running</text>
+  <rect class="badge" x="1270" y="166" width="92" height="28" rx="14"/>
+  <text class="tiny" x="1296" y="186">CASO1</text>
+  <rect class="panel" x="1380" y="162" width="112" height="36" rx="8"/>
+  <text class="tiny" x="1408" y="185">Review</text>
+
+  <!-- Left execution rail -->
+  <rect class="panel" x="105" y="230" width="260" height="610" rx="12"/>
+  <text class="label" x="130" y="266">Etapas del pipeline</text>
+  <line class="line" x1="160" y1="305" x2="160" y2="738"/>
+  <circle class="node" cx="160" cy="320" r="14"/>
+  <text class="small" x="190" y="327">Research</text>
+  <circle class="node" cx="160" cy="392" r="14"/>
+  <text class="small" x="190" y="399">Review</text>
+  <circle class="node" cx="160" cy="464" r="14"/>
+  <text class="small" x="190" y="471">Formalize</text>
+  <circle class="node-muted" cx="160" cy="536" r="14"/>
+  <text class="small" x="190" y="543">Reason</text>
+  <circle class="node-muted" cx="160" cy="608" r="14"/>
+  <text class="small" x="190" y="615">Build</text>
+  <circle class="node-muted" cx="160" cy="680" r="14"/>
+  <text class="small" x="190" y="687">Final review</text>
+
+  <rect class="panel-soft" x="130" y="760" width="210" height="56" rx="10"/>
+  <text class="tiny" x="150" y="783">Mini grafo de memoria</text>
+  <circle class="node-muted" cx="178" cy="804" r="7"/>
+  <circle class="node-muted" cx="210" cy="796" r="7"/>
+  <circle class="node-muted" cx="238" cy="812" r="7"/>
+  <circle class="node-muted" cx="272" cy="797" r="7"/>
+  <line class="line" x1="178" y1="804" x2="210" y2="796"/>
+  <line class="line" x1="210" y1="796" x2="238" y2="812"/>
+  <line class="line" x1="238" y1="812" x2="272" y2="797"/>
+
+  <!-- Main graph canvas -->
+  <rect class="panel" x="390" y="230" width="760" height="520" rx="12"/>
+  <text class="label" x="420" y="266">Lienzo temporal de agentes y herramientas</text>
+  <rect class="placeholder" x="430" y="295" width="680" height="390" rx="14"/>
+
+  <circle class="node" cx="570" cy="385" r="26"/>
+  <circle class="node" cx="735" cy="330" r="22"/>
+  <circle class="node" cx="880" cy="410" r="24"/>
+  <circle class="node" cx="680" cy="510" r="22"/>
+  <circle class="node" cx="840" cy="560" r="22"/>
+  <circle class="node-muted" cx="970" cy="500" r="20"/>
+  <line class="wire" x1="595" y1="377" x2="714" y2="338"/>
+  <line class="wire" x1="756" y1="341" x2="858" y2="398"/>
+  <line class="wire" x1="583" y1="407" x2="663" y2="493"/>
+  <line class="wire" x1="703" y1="518" x2="818" y2="558"/>
+  <line class="wire" x1="862" y1="552" x2="953" y2="510"/>
+  <text class="tiny" x="538" y="441">Agent</text>
+  <text class="tiny" x="715" y="302">Tool</text>
+  <text class="tiny" x="856" y="455">Artifact</text>
+  <text class="tiny" x="654" y="552">Review</text>
+  <text class="tiny" x="815" y="604">Model</text>
+
+  <rect class="panel-soft" x="430" y="705" width="680" height="32" rx="8"/>
+  <text class="tiny" x="455" y="727">Leyenda: agente, herramienta, fichero, revisión, error, memoria</text>
+
+  <!-- Bottom controls -->
+  <rect class="panel" x="390" y="770" width="760" height="70" rx="12"/>
+  <text class="small" x="420" y="812">Controles de reproducción</text>
+  <rect class="dark" x="680" y="793" width="50" height="26" rx="13"/>
+  <rect class="dark" x="742" y="793" width="50" height="26" rx="13"/>
+  <rect class="dark" x="804" y="793" width="50" height="26" rx="13"/>
+  <line class="line" x1="875" y1="806" x2="1085" y2="806"/>
+  <circle class="node" cx="945" cy="806" r="11"/>
+  <text class="tiny" x="678" y="833">paso</text>
+  <text class="tiny" x="742" y="833">play</text>
+  <text class="tiny" x="803" y="833">zoom</text>
+
+  <!-- Right inspector -->
+  <rect class="panel" x="1175" y="230" width="320" height="610" rx="12"/>
+  <text class="label" x="1205" y="266">Panel de inspección</text>
+  <rect class="panel-soft" x="1205" y="295" width="260" height="70" rx="10"/>
+  <text class="small" x="1225" y="323">Evento seleccionado</text>
+  <text class="tiny" x="1225" y="348">tool.call / retrieve knowledge</text>
+  <rect class="panel-soft" x="1205" y="390" width="260" height="130" rx="10"/>
+  <text class="small" x="1225" y="420">Metadatos</text>
+  <line class="line" x1="1225" y1="445" x2="1438" y2="445"/>
+  <line class="line" x1="1225" y1="474" x2="1410" y2="474"/>
+  <line class="line" x1="1225" y1="503" x2="1450" y2="503"/>
+  <rect class="warn" x="1205" y="545" width="260" height="74" rx="10"/>
+  <text class="small" x="1225" y="575">Revisión humana</text>
+  <text class="tiny" x="1225" y="601">aprobar, rechazar o reintentar</text>
+  <rect class="panel-soft" x="1205" y="645" width="260" height="150" rx="10"/>
+  <text class="small" x="1225" y="675">Artefactos</text>
+  <line class="line" x1="1225" y1="704" x2="1425" y2="704"/>
+  <line class="line" x1="1225" y1="733" x2="1398" y2="733"/>
+  <line class="line" x1="1225" y1="762" x2="1440" y2="762"/>
+
+  <!-- Callouts -->
+  <text class="tiny" x="92" y="945">Diseño: separa navegación temporal, grafo de ejecución, detalle del evento, revisión humana y controles de replay.</text>
+</svg>

@@ -73,10 +73,10 @@ Las rutas principales de esta evidencia son:
 
 \subsection{Integración continua y flujo de Git}
 
-El repositorio incluye un workflow de GitHub Actions llamado \texttt{CI}. Se
+El repositorio incluye un flujo de GitHub Actions llamado \texttt{CI}. Se
 ejecuta en cada \textit{push} a \texttt{main}, en cada \textit{pull request}
 contra \texttt{main} y también de forma manual mediante
-\texttt{workflow\_dispatch}. Además, el workflow cancela ejecuciones antiguas de
+\texttt{workflow\_dispatch}. Además, el flujo cancela ejecuciones antiguas de
 la misma rama cuando llega un \textit{push} nuevo, para que la señal de CI
 corresponda siempre al último commit.
 
@@ -138,11 +138,11 @@ canonicalización, la recuperación o la latencia, queda reflejado en el reporte
 
 \subsection{Evals del sistema multiagente}
 
-Estas evals prueban el workflow de agentes como sistema: Router, estados,
+Estas evals prueban el flujo de agentes como sistema. Cubren Router, estados,
 subagentes, herramientas, artefactos, aprobación automática en modo eval y salida
-final. Su objetivo no es evaluar una memoria concreta, sino comprobar que el
-pipeline se mueve de una etapa a otra y que los artefactos generados son
-utilizables por la siguiente etapa.
+final. Su objetivo no es evaluar una memoria concreta. Comprueban que el pipeline
+se mueve de una etapa a otra y que los artefactos generados son utilizables por
+la siguiente etapa.
 
 \begin{table}[H]
 \begin{center}
@@ -152,7 +152,7 @@ utilizables por la siguiente etapa.
 Smoke & Research & Arranque básico del pipeline, éxito de una ejecución y descubrimiento mínimo de paradigmas. \\ \hline
 Full pipeline & Research--Build & Ejecución completa: investigación, formalización, razonamiento, generación de código, importación del modelo y llamada funcional a \texttt{decide}. \\ \hline
 \end{tabular}
-\caption{Evals del workflow multiagente.}
+\caption{Evals del flujo multiagente.}
 \end{center}
 \end{table}
 
@@ -271,6 +271,7 @@ presupuesto y la generación de reportes. Esto evita que una eval falle por un
 error del marco de evaluación en lugar de por una regresión del sistema evaluado.
 
 \subsection{Evaluación con corpus cerrado de papers}
+\label{sec:evaluacion-corpus-cerrado}
 
 La evaluación más exigente de la fase 1 se hizo con 2 casos basados en PDFs. En
 cada caso, el sistema solo podía acceder a los papers incluidos en el ZIP de
@@ -284,18 +285,62 @@ era pedir un paradigma concreto, sino comprobar si el pipeline podía descubrir
 los paradigmas relevantes, proponer formulaciones, razonar sobre un entorno,
 generar modelos y conservar todos los artefactos usando solo un corpus cerrado.
 Después se usó un LLM como juez, con el mismo prompt y la misma rúbrica para los
-2 casos. El juez revisó fidelidad al corpus, calidad de paradigmas,
-formulaciones, modelos, memoria, trazabilidad y advertencias.
+2 casos. El juez no participó en la generación de los artefactos. Su papel fue
+revisar el resultado como un evaluador externo: fidelidad al corpus, calidad de
+paradigmas, formulaciones, modelos, memoria, trazabilidad y advertencias.
+
+Esta eval amplía la validación técnica porque separa 2 preguntas. La primera es
+si el sistema termina una ejecución completa y genera código que cumple el
+contrato \texttt{DecisionModel}. La segunda es si los artefactos generados son
+coherentes con los papers de entrada y pueden ser revisados por un experto. La
+primera pregunta se cubre con tests y estado \texttt{PASS}; la segunda se cubre
+con el juez y con el bundle auditable de cada caso.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{2.45cm}|>{\raggedright\arraybackslash}p{2.05cm}|>{\raggedright\arraybackslash}p{5.65cm}|} \hline
 \textbf{Caso} & \textbf{Resultado} & \textbf{Tiempo / coste} & \textbf{Evidencia generada} \\ \hline
-CASO1 & Pipeline: PASS. Juez: pass con reservas, 72/100. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs del Reasoner, 15 modelos registrados y KG de 433 nodos y 518 relaciones. \\ \hline
-CASO2 & Pipeline: PASS. Juez: pass con reservas, 78/100. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs del Reasoner, 12 modelos registrados y KG de 272 nodos y 352 relaciones. \\ \hline
+CASO1 & Pipeline: PASS. Juez: aprobado con reservas, 72/100. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs del Reasoner, 15 modelos registrados y KG de 433 nodos y 518 relaciones. \\ \hline
+CASO2 & Pipeline: PASS. Juez: aprobado con reservas, 78/100. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs del Reasoner, 12 modelos registrados y KG de 272 nodos y 352 relaciones. \\ \hline
 \end{tabular}
 \caption{Resultados de las evals con corpus cerrado de papers.}
+\end{center}
+\end{table}
+
+La evidencia científica se revisó como una cadena de trazabilidad. La tabla
+siguiente no incluye todos los artefactos del bundle, pero muestra el tipo de
+enlace que la eval permite auditar desde el paper hasta el test ejecutable.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.2cm}|>{\raggedright\arraybackslash}p{2.2cm}|>{\raggedright\arraybackslash}p{2.2cm}|>{\raggedright\arraybackslash}p{2.15cm}|>{\raggedright\arraybackslash}p{2.35cm}|>{\raggedright\arraybackslash}p{1.6cm}|} \hline
+\textbf{Caso} & \textbf{Paper} & \textbf{Postulado o mecanismo} & \textbf{Variable o fórmula} & \textbf{Spec, modelo y test} & \textbf{Resultado} \\ \hline
+CASO1 & Rangel 2013 y Rangel 2008 & Elección alimentaria basada en atributos, autocontrol y control habitual o dirigido a objetivo. & Valor, palatabilidad, salud, hambre y fuerza de hábito. & Formulaciones de valor por atributos y control habitual; modelos registrados y tests de Builder. & PASS; juez 72/100. \\ \hline
+CASO1 & Rangel 2008 y referencias citadas sobre DDM & Acumulación de evidencia como mecanismo de elección. & Acumulador, umbral, ruido y regla de decisión. & Specs y modelos DDM; tests generados. & Útil, con reserva por registro. \\ \hline
+CASO2 & Petzschner, Friston, Keramati y Gutkin & Regulación corporal, active inference, predictive coding y HRL. & Drive fisiológico, error de predicción, energía libre y recompensa homeostática. & 12 specs del Reasoner, 12 modelos registrados y 40 llamadas a \texttt{run\_tests}. & PASS; juez 78/100. \\ \hline
+\end{tabular}
+\caption{Matriz condensada de trazabilidad científica en las evals de corpus cerrado.}
+\end{center}
+\end{table}
+
+La rúbrica del juez no redujo la evaluación a una nota global. Revisó criterios
+separados para localizar qué parte del sistema funcionaba y qué parte necesitaba
+revisión humana. La tabla siguiente resume esos criterios.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
+\textbf{Criterio} & \textbf{Qué revisó} & \textbf{Lectura del resultado} \\ \hline
+Fidelidad al corpus & Si los paradigmas y mecanismos aparecen en los PDFs suministrados o en referencias citadas por ellos. & Ambos casos fueron fieles al corpus, con reservas cuando el sistema apoyó parte del razonamiento en fuentes citadas pero no incluidas como PDF. \\ \hline
+Calidad de paradigmas & Si la taxonomía científica era coherente y tenía el nivel de abstracción adecuado. & CASO1 separó bien mecanismos de decisión alimentaria. CASO2 fue útil, pero mostró solapamientos entre homeostasis, HRL, active inference y predictive coding. \\ \hline
+Formulaciones & Si las ecuaciones, variables, parámetros y reglas podían adaptarse a un entorno de simulación. & La mayoría de formulaciones fueron plausibles. Se detectó una spec inválida en CASO1 y mezclas de conceptos entre carpetas en CASO2. \\ \hline
+Modelos generados & Si los ficheros Python registrados exponían \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Los modelos cumplían el contrato a nivel de interfaz. El juez detectó un problema de registro en CASO1 y duplicados de ficheros en CASO2. \\ \hline
+Memoria y trazabilidad & Si el bundle permitía reconstruir la ejecución y revisar nodos, relaciones, artefactos y modelos. & Los bundles fueron ricos y auditables. Las reservas se concentraron en errores de escritura del grafo y endpoints ausentes. \\ \hline
+\end{tabular}
+\caption{Criterios revisados por el juez en las evals con corpus cerrado.}
 \end{center}
 \end{table}
 
@@ -309,14 +354,36 @@ solapamientos de taxonomía entre homeostasis, HRL, active inference y
 predictive coding, duplicados de archivos de modelo, endpoints de postulado
 ausentes y 96 errores de endpoint en escritura de grafo.
 
-Por tanto, el veredicto pass con reservas debe leerse como una señal de
-utilidad, no como una certificación científica final. Los artefactos son
-reproducibles, auditables y suficientemente ricos para que un experto los
-revise. Sin embargo, la aceptación definitiva de paradigmas y formulaciones
-debe depender de validación experta.
+La tabla siguiente clasifica esas reservas para distinguir fallos que invalidan
+un artefacto de fallos que afectan a trazabilidad o reutilización futura.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{2.2cm}|} \hline
+\textbf{Reserva} & \textbf{Severidad} & \textbf{Efecto} & \textbf{Mitigación} & \textbf{Estado} \\ \hline
+Spec inválida en CASO1 & Alta & No debe generar un modelo aceptado para esa formulación. & Reasoner marca \texttt{status: "invalid"} y conserva problemas explícitos. & Requiere revisión experta. \\ \hline
+Desajuste de registro en DDM & Alta & Puede apuntar a una clase o test distinto al esperado. & Bundle conserva modelo, test, rutas y fila de base de datos para auditar el fallo. & Detectado por juez. \\ \hline
+Errores de escritura en KG & Media & Reducen trazabilidad automática, pero no borran artefactos en MinIO ni filas de PostgreSQL. & Snapshots, reportes y conteos por etapa permiten localizar endpoints fallidos. & Limitación conocida. \\ \hline
+Solapamiento taxonómico & Media & Puede mezclar paradigmas, mecanismos y formulaciones relacionadas. & Revisión humana de paradigmas y formulaciones antes de aceptar memoria. & Necesita experto. \\ \hline
+Duplicados de ficheros & Baja & Puede dificultar reinyección o revisión manual. & La tabla de modelos registrados conserva la ruta considerada canónica. & Higiene pendiente. \\ \hline
+\end{tabular}
+\caption{Severidad y mitigación de las reservas detectadas por el juez.}
+\end{center}
+\end{table}
+
+Por tanto, el veredicto aprobado con reservas debe leerse como una señal de
+utilidad, no como una certificación científica final. La señal positiva es que,
+con un corpus cerrado, el sistema produjo paradigmas, formulaciones, modelos,
+tests, snapshots del grafo y reportes que un evaluador separado pudo revisar. La
+señal negativa es que esa revisión encontró errores reales de taxonomía,
+registro y trazabilidad. Por eso, esta eval reduce el riesgo de evaluar solo la
+ejecución técnica, pero no sustituye a una validación experta de los modelos
+generados.
 
 Las rutas versionadas de estas evidencias son:
 
+\begin{small}
 \begin{itemize}
 \item \path{phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus};
 \item \path{phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus};
@@ -324,6 +391,7 @@ Las rutas versionadas de estas evidencias son:
 \item \path{phase1-pablo/evals/judge-reports/2026-06-29-caso2-llm-judge.md};
 \item \path{phase1-pablo/evals/infra-snapshots/2026-06-29-pdf-corpus-evals.json}.
 \end{itemize}
+\end{small}
 
 \section{Pruebas técnicas}
 
@@ -361,19 +429,30 @@ builder/*_model.py
 builder/test_*.py
 \end{verbatim}
 
-\section{Limitaciones de las pruebas}
+\section{Amenazas a la validez}
 
-Las pruebas automáticas validan propiedades técnicas, pero no sustituyen la
-revisión humana de contenido científico. Por ejemplo, un test puede comprobar
-que un modelo ejecuta correctamente una política, pero no que la formulación
-elegida sea la más adecuada para un paradigma psicológico concreto.
+La validación del sistema debe leerse con cautela. Las pruebas y evals muestran
+que el pipeline funciona y produce artefactos auditables, pero no convierten cada
+modelo generado en una validación científica definitiva.
 
-Las evals con agentes tienen además limitaciones propias. Pueden depender de
-servicios externos, tienen coste económico, no siempre son completamente
-deterministas y necesitan fixtures o semillas para que una regresión sea
-interpretable. Por esta razón se combinan suites online, que ejecutan agentes
-reales, con suites offline, que prueban memoria y recuperación sobre datos
-controlados.
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.5cm}|} \hline
+\textbf{Amenaza} & \textbf{Riesgo} & \textbf{Mitigación aplicada} \\ \hline
+Validez científica & Un modelo puede compilar y pasar tests sin representar de forma fiel el paradigma psicológico. & Revisión humana, juez externo con rúbrica y separación entre PASS técnico y aprobado con reservas. \\ \hline
+Validez interna & Los modelos de lenguaje no son deterministas y pueden variar con prompts, proveedor o contexto. & Suites versionadas, reportes JSON, trazas, costes, tiempos y bundles reproducibles. \\ \hline
+Validez externa & Solo se ejecutaron 2 casos con corpus cerrado de papers. & Los casos cubren dominios distintos, pero se declaran como evidencia interna y no como benchmark externo. \\ \hline
+Validez de construcción & El juez LLM puede compartir sesgos con el sistema generador. & El juez no participa en la generación y revisa artefactos congelados con una rúbrica explícita. \\ \hline
+Reproducibilidad & Las ejecuciones completas dependen de servicios, modelos remotos y presupuesto. & Snapshots de infraestructura, rutas versionadas, límites de coste y conservación de artefactos en MinIO y PostgreSQL. \\ \hline
+\end{tabular}
+\caption{Amenazas a la validez y mitigaciones aplicadas.}
+\end{center}
+\end{table}
 
-Por este motivo el sistema combina pruebas automáticas con revisión humana antes
-de aceptar artefactos y escribirlos en memoria.
+La principal limitación pendiente es la comparación externa. La memoria muestra
+regresiones internas, calidad de recuperación, crecimiento de memoria y evals con
+corpus cerrado. Sin embargo, aún no compara de forma sistemática los modelos
+generados contra implementaciones manuales ni contra resultados experimentales
+esperados. Esa comparación queda como trabajo futuro porque exige criterio
+experto y escenarios científicos de referencia.

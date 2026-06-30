@@ -29,6 +29,24 @@ flujo empleado sitúa al humano como \textit{human-in-the-loop} para decisiones
 de diseño y a los agentes como ejecutores principales de las tareas de
 programación.
 
+La delegación no eliminó la autoría ni la revisión humana. Cada cambio relevante
+se trató como una tarea de ingeniería: primero se definía el objetivo, después se
+delegaba la ejecución y finalmente se revisaban las evidencias producidas.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{3cm}|} \hline
+\textbf{Decisión humana} & \textbf{Tarea delegada} & \textbf{Evidencia revisada} & \textbf{Riesgo controlado} \\ \hline
+Arquitectura del pipeline y contratos entre etapas. & Implementar módulos, estados y persistencia. & Diffs, tests, trazas y ejecución local. & Acoplamiento excesivo entre agentes. \\ \hline
+Definición del contrato \texttt{DecisionModel}. & Generar modelos y tests de Builder. & Importación del modelo, \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Código plausible pero incompatible con la fase 2. \\ \hline
+Política de memoria y trazabilidad. & Escribir conectores, evals y reportes. & Snapshots, conteos de nodos, errores de grafo y bundles. & Memoria útil pero no auditable. \\ \hline
+Criterios de aceptación y alcance de cada fase. & Corregir fallos, refactorizar y preparar PRs. & CI, pruebas locales, revisión de PR y artefactos. & Cambios correctos localmente pero incompletos. \\ \hline
+\end{tabular}
+\caption{Control humano sobre tareas delegadas a agentes de programación.}
+\end{center}
+\end{table}
+
 Una parte importante de esta metodología fue gestionar la ventana de contexto.
 En tareas largas, un agente que acumula demasiados detalles de implementación,
 logs, errores intermedios y decisiones locales degrada su capacidad para
@@ -47,23 +65,7 @@ El flujo fue el siguiente:
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=3.8mm,
-  flowbox/.style={tfgbox, font=\footnotesize, minimum height=7mm, text width=4.25cm}
-]
-\node[flowbox, fill=tfgBlue!12, draw=tfgBlue] (idea) {Idea inicial};
-\node[flowbox, fill=tfgGreen!12, draw=tfgGreen, below=of idea] (spec) {Especificación técnica\\iterada con Codex};
-\node[flowbox, fill=tfgOrange!15, draw=tfgOrange, below=of spec] (linear) {Diseño y fases\\del proyecto en Linear};
-\node[flowbox, fill=tfgPurple!13, draw=tfgPurple, below=of linear] (tasks) {Tareas con criterios\\de aceptación};
-\node[flowbox, fill=tfgRed!10, draw=tfgRed, below=of tasks] (agents) {Ejecución autónoma\\con agentes};
-\node[flowbox, fill=tfgLight, draw=tfgGray, below=of agents] (review) {Revisión humana\\y nuevas decisiones};
-\draw[tfgarrow] (idea) -- (spec);
-\draw[tfgarrow] (spec) -- (linear);
-\draw[tfgarrow] (linear) -- (tasks);
-\draw[tfgarrow] (tasks) -- (agents);
-\draw[tfgarrow] (agents) -- (review);
-\draw[tfgarrow, dashed] (review.east) -- ++(9mm,0) |- (spec.east);
-\end{tikzpicture}
+\includegraphics[width=0.68\textwidth]{figuras/phase1-planning-activity}
 \caption{Flujo de planificación y ejecución del desarrollo.}
 \end{figure}
 
@@ -122,32 +124,8 @@ o si necesita intervención humana.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  node distance=6mm and 7mm,
-  hydranode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=3.3cm},
-  widenode/.style={tfgbox, font=\scriptsize, minimum height=8mm, text width=4.1cm}
-]
-\node[widenode, fill=tfgBlue!12, draw=tfgBlue] (linear) {Linear\\tasks, blockers\\heat, criterios};
-\node[widenode, fill=tfgPurple!13, draw=tfgPurple, right=of linear] (hydra) {Hydra\\orquestador\\contexto limpio};
-\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below left=12mm and 6mm of hydra] (a1) {Agente 1\\worktree\\task A};
-\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below=12mm of hydra] (a2) {Agente 2\\worktree\\task B};
-\node[hydranode, fill=tfgGreen!12, draw=tfgGreen, below right=12mm and 6mm of hydra] (a3) {Agente N\\worktree\\task N};
-\node[widenode, fill=tfgOrange!15, draw=tfgOrange, below=18mm of a2] (review) {Review final\\bugs, silent failures\\arquitectura, convenciones};
-\node[widenode, fill=tfgRed!10, draw=tfgRed, right=of review] (merge) {PR a main\\CI, merge\\notas y follow-ups};
-\node[widenode, fill=tfgLight, draw=tfgGray, right=of hydra] (decision) {Nueva oleada\\o bloqueo humano};
-\draw[tfgarrow] (linear.east) -- (hydra.west);
-\draw[tfgarrow] (hydra.south west) -- (a1.north);
-\draw[tfgarrow] (hydra.south) -- (a2.north);
-\draw[tfgarrow] (hydra.south east) -- (a3.north);
-\draw[tfgarrow] (a1.south east) -- (review.north west);
-\draw[tfgarrow] (a2.south) -- (review.north);
-\draw[tfgarrow] (a3.south west) -- (review.north east);
-\draw[tfgarrow] (review.east) -- (merge.west);
-\draw[tfgarrow] (merge.east) -- ++(7mm,0) |- (decision.east);
-\draw[tfgarrow] (decision.west) -- (hydra.east);
-\end{tikzpicture}}
-\caption{Workflow de orquestación autónoma con Hydra.}
+\includegraphics[width=\textwidth,height=0.80\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
+\caption{Flujo de orquestación autónoma con Hydra.}
 \end{figure}
 
 El punto clave es que \texttt{hydra} mantiene su propia ventana de contexto lo
@@ -179,7 +157,7 @@ Ejecutar tarea & Agente trabajador & Worktree propio, implementación, pruebas l
 Revisar salida & Agente trabajador antes de mergear & Revisión de bugs, silent failures, fallos de arquitectura y convenciones del código. \\ \hline
 Cerrar o crear seguimiento & Hydra & PR mergeada, nota de follow-up, nueva tarea para agente o decisión humana pendiente. \\ \hline
 \end{tabular}
-\caption{Fases del workflow autónomo de desarrollo.}
+\caption{Fases del flujo autónomo de desarrollo.}
 \end{center}
 \end{table}
 
@@ -263,6 +241,37 @@ Validación de modelos & uv, pytest, Python 3.12 & Ejecuta los tests generados p
 \end{center}
 \end{table}
 
+\subsection{Resultado de la interfaz web}
+
+Como muestra de la interfaz implementada, se restauró en local el paquete de
+artefactos de CASO1 usado en la evaluación de corpus cerrado de la
+Sección~\ref{sec:evaluacion-corpus-cerrado}. Las
+figuras~\ref{fig:phase1-ui-replay-run} y
+\ref{fig:phase1-ui-knowledge-run} no describen el diseño inicial: muestran el
+resultado final sobre una ejecución real del sistema.
+
+La figura~\ref{fig:phase1-ui-replay-run} muestra la vista de reproducción de la
+ejecución restaurada. Esta vista permite revisar los pasos de la simulación y
+consultar el estado asociado a cada momento de la traza.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-replay-run}
+\caption{Interfaz web reproduciendo la ejecución CASO1 restaurada.}
+\label{fig:phase1-ui-replay-run}
+\end{figure}
+
+La figura~\ref{fig:phase1-ui-knowledge-run} muestra el panel de conocimiento
+del mismo caso. Esta vista permite inspeccionar el grafo persistido y los
+artefactos asociados a la ejecución.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run}
+\caption{Panel de conocimiento de la interfaz web para CASO1.}
+\label{fig:phase1-ui-knowledge-run}
+\end{figure}
+
 \subsection{Criterios de aceptación}
 
 Cada tarea se redactó con criterios de aceptación concretos. Un criterio de
@@ -312,23 +321,13 @@ El flujo de trabajo adoptado puede resumirse así:
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node distance=5mm,
-  flowbox/.style={tfgbox, font=\footnotesize, minimum height=8mm, text width=4.9cm}
-]
-\node[flowbox, fill=tfgBlue!12, draw=tfgBlue] (human1) {Humano\\arquitectura, prioridades\\y decisiones ambiguas};
-\node[flowbox, fill=tfgGreen!12, draw=tfgGreen, below=of human1] (agents) {Agentes\\implementan, prueban, refactorizan\\y detectan gaps};
-\node[flowbox, fill=tfgOrange!15, draw=tfgOrange, below=of agents] (human2) {Humano\\revisa resultados\\y decide nuevos criterios};
-\draw[tfgarrow] (human1) -- node[right, font=\scriptsize] {criterios} (agents);
-\draw[tfgarrow] (agents) -- node[right, font=\scriptsize] {evidencia} (human2);
-\draw[tfgarrow, dashed] (human2.east) -- ++(11mm,0) |- node[pos=0.25, right, font=\scriptsize] {feedback} (human1.east);
-\end{tikzpicture}
+\includegraphics[width=0.54\textwidth,height=0.68\textheight,keepaspectratio]{figuras/phase1-human-agent-activity}
 \caption{Modelo de colaboración humano-agente usado en el desarrollo.}
 \end{figure}
 
 Esta metodología influyó directamente en el sistema construido. El pipeline de
 generación de modelos también sigue una filosofía similar: los agentes producen
 artefactos, pero las decisiones relevantes pasan por revisión humana antes de
-quedar aceptadas y almacenadas en memoria. La revisión y los reruns funcionan
-como un mecanismo de refinamiento iterativo guiado por feedback
+quedar aceptadas y almacenadas en memoria. La revisión y las nuevas ejecuciones
+funcionan como un mecanismo de refinamiento iterativo guiado por feedback
 \cite{madaan2023selfrefine,shinn2023reflexion}.

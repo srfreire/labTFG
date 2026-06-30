@@ -12,18 +12,7 @@ responde con una cadena de artefactos revisables:
 
 \begin{figure}[H]
 \centering
-\resizebox{0.9\textwidth}{!}{%
-\begin{tikzpicture}[node distance=6mm]
-\node[tfgbox, fill=tfgBlue!12, draw=tfgBlue, text width=3.5cm] (problem) {Problema};
-\node[tfgbox, fill=tfgGreen!12, draw=tfgGreen, right=of problem, text width=3.5cm] (paradigms) {Paradigmas científicos};
-\node[tfgbox, fill=tfgOrange!15, draw=tfgOrange, right=of paradigms, text width=3.5cm] (formulas) {Formulaciones matemáticas};
-\node[tfgbox, fill=tfgPurple!13, draw=tfgPurple, below=of formulas, text width=3.5cm] (specs) {Specs adaptadas al entorno};
-\node[tfgbox, fill=tfgRed!10, draw=tfgRed, left=of specs, text width=3.5cm] (models) {Modelos Python y tests};
-\draw[tfgarrow] (problem) -- (paradigms);
-\draw[tfgarrow] (paradigms) -- (formulas);
-\draw[tfgarrow] (formulas) -- (specs);
-\draw[tfgarrow] (specs) -- (models);
-\end{tikzpicture}}
+\includegraphics[width=0.42\textwidth]{figuras/phase1-artifact-chain}
 \caption{Cadena de artefactos revisables para el usuario.}
 \end{figure}
 

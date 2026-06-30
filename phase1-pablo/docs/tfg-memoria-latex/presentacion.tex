@@ -9,8 +9,6 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{listings}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
 
 \definecolor{DecisionGreen}{HTML}{22C55E}
 \definecolor{DecisionAmber}{HTML}{F59E0B}
@@ -107,38 +105,7 @@
 \begin{frame}
   \frametitle{Idea central}
   \begin{center}
-  \resizebox{0.96\textwidth}{!}{%
-  \begin{tikzpicture}[
-      node distance=0.55cm,
-      every node/.style={font=\scriptsize},
-      arrow/.style={-{Latex[length=2mm]}, thick}
-    ]
-    \node[draw=DecisionAmber, rounded corners=4pt, very thick,
-          minimum width=2.05cm, minimum height=0.85cm, align=center,
-          fill=DecisionAmber!8] (problem) {Problema\\natural};
-    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
-          minimum width=2.05cm, minimum height=0.85cm, align=center,
-          fill=DecisionBlue!8, right=0.32cm of problem] (paradigms)
-          {Paradigmas\\científicos};
-    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
-          minimum width=2.05cm, minimum height=0.85cm, align=center,
-          fill=DecisionBlue!8, right=0.32cm of paradigms] (formulas)
-          {Formulaciones\\matemáticas};
-    \node[draw=DecisionBlue, rounded corners=4pt, very thick,
-          minimum width=2.05cm, minimum height=0.85cm, align=center,
-          fill=DecisionBlue!8, right=0.32cm of formulas] (spec)
-          {Spec JSON\\adaptada};
-    \node[draw=DecisionGreen, rounded corners=4pt, very thick,
-          minimum width=2.05cm, minimum height=0.85cm, align=center,
-          fill=DecisionGreen!8, right=0.32cm of spec] (code)
-          {Modelo Python\\+ tests};
-
-    \path[arrow] (problem) -- (paradigms);
-    \path[arrow] (paradigms) -- (formulas);
-    \path[arrow] (formulas) -- (spec);
-    \path[arrow] (spec) -- (code);
-  \end{tikzpicture}
-  }
+  \includegraphics[height=0.40\textheight]{figuras/phase1-main-transformation}
   \end{center}
 
   \vspace{0.4cm}
@@ -239,32 +206,7 @@
 \begin{frame}
   \frametitle{Sistema de memoria}
   \begin{center}
-  \resizebox{0.78\textwidth}{!}{%
-  \begin{tikzpicture}[
-      node distance=0.42cm,
-      every node/.style={font=\scriptsize},
-      arrow/.style={-{Latex[length=2mm]}, thick}
-    ]
-    \node[draw, rounded corners=4pt, fill=DecisionBlue!8, minimum width=3.2cm,
-          minimum height=0.72cm] (accepted) {Artefacto aceptado};
-    \node[draw, rounded corners=4pt, fill=DecisionAmber!10, below=of accepted,
-          minimum width=3.2cm, minimum height=0.72cm] (extract) {Extraer nodos, relaciones y hechos};
-    \node[draw, rounded corners=4pt, fill=DecisionAmber!10, below=of extract,
-          minimum width=3.2cm, minimum height=0.72cm] (canonical) {Canonicalizar slugs};
-    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below left=0.35cm and 1.2cm of canonical,
-          minimum width=2.7cm, minimum height=0.72cm] (kg) {Neo4j};
-    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below=0.35cm of canonical,
-          minimum width=2.7cm, minimum height=0.72cm] (vec) {Qdrant};
-    \node[draw, rounded corners=4pt, fill=DecisionGreen!10, below right=0.35cm and 1.2cm of canonical,
-          minimum width=2.7cm, minimum height=0.72cm] (pg) {PostgreSQL};
-
-    \path[arrow] (accepted) -- (extract);
-    \path[arrow] (extract) -- (canonical);
-    \path[arrow] (canonical) -- (kg);
-    \path[arrow] (canonical) -- (vec);
-    \path[arrow] (canonical) -- (pg);
-  \end{tikzpicture}
-  }
+  \includegraphics[height=0.58\textheight]{figuras/phase1-memory-architecture}
   \end{center}
 
   \begin{alertblock}{Criterio de entrada}

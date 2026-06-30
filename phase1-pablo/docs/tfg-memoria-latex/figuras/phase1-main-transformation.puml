@@ -1,0 +1,23 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  StartColor #0F766E
+  EndColor #B91C1C
+  FontColor #0F172A
+}
+
+start
+:Descripcion del problema;
+:Investigacion cientifica;
+:Formalizacion matematica;
+:Adaptacion al entorno;
+:Modelo Python y pruebas;
+stop
+@enduml

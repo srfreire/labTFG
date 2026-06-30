@@ -1,0 +1,65 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF3C7
+  DiamondBorderColor #92400E
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+|Usuario|
+start
+:Describe problema;
+
+|Router|
+:Crea run;
+:Clasifica paradigma inicial;
+
+|Agentes|
+:Researcher investiga paradigmas;
+:Formalizer genera formulaciones;
+
+|Usuario|
+:Revisa paradigmas y formulaciones;
+if (Aprobado?) then (si)
+else (no)
+  :Pide ampliacion o rerun;
+  |Router|
+  :Reprograma etapa afectada;
+  |Agentes|
+  :Repite rama cientifica;
+endif
+
+|Router|
+:Obtiene especificacion de entorno;
+
+|Agentes|
+:Reasoner adapta al entorno;
+:Builder genera codigo;
+:Builder ejecuta pruebas;
+
+|Usuario|
+:Revisa specs y modelos;
+if (Aprobado?) then (si)
+else (no)
+  :Indica correccion;
+  |Router|
+  :Reprograma Reasoner o Builder;
+  |Agentes|
+  :Repite rama tecnica;
+endif
+
+|Router|
+:Registra modelos aprobados;
+
+|Memoria|
+:Consolida artefactos aceptados;
+stop
+@enduml

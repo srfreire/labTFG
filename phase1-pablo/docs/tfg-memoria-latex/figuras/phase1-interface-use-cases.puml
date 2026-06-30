@@ -1,0 +1,42 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam packageStyle rectangle
+skinparam usecase {
+  BorderColor #334155
+  BackgroundColor #F8FAFC
+}
+skinparam actor {
+  BorderColor #334155
+}
+
+actor "Usuario" as User
+actor "Router" as Router
+
+rectangle "Interfaz web fase 1" {
+  usecase "Iniciar ejecucion" as UCStart
+  usecase "Ver estado del pipeline" as UCStatus
+  usecase "Reproducir traza Agrex" as UCTrace
+  usecase "Revisar artefacto" as UCReview
+  usecase "Aprobar resultado" as UCApprove
+  usecase "Pedir rerun" as UCRerun
+  usecase "Consultar historial" as UCHistory
+  usecase "Abrir artefactos" as UCArtifacts
+}
+
+User --> UCStart
+User --> UCStatus
+User --> UCTrace
+User --> UCReview
+User --> UCHistory
+UCReview <.. UCApprove : <<extend>>
+UCReview <.. UCRerun : <<extend>>
+UCHistory <.. UCArtifacts : <<include>>
+Router --> UCStatus : eventos
+Router --> UCTrace : trace.jsonl
+Router --> UCArtifacts : rutas
+@enduml

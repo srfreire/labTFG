@@ -1,0 +1,44 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF3C7
+  DiamondBorderColor #92400E
+  StartColor #0F766E
+  EndColor #B91C1C
+}
+
+start
+:Usuario escribe descripcion del problema;
+:Router crea run y estado inicial;
+:retrieve_knowledge consulta memoria disponible;
+:Agentes reciben tarea y contexto;
+fork
+  :MinIO guarda informes, specs, codigo y trazas;
+fork again
+  :PostgreSQL guarda eventos, estado y metadatos;
+fork again
+  :Builder produce modelo Python y tests;
+end fork
+:Usuario revisa artefactos;
+if (Artefacto aceptado?) then (si)
+  :MemoryAgent extrae conocimiento;
+  fork
+    :Neo4j guarda entidades y relaciones;
+  fork again
+    :Qdrant indexa hechos densos y BM25;
+  fork again
+    :PostgreSQL guarda confianza y vigencia;
+  end fork
+  :retrieve_knowledge reutiliza el conocimiento;
+else (no)
+  :Router reejecuta la rama afectada;
+endif
+stop
+@enduml

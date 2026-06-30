@@ -29,7 +29,7 @@ del contexto conversacional del modelo.
 También se cumple el objetivo de mantener al humano dentro del ciclo. La
 revisión no aparece como una comprobación final, sino como parte estructural del
 flujo. El usuario puede aprobar paradigmas, seleccionar formulaciones, revisar
-specs, rechazar modelos y forzar reruns específicos. Esta decisión reduce el
+specs, rechazar modelos y forzar nuevas ejecuciones específicas. Esta decisión reduce el
 riesgo de que un error temprano se propague hasta el código final sin ser
 detectado.
 
@@ -98,6 +98,20 @@ registrado en PostgreSQL y conservar trazas completas, pero seguir planteando
 dudas sobre taxonomía, fidelidad al corpus o fuerza de una formulación. Por eso
 los resultados deben entenderse como artefactos preparados para revisión
 experta, no como validaciones científicas definitivas.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{4.8cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
+\textbf{Limitación} & \textbf{Mitigación implementada} & \textbf{Trabajo pendiente} \\ \hline
+Validez científica final & Revisión humana, corpus cerrado, juez con rúbrica y trazabilidad de artefactos. & Evaluación por expertos del dominio. \\ \hline
+Dependencia de modelos externos & Suites versionadas, reportes, costes, tiempos y bundles reproducibles. & Fijar versiones de modelos y repetir evals en más fechas. \\ \hline
+Calidad de memoria & Canonicalización, ciclo de vida, supersesión, Qdrant, Neo4j y PostgreSQL. & Medir contradicciones y calidad de reinyección en más dominios. \\ \hline
+Generalización de resultados & Casos de evaluación distintos y pruebas internas de recuperación, memoria y pipeline. & Comparar contra modelos manuales y resultados esperados. \\ \hline
+\end{tabular}
+\caption{Limitaciones principales, mitigaciones y trabajo pendiente.}
+\end{center}
+\end{table}
 
 \section{Posibles ampliaciones}
 

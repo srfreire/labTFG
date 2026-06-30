@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BorderColor #334155
+  BackgroundColor #F8FAFC
+}
+skinparam node {
+  BorderColor #334155
+  BackgroundColor #EFF6FF
+}
+skinparam database {
+  BorderColor #166534
+  BackgroundColor #ECFDF5
+}
+skinparam cloud {
+  BorderColor #7C2D12
+  BackgroundColor #FFF7ED
+}
+
+actor "Usuario" as User
+
+node "Equipo del usuario" as Client {
+  component "CLI\ndecisionlab" as CLI
+  component "Navegador web" as Browser
+  component "Evaluaciones" as Evals
+}
+
+node "Servidor fase 1" as Server {
+  component "FastAPI\nREST + WebSocket" as API
+  component "Router\nmaquina de estados" as Router
+  component "Agentes\nResearcher, Formalizer,\nReasoner, Builder" as Agents
+  component "Herramientas\nbusqueda, ficheros,\ntests, memoria" as Tools
+}
+
+node "Servicios compartidos" as Services {
+  database "PostgreSQL\nruns y metadatos" as PG
+  database "MinIO\nartefactos" as MinIO
+  database "Neo4j\ngrafo de conocimiento" as Neo4j
+  database "Qdrant\nvectores y BM25" as Qdrant
+}
+
+cloud "APIs externas" as External {
+  component "Proveedor LLM\nAnthropic compatible" as LLM
+  component "Busqueda web\nDDGS" as Search
+  component "Voyage AI\nembeddings" as Voyage
+  component "ZeroEntropy\nrerank" as ZE
+}
+
+User --> CLI : comandos
+User --> Browser : revision
+CLI --> API : HTTP
+Browser --> API : WebSocket
+Evals --> API : ejecuciones
+API -down-> Router
+Router -down-> Agents
+Agents -down-> Tools
+Router --> PG : estado
+Router --> MinIO : artefactos
+Agents --> LLM : prompts y tool calls
+Tools --> Search : consultas
+Tools --> Neo4j : lectura/escritura
+Tools --> Qdrant : recuperacion
+Tools --> Voyage : embeddings
+Tools --> ZE : reranking
+Services -[hidden]right- External
+@enduml
