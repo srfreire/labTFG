@@ -32,17 +32,17 @@ cada momento.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.96\linewidth}{!}{%
+\resizebox{0.94\linewidth}{!}{%
 \begin{tikzpicture}[
   actorlabel/.style={font=\small\sffamily, align=center},
   usecase/.style={
     ellipse, draw=black!75, line width=0.55pt, fill=black!3,
-    minimum width=36mm, minimum height=10mm,
+    minimum width=44mm, minimum height=8.4mm,
     align=center, font=\small\sffamily
   },
   systembox/.style={
     rectangle, draw=black!60, rounded corners=2pt, line width=0.5pt,
-    fill=black!1, minimum width=104mm, minimum height=72mm
+    fill=black!1, minimum width=74mm, minimum height=74mm
   },
   ext/.style={
     rectangle, draw=black!65, rounded corners=2pt, line width=0.5pt,
@@ -51,44 +51,51 @@ cada momento.
   },
   assoc/.style={draw=black!65, line width=0.5pt},
   include/.style={-{Stealth[length=2mm,width=1.6mm]}, draw=black!55,
-    dashed, line width=0.45pt}
+    dashed, line width=0.45pt},
+  includelabel/.style={font=\scriptsize\sffamily, fill=white, inner sep=1.2pt}
 ]
-  \node[systembox] (system) at (4.6,0) {};
+  \node[systembox] (system) at (4.15,0) {};
   \node[font=\small\sffamily\bfseries, anchor=north west] at
-    ([xshift=2mm,yshift=-2mm]system.north west) {Laboratorio virtual};
+    ([xshift=2mm,yshift=-1mm]system.north west) {Laboratorio virtual};
 
-  \coordinate (head) at (-2.0,1.7);
+  \coordinate (head) at (-1.85,1.4);
   \draw[assoc] (head) circle (3mm);
-  \draw[assoc] (-2.0,1.4) -- (-2.0,0.4);
-  \draw[assoc] (-2.55,1.05) -- (-1.45,1.05);
-  \draw[assoc] (-2.0,0.4) -- (-2.45,-0.35);
-  \draw[assoc] (-2.0,0.4) -- (-1.55,-0.35);
-  \node[actorlabel, below] at (-2.0,-0.45) {Usuario\\investigador};
+  \draw[assoc] (-1.85,1.1) -- (-1.85,0.1);
+  \draw[assoc] (-2.4,0.75) -- (-1.3,0.75);
+  \draw[assoc] (-1.85,0.1) -- (-2.3,-0.65);
+  \draw[assoc] (-1.85,0.1) -- (-1.4,-0.65);
+  \node[actorlabel, below] at (-1.85,-0.75) {Usuario\\investigador};
 
-  \node[usecase] (cu1) at (3.2,2.25) {Ejecutar\\simulación};
-  \node[usecase] (cu2) at (6.1,2.25) {Comparar\\modelos};
-  \node[usecase] (cu3) at (3.2,0.55) {Analizar\\resultados};
-  \node[usecase] (cu4) at (6.1,0.55) {Generar\\informe PDF};
-  \node[usecase] (cu5) at (3.2,-1.2) {Consultar\\experimentos};
-  \node[usecase] (cu6) at (6.1,-1.2) {Inspeccionar\\Knowledge Backbone};
+  \node[usecase] (cu1) at (4.05,2.35) {Ejecutar simulación};
+  \node[usecase] (cu2) at (4.05,1.35) {Comparar modelos};
+  \node[usecase] (cu3) at (4.05,0.35) {Analizar resultados};
+  \node[usecase] (cu4) at (4.05,-0.65) {Generar informe PDF};
+  \node[usecase] (cu5) at (4.05,-1.65) {Consultar experimentos};
 
-  \node[ext] (phase1) at (10.0,1.65) {Primera fase\\modelos aceptados};
-  \node[ext] (llm) at (10.0,-0.15) {OpenRouter\\y servicios semánticos};
+  \node[ext] (phase1) at (9.8,2.8) {Primera fase\\modelos aceptados};
+  \node[ext] (llm) at (9.8,-1.45) {OpenRouter\\y servicios semánticos};
 
-  \draw[assoc] (-1.4,1.1) -- (cu1.west);
-  \draw[assoc] (-1.4,0.85) -- (cu2.west);
-  \draw[assoc] (-1.4,0.55) -- (cu3.west);
-  \draw[assoc] (-1.4,0.25) -- (cu4.west);
-  \draw[assoc] (-1.4,-0.05) -- (cu5.west);
-  \draw[assoc] (-1.4,-0.35) -- (cu6.west);
+  \coordinate (actorhand) at (-1.3,0.75);
+  \draw[assoc] (actorhand) to[out=12,in=180] (cu1.west);
+  \draw[assoc] (actorhand) to[out=8,in=180] (cu2.west);
+  \draw[assoc] (actorhand) to[out=2,in=180] (cu3.west);
+  \draw[assoc] (actorhand) to[out=-5,in=180] (cu4.west);
+  \draw[assoc] (actorhand) to[out=-12,in=180] (cu5.west);
 
-  \draw[include] (cu2) -- node[above, font=\scriptsize] {<<include>>} (cu1);
-  \draw[include] (cu4) -- node[right, font=\scriptsize] {<<include>>} (cu3);
-  \draw[assoc] (phase1) -- (cu1.east);
-  \draw[assoc] (phase1) -- (cu2.east);
-  \draw[assoc] (llm) -- (cu1.east);
-  \draw[assoc] (llm) -- (cu3.east);
-  \draw[assoc] (llm) -- (cu5.east);
+  \draw[include] (cu2.east) to[out=28,in=-28]
+    node[includelabel, right, xshift=1mm] {<<include>>} (cu1.east);
+  \draw[include] (cu4.east) to[out=28,in=-28]
+    node[includelabel, right, xshift=1mm] {<<include>>} (cu3.east);
+
+  \coordinate (phase1bus) at (8.35,2.1);
+  \coordinate (llmbus) at (8.35,-0.95);
+  \draw[assoc] (phase1.west) -- (phase1bus);
+  \draw[assoc] (phase1bus) |- (cu1.east);
+  \draw[assoc] (phase1bus) |- (cu2.east);
+  \draw[assoc] (llm.west) -- (llmbus);
+  \draw[assoc] (llmbus) |- (cu1.east);
+  \draw[assoc] (llmbus) |- (cu3.east);
+  \draw[assoc] (llmbus) |- (cu5.east);
 \end{tikzpicture}}
 \caption[Diagrama de casos de uso]{Diagrama de casos de uso UML de la
 segunda fase. Los sistemas externos quedan fuera del límite del laboratorio
@@ -99,16 +106,15 @@ porque el usuario no los opera directamente.}
 \begin{table}[H]
 \begin{center}
 \small
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.45cm}|>{\raggedright\arraybackslash}p{6.6cm}|>{\raggedright\arraybackslash}p{3.0cm}|} \hline
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.35cm}|>{\raggedright\arraybackslash}p{6.05cm}|>{\raggedright\arraybackslash}p{2.75cm}|} \hline
 \textbf{Código} & \textbf{Caso de uso} & \textbf{RF relacionados} \\ \hline
 CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-01, RF-02, RF-03, RF-04, RF-10, RF-11, RF-12 \\ \hline
 CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
 CU-03 & Analizar los resultados y contrastarlos con conocimiento previo & RF-04, RF-05, RF-06, RF-08 \\ \hline
 CU-04 & Generar el informe PDF de la sesión & RF-06, RF-07 \\ \hline
 CU-05 & Consultar y comparar experimentos anteriores & RF-09, RNF-11 \\ \hline
-CU-06 & Inspeccionar el Knowledge Backbone desde la interfaz & RF-13 \\ \hline
 \end{tabular}
 \caption[Casos de uso]{Casos de uso y trazabilidad con requisitos
 funcionales.}
@@ -121,24 +127,25 @@ simulación y la interfaz muestra los eventos en tiempo real. Los demás casos
 de uso nacen de ese flujo. CU-02 compara modelos bajo la misma semilla y el
 mismo entorno; CU-03 interpreta la simulación y escribe memoria reutilizable;
 CU-04 convierte el análisis en un PDF; CU-05 recupera experimentos anteriores;
-y CU-06 permite revisar procedencia, observaciones y relaciones del Knowledge
-Backbone.
+y la inspección del Knowledge Backbone queda como capacidad auxiliar de
+depuración, no como caso de uso principal del investigador.
 
 \section{Requisitos funcionales}
 
 Los requisitos funcionales concretan qué debe poder hacer el laboratorio
 durante una sesión completa: recibir la descripción del problema, preparar y
-ejecutar la simulación, observar sus resultados, analizarlos y conservar la
+ejecutar la simulación, observar sus resultados, analizarlos y guardar la
 evidencia para consultas posteriores. La prioridad se expresa con MoSCoW:
 \emph{Must} para lo imprescindible, \emph{Should} para lo recomendable y
-\emph{Could} para mejoras útiles pero no necesarias para cerrar el alcance.
+\emph{Could} para mejoras que aportan valor pero no son necesarias para cerrar
+el alcance.
 
 \begin{table}[H]
 \begin{center}
 \scriptsize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.14}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.1cm}|>{\raggedright\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{6.9cm}|>{\raggedright\arraybackslash}p{1.25cm}|} \hline
+\setlength{\tabcolsep}{4.6pt}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.1cm}|>{\raggedright\arraybackslash}p{2.55cm}|>{\raggedright\arraybackslash}p{6.25cm}|>{\raggedright\arraybackslash}p{1.05cm}|} \hline
 \textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
 RF-01 & Carga dinámica de modelos & Cargar los modelos de decisión generados por la primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
 RF-02 & Generación de entornos & Generar especificaciones de entorno de simulación a partir de descripciones en lenguaje natural. & Must \\ \hline
@@ -148,8 +155,8 @@ RF-05 & Identificación de patrones & Identificar patrones de comportamiento, pa
 RF-06 & Visualizaciones analíticas & Generar gráficas y visualizaciones sobre trayectorias y métricas para incorporarlas al informe final. & Should \\ \hline
 RF-07 & Generación de informes & Generar informes en PDF con resultados, evidencia visual y referencias a los paradigmas analizados. & Must \\ \hline
 RF-08 & Persistencia de observaciones & Persistir observaciones de simulación en el Knowledge Backbone como memorias reutilizables. & Must \\ \hline
-RF-09 & Historial de experimentos & Conservar el historial completo de experimentos y permitir su consulta, filtrado y comparativa, también mediante preguntas en lenguaje natural resolubles con SQL. & Should \\ \hline
-RF-10 & Interacción conversacional & Permitir la interacción mediante un chat gestionado por el Orchestrator, con continuidad de conversación dentro de la sesión. & Must \\ \hline
+RF-09 & Historial de experimentos & Conservar el historial completo de experimentos y habilitar su consulta, filtrado y comparativa, también mediante preguntas en lenguaje natural resolubles con SQL. & Should \\ \hline
+RF-10 & Interacción conversacional & Ofrecer interacción mediante un chat gestionado por el Orchestrator, con continuidad de conversación dentro de la sesión. & Must \\ \hline
 RF-11 & Recomendaciones del Orchestrator & Recomendar al usuario qué hacer a continuación, qué modelos encajan y qué herramientas tiene disponibles. & Could \\ \hline
 RF-12 & Replay de simulación & Ofrecer una visualización del entorno con \textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
 RF-13 & Inspección del Knowledge Backbone & Exponer vistas de inspección del Knowledge Backbone, incluyendo grafo, memorias y procedencia, desde la interfaz web. & Could \\ \hline
@@ -159,13 +166,14 @@ RF-13 & Inspección del Knowledge Backbone & Exponer vistas de inspección del K
 \end{center}
 \end{table}
 
-La tabla conecta los objetivos de la introducción con funciones verificables.
+La tabla aterriza los objetivos de la introducción en funciones verificables.
 RF-02 y RF-12 cubren la definición y visualización del entorno; RF-01, RF-03 y
 RF-04 cubren carga, ejecución y registro; RF-05 y RF-06 cubren el análisis;
 RF-07 cierra el informe; y RF-08 y RF-09 mantienen la memoria reutilizable. El
-uso diario del laboratorio queda recogido en RF-10, RF-11 y RF-13: conversación,
-recomendaciones e inspección desde la interfaz. La trazabilidad con evidencias
-de validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
+uso diario del laboratorio queda recogido en RF-10 y RF-11: conversación y
+recomendaciones del Orchestrator. RF-13 queda como capacidad auxiliar de
+inspección y depuración desde la interfaz. La trazabilidad con evidencias de
+validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
 
 \section{Requisitos no funcionales}
 
@@ -177,21 +185,21 @@ ejecuta simulaciones, conversa con el usuario y consulta servicios externos.
 \begin{table}[H]
 \begin{center}
 \scriptsize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.14}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.15cm}|>{\raggedright\arraybackslash}p{2.75cm}|>{\raggedright\arraybackslash}p{6.85cm}|>{\raggedright\arraybackslash}p{1.25cm}|} \hline
+\setlength{\tabcolsep}{4.6pt}
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.05cm}|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{6.3cm}|>{\raggedright\arraybackslash}p{1.1cm}|} \hline
 \textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
 RNF-01 & Modularidad y desacoplamiento & Integrar la primera fase mediante un contrato mínimo de \textit{duck typing}, sin imponer dependencias de paquetes ni jerarquías de clases. & Must \\ \hline
 RNF-02 & Extensibilidad de modelos & Incorporar nuevos modelos generados por la primera fase sin modificar el código de la segunda fase. & Must \\ \hline
 RNF-03 & Trazabilidad & Conservar configuración, eventos y artefactos finales de cada ejecución con identificadores únicos auditables. & Must \\ \hline
 RNF-04 & Reactividad & Enviar al cliente web actualizaciones de simulación y actividad de agentes en tiempo real mediante WebSocket, sin \textit{polling}. & Must \\ \hline
 RNF-05 & Degradación controlada & Mantener operativo el flujo principal aunque no estén disponibles \textit{embeddings}, \textit{reranking} o escritura semántica en Qdrant. & Should \\ \hline
-RNF-06 & Determinismo & Producir resultados idénticos para una misma semilla y configuración, facilitando comparativas reproducibles. & Must \\ \hline
+RNF-06 & Determinismo & Producir resultados idénticos para una misma semilla y configuración, de forma que las comparativas sean reproducibles. & Must \\ \hline
 RNF-07 & Portabilidad de despliegue & Levantar PostgreSQL, MinIO, Neo4j y Qdrant de forma reproducible mediante \texttt{docker compose}. & Should \\ \hline
 RNF-08 & Configuración por entorno & Aislar credenciales y \textit{endpoints} en variables de entorno, sin embebidos en código ni artefactos versionados. & Must \\ \hline
 RNF-09 & Observabilidad & Registrar acciones del Orchestrator y agentes especializados en los \textit{logs} del backend para diagnosticar sesiones \textit{a posteriori}. & Should \\ \hline
 RNF-10 & Acotación del contexto conversacional & Mantener el historial del chat dentro de un presupuesto acotado automáticamente, sin reiniciar la sesión ni perder trazabilidad. & Should \\ \hline
-RNF-11 & Recuperación relacional segura & Traducir preguntas en lenguaje natural a SQL de solo lectura, limitado a tablas permitidas y con máximo de resultados. & Must \\ \hline
+RNF-11 & Recuperación relacional segura & Traducir preguntas en lenguaje natural a SQL de solo lectura, restringido a tablas permitidas y con máximo de resultados. & Must \\ \hline
 RNF-12 & Contraste previo con predicciones & Recuperar predicciones científicas antes de ejecutar la simulación para compararlas después con la trayectoria observada. & Should \\ \hline
 \end{tabular}
 \caption[Requisitos no funcionales]{Requisitos no funcionales de la segunda
@@ -200,7 +208,7 @@ fase.}
 \end{center}
 \end{table}
 
-Estos requisitos protegen las decisiones principales del diseño. La segunda
+Estos requisitos fijan las decisiones principales del diseño. La segunda
 fase no debe quedar atada al código interno de la primera; una simulación debe
 poder auditarse después de ejecutarse; la interfaz debe recibir estado vivo por
 WebSocket; y la ausencia de la capa semántica no debe impedir que el flujo

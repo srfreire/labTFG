@@ -5,9 +5,9 @@ por el que se construyó. En esta fase, trabajar de forma habitual con
 \textit{coding agents} (en este caso, Codex y Claude Code) desplazó el
 centro de gravedad del ciclo clásico de desarrollo de software: la
 implementación dejó de ser la actividad dominante y ganaron peso la
-especificación, la revisión y la verificación. La sección que sigue
-desarrolla esta idea; el resto del capítulo describe el bucle de trabajo
-resultante y cómo apareció en esta segunda fase del proyecto.
+especificación, la revisión y la verificación. La sección que sigue desarrolla
+esta idea; el resto del capítulo describe el bucle de trabajo que se usó en
+esta segunda fase del proyecto.
 
 El capítulo se mueve en dos planos. Primero, el bucle de trabajo con agentes
 y el reparto de responsabilidades entre persona y modelo. Luego, la historia
@@ -50,32 +50,34 @@ tareas no triviales.
 
 \begin{figure}[H]
 \begin{center}
-\resizebox{0.92\linewidth}{!}{%
+\resizebox{0.94\linewidth}{!}{%
 \begin{tikzpicture}[
   cycleblock/.style={
     rectangle, rounded corners=2pt, draw=black!75, line width=0.55pt,
-    fill=black!4, minimum width=32mm, minimum height=13mm,
+    fill=black!4, minimum width=30mm, minimum height=13mm,
     align=center, font=\small\sffamily
   },
   cyclehuman/.style={
     rectangle, rounded corners=2pt, draw=black!85, line width=0.65pt,
-    fill=black!10, minimum width=34mm, minimum height=13mm,
+    fill=black!10, minimum width=31mm, minimum height=13mm,
     align=center, font=\small\sffamily\bfseries
   },
+  cyclelabel/.style={font=\scriptsize\sffamily, fill=white, inner sep=1.2pt},
   cyclearrow/.style={-{Stealth[length=2.2mm,width=1.8mm]}, draw=black!70, line width=0.6pt}
 ]
   \node[cyclehuman] (spec) at (0,0) {Especificar\\\scriptsize alcance, pruebas, invariantes};
-  \node[cycleblock] (exec) at (4.3,0) {Ejecutar\\\scriptsize agente o subagentes};
-  \node[cyclehuman] (review) at (4.3,-2.4) {Revisar\\\scriptsize diff, diseño, regresiones};
-  \node[cycleblock] (adjust) at (0,-2.4) {Ajustar\\\scriptsize correcciones acotadas};
-  \node[cyclehuman] (accept) at (8.2,-1.2) {Aceptar\\\scriptsize pruebas y revisión};
+  \node[cycleblock] (exec) at (3.55,0) {Ejecutar\\\scriptsize agente o subagentes};
+  \node[cyclehuman] (review) at (7.1,0) {Revisar\\\scriptsize diff, diseño, regresiones};
+  \node[cyclehuman] (accept) at (10.65,0) {Aceptar\\\scriptsize pruebas y revisión};
+  \node[cycleblock] (adjust) at (7.1,-2.0) {Ajustar\\\scriptsize correcciones acotadas};
 
   \draw[cyclearrow] (spec) -- (exec);
   \draw[cyclearrow] (exec) -- (review);
-  \draw[cyclearrow] (review) -- (adjust);
-  \draw[cyclearrow] (adjust) -- (spec);
-  \draw[cyclearrow] (review) -- node[above, font=\scriptsize\sffamily] {si cumple} (accept);
-  \draw[cyclearrow] (accept.north) .. controls (8.2,1.1) and (0,1.1) .. node[above, font=\scriptsize\sffamily] {siguiente tarea} (spec.north);
+  \draw[cyclearrow] (review) -- node[cyclelabel, above] {si cumple} (accept);
+  \draw[cyclearrow] (review) -- node[cyclelabel, right] {si no cumple} (adjust);
+  \draw[cyclearrow, rounded corners=8pt] (adjust.west) -- ++(-7.1,0) -- (spec.south);
+  \draw[cyclearrow] (accept.north) .. controls (8.4,1.05) and (2.4,1.05) ..
+    node[cyclelabel, above] {siguiente tarea} (spec.north);
 \end{tikzpicture}}
 \caption[Ciclo de desarrollo asistido por agentes]{Ciclo de desarrollo
 asistido por agentes seguido durante la segunda fase. Las decisiones de alcance
@@ -108,14 +110,14 @@ prueba en \texttt{tests/}, reproducir el fallo y cerrar la implementación cuand
 la suite volvía a pasar. En tareas de interfaz, donde parte de la validación es
 visual, el equivalente fue combinar pruebas de recorrido con revisión manual en
 navegador: que el flujo se pudiera usar, que el estado se actualizara en tiempo
-real y que el resultado encajara con el diseño esperado.
+real y que la pantalla encajara con el diseño esperado.
 
 Linear funcionó como memoria operativa de ese proceso. Las tareas no eran solo
 un listado de pendientes, sino el lugar donde quedaban visibles las decisiones
 tomadas antes de delegar: prioridad, dependencias, alcance, criterios de
 aceptación y posibles conflictos con otros cambios en curso. Esa información
 permitía decidir si dos tareas podían lanzarse en paralelo o si debían
-resolverse una detrás de otra. También hacía más fácil revisar el resultado: el
+resolverse una detrás de otra. También facilitaba la revisión: el
 \textit{diff} se comparaba contra un contrato escrito, no contra una intención
 recordada de forma aproximada varios días después.
 
@@ -140,11 +142,11 @@ ese criterio a componentes React y clases de Tailwind. En ambos casos, la
 delegación funcionaba cuando el criterio de aceptación estaba definido fuera del
 modelo.
 
-Esta forma de trabajar no eliminó la responsabilidad humana, sino que la movió a
+Esta forma de trabajar no eliminó la responsabilidad humana; la movió a
 otro lugar. El riesgo principal dejó de ser no llegar a escribir una pieza y
-pasó a ser aceptar una pieza plausible sin haber comprobado si respetaba el
-sistema completo. Por eso el \textit{diff} se revisaba siempre contra la tarea
-original, y no solo contra el resultado visible. Un cambio podía compilar y aun
+pasó a ser aceptar una pieza plausible sin comprobar si respetaba el sistema
+completo. Por eso el \textit{diff} se revisaba siempre contra la tarea
+original, además del resultado visible. Un cambio podía compilar y aun
 así rechazarse si ampliaba el alcance, introducía una dependencia innecesaria o
 resolvía el problema con una abstracción que el resto del código no usaba.
 
@@ -163,7 +165,7 @@ El reparto entre herramientas también fue práctico. El backend, la persistenci
 las migraciones y la suite de pruebas se trabajaron principalmente con Codex,
 porque ahí pesaba más respetar contratos y dejar las pruebas en verde. El
 \textit{frontend} y la interacción se iteraron más con Claude Code, donde
-resultaba útil revisar composición visual y pequeños detalles de interfaz. La
+era útil revisar composición visual y pequeños detalles de interfaz. La
 división no fue rígida: dependía del tipo de tarea y de la validación que esa
 tarea necesitaba.
 
@@ -213,7 +215,8 @@ condicionaron decisiones de diseño o de despliegue.
 \begin{table}[H]
 \begin{center}
 \small
-\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{8.7cm}|} \hline
 \textbf{Componente software} & \textbf{Tecnologías, librerías, APIs o plataformas} \\ \hline
 Cliente web & React 19, Vite, TypeScript, Tailwind CSS 4, WebSocket del navegador. \\ \hline
@@ -238,14 +241,14 @@ plataformas utilizadas.}
 
 \section{Hitos de iteración del sistema}
 
-El sistema final no se planificó como un todo, sino que emergió por
-acumulación de iteraciones. Primero se cerraron el diseño, el contrato con
+El sistema final no se planificó entero desde el primer día. Fue creciendo por
+acumulación de iteraciones: primero se cerraron el diseño, el contrato con
 la primera fase y el núcleo de simulación sobre CLI. Después se añadió la
 interfaz web con WebSocket y \textit{replay}, se incorporó la comparativa
 multi-modelo y el Orchestrator pasó de despachar herramientas a guiar una
 conversación con recomendaciones.
 
-La segunda oleada se centró en hacer útil la salida para investigación:
+La segunda oleada se centró en hacer que la salida sirviera para investigación:
 enriquecimiento del Analyst, gráficas, eventos críticos, trazas de decisión
 por agente y migración a la persistencia compartida con PostgreSQL y MinIO.
 La tercera convirtió al laboratorio en consumidor y productor del Knowledge
@@ -304,12 +307,12 @@ fases cerradas.}
 Si la implementación deja de ser lo costoso, el problema se desplaza:
 ¿qué garantiza que el código generado es correcto?
 
-La respuesta adoptada durante el desarrollo tuvo tres capas. La primera son
-\textbf{las pruebas como contrato}: una funcionalidad sin prueba no se
+La respuesta adoptada durante el desarrollo tuvo tres capas. La primera fueron
+las pruebas como contrato: una funcionalidad sin prueba no se
 considera terminada. La suite combina pruebas unitarias y de integración
 en \textit{pytest} para el backend, y pruebas \textit{end-to-end} en
-Playwright para el cliente web. La segunda capa es la \textbf{revisión
-combinada del cambio antes de fusionar}: la propia lectura humana del
+Playwright para el cliente web. La segunda fue la revisión combinada del cambio
+antes de fusionar: la propia lectura humana del
 \textit{diff} (centrada en el alcance, en lo que el cambio no
 debería romper y en si lo entregado coincide con la \textit{spec}) y
 una pasada complementaria por subagentes especializados
@@ -318,8 +321,8 @@ una pasada complementaria por subagentes especializados
 problemas de alta confianza. Los subagentes no reemplazan la revisión
 humana; la enfocan, encontrando antes los problemas mecánicos y
 dejando a la lectura humana las cuestiones de diseño y alcance. La
-tercera capa es la \textbf{verificación manual sobre la aplicación
-viva}: para los cambios que afectan a la interfaz, no basta con que las
+tercera fue la verificación manual sobre la aplicación viva: para los cambios
+que afectan a la interfaz, no basta con que las
 pruebas pasen; el cambio debe poderse usar en un navegador y mostrarse
 de forma correcta antes de aceptarlo.
 
@@ -330,12 +333,13 @@ La Tabla~\ref{tab:plan-verificacion-desarrollo} recoge el plan completo.
 \begin{table}[H]
 \begin{center}
 \small
-\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
 \textbf{Capa de verificación} & \textbf{Qué comprobaba} & \textbf{Herramientas usadas} \\ \hline
 Contrato de pruebas & Que el comportamiento nuevo queda fijado antes de aceptar la implementación. & \texttt{pytest}, pruebas de integración y casos de regresión. \\ \hline
 Revisión de cambio & Que el \textit{diff} respeta alcance, contratos y diseño previsto. & Lectura humana y subagentes de revisión de alta confianza. \\ \hline
-Ejecución de interfaz & Que el flujo se puede usar de extremo a extremo y no solo compila. & Playwright, navegador local y comprobación manual. \\ \hline
+Ejecución de interfaz & Que el flujo se puede usar de extremo a extremo, más allá de compilar. & Playwright, navegador local y comprobación manual. \\ \hline
 Ejecución instrumentada & Que Tracker, Analyst y Reporter quedan anclados a los datos reales de simulación. & Casos CASO1/CASO2, métricas duras y juez externo. \\ \hline
 \end{tabular}
 \caption[Plan de verificación seguido durante el desarrollo]{Plan de
@@ -351,8 +355,8 @@ El repositorio compartido ejecuta un \textit{workflow} de GitHub Actions en
 cada \textit{push} y \textit{pull request} contra \texttt{main}, que comprueba
 formato y \textit{linting} con \texttt{ruff} y lanza las suites unitarias de
 las dos fases y de la capa común, excluyendo las pruebas de integración,
-\textit{end-to-end} y las que requieren un modelo real por su coste. Así,
-ningún cambio se integra sin pasar antes esa verificación rápida y
+\textit{end-to-end} y las que requieren un modelo real por su coste. Con esa
+compuerta, ningún cambio se integra sin pasar antes esa verificación rápida y
 reproducible, y las pruebas más caras quedan reservadas para una ejecución
 explícita.
 
@@ -369,7 +373,8 @@ sesión completa desde la interfaz.
 \begin{table}[H]
 \begin{center}
 \small
-\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.7cm}|>{\raggedright\arraybackslash}p{4.3cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
 \textbf{Situación problemática} & \textbf{Cómo se detectó} & \textbf{Medida adoptada} \\ \hline
 Llamadas de herramienta malformadas en el Orchestrator & Revisión de \textit{diff} y pruebas con parámetros incompletos. & Lectura defensiva de parámetros y mensajes de error controlados. \\ \hline
@@ -394,13 +399,12 @@ ser correctos, especialmente cuando el contrato es vago. Esto se mitiga
 con \textit{specs} precisas, pero no se elimina.
 
 La segunda es de ritmo. Cuando el coste de implementar baja, lo natural
-es producir más cambios; pero el coste de \emph{revisar} no baja al
+es abrir más cambios; pero el coste de \emph{revisar} no baja al
 mismo ritmo. Cuando la generación acelera el ritmo de cambios, aumenta el
 riesgo de aceptar modificaciones poco revisadas. Para evitarlo, ningún cambio
 se consideró terminado hasta pasar por la revisión combinada del bucle y,
 cuando afectaba a la interfaz, por una comprobación manual sobre la aplicación
-viva. Esa
-tensión entre velocidad de producción y carga de revisión aparece
+viva. Esa tensión entre velocidad de producción y carga de revisión aparece
 también en los estudios cualitativos sobre el uso real de asistentes
 de IA en entornos profesionales \cite{butler2024dear}.
 

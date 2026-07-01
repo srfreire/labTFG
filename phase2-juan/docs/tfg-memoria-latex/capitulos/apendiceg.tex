@@ -4,7 +4,7 @@
 Este apéndice resume las herramientas que los agentes pueden invocar durante
 una sesión. No recoge el esquema JSON completo de cada llamada, sino su papel en
 el flujo: qué agente la usa, qué decisión habilita y qué tipo de salida devuelve
-al modelo. La lista ayuda a separar dos responsabilidades: el LLM decide cuándo
+al modelo. La lista separa dos responsabilidades: el LLM decide cuándo
 necesita una operación, pero la operación real la ejecuta código del backend.
 
 \section{Herramientas del Orchestrator}
@@ -13,7 +13,7 @@ necesita una operación, pero la operación real la ejecuta código del backend.
 \begin{center}
 {\scriptsize
 \setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.04}
+\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.1cm}|} \hline
 \textbf{Tool call} & \textbf{Propósito} & \textbf{Salida principal} \\ \hline
 \texttt{list\_available\_models} & Consultar el catálogo de modelos registrados por la primera fase y presentarlos al usuario antes de simular. & Lista de modelos con identificador, clase, paradigma, formulación y metadatos. \\ \hline
@@ -35,7 +35,7 @@ del Orchestrator.}
 \begin{center}
 {\scriptsize
 \setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.04}
+\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.1cm}|} \hline
 \textbf{Tool call} & \textbf{Propósito} & \textbf{Salida principal} \\ \hline
 \texttt{get\_tracker\_detail} & Consultar partes concretas de la última salida del Tracker sin reinyectar todo el JSON. & Episodios, trayectorias o eventos críticos filtrados. \\ \hline
@@ -58,7 +58,7 @@ inspección y recuperación del Orchestrator.}
 \begin{center}
 {\scriptsize
 \setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.04}
+\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.9cm}|} \hline
 \textbf{Agente} & \textbf{Tool call} & \textbf{Uso dentro del agente} \\ \hline
 Architect & \texttt{validate\_spec} & Valida el JSON de entorno antes de devolverlo al Orchestrator. Evita que una especificación malformada llegue al motor de simulación. \\ \hline
@@ -80,7 +80,7 @@ Tracker.}
 \begin{center}
 {\scriptsize
 \setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.04}
+\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.9cm}|} \hline
 \textbf{Agente} & \textbf{Tool call} & \textbf{Uso dentro del agente} \\ \hline
 Analyst & Herramientas del Tracker & Reutiliza las herramientas de simulación para comprobar episodios, trayectorias y trazas antes de formular conclusiones. \\ \hline

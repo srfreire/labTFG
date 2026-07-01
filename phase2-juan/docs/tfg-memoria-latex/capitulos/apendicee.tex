@@ -3,10 +3,10 @@
 
 Este apéndice reúne una selección de capturas de la interfaz web del
 laboratorio: la vista principal, el avance del pipeline, el \textit{replay} de
-simulación, las gráficas comparativas, las trazas de decisión, el informe final
-y la inspección del Knowledge Backbone.
+simulación, las salidas de los agentes, las gráficas comparativas, las trazas de
+decisión, el informe final y la inspección del Knowledge Backbone.
 
-Las figuras no se incluyen solo como muestra visual: documentan los estados
+Las figuras no son solo una muestra visual: documentan los estados
 principales que el usuario debe poder inspeccionar durante una sesión completa.
 
 \begin{figure}[p]
@@ -51,6 +51,23 @@ de los \textit{Q-values}.}
 
 \begin{figure}[p]
 \centering
+\includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{figuras/ui-02-architect-spec}
+\caption[Salida del Architect]{Salida del Architect. La tarjeta resume la
+especificación del entorno generada a partir del paradigma: rejilla, acciones y
+recursos.}
+\label{fig:architect-spec}
+
+\vspace{1.2em}
+
+\includegraphics[width=\linewidth,height=0.36\textheight,keepaspectratio]{figuras/ui-05-tracker-trayectorias}
+\caption[Salida del Tracker]{Salida del Tracker. La vista recoge las
+trayectorias por agente, los pasos sobrevividos, los recursos consumidos y la
+distribución de acciones.}
+\label{fig:tracker-trayectorias}
+\end{figure}
+
+\begin{figure}[p]
+\centering
 \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{figuras/ui-06-analyst-patrones}
 \caption[Salida del Analyst]{Salida del Analyst. La tarjeta sintetiza patrones
 de comportamiento y comparaciones cuantitativas entre modelos.}
@@ -69,7 +86,7 @@ pre/post del agente, las alternativas evaluadas y la recompensa de un paso.}
 \centering
 \includegraphics[width=0.78\linewidth,height=0.68\textheight,keepaspectratio]{figuras/ui-09-reporter-pdf}
 \caption[Informe del Reporter]{Informe del Reporter. Página de ejemplo del PDF
-generado: el resumen ejecutivo sintetiza objetivo, resultado y hallazgo crítico
+generado: el resumen ejecutivo recoge objetivo, resultado y hallazgo crítico
 del experimento a partir de las observaciones del Tracker y del Analyst.}
 \label{fig:reporter}
 \end{figure}

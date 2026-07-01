@@ -15,9 +15,9 @@ ejecución. Por ello, las referencias más relevantes para esta fase no son
 solo las de toma de decisiones, sino también las de simulación basada en
 agentes y verificación de modelos.
 
-La simulación basada en agentes parte de una idea sencilla, formulada de
-manera clásica por Epstein \cite{epstein1999abm}: un modelo no solo describe
-un mecanismo, sino que permite ejecutarlo y observar los patrones que produce.
+La simulación basada en agentes parte de una idea formulada de manera clásica
+por Epstein \cite{epstein1999abm}: un modelo describe un mecanismo, pero
+también lo ejecuta y deja ver los patrones que produce.
 Railsback y Grimm \cite{railsback2019abm} trasladan esa idea a una práctica de
 modelado donde implementar, ejecutar y analizar son parte del propio trabajo
 científico. Esta fase adopta esa perspectiva de forma instrumental. La
@@ -25,15 +25,15 @@ generación de los modelos pertenece a la primera fase. Aquí la pregunta es otr
 una vez existe el modelo, cómo se ejecuta, qué se observa de él y qué evidencia
 queda para juzgar su comportamiento.
 
-La literatura de verificación y validación de simulaciones subraya además
-que la validación no se agota en que el programa compile. Sargent
+La literatura de verificación y validación de simulaciones insiste en
+que la validación no se agota cuando el programa compila. Sargent
 \cite{sargent2013vv} distingue entre verificación del modelo implementado,
 validación conceptual y validación operacional. En este trabajo, esa
 separación se traduce en una estrategia de evaluación mixta: pruebas
 automatizadas para verificar el motor, los contratos y la persistencia;
 escenarios reproducibles para observar el comportamiento del sistema
-completo; y revisión humana para valorar si el análisis generado es
-útil como herramienta de investigación.
+completo; y revisión humana para valorar si el análisis generado sirve como
+herramienta de investigación.
 
 \subsection{Tecnologías para desarrollar el entorno}
 
@@ -48,7 +48,7 @@ de programación.
 Los modelos de lenguaje de gran tamaño (\textit{large language models}, LLMs)
 pueden utilizarse como un agente único: un sistema que mantiene todo el
 contexto, recibe la entrada del usuario y produce la respuesta directamente.
-Funciona bien para tareas
+Este enfoque funciona bien para tareas
 acotadas, pero se resiente cuando hay que coordinar subtareas con
 dependencias, invocar herramientas externas o validar resultados
 intermedios. En esos casos, el agente único puede producir respuestas
@@ -83,8 +83,8 @@ conocimiento externo: solo el Analyst lo consulta directamente como
 \subsubsection{Recuperación aumentada y memoria de agentes}
 
 En esta memoria, recuperar conocimiento significa consultar información externa
-antes de pedir al modelo que razone. Así, la respuesta no depende solo de lo que
-el modelo tenga en su contexto inmediato.
+antes de pedir al modelo que razone. La respuesta deja de depender solo de lo
+que el modelo tenga en su contexto inmediato.
 
 La recuperación aumentada con generación (\textit{retrieval-augmented
 generation}, RAG), formulada por
@@ -94,17 +94,17 @@ en el modelo o del \textit{system prompt}, el sistema recupera fragmentos
 relevantes de un corpus externo y los incorpora a la generación. Dense
 retrieval consolidó la recuperación mediante \textit{embeddings}, mientras
 que BM25 \cite{robertson2009bm25} sigue siendo la base de la recuperación
-léxica con la que la densa se combina. En términos simples, el sistema usa dos
-maneras de buscar: una por parecido de significado y otra por coincidencia
+léxica con la que la densa se combina. Dicho de forma directa, el sistema usa
+dos maneras de buscar: una por parecido de significado y otra por coincidencia
 literal de palabras. Cuando ambas señales producen
-rankings distintos, técnicas sencillas de fusión como Reciprocal Rank
-Fusion \cite{cormack2009rrf} ofrecen una forma robusta de combinarlas sin
+rankings distintos, técnicas de fusión como Reciprocal Rank
+Fusion \cite{cormack2009rrf} permiten combinarlas sin
 entrenar un modelo específico para cada colección.
 
 El paso siguiente consiste en añadir estructura al corpus. Microsoft
 GraphRAG \cite{edge2024graphrag} muestra que combinar recuperación con un
-grafo construido a partir de los documentos permite responder preguntas que
-la recuperación plana resuelve peor, especialmente cuando la respuesta exige
+grafo construido a partir de los documentos responde mejor que la recuperación
+plana a ciertas preguntas, especialmente cuando la respuesta exige
 agregar evidencia distribuida por el corpus.
 
 Las arquitecturas de grafo de conocimiento, formalizadas en el
@@ -115,8 +115,8 @@ formulaciones, autores y procedencias forman relaciones que el grafo expone
 directamente y que un índice plano de documentos no captura. Esta fase
 combina ese grafo con dos modos complementarios de recuperación sobre el
 mismo repositorio de conocimiento. El primero es un índice denso: cada
-fragmento se convierte en un \textit{embedding}, es decir, un vector que
-permite comparar textos por cercanía semántica aunque no usen exactamente
+fragmento se convierte en un \textit{embedding}, es decir, un vector con el que
+se comparan textos por cercanía semántica aunque no usen exactamente
 las mismas palabras. El segundo es un índice disperso, o \textit{sparse},
 basado en BM25, más literal y orientado a coincidencias exactas de términos.
 En la práctica se complementan bien. Si el usuario pregunta por ``conductas de
@@ -175,10 +175,10 @@ Butler et al. \cite{butler2024dear} complementan esas medidas con un estudio
 cualitativo sobre el uso diario de estas herramientas. El capítulo de desarrollo
 retoma esa discusión desde la experiencia concreta de esta fase.
 
-Frente a los marcos revisados, este trabajo no propone una técnica nueva de
+Frente a los trabajos revisados, este proyecto no propone una técnica nueva de
 recuperación, una arquitectura general de agentes ni un método nuevo de
 validación de teorías psicológicas. Su aportación está en combinar esas ideas
 dentro de una infraestructura concreta: un laboratorio que recibe modelos
 externos, los ejecuta en un entorno común, observa su comportamiento y deja
-evidencia persistente de cada sesión. Por eso este estado del arte funciona como
-marco de decisión para los capítulos siguientes, no como inventario exhaustivo.
+evidencia persistente de cada sesión. Por eso este estado del arte orienta los
+capítulos siguientes, sin pretender ser un inventario exhaustivo.

@@ -3,7 +3,7 @@
 
 Este manual recoge la información operativa necesaria para desplegar, probar y
 mantener la segunda fase del laboratorio. No sustituye a los capítulos de
-diseño y evaluación: funciona como guía de referencia para reproducir una
+diseño y evaluación: sirve de guía de referencia para reproducir una
 instalación de desarrollo, diagnosticar fallos habituales y extender el sistema.
 
 \section{Estructura relevante}
@@ -53,10 +53,10 @@ son las conexiones a PostgreSQL, MinIO, Neo4j y Qdrant, la clave
 \item \texttt{ENABLE\_CHAT\_PERSISTENCE}: activa la persistencia del chat.
 \end{itemize}
 
-Así, una instalación de desarrollo puede mantener operativo el recorrido básico
-aunque algunas capacidades opcionales, como la consulta NL-SQL o la escritura de
-memorias, estén desactivadas. El archivo \texttt{.env.example} contiene la lista
-completa de variables esperadas.
+Con esta configuración, una instalación de desarrollo puede mantener operativo
+el recorrido básico aunque algunas capacidades opcionales, como la consulta
+NL-SQL o la escritura de memorias, estén desactivadas. El archivo
+\texttt{.env.example} contiene la lista completa de variables esperadas.
 
 \section{Comandos}
 
@@ -118,7 +118,7 @@ primera fase e informes PDF de esta fase. Qdrant almacena las memorias densas y
 \textit{sparse}; Neo4j mantiene el grafo de paradigmas, formulaciones, modelos
 y procedencia científica cuando esos datos existen.
 
-La conversación no se trata como un simple estado de interfaz. Los mensajes se
+La conversación no queda solo como estado de interfaz. Los mensajes se
 persisten para auditoría y para que el Orchestrator pueda compactar el
 historial sin perder las decisiones tomadas. La autocompactación sustituye
 turnos antiguos por un resumen determinista cuando el contexto crece demasiado.
@@ -131,7 +131,7 @@ cd phase2-juan/frontend && npx playwright test
 \end{verbatim}
 
 Las pruebas con servicios reales requieren que \texttt{docker compose} esté
-levantado. Las pruebas que usan respuestas simuladas permiten validar el
+levantado. Las pruebas con respuestas simuladas validan el
 pipeline y la interfaz aunque no haya proveedores externos configurados. Para
 cambios en la interfaz se recomienda complementar Playwright con una revisión
 manual en \texttt{http://localhost:5173}, porque la suite comprueba presencia y

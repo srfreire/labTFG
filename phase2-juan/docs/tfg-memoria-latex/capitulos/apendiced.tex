@@ -20,7 +20,7 @@ Observar trayectorias y eventos de decisión & RF-04, RF-12, RNF-03 & Salida est
 Analizar resultados y contrastarlos con conocimiento previo & RF-05, RF-06, RF-08, RNF-12 & \texttt{retrieve\_context}, pre-recuperación del Orchestrator, \texttt{read\_predictions} y gráficas del Analyst. \\ \hline
 Generar informes revisables & RF-07 & Informe PDF del Reporter, plantilla LaTeX, descarga REST y pruebas de generación y descarga de informes. \\ \hline
 Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10, RNF-11 & Tablas persistidas, \texttt{query\_history}/NL-SQL, autocompactación y escritura consistente en PostgreSQL, Qdrant denso y Qdrant \textit{sparse}. \\ \hline
-Ofrecer una interfaz reactiva de uso & RF-10, RF-11, RF-12, RF-13, RNF-04 & Playwright, vistas de inspección, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
+Ofrecer una interfaz reactiva de uso e inspección auxiliar & RF-10, RF-11, RF-12, RF-13, RNF-04 & Playwright, vistas de inspección, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
 \end{tabular}
 \caption[Trazabilidad de requisitos]{Trazabilidad de requisitos. Cada objetivo
 operativo se vincula con los requisitos que lo cubren y con la evidencia usada
@@ -30,18 +30,18 @@ para comprobarlo.}
 
 \section{Plan de contingencia}
 
-Además de la trazabilidad anterior, durante el desarrollo se identificaron
+Junto a la trazabilidad anterior, durante el desarrollo se identificaron
 riesgos prácticos que podían impedir una ejecución completa del laboratorio. La
 Tabla~\ref{tab:plan-contingencia} resume las medidas previstas. No se trata de
-un plan de explotación formal, sino de una guía operativa para mantener el flujo
-principal funcionando o, al menos, dejar evidencia revisable cuando una pieza
+un plan de explotación formal, sino una guía operativa para mantener el flujo
+principal funcionando o, al menos, dejar evidencia que se pueda revisar cuando una pieza
 externa falla.
 
 \begin{table}[H]
 \begin{center}
 \scriptsize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2.4cm}|} \hline
 \textbf{Riesgo} & \textbf{Efecto posible} & \textbf{Medida de contingencia} & \textbf{Evidencia o control} \\ \hline
 Fallo de servicios semánticos externos & No se generan \textit{embeddings}, \textit{reranking} o escritura semántica. & Mantener el flujo principal con degradación controlada y persistencia relacional/binaria. & RNF-05 y pruebas de ejecución sin capa semántica. \\ \hline
@@ -70,7 +70,7 @@ detalle.
 \begin{center}
 \small
 \setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.12}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{4.4cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
 \textbf{Aspecto} & \textbf{Proceso clásico} & \textbf{Proceso asistido por agentes} \\ \hline
 Coste dominante & Escritura y depuración directa del código. & Especificación, revisión del \textit{diff} y verificación. \\ \hline

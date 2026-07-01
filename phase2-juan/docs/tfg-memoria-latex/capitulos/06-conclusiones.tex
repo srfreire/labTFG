@@ -3,8 +3,8 @@
 \section{Cumplimiento de objetivos}
 
 El trabajo entrega la infraestructura planteada en la introducción: una
-plataforma sobre la que modelos de decisión generados por la primera fase pueden
-ejecutarse en un entorno común y dejar, en cada sesión, los artefactos definidos
+plataforma donde los modelos de decisión generados por la primera fase se
+ejecutan en un entorno común y dejan, en cada sesión, los artefactos definidos
 en los objetivos específicos. El sistema genera la especificación del entorno,
 registra la ejecución, analiza los patrones, produce el informe y guarda
 observaciones reutilizables en la memoria compartida.
@@ -12,123 +12,87 @@ observaciones reutilizables en la memoria compartida.
 Vista en conjunto, la segunda fase completa el recorrido iniciado por la
 primera. Allí el esfuerzo se concentra en pasar de un paradigma descrito en
 lenguaje natural a un modelo Python ejecutable; aquí, en convertir la ejecución
-de ese modelo en evidencia revisable. La integración se mantuvo estable durante
-el desarrollo porque ambas fases compartieron una frontera pequeña, sin obligar
-a coordinar publicaciones intermedias.
+de ese modelo en evidencia revisable: trayectoria, métricas, interpretación y
+memoria recuperable. La integración se mantuvo estable porque ambas fases
+compartieron una frontera pequeña, sin coordinar publicaciones intermedias.
 
 \section{Conclusiones técnicas}
 
-La principal lección técnica es que, en este sistema, la \emph{forma} en
-que se conectan los componentes acabó importando más que las decisiones
-internas de cada uno. El sistema funciona porque cada frontera está bien
-acotada: los modelos se cargan mediante una interfaz mínima, el acceso al
-Knowledge Backbone pasa por el Orchestrator y la observación se separa de
-la escritura persistente.
+La principal lección técnica es que, en este sistema, la \emph{forma} de
+conectar componentes acabó importando más que las decisiones internas de cada
+uno. El sistema funciona porque cada frontera está acotada: los modelos se
+cargan mediante una interfaz mínima, el acceso al Knowledge Backbone pasa por
+el Orchestrator y la observación se separa de la escritura persistente.
 
 \paragraph{Contratos finos entre componentes que evolucionan a ritmos
-distintos.} La integración con la primera fase podría haber requerido
-un esquema cuidadosamente coordinado entre paquetes. En la práctica bastó
-con una frontera pequeña y fácil de comprobar en ejecución. Cuando dos
-partes evolucionan a ritmos distintos, esa sencillez aguanta mejor que un
-contrato rígido y minucioso.
+distintos.} La integración con la primera fase podría haber requerido un
+esquema coordinado entre paquetes. En la práctica bastó con una frontera
+pequeña y fácil de comprobar en ejecución.
 
 \paragraph{Centralizar el acceso al conocimiento merece la pena cuando
-el coste de cada consulta no es despreciable.} Una opción sencilla habría
-sido dar a cada agente especializado acceso libre al Knowledge Backbone.
-Centralizar ese acceso en el Orchestrator,
-con la única excepción del Analyst, dio un control fino sobre cuándo se
-consulta el backbone y con qué presupuesto, y un único punto en el que
-diagnosticar problemas de recuperación. La asimetría entre acceso
-directo y acceso inyectado, aparentemente complicada, resultó más
-útil en la práctica que un acceso uniforme: cada agente recibe el contexto que
-necesita para su tarea.
+cada consulta tiene coste.} Centralizar ese acceso en el Orchestrator, con la
+única excepción del Analyst, dio control sobre cuándo se consulta el backbone,
+con qué presupuesto y dónde diagnosticar problemas de recuperación.
 
 \paragraph{Separar la observación de la persistencia hace que el
-backbone se mantenga limpio.} El Tracker se diseñó como observador
-puro: produce un JSON estructurado y nada más. La escritura sobre el
-grafo y los índices vectoriales ocurre después, a cargo del
-\texttt{TrackerMemoryWriter} disparado por el Orchestrator. Un fallo en
-el observador no deja memorias incompletas en el backbone, y el
-\emph{writer} puede evolucionar (cambiar de \textit{embeddings}, ajustar el
-\textit{batch}, cambiar el esquema) sin tocar el agente que observa. Trazar bien
-esa frontera costó poco y dejó cada pieza libre para cambiar por su
-cuenta.
+backbone se mantenga limpio.} El Tracker se diseñó como observador puro: produce
+un JSON estructurado y nada más. La escritura ocurre después, a cargo del
+\texttt{TrackerMemoryWriter}. Así, un fallo en el observador no deja memorias
+incompletas y el \emph{writer} puede evolucionar sin tocar el agente.
 
 \section{Limitaciones}
 
 Más allá de las limitaciones técnicas detalladas en el capítulo de pruebas,
 conviene cerrar con las de mayor alcance. El sistema cumple los objetivos de
-esta fase, pero no debe interpretarse como una validación automática de teorías
-de decisión: permite ejecutar modelos, observar trayectorias y contrastar
-patrones con conocimiento previo, pero la adecuación científica de un modelo
-concreto sigue requiriendo revisión experta. Que un modelo cargue, decida y
-produzca una curva interpretable no significa que represente correctamente el
-paradigma del que procede. Además, el sistema depende de modelos de lenguaje y
-servicios externos cuyas salidas, a diferencia del motor determinista, varían
-entre ejecuciones e introducen latencia y coste.
+esta fase, pero no valida automáticamente teorías de decisión: ejecuta modelos,
+observa trayectorias y contrasta patrones con conocimiento previo, pero la
+adecuación científica de cada modelo sigue requiriendo revisión experta. Además,
+depende de modelos de lenguaje y servicios externos cuyas salidas, a diferencia
+del motor determinista, varían entre ejecuciones e introducen latencia y coste.
 
 Las otras dos limitaciones son de alcance. El dominio de rejilla 2D es adecuado
 para comparar modelos en un entorno común y explicable, pero no cubre entornos
 continuos, escenarios multi-agente o tareas no espaciales, que exigirían
-extenderlo y revisar qué métricas son comparables. Y la escritura de
+extenderlo y revisar qué métricas son comparables. La escritura de
 conocimiento desde la segunda fase es aún conservadora: las observaciones se
 indexan en el \textit{namespace} \texttt{simulation} para poder recuperarlas
 después, pero no se materializan como nodos del grafo. La decisión es
-deliberada: antes de añadir nodos y relaciones al backbone conviene tener claro
-cuáles serán estables y útiles. A cambio, por ahora no se pueden hacer
-consultas encadenadas complejas sobre resultados de simulación, como seguir
-desde un paradigma hasta una formulación, de ahí a un modelo concreto y después
-a todas las observaciones generadas por ese modelo.
+deliberada: antes de añadir nodos y relaciones conviene tener claro cuáles
+serán estables y aportarán algo. A cambio, por ahora no se pueden hacer
+consultas encadenadas complejas sobre resultados de simulación.
 
 \section{Posibles ampliaciones}
 
 El sistema deja varias líneas de continuación.
 
 \paragraph{Más paradigmas y otros tipos de entornos.} Cada nuevo modelo
-que la primera fase produzca queda automáticamente disponible para
-experimentar. A medio plazo, dar el salto a otros tipos de entorno más
-allá de la rejilla 2D actual (entornos continuos, escenarios
-multi-agente con interacción cooperativa o competitiva, dominios no
-espaciales) permitiría estudiar paradigmas de toma de decisiones
-para los que el escenario actual se queda corto.
+que la primera fase produzca queda disponible para experimentar. A medio plazo,
+dar el salto a entornos continuos, escenarios multi-agente o dominios no
+espaciales permitiría estudiar paradigmas para los que la rejilla 2D actual se
+queda corta.
 
-\paragraph{Métricas cuantitativas estandarizadas.} La comparativa
-multi-modelo actual combina métricas crudas con descripciones
-cualitativas del Analyst. Una capa de métricas estandarizadas
-(recompensa acumulada, eficiencia, exploración, estabilidad de la
-política) haría las comparativas más directas y abriría la puerta a
-un \textit{benchmark} reproducible para nuevos paradigmas.
+\paragraph{Métricas cuantitativas estandarizadas.} Una capa común de métricas
+(recompensa acumulada, eficiencia, exploración, estabilidad de la política)
+haría las comparativas más directas y abriría la puerta a un
+\textit{benchmark} reproducible.
 
 \paragraph{Reanudación de sesiones.} El historial de chat con el
-Orchestrator ya se persiste en PostgreSQL, pero hoy se emplea solo como
-rastro de auditoría: no se vuelve a cargar, de modo que al recargar la
-página o reconectar se inicia una sesión nueva. Cerrar este hueco
-requiere leer el historial almacenado, añadir un \textit{endpoint}
-que devuelva los mensajes de una sesión y rehidratarlos en la interfaz. Así se
-podría retomar una conversación anterior sin perder su contexto. Es la base
-natural para mantener hilos de conversación persistentes con el Orchestrator.
+Orchestrator ya se persiste en PostgreSQL, pero hoy se emplea solo como rastro
+de auditoría. Cerrar este hueco requiere leer el historial almacenado, añadir
+un \textit{endpoint} de mensajes y rehidratarlos en la interfaz para retomar
+conversaciones sin perder contexto.
 
-\paragraph{Validación con el grupo de investigación y maduración del
-producto.} El sistema se ha construido pensando en el grupo de investigación
-del tutor. Esta memoria incorpora ya una revisión externa automatizada de los
-dos casos propuestos por el tutor y usados en pruebas, centrada en detectar
-contradicciones factuales entre paradigmas, formulaciones, simulaciones,
-resultados e informes. Queda pendiente la evaluación por parte de un experto
-humano, ya sea el tutor u otras personas del grupo de investigación: qué
-paradigmas querrían estudiar, qué partes del informe les ahorran trabajo, qué
-echan en falta y hasta qué punto los dictámenes automáticos coinciden con su
-criterio. Esa retroalimentación también marcaría la maduración del sistema como
-herramienta de uso continuado: gestión de usuarios e hilos de conversación
-persistentes con el Orchestrator.
+\paragraph{Uso con el grupo de investigación.} La memoria incorpora una
+auditoría factual de dos casos de prueba, pero una continuación natural sería
+usar el laboratorio con investigadores del grupo: qué paradigmas estudiarían,
+qué partes del informe les ahorran trabajo y qué echan en falta.
 
 \section{Una reflexión final}
 
-La asistencia de agentes permitió abordar una plataforma más amplia de lo que
-habría sido realista para un único autor en el plazo de un trabajo de grado:
-cinco agentes, dos fases independientes, una capa compartida de conocimiento y
-una interfaz web de seguimiento. Esa amplitud fue posible porque parte del
-esfuerzo se desplazó desde la escritura directa de código hacia la
-especificación, la revisión y la verificación. No eliminó la necesidad de
-criterio humano; cambió dónde había que aplicarlo. Las decisiones de alcance,
-las elecciones arquitectónicas y los criterios de aceptación siguieron siendo
-responsabilidad del autor. Esa es, en buena medida, la apuesta de este TFG.
+Si la implementación deja de ser la actividad dominante, la pregunta ya no es
+solo si estas herramientas aceleran tareas aisladas. Lo relevante es que cambian
+el alcance que un trabajo individual puede plantearse sin perder control sobre
+el resultado. En este proyecto, las decisiones de alcance, arquitectura y
+aceptación siguieron siendo responsabilidad del autor; lo que cambió fue el
+nivel de abstracción: la pregunta dejó de ser cómo lo escribo y pasó a ser qué
+quiero exactamente que ocurra.

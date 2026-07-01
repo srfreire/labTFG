@@ -14,7 +14,7 @@ cerrando poco a poco entre Eduardo, mi compañero y yo, en reuniones de
 diseño donde la propuesta inicial fue cambiando de escala y ganando
 concreción.
 
-El proyecto resultante es un laboratorio virtual para la simulación y el
+El resultado es un laboratorio virtual para la simulación y el
 análisis de paradigmas de toma de decisiones humanas mediante agentes
 inteligentes, dividido en dos fases complementarias. La primera,
 desarrollada por Pablo Pazos Parada, implementa un flujo de agentes
@@ -22,7 +22,7 @@ desarrollada por Pablo Pazos Parada, implementa un flujo de agentes
 transforma descripciones en lenguaje natural en modelos de decisión
 ejecutables. Esta memoria documenta la segunda, desarrollada por Juan Freire
 Álvarez: la infraestructura que recoge esos modelos, los ejecuta en un entorno
-común, observa su comportamiento y sintetiza los resultados en informes
+común, observa su comportamiento y lleva los resultados a informes
 comparativos.
 
 \section{Problema que se aborda}
@@ -44,17 +44,17 @@ El problema técnico está en coordinar ese recorrido sin acoplar las dos
 fases del proyecto. La infraestructura de simulación debe aceptar modelos
 heterogéneos generados externamente, construir un entorno común para ellos,
 emitir eventos observables en tiempo real, transformar la ejecución en
-trayectorias y episodios, generar un análisis útil y persistir los resultados
-en la capa de persistencia correspondiente. Además, el flujo debe poder
+trayectorias y episodios, preparar un análisis aprovechable y persistir los
+resultados en la capa correspondiente. El flujo también debe poder
 seguirse desde la interfaz: el objetivo no es solo ejecutar código, sino
 reducir la fricción para un investigador que quiere explorar un paradigma.
 
 \section{Objetivo general y objetivos específicos}
 
 El objetivo general de esta fase es construir una infraestructura de
-laboratorio virtual que permita ejecutar modelos de decisión heterogéneos,
-observar su comportamiento en un entorno común y convertir cada simulación en
-evidencia revisable para el grupo de investigación.
+laboratorio virtual capaz de ejecutar modelos de decisión heterogéneos,
+observar su comportamiento en un entorno común y conservar cada simulación como
+evidencia que el grupo de investigación pueda revisar.
 
 Para alcanzar ese objetivo general, se plantean los siguientes objetivos
 específicos:
@@ -83,7 +83,7 @@ capítulos de diseño y desarrollo explican cómo se materializa esa división.
 
 La relación con la primera fase es complementaria. La primera fase toma
 conocimiento científico y lo convierte en modelos ejecutables; esta
-segunda fase toma esos modelos y los convierte en evidencia experimental
+segunda fase toma esos modelos y los convierte en registro experimental
 observable, comparable y reutilizable. La integración técnica entre ambas
 se realiza por \textit{duck typing}: la segunda fase no exige que los
 modelos hereden de una clase concreta, sino que comprueba que expongan
@@ -104,7 +104,7 @@ se analizan los resultados y se compone el informe en PDF.
 El Architect traduce la petición del usuario en una especificación de entorno;
 el Tracker registra eventos, trayectorias y episodios; el Analyst interpreta los
 patrones observados; y el Reporter redacta el informe final. Los modelos se
-cargan dinámicamente al comenzar la simulación y el Knowledge Backbone conserva
+cargan dinámicamente al comenzar la simulación y el Knowledge Backbone guarda
 modelos, memorias y observaciones para que ambas fases reutilicen evidencia
 previa.
 
@@ -120,7 +120,7 @@ capítulos principales son:
 \item Especificación de requisitos;
 \item Diseño del sistema;
 \item Desarrollo del trabajo;
-\item Pruebas;
+\item Pruebas y evaluación;
 \item Conclusiones y posibles ampliaciones.
 \end{itemize}
 

@@ -10,11 +10,11 @@ generados en la primera fase y convertir esa observación en análisis e informe
 revisables.
 
 El laboratorio combina dos partes que conviene evaluar por separado. Por un
-lado, un \textbf{núcleo determinista} --- el motor de simulación, el
+lado, un núcleo determinista --- el motor de simulación, el
 Tracker y la persistencia en el \textit{Knowledge Backbone} ---, cuyo
 comportamiento es reproducible y se puede comprobar contra una verdad
-programática. Por otro, una \textbf{capa de juicio basada en modelos de
-lenguaje} --- Architect, Analyst y Reporter ---, cuyas salidas son abiertas y no
+programática. Por otro, una capa de juicio basada en modelos de
+lenguaje --- Architect, Analyst y Reporter ---, cuyas salidas son abiertas y no
 tienen una única respuesta correcta. Si se mezclan ambas partes, se corre el
 riesgo de exigir determinismo donde no lo hay o de aceptar como válido cualquier
 texto plausible. La literatura de evaluación de agentes basados en modelos de
@@ -28,31 +28,34 @@ sistema está bien construido; la validación, que produce resultados
 representativos del fenómeno estudiado.
 
 A partir de esa distinción, la evaluación de esta fase se organiza de forma
-\textbf{paralela a la de la primera fase}: una \textbf{ejecución instrumentada}
-del laboratorio completo sobre casos reales, que mide el núcleo determinista, y
-un \textbf{juicio externo} de las salidas abiertas a cargo de un evaluador
-independiente. Dos principios articulan esta organización:
+\emph{paralela a la de la primera fase}: el laboratorio se ejecuta sobre dos
+casos reales, y cada caso combina comprobaciones deterministas con un juicio
+externo de las salidas abiertas. No se busca estimar rendimiento estadístico,
+sino comprobar si la infraestructura observa y comunica con fidelidad lo que
+ocurrió en esas ejecuciones.
+
+Dos principios articulan esta organización:
 
 \begin{itemize}
-\item \textbf{La verdad de referencia son los datos de la simulación}, no la
+\item La verdad de referencia son los datos de la simulación, no la
 teoría. Las trayectorias de cada modelo --- paso, acción, recompensa y estado
 interno --- son el patrón contra el que se mide todo lo demás. Los artículos que
 inspiran cada caso son contexto, no la vara de medir. Si un modelo se comporta de
 forma anómala y el laboratorio lo reporta \emph{con fidelidad}, el laboratorio
-\textbf{acierta}. Lo que se evalúa es el anclaje (\textit{groundedness}) de la
+acierta. Lo que se evalúa es el anclaje (\textit{groundedness}) de la
 observación, no si la teoría subyacente es correcta. Esta es la diferencia con
 la primera fase: allí se comprueba que el \emph{modelo funciona}; aquí, que la
 infraestructura observa lo que ese modelo hace.
 
-\item \textbf{Independencia entre evaluado y evaluador}. El laboratorio se apoya
+\item Independencia entre evaluado y evaluador. El laboratorio se apoya
 en modelos de la familia Claude; el juez externo es Codex, de otra familia. Con
 ello se reduce el riesgo de que un modelo se evalúe a sí mismo, un sesgo conocido
 de los esquemas
 \textit{LLM-as-a-judge}~\cite{zheng2023judge,calm2024biases}.
 La independencia entre familias de modelos no convierte el juicio en verdad de
 referencia; solo reduce el riesgo de autoevaluación. Por eso las puntuaciones se
-interpretan como una auditoría de consistencia factual y se contrastan con
-revisión experta, no como validación científica automática.
+interpretan como una auditoría de consistencia factual, no como validación
+científica automática.
 \end{itemize}
 
 \section{Casos de evaluación y protocolo}
@@ -61,8 +64,8 @@ La evaluación se apoya en dos casos completos propuestos por el tutor,
 producidos por la primera fase y restaurados en local. Cada uno se centra en un
 dominio distinto de la toma de decisiones humana y agrupa varios paradigmas,
 representados por un modelo cada uno (tabla~\ref{tab:run-metrics}). El
-\textbf{CASO1} aborda la decisión basada en valor (neuroeconomía del forrajeo
-alimentario) con seis modelos; el \textbf{CASO2} aborda la regulación
+CASO1 aborda la decisión basada en valor (neuroeconomía del forrajeo
+alimentario) con seis modelos; CASO2 aborda la regulación
 homeostática y la interocepción con cuatro.
 Cada caso cubre mecanismos distintos --- acumulación de
 evidencia, control homeostático, aprendizaje por refuerzo, inferencia activa,
@@ -71,27 +74,31 @@ entorno sea informativa.
 
 Estos dos casos no pretenden estimar el rendimiento general del laboratorio;
 son ejecuciones instrumentadas para comprobar si el sistema conserva la
-fidelidad de observación de extremo a extremo.
+fidelidad de observación de extremo a extremo. Cada caso se ejecuta una vez para
+generar el paquete evaluado; la repetición aparece solo en la comprobación
+determinista de reproducibilidad, donde una misma semilla y configuración deben
+producir la misma trayectoria.
 
-Sobre cada caso se ejecuta el \textbf{pipeline completo} sin intervención manual:
+Sobre cada caso se ejecuta el pipeline completo sin intervención manual:
 el Architect genera la especificación del entorno a partir de la descripción del
 dominio; el motor simula los modelos durante 60 pasos; el Tracker registra
 trayectorias y episodios; la observación se persiste en el \textit{Knowledge
 Backbone}; el Analyst compara los modelos; y el Reporter genera el informe PDF.
-El pipeline incorpora, además, una \textbf{verificación determinista de anclaje}
+El pipeline incorpora, además, una verificación determinista de anclaje
 que contrasta las cifras principales del Tracker y del Analyst con los eventos
 registrados, por ejemplo que los consumos contados por el informe coincidan con
-los eventos guardados durante la simulación. Así, las magnitudes que aparecen en
+los eventos guardados durante la simulación. Las magnitudes que aparecen en
 la evaluación no dependen solo de cómo las haya redactado el modelo de lenguaje.
 
 \begin{table}[H]
 \begin{center}
 \small
+\renewcommand{\arraystretch}{1.16}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{4.0cm}|>{\raggedright\arraybackslash}p{4.0cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
 \textbf{Métrica} & \textbf{CASO1 (valor)} & \textbf{CASO2 (homeostasis)} \\ \hline
 Modelos comparados & 6 paradigmas & 4 paradigmas \\ \hline
 Entorno (Architect) & Rejilla $8\times8$, 6 recursos \texttt{food} & Rejilla $10\times10$, 8 recursos \texttt{food} \\ \hline
-Eventos registrados & $360$ ($6\times60$) & $199$ ($60{+}60{+}19{+}60$) \\ \hline
+Eventos registrados & $360$ ($6\times60$) & $199$ ($60 + 60 + 19 + 60$) \\ \hline
 Consumos observados & $15$ en total & $7$ en total \\ \hline
 Tripleta \textit{joinable} & $13 = 13 = 13$ consistente & $9 = 9 = 9$ consistente \\ \hline
 Determinismo (semilla 42) & Trayectoria idéntica & Trayectoria idéntica \\ \hline
@@ -107,14 +114,14 @@ no como una batería aparte.}
 \end{table}
 
 Las métricas duras de la tabla~\ref{tab:run-metrics} fijan el suelo de la
-evaluación. La \textbf{tripleta \textit{joinable}} comprueba la fidelidad de la
+evaluación. La tripleta \textit{joinable} comprueba la fidelidad de la
 persistencia: cada observación debe existir de forma consistente como fila en
 PostgreSQL, como vector denso y como vector \textit{sparse} en Qdrant, siempre
 bajo el mismo identificador; si una observación se guardara en un almacén pero no
-en otro, dejaría de poder recuperarse de forma fiable. El \textbf{determinismo}
-con semilla fija garantiza que la comparativa multi-modelo es reproducible: dos
+en otro, dejaría de poder recuperarse de forma fiable. El determinismo
+con semilla fija hace reproducible la comparativa multi-modelo: dos
 ejecuciones con la misma semilla producen trayectorias idénticas. Y la
-comprobación de que el \textbf{PDF es el informe real} compilado con
+comprobación de que el PDF es el informe real compilado con
 \texttt{tectonic}, y no el documento de respaldo que se emite cuando la
 compilación falla, asegura que se evalúa el producto real del Reporter. Estas
 comprobaciones son binarias y no requieren juicio; en las dos ejecuciones se
@@ -123,6 +130,10 @@ satisfacen.
 El detalle de la suite de regresión que respalda estas ejecuciones --- 387
 pruebas en \textit{pytest}, más recorridos de interfaz con Playwright y la
 compilación LaTeX --- se recoge en el Apéndice~\ref{ap:capa1}.
+Los paquetes evaluados quedan versionados en
+\texttt{phase2-juan/benchmark/reports/2026-06-30-caso1-lab/} y
+\texttt{phase2-juan/benchmark/reports/2026-06-30-caso2-lab/}, con
+trayectorias, métricas, análisis, informe PDF y dictamen del juez externo.
 
 \section{Juicio externo con Codex}
 
@@ -138,9 +149,9 @@ concretos, citando rutas y valores como evidencia de cada juicio.
 Este juicio no se usa como validación científica del dominio, sino como prueba
 de consistencia factual del paquete generado. Su función es detectar
 contradicciones entre trayectorias, análisis e informe; la aceptación científica
-de las interpretaciones queda reservada a revisión humana experta.
+de las interpretaciones queda fuera del alcance de esta evaluación.
 
-El juicio se estructura en una \textbf{rúbrica de seis criterios}
+El juicio se estructura en una rúbrica de seis criterios
 (tabla~\ref{tab:codex-rubrica}), uno por componente del laboratorio más la
 robustez del pipeline y un juicio global, con una puntuación final sobre 100.
 La pregunta de cada criterio no es si la teoría se cumple, sino si el laboratorio
@@ -149,12 +160,13 @@ La pregunta de cada criterio no es si la teoría se cumple, sino si el laborator
 \begin{table}[H]
 \begin{center}
 \small
+\renewcommand{\arraystretch}{1.16}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{8.6cm}|} \hline
 \textbf{Criterio} & \textbf{Qué evalúa} \\ \hline
-1. Fidelidad del entorno & ¿El entorno del Architect es coherente con el dominio y permite observar el comportamiento de los modelos? \\ \hline
-2. Fidelidad de observación & ¿Las trayectorias y eventos del Tracker reflejan la simulación? (incluye tripleta \textit{joinable} y determinismo) \\ \hline
-3. Calidad del análisis & ¿Los patrones del Analyst son correctos y están anclados en las trayectorias, sin inventar? \\ \hline
-4. Fidelidad del informe & ¿El PDF del Reporter es fiel a los datos, sin cifras alucinadas, y es el informe real? \\ \hline
+1. Fidelidad del entorno & Coherencia del entorno del Architect con el dominio y capacidad para observar el comportamiento de los modelos. \\ \hline
+2. Fidelidad de observación & Correspondencia entre las trayectorias y eventos del Tracker y la simulación (incluye tripleta \textit{joinable} y determinismo). \\ \hline
+3. Calidad del análisis & Corrección de los patrones del Analyst y anclaje en las trayectorias, sin invención de hechos. \\ \hline
+4. Fidelidad del informe & Fidelidad del PDF del Reporter a los datos, ausencia de cifras alucinadas y verificación de que es el informe real. \\ \hline
 5. Robustez del pipeline & Errores, fallos de etapa, \textit{fallback} del PDF, determinismo. \\ \hline
 6. Juicio global & Valoración de conjunto y puntuación sobre 100. \\ \hline
 \end{tabular}
@@ -177,10 +189,11 @@ conteos principales de la simulación.
 \begin{table}[H]
 \begin{center}
 \small
+\renewcommand{\arraystretch}{1.16}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{1.3cm}|>{\raggedright\arraybackslash}p{8.8cm}|} \hline
 \textbf{Caso} & \textbf{Nota} & \textbf{Veredicto resumido} \\ \hline
 CASO1 & $88/100$ & Alta fidelidad de observación e informe real; reservas por imprecisiones puntuales de cita paso a paso y alguna interpretación más fuerte que lo demostrado. \\ \hline
-CASO2 & $86/100$ & Observación y análisis fieles, pipeline robusto y PDF real; baja por una atribución factual concreta en el informe y pequeñas imprecisiones temporales. \\ \hline
+CASO2 & $86/100$ & Observación y análisis fieles, pipeline estable y PDF real; baja por una atribución factual concreta en el informe y pequeñas imprecisiones temporales. \\ \hline
 \end{tabular}
 \caption[Resultados del juicio externo]{Resultados del juicio externo con Codex
 sobre las dos ejecuciones instrumentadas.}
@@ -199,9 +212,9 @@ codificación predictiva 0. El Tracker reproduce estas cifras, los perfiles de
 acción y los pasos exactos de cada consumo, y la persistencia los materializa de
 forma consistente en los tres almacenes.
 
-El ejemplo más claro es el modelo de \textbf{inferencia activa} del CASO2. Ese
-modelo no defendió su punto de consigna y \textbf{murió por agotamiento de
-energía en el paso 18}, tras un único consumo. El laboratorio no rellenó
+El ejemplo más claro es el modelo de inferencia activa del CASO2. Ese
+modelo no defendió su punto de consigna y murió por agotamiento de
+energía en el paso 18, tras un único consumo. El laboratorio no rellenó
 artificialmente su trayectoria: registró 19 eventos, marcó la muerte por
 inanición y continuó la comparación con los otros tres modelos; el Analyst y el
 Reporter lo describieron como tal. Este ejemplo resume bien el enfoque de la
@@ -221,32 +234,8 @@ justo el tipo de detalle que debe aparecer en una evaluación de anclaje estrict
 Estas reservas no se incorporan como conclusiones científicas del trabajo; se
 mantienen como errores locales de las salidas generadas y quedan acotadas por la
 verificación determinista de anclaje. Conservarlas en la memoria forma parte de
-la evaluación del laboratorio: muestran que la infraestructura permite detectar
+la evaluación del laboratorio: muestran que la infraestructura deja detectar
 desviaciones del Analyst o del Reporter frente a los datos de simulación.
-
-\subsection{Revisión externa automatizada}
-
-Codex se usa como \textbf{evaluador externo independiente}, no como sustituto del
-criterio humano. Los dos casos anteriores, planteados por el tutor, se evaluaron
-con un modelo de otra familia para reducir el riesgo de autoevaluación y detectar
-contradicciones factuales entre trayectorias, observaciones, análisis e informe.
-Esa revisión externa automatizada no resuelve por sí sola si las formulaciones
-son razonables o si la lectura científica de los resultados está bien ajustada.
-
-La revisión se hizo sobre los mismos paquetes autocontenidos que recibió el juez
-externo: paradigmas heredados de la primera fase, formulaciones, modelos
-simulados, trayectorias, salida del Tracker, análisis del Analyst e informe final
-del Reporter. Esta revisión ocupa un lugar distinto al de las métricas duras:
-las comprobaciones automáticas verifican que el laboratorio registra y recupera
-correctamente las trayectorias; el juicio de Codex busca contradicciones
-factuales; y la revisión humana experta, pendiente como trabajo futuro y
-realizable por el tutor u otras personas del grupo de investigación, deberá
-valorar si las interpretaciones de comportamiento se pueden defender en la
-memoria. En ambos casos se mantiene el
-veredicto de \emph{aprobado con reservas}: el laboratorio es fiel a las
-simulaciones y produce informes útiles, pero algunas salidas textuales necesitan
-matizar interpretaciones fuertes y corregir errores locales antes de usarse como
-conclusión científica cerrada.
 
 \section{Limitaciones de la evaluación}
 
@@ -256,10 +245,9 @@ de observación, pero conviene delimitar su alcance.
 La primera limitación es la diferencia entre validación estructural y validación
 semántica. El juicio externo comprueba que la observación está anclada en las
 trayectorias y que el informe es fiel a los datos. Eso no demuestra, sin embargo,
-que un modelo capture de verdad el fenómeno humano que dice representar. La
-revisión con un evaluador externo de otra familia reduce el riesgo de
-autoevaluación, pero no sustituye la validación humana experta ni convierte los
-resultados en una validación neurocientífica generalizable.
+que un modelo capture de verdad el fenómeno humano que dice representar. Usar
+un evaluador de otra familia reduce el riesgo de autoevaluación, pero no
+convierte los resultados en una validación neurocientífica generalizable.
 
 La segunda limitación es la reproducibilidad acotada del comportamiento de los
 modelos de lenguaje. El determinismo se garantiza para el motor de simulación,
@@ -271,7 +259,7 @@ contra criterio humano y no sustituirlo~\cite{zheng2023judge}.
 
 La tercera es el carácter aproximado del juez. La parte automatizable queda
 instrumentada --- juicio por rúbrica con un evaluador de otra familia ---, pero
-su \textbf{meta-evaluación}, es decir, medir de forma estadística el acuerdo con
+su meta-evaluación, es decir, medir de forma estadística el acuerdo con
 criterio humano mediante $\kappa$ y $\rho$, requiere un corpus más amplio de
 casos etiquetados y se deja como trabajo futuro~\cite{li2024judges}. A ello se
 suma que cada caso se evalúa sobre una única semilla y un entorno de forrajeo

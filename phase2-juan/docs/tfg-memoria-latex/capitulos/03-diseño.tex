@@ -62,38 +62,37 @@ pieza; la segunda baja al nivel de componentes software.
     text width=24mm, align=center, font=\scriptsize\sffamily
   }
 ]
-  \node[nodebox] (browser) at (0,0) {<<device>>\\Navegador};
-  \node[artifact] (frontend) at (0,-1.45) {Frontend\\React + Vite};
+  \node[nodebox] (browser) at (-1.1,0) {<<device>>\\Navegador};
+  \node[artifact] (frontend) at (-1.1,-1.45) {Frontend\\React + Vite};
 
   \node[nodebox, text width=40mm] (backend) at (5.2,0) {<<execution environment>>\\Backend Phase 2};
-  \node[artifact] (api) at (3.6,-1.45) {FastAPI\\REST + WS};
-  \node[artifact] (orch) at (5.2,-2.65) {Orchestrator\\tools + sesión};
-  \node[artifact] (sim) at (6.8,-1.45) {Runtime\\simulación 2D};
+  \node[artifact] (api) at (3.8,-1.45) {FastAPI\\REST + WS};
+  \node[artifact] (orch) at (5.2,-2.75) {Orchestrator\\tools + sesión};
+  \node[artifact] (sim) at (7.0,-1.45) {Runtime\\simulación 2D};
 
   \node[nodebox] (llm) at (10.4,0) {<<external service>>\\LLM providers};
-  \node[artifact] (openrouter) at (10.4,-1.45) {OpenRouter API};
+  \node[artifact] (openrouter) at (10.4,-2.75) {OpenRouter API};
 
-  \node[nodebox, text width=36mm] (phase1) at (0,-4.1) {<<execution environment>>\\Phase 1};
-  \node[artifact] (models) at (0,-5.45) {Modelos aceptados\\código Python};
+  \node[nodebox, text width=36mm] (phase1) at (-1.1,-4.1) {<<execution environment>>\\Phase 1};
+  \node[artifact] (models) at (-1.1,-5.45) {Modelos aceptados\\código Python};
 
-  \node[nodebox, text width=44mm] (shared) at (5.2,-4.1) {<<execution environment>>\\Infraestructura compartida};
+  \node[nodebox, text width=44mm] (shared) at (5.2,-4.45) {<<execution environment>>\\Infraestructura compartida};
   \node[storage] (pg) at (2.4,-6.65) {PostgreSQL\\metadatos};
   \node[storage] (minio) at (4.6,-6.65) {MinIO\\artefactos};
   \node[storage] (qdrant) at (6.8,-6.65) {Qdrant\\memorias};
   \node[storage] (neo4j) at (9.0,-6.65) {Neo4j\\grafo};
 
-  \draw[diagarrowbi] (frontend) -- node[above, font=\scriptsize] {HTTP / WS} (api);
-  \draw[diagarrow] (api) -- (orch);
-  \draw[diagarrowbi] (orch) -- (sim);
-  \draw[diagarrowbi] (orch) -- (openrouter);
-  \draw[diagarrow] (models) |- (sim);
-  \draw[diagarrowbi] (orch) -- (shared);
+  \draw[diagarrow] (frontend.east) -- node[above, font=\scriptsize] {HTTP/WS} (api.west);
+  \draw[diagarrow] (api.south) -- ++(0,-4mm) -| ([xshift=-8mm]orch.north);
+  \draw[diagarrow] ([xshift=8mm]orch.north) -- ++(0,4mm) -| (sim.south);
+  \draw[diagarrow] (orch.east) -- (openrouter.west);
+  \draw[diagarrow] (orch.south) -- (shared.north);
   \draw[diagarrow] (phase1) -- (models);
   \draw[diagarrow] (shared) -- (pg);
   \draw[diagarrow] (shared) -- (minio);
   \draw[diagarrow] (shared) -- (qdrant);
   \draw[diagarrow] (shared) -- (neo4j);
-  \draw[diagarrow] (models) -- (minio);
+  \draw[diagarrow] (models.east) -- ++(7mm,0) |- (shared.west);
 \end{tikzpicture}}
 \caption[Diagrama de despliegue UML]{Diagrama de despliegue UML del
 laboratorio virtual. Se muestran los nodos de ejecución, los artefactos
@@ -106,53 +105,51 @@ sesión.}
 \centering
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
-  node distance=7mm and 8mm,
   comp/.style={
     rectangle, draw=black!75, rounded corners=2pt, line width=0.55pt,
     fill=#1, minimum height=8mm, text width=29mm,
     align=center, font=\scriptsize\sffamily
   }
 ]
-  \node[comp=blue!7] (ui) {Cliente web\\dashboard, chat, replay};
-  \node[comp=blue!4, below=of ui] (api) {API FastAPI\\REST + WebSocket};
-  \node[comp=violet!9, below=of api] (orch) {Orchestrator\\estado de sesión};
+  \node[comp=blue!7] (ui) at (0,0) {Cliente web\\dashboard, chat, replay};
+  \node[comp=blue!4] (api) at (0,-1.4) {API FastAPI\\REST + WebSocket};
+  \node[comp=violet!9] (orch) at (0,-2.8) {Orchestrator\\estado de sesión};
 
-  \node[comp=green!8, below left=11mm and 25mm of orch] (architect) {Architect\\especificación};
-  \node[comp=green!8, below=11mm of orch] (tracker) {Tracker\\observación};
-  \node[comp=green!8, below right=11mm and 25mm of orch] (analyst) {Analyst\\análisis};
-  \node[comp=green!8, right=8mm of analyst] (reporter) {Reporter\\PDF};
+  \node[comp=green!8] (architect) at (-6.6,-4.4) {Architect\\especificación};
+  \node[comp=green!8] (tracker) at (-2.6,-4.4) {Tracker\\observación};
+  \node[comp=green!8] (analyst) at (2.6,-4.4) {Analyst\\análisis};
+  \node[comp=green!8] (reporter) at (6.6,-4.4) {Reporter\\PDF};
 
-  \node[comp=orange!9, below=15mm of tracker, text width=35mm] (runtime) {Runtime de simulación\\Environment + Agent};
-  \node[comp=orange!5, left=10mm of runtime] (loader) {Model loader\\modelos fase 1};
-  \node[comp=red!6, right=10mm of runtime] (charts) {Charts\\figuras del análisis};
+  \node[comp=orange!5] (loader) at (-6.6,-6.0) {Model loader\\modelos fase 1};
+  \node[comp=orange!9, text width=35mm] (runtime) at (-2.6,-6.0) {Runtime de simulación\\Environment + Agent};
+  \node[comp=red!6] (charts) at (4.6,-6.0) {Charts\\figuras del análisis};
 
-  \node[comp=gray!8, below left=14mm and 24mm of runtime] (db) {DatabaseService\\PostgreSQL};
-  \node[comp=gray!8, below=14mm of runtime] (storage) {StorageService\\MinIO};
-  \node[comp=gray!8, below right=14mm and 24mm of runtime] (vector) {VectorStore\\Qdrant};
-  \node[comp=gray!8, right=8mm of vector] (kg) {KnowledgeGraph\\Neo4j};
-  \node[comp=gray!5, left=8mm of db] (memory) {TrackerMemoryWriter\\memoria de simulación};
+  \node[comp=gray!5] (memory) at (-2.6,-7.6) {TrackerMemoryWriter\\memoria de simulación};
+  \node[comp=gray!8] (kg) at (2.6,-7.6) {KnowledgeGraph\\Neo4j};
+  \node[comp=gray!8] (storage) at (6.6,-7.6) {StorageService\\MinIO};
+  \node[comp=gray!8] (db) at (-4.8,-9.2) {DatabaseService\\PostgreSQL};
+  \node[comp=gray!8] (vector) at (-0.4,-9.2) {VectorStore\\Qdrant};
 
-  \draw[diagarrowbi] (ui) -- (api);
-  \draw[diagarrowbi] (api) -- (orch);
-  \draw[diagarrow] (orch) -- (architect);
-  \draw[diagarrow] (orch) -- (tracker);
-  \draw[diagarrow] (orch) -- (analyst);
-  \draw[diagarrow] (orch) -- (reporter);
-  \draw[diagarrow] (architect) -- (runtime);
-  \draw[diagarrowbi] (runtime) -- (tracker);
-  \draw[diagarrow] (tracker) -- (analyst);
-  \draw[diagarrow] (analyst) -- (reporter);
-  \draw[diagarrow] (loader) -- (runtime);
-  \draw[diagarrow] (analyst) -- (charts);
-  \draw[diagarrow] (charts) -- (reporter);
-  \draw[diagarrow] (tracker) -- (memory);
-  \draw[diagarrow] (memory) -- (db);
-  \draw[diagarrow] (memory) -- (vector);
-  \draw[diagarrowbi] (orch) |- (db);
-  \draw[diagarrowbi] (orch) |- (storage);
-  \draw[diagarrowbi] (analyst) |- (vector);
-  \draw[diagarrowbi] (analyst) |- (kg);
-  \draw[diagarrow] (reporter) |- (storage);
+  \draw[diagarrow] ([xshift=-1.5mm]ui.south) -- ([xshift=-1.5mm]api.north);
+  \draw[diagarrow] ([xshift=1.5mm]api.north) -- ([xshift=1.5mm]ui.south);
+  \draw[diagarrow] ([xshift=-1.5mm]api.south) -- ([xshift=-1.5mm]orch.north);
+  \draw[diagarrow] ([xshift=1.5mm]orch.north) -- ([xshift=1.5mm]api.south);
+  \draw[diagarrow] (orch) -- (architect.north);
+  \draw[diagarrow] (orch) -- (tracker.north);
+  \draw[diagarrow] (orch) -- (analyst.north);
+  \draw[diagarrow] (orch) -- (reporter.north);
+  \draw[diagarrow] (architect.south) -- (loader.north);
+  \draw[diagarrowbi] (tracker.south) -- (runtime.north);
+  \draw[diagarrow] (tracker.east) -- (analyst.west);
+  \draw[diagarrow] (analyst.east) -- (reporter.west);
+  \draw[diagarrow] (loader.east) -- (runtime.west);
+  \draw[diagarrow] (analyst.south east) -- (charts.north west);
+  \draw[diagarrow] (charts.north east) -- (reporter.south west);
+  \draw[diagarrow] (tracker.south east) -- ++(0,-5mm) -| (0,-7.6) -- (memory.east);
+  \draw[diagarrow] (memory.south) -- (db.north);
+  \draw[diagarrow] (memory.south) -- (vector.north);
+  \draw[diagarrowbi] (analyst.south) -- (kg.north);
+  \draw[diagarrow] (reporter.south) -- (storage.north);
 \end{tikzpicture}}
 \caption[Diagrama de componentes UML]{Diagrama de componentes UML de la
 segunda fase. El Orchestrator aparece como componente central y los agentes se
@@ -180,10 +177,10 @@ interfaz, de modo que la simulación no queda reducida a una respuesta final del
 modelo, sino que puede seguirse paso a paso.
 
 La fase también añade la comparación de varios modelos en el mismo entorno,
-con trazas de decisión, métricas y \textit{replay}. Esa parte es importante
-porque permite observar diferencias entre modelos sin cambiar las condiciones
-de la simulación. Por último, cada sesión deja persistidos sus datos principales:
-conversaciones, experimentos, ejecuciones, informes y observaciones. Así, el
+con trazas de decisión, métricas y \textit{replay}. Con esas trazas se observan
+diferencias entre modelos sin cambiar las condiciones de la simulación. Por
+último, cada sesión deja persistidos sus datos principales:
+conversaciones, experimentos, ejecuciones, informes y observaciones. El
 resultado no depende solo del estado del navegador ni de la ventana de contexto
 del modelo, y las observaciones pueden volver al Knowledge Backbone como memoria
 recuperable.
@@ -191,7 +188,7 @@ recuperable.
 \section{El dominio de simulación}
 
 La simulación se desarrolla sobre una rejilla bidimensional habitada por
-agentes y recursos. Esta capa se mantiene sencilla a propósito: su único
+agentes y recursos. Esta capa se mantiene acotada a propósito: su único
 objetivo es ofrecer un escenario común sobre el que distintos modelos de
 decisión, incluso de paradigmas teóricos muy diferentes, puedan ser
 evaluados en condiciones equivalentes.
@@ -209,7 +206,7 @@ infraestructura del entorno y ejecutar varios paradigmas en paralelo dentro de
 una misma simulación sin que el entorno tenga que conocer su naturaleza.
 
 El contrato \texttt{decide}, \texttt{update}, \texttt{get\_state}
-resulta familiar para quien haya trabajado con aprendizaje por refuerzo:
+recuerda al usado en aprendizaje por refuerzo:
 \texttt{decide} resuelve la selección de acción dada una percepción, es
 decir, un diccionario con la posición del agente (\texttt{x}, \texttt{y}), las
 dimensiones de la rejilla (\texttt{grid\_width}, \texttt{grid\_height}),
@@ -218,9 +215,9 @@ y el resultado de la última acción (\texttt{last\_action\_result});
 \texttt{update} aplica el ajuste interno tras recibir la recompensa, y
 \texttt{get\_state} expone el estado interno del modelo, incluida una
 clave \texttt{q\_values} que el laboratorio consume para las trazas de
-decisión y las gráficas de alternativas valoradas. La generalidad de esta
-interfaz permite acomodar tanto modelos clásicos basados en Q-learning
-como paradigmas no tabulares o estrategias deliberativas más elaboradas.
+decisión y las gráficas de alternativas valoradas. Con una interfaz así caben
+modelos clásicos basados en Q-learning, paradigmas no tabulares y estrategias
+deliberativas más elaboradas.
 
 \begin{figure}[H]
 \centering
@@ -320,7 +317,7 @@ como paradigmas no tabulares o estrategias deliberativas más elaboradas.
   \draw[diagarrow] (rules) -- (env);
   \draw[diagarrow] (orch) -- (agents);
   \draw[diagarrow] (orch.east) -- (writer.west);
-  \draw[diagarrow] (orch.north) -- ++(0,8mm) -| (env.south);
+  \draw[diagarrow] (orch.north) -- ++(0,8mm) -- ++(-28mm,0) |- (env.south west);
   \draw[diagarrow] (writer.north) -- ++(0,8mm) -| (event.south east);
 \end{tikzpicture}}
 \caption[Diagrama de clases UML]{Diagrama de clases UML simplificado de la
@@ -350,7 +347,7 @@ El catálogo de herramientas combina llamadas de ejecución, como
 con llamadas de inspección. Estas últimas no lanzan una fase nueva del
 pipeline; recuperan detalle bajo demanda: episodios, trayectorias, eventos
 críticos, comparaciones del Analyst o una ventana de pasos alrededor de un
-instante de la simulación. Así, el Orchestrator puede responder a preguntas precisas del
+instante de la simulación. Con esto, el Orchestrator puede responder a preguntas precisas del
 usuario sin introducir de nuevo todo el JSON del Tracker en el contexto del
 modelo. El catálogo completo de \textit{tool calls} expuestas a cada agente se
 recoge en el Apéndice~\ref{ap:toolcalls}.
@@ -375,7 +372,7 @@ contexto durante su análisis.
 \item \textbf{Persistencia diferida.} Tras recibir el JSON del Tracker,
 el Orchestrator lo pasa al \texttt{TrackerMemoryWriter} para que lo
 descomponga en hechos, calcule los \textit{embeddings} con Voyage en un
-único \textit{batch} y los inserte de forma coordinada en PostgreSQL,
+único \textit{batch} y los inserte en PostgreSQL,
 Qdrant denso y Qdrant \textit{sparse}. Si las credenciales de Voyage AI o
 ZeroEntropy no están configuradas, este escritor no participa y la sesión
 continúa sin escritura semántica indexada.
@@ -384,64 +381,68 @@ el canal WebSocket para que el cliente actualice la interfaz sin
 esperar al final del pipeline.
 \end{enumerate}
 
-Las desviaciones que el modelo de lenguaje sí controla son de dos clases.
-La primera es la \textbf{confirmación humana}: antes de lanzar una
-simulación, el Orchestrator presenta al usuario la especificación de
-entorno propuesta por el Architect y los modelos seleccionados, y espera
-su validación; el usuario puede pedir ajustes y rehacer ese paso sin
-reiniciar la sesión. La segunda es el \textbf{rerun de un paso fallido}:
-si una \textit{tool call} produce una salida que no valida (por ejemplo,
-un JSON de entorno malformado) el Orchestrator puede repetirla o
-descartar el intento sin perder el contexto acumulado. En ambos casos la
-secuencia canónica se mantiene como base; lo que el LLM decide es
-\emph{cuándo} retroceder o reintentar, no el orden global del pipeline.
-Esta combinación de plan fijo y desviaciones acotadas es lo que hace que
-una sesión sea a la vez previsible en coste y tolerante a los fallos
-puntuales propios de las salidas generativas.
+La sesión no avanza como una cadena cerrada de pasos, sino como un ciclo
+iterativo guiado por la intención del usuario. Tras cada salida visible
+---una especificación de entorno, una ejecución, una tarjeta del Tracker,
+una gráfica del Analyst o un borrador de informe--- el usuario puede pedir
+ajustes, inspeccionar detalle, repetir una fase o continuar hacia la
+siguiente. El Orchestrator mantiene el estado de la sesión y traduce esa
+intención en la \textit{tool call} correspondiente. En paralelo, conserva
+un \textbf{rerun de paso fallido}: si una llamada produce una salida que no
+valida, por ejemplo un JSON de entorno malformado, puede repetirla o
+descartar el intento sin perder el contexto acumulado. Así, la secuencia
+canónica sigue existiendo como recorrido habitual, pero la interacción real
+permite iterar en cualquiera de sus artefactos intermedios.
 
 \begin{figure}[p]
 \centering
-\resizebox{0.82\linewidth}{!}{%
+\resizebox{0.96\linewidth}{!}{%
 \begin{tikzpicture}[
-  node distance=6mm and 10mm,
   startstop/.style={ellipse, draw=black!75, fill=black!8, minimum width=18mm,
     minimum height=7mm, align=center, font=\scriptsize\sffamily},
   action/.style={rectangle, rounded corners=2pt, draw=black!70, fill=black!3,
-    minimum height=8mm, text width=42mm, align=center, font=\scriptsize\sffamily},
-  decision/.style={diamond, aspect=2.1, draw=black!70, fill=black!4,
-    text width=28mm, align=center, font=\scriptsize\sffamily}
+    minimum height=8mm, text width=35mm, align=center, font=\scriptsize\sffamily},
+  decision/.style={diamond, aspect=2.35, draw=black!70, fill=black!4,
+    text width=28mm, align=center, font=\scriptsize\sffamily},
+  note/.style={font=\tiny\sffamily, fill=white, inner sep=1pt}
 ]
-  \node[startstop] (start) {Inicio};
-  \node[action, below=of start] (msg) {Recibir petición del usuario por WebSocket};
-  \node[action, below=of msg] (models) {Listar modelos disponibles y recuperar contexto};
-  \node[action, below=of models] (architect) {Architect genera especificación de entorno};
-  \node[decision, below=of architect] (valid) {¿Es válida y aceptada?};
-  \node[action, right=18mm of valid] (revise) {Ajustar petición o regenerar especificación};
-  \node[action, below=of valid] (sim) {Cargar modelos y ejecutar simulación};
-  \node[action, below=of sim] (tracker) {Tracker registra eventos, trayectorias y episodios};
-  \node[action, below=of tracker] (memory) {Persistir observaciones en Knowledge Backbone};
-  \node[action, below=of memory] (analyst) {Analyst identifica patrones y genera gráficas};
-  \node[action, below=of analyst] (reporter) {Reporter compila informe PDF};
-  \node[action, below=of reporter] (ui) {Enviar tarjetas, replay, análisis y enlaces al frontend};
-  \node[startstop, below=of ui] (end) {Fin};
+  \node[startstop] (start) at (0,2.5) {Inicio};
+  \node[action, text width=42mm] (msg) at (0,1.35) {Recibir petición o instrucción por WebSocket};
+  \node[action, text width=42mm] (orch) at (0,0.15) {Orchestrator interpreta intención y estado de sesión};
+  \node[decision] (intent) at (0,-1.35) {Siguiente acción del usuario};
+
+  \node[action] (env) at (-5.0,-3.0) {Preparar o ajustar entorno\\Architect + contexto};
+  \node[action] (run) at (0,-3.0) {Ejecutar o repetir simulación\\modelos + Tracker};
+  \node[action] (inspect) at (5.0,-3.0) {Inspeccionar detalle\\eventos, episodios, replay};
+  \node[action] (analysis) at (-2.6,-4.65) {Analizar o comparar\\patrones y gráficas};
+  \node[action] (report) at (2.6,-4.65) {Generar o actualizar informe\\Reporter + PDF};
+
+  \node[action, text width=47mm] (ui) at (0,-6.15) {Enviar resultado parcial al frontend};
+  \node[decision, text width=25mm] (continue) at (0,-7.7) {Continuar sesión};
+  \node[startstop] (end) at (4.8,-7.7) {Fin};
 
   \draw[diagarrow] (start) -- (msg);
-  \draw[diagarrow] (msg) -- (models);
-  \draw[diagarrow] (models) -- (architect);
-  \draw[diagarrow] (architect) -- (valid);
-  \draw[diagarrow] (valid) -- node[left, font=\tiny] {sí} (sim);
-  \draw[diagarrow] (valid) -- node[above, font=\tiny] {no} (revise);
-  \draw[diagarrow] (revise) |- (architect);
-  \draw[diagarrow] (sim) -- (tracker);
-  \draw[diagarrow] (tracker) -- (memory);
-  \draw[diagarrow] (memory) -- (analyst);
-  \draw[diagarrow] (analyst) -- (reporter);
-  \draw[diagarrow] (reporter) -- (ui);
-  \draw[diagarrow] (ui) -- (end);
+  \draw[diagarrow] (msg) -- (orch);
+  \draw[diagarrow] (intent.south west) -- (env.north east);
+  \draw[diagarrow] (intent.south east) -- (inspect.north west);
+  \draw[diagarrow] (intent.west) -- ++(-5.2,0) |- (analysis.west);
+  \draw[diagarrow] (intent.east) -- ++(5.2,0) |- (report.east);
+
+  \draw[diagarrow] (env) |- (ui);
+  \draw[diagarrow] (run) -- (ui);
+  \draw[diagarrow] (inspect) |- (ui);
+  \draw[diagarrow] (analysis) -- (ui);
+  \draw[diagarrow] (report) -- (ui);
+  \draw[diagarrow] (ui) -- (continue);
+  \draw[diagarrow] (continue) -- node[note, above] {no} (end);
+  \draw[diagarrow] (continue.west) -- node[note, pos=0.35, above] {sí} ++(-5.8,0) |- (msg.west);
+  \draw[diagarrow, preaction={draw=white, line width=1.6pt}] (orch.south) -- (intent.north);
+  \draw[diagarrow, preaction={draw=white, line width=1.6pt}] (intent.south) -- (run.north);
 \end{tikzpicture}}
-\caption[Diagrama de actividad UML]{Diagrama de actividad UML de una sesión
-completa. El flujo muestra la secuencia canónica del Orchestrator y el punto de
-confirmación humana antes de ejecutar la simulación.}
+\caption[Diagrama de actividad UML]{Diagrama de actividad UML del ciclo
+iterativo de una sesión. Tras cada artefacto intermedio, el usuario puede
+ajustar, ejecutar de nuevo, inspeccionar, analizar o generar el informe sin
+reiniciar el estado acumulado por el Orchestrator.}
 \label{fig:actividad-uml}
 \end{figure}
 
@@ -449,12 +450,12 @@ confirmación humana antes de ejecutar la simulación.}
 cuidar su propia ventana de contexto. Una sesión larga acumula conversación,
 salidas del Tracker, trazas de decisión y memorias recuperadas; si todo se
 mantiene en cada turno, el modelo empieza a trabajar con demasiado ruido.
-Para evitarlo, cuando el historial supera un umbral de mensajes o de
+Cuando el historial supera un umbral de mensajes o de
 caracteres, los turnos antiguos se sustituyen por un resumen de auditoría y
 los turnos recientes se conservan intactos. Ese resumen no lo escribe el
 LLM: se construye con una plantilla y guarda lo necesario para continuar
 (experimento activo, semilla, etapas completadas, peticiones recientes y
-herramientas invocadas). Así se libera contexto sin reiniciar la sesión ni
+herramientas invocadas). La sesión queda más ligera sin reiniciar ni
 perder la trazabilidad básica de lo ocurrido.
 
 \section{Agentes especializados}
@@ -471,12 +472,13 @@ la sesión. El Architect convierte una petición abierta en una
 especificación ejecutable; el Tracker convierte una ejecución en
 observaciones estructuradas; el Analyst convierte esas observaciones en
 interpretación; y el Reporter convierte la interpretación en un documento
-revisable. Cada agente opera, por tanto, sobre un tipo de artefacto
-distinto y con un criterio de salida propio.
+revisable. Cada agente trabaja con un tipo de artefacto distinto y con un
+criterio de salida propio.
 
 \begin{table}[H]
 \begin{center}
 \small
+\renewcommand{\arraystretch}{1.16}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{2.4cm}|>{\raggedright\arraybackslash}p{4.5cm}|>{\raggedright\arraybackslash}p{5.3cm}|} \hline
 \textbf{Agente} & \textbf{Pregunta que resuelve} & \textbf{Razón de separación} \\ \hline
 Architect & En qué entorno común se pueden ejecutar los modelos disponibles para el problema descrito. & Requiere traducir lenguaje natural y contexto científico a una especificación formal del dominio de simulación. \\ \hline
@@ -517,7 +519,7 @@ descripción), de forma que la especificación generada no sea una simulación
 abstracta cualquiera, sino un entorno compatible con las políticas que se
 van a comparar. El Orchestrator conserva la capacidad de presentar esa
 propuesta al usuario y de repetir la generación si la especificación no
-encaja con la intención de la sesión. El resultado se muestra en la interfaz
+encaja con la intención de la sesión. La propuesta se muestra en la interfaz
 como una tarjeta de especificación del entorno; el resto de la interacción se
 recoge en la galería del Apéndice~\ref{ap:ui}.
 
@@ -538,16 +540,16 @@ eventos. Trabaja después de la ejecución, no durante cada paso, porque su
 salida depende de patrones que solo se aprecian en la trayectoria completa;
 aun así, no introduce interpretación científica: registra y agrupa lo
 ocurrido. Esa frontera limpia entre \emph{observación} e \emph{interpretación}
-es la que permite que las memorias escritas después distingan hechos de
-simulación de conclusiones del análisis.
+ayuda a que las memorias escritas después distingan hechos de simulación de
+conclusiones del análisis.
 
 Los eventos críticos se detectan mediante reglas deterministas antes de que el
 LLM interprete la ejecución. El detector marca consumos de recursos, riesgo de
 hambre por energía baja, muerte o terminación de un agente, saltos bruscos de
 energía, cambios de acción dominante en una ventana deslizante y caídas de
 confianza cuando se estrecha la diferencia entre los dos mayores
-\textit{Q-values}. De este modo, el Analyst recibe puntos de atención
-calculados por código y no episodios inventados por el modelo.
+\textit{Q-values}. El Analyst recibe así puntos de atención calculados por
+código y no episodios inventados por el modelo.
 
 \paragraph{Analyst.} Identifica patrones de comportamiento en los datos del
 Tracker, los contrasta con postulados previos y produce un análisis
@@ -562,7 +564,7 @@ herramienta; el resto recibe el contexto pre-recuperado. La usa para
 matizar la interpretación con conocimiento del backbone, no como sustituto de
 los datos observados.
 
-Además del análisis textual, el Analyst genera las visualizaciones que
+El Analyst genera también las visualizaciones que
 acompañan al informe: curvas de evolución de variables internas y
 recompensas, histogramas de acciones y trazas de decisión por agente
 (Figura~\ref{fig:traces}), producidas en \texttt{simlab.charts} a partir de
@@ -581,15 +583,15 @@ gráficas comparadas y un análisis cruzado de las trayectorias
 Su salida mantiene una estructura estable para que pueda ser consumida por
 el Reporter: resumen de patrones, diferencias entre modelos, métricas
 principales, episodios destacados, referencias recuperadas y rutas de las
-figuras generadas. La parte generativa del análisis queda así encapsulada en
+figuras generadas. La parte generativa del análisis queda encapsulada en
 un artefacto intermedio y el informe final no tiene que
 volver a razonar desde los eventos brutos.
 
 \paragraph{Reporter.} Sintetiza los hallazgos del Analyst en un cuerpo
 LaTeX que se inserta en la plantilla \texttt{report\_template.tex} y se
 compila a PDF mediante \textit{tectonic}. El
-contexto del Knowledge Backbone, inyectado por el Orchestrator, le
-permite incluir referencias a los paradigmas subyacentes sin tener que
+contexto del Knowledge Backbone, inyectado por el Orchestrator, le da material
+para incluir referencias a los paradigmas subyacentes sin tener que
 abrir un canal independiente al backbone. El informe incorpora las
 gráficas y las tablas de métricas producidas por el Analyst, y se descarga
 desde la propia interfaz (Figura~\ref{fig:reporter}).
@@ -607,34 +609,34 @@ estructurada del Analyst, y su tarea consiste en ordenar esa información
 en una pieza legible fuera de la interfaz. La plantilla LaTeX fija la
 forma del documento (portada, secciones, tablas, figuras y bibliografía
 cuando procede), mientras que el agente se ocupa de redactar la
-interpretación y enlazar los resultados con el contexto de la sesión. Así
-el informe no es una captura del dashboard, sino un artefacto independiente
+interpretación y enlazar los resultados con el contexto de la sesión. El
+informe no es una captura del dashboard, sino un artefacto independiente
 que conserva la evidencia principal de la ejecución.
 
 \begin{figure}[H]
 \centering
-\resizebox{\linewidth}{!}{%
+\resizebox{0.98\linewidth}{!}{%
 \begin{tikzpicture}[
   actor/.style={rectangle, draw=black!75, rounded corners=2pt, fill=black!5,
-    text width=25mm, align=center, font=\scriptsize\sffamily},
-  msg/.style={font=\tiny\sffamily, midway, fill=white, inner sep=1pt}
+    text width=20mm, minimum height=7mm, align=center, font=\scriptsize\sffamily},
+  msg/.style={font=\scriptsize\sffamily, midway, fill=white, inner sep=1.2pt}
 ]
   \node[actor] (orch) {Orchestrator};
-  \node[actor, right=18mm of orch] (kb) {Knowledge Backbone};
-  \node[actor, right=18mm of kb] (analyst) {Analyst + Charts};
-  \node[actor, right=18mm of analyst] (reporter) {Reporter};
-  \node[actor, right=18mm of reporter] (storage) {MinIO + Frontend};
+  \node[actor, right=8mm of orch] (kb) {Knowledge Backbone};
+  \node[actor, right=8mm of kb] (analyst) {Analyst + Charts};
+  \node[actor, right=8mm of analyst] (reporter) {Reporter};
+  \node[actor, right=8mm of reporter] (storage) {MinIO + Frontend};
 
   \foreach \x in {orch,kb,analyst,reporter,storage}
-    \draw[black!35] (\x.south) -- ++(0,-58mm);
+    \draw[black!35] (\x.south) -- ++(0,-60mm);
 
-  \draw[diagarrow] ([yshift=-9mm]orch.south) -- node[msg] {persistir observaciones} ([yshift=-9mm]kb.south);
-  \draw[diagarrow] ([yshift=-18mm]orch.south) -- node[msg] {analyze\_results()} ([yshift=-18mm]analyst.south);
-  \draw[diagarrowbi] ([yshift=-27mm]analyst.south) -- node[msg] {retrieve\_context} ([yshift=-27mm]kb.south);
-  \draw[diagarrow] ([yshift=-36mm]analyst.south) -- node[msg] {patrones, métricas y figuras} ([yshift=-36mm]orch.south);
-  \draw[diagarrow] ([yshift=-45mm]orch.south) -- node[msg] {generate\_report()} ([yshift=-45mm]reporter.south);
-  \draw[diagarrow] ([yshift=-54mm]reporter.south) -- node[msg] {PDF + enlaces} ([yshift=-54mm]storage.south);
-  \draw[diagarrow] ([yshift=-63mm]storage.south) -- node[msg] {resultado descargable} ([yshift=-63mm]orch.south);
+  \draw[diagarrow] ([yshift=-8mm]orch.south) -- node[msg] {persistir observaciones} ([yshift=-8mm]kb.south);
+  \draw[diagarrow] ([yshift=-16mm]orch.south) -- node[msg] {analyze\_results()} ([yshift=-16mm]analyst.south);
+  \draw[diagarrowbi] ([yshift=-24mm]analyst.south) -- node[msg] {retrieve\_context} ([yshift=-24mm]kb.south);
+  \draw[diagarrow] ([yshift=-32mm]analyst.south) -- node[msg] {patrones, métricas y figuras} ([yshift=-32mm]orch.south);
+  \draw[diagarrow] ([yshift=-40mm]orch.south) -- node[msg] {generate\_report()} ([yshift=-40mm]reporter.south);
+  \draw[diagarrow] ([yshift=-48mm]reporter.south) -- node[msg] {PDF + enlaces} ([yshift=-48mm]storage.south);
+  \draw[diagarrow] ([yshift=-56mm]storage.south) -- node[msg] {resultado descargable} ([yshift=-56mm]orch.south);
 \end{tikzpicture}}
 \caption[Diagrama de secuencia de análisis e informe]{Diagrama de secuencia
 UML del caso de uso de análisis y generación de informe. El Analyst contrasta
@@ -645,31 +647,31 @@ artefacto descargable.}
 
 \begin{figure}[H]
 \centering
-\resizebox{\linewidth}{!}{%
+\resizebox{0.98\linewidth}{!}{%
 \begin{tikzpicture}[
   actor/.style={rectangle, draw=black!75, rounded corners=2pt, fill=black!5,
-    text width=24mm, align=center, font=\scriptsize\sffamily},
-  msg/.style={font=\tiny\sffamily, midway, fill=white, inner sep=1pt}
+    text width=18mm, minimum height=7mm, align=center, font=\scriptsize\sffamily},
+  msg/.style={font=\scriptsize\sffamily, midway, fill=white, inner sep=1.2pt}
 ]
   \node[actor] (user) {Usuario + frontend};
-  \node[actor, right=17mm of user] (api) {FastAPI};
-  \node[actor, right=17mm of api] (orch) {Orchestrator};
-  \node[actor, right=17mm of orch] (arch) {Architect};
-  \node[actor, right=17mm of arch] (loader) {Model loader};
-  \node[actor, right=17mm of loader] (env) {Environment + Tracker};
+  \node[actor, right=7mm of user] (api) {FastAPI};
+  \node[actor, right=7mm of api] (orch) {Orchestrator};
+  \node[actor, right=7mm of orch] (arch) {Architect};
+  \node[actor, right=7mm of arch] (loader) {Model loader};
+  \node[actor, right=7mm of loader] (env) {Environment + Tracker};
 
   \foreach \x in {user,api,orch,arch,loader,env}
     \draw[black!35] (\x.south) -- ++(0,-68mm);
 
-  \draw[diagarrow] ([yshift=-9mm]user.south) -- node[msg] {petición por WebSocket} ([yshift=-9mm]api.south);
-  \draw[diagarrow] ([yshift=-17mm]api.south) -- node[msg] {chat()} ([yshift=-17mm]orch.south);
-  \draw[diagarrow] ([yshift=-25mm]orch.south) -- node[msg] {generar especificación} ([yshift=-25mm]arch.south);
-  \draw[diagarrow] ([yshift=-33mm]arch.south) -- node[msg] {spec validada} ([yshift=-33mm]orch.south);
-  \draw[diagarrow] ([yshift=-41mm]orch.south) -- node[msg] {cargar modelos} ([yshift=-41mm]loader.south);
-  \draw[diagarrow] ([yshift=-49mm]orch.south) -- node[msg] {ejecutar simulación} ([yshift=-49mm]env.south);
-  \draw[diagarrow] ([yshift=-57mm]env.south) -- node[msg] {eventos + JSON observacional} ([yshift=-57mm]orch.south);
-  \draw[diagarrow] ([yshift=-65mm]orch.south) -- node[msg] {tarjetas y replay} ([yshift=-65mm]api.south);
-  \draw[diagarrow] ([yshift=-73mm]api.south) -- node[msg] {actualización visual} ([yshift=-73mm]user.south);
+  \draw[diagarrow] ([yshift=-8mm]user.south) -- node[msg] {petición por WebSocket} ([yshift=-8mm]api.south);
+  \draw[diagarrow] ([yshift=-15mm]api.south) -- node[msg] {chat()} ([yshift=-15mm]orch.south);
+  \draw[diagarrow] ([yshift=-22mm]orch.south) -- node[msg] {generar especificación} ([yshift=-22mm]arch.south);
+  \draw[diagarrow] ([yshift=-29mm]arch.south) -- node[msg] {spec validada} ([yshift=-29mm]orch.south);
+  \draw[diagarrow] ([yshift=-36mm]orch.south) -- node[msg] {cargar modelos} ([yshift=-36mm]loader.south);
+  \draw[diagarrow] ([yshift=-43mm]orch.south) -- node[msg] {ejecutar simulación} ([yshift=-43mm]env.south);
+  \draw[diagarrow] ([yshift=-50mm]env.south) -- node[msg] {eventos + JSON observacional} ([yshift=-50mm]orch.south);
+  \draw[diagarrow] ([yshift=-57mm]orch.south) -- node[msg] {tarjetas y replay} ([yshift=-57mm]api.south);
+  \draw[diagarrow] ([yshift=-64mm]api.south) -- node[msg] {actualización visual} ([yshift=-64mm]user.south);
 \end{tikzpicture}}
 \caption[Diagrama de secuencia de simulación]{Diagrama de secuencia UML del
 caso de uso de ejecución de una simulación. El Orchestrator valida la
@@ -743,12 +745,12 @@ relación con paradigmas previos.
 \begin{center}
 \small
 \setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.12}
+\renewcommand{\arraystretch}{1.18}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{4.6cm}|} \hline
 \textbf{Almacén} & \textbf{Información principal} & \textbf{Motivo de diseño} \\ \hline
 PostgreSQL & Experimentos, sesiones, mensajes, modelos registrados y observaciones tipadas. & Consultas exactas, filtrado, trazabilidad relacional y recuperación histórica mediante SQL de solo lectura. \\ \hline
 MinIO & Informes PDF, trazas, artefactos binarios y código de modelos aceptados. & Almacenamiento de objetos descargables o de mayor tamaño, separado de las tablas transaccionales. \\ \hline
-Qdrant & Memorias densas y representaciones \textit{sparse} BM25 de observaciones y conocimiento recuperable. & Recuperación por similitud semántica o léxica cuando la pregunta no se resuelve bien con claves exactas. \\ \hline
+Qdrant & Memorias densas y representaciones \textit{sparse} BM25 de observaciones y conocimiento recuperable. & Recuperación por similitud semántica o léxica cuando las claves exactas no bastan. \\ \hline
 Neo4j & Paradigmas, formulaciones, autores, referencias y relaciones de procedencia. & Navegación por relaciones científicas y contraste entre observaciones y postulados conocidos. \\ \hline
 \end{tabular}
 \caption[Información almacenada en el Knowledge Backbone]{Reparto de la
@@ -799,19 +801,19 @@ observación; entrega un JSON al Orchestrator, y este invoca al
 calcula sus \textit{embeddings} en un único \textit{batch} y los inserta en
 \texttt{simulation\_observations}, \texttt{memories\_dense} y
 \texttt{memories\_sparse}, bajo el \textit{namespace} \texttt{simulation} y
-con el mismo \textit{UUID} compartido. Así, una observación de simulación
-queda disponible para recuperación posterior sin confundirse con un postulado
+con el mismo \textit{UUID} compartido. Una observación de simulación queda
+disponible para recuperación posterior sin confundirse con un postulado
 procedente de la literatura. En esta fase no se materializa como nodo de Neo4j:
 se mantiene como memoria indexada y fila tipada, enlazable por sus metadatos.
-El flujo queda, por tanto, concentrado en tres pasos: observación estructurada,
-escritura indexada y recuperación posterior desde nuevas sesiones.
+El flujo queda concentrado en tres pasos: observación estructurada, escritura
+indexada y recuperación posterior desde nuevas sesiones.
 
 \section{Capa de presentación reactiva}
 
 La interfaz no se diseñó como una capa decorativa sobre el pipeline, sino
 como parte de la observabilidad del laboratorio. Si el objetivo de la fase
-es convertir modelos ejecutables en evidencia revisable, el usuario debe
-poder ver cómo se construye esa evidencia: qué agente está trabajando, qué
+es convertir modelos ejecutables en material revisable, el usuario debe
+poder ver cómo se construye ese material: qué agente está trabajando, qué
 entorno se ha generado, cómo se mueven los modelos, qué eventos aparecen y
 qué análisis se produce al final.
 
