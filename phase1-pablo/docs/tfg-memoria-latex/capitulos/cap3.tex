@@ -2,501 +2,97 @@
 
 \section{Visión arquitectónica}
 
-El sistema se diseñó como un pipeline de generación científica y software. Su
-entrada es una descripción en lenguaje natural de un problema de toma de
-decisiones. Su salida es un conjunto de modelos Python autocontenidos,
-registrados y probados, que pueden cargarse posteriormente en el laboratorio
-virtual. Entre ambos extremos se generan artefactos intermedios: informes de
-investigación, formulaciones matemáticas, especificaciones JSON, código,
-pruebas, trazas y memorias.
+El sistema se diseña como un pipeline de generación científica y software. Su
+entrada es una descripción en lenguaje natural. Su salida es uno o varios
+modelos Python autocontenidos, registrados y probados. Entre ambos extremos se
+conservan informes, formulaciones, specs, código, tests, trazas y memorias.
 
-La arquitectura no delega todo el proceso en un único modelo de lenguaje. En su
-lugar, separa el sistema en cuatro capas principales: orquestación, implementada
-por el Router; agentes especializados; artefactos persistentes; y memoria y
-recuperación de conocimiento. Esta decisión sigue la línea de los sistemas de
-agentes con herramientas y colaboración entre agentes, donde el razonamiento se
-descompone en tareas con responsabilidades acotadas
-\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev}.
-
-Por la naturaleza del trabajo, este capítulo prioriza diagramas de arquitectura,
-flujo de datos y decisiones lógicas de alto nivel. La implementación contiene
-clases, servicios y módulos, pero el interés principal no está en enumerar un
-diagrama de clases de bajo nivel, sino en explicar cómo se coordinan los agentes,
-qué contratos conectan cada fase, dónde se persisten los artefactos, cómo se
-recupera conocimiento y qué ocurre cuando una salida debe revisarse o repetirse.
-El uso de agentes de código desplaza parte del esfuerzo desde la escritura
-manual de piezas locales hacia el diseño y control de un sistema más amplio.
+La arquitectura evita delegar todo el proceso en un único modelo de lenguaje.
+Se divide en cuatro capas: orquestación, agentes especializados, artefactos
+persistentes y memoria recuperable.
+Las Secciones~\ref{ap:diseno-extendido} y~\ref{ap:memoria-extendida} amplían
+el detalle de agentes, subagentes, herramientas, persistencia y memoria.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-system-architecture}
+\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{figuras/phase1-system-architecture}
 \caption{Arquitectura de sistema y entornos de ejecución.}
 \label{fig:phase1-system-architecture}
 \end{figure}
 
-La arquitectura de sistema distingue los entornos de ejecución: el usuario
-opera desde CLI, web o evaluaciones; la interfaz corre en el navegador; el
-servidor de fase 1 ejecuta FastAPI, el Router, los agentes y las herramientas;
-los almacenes compartidos corren como servicios externos al proceso; y las APIs
-externas se invocan solo desde el runtime de agentes.
+La Figura~\ref{fig:phase1-system-architecture} separa entornos de ejecución. El
+usuario opera desde CLI, web o evals. El servidor de fase 1 ejecuta Router,
+agentes y herramientas. Los almacenes compartidos se ejecutan como servicios
+externos al proceso. Las APIs externas solo se invocan desde el runtime de
+agentes.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth,height=0.76\textheight,keepaspectratio]{figuras/phase1-software-architecture}
+\includegraphics[width=\textwidth,height=0.68\textheight,keepaspectratio]{figuras/phase1-software-architecture}
 \caption{Arquitectura software por subsistemas.}
 \label{fig:phase1-software-architecture}
 \end{figure}
 
+La Figura~\ref{fig:phase1-software-architecture} refina la arquitectura en
+subsistemas: interfaz, API, CLI, Router, agentes, herramientas, artefactos,
+persistencia, grafo y recuperación. Esta separación permite cambiar una
+tecnología concreta sin modificar el contrato entre etapas.
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figuras/phase1-data-flow}
+\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{figuras/phase1-data-flow}
 \caption{Flujo de datos de alto nivel.}
 \label{fig:phase1-data-flow}
 \end{figure}
 
-Esta separación responde a una necesidad práctica: las salidas de los modelos
-de lenguaje son útiles, pero deben estar acotadas por contratos, herramientas,
-validaciones, revisión humana y persistencia. El diseño busca que cada etapa
-produzca algo inspeccionable y que los errores puedan localizarse en el nivel
-correcto.
+El flujo de datos distingue documentos científicos, artefactos de ejecución,
+estado del pipeline, memoria y código generado. Esta separación es necesaria
+porque cada tipo de dato tiene un ciclo de vida distinto: algunos se revisan
+por humanos, otros se validan por tests y otros se indexan para recuperación.
 
-\subsection{Problema de diseño}
+\section{Componentes del pipeline}
 
-El problema no es solo generar código, sino transformar conocimiento científico
-en comportamiento simulado. Esa transformación tiene varios cambios de
-representación. La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo
-como una actividad completa, con las revisiones humanas separadas de los pasos
-automáticos del sistema.
+El Router coordina la ejecución mediante una máquina de estados explícita. No
+deja que un agente conversacional decida libremente la siguiente etapa. Esta
+decisión permite saber qué falta, qué se puede reanudar y qué revisión humana
+bloquea el avance.
 
 \begin{figure}[H]
 \centering
-\includegraphics[height=0.78\textheight,keepaspectratio]{figuras/phase1-pipeline-activity}
+\includegraphics[width=\textwidth,height=0.70\textheight,keepaspectratio]{figuras/phase1-pipeline-activity}
 \caption{Actividad del pipeline con revisión humana.}
 \label{fig:phase1-pipeline-activity}
 \end{figure}
 
-Cada cambio de representación reduce ambigüedad. La investigación decide qué
-marcos científicos son relevantes. La formalización convierte esos marcos en
-variables, parámetros y ecuaciones. El razonamiento adapta las ecuaciones a un
-entorno concreto, con percepciones y acciones disponibles. La construcción
-traduce la especificación a código ejecutable y pruebas. Si todo esto lo hiciera
-un único agente, sería difícil saber si un fallo procede de una mala fuente
-bibliográfica, una formulación incoherente, una mala adaptación al entorno o un
-bug en Python.
-
-\section{Router}
-
-\subsection{Responsabilidad y flujo de control}
-
-El Router es el coordinador central. Se implementa como una máquina de estados
-explícita, no como una planificación libre de un LLM. Esta decisión permite
-reanudar ejecuciones, registrar eventos, controlar revisiones humanas y colocar
-la escritura de memoria solo después de que una salida haya sido aceptada.
-
-La actividad general de la Figura~\ref{fig:phase1-pipeline-activity} resume
-esas transiciones. El Router no decide de nuevo el orden del pipeline en cada
-turno: avanza por estados conocidos y solo activa rutas de corrección cuando
-una revisión o una validación lo exige.
-
-Las etapas \texttt{MEMORY\_*} son condicionales: se ejecutan cuando la
-infraestructura de memoria está disponible. Si Neo4j, Qdrant o los embeddings no
-están configurados, el pipeline puede continuar en modo degradado. En cambio,
-PostgreSQL y MinIO son servicios centrales, porque almacenan ejecuciones,
-metadatos, artefactos y estado.
-
-El Router mantiene un \texttt{PipelineState} con la etapa actual, los paradigmas
-aprobados, las formulaciones seleccionadas y las especificaciones aprobadas.
-Además, emite trazas de agentes, herramientas y artefactos. Esto permite
-reconstruir qué ocurrió en una ejecución concreta y continuar desde el estado
-persistido si el proceso se interrumpe.
-
-\section{Agentes, subagentes y herramientas}
-
-\subsection{Componentes de generación}
-
-El sistema tiene cuatro agentes principales de generación:
-\textit{Researcher}, \textit{Formalizer}, \textit{Reasoner} y
-\textit{Builder}. También existen componentes auxiliares, como el Classifier,
-el DeepResearcher, los subagentes y el MemoryAgent. La división principal en
-cuatro agentes se debe a que cada uno resuelve un tipo de problema distinto.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|p{3.3cm}|p{9.0cm}|} \hline
-\textbf{Componente} & \textbf{Descripción} \\ \hline
-Classifier & Intenta asociar la entrada a un paradigma ya conocido antes de lanzar la investigación completa. \\ \hline
-Researcher & Identifica paradigmas científicos relevantes, coordina la búsqueda y sintetiza el informe global. \\ \hline
-DeepResearcher & Investiga un paradigma concreto con contexto propio y produce un informe profundo. \\ \hline
-Formalizer & Coordina la formalización de los paradigmas aprobados. \\ \hline
-Formalizer SubAgent & Genera variables, parámetros, ecuaciones y lógica de decisión para un paradigma. \\ \hline
-Reasoner & Adapta las formulaciones seleccionadas al entorno de simulación disponible. \\ \hline
-Reasoner SubAgent & Produce una especificación de comportamiento para una formulación concreta. \\ \hline
-Builder & Coordina la generación de modelos Python y pruebas. \\ \hline
-Builder SubAgent & Implementa una especificación, ejecuta pruebas y corrige fallos locales. \\ \hline
-MemoryAgent & Consolida artefactos aceptados en la memoria y prepara conocimiento para futuras ejecuciones. \\ \hline
-\end{tabular}
-\caption{Agentes, subagentes y componentes auxiliares.}
-\end{center}
-\end{table}
-
-Esta división permite que la revisión humana intervenga con precisión. Si la
-investigación omite un paradigma, se corrige en la etapa de investigación. Si la
-formulación matemática es mala, se vuelve a ejecutar la formalización. Si la
-adaptación al entorno usa acciones inexistentes, se corrige el Reasoner. Si el
-código falla, se corrige el Builder. Un agente monolítico mezclaría estos niveles
-y haría más difícil diagnosticar los errores.
-
-\subsection{Flujo de agentes}
-
-El sistema de agentes se entiende mejor como un flujo de reducción progresiva
-de ambigüedad. Cada agente transforma la salida anterior en un artefacto más
-estructurado, y cada punto de revisión humana decide qué ramas continúan.
-
-La Figura~\ref{fig:phase1-software-architecture} separa los componentes de
-grano grueso: entradas, Router, agentes, herramientas y adaptadores de
-persistencia. La Figura~\ref{fig:phase1-pipeline-activity} muestra el mismo
-pipeline como actividad. Juntas aclaran tres ideas. Primero, el flujo principal
-avanza desde una entrada abierta hasta código probado. Segundo, Researcher,
-Formalizer, Reasoner y Builder delegan ramas independientes en subagentes.
-Tercero, la infraestructura transversal mantiene artefactos, trazas, memoria y
-rutas de repetición para auditar y corregir cada salida en el nivel adecuado.
-
-\subsubsection{Classifier}
-
-Antes de lanzar la investigación completa, el sistema ejecuta un clasificador
-ligero. Su función es intentar asociar el problema a un paradigma canónico ya
-conocido. Esto evita que el sistema fragmente la memoria creando nombres
-distintos para conceptos equivalentes. Por ejemplo, una ejecución sobre
-\textit{temporal-difference learning} puede reutilizar un paraguas más amplio
-como \textit{reinforcement learning} si ya existe en el grafo.
-
-El Classifier no produce un artefacto principal. Su salida se usa como señal
-interna para orientar al Researcher y para reducir duplicados de identidad en la
-memoria.
-
-\subsubsection{Researcher y DeepResearcher}
-
-El Researcher es el agente que mantiene la visión científica de conjunto. Su
-responsabilidad no es escribir una monografía completa dentro de una sola
-ventana de contexto, sino descubrir qué paradigmas merece investigar. Primero
-consulta la memoria para obtener paradigmas conocidos y entidades relacionadas.
-Después usa \texttt{web\_search} de forma acotada: busca familias de paradigmas,
-nombres alternativos y huecos reales en la cobertura, pero no intenta agotar la
-literatura de cada candidato dentro del agente principal.
-
-Cada paradigma candidato se convierte en una tarea de investigación profunda.
-Esa tarea se ejecuta mediante una herramienta que crea un DeepResearcher con su
-propia ventana de contexto y un objetivo único: investigar solo ese paradigma.
-En este caso el DeepResearcher sí es un agente especializado, no una simple
-función. En el flujo principal usa búsqueda académica y web; además, el sistema
-permite inyectarle recuperación de memoria en rutas concretas, como la
-investigación adicional solicitada durante la revisión humana. En cualquier
-caso, todo su contexto está dedicado a un único tema. Por eso puede entrar en
-más detalle sin mezclar postulados, autores o variables de otros paradigmas
-investigados en la misma ejecución.
-
-El DeepResearcher produce un informe profundo con fundamentos, postulados,
-supuestos, predicciones, localización primaria, conceptos clave, variables
-identificadas y referencias. El Researcher padre no absorbe todo ese documento
-en su contexto de trabajo: recibe un resumen y conserva la ruta del artefacto.
-Al final, lee los informes necesarios y sintetiza un \texttt{report.md} global
-con los paradigmas encontrados. Así se mantiene una jerarquía clara: el agente
-padre decide cobertura y síntesis; los subagentes hacen investigación profunda
-por paradigma.
-
-Los artefactos principales de esta etapa son:
-
-\begin{verbatim}
-research/{run_id}/report.md
-research/{run_id}/deep/{paradigm}.md
-\end{verbatim}
-
-Estos informes no son simples logs de ejecución. El \texttt{report.md} global
-resume los paradigmas candidatos y, cuando procede, incluye mapas de
-interacción entre paradigmas y tablas comparativas que ayudan a decidir qué
-líneas científicas continúan. Cada informe profundo
-\texttt{deep/\{paradigm\}.md} sigue una estructura estable: fundamentos,
-postulados, supuestos, predicciones, variables identificadas y referencias. Esa
-regularidad hace que el artefacto sea útil para revisión humana y para etapas
-posteriores, porque permite comparar paradigmas por el mismo conjunto de
-preguntas en lugar de leer respuestas libres sin organización común.
-
-Después de esta etapa, el humano revisa qué paradigmas continúan. También puede
-pedir que se investigue un paradigma adicional si considera que falta una línea
-científica importante.
-
-Un detalle importante de esta etapa es el control de identidad de paradigmas.
-Antes de emitir la salida estructurada, el Researcher consulta candidatos ya
-presentes en la base de conocimiento y construye una lista de slugs conocidos.
-La emisión final queda restringida a esos slugs o a la marca
-\texttt{\_\_NEW\_\_}. Si aparece un paradigma nuevo, el sistema lo pasa por una
-fase de canonicalización antes de materializarlo en memoria. Esto evita que una
-misma familia científica aparezca fragmentada como múltiples nombres casi
-equivalentes. La decisión se inspira de forma general en la generación
-restringida: comparte el objetivo de acotar salidas antes de que se propaguen,
-aunque aquí la restricción se implementa mediante esquemas, uso de herramientas,
-Pydantic y validaciones propias
-\cite{scholak2021picard}.
-
-\subsubsection{Formalizer}
-
-El Formalizer recibe los paradigmas aprobados y genera formulaciones
-matemáticas. En esta etapa el componente principal funciona como un orquestador
-programático: no necesita razonar en un único contexto gigante, porque el
-encaminamiento ya está definido por la revisión humana. Su tarea es lanzar un
-\texttt{FormalizerSubAgent} por paradigma aprobado, esperar sus resultados y
-registrar los artefactos generados.
-
-Cada subagente lee el informe profundo correspondiente y escribe un archivo de
-formulaciones. Su contexto contiene el paradigma que debe formalizar, no el
-conjunto completo de paradigmas del run. Esto reduce interferencias: una
-ecuación, variable o supuesto de un paradigma no debería filtrarse en la
-formulación de otro.
-
-Cada formulación debe incluir variables, parámetros, ecuaciones y lógica de
-decisión. Además, las formulaciones de un mismo paradigma deben ser
-estructuralmente distintas. No basta con renombrar parámetros; el sistema busca
-alternativas como control algebraico, ecuaciones diferenciales, modelos
-probabilísticos, aprendizaje por refuerzo o políticas por umbrales.
-
-El artefacto principal es:
-
-\begin{verbatim}
-research/{run_id}/formulations/{paradigm}.md
-\end{verbatim}
-
-Tras esta etapa, el humano selecciona qué formulaciones merecen continuar. Esta
-selección es importante porque no todas las variantes generadas son igual de
-útiles o implementables.
-
-\subsubsection{Reasoner}
-
-El Reasoner adapta las formulaciones seleccionadas al entorno de simulación. Su
-entrada no es solo la formulación matemática, sino también el archivo
-\texttt{env\_spec.json}, que define el espacio de percepción, las acciones
-disponibles, los recursos y las recompensas.
-
-Igual que en la etapa anterior, el Reasoner principal actúa como orquestador
-Python. Recibe la selección aprobada, agrupa las formulaciones por paradigma,
-las empareja con el entorno y lanza subagentes especializados. No hay una
-decisión abierta sobre qué ruta seguir: cada \texttt{ReasonerSubAgent} trabaja
-sobre un paradigma y las formulaciones seleccionadas para convertirlas en
-especificaciones ejecutables para un entorno concreto.
-
-Cada \texttt{ReasonerSubAgent} lee:
-
-\begin{verbatim}
-deep/{paradigm}.md
-formulations/{paradigm}.md
-env_spec.json
-\end{verbatim}
-
-y produce una especificación JSON por formulación válida:
-
-\begin{verbatim}
-models/{run_id}/reasoner/{paradigm}/{formulation}.json
-\end{verbatim}
-
-La especificación JSON es el contrato entre Reasoner y Builder. Contiene
-variables, parámetros, reglas de actualización, lógica de decisión, mapeo al
-entorno, comportamientos esperados y referencias. Antes de escribir una
-especificación, el Reasoner valida que las variables estén definidas, que no
-haya dependencias circulares incoherentes, que las acciones existan en el
-entorno y que las percepciones usadas sean observables o computables.
-
-Este JSON es menos interesante como documento de lectura que los informes de
-investigación o las formulaciones, pero es crítico como interfaz operativa:
-convierte una formulación revisada en un contrato estructurado, validable y
-traducible a código. Por eso incluye campos explícitos para variables,
-parámetros, reglas, mapeo al entorno y comportamientos esperados, aunque la
-interpretación científica principal permanezca en los informes Markdown.
-
-Si una formulación no es válida, el Reasoner no fuerza una implementación:
-escribe un informe JSON con \texttt{status: "invalid"} y una lista de problemas.
-Así el fallo queda documentado en el nivel correcto.
-
-\subsubsection{Builder}
-
-El Builder traduce especificaciones JSON aprobadas a modelos Python. El Builder
-principal también es un orquestador programático: toma las especificaciones
-aprobadas, crea una tarea independiente por especificación y delega la escritura
-real del código en subagentes. La razón es práctica: el camino desde una spec
-aprobada hasta un archivo Python y sus tests está suficientemente definido como
-para dividirse por unidad de trabajo.
-
-Cada \texttt{BuilderSubAgent} trabaja con una especificación concreta y genera:
-
-\begin{verbatim}
-models/{run_id}/builder/{paradigm}/{formulation}_model.py
-models/{run_id}/builder/{paradigm}/test_{formulation}.py
-\end{verbatim}
-
-El modelo generado debe ser autocontenido y cumplir el contrato de modelo
-esperado. El Builder también genera pruebas y ejecuta
-\texttt{uv run pytest}. Si las pruebas fallan, el subagente puede corregir el
-código y volver a ejecutar los tests hasta un límite de intentos.
-
-Además, el Builder valida implementabilidad antes de escribir código. Si la
-lógica de decisión es ambigua, si usa claves de percepción inexistentes o si los
-comportamientos esperados no son testeables, guarda un informe de validación en
-lugar de producir código defectuoso.
-
-\subsection{Uso de subagentes}
-
-Los subagentes se usan en las etapas donde existen unidades de trabajo
-independientes. Un paradigma puede formalizarse sin esperar a otro; una
-formulación puede adaptarse sin mezclar su contexto con otras; una
-especificación puede implementarse sin cargar todo el historial del pipeline.
-
-La motivación principal es el control del contexto. Hay dos problemas que
-aparecen si todo se resuelve con un único agente: la ventana de contexto del
-agente grande se llena con informes, formulaciones, specs y código; y, además,
-aumenta el riesgo de que una tarea incorpore información de otra rama no
-relacionada. Si el mismo agente investiga dos paradigmas, esa mezcla puede
-aparecer como supuestos, autores o variables fuera de lugar. La división por
-subagentes reduce ambas cosas: el agente padre conserva solo
-resúmenes y rutas de artefactos, y cada subagente mantiene una memoria de
-trabajo centrada en una única unidad conceptual.
+La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo general. Las
+etapas de memoria son condicionales: se ejecutan cuando existe infraestructura
+disponible y cuando el artefacto correspondiente ha sido aceptado.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3.5cm}|p{4.4cm}|p{4.6cm}|} \hline
-\textbf{Etapa} & \textbf{Agente principal} & \textbf{Subagentes} \\ \hline
-Researcher & Agente con visión global; descubre candidatos y sintetiza el informe final. & DeepResearchers, uno por paradigma, con investigación profunda y artefacto propio. \\ \hline
-Formalizer & Orquestador programático que reparte paradigmas aprobados. & Un FormalizerSubAgent por paradigma. \\ \hline
-Reasoner & Orquestador programático que empareja formulaciones y entorno. & Un ReasonerSubAgent por paradigma, con las formulaciones seleccionadas. \\ \hline
-Builder & Orquestador programático que reparte specs aprobadas. & Un BuilderSubAgent por especificación implementable. \\ \hline
+\begin{tabular}{|p{2.8cm}|p{5.1cm}|p{4.4cm}|} \hline
+\textbf{Componente} & \textbf{Responsabilidad} & \textbf{Artefacto o salida} \\ \hline
+Classifier & Relaciona el problema con paradigmas canónicos para reducir duplicados. & Señal de orientación para Researcher. \\ \hline
+Researcher & Identifica paradigmas y sintetiza investigación científica. & Informe general y deep reports. \\ \hline
+Formalizer & Convierte paradigmas aprobados en formulaciones matemáticas alternativas. & Documentos de formulación. \\ \hline
+Reasoner & Adapta formulaciones al entorno de simulación. & Specs implementables o invalidaciones. \\ \hline
+Builder & Genera modelos Python y tests. & Código, pruebas y resultado de validación. \\ \hline
+MemoryAgent & Extrae conocimiento de artefactos aceptados. & Nodos, relaciones y hechos recuperables. \\ \hline
 \end{tabular}
-\caption{Patrón de agente principal y subagentes especializados.}
+\caption{Componentes principales del pipeline.}
 \end{center}
 \end{table}
 
-Además de ese control de contexto, el diseño con subagentes aporta cuatro
-ventajas:
-
-\begin{itemize}
-\item \textbf{Contexto más pequeño:} cada subagente recibe solo los artefactos
-que necesita.
-\item \textbf{Paralelismo:} varios paradigmas o especificaciones pueden
-procesarse con \texttt{asyncio.gather}.
-\item \textbf{Aislamiento de fallos:} si una formulación falla, no invalida las
-demás.
-\item \textbf{Artefactos estables:} cada subagente escribe en rutas
-deterministas, fáciles de revisar y reutilizar.
-\end{itemize}
-
-Esta es una diferencia importante frente a un único agente grande. El objetivo
-no es solo reducir tiempo, sino mantener límites claros entre artefactos y
-evitar que errores de una rama contaminen el resto de la ejecución.
-
-\subsection{Herramientas de los agentes}
-
-Los agentes no actúan únicamente con texto. Cada uno dispone de herramientas
-limitadas a su responsabilidad. Esta restricción reduce el espacio de error:
-un agente de investigación puede buscar, pero no escribir código; el Builder
-puede ejecutar tests, pero no decidir qué paradigmas son científicamente
-relevantes.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{2.8cm}|p{4.4cm}|p{5.2cm}|} \hline
-\textbf{Agente} & \textbf{Herramientas} & \textbf{Motivo} \\ \hline
-Researcher & \texttt{retrieve\_knowledge}, \texttt{web\_search}, \texttt{launch\_deep\_research}, \texttt{read\_report} & Reutilizar paradigmas conocidos, buscar huecos reales, lanzar investigación profunda y leer informes completos antes de sintetizar. \\ \hline
-Deep researcher & \texttt{search\_papers}, \texttt{web\_search}; \texttt{retrieve\_knowledge} cuando se inyecta & Profundizar en un paradigma con búsqueda académica y, si está disponible, memoria previa. \\ \hline
-Formalizer sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer informes profundos, escribir formulaciones y recuperar patrones matemáticos ya validados. \\ \hline
-Reasoner sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{retrieve\_knowledge} & Leer investigación, formulaciones y entorno; escribir specs JSON; reutilizar rangos de parámetros y mapeos de entorno. \\ \hline
-Builder sub. & \texttt{read\_file}, \texttt{write\_file}, \texttt{run\_tests}, \texttt{retrieve\_knowledge} & Leer specs, escribir modelo y tests, ejecutar validación real y recuperar patrones de implementación previos. \\ \hline
-MemoryAgent & extracción estructurada, escritura en grafo, indexado vectorial, resolución de conflictos & No es un agente conversacional abierto; ejecuta un pipeline fijo para persistir conocimiento aceptado. \\ \hline
-\end{tabular}
-\caption{Herramientas disponibles por agente.}
-\end{center}
-\end{table}
-
-La herramienta transversal más importante es \texttt{retrieve\_knowledge}. Solo
-está disponible cuando la infraestructura de memoria lo permite. Su función no
-es sustituir la búsqueda web, sino introducir conocimiento acumulado de
-ejecuciones anteriores: paradigmas ya conocidos, variables, postulados, rangos
-de parámetros, patrones de mapeo al entorno y errores de implementación
-detectados previamente.
-
-\subsection{Human-in-the-loop}
-
-La revisión humana forma parte del diseño del pipeline, no es una operación
-externa. El Router llama a un \texttt{FeedbackPort}, que abstrae tres modos de
-uso: revisión por CLI, revisión por WebSocket y autoaprobación para el entorno
-de evaluación. Así, la lógica del Router no depende de si el usuario revisa en
-terminal, interfaz web o pruebas automáticas.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|p{3cm}|p{4.8cm}|p{4.8cm}|} \hline
-\textbf{Punto de revisión} & \textbf{Decisión humana} & \textbf{Por qué existe} \\ \hline
-Investigación & Aprobar paradigmas o pedir investigar uno adicional. & Evita que el pipeline continúe con marcos científicos irrelevantes o incompletos. \\ \hline
-Formalización & Seleccionar paradigmas y formulaciones concretas. & Reduce variantes matemáticas a las que tienen sentido para implementar. \\ \hline
-Entorno & Proporcionar \texttt{env\_spec.json}. & El sistema necesita una definición autoritativa de acciones, percepciones y recompensas. \\ \hline
-Razonamiento & Aprobar specs JSON, rechazarlas o pedir una nueva formalización. & Distingue errores de adaptación al entorno de errores matemáticos previos. \\ \hline
-Construcción & Aprobar modelos generados, rechazar código o pedir una nueva ejecución de Reasoner. & Separa problemas de implementación de problemas de especificación. \\ \hline
-\end{tabular}
-\caption{Puntos de revisión humana del pipeline.}
-\end{center}
-\end{table}
-
-El aspecto clave es que la revisión no solo decide si continuar o parar. También
-puede redirigir el pipeline al nivel adecuado. Por ejemplo, un error conceptual
-en una formulación debe volver al Formalizer; una mala conversión de esa
-formulación al entorno debe volver al Reasoner; un bug de Python debe volver al
-Builder.
-
-El Router implementa rutas de corrección específicas. Estas rutas se inspiran en
-la idea de refinamiento iterativo mediante feedback: el sistema no intenta
-corregir todos los errores en una única respuesta, sino que vuelve a ejecutar la
-etapa responsable del artefacto rechazado
-\cite{madaan2023selfrefine,shinn2023reflexion}.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3.4cm}|p{4.3cm}|p{4.8cm}|} \hline
-\textbf{Revisión} & \textbf{Acción posible} & \textbf{Efecto} \\ \hline
-Investigación & Pedir un paradigma adicional. & Lanza un DeepResearcher nuevo y vuelve a revisar la investigación. \\ \hline
-Razonamiento & Rehacer formalización de un paradigma. & Ejecuta Formalizer y después Reasoner para ese paradigma. \\ \hline
-Razonamiento & Rechazar una spec. & Reejecuta Reasoner para el paradigma afectado. \\ \hline
-Construcción & Pedir una nueva ejecución de Reasoner. & Regenera specs y vuelve a Builder para el paradigma. \\ \hline
-Construcción & Rechazar un modelo concreto. & Reejecuta Builder solo para la formulación afectada. \\ \hline
-\end{tabular}
-\caption{Rutas de corrección durante la revisión humana.}
-\end{center}
-\end{table}
+Los subagentes aparecen cuando una etapa puede dividirse por paradigma,
+formulación o spec. El objetivo no es añadir complejidad, sino aislar fallos:
+una formulación inválida no debe cancelar todas las demás.
 
 \section{Diseño de interfaz}
 
-La interfaz web se diseña para hacer visible el estado del pipeline, no solo
-para lanzar una ejecución. El usuario necesita ver tres cosas durante una
-sesión larga: qué está haciendo el sistema, qué artefacto debe revisar y qué
-evidencia queda después de la ejecución. Por eso la interfaz se organiza en
-tres vistas principales: panel de ejecución, pantalla de revisión humana y vista
-de historial, memoria y resultados.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.72\textwidth]{figuras/phase1-interface-use-cases}
-\caption{Casos de uso de la interfaz web.}
-\label{fig:phase1-interface-use-cases}
-\end{figure}
-
-El dashboard combina chat, grafo de ejecución y estado de agentes. La pantalla
-de revisión muestra el artefacto en curso y las acciones posibles: aprobar,
-rechazar o pedir una nueva ejecución. La vista posterior a la ejecución permite
-revisar trazas, artefactos, memoria y resultados sin depender del contexto
-efímero del chat.
-
-El diseño de la vista principal se concretó en el wireframe de la
-Figura~\ref{fig:phase1-agrex-main-wireframe}. Esta plantilla no muestra una
-ejecución real. Define la organización de la pantalla: navegación temporal a la
-izquierda, lienzo central de Agrex, panel de inspección y revisión a la derecha,
-y controles de reproducción en la zona inferior.
+La interfaz web se diseña para hacer visible el estado del pipeline. El usuario
+necesita saber qué está haciendo el sistema, qué artefacto debe revisar y qué
+evidencia queda después de la ejecución.
 
 \begin{figure}[H]
 \centering
@@ -505,78 +101,97 @@ y controles de reproducción en la zona inferior.
 \label{fig:phase1-agrex-main-wireframe}
 \end{figure}
 
-\section{Artefactos, persistencia e integración}
+La Figura~\ref{fig:phase1-agrex-main-wireframe} fija la estructura de la vista
+principal: navegación temporal a la izquierda, lienzo central de ejecución,
+panel de inspección a la derecha y controles de reproducción en la parte
+inferior. El diseño separa seguimiento, revisión y auditoría para no depender
+del contexto efímero del chat.
 
-\subsection{Artefactos y persistencia}
+\section{Sistema de memoria y conocimiento}
 
-El sistema prioriza la persistencia de artefactos: los artefactos reales se guardan en MinIO
-y sus metadatos se registran en PostgreSQL. Esto evita depender de carpetas
-locales y permite que CLI, servidor web y evaluaciones compartan el mismo modelo
-de persistencia.
+La memoria convierte artefactos aceptados en conocimiento reutilizable. No es
+un log completo de todas las respuestas del modelo: solo consolida información
+que superó revisión humana o validación.
 
-\begin{verbatim}
-research/{run_id}/
-  report.md
-  deep/{paradigm}.md
-  formulations/{paradigm}.md
-  env_spec.json
-  pipeline_state.json
-  trace.jsonl
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-memory-architecture}
+\caption{Sistema de memoria y recuperación.}
+\label{fig:phase1-memory-architecture}
+\end{figure}
 
-models/{run_id}/
-  reasoner/{paradigm}/{formulation}.json
-  builder/{paradigm}/{formulation}_model.py
-  builder/{paradigm}/test_{formulation}.py
-  builder/{paradigm}/{formulation}_validation.json
-\end{verbatim}
-
-MinIO almacena el contenido de los artefactos. PostgreSQL almacena ejecuciones,
-metadatos, modelos aprobados y filas de memoria. Esta separación evita guardar
-grandes bloques de texto o código en SQL, pero conserva referencias
-relacionales para listar ejecuciones, registrar modelos y recuperar estado.
-
-La traza \texttt{trace.jsonl} registra eventos de agentes, herramientas y
-artefactos. Junto con \texttt{pipeline\_state.json}, permite auditar una
-ejecución y reanudarla sin reconstruir el contexto desde cero.
-
-La utilidad de los artefactos no es homogénea. Algunos están pensados para
-lectura y decisión humana; otros son contratos de máquina que permiten encadenar
-etapas sin perder estructura. La tabla siguiente resume esta diferencia:
+El diseño usa representaciones complementarias. MinIO conserva documentos
+completos. PostgreSQL conserva metadatos, ciclo de vida y relaciones
+operativas. Neo4j representa entidades y relaciones científicas. Qdrant permite
+recuperación semántica y léxica.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.7cm}|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{4.5cm}|} \hline
-\textbf{Artefacto} & \textbf{Contenido principal} & \textbf{Uso dentro del sistema} \\ \hline
-\texttt{report.md} & Síntesis de paradigmas, autores, conceptos clave y mapa de interacción entre paradigmas. & Revisión de cobertura científica y comparación inicial entre marcos explicativos. \\ \hline
-\texttt{deep/*.md} & Fundamentos, postulados, supuestos, predicciones, variables, tablas y referencias por paradigma. & Base científica para validar si el paradigma merece formalización. \\ \hline
-\texttt{formulations/*.md} & Variantes matemáticas con variables, parámetros, ecuaciones y lógica de decisión. & Comparar alternativas implementables dentro de un mismo paradigma. \\ \hline
-\texttt{env\_spec.json} & Acciones, percepciones, recursos, recompensas y restricciones del entorno. & Fuente autoritativa para adaptar formulaciones sin inventar observables. \\ \hline
-\texttt{reasoner/*.json} & Contrato estructurado con reglas, mapeo al entorno y comportamientos esperados. & Entrada validable del Builder; es más operativo que narrativo. \\ \hline
-\texttt{builder/*.py} y tests & Código Python autocontenido y pruebas ejecutables. & Evidencia final de que el modelo cumple el contrato \texttt{DecisionModel}. \\ \hline
-\texttt{pipeline\_state}\newline\texttt{.json} y \texttt{trace.jsonl} & Estado persistido, eventos, herramientas, tiempos y errores. & Auditoría, observabilidad y reanudación de ejecuciones largas. \\ \hline
+\begin{tabular}{|p{2.8cm}|p{5.2cm}|p{4.4cm}|} \hline
+\textbf{Almacén} & \textbf{Información principal} & \textbf{Uso en diseño} \\ \hline
+MinIO & Informes, formulaciones, specs, código, tests, estado y trazas. & Fuente auditable de artefactos completos. \\ \hline
+PostgreSQL & Runs, metadatos, modelos, memorias y ciclo de vida. & Consulta operativa y consistencia transaccional. \\ \hline
+Neo4j & Paradigmas, papers, autores, postulados, variables y relaciones. & Navegación por conocimiento científico. \\ \hline
+Qdrant & Hechos indexados con embeddings y BM25 nativo. & Recuperación por similitud y términos. \\ \hline
 \end{tabular}
-\caption{Función de los artefactos generados por la fase 1.}
+\caption{Información almacenada por la arquitectura.}
 \end{center}
 \end{table}
 
-El formato de traza se apoya en Agrex, una librería open source creada durante
-este trabajo para visualizar ejecuciones de agentes como grafos temporales
-\cite{pazos2026agrex}. En la fase 1, el backend emite eventos compatibles con
-Agrex y el frontend los reproduce para mostrar agentes, herramientas,
-artefactos, estados y errores durante la ejecución.
+\subsection{MemoryAgent y consolidación de memoria}
 
-La reanudación no se basa únicamente en leer el último estado guardado. Al
-cargar un \texttt{PipelineState}, el sistema comprueba que los artefactos
-referenciados por ese estado siguen existiendo en MinIO. Si el estado apunta a
-formulaciones, specs o modelos que no están almacenados, la reanudación se
-rechaza para evitar continuar desde una ejecución incoherente. Al finalizar, la
-traza local se cierra y se sube también a MinIO, de modo que la auditoría no
-depende del directorio temporal de ejecución.
+MemoryAgent es el componente que decide cómo pasa un artefacto aceptado a la
+memoria persistente. No actúa como un chat libre. Ejecuta una cadena fija:
+extrae conocimiento, normaliza identidades, resuelve conflictos, escribe en los
+almacenes adecuados e indexa hechos para recuperación futura.
 
-\subsection{Contrato de modelo generado}
+Su entrada siempre es un artefacto con procedencia. Puede ser un informe de
+investigación, una formulación, una spec aprobada, un modelo validado o una
+observación de ejecución. MemoryAgent no debe escribir borradores rechazados.
+Esta regla protege la memoria frente a errores plausibles producidos por LLMs.
 
-La salida final no hereda de una clase concreta del simulador. Usa duck typing:
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.0cm}|p{4.9cm}|p{4.6cm}|} \hline
+\textbf{Paso} & \textbf{Acción} & \textbf{Garantía de diseño} \\ \hline
+Extracción & Identifica entidades, relaciones, hechos y observaciones. & El conocimiento queda estructurado antes de persistir. \\ \hline
+Canonicalización & Reutiliza slugs existentes o marca candidatos nuevos. & Reduce duplicados semánticos entre runs. \\ \hline
+Resolución & Contrasta confianza, vigencia y posibles contradicciones. & Evita mezclar hechos aceptados con hechos obsoletos. \\ \hline
+Persistencia & Escribe artefacto, metadatos, grafo y vectores. & Cada representación mantiene su responsabilidad. \\ \hline
+Recuperación & Expone hechos mediante \texttt{retrieve\_knowledge}. & Los agentes futuros reciben contexto con procedencia. \\ \hline
+\end{tabular}
+\caption{Flujo de consolidación de MemoryAgent.}
+\end{center}
+\end{table}
+
+La separación entre dense y sparse responde a un problema práctico. La búsqueda
+densa recupera hechos aunque el agente formule la consulta con sinónimos. La
+búsqueda sparse recupera términos exactos, como slugs, autores, variables,
+acciones o nombres de formulaciones. Usar solo una de las dos degradaba una
+parte de la recuperación: solo dense perdía coincidencias exactas, y solo BM25
+fallaba cuando la consulta usaba vocabulario distinto.
+
+El grafo cumple otra función. No está pensado para buscar frases similares,
+sino para reconstruir procedencia. Permite saber qué paper soporta un postulado,
+qué variables derivan de una formulación y qué modelo implementa una spec. Por
+eso la memoria no se resolvió con una única base de datos documental.
+
+PostgreSQL conserva el ciclo de vida. Allí se registran aceptación, confianza,
+vigencia temporal, supersesión y enlaces a artefactos. Neo4j conserva la
+estructura científica. Qdrant conserva candidatos recuperables. MinIO mantiene
+el artefacto completo. Esta división añade infraestructura, pero permite
+auditar por qué un agente recibió cierto contexto y qué evidencia lo sostiene.
+
+El principal riesgo de este diseño es consolidar conocimiento incorrecto. La
+mitigación no es confiar más en el modelo, sino cerrar el punto de escritura:
+solo se guarda memoria persistente cuando el artefacto ha sido aceptado o
+validado. Así, la memoria crece más despacio, pero se mantiene revisable.
+
+\section{Contratos y robustez}
+
+El contrato principal entre fases es pequeño y deliberado:
 
 \begin{lstlisting}[language=Python]
 def decide(self, perception: dict) -> Action
@@ -584,408 +199,25 @@ def update(self, action, reward, new_perception) -> None
 def get_state(self) -> dict
 \end{lstlisting}
 
-Esta decisión reduce el acoplamiento entre la fase de generación y la fase de
-simulación. El modelo generado puede cargarse dinámicamente siempre que cumpla
-la interfaz esperada.
-
-La separación entre \texttt{decide} y \texttt{update} es crítica. El método
-\texttt{decide} debe ser de solo lectura: elige una acción usando el estado
-actual y la percepción. El método \texttt{update} recibe la recompensa y la nueva
-percepción, y es el único que puede modificar el estado interno. Esta regla
-evita que el modelo aprenda o cambie variables antes de que el entorno haya
-aplicado realmente la acción.
-
-Además, \texttt{get\_state} debe exponer variables internas y una clave
-\texttt{q\_values}. Esta información permite a la fase de simulación visualizar
-alternativas de acción, confianza relativa y evolución de puntuaciones internas.
-
-El contrato no se limita a la firma de los métodos. También impone invariantes
-verificables que el Builder debe cubrir con pruebas.
+El modelo generado no hereda de una clase del simulador. Debe cumplir la
+interfaz por duck typing. Esta decisión reduce acoplamiento entre fase 1 y fase
+2, y permite cargar modelos autocontenidos generados por Builder.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
-\textbf{Invariante} & \textbf{Condición esperada} & \textbf{Evidencia} \\ \hline
-Acción válida & \texttt{decide} devuelve una acción presente en el entorno. & Tests generados por Builder y ejecución con percepciones de ejemplo. \\ \hline
-Lectura sin mutación & \texttt{decide} no modifica el estado interno del modelo. & Comparación de \texttt{get\_state} antes y después de decidir. \\ \hline
-Actualización acotada & \texttt{update} concentra el aprendizaje o cambio de estado. & Tests sobre recompensa, nueva percepción y variables internas. \\ \hline
-Estado serializable & \texttt{get\_state} devuelve datos inspeccionables por la fase 2. & Importación dinámica y serialización en reportes de simulación. \\ \hline
+\begin{tabular}{|p{3.1cm}|p{5.3cm}|p{4.1cm}|} \hline
+\textbf{Invariante} & \textbf{Condición} & \textbf{Evidencia} \\ \hline
+Acción válida & \texttt{decide} devuelve una acción permitida por el entorno. & Tests de Builder. \\ \hline
+Lectura sin mutación & \texttt{decide} no modifica el estado interno. & Comparación de estado antes y después. \\ \hline
+Actualización acotada & \texttt{update} concentra aprendizaje y cambio interno. & Tests con recompensa y nueva percepción. \\ \hline
+Estado serializable & \texttt{get\_state} devuelve datos inspeccionables por la fase 2. & Importación dinámica y serialización. \\ \hline
 \end{tabular}
 \caption{Invariantes verificables del contrato \texttt{DecisionModel}.}
 \end{center}
 \end{table}
 
-\section{Sistema de memoria y conocimiento}
-
-El sistema de memoria no es solo una base de datos para guardar textos. Es un
-flujo de escritura y recuperación que convierte artefactos aceptados en
-conocimiento reutilizable y lo vuelve a inyectar en agentes futuros.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.68\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-memory-architecture}
-\caption{Sistema de memoria y recuperación.}
-\label{fig:phase1-memory-architecture}
-\end{figure}
-
-La parte superior de la Figura~\ref{fig:phase1-memory-architecture} representa
-la escritura: el Router solo activa
-memoria después de una revisión aceptada, el MemoryAgent transforma el artefacto
-y los almacenes guardan piezas distintas del conocimiento. La parte inferior
-representa la lectura: \texttt{retrieve\_knowledge} combina grafo, búsqueda
-densa, BM25 y metadatos temporales para entregar contexto útil a agentes
-posteriores. Las subsecciones siguientes detallan cada componente del flujo.
-
-\subsection{Objetivo de la memoria}
-
-La memoria convierte el pipeline en un sistema acumulativo. Sin memoria, cada
-ejecución empieza desde cero. Con memoria, los resultados aceptados se
-transforman en conocimiento reutilizable: paradigmas, variables, postulados,
-formulaciones, parámetros, modelos, relaciones y hechos textuales.
-
-La regla central es que el sistema no guarda cualquier borrador generado por un
-LLM. Solo escribe en la
-memoria después de la revisión humana. Esta decisión reduce ruido, evita
-persistir formulaciones rechazadas y hace que la memoria sea explicable: lo que
-hay en ella procede de artefactos aceptados.
-
-\subsection{Tres representaciones complementarias}
-
-La memoria no se implementa como un único almacén plano. El sistema guarda tres
-representaciones complementarias del conocimiento, porque cada una responde a
-un tipo de pregunta distinto. La combinación de recuperación semántica, búsqueda
-léxica y grafo sigue ideas habituales en RAG, recuperación densa, BM25 y grafos
-de conocimiento
-\cite{lewis2020rag,karpukhin2020dpr,robertson2009bm25,hogan2021knowledgegraphs}.
-Además, la separación entre memoria externa, memoria persistente de agentes y
-recuperación basada en grafos es afín a trabajos como MemoryBank, MemGPT,
-GraphRAG e HippoRAG, sin replicar exactamente sus algoritmos
-\cite{zhong2023memorybank,packer2023memgpt,edge2024graphrag,gutierrez2024hipporag}.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3.2cm}|p{4.2cm}|p{5.1cm}|} \hline
-\textbf{Representación} & \textbf{Pregunta que responde} & \textbf{Por qué es necesaria} \\ \hline
-Hechos densos y sparse & Qué significa un concepto, qué dice un postulado o qué variables aparecen en una formulación. & Guarda frases completas en lenguaje natural. La búsqueda densa recupera hechos semánticamente parecidos; BM25 recupera nombres, símbolos, autores o DOIs exactos. \\ \hline
-Grafo de conocimiento & De dónde sale una idea, qué paper la soporta, qué autor la propuso o cómo se relaciona con una formulación. & Mantiene trazabilidad mediante nodos y relaciones. Una búsqueda densa o sparse puede encontrar una frase, pero no reconstruye por sí sola una cadena de procedencia. \\ \hline
-Observaciones y memoria procedural & Qué se intentó antes, qué falló, qué patrón funcionó y qué debería evitar un agente futuro. & Evita repetir errores de implementación, validación o adaptación al entorno. Es especialmente útil para Reasoner y Builder. \\ \hline
-\end{tabular}
-\caption{Representaciones complementarias de memoria.}
-\end{center}
-\end{table}
-
-Los hechos densos y sparse se guardan para responder preguntas semánticas
-directas. Por ejemplo, si un agente pregunta qué significa un paradigma o qué
-implica una ecuación, la memoria recupera frases completas ya aceptadas. La
-colección \texttt{memories\_dense} permite encontrar contenido aunque la
-consulta use palabras distintas; la colección \texttt{memories\_sparse} permite
-recuperar coincidencias exactas de términos técnicos, símbolos, autores o
-identificadores bibliográficos.
-
-El grafo cumple otra función: responder preguntas de procedencia y relación. Si
-el sistema necesita saber de qué paper procede un postulado, qué autor lo
-formuló, qué variables derivan de él o qué modelo lo implementa, necesita una
-estructura relacional. Por eso Neo4j almacena nodos como papers, autores,
-paradigmas, postulados, variables, formulaciones y modelos, junto con relaciones
-como \texttt{SUPPORTS}, \texttt{AUTHORED\_BY}, \texttt{USES\_VARIABLE} o
-\texttt{IMPLEMENTS}. PostgreSQL conserva además el ciclo de vida de cada
-memoria: confianza, vigencia, corroboraciones, contradicciones y supersesión.
-
-Las observaciones completan el sistema. No describen únicamente conocimiento
-científico, sino experiencia operativa del propio pipeline. Si un Builder ya
-intentó implementar una especificación y falló porque una variable no era
-observable, esa observación debe poder recuperarse en ejecuciones futuras. Así,
-un agente posterior puede decidir cambiar la adaptación, pedir una spec más
-explícita o reutilizar un patrón de tests que ya funcionó. Esta memoria
-procedural convierte errores y decisiones anteriores en señales reutilizables,
-no en simple ruido de logs.
-
-\subsection{MemoryAgent}
-
-El MemoryAgent no es un agente libre que decide qué hacer en cada turno. Es un
-pipeline determinista que usa modelos de lenguaje para tareas concretas, pero
-mantiene fijo el flujo de control mostrado en la ruta de escritura de la
-Figura~\ref{fig:phase1-memory-architecture}.
-
-La extracción convierte el artefacto aceptado en varios tipos de salida:
-
-\begin{itemize}
-\item \textbf{nodos:} entidades como paradigmas, variables, papers,
-postulados, formulaciones o modelos;
-\item \textbf{relaciones:} enlaces de grafo como \texttt{SUPPORTS},
-\texttt{IMPLEMENTS}, \texttt{USES\_VARIABLE}, \texttt{DERIVES\_FROM} o
-\texttt{HAS\_PARAMETER};
-\item \textbf{hechos y observaciones:} frases atómicas que pueden buscarse y
-recuperarse en ejecuciones futuras, incluyendo aprendizajes de ejecución,
-errores evitables, decisiones de implementación y patrones que conviene
-reutilizar o no repetir.
-\end{itemize}
-
-Antes de escribir, el sistema normaliza identidades, poda nodos sin relación,
-materializa relaciones estructurales y resuelve propuestas \texttt{\_\_NEW\_\_}
-contra paradigmas ya existentes. Esto evita que la base de conocimiento se
-llene de duplicados semánticos.
-
-\subsection{Qué se guarda en cada almacén}
-
-La memoria usa varios almacenes porque cada uno resuelve un problema distinto.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|p{2.4cm}|p{9.8cm}|} \hline
-\textbf{Almacén} & \textbf{Responsabilidad} \\ \hline
-MinIO & Artefactos completos: informes, formulaciones, specs, código, tests, estado y trazas. \\ \hline
-PostgreSQL & Ejecuciones, metadatos, modelos registrados, \texttt{pipeline\_memories}, procedencia por run y ciclo de vida de memorias: confianza, validez temporal, accesos y supersesión. \\ \hline
-Neo4j & Identidad y topología del conocimiento: nodos científicos y relaciones entre ellos. \\ \hline
-Qdrant & Recuperación de hechos mediante dos colecciones: \texttt{memories\_dense} para embeddings y \texttt{memories\_sparse} para BM25. \\ \hline
-\end{tabular}
-\caption{Responsabilidad de cada almacén de persistencia.}
-\end{center}
-\end{table}
-
-PostgreSQL es la fuente de verdad para confianza y validez temporal. Neo4j
-guarda relaciones, pero no decide si una memoria está vigente. Qdrant permite
-buscar, pero sus payloads no son la fuente de verdad de la confianza. MinIO
-conserva el texto completo de los artefactos originales.
-
-La memoria también introduce riesgos propios. El diseño los trata como problemas
-de identidad, confianza y procedencia, no solo como problemas de almacenamiento.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
-\textbf{Riesgo} & \textbf{Efecto posible} & \textbf{Mitigación de diseño} \\ \hline
-Duplicado semántico & El mismo paradigma aparece con varios slugs y fragmenta la recuperación. & Canonicalización, paradigmas paraguas y evals de \texttt{slug-accuracy}. \\ \hline
-Contradicción & Una memoria posterior invalida una decisión previa sin dejar rastro. & Ciclo de vida en PostgreSQL, supersesión y validez temporal. \\ \hline
-Relación incompleta & El grafo conserva nodos, pero pierde la conexión con paper, postulado o modelo. & Snapshots de KG, revisión de endpoints y evals con corpus cerrado. \\ \hline
-Recuperación irrelevante & Un agente recibe memoria parecida pero no útil para la etapa actual. & Recuperación híbrida, reranking y CRAG cuando la confianza baja. \\ \hline
-\end{tabular}
-\caption{Riesgos principales del sistema de memoria y mitigaciones.}
-\end{center}
-\end{table}
-
-Las observaciones recuperables se persisten como contenido de memoria, con su
-\texttt{namespace}, \texttt{memory\_type}, etapa y ejecución de origen. Cuando
-una observación está asociada a la aparición de nodos del grafo, una tabla
-específica registra esa procedencia por ejecución. Así se puede distinguir entre
-el hecho reutilizable, que vive en el ciclo de vida de
-\texttt{pipeline\_memories}, y la evidencia concreta de que un nodo fue
-observado en un run determinado.
-
-\subsection{Observaciones}
-
-El término observación aparece en el sistema con varios significados
-relacionados, pero no equivalentes. Esta distinción es importante porque evita
-mezclar datos de ejecución, entradas observables del modelo y conocimiento
-persistente.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.7cm}|>{\raggedright\arraybackslash}p{5.3cm}|} \hline
-\textbf{Tipo} & \textbf{Dónde vive} & \textbf{Función} \\ \hline
-Variable observable & Specs y modelos generados & Representa datos que el modelo puede leer del entorno, como recompensa, posición, recursos o resultado de la acción anterior. En el grafo se modela como \texttt{Variable} con tipo \texttt{Observation}, no como nodo \texttt{Observation}. \\ \hline
-Observación procedural & \texttt{pipeline\_memories} & Resume aprendizajes de una ejecución de fase 1: errores evitables, decisiones útiles, tests fallidos, patrones de implementación o adaptaciones que conviene reutilizar. \\ \hline
-Observación de nodo & \texttt{node\_run}\newline\texttt{\_observations} & Registra que un run concreto observó o materializó un nodo del grafo. Sirve para procedencia por ejecución sin inflar cada nodo de Neo4j con listas de \texttt{run\_id}. \\ \hline
-Observación de simulación & \texttt{simulation}\newline\texttt{\_observations} & Recoge hechos producidos por ejecuciones del laboratorio de simulación. La fase 1 no las escribe, pero la recuperación puede leerlas como memoria compartida cuando ayudan a razonar sobre modelos, paradigmas o formulaciones. \\ \hline
-\end{tabular}
-\caption{Tipos de observación usados por el sistema.}
-\end{center}
-\end{table}
-
-Las observaciones procedurales son especialmente valiosas para los agentes de
-fase 1. Un informe científico aceptado puede guardar hechos semánticos sobre un
-paradigma, pero una observación puede capturar experiencia operativa: una spec
-que parecía correcta pero no era implementable, una variable que no estaba
-disponible en la percepción, un test que detectó mutación indebida en
-\texttt{decide}, o un patrón de adaptación que funcionó bien para un entorno de
-rejilla. Este tipo de memoria no describe solo el dominio científico; describe
-lo que el propio pipeline aprendió al intentar convertir ciencia en código.
-
-La tabla \texttt{node\_run\_observations} resuelve otro problema. El grafo de
-conocimiento contiene entidades compartidas entre muchas ejecuciones: un mismo
-paradigma, paper o postulado puede aparecer en distintos runs. Guardar una lista
-creciente de ejecuciones dentro de cada nodo haría que Neo4j acumulase payloads
-cada vez mayores y difíciles de auditar. Por eso la procedencia por ejecución se
-lleva a PostgreSQL: cada fila indica que un \texttt{run\_id} observó un nodo
-identificado por \texttt{label} y \texttt{key\_value}. Así se puede reconstruir
-qué conocimiento apareció en una ejecución concreta sin contaminar la identidad
-global del grafo.
-
-Por último, \texttt{simulation\_observations} pertenece a la infraestructura
-compartida. Su objetivo es conservar hechos observados durante simulaciones:
-resúmenes, trayectorias, episodios o comportamientos asociados a un modelo,
-paradigma, formulación, entorno o experimento. Esta memoria tiene confianza fija
-y no sigue el mismo ciclo de supersesión que \texttt{pipeline\_memories}. Desde
-la perspectiva de esta fase, lo relevante es que la herramienta
-\texttt{retrieve\_knowledge} puede hidratar resultados tanto desde memorias de
-pipeline como desde observaciones de simulación. De este modo, una ejecución
-futura de fase 1 puede aprovechar señales empíricas producidas por el
-laboratorio sin depender de la implementación interna de la fase de simulación.
-
-\subsection{Tipos de memoria}
-
-Las memorias de fase 1 se guardan en la tabla
-\texttt{pipeline\_memories}. Cada fila incluye contenido, \texttt{namespace},
-\texttt{memory\_type}, etapa de origen, ejecución, importancia, confianza,
-contadores de corroboración y contradicción, accesos, intervalo de validez y
-posible memoria sucesora.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{2.5cm}|p{2.8cm}|p{2.7cm}|p{4.3cm}|} \hline
-\textbf{Etapa} & \textbf{Namespace} & \textbf{Tipo} & \textbf{Para qué sirve} \\ \hline
-Researcher & \texttt{paradigm} & \texttt{semantic} & Recordar paradigmas, postulados, autores, variables y conceptos científicos. \\ \hline
-Formalizer & \texttt{formulation} & \texttt{semantic} & Reutilizar patrones matemáticos, ecuaciones, variables y alternativas de modelado. \\ \hline
-Reasoner & \texttt{formulation} & \texttt{semantic} & Recordar mapeos entre formulaciones, percepciones, acciones, parámetros y comportamientos esperados. \\ \hline
-Builder & \texttt{model} & \texttt{procedural} & Reutilizar patrones de implementación, tests, errores de código y decisiones del contrato \texttt{DecisionModel}. \\ \hline
-Memoria & \texttt{meta} & \texttt{episodic} / \texttt{reflection} & Registrar contradicciones, consolidaciones y observaciones sobre la propia memoria. \\ \hline
-\end{tabular}
-\caption{Tipos de memoria de la fase 1.}
-\end{center}
-\end{table}
-
-Esta separación permite búsquedas más precisas. Una consulta del Researcher
-puede restringirse a \texttt{paradigm}; una consulta del Builder puede buscar en
-\texttt{model}; una consolidación puede trabajar sobre memorias \texttt{meta}.
-La tabla describe la clasificación lógica de las filas de
-\texttt{pipeline\_memories}; las representaciones anteriores describen cómo se
-recupera y se relaciona ese contenido. Un mismo hecho puede tener texto
-recuperable en Qdrant, una relación de procedencia en Neo4j y metadatos de
-confianza en PostgreSQL.
-
-Cuando el contenido es una observación de ejecución, se guarda con el tipo que
-corresponde a su uso. Un error de implementación o un patrón de tests pertenece
-a memoria \texttt{procedural}; una contradicción detectada durante la
-consolidación puede convertirse en memoria \texttt{meta}. En ambos casos, la
-utilidad es que el agente futuro no parte de cero: puede recuperar que algo ya
-se intentó, que no funcionó o que una estrategia anterior fue validada.
-
-\subsection{Ciclo de vida de las memorias}
-
-La memoria no es un log append-only. Cada hecho tiene ciclo de vida. Cuando se
-extrae un hecho, el sistema calcula un hash normalizado para evitar duplicados
-exactos dentro de la misma ejecución y etapa. Después busca hechos similares en
-Qdrant. Si encuentra candidatos, clasifica la relación:
-
-\begin{itemize}
-\item \textbf{duplicado:} no se crea una memoria nueva;
-\item \textbf{corroboración:} aumenta la confianza de la memoria existente;
-\item \textbf{enriquecimiento:} se crea una versión nueva y la anterior queda
-supersedida;
-\item \textbf{contradicción:} baja la confianza de la memoria anterior, se
-crea una nueva memoria y se añade una memoria meta sobre el conflicto.
-\end{itemize}
-
-La confianza evoluciona de forma explícita. Una corroboración suma confianza,
-una contradicción la reduce, el acceso mediante recuperación la incrementa
-ligeramente y las memorias antiguas pueden decaer si no se usan. El objetivo es
-que el sistema no solo recuerde, sino que pueda cambiar de criterio cuando
-aparecen evidencias mejores.
-
-\subsection{Recuperación de conocimiento}
-
-La herramienta \texttt{retrieve\_knowledge} combina varias señales:
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.76\textwidth]{figuras/phase1-retrieval-activity}
-\caption{Actividad de recuperación de conocimiento.}
-\label{fig:phase1-retrieval-activity}
-\end{figure}
-
-La búsqueda densa captura similitud semántica. BM25 captura coincidencias
-exactas de nombres, símbolos, autores o identificadores. El grafo permite
-recuperar relaciones que no son necesariamente cercanas en texto, como que una
-formulación implementa un paradigma o que una variable pertenece a un postulado.
-Después se fusionan los resultados y se rerankean. Si la confianza no es
-suficiente, el sistema aplica una revisión correctiva y puede complementar con
-búsqueda web.
-
-El recorrido del grafo usa entidades enlazadas y exploración local de vecinos,
-con decaimiento por distancia y atenuación de nodos muy conectados. No implementa
-un PageRank completo; toma como inspiración general la recuperación relacional
-sensible al contexto de la consulta y trabajos recientes de RAG sobre grafos
-\cite{haveliwala2002topicsensitive,gutierrez2024hipporag}.
-
-La implementación incluye dos optimizaciones para controlar latencia y coste. Si
-el primer resultado denso ya supera un umbral de confianza, se omite la
-extracción de entidades para el camino de grafo. De forma análoga, si el
-reranking devuelve un resultado suficientemente fiable, se omite el evaluador
-correctivo. Así, el sistema mantiene el flujo completo cuando hay incertidumbre,
-pero evita llamadas adicionales cuando la recuperación ya es clara
-\cite{cormack2009rrf,yan2024crag}.
-
-El tipo de recuperación depende de la pregunta. Si un agente pregunta qué
-significa un concepto, dominan los hechos densos y sparse. Si pregunta de dónde
-procede una afirmación, se necesita el grafo y los metadatos de procedencia. Si
-un Builder pregunta por una decisión de implementación, la consulta puede
-recuperar memorias procedurales sobre errores previos, tests fallidos o patrones
-ya validados. Esta combinación evita tratar todas las memorias como si fueran el
-mismo tipo de evidencia.
-
-Esto hace que la memoria sea útil pero no ciega. El sistema no inyecta
-automáticamente cualquier resultado almacenado: pondera confianza, actualidad,
-relevancia y señales de corrección.
-
-\section{Robustez y decisiones de diseño}
-
-\subsection{Degradación controlada}
-
-El sistema distingue servicios obligatorios y opcionales. PostgreSQL y MinIO son
-obligatorios para ejecutar el pipeline de forma persistente. Neo4j, Qdrant,
-embeddings y reranking son opcionales desde el punto de vista de la generación:
-si faltan, se pierde recuperación y memoria avanzada, pero el pipeline puede
-seguir investigando, formalizando, razonando y construyendo modelos.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
-\textbf{Servicio} & \textbf{Comportamiento si no está disponible} \\ \hline
-PostgreSQL & No se puede mantener correctamente la persistencia central de ejecuciones, modelos y memorias. \\ \hline
-MinIO & No se pueden guardar artefactos, estado ni trazas de forma estable. \\ \hline
-Neo4j & Se pierde recuperación relacional y escritura de grafo, pero pueden existir artefactos y modelos. \\ \hline
-Qdrant & Se pierde búsqueda densa/BM25 sobre hechos de memoria. \\ \hline
-Embeddings & La recuperación semántica y el reordenado se degradan o se desactivan. \\ \hline
-\end{tabular}
-\caption{Degradación ante fallo de servicios.}
-\end{center}
-\end{table}
-
-\subsection{Decisiones de diseño principales}
-
-Las decisiones más importantes del diseño son:
-
-\begin{itemize}
-\item diseñar el sistema como transformación escalonada de representaciones:
-problema abierto, investigación científica, formulación matemática, adaptación
-al entorno y código ejecutable;
-\item usar un Router determinista con estados persistidos, revisión humana y
-rutas de nueva ejecución, en lugar de dejar que un agente planificador global decida todo
-el flujo;
-\item dividir el trabajo en subagentes por paradigma, formulación o spec para
-reducir contexto, evitar contaminación entre ramas y aislar fallos;
-\item adoptar una estrategia centrada en artefactos persistentes: los artefactos completos
-viven en MinIO, los metadatos en PostgreSQL y la reanudación comprueba que el
-estado apunta a artefactos realmente existentes;
-\item separar conocimiento semántico, relaciones y ciclo de vida: Neo4j mantiene
-topología científica, Qdrant recupera hechos densos y BM25, y PostgreSQL decide
-confianza, vigencia y supersesión;
-\item controlar la identidad semántica de paradigmas mediante clasificación,
-slugs canónicos y validaciones antes de escribir memoria;
-\item tratar las specs JSON como contratos ejecutables entre Reasoner y Builder,
-validando implementabilidad antes de generar código y ejecutando pruebas tras la
-generación;
-\item mantener \texttt{DecisionModel} por duck typing para desacoplar la fase de
-generación de la fase de simulación sin perder un contrato verificable.
-\end{itemize}
-
-En conjunto, estas decisiones convierten el sistema en algo más que una cadena
-de prompts. El resultado es una arquitectura de agentes con límites definidos,
-artefactos revisables, memoria acumulativa, validación ejecutable y capacidad de
-reanudación.
+La robustez se apoya en degradación controlada. PostgreSQL y MinIO son
+necesarios para ejecuciones auditables. Neo4j, Qdrant, embeddings y reranking
+mejoran memoria y recuperación, pero el pipeline puede seguir generando modelos
+si esos servicios no están disponibles.

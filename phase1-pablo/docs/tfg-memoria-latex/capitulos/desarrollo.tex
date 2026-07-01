@@ -1,333 +1,194 @@
-\chapter{Desarrollo del trabajo}
+\chapter{Desarrollo con IA}
 
 \section{Metodología de desarrollo con agentes}
 
 \subsection{Metodología general}
 
-El desarrollo de este sistema no siguió un flujo tradicional basado
-principalmente en programación manual. Se utilizó una metodología apoyada en
-agentes de programación, concretamente Claude Code y Codex, con supervisión
-humana en las decisiones de diseño. Esta forma de trabajo se relaciona con
-líneas recientes sobre agentes de software, síntesis de programas y desarrollo
-multiagente
-\cite{chen2021codex,austin2021programsynthesis,yang2024sweagent,qian2024chatdev}.
+El proyecto se desarrolló con una metodología apoyada en agentes de
+programación. Codex y Claude Code ejecutaron tareas de implementación,
+refactorización, pruebas y documentación. El criterio humano se mantuvo en las
+decisiones de arquitectura, alcance, aceptación y validación.
 
-La idea central fue separar dos tipos de trabajo:
-
-\begin{itemize}
-\item las decisiones de arquitectura, alcance y lógica de negocio, que requieren
-criterio humano y contexto global del proyecto;
-\item la implementación, refactorización, pruebas y corrección de errores, que
-pueden delegarse en modelos de lenguaje de alto rendimiento.
-\end{itemize}
-
-En tareas acotadas de programación, los modelos actuales muestran un rendimiento
-competitivo y permiten acelerar implementación, pruebas y refactorización
-\cite{chen2021codex,yang2024sweagent}. Sin embargo, todavía no son igual de
-fiables tomando decisiones de diseño sin un contexto completo. Por ello, el
-flujo empleado sitúa al humano como \textit{human-in-the-loop} para decisiones
-de diseño y a los agentes como ejecutores principales de las tareas de
-programación.
-
-La delegación no eliminó la autoría ni la revisión humana. Cada cambio relevante
-se trató como una tarea de ingeniería: primero se definía el objetivo, después se
-delegaba la ejecución y finalmente se revisaban las evidencias producidas.
+La regla principal fue separar decisiones y ejecución. El equipo humano definía
+objetivo, restricciones y evidencia esperada. El agente implementaba dentro de
+ese marco. Después se revisaban diffs, tests, logs, artefactos y resultados de
+CI. Este flujo sitúa al humano como \textit{human-in-the-loop}: no corrige cada
+línea manualmente, pero decide cuándo una salida puede aceptarse.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{3cm}|} \hline
-\textbf{Decisión humana} & \textbf{Tarea delegada} & \textbf{Evidencia revisada} & \textbf{Riesgo controlado} \\ \hline
-Arquitectura del pipeline y contratos entre etapas. & Implementar módulos, estados y persistencia. & Diffs, tests, trazas y ejecución local. & Acoplamiento excesivo entre agentes. \\ \hline
-Definición del contrato \texttt{DecisionModel}. & Generar modelos y tests de Builder. & Importación del modelo, \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Código plausible pero incompatible con la fase 2. \\ \hline
-Política de memoria y trazabilidad. & Escribir conectores, evals y reportes. & Snapshots, conteos de nodos, errores de grafo y bundles. & Memoria útil pero no auditable. \\ \hline
-Criterios de aceptación y alcance de cada fase. & Corregir fallos, refactorizar y preparar PRs. & CI, pruebas locales, revisión de PR y artefactos. & Cambios correctos localmente pero incompletos. \\ \hline
+\begin{tabular}{|p{3.1cm}|p{3.8cm}|p{5.2cm}|} \hline
+\textbf{Nivel} & \textbf{Responsable} & \textbf{Control aplicado} \\ \hline
+Producto y alcance & Humano & Decide qué problema se resuelve y qué queda fuera. \\ \hline
+Arquitectura & Humano con apoyo de agentes & Define contratos, límites entre fases y riesgos aceptables. \\ \hline
+Implementación & Agente de programación & Escribe código, tests, migraciones, UI o documentación. \\ \hline
+Aceptación & Humano y CI & Revisa evidencia, resultados locales, CI y comportamiento observado. \\ \hline
 \end{tabular}
-\caption{Control humano sobre tareas delegadas a agentes de programación.}
+\caption{Modelo de colaboración humano-agente.}
 \end{center}
 \end{table}
 
-Una parte importante de esta metodología fue gestionar la ventana de contexto.
-En tareas largas, un agente que acumula demasiados detalles de implementación,
-logs, errores intermedios y decisiones locales degrada su capacidad para
-mantener una visión global. Por eso el desarrollo no se organizó como una única
-conversación larga, sino como un sistema de orquestación: un agente coordinador
-mantiene el estado de alto nivel lo más limpio posible y delega tareas cerradas
-en agentes trabajadores con contexto propio.
+Esta metodología también se aplicó al sistema construido. Los agentes de fase 1
+producen artefactos, pero las decisiones relevantes pasan por revisión humana
+antes de consolidarse en memoria o de registrarse como modelos aceptados.
+La Sección~\ref{ap:desarrollo-agentes-extendido} amplía el flujo de trabajo con
+Linear, Hydra, agentes trabajadores y revisión de resultados.
 
-\subsection{Planificación con Linear}
+\subsection{Planificación y ejecución autónoma}
 
-Al tratarse de un proyecto desarrollado por dos personas, una parte importante
-del trabajo fue planificar correctamente las tareas compartidas, especialmente
-la infraestructura común. Para ello se creó un proyecto en Linear.
+Las tareas se organizaron en Linear. Cada tarea incluía objetivo, criterios de
+aceptación, dependencias y posible solapamiento con otras zonas del repositorio.
+Esto permitió lanzar agentes en paralelo sin mezclar cambios incompatibles.
 
-El flujo fue el siguiente:
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.68\textwidth]{figuras/phase1-planning-activity}
-\caption{Flujo de planificación y ejecución del desarrollo.}
-\end{figure}
-
-Primero se iteró con Codex sobre la especificación técnica y el diseño hasta que
-el alcance del sistema quedó suficientemente cubierto. Después se dividió el
-trabajo en fases. Cada fase tenía criterios de aceptación, y cada tarea dentro
-de una fase también tenía sus propios criterios. En Linear, además de la
-descripción funcional, cada tarea indicaba dependencias, prioridad, posible
-solapamiento con otras tareas y si podía ejecutarse en paralelo.
-
-Estos criterios fueron esenciales porque los agentes necesitaban una forma
-objetiva de comprobar si su trabajo estaba terminado. Sin criterios explícitos,
-un agente puede generar código funcional a primera vista pero incompleto desde
-el punto de vista del producto o de la arquitectura. Por eso se combinaron
-criterios de aceptación, validación estructural y pruebas ejecutables, una
-decisión coherente con la evaluación funcional de código generado y con enfoques
-de generación restringida \cite{chen2021codex,scholak2021picard}.
-
-\subsection{División del trabajo entre agentes}
-
-El proyecto utilizó agentes distintos para tipos de tareas distintos:
-
-\begin{itemize}
-\item Codex se empleó principalmente para backend, infraestructura, persistencia,
-pruebas y razonamiento técnico sobre el repositorio.
-\item Claude Code se empleó principalmente para tareas de frontend y experiencia
-de usuario.
-\item Skills propias, como \texttt{hydra}, permitieron ejecutar fases completas
-de forma autónoma, diferenciando entre tareas de nueva funcionalidad y tareas de
-corrección de errores.
-\end{itemize}
-
-La división no fue arbitraria. Backend y frontend tienen ritmos de validación
-distintos. En backend era especialmente importante respetar contratos,
-persistencia, pruebas, migraciones y límites entre fases. En frontend era
-importante mantener coherencia visual, ergonomía, interacción y sensibilidad al
-detalle de la interfaz. Esta asignación se apoyó tanto en observación práctica
-del proyecto como en señales públicas de evaluación: Artificial Analysis separa
-capacidades de agentes, programación, razonamiento general y razonamiento
-científico, mientras que Code Arena mantiene rankings específicos de desarrollo
-web con tareas que exigen razonamiento multi-step y uso de herramientas
-\cite{artificialanalysis2026index,lmarena2026webdev}. Estas métricas no se
-tomaron como una verdad absoluta, porque cambian con rapidez y dependen del
-benchmark, pero sí como una señal de que la elección del modelo debe depender
-del tipo de tarea.
-
-\subsection{Orquestación autónoma con Hydra}
-
-La forma más avanzada de trabajo fue la ejecución de fases completas mediante la
-skill \texttt{hydra}. Su función no era sustituir a Linear ni a la revisión
-humana, sino convertir una lista de tareas ya especificadas en oleadas de
-ejecución autónoma. El patrón se parece al propio sistema construido en la fase
-1: un orquestador conserva el estado global, delega unidades de trabajo
-independientes, espera evidencias, recoge resultados y decide si puede continuar
-o si necesita intervención humana.
+La ejecución más autónoma se hizo con la skill \texttt{hydra}. Hydra actuaba
+como orquestador: leía tareas pendientes, agrupaba trabajo no conflictivo,
+lanzaba agentes en worktrees separados, revisaba resultados y cerraba o creaba
+seguimiento.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.80\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
+\includegraphics[width=0.86\textwidth,height=0.46\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
 \caption{Flujo de orquestación autónoma con Hydra.}
 \end{figure}
 
-El punto clave es que \texttt{hydra} mantiene su propia ventana de contexto lo
-más pequeña posible. No carga todos los documentos, diffs y logs de cada tarea.
-Lee la información mínima de coordinación, como identificador, estado,
-dependencias, tipo de tarea y grupo de solapamiento. El contenido profundo lo
-lee cada agente trabajador dentro de su propia sesión. Del mismo modo, cuando
-un trabajador termina, el orquestador no absorbe toda la terminal: recibe un
-resumen del resultado, el estado del merge, los ficheros tocados y cualquier
-nota que requiera seguimiento.
+\subsection{Configuración de agentes}
 
-La planificación de cada oleada depende de las dependencias entre tareas. Si una
-tarea bloquea a otra, se ejecuta primero la tarea bloqueante. Si dos tareas
-tocan zonas relacionadas del sistema, Linear las marca como potencialmente
-conflictivas y el orquestador las ejecuta de forma secuencial. Si no se van a
-pisar entre sí, puede lanzar varios agentes en paralelo. Cada agente trabaja en
-un \textit{worktree} independiente, por lo que sus cambios no contaminan el
-árbol principal mientras está desarrollando.
+Los agentes de desarrollo se configuraron mediante instrucciones persistentes,
+skills y herramientas. Las skills encapsulan prácticas reutilizables: cómo
+trabajar con UI, cómo publicar cambios, cómo revisar CI, cómo usar estilos de
+documentación o cómo coordinar agentes.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{4.4cm}|p{4.8cm}|} \hline
+\textbf{Configuración} & \textbf{Uso} & \textbf{Por qué fue necesaria} \\ \hline
+Instrucciones del repo & Convenciones de \texttt{uv}, \texttt{pnpm}, commits, estilo y verificación. & Evitan que cada agente reinvente reglas locales. \\ \hline
+Skills de desarrollo & UI, GitHub, CI, revisión, documentación y orquestación. & Convierten prácticas repetidas en protocolos reutilizables. \\ \hline
+Contexto acotado & Cada agente recibe solo la tarea y los ficheros relevantes. & Reduce ruido y evita degradación por exceso de contexto. \\ \hline
+Evidencia obligatoria & Tests, logs, capturas, PDF o CI según la tarea. & Permite aceptar trabajo por pruebas, no por confianza en la respuesta. \\ \hline
+\end{tabular}
+\caption{Configuración usada para agentes de desarrollo.}
+\end{center}
+\end{table}
+
+\subsection{Tools, MCP y modelos de lenguaje}
+
+Los agentes usaron herramientas externas para trabajar sobre el repositorio y
+los servicios del proyecto. En desarrollo, las herramientas más importantes
+fueron shell, Git, GitHub, navegador, Docker, Playwright y editores de ficheros.
+Cuando estaban disponibles, los MCPs permitieron operar sobre servicios como
+GitHub, Linear o navegación automatizada con una interfaz más estructurada.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|p{3.1cm}|p{4.5cm}|p{4.7cm}|} \hline
-\textbf{Paso} & \textbf{Responsable} & \textbf{Evidencia esperada} \\ \hline
-Descubrir tareas & Hydra leyendo Linear & Lista de tareas pendientes, dependencias, prioridad y posibilidad de paralelización. \\ \hline
-Planificar oleada & Hydra & Conjunto de tareas ejecutables sin blockers activos ni solapamientos peligrosos. \\ \hline
-Asignar modelo & Hydra + criterio humano previo & Codex para backend, infraestructura, persistencia y tests; Claude Code para frontend e interacción. \\ \hline
-Ejecutar tarea & Agente trabajador & Worktree propio, implementación, pruebas locales y PR hacia \texttt{main}. \\ \hline
-Revisar salida & Agente trabajador antes de mergear & Revisión de bugs, silent failures, fallos de arquitectura y convenciones del código. \\ \hline
-Cerrar o crear seguimiento & Hydra & PR mergeada, nota de follow-up, nueva tarea para agente o decisión humana pendiente. \\ \hline
+\textbf{Agente o uso} & \textbf{Modelo o plataforma} & \textbf{Función principal} \\ \hline
+Codex & Modelo de programación en entorno terminal & Backend, tests, infraestructura, LaTeX, CI y razonamiento sobre el repo. \\ \hline
+Claude Code & Modelo de programación con foco en producto & Frontend, interacción, experiencia de usuario y pulido visual. \\ \hline
+Agentes de fase 1 & Modelos vía Anthropic SDK u OpenRouter & Investigación, formalización, adaptación, construcción y memoria. \\ \hline
+Juez de evals & LLM externo con rúbrica fija & Revisión separada de artefactos congelados. \\ \hline
 \end{tabular}
-\caption{Fases del flujo autónomo de desarrollo.}
+\caption{Modelos de lenguaje usados por tipo de tarea.}
 \end{center}
 \end{table}
 
-La revisión final de cada agente se estructuró en cuatro pasos. Primero, buscar
-bugs funcionales evidentes. Segundo, actuar como \textit{silent failure hunter}:
-detectar casos donde el sistema parece funcionar pero pierde datos, oculta
-errores o acepta estados incoherentes. Tercero, revisar fallos de arquitectura,
-como acoplamientos indebidos entre fase 1 y fase 2 o responsabilidades mal
-colocadas. Cuarto, comprobar convenciones del repositorio, estilo, tests y
-contratos locales.
+\section{Decisiones técnicas y tradeoffs}
 
-Cuando una tarea terminaba, el agente abría o actualizaba una PR hacia
-\texttt{main}. El orquestador monitorizaba las terminales de los agentes y, al
-detectar finalización, comprobaba que la PR se hubiese mergeado. Si la PR dejaba
-notas, problemas no resueltos o follow-ups, el orquestador decidía si crear una
-nueva tarea para otro agente o si marcar el punto como decisión humana. El flujo
-continuaba hasta que todas las tareas de la fase quedaban cerradas o hasta que
-el sistema se bloqueaba por una decisión que no debía resolver un agente.
-
-Este patrón fue necesario porque las tareas largas de desarrollo autónomo siguen
-siendo difíciles. Benchmarks recientes como Terminal-Bench miden tareas
-terminales largas con verificación por tests y muestran que incluso agentes
-frontera siguen fallando en una parte relevante de escenarios realistas
-\cite{merrill2026terminalbench}. Por ello, la metodología del proyecto no
-consistió en confiar ciegamente en un agente, sino en aislar tareas, exigir
-evidencia ejecutable, revisar antes de mergear y mantener un humano responsable
-de las decisiones de producto y arquitectura.
-
-\subsection{Decisiones técnicas y tradeoffs}
-
-Varias decisiones de implementación no fueron delegadas a los agentes, sino
-tomadas como restricciones de arquitectura del proyecto. La más importante fue
-mantener un Router determinista en lugar de dejar que un agente conversacional
-decidiese libremente la siguiente etapa. Esta opción redujo flexibilidad, porque
-cada transición debía estar modelada explícitamente, pero mejoró trazabilidad,
-reanudación y depuración: ante un fallo era posible saber en qué etapa estaba la
-ejecución, qué artefacto faltaba y qué decisión humana bloqueaba el avance. La
-misma lógica explica la persistencia temprana en MinIO y PostgreSQL. Guardar
-informes, specs, trazas y resultados en cada fase añade complejidad operativa,
-pero evita que el estado real del sistema dependa de la ventana de contexto de
-un modelo.
-
-Otra decisión deliberada fue separar el contrato externo del modelo generado de
-la implementación interna del laboratorio. Se eligió un contrato pequeño por
-duck typing, \texttt{decide}, \texttt{update} y \texttt{get\_state}, en vez de
-obligar a heredar de una clase del simulador. El tradeoff es que se pierden
-algunas garantías estáticas y hay que cubrir más casos mediante tests, pero se
-gana desacoplamiento entre fases y facilidad para ejecutar modelos generados
-como ficheros Python autocontenidos. También se decidió que la memoria
-persistente no se escribiese automáticamente tras cualquier salida del agente:
-solo los artefactos aceptados por revisión humana podían consolidarse. Esta
-restricción ralentiza el flujo, pero evita que errores científicos o
-alucinaciones pasen a formar parte del conocimiento reutilizable del sistema.
-
-\subsection{Componentes implementados y tecnologías}
-
-La Tabla~\ref{tab:componentes-tecnologias} vincula los componentes software
-descritos en el diseño con las librerías, APIs y plataformas usadas en la
-implementación. La arquitectura separa los componentes funcionales de la
-tecnología concreta para que el sistema pueda cambiar de proveedor o de
-almacén sin modificar el contrato entre etapas.
+Las decisiones siguientes fueron las más difíciles porque afectan a la
+trazabilidad, coste, escalabilidad y validez científica del sistema.
 
 \begin{table}[H]
-\small
 \begin{center}
-\begin{tabular}{|p{3.0cm}|p{4.5cm}|p{5.2cm}|} \hline
-\textbf{Componente} & \textbf{Tecnologías} & \textbf{Uso en la implementación} \\ \hline
-Interfaz web & React, Vite, Tailwind CSS, \texttt{@ppazosp/agrex} & Ejecuta la vista de seguimiento, revisión humana y reproducción de trazas del pipeline. \\ \hline
-API de fase 1 & FastAPI, WebSocket, Uvicorn & Expone el servidor del pipeline, la comunicación en tiempo real y los endpoints de artefactos. \\ \hline
-CLI y Router & Typer, Rich, Questionary, \texttt{agrex} & Lanza ejecuciones, controla la máquina de estados y registra la traza estructurada. \\ \hline
-Agentes y subagentes & Anthropic SDK, OpenRouter, Pydantic & Ejecuta llamadas LLM con herramientas, valida salidas estructuradas y mantiene contratos entre etapas. \\ \hline
-Herramientas de investigación & DDGS, búsqueda académica, corpus de evaluación & Busca fuentes, papers y contexto científico para el Researcher y el DeepResearcher. \\ \hline
-Artefactos & MinIO, API S3, \texttt{aioboto3} & Guarda informes, formulaciones, especificaciones, código, tests, estado y trazas. \\ \hline
-Persistencia relacional & PostgreSQL, SQLAlchemy async, asyncpg, Alembic & Guarda runs, modelos, metadatos, memoria aprobada, confianza, vigencia y auditoría. \\ \hline
-Grafo de conocimiento & Neo4j, driver asíncrono de Neo4j & Representa paradigmas, formulaciones, autores, papers, variables y relaciones científicas. \\ \hline
-Recuperación vectorial & Qdrant, Voyage AI, ZeroEntropy, BM25 nativo & Recupera conocimiento por similitud semántica, búsqueda léxica y reranking. \\ \hline
-Validación de modelos & uv, pytest, Python 3.12 & Ejecuta los tests generados por Builder y valida el contrato \texttt{DecisionModel}. \\ \hline
+\scriptsize
+\begin{tabular}{|p{2.5cm}|p{3.1cm}|p{3.2cm}|p{3.7cm}|} \hline
+\textbf{Situación} & \textbf{Decisión tomada} & \textbf{Alternativas} & \textbf{Tradeoffs} \\ \hline
+Estado del pipeline & Router determinista con máquina de estados. & Planner libre basado en LLM. & Menos flexibilidad, pero más reanudación, depuración y control humano. \\ \hline
+Metadatos y aceptación & PostgreSQL como base relacional. & MongoDB, documentos JSON o solo ficheros. & Más esquema y migraciones, pero consultas fiables sobre runs, modelos, memoria, confianza y validez. \\ \hline
+Artefactos grandes & MinIO/S3 para informes, specs, código y trazas. & Guardar blobs en SQL o carpetas locales. & Añade servicio externo, pero evita inflar SQL y permite rutas auditables por run. \\ \hline
+Recuperación de memoria & Búsqueda híbrida dense y sparse. & Solo embeddings o solo BM25. & Más coste e infraestructura, pero cubre sinonimia científica y coincidencias exactas de nombres, slugs y variables. \\ \hline
+Tamaño de memoria & Grafo, vectores y metadatos separados. & Memoria corta en prompt o un único almacén. & Mayor complejidad, pero permite recuperar hechos, relaciones y procedencia sin saturar contexto. \\ \hline
+Escritura de memoria & Solo artefactos aceptados por revisión. & Guardar toda salida del agente. & Menos automatismo, pero evita consolidar alucinaciones o formulaciones rechazadas. \\ \hline
+Contrato con fase 2 & Duck typing con \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Clase base común, adaptadores o API remota. & Menos garantías estáticas, pero modelos autocontenidos y bajo acoplamiento entre fases. \\ \hline
+Paralelización & Subagentes por paradigma, formulación o spec. & Agente monolítico por ejecución. & Más coordinación, pero fallos aislados y mejor uso de contexto. \\ \hline
+Evaluación & Tests, evals YAML y juez LLM separado. & Revisión manual informal o solo unit tests. & Más coste, pero detecta fallos de pipeline, recuperación y fidelidad científica. \\ \hline
+\end{tabular}
+\caption{Decisiones técnicas y tradeoffs principales.}
+\end{center}
+\end{table}
+
+\section{Gaps de diseño resueltos}
+
+La colaboración humano-IA fue útil porque los agentes no solo escribieron
+código: también hicieron visibles decisiones que no estaban cerradas.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{4.2cm}|p{5.1cm}|} \hline
+\textbf{Gap} & \textbf{Problema detectado} & \textbf{Resolución} \\ \hline
+Frontera fase 1/fase 2 & No estaba claro si los modelos debían depender de clases internas del simulador. & Se fijó el contrato \texttt{DecisionModel} por duck typing. \\ \hline
+Memoria aceptada & El sistema podía guardar conocimiento útil, pero también errores plausibles. & Se exigió revisión humana antes de escribir memoria persistente. \\ \hline
+Specs no implementables & Reasoner podía proponer variables no observables o reglas ambiguas. & Se permitió devolver invalidaciones explícitas y repetir solo la etapa afectada. \\ \hline
+\end{tabular}
+\caption{Gaps de diseño cerrados durante el desarrollo con IA.}
+\end{center}
+\end{table}
+
+\section{Reglas de comportamiento de los agentes}
+
+Los criterios de aceptación se redactaron como reglas operativas para agentes de
+desarrollo y agentes del sistema.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{5.1cm}|p{4.1cm}|} \hline
+\textbf{Regla} & \textbf{Comportamiento esperado} & \textbf{Evidencia} \\ \hline
+Persistir antes de avanzar & Cada etapa guarda artefactos y estado. & MinIO, PostgreSQL y trazas. \\ \hline
+No inventar observables & Reasoner solo usa acciones y percepciones del entorno. & Validación de spec o invalidación explícita. \\ \hline
+Probar código generado & Builder crea y ejecuta tests. & Resultado de \texttt{pytest}. \\ \hline
+No consolidar borradores & MemoryAgent escribe solo artefactos aceptados. & Registro de revisión y memoria. \\ \hline
+Devolver errores estructurados & Herramientas y agentes comunican fallos revisables. & Logs, JSON de validación y reportes. \\ \hline
+\end{tabular}
+\caption{Reglas de comportamiento de los agentes.}
+\end{center}
+\end{table}
+
+\section{Componentes implementados y tecnologías}
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{2.7cm}|p{4.6cm}|p{5.1cm}|} \hline
+\textbf{Componente} & \textbf{Tecnologías} & \textbf{Uso} \\ \hline
+Interfaz web & React, Vite, Tailwind CSS, \texttt{@ppazosp/agrex} & Seguimiento, revisión humana y reproducción de trazas. \\ \hline
+API de fase 1 & FastAPI, WebSocket, Uvicorn & Servidor del pipeline y comunicación en tiempo real. \\ \hline
+CLI y Router & Typer, Rich, Questionary, \texttt{agrex} & Ejecuciones locales, máquina de estados y traza estructurada. \\ \hline
+Agentes & Anthropic SDK, OpenRouter, Pydantic & Llamadas LLM, herramientas y validación de salidas. \\ \hline
+Búsqueda & DDGS, búsqueda académica, corpus de evaluación & Fuentes para Researcher y DeepResearcher. \\ \hline
+Artefactos & MinIO, API S3, \texttt{aioboto3} & Informes, specs, código, tests, estado y trazas. \\ \hline
+Persistencia & PostgreSQL, SQLAlchemy async, asyncpg, Alembic & Runs, modelos, memoria y auditoría. \\ \hline
+Memoria & Neo4j, Qdrant, Voyage AI, ZeroEntropy, BM25 & Grafo, recuperación densa, recuperación léxica y reranking. \\ \hline
+Validación & uv, pytest, GitHub Actions & Tests de modelos, unit tests, lint y formato. \\ \hline
 \end{tabular}
 \caption{Componentes software y tecnologías de implementación.}
 \label{tab:componentes-tecnologias}
 \end{center}
 \end{table}
 
-\subsection{Resultado de la interfaz web}
+\section{Resultado de la interfaz web}
 
-Como muestra de la interfaz implementada, se restauró en local el paquete de
+Como evidencia del resultado implementado, se restauró en local el paquete de
 artefactos de CASO1 usado en la evaluación de corpus cerrado de la
-Sección~\ref{sec:evaluacion-corpus-cerrado}. Las
-figuras~\ref{fig:phase1-ui-replay-run} y
-\ref{fig:phase1-ui-knowledge-run} no describen el diseño inicial: muestran el
-resultado final sobre una ejecución real del sistema.
-
-La figura~\ref{fig:phase1-ui-replay-run} muestra la vista de reproducción de la
-ejecución restaurada. Esta vista permite revisar los pasos de la simulación y
-consultar el estado asociado a cada momento de la traza.
+Sección~\ref{sec:evaluacion-corpus-cerrado}. La Figura~\ref{fig:phase1-ui-replay-run}
+muestra la interfaz final sobre una ejecución real, no un diseño inicial.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-replay-run}
+\includegraphics[width=0.86\textwidth,height=0.34\textheight,keepaspectratio]{figuras/phase1-ui-replay-run}
 \caption{Interfaz web reproduciendo la ejecución CASO1 restaurada.}
 \label{fig:phase1-ui-replay-run}
 \end{figure}
-
-La figura~\ref{fig:phase1-ui-knowledge-run} muestra el panel de conocimiento
-del mismo caso. Esta vista permite inspeccionar el grafo persistido y los
-artefactos asociados a la ejecución.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.94\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run}
-\caption{Panel de conocimiento de la interfaz web para CASO1.}
-\label{fig:phase1-ui-knowledge-run}
-\end{figure}
-
-\subsection{Criterios de aceptación}
-
-Cada tarea se redactó con criterios de aceptación concretos. Un criterio de
-aceptación debía indicar qué comportamiento debía existir, cómo validarlo y qué
-evidencia debía quedar.
-
-Ejemplos de criterios usados en este proyecto fueron:
-
-\begin{itemize}
-\item una etapa del pipeline debe persistir sus artefactos en una ruta estable;
-\item una herramienta debe devolver errores estructurados;
-\item una memoria debe escribirse solo tras revisión aceptada;
-\item un modelo generado debe pasar sus pruebas con \texttt{uv run pytest};
-\item una pantalla debe mostrar estados de ejecución sin romper el layout.
-\end{itemize}
-
-Estos criterios permitieron que los agentes trabajasen con autonomía y, al
-mismo tiempo, que el resultado fuese verificable.
-
-\section{Supervisión humana y gestión de incertidumbre}
-
-\subsection{Identificación de gaps de diseño}
-
-Un punto importante del flujo fue permitir que los propios agentes identificasen
-gaps de diseño. Cuando durante una implementación aparecía una decisión no
-cerrada, el agente podía proponer o crear una tarea en Linear para que el equipo
-tomase la decisión correspondiente.
-
-Esto evitó que el agente resolviese por su cuenta cuestiones que requerían
-criterio humano, como:
-
-\begin{itemize}
-\item límites de responsabilidad entre la fase 1 y la fase 2;
-\item decisiones de arquitectura compartida;
-\item reglas de negocio del pipeline;
-\item políticas de memoria, confianza y supersesión;
-\item comportamiento esperado ante fallos de infraestructura.
-\end{itemize}
-
-De esta forma, los agentes no solo escribieron código, sino que ayudaron a
-descubrir incertidumbre técnica. La decisión final, sin embargo, permaneció en
-manos humanas.
-
-\subsection{Human-in-the-loop}
-
-El flujo de trabajo adoptado puede resumirse así:
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.54\textwidth,height=0.68\textheight,keepaspectratio]{figuras/phase1-human-agent-activity}
-\caption{Modelo de colaboración humano-agente usado en el desarrollo.}
-\end{figure}
-
-Esta metodología influyó directamente en el sistema construido. El pipeline de
-generación de modelos también sigue una filosofía similar: los agentes producen
-artefactos, pero las decisiones relevantes pasan por revisión humana antes de
-quedar aceptadas y almacenadas en memoria. La revisión y las nuevas ejecuciones
-funcionan como un mecanismo de refinamiento iterativo guiado por feedback
-\cite{madaan2023selfrefine,shinn2023reflexion}.

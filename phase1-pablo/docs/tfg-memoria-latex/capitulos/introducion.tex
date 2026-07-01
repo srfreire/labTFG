@@ -2,192 +2,73 @@
 
 \section{Contexto y alcance}
 
-Este Trabajo de Fin de Grado forma parte de un proyecto más amplio: un
-laboratorio virtual para simular, observar y analizar paradigmas de toma de
-decisiones humanas mediante agentes inteligentes. El proyecto completo se
-divide en dos contribuciones complementarias. La primera, documentada en esta
-memoria, genera modelos de decisión ejecutables a partir de descripciones en
-lenguaje natural, literatura científica, formulaciones matemáticas y
-especificaciones de entorno. La segunda, desarrollada por Juan Freire Álvarez,
-se centra en la infraestructura de
-simulación, observación, análisis y reporte de esos modelos dentro del
-laboratorio virtual.
+Este Trabajo de Fin de Grado forma parte de un laboratorio virtual para
+simular, observar y analizar paradigmas de toma de decisiones humanas mediante
+agentes inteligentes. El proyecto completo se divide en 2 partes: esta memoria
+documenta la generación automática de modelos de decisión, y la parte de Juan
+Freire Álvarez documenta la simulación, observación, análisis y reporte de esos
+modelos.
 
-La frontera entre ambas partes se definió mediante contratos e infraestructura
-compartida. Esta memoria describe la fase 1, sus agentes, artefactos,
-evaluaciones y el uso de servicios comunes como PostgreSQL, MinIO, Neo4j y
-Qdrant cuando son necesarios para persistencia, trazabilidad y memoria. No
-documenta la implementación interna de la fase de simulación, salvo en lo
-imprescindible para explicar la integración: los modelos generados deben cumplir
-un contrato común de decisión para que puedan ser cargados y ejecutados por el
-laboratorio.
+La frontera entre ambas partes se fija con un contrato común. La fase 1 produce
+modelos Python autocontenidos, artefactos revisables y metadatos persistentes.
+La fase 2 consume los modelos aprobados y los ejecuta dentro del laboratorio. La
+memoria se centra en la fase 1, aunque menciona la infraestructura compartida
+necesaria para persistencia, trazabilidad y memoria.
 
 \section{Problema y motivación}
 
-\subsection{Problema que se resuelve}
+El laboratorio necesita modelos de decisión que actúen dentro de entornos de
+simulación. Crear esos modelos a mano es costoso porque antes de escribir código
+hay que identificar paradigmas científicos, traducir postulados a variables y
+ecuaciones, adaptar la formulación a acciones y percepciones concretas, y
+comprobar que el resultado cumple un contrato ejecutable.
 
-El laboratorio virtual necesita modelos de decisión que puedan actuar dentro de
-un entorno de simulación. Crear estos modelos manualmente es una tarea costosa,
-porque no consiste solo en programar una política de acciones. Antes hay que
-identificar qué paradigmas científicos explican el comportamiento que se quiere
-simular, traducir sus postulados a variables y ecuaciones, adaptar esas
-formulaciones a las percepciones y acciones disponibles en el entorno, generar
-código ejecutable y comprobar que ese código respeta el contrato esperado por la
-simulación.
+El problema principal es la distancia entre una descripción en lenguaje natural
+y un modelo computacional verificable. Una petición como ``simular toma de
+decisiones basada en regulación homeostática'' no contiene autores,
+parámetros, variables internas, reglas de actualización, mapeo al entorno ni
+pruebas. Si cada nuevo paradigma exige repetir todo ese trabajo de forma manual,
+el laboratorio deja de ser escalable.
 
-El problema principal, por tanto, es la distancia entre una descripción en
-lenguaje natural y un modelo computacional verificable. Una descripción como
-``simular toma de decisiones basada en regulación homeostática'' no contiene por
-sí misma todos los elementos que necesita un agente ejecutable: autores y
-paradigmas relevantes, variables internas, parámetros, reglas de actualización,
-criterios de elección de acciones, correspondencia con el entorno y pruebas. Si
-todo ese trabajo se realiza a mano, cada nuevo paradigma exige una revisión
-bibliográfica y una implementación prácticamente desde cero.
+La motivación de esta fase es construir una cadena trazable entre conocimiento
+científico y software ejecutable. El sistema no sustituye el criterio humano:
+produce artefactos intermedios para que una persona revise paradigmas,
+formulaciones, specs y modelos antes de aceptarlos. Esta trazabilidad es
+importante en modelado computacional de conducta, donde un modelo puede pasar
+tests y aun así representar mal el fenómeno estudiado \cite{wilson2019modeling}.
 
-Este trabajo resuelve ese problema mediante un pipeline con agentes
-especializados, revisión humana y memoria persistente. El sistema no pretende
-eliminar la supervisión humana ni sustituir el criterio científico, sino
-automatizar las partes repetibles del proceso y producir artefactos
-intermedios que puedan revisarse, corregirse, reutilizarse y auditarse. Esta
-combinación se apoya en líneas recientes sobre agentes con herramientas,
-sistemas multiagente, memoria persistente y generación de código
-\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,park2023generativeagents,chen2021codex}.
+\section{Objetivos}
 
-\subsection{Motivación del proyecto}
+El objetivo general es construir un sistema capaz de transformar una descripción
+de un problema de decisión en modelos Python ejecutables, probados y
+preparados para el laboratorio virtual.
 
-La toma de decisiones humanas se estudia desde teorías muy distintas: modelos
-de aprendizaje por refuerzo, teorías de utilidad, heurísticas de racionalidad
-limitada, modelos de acumulación de evidencia o mecanismos homeostáticos y
-hedónicos \cite{berthoud2011metabolic}. Esta diversidad es útil científicamente,
-pero dificulta construir un laboratorio virtual común. Dos paradigmas pueden
-explicar comportamientos similares con variables internas distintas, y dos
-formulaciones de un mismo paradigma pueden requerir reglas de actualización
-incompatibles.
-
-La motivación de esta fase es reducir esa fricción. Si el laboratorio virtual
-quiere comparar modelos de decisión, necesita un procedimiento repetible para
-pasar de literatura científica a modelos ejecutables. Ese procedimiento debe
-dejar rastro de las decisiones tomadas, separar lo que se sabe de lo que se
-asume y permitir que una persona revise los puntos donde existe ambigüedad
-científica o de diseño.
-
-El interés del proyecto no está solo en generar código. La contribución es
-construir una cadena trazable que conecte conocimiento científico, formulación
-matemática, adaptación al entorno, implementación y prueba. Esta trazabilidad es
-especialmente importante en modelado computacional de conducta, donde el
-resultado ejecutable puede parecer correcto aunque las hipótesis, los parámetros
-o las variables internas no representen bien el fenómeno que se quiere estudiar
-\cite{wilson2019modeling}.
-
-\section{Estado del arte}
-
-El proyecto se apoya en dos líneas de trabajo. La primera procede del modelado
-computacional de la decisión. Paradigmas como el aprendizaje por refuerzo
-\cite{sutton2018rl}, la teoría prospectiva \cite{kahneman1979prospect}, la
-racionalidad limitada \cite{simon1955behavioral} o los modelos de difusión de
-decisiones \cite{ratcliff1978theory} ofrecen mecanismos formales para explicar
-elección, aprendizaje, incertidumbre, recompensa o compromiso entre rapidez y
-precisión. Estos modelos son útiles para simulación, pero normalmente requieren
-trabajo experto para elegir variables, ecuaciones, parámetros, observables y
-reglas de actualización.
-
-La segunda línea procede de los sistemas recientes basados en modelos de
-lenguaje. Los agentes con herramientas permiten alternar razonamiento y acción,
-como en ReAct y Toolformer \cite{yao2023react,schick2023toolformer}. Los
-sistemas multiagente, como AutoGen o ChatDev, muestran que dividir un problema
-en roles especializados facilita flujos de trabajo largos
-\cite{wu2023autogen,qian2024chatdev}. La recuperación aumentada, la búsqueda
-densa y BM25, la fusión de rankings y CRAG permiten incorporar conocimiento
-externo o persistente durante la generación
-\cite{lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag}.
-Finalmente, los trabajos sobre generación de código y agentes de software
-muestran que los modelos actuales pueden producir programas útiles cuando el
-problema está suficientemente estructurado y existe validación ejecutable
-\cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
-
-Frente a esas líneas, este trabajo no se limita a aplicar una de ellas de forma
-aislada. Los modelos computacionales de decisión aportan la base científica,
-pero no resuelven por sí solos cómo pasar de literatura heterogénea a código
-ejecutable dentro de un laboratorio. Los sistemas RAG y CRAG ayudan a recuperar
-información externa, pero no garantizan que esa información quede convertida en
-variables, ecuaciones, especificaciones y pruebas. Los sistemas multiagente como
-AutoGen o ChatDev demuestran que la división en roles mejora flujos largos, pero
-su objetivo principal es coordinar conversaciones o tareas de desarrollo
-software, no conservar una cadena científica revisable. Por último, SWE-agent y
-los trabajos de síntesis de programas validan la utilidad de agentes capaces de
-editar y probar código, pero parten normalmente de tareas de programación ya
-definidas, no de paradigmas de decisión que antes deben investigarse y
-formalizarse.
+Los objetivos específicos son:
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{4.7cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
-\textbf{Línea relacionada} & \textbf{Qué aporta} & \textbf{Diferencia en este trabajo} \\ \hline
-Modelado computacional de decisión & Paradigmas, variables latentes, reglas de actualización y criterios de elección. & Se usa como entrada científica que debe transformarse en artefactos ejecutables, no como modelo manual aislado. \\ \hline
-RAG, CRAG y recuperación híbrida & Acceso a conocimiento externo y corrección de contexto cuando la recuperación es débil. & La recuperación se integra en un pipeline con revisión, persistencia y memoria aceptada, no en una respuesta textual única. \\ \hline
-Memoria y GraphRAG & Representación persistente de hechos, relaciones y contexto reutilizable. & La memoria tiene ciclo de vida, confianza y escritura posterior a aceptación humana. \\ \hline
-AutoGen y ChatDev & Coordinación de varios agentes con roles especializados. & Los roles se acoplan a etapas científicas y de ingeniería: investigar, formalizar, adaptar, construir y recordar. \\ \hline
-SWE-agent y síntesis de programas & Edición de código y validación mediante ejecución de pruebas. & La generación de código es la última etapa de una cadena trazable que empieza en literatura científica. \\ \hline
+\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
+\textbf{Objetivo} & \textbf{Resultado esperado} \\ \hline
+Investigar & Identificar paradigmas científicos relevantes y conservar informes revisables. \\ \hline
+Formalizar & Convertir paradigmas aprobados en variables, parámetros, ecuaciones y reglas de decisión. \\ \hline
+Adaptar & Traducir formulaciones a acciones, percepciones y recompensas de un entorno concreto. \\ \hline
+Construir & Generar modelos Python autocontenidos con pruebas ejecutables. \\ \hline
+Trazar & Guardar estado, artefactos, herramientas, decisiones y resultados de cada ejecución. \\ \hline
+Reutilizar & Escribir memoria solo desde artefactos aceptados para ayudar a ejecuciones futuras. \\ \hline
 \end{tabular}
-\caption{Comparación del proyecto con líneas relacionadas del estado del arte.}
+\caption{Objetivos específicos de la fase 1.}
 \end{center}
 \end{table}
 
-Este trabajo combina ambas líneas con una decisión central: tratar los
-paradigmas de decisión como objetos científicos que deben investigarse,
-formalizarse y revisarse antes de convertirse en software. La diferencia
-respecto a un generador de texto convencional es que cada etapa produce
-artefactos persistentes y verificables, y la memoria del sistema solo se
-actualiza tras aceptación humana. La diferencia respecto a un agente de
-programación convencional es que el problema no empieza en un issue técnico,
-sino en una pregunta científica que debe reducirse progresivamente hasta llegar
-a una especificación implementable.
+\section{Descripción del sistema y metodología de desarrollo}
 
-\section{Objetivos y enfoque de la fase}
+El sistema se organiza como un pipeline multiagente. Un Router determinista
+coordina etapas especializadas: clasificación, investigación, formalización,
+adaptación al entorno, construcción, validación y escritura de memoria. Cada
+etapa produce artefactos persistentes que pueden revisarse antes de continuar.
 
-\subsection{Objetivos generales}
-
-Este Trabajo de Fin de Grado se enmarca en el desarrollo de un laboratorio
-virtual para la simulación y el análisis de paradigmas de toma de decisiones
-humanas mediante agentes inteligentes. El proyecto completo se divide en dos
-fases complementarias. Esta memoria documenta mi parte del proyecto: el sistema
-que genera modelos de decisión ejecutables a partir de descripciones en lenguaje
-natural y conocimiento científico.
-
-El objetivo general de esta fase es construir un sistema capaz de transformar
-un problema de decisión en un conjunto de artefactos verificables y persistentes:
-
-\begin{itemize}
-\item una investigación sobre paradigmas científicos relevantes;
-\item una o varias formulaciones matemáticas;
-\item una especificación adaptada a un entorno de simulación;
-\item código Python autocontenido;
-\item pruebas ejecutables que validen el modelo generado.
-\end{itemize}
-
-El objetivo no es producir una única respuesta textual, sino construir una
-cadena completa de generación de conocimiento y software. Cada etapa reduce la
-ambigüedad de la anterior: primero se investiga, después se formaliza, después
-se adapta al entorno y finalmente se implementa. Esta separación es importante
-porque un error bibliográfico, un error matemático, una mala adaptación al
-entorno y un bug de implementación requieren correcciones distintas.
-
-\subsection{Descripción del sistema}
-
-El sistema recibe una descripción de un problema de toma de decisiones y la
-procesa mediante agentes especializados. Cada agente resuelve una parte del
-problema y produce artefactos persistentes que pueden ser revisados antes de
-continuar.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.38\textwidth]{figuras/phase1-main-transformation}
-\caption{Transformación principal del sistema desarrollado.}
-\end{figure}
-
-La salida final es un modelo compatible con el contrato de simulación usado por
-el laboratorio virtual:
+La salida final cumple el contrato usado por el laboratorio:
 
 \begin{lstlisting}[language=Python]
 def decide(self, perception: dict) -> Action
@@ -195,77 +76,59 @@ def update(self, action, reward, new_perception) -> None
 def get_state(self) -> dict
 \end{lstlisting}
 
-Esta interfaz permite separar la fase de generación de modelos de la fase de
-simulación. El modelo generado no necesita heredar de una clase concreta del
-simulador; basta con que implemente los métodos esperados.
+El desarrollo del propio sistema también se hizo con apoyo intensivo de agentes
+de programación. Codex y Claude Code ayudaron a implementar, probar y
+refactorizar, pero las decisiones de arquitectura, alcance, aceptación y
+validación quedaron bajo supervisión humana. El capítulo 4 describe esa forma
+de trabajo.
 
-\subsection{Combinación de técnicas actuales}
+\section{Estado del arte}
 
-El trabajo no se apoya en una única técnica aislada. Su interés está en integrar
-varias líneas recientes del estado del arte dentro de un sistema software
-trazable. En la parte científica, toma como punto de partida la tradición de
-modelado computacional de la conducta y de la decisión: aprendizaje por
-refuerzo, teoría prospectiva, racionalidad limitada, modelos de difusión y
-buenas prácticas para ajustar e interpretar modelos de comportamiento
-\cite{sutton2018rl,kahneman1979prospect,simon1955behavioral,ratcliff1978theory,wilson2019modeling}.
+El estado del arte relevante se agrupa en 2 bloques. El primero son sistemas y
+entornos que permiten estudiar comportamiento mediante simulación. En este
+grupo entran los laboratorios virtuales, los entornos de agentes y los modelos
+computacionales de decisión: aprendizaje por refuerzo \cite{sutton2018rl},
+teoría prospectiva \cite{kahneman1979prospect}, racionalidad limitada
+\cite{simon1955behavioral} y modelos de difusión \cite{ratcliff1978theory}.
+Estos trabajos aportan mecanismos formales, pero suelen requerir trabajo
+experto para convertir literatura en modelos ejecutables.
 
-En la parte de inteligencia artificial aplicada, el sistema combina agentes con
-herramientas, orquestación multiagente, recuperación aumentada, memoria
-persistente y generación de código validada por tests. El uso de herramientas se
-relaciona con ReAct y Toolformer; la división en roles especializados, con
-AutoGen y ChatDev; la recuperación de conocimiento, con RAG, DPR, BM25, RRF y
-CRAG; la memoria persistente y relacional, con MemoryBank, MemGPT, GraphRAG e
-HippoRAG; y la generación de programas, con Codex, Program Synthesis y
-SWE-agent
-\cite{yao2023react,schick2023toolformer,wu2023autogen,qian2024chatdev,lewis2020rag,karpukhin2020dpr,robertson2009bm25,cormack2009rrf,yan2024crag,zhong2023memorybank,packer2023memgpt,edge2024graphrag,gutierrez2024hipporag,chen2021codex,austin2021programsynthesis,yang2024sweagent}.
+El segundo bloque son tecnologías de Agentic AI. Los agentes con herramientas,
+como ReAct y Toolformer, combinan razonamiento y acción
+\cite{yao2023react,schick2023toolformer}. Los sistemas multiagente, como
+AutoGen y ChatDev, dividen tareas largas en roles especializados
+\cite{wu2023autogen,qian2024chatdev}. La recuperación aumentada y los grafos de
+conocimiento permiten usar memoria persistente y contexto externo
+\cite{lewis2020rag,edge2024graphrag}. Los agentes de programación, como
+SWE-agent, muestran que la generación de código mejora cuando existe una
+interfaz de herramientas y validación ejecutable \cite{yang2024sweagent}.
 
-La contribución de esta fase no consiste en proponer un nuevo algoritmo de
-aprendizaje por refuerzo, un nuevo método de recuperación o un nuevo modelo de
-lenguaje. Consiste en combinar esas ideas en una arquitectura concreta: un
-Router determinista, agentes especializados, revisión humana, artefactos
-persistentes, memoria con ciclo de vida y modelos Python probados. Esa
-combinación permite pasar de conocimiento científico a software ejecutable sin
-perder trazabilidad entre las decisiones intermedias.
+Este trabajo combina ambos bloques. Frente a un entorno de simulación
+tradicional, automatiza parte de la generación de modelos. Frente a un agente de
+programación convencional, no parte de un issue técnico, sino de una pregunta
+científica que debe investigarse, formalizarse y validar antes de convertirse
+en código.
 
-Esta forma de trabajo también cambia el nivel de análisis de la memoria. Al
-estar el desarrollo apoyado en agentes de código, la parte repetitiva de
-implementación, refactorización y corrección local puede automatizarse en mayor
-medida que en un proyecto software tradicional. Por ello, el interés técnico no
-está en describir decisiones de bajo nivel, diagramas de clases triviales o
-patrones de diseño ya conocidos, sino en estudiar las decisiones de alto nivel:
-arquitectura del pipeline, flujo de datos, contratos entre fases, separación de
-responsabilidades, persistencia de artefactos, memoria, evaluación y modos de
-fallo. En este contexto, la complejidad del trabajo se desplaza desde escribir
-cada pieza de código manualmente hacia diseñar un sistema capaz de coordinar
-agentes, validar sus salidas y mantener trazabilidad entre conocimiento
-científico y software ejecutable.
-
-Una característica importante del proyecto es que el propio desarrollo del
-sistema también se realizó con apoyo intensivo de agentes de programación. Esta
-metodología se describe de forma específica en el capítulo de desarrollo, porque
-afecta a la planificación, a la división de tareas, a la validación y a la forma
-de tomar decisiones de diseño.
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.4cm}|p{4.2cm}|p{4.6cm}|} \hline
+\textbf{Línea existente} & \textbf{Qué aporta} & \textbf{Límite para este proyecto} \\ \hline
+Modelos de decisión & Variables, reglas de aprendizaje y criterios de elección. & No automatizan la adaptación a un laboratorio concreto. \\ \hline
+Entornos de simulación & Ejecución y comparación de agentes. & Suelen asumir que el modelo ya existe. \\ \hline
+Agentes con herramientas & Uso controlado de búsquedas, ficheros y pruebas. & No garantizan trazabilidad científica por sí solos. \\ \hline
+Sistemas multiagente & División de problemas largos en roles. & Necesitan contratos y revisión para evitar errores acumulativos. \\ \hline
+RAG y memoria & Recuperación de conocimiento previo. & Requieren política de aceptación, ciclo de vida y control de duplicados. \\ \hline
+\end{tabular}
+\caption{Relación del trabajo con sistemas y tecnologías existentes.}
+\end{center}
+\end{table}
 
 \section{Estructura de la memoria}
 
-La memoria sigue la estructura de un TFG de tipo B, orientado al desarrollo de
-un sistema software. Los capítulos principales son:
-
-\begin{itemize}
-\item especificación de requisitos;
-\item diseño del sistema;
-\item desarrollo del trabajo;
-\item pruebas;
-\item conclusiones y posibles ampliaciones;
-\item anexos técnicos, de usuario y de licencia.
-\end{itemize}
-
-La bibliografía recoge tanto referencias técnicas de agentes y memoria como
-trabajos de recuperación aumentada, grafos de conocimiento y generación de
-código.
-
-Algunos términos técnicos se mantienen en inglés cuando son nombres habituales
-del dominio o identificadores del propio sistema, como \textit{pipeline},
-\textit{benchmark}, \textit{sparse}, \textit{dense}, \textit{run} o
-\textit{spec}. Cuando no se trata de un identificador, se usa la forma española:
-flujo, ejecución, especificación, recuperación semántica o recuperación léxica.
+La memoria sigue una estructura de TFG de desarrollo software. El capítulo 2
+presenta requisitos. El capítulo 3 describe el diseño. El capítulo 4 explica el
+desarrollo con IA y las decisiones técnicas. El capítulo 5 resume pruebas y
+evals. El capítulo 6 recoge conclusiones y ampliaciones. Los anexos contienen
+manual técnico, manual de usuario y material extendido de diseño, desarrollo y
+evaluación.

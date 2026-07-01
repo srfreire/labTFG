@@ -2,457 +2,237 @@
 
 \section{Estrategia de validación}
 
-\subsection{Plan de pruebas}
-
-El sistema se valida en varios niveles. Dado que se apoya en modelos de lenguaje,
-no basta con revisar manualmente las salidas: es necesario combinar validación
-estructural, revisión humana, trazas y pruebas ejecutables.
-
-\begin{table}[H]
-\begin{center}
-\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
-\textbf{Nivel} & \textbf{Validación} \\ \hline
-Estructura & Salidas JSON y modelos Pydantic. \\ \hline
-Pipeline & Estados del Router, persistencia y reanudación. \\ \hline
-Memoria & Escritura tras revisión, deduplicación y recuperación. \\ \hline
-Código generado & Pruebas \texttt{pytest} para cada modelo. \\ \hline
-Integración & Carga dinámica del modelo desde la fase de simulación. \\ \hline
-Evals y benchmarks & Suites reproducibles para medir pipeline, memoria, recuperación, coste y latencia. \\ \hline
-\end{tabular}
-\caption{Niveles de validación del sistema.}
-\end{center}
-\end{table}
-
-\subsection{Evidencia versionada del repositorio}
-
-Además de las pruebas automáticas, el repositorio conserva una ejecución de
-ejemplo y suites de evaluación que sirven como evidencia auditable del
-funcionamiento del sistema. Esta evidencia es importante porque permite revisar
-la cadena completa de artefactos sin depender de una conversación concreta con
-un modelo de lenguaje.
+Un sistema basado en agentes no se valida solo comprobando tipos de retorno. Hay
+que verificar coordinación entre etapas, persistencia, revisión humana,
+recuperación de memoria, coste y calidad de los artefactos científicos.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2cm}|>{\raggedright\arraybackslash}p{6.7cm}|} \hline
-\textbf{Evidencia} & \textbf{Cantidad} & \textbf{Qué demuestra} \\ \hline
-Deep reports del sample-run & 7 informes & Researcher y DeepResearcher producen informes científicos estructurados por paradigma. \\ \hline
-Formulaciones del sample-run & 7 documentos & Formalizer convierte investigación en variables, parámetros, ecuaciones y lógicas de decisión. \\ \hline
-Specs del Reasoner & 24 specs JSON & Reasoner adapta formulaciones al entorno y genera contratos implementables. \\ \hline
-Builder del sample-run & 2 modelos + 2 tests & Builder genera código Python autocontenido y pruebas asociadas. \\ \hline
-Tests de fase 1 & 113 archivos & Tests unitarios y de integración de agentes, runtime, herramientas, memoria, evals y servidor. \\ \hline
-Tests de shared & 18 archivos & Tests de infraestructura compartida usada por la fase 1: settings, storage, base de datos, grafo, vectores y memorias. \\ \hline
-Suites YAML & 10 suites & Evals reproducibles para smoke, pipeline completo, corpus PDF, canonicalización, recuperación, memoria temporal y crecimiento acumulativo. \\ \hline
-Evals con corpus cerrado & 2 casos, 6 PDFs & Ejecuciones completas con búsqueda simulada, bundles de artefactos, snapshots de infraestructura y 2 informes de juez LLM. \\ \hline
+\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
+\textbf{Nivel} & \textbf{Validación} \\ \hline
+Estructura & JSON, modelos Pydantic y contratos de herramientas. \\ \hline
+Pipeline & Estados del Router, persistencia y reanudación. \\ \hline
+Código generado & Importación del modelo y tests sobre \texttt{decide}, \texttt{update} y \texttt{get\_state}. \\ \hline
+Memoria & Escritura tras revisión, recuperación, deduplicación y validez temporal. \\ \hline
+Integración & Carga dinámica del modelo desde la fase de simulación. \\ \hline
+Evals & Suites reproducibles para medir pipeline, memoria, coste, latencia y calidad. \\ \hline
 \end{tabular}
-\caption{Evidencias versionadas usadas para validar la fase 1.}
+\caption{Niveles de validación.}
 \end{center}
 \end{table}
 
-La ejecución de ejemplo en \texttt{examples/sample-run/} es especialmente útil
-como caso de estudio. Parte de un dominio científico concreto, la regulación de
-la ingesta, y conserva el resultado de cada etapa: informe general, informes
-profundos, formulaciones, especificación del entorno, specs del Reasoner,
-modelos generados y pruebas. Por tanto, permite seguir la transformación desde
-conocimiento científico hasta implementación ejecutable.
+La evidencia versionada incluye tests unitarios, suites YAML, ejecuciones de
+ejemplo, bundles de evals y reportes de juez. Esto permite revisar el resultado
+sin depender de una conversación concreta con un modelo.
+Las Secciones~\ref{ap:validacion-extendida}
+y~\ref{ap:limitaciones-extendidas} conservan la explicación completa de CI,
+evals, corpus cerrado, reservas del juez y amenazas a la validez.
 
-Las suites en \texttt{evals/suites/} cubren otro tipo de evidencia. No solo
-comprueban que existan archivos, sino que ejecutan propiedades del sistema:
-reutilización de slugs canónicos, recuperación de conocimiento relevante,
-correctitud temporal de memorias, crecimiento controlado del grafo, importación
-de módulos generados y llamada funcional a \texttt{decide}.
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{4.1cm}|p{2.1cm}|p{6.1cm}|} \hline
+\textbf{Evidencia} & \textbf{Cantidad} & \textbf{Qué demuestra} \\ \hline
+Informes del \texttt{sample-run} & 7 deep reports & Investigación estructurada por paradigma. \\ \hline
+Formulaciones del \texttt{sample-run} & 7 documentos & Conversión de investigación en variables y reglas. \\ \hline
+Specs del Reasoner & 24 specs JSON & Adaptación de formulaciones al entorno. \\ \hline
+Builder del \texttt{sample-run} & 2 modelos + tests & Código Python autocontenido y validado. \\ \hline
+Tests de fase 1 y shared & 131 archivos & Agentes, runtime, memoria, herramientas e infraestructura. \\ \hline
+Suites YAML & 10 suites & Evals reproducibles de pipeline, memoria y recuperación. \\ \hline
+Corpus cerrado & 2 casos, 6 PDFs & Ejecuciones completas con corpus limitado y juez externo. \\ \hline
+\end{tabular}
+\caption{Evidencias versionadas de validación.}
+\end{center}
+\end{table}
 
-Las rutas principales de esta evidencia son:
+\subsection{Cierre de requisitos}
 
-\begin{itemize}
-\item \texttt{phase1-pablo/tests};
-\item \texttt{shared/tests};
-\item \texttt{phase1-pablo/evals/suites};
-\item \texttt{phase1-pablo/examples/sample-run}.
-\end{itemize}
+La tabla siguiente cierra los requisitos funcionales contra evidencia
+versionada. El estado no significa certificación científica final. Indica que el
+comportamiento exigido existe, se ejecuta y deja evidencia revisable.
 
-\subsection{Integración continua y flujo de Git}
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{1.5cm}|p{2.0cm}|p{6.2cm}|p{3.0cm}|} \hline
+\textbf{Req.} & \textbf{Estado} & \textbf{Evidencia principal} & \textbf{Reserva} \\ \hline
+RF-01 & Cumplido & CLI, servidor y suites de pipeline arrancan runs desde descripción. & Depende de proveedor LLM. \\ \hline
+RF-02 & Cumplido & Classifier y evals de slugs miden reutilización canónica. & Hay alerta histórica de fragmentación. \\ \hline
+RF-03 & Cumplido & \texttt{sample-run}, deep reports y corpus cerrado generan informes. & Calidad final requiere revisión. \\ \hline
+RF-04 & Cumplido & Router y \texttt{FeedbackPort} bloquean antes de formalizar. & En evals se usa autoaprobación. \\ \hline
+RF-05 & Cumplido & 7 documentos de formulación en \texttt{sample-run}. & Algunas variantes pueden ser descartadas. \\ \hline
+RF-06 & Cumplido & Selección humana o autoaprobada antes de Reasoner. & La selección afecta cobertura final. \\ \hline
+RF-07 & Cumplido & Reasoner usa \texttt{env\_spec.json} como fuente autoritativa. & Specs pobres limitan el resultado. \\ \hline
+RF-08 & Cumplido & 24 specs JSON y salidas inválidas explícitas. & CASO1 incluye una spec inválida. \\ \hline
+RF-09 & Cumplido & Modelos con \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Puede haber problemas de registro. \\ \hline
+RF-10 & Cumplido & Builder genera tests y ejecuta \texttt{pytest}. & Tests prueban contrato, no validez científica. \\ \hline
+RF-11 & Cumplido & MinIO, PostgreSQL, bundles y modelos registrados. & Requiere servicios centrales activos. \\ \hline
+RF-12 & Cumplido con reservas & MemoryAgent escribe tras aceptación y evals de memoria. & Calidad de extracción depende del artefacto. \\ \hline
+RF-13 & Cumplido & \texttt{pipeline\_state.json}, \texttt{trace.jsonl} y Agrex. & Reanudación exige artefactos presentes. \\ \hline
+\end{tabular}
+\caption{Cierre de requisitos funcionales.}
+\end{center}
+\end{table}
 
-El repositorio incluye un flujo de GitHub Actions llamado \texttt{CI}. Se
-ejecuta en cada \textit{push} a \texttt{main}, en cada \textit{pull request}
-contra \texttt{main} y también de forma manual mediante
-\texttt{workflow\_dispatch}. Además, el flujo cancela ejecuciones antiguas de
-la misma rama cuando llega un \textit{push} nuevo, para que la señal de CI
-corresponda siempre al último commit.
-
-La validación automática tiene cuatro trabajos:
-
-\begin{itemize}
-\item \texttt{Lint + format}: instala \texttt{ruff} con \texttt{uv} y ejecuta
-el linter y el check de formato desde la raíz del repositorio;
-\item \texttt{Tests - shared}: sincroniza dependencias de \texttt{shared} con
-\texttt{uv sync} en modo frozen, incluyendo extras de desarrollo, y ejecuta los
-tests unitarios;
-\item \texttt{Tests - phase1}: sincroniza \texttt{phase1-pablo} y ejecuta sus
-tests unitarios;
-\item \texttt{Tests - phase2}: sincroniza \texttt{phase2-juan} y ejecuta sus
-tests unitarios.
-\end{itemize}
-
-Los jobs de pruebas excluyen marcas de integración, e2e y \texttt{real\_llm},
-porque esas suites dependen de servicios externos o de ejecuciones costosas. El
-flujo diario queda así dividido en dos capas: en cada \textit{push} se ejecuta
-una compuerta rápida de formato, lint y tests unitarios; para cambios de mayor
-riesgo se lanzan evals online o pruebas de integración de forma explícita.
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{1.45cm}|p{1.8cm}|p{6.2cm}|p{2.45cm}|} \hline
+\textbf{Req.} & \textbf{Estado} & \textbf{Evidencia principal} & \textbf{Reserva} \\ \hline
+RNF-01 & Cumplido & Artefactos, trazas, estado y reportes por run. & Auditoría depende de persistencia. \\ \hline
+RNF-02 & Cumplido & Estado persistido y comprobación de artefactos. & No reanuda si faltan objetos. \\ \hline
+RNF-03 & Cumplido & Agentes y subagentes separados por responsabilidad. & Añade coordinación. \\ \hline
+RNF-04 & Cumplido & Fan-out por paradigmas, formulaciones y specs. & Coste crece con ramas. \\ \hline
+RNF-05 & Cumplido & Contrato \texttt{DecisionModel} estable. & Nuevas memorias exigen adaptadores. \\ \hline
+RNF-06 & Cumplido & LLMs, búsqueda, S3, bases de datos y fase 2. & Integra servicios externos. \\ \hline
+RNF-07 & Cumplido & Modo degradado sin Neo4j, Qdrant o embeddings. & Sin memoria avanzada. \\ \hline
+RNF-08 & Cumplido & Tests generados y suite \texttt{full-pipeline}. & Tests no sustituyen expertos. \\ \hline
+RNF-09 & Cumplido & Presupuestos y costes en reportes de evals. & Suites online siguen siendo caras. \\ \hline
+\end{tabular}
+\caption{Cierre de requisitos no funcionales.}
+\end{center}
+\end{table}
 
 \section{Evals y benchmarks}
 
-Además de las pruebas unitarias, el proyecto incluye un arnés de evaluación
-específico para el sistema. Esta parte es importante porque un pipeline basado
-en agentes no se valida solo comprobando que una función devuelve el tipo
-esperado. También hay que comprobar que los agentes se coordinan, que las
-herramientas se invocan cuando corresponde, que la memoria crece sin degradarse
-y que el sistema completo sigue funcionando después de cambios en prompts,
-modelos o infraestructura. Esta necesidad es coherente con trabajos sobre
-agentes de software y sistemas multiagente, donde la evaluación debe cubrir el
-comportamiento del sistema completo y no solo llamadas aisladas
-\cite{qian2024chatdev,yang2024sweagent}.
-
-Las evals se definen como suites YAML en \texttt{evals/suites/}. Cada suite
-declara las etapas que debe ejecutar, los temas de entrada, las aprobaciones
-automáticas necesarias, el presupuesto máximo y las aserciones esperadas. Se
-ejecutan desde la CLI:
-
-\begin{verbatim}
-uv run decisionlab eval run evals/suites/smoke.yaml
-uv run decisionlab eval run evals/suites/full-pipeline.yaml
-\end{verbatim}
-
-El resultado de cada suite se guarda en:
-
-\begin{verbatim}
-evals/reports/<fecha>-<suite>/report.md
-evals/reports/<fecha>-<suite>/report.json
-\end{verbatim}
-
-El informe incluye estado global, temas ejecutados, aserciones superadas o
-fallidas, crecimiento del grafo, escrituras de memoria, duración por etapa,
-latencia de herramientas y coste estimado. Esto permite usar las evals como
-benchmark de regresión: si un cambio mejora un prompt pero empeora la
-canonicalización, la recuperación o la latencia, queda reflejado en el reporte.
-
-\subsection{Evals del sistema multiagente}
-
-Estas evals prueban el flujo de agentes como sistema. Cubren Router, estados,
-subagentes, herramientas, artefactos, aprobación automática en modo eval y salida
-final. Su objetivo no es evaluar una memoria concreta. Comprueban que el pipeline
-se mueve de una etapa a otra y que los artefactos generados son utilizables por
-la siguiente etapa.
+Las evals se definen como suites YAML. Cada suite declara etapas, entradas,
+aprobaciones automáticas, presupuesto máximo y aserciones esperadas. El reporte
+incluye estado, tiempos, costes, crecimiento del grafo, llamadas a herramientas
+y aserciones superadas o fallidas.
 
 \begin{table}[H]
 \begin{center}
-\small
-\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
-\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
-Smoke & Research & Arranque básico del pipeline, éxito de una ejecución y descubrimiento mínimo de paradigmas. \\ \hline
-Full pipeline & Research--Build & Ejecución completa: investigación, formalización, razonamiento, generación de código, importación del modelo y llamada funcional a \texttt{decide}. \\ \hline
+\scriptsize
+\begin{tabular}{|p{3.0cm}|p{3.1cm}|p{6.2cm}|} \hline
+\textbf{Grupo} & \textbf{Suites} & \textbf{Qué valida} \\ \hline
+Pipeline & Smoke, full pipeline & Coordinación de agentes, artefactos compatibles, modelos importables y \texttt{decide} funcional. \\ \hline
+Memoria & Canonicalization, growth, slugs, retrieval & Reutilización de identidad científica, crecimiento controlado y recuperación de paradigmas previos. \\ \hline
+Recuperación offline & Retrieval quality, temporal & Hechos recuperados en top-k, validez temporal y supersesión. \\ \hline
+Corpus cerrado & CASO1 y CASO2 PDF corpus & Descubrimiento, formalización, adaptación y construcción usando solo papers suministrados. \\ \hline
 \end{tabular}
-\caption{Evals del flujo multiagente.}
+\caption{Grupos de evals.}
 \end{center}
 \end{table}
-
-Las aserciones de este bloque miran la salida del pipeline y el comportamiento
-de los agentes:
-
-\begin{verbatim}
-paradigm, min_paradigms, tool_called,
-has_formulation, module_imports,
-decide_returns_action
-\end{verbatim}
-
-Así se cubren fallos que no aparecerían en una prueba unitaria aislada. Por
-ejemplo, una prueba puede verificar que el Router avanza de estado, pero la eval
-completa comprueba que Researcher, Formalizer, Reasoner y Builder producen
-artefactos compatibles entre sí. Del mismo modo, importar el módulo generado y
-llamar a \texttt{decide} ofrece una evidencia ejecutable mínima de que el
-modelo final cumple el contrato esperado.
-
-\subsection{Evals del sistema de memoria}
-
-El segundo grupo de evals se centra en el sistema de memoria y conocimiento:
-Qdrant, Neo4j, PostgreSQL, canonicalización, recuperación, deduplicación,
-crecimiento del grafo y validez temporal. Estas pruebas son distintas porque
-evalúan comportamiento acumulativo entre ejecuciones. No basta con que un agente
-responda bien una vez; la memoria debe seguir siendo útil después de varios runs
-y no debe introducir duplicados, hechos obsoletos o recuperaciones irrelevantes.
-Por eso se evalúan señales propias de recuperación aumentada, memoria a largo
-plazo y grafos de conocimiento
-\cite{lewis2020rag,zhong2023memorybank,packer2023memgpt,hogan2021knowledgegraphs,edge2024graphrag}.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
-\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
-Cumulative growth & Research & Crecimiento acumulativo del grafo en temas relacionados, reutilización de slugs canónicos y control de duplicados. \\ \hline
-Canonicalization & Research & Uso de memoria, reutilización de paradigmas conocidos y detección de fugas de slugs no canónicos. \\ \hline
-Slug accuracy & Research & Tasa de acierto contra un oráculo de slugs, crecimiento por etiqueta y latencia p95 de recuperación. \\ \hline
-Memory retrieval & Research & Recuperación de paradigmas ya presentes en memoria y conservación de relaciones del grafo. \\ \hline
-Retrieval quality & Offline & Calidad directa de recuperación: hechos sembrados deben aparecer en el top-k para consultas semánticas y léxicas. \\ \hline
-Temporal correctness & Offline & Correctitud temporal de memorias: validez por fecha y cadenas de supersesión. \\ \hline
-\end{tabular}
-\caption{Evals del sistema de memoria y conocimiento.}
-\end{center}
-\end{table}
-
-Las aserciones de memoria combinan comprobaciones directas contra
-infraestructura y métricas agregadas de suite:
-
-\begin{verbatim}
-slug_hit_rate, kg_growth_rate, p95_below,
-memory_at_time, supersession_chain_length,
-retrieval_finds
-\end{verbatim}
-
-Esto cubre fallos propios de un sistema de memoria. Una prueba puede verificar
-que \texttt{retrieve\_knowledge} se llama, pero una eval de calidad comprueba
-que devuelve el hecho correcto. Una prueba puede comprobar que un nodo se
-escribe en Neo4j, pero una eval de crecimiento detecta si el sistema empieza a
-crear slugs duplicados para paradigmas ya conocidos. Del mismo modo, la suite
-temporal valida que una memoria supersedida deja de aparecer en consultas
-posteriores, algo que no puede comprobarse mirando solo el último estado del
-grafo.
 
 \subsection{Resultados representativos}
 
-La tabla siguiente resume ejecuciones reales del arnés de evals. No pretende ser
-un benchmark externo comparable con otros sistemas, sino evidencia interna de
-regresión y mejora.
-
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{2.8cm}|p{1.4cm}|p{2.5cm}|p{5.6cm}|} \hline
+\begin{tabular}{|p{2.8cm}|p{1.5cm}|p{2.5cm}|p{5.6cm}|} \hline
 \textbf{Suite} & \textbf{Estado} & \textbf{Tiempo / coste} & \textbf{Evidencia} \\ \hline
 Full pipeline & PASS & 2445.9 s / \$9.30 & Generó modelos, los importó y \texttt{decide} devolvió acciones válidas. \\ \hline
-Retrieval quality & PASS & 22.7 s / \$0.08 & Cuatro consultas recuperaron los hechos esperados en top-k. \\ \hline
-Temporal correctness & PASS & 0.1 s / \$0.00 & Validó presencia/ausencia por fecha y cadena de supersesión de longitud 3. \\ \hline
-Slug accuracy (histórica) & Alerta & 3646.2 s / \$5.08 & Detectó tasa 6/8 frente al umbral 0.80, con crecimiento de paradigmas controlado y p95 bajo 7000 ms. \\ \hline
+Retrieval quality & PASS & 22.7 s / \$0.08 & Cuatro consultas recuperaron hechos esperados en top-k. \\ \hline
+Temporal correctness & PASS & 0.1 s / \$0.00 & Validó presencia, ausencia y cadena de supersesión. \\ \hline
+Slug accuracy histórica & Alerta & 3646.2 s / \$5.08 & Detectó fragmentación de slugs y motivó restricciones de canonicalización. \\ \hline
 \end{tabular}
 \caption{Resultados representativos de evals internas.}
 \end{center}
 \end{table}
 
-En la suite \texttt{full-pipeline}, la ejecución representativa recorrió
-\texttt{research}, \texttt{formalize}, \texttt{reason} y \texttt{build}. El
-reporte registró crecimiento del grafo de 11 a 117 nodos y de 10 a 181
-relaciones, escrituras de memoria en las cuatro etapas y 31 llamadas a
-\texttt{retrieve\_knowledge}. Las aserciones verificaron que aparecían los
-paradigmas \textit{reinforcement-learning} y
-\textit{optimal-foraging-theory}, que existían formulaciones para ambos y que
-los módulos generados se podían importar y ejecutar.
-
-El último caso de la tabla también es útil: se conserva como una alerta
-histórica, no como estado final fallido del pipeline completo. La suite
-\texttt{slug-accuracy} detectó que dos temas relacionados con aprendizaje por
-refuerzo se habían fragmentado en slugs demasiado específicos. Esta señal ayudó
-a justificar la canonicalización, el uso de paradigmas paraguas y la necesidad
-de medir no solo que el agente responda, sino si reutiliza identidad científica
-de forma consistente. Por tanto, el valor de esa fila es explicar una mejora de
-diseño: el arnés hizo visible un problema de identidad semántica que después se
-trataba mediante clasificación, restricciones de salida y revisión de slugs.
-
-El arnés también incorpora límites de presupuesto. Cada suite puede declarar un
-coste máximo estimado; si se supera, la ejecución se corta y el reporte deja
-constancia de ello. Esta restricción es necesaria porque las evals ejecutan
-agentes reales, búsquedas, extracción de memoria y llamadas a modelos. En la
-práctica, las suites baratas se usan como smoke tests frecuentes y las suites
-caras, como \texttt{full-pipeline.yaml}, se reservan para regresiones
-importantes.
-
-El propio arnés cuenta con pruebas automáticas para el parseo de suites YAML, la
-ejecución de etapas, las aserciones, el cálculo de tiempos, los límites de
-presupuesto y la generación de reportes. Esto evita que una eval falle por un
-error del marco de evaluación en lugar de por una regresión del sistema evaluado.
+La fila de \texttt{slug-accuracy} se conserva como alerta histórica. No invalida
+el estado final, pero muestra por qué fue necesario medir identidad científica y
+no solo éxito técnico.
 
 \subsection{Evaluación con corpus cerrado de papers}
 \label{sec:evaluacion-corpus-cerrado}
 
-La evaluación más exigente de la fase 1 se hizo con 2 casos basados en PDFs. En
-cada caso, el sistema solo podía acceder a los papers incluidos en el ZIP de
-entrada. Para simular una búsqueda web controlada, las herramientas
-\texttt{web\_search} y \texttt{search\_papers} devolvían metadatos y snippets
-de esos documentos. Cuando el pipeline necesitaba leer un paper, la herramienta
-de papers devolvía el texto extraído completo.
+La evaluación más exigente se hizo con 2 casos basados en PDFs. En cada caso,
+el sistema solo podía acceder a los papers incluidos en el ZIP de entrada. Un
+LLM juez revisó artefactos congelados con la misma rúbrica: fidelidad al corpus,
+calidad de paradigmas, formulaciones, modelos, memoria, trazabilidad y
+advertencias.
 
-Esta configuración mide algo distinto a una ejecución normal. El objetivo no
-era pedir un paradigma concreto, sino comprobar si el pipeline podía descubrir
-los paradigmas relevantes, proponer formulaciones, razonar sobre un entorno,
-generar modelos y conservar todos los artefactos usando solo un corpus cerrado.
-Después se usó un LLM como juez, con el mismo prompt y la misma rúbrica para los
-2 casos. El juez no participó en la generación de los artefactos. Su papel fue
-revisar el resultado como un evaluador externo: fidelidad al corpus, calidad de
-paradigmas, formulaciones, modelos, memoria, trazabilidad y advertencias.
-
-Esta eval amplía la validación técnica porque separa 2 preguntas. La primera es
-si el sistema termina una ejecución completa y genera código que cumple el
-contrato \texttt{DecisionModel}. La segunda es si los artefactos generados son
-coherentes con los papers de entrada y pueden ser revisados por un experto. La
-primera pregunta se cubre con tests y estado \texttt{PASS}; la segunda se cubre
-con el juez y con el bundle auditable de cada caso.
+Esta prueba separa la validez técnica de la validez científica. La validez
+técnica pregunta si el pipeline termina, registra artefactos, genera modelos y
+ejecuta tests. La validez científica pregunta si los paradigmas y formulaciones
+son fieles al corpus y si un experto podría defender el modelo. Las dos son
+necesarias, pero no equivalentes.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{2.45cm}|>{\raggedright\arraybackslash}p{2.05cm}|>{\raggedright\arraybackslash}p{5.65cm}|} \hline
+\begin{tabular}{|p{3.1cm}|p{4.9cm}|p{4.5cm}|} \hline
+\textbf{Lectura} & \textbf{Qué demuestra} & \textbf{Qué no demuestra} \\ \hline
+PASS técnico & El sistema completa etapas, persiste artefactos y genera modelos ejecutables. & Que el modelo represente perfectamente el paradigma científico. \\ \hline
+Juez externo & Un evaluador separado revisa fidelidad, taxonomía, trazabilidad y reservas. & Que la evaluación sustituya a un experto humano del dominio. \\ \hline
+Aprobado con reservas & Los artefactos son útiles y auditables, pero tienen fallos localizados. & Que el resultado pueda aceptarse sin revisión posterior. \\ \hline
+\end{tabular}
+\caption{Diferencia entre validación técnica y científica.}
+\end{center}
+\end{table}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{1.6cm}|p{3.1cm}|p{2.4cm}|p{5.1cm}|} \hline
 \textbf{Caso} & \textbf{Resultado} & \textbf{Tiempo / coste} & \textbf{Evidencia generada} \\ \hline
-CASO1 & Pipeline: PASS. Juez: aprobado con reservas, 72/100. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs del Reasoner, 15 modelos registrados y KG de 433 nodos y 518 relaciones. \\ \hline
-CASO2 & Pipeline: PASS. Juez: aprobado con reservas, 78/100. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs del Reasoner, 12 modelos registrados y KG de 272 nodos y 352 relaciones. \\ \hline
+CASO1 & Pipeline PASS; juez 72/100, aprobado con reservas. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs, 15 modelos y KG de 433 nodos. \\ \hline
+CASO2 & Pipeline PASS; juez 78/100, aprobado con reservas. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs, 12 modelos y KG de 272 nodos. \\ \hline
 \end{tabular}
-\caption{Resultados de las evals con corpus cerrado de papers.}
+\caption{Resultados de las evals con corpus cerrado.}
 \end{center}
 \end{table}
 
-La evidencia científica se revisó como una cadena de trazabilidad. La tabla
-siguiente no incluye todos los artefactos del bundle, pero muestra el tipo de
-enlace que la eval permite auditar desde el paper hasta el test ejecutable.
-
-\begin{table}[H]
-\begin{center}
-\scriptsize
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.2cm}|>{\raggedright\arraybackslash}p{2.2cm}|>{\raggedright\arraybackslash}p{2.2cm}|>{\raggedright\arraybackslash}p{2.15cm}|>{\raggedright\arraybackslash}p{2.35cm}|>{\raggedright\arraybackslash}p{1.6cm}|} \hline
-\textbf{Caso} & \textbf{Paper} & \textbf{Postulado o mecanismo} & \textbf{Variable o fórmula} & \textbf{Spec, modelo y test} & \textbf{Resultado} \\ \hline
-CASO1 & Rangel 2013 y Rangel 2008 & Elección alimentaria basada en atributos, autocontrol y control habitual o dirigido a objetivo. & Valor, palatabilidad, salud, hambre y fuerza de hábito. & Formulaciones de valor por atributos y control habitual; modelos registrados y tests de Builder. & PASS; juez 72/100. \\ \hline
-CASO1 & Rangel 2008 y referencias citadas sobre DDM & Acumulación de evidencia como mecanismo de elección. & Acumulador, umbral, ruido y regla de decisión. & Specs y modelos DDM; tests generados. & Útil, con reserva por registro. \\ \hline
-CASO2 & Petzschner, Friston, Keramati y Gutkin & Regulación corporal, active inference, predictive coding y HRL. & Drive fisiológico, error de predicción, energía libre y recompensa homeostática. & 12 specs del Reasoner, 12 modelos registrados y 40 llamadas a \texttt{run\_tests}. & PASS; juez 78/100. \\ \hline
-\end{tabular}
-\caption{Matriz condensada de trazabilidad científica en las evals de corpus cerrado.}
-\end{center}
-\end{table}
-
-La rúbrica del juez no redujo la evaluación a una nota global. Revisó criterios
-separados para localizar qué parte del sistema funcionaba y qué parte necesitaba
-revisión humana. La tabla siguiente resume esos criterios.
+El resultado fue positivo, pero no perfecto. Esa lectura es importante: el
+pipeline puede ser técnicamente correcto y aun así requerir revisión científica.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.7cm}|} \hline
-\textbf{Criterio} & \textbf{Qué revisó} & \textbf{Lectura del resultado} \\ \hline
-Fidelidad al corpus & Si los paradigmas y mecanismos aparecen en los PDFs suministrados o en referencias citadas por ellos. & Ambos casos fueron fieles al corpus, con reservas cuando el sistema apoyó parte del razonamiento en fuentes citadas pero no incluidas como PDF. \\ \hline
-Calidad de paradigmas & Si la taxonomía científica era coherente y tenía el nivel de abstracción adecuado. & CASO1 separó bien mecanismos de decisión alimentaria. CASO2 fue útil, pero mostró solapamientos entre homeostasis, HRL, active inference y predictive coding. \\ \hline
-Formulaciones & Si las ecuaciones, variables, parámetros y reglas podían adaptarse a un entorno de simulación. & La mayoría de formulaciones fueron plausibles. Se detectó una spec inválida en CASO1 y mezclas de conceptos entre carpetas en CASO2. \\ \hline
-Modelos generados & Si los ficheros Python registrados exponían \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Los modelos cumplían el contrato a nivel de interfaz. El juez detectó un problema de registro en CASO1 y duplicados de ficheros en CASO2. \\ \hline
-Memoria y trazabilidad & Si el bundle permitía reconstruir la ejecución y revisar nodos, relaciones, artefactos y modelos. & Los bundles fueron ricos y auditables. Las reservas se concentraron en errores de escritura del grafo y endpoints ausentes. \\ \hline
+\begin{tabular}{|p{3.0cm}|p{2.1cm}|p{7.0cm}|} \hline
+\textbf{Reserva} & \textbf{Severidad} & \textbf{Lectura} \\ \hline
+Spec inválida en CASO1 & Alta & Reasoner detectó una formulación que no debía generar modelo aceptado. \\ \hline
+Desajuste de registro en DDM & Alta & El bundle permitió localizar que el registro podía apuntar a clase o test distinto. \\ \hline
+Errores de escritura en KG & Media & Reducen trazabilidad automática, pero no eliminan artefactos ni reportes. \\ \hline
+Solapamiento taxonómico & Media & CASO2 mezcló mecanismos cercanos como homeostasis, HRL y active inference. \\ \hline
+Duplicados de ficheros & Baja & Afectan higiene de revisión, no el contrato ejecutable del modelo. \\ \hline
 \end{tabular}
-\caption{Criterios revisados por el juez en las evals con corpus cerrado.}
+\caption{Reservas detectadas por el juez externo.}
 \end{center}
 \end{table}
 
-El resultado de ambos casos fue positivo, pero no perfecto. Esto es importante:
-el pipeline puede ser técnicamente correcto y aun así necesitar revisión
-científica. En CASO1, el juez detectó una spec inválida
-\path{bayesian-conflict-gated-stochastic-control}, un desajuste de registro
-en un modelo DDM, una ruta de test registrada que no existía y 173 errores de
-escritura en el grafo durante Formalizer y Reasoner. En CASO2, el juez destacó
-solapamientos de taxonomía entre homeostasis, HRL, active inference y
-predictive coding, duplicados de archivos de modelo, endpoints de postulado
-ausentes y 96 errores de endpoint en escritura de grafo.
+Por tanto, ``aprobado con reservas'' debe leerse como señal de utilidad, no
+como certificación científica final. La eval reduce el riesgo de evaluar solo
+que el sistema termina, porque obliga a revisar si los artefactos son fieles al
+corpus y auditables por una persona.
 
-La tabla siguiente clasifica esas reservas para distinguir fallos que invalidan
-un artefacto de fallos que afectan a trazabilidad o reutilización futura.
-
-\begin{table}[H]
-\begin{center}
-\scriptsize
-\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{3cm}|>{\raggedright\arraybackslash}p{2.2cm}|} \hline
-\textbf{Reserva} & \textbf{Severidad} & \textbf{Efecto} & \textbf{Mitigación} & \textbf{Estado} \\ \hline
-Spec inválida en CASO1 & Alta & No debe generar un modelo aceptado para esa formulación. & Reasoner marca \texttt{status: "invalid"} y conserva problemas explícitos. & Requiere revisión experta. \\ \hline
-Desajuste de registro en DDM & Alta & Puede apuntar a una clase o test distinto al esperado. & Bundle conserva modelo, test, rutas y fila de base de datos para auditar el fallo. & Detectado por juez. \\ \hline
-Errores de escritura en KG & Media & Reducen trazabilidad automática, pero no borran artefactos en MinIO ni filas de PostgreSQL. & Snapshots, reportes y conteos por etapa permiten localizar endpoints fallidos. & Limitación conocida. \\ \hline
-Solapamiento taxonómico & Media & Puede mezclar paradigmas, mecanismos y formulaciones relacionadas. & Revisión humana de paradigmas y formulaciones antes de aceptar memoria. & Necesita experto. \\ \hline
-Duplicados de ficheros & Baja & Puede dificultar reinyección o revisión manual. & La tabla de modelos registrados conserva la ruta considerada canónica. & Higiene pendiente. \\ \hline
-\end{tabular}
-\caption{Severidad y mitigación de las reservas detectadas por el juez.}
-\end{center}
-\end{table}
-
-Por tanto, el veredicto aprobado con reservas debe leerse como una señal de
-utilidad, no como una certificación científica final. La señal positiva es que,
-con un corpus cerrado, el sistema produjo paradigmas, formulaciones, modelos,
-tests, snapshots del grafo y reportes que un evaluador separado pudo revisar. La
-señal negativa es que esa revisión encontró errores reales de taxonomía,
-registro y trazabilidad. Por eso, esta eval reduce el riesgo de evaluar solo la
-ejecución técnica, pero no sustituye a una validación experta de los modelos
-generados.
-
-Las rutas versionadas de estas evidencias son:
-
-\begin{small}
-\begin{itemize}
-\item \path{phase1-pablo/evals/reports/2026-06-29-caso1-pdf-corpus};
-\item \path{phase1-pablo/evals/reports/2026-06-29-caso2-pdf-corpus};
-\item \path{phase1-pablo/evals/judge-reports/2026-06-29-caso1-llm-judge.md};
-\item \path{phase1-pablo/evals/judge-reports/2026-06-29-caso2-llm-judge.md};
-\item \path{phase1-pablo/evals/infra-snapshots/2026-06-29-pdf-corpus-evals.json}.
-\end{itemize}
-\end{small}
+Las reservas también orientan trabajo futuro. La spec inválida muestra que el
+Reasoner debe poder rechazar una formulación en lugar de forzar código. El
+desajuste de registro muestra que no basta con generar ficheros: hay que auditar
+la ruta que se registra como modelo canónico. Los errores del grafo muestran que
+MinIO y PostgreSQL deben conservar evidencia aunque falle una escritura de
+Neo4j. El solapamiento taxonómico muestra que la revisión humana sigue siendo
+necesaria en paradigmas cercanos.
 
 \section{Pruebas técnicas}
 
-\subsection{Pruebas del Builder}
-
-El Builder genera tanto el modelo como sus pruebas. Después ejecuta las pruebas
-mediante:
+El Builder genera tanto el modelo como sus pruebas. Después ejecuta:
 
 \begin{verbatim}
 uv run pytest
 \end{verbatim}
 
-El objetivo es verificar que el modelo respeta el contrato esperado:
-
-\begin{itemize}
-\item \texttt{decide} devuelve una acción válida;
-\item \texttt{update} modifica el estado después de recibir recompensa;
-\item \texttt{get\_state} expone variables internas serializables;
-\item el modelo puede ejecutarse con percepciones del entorno.
-\end{itemize}
-
-\subsection{Pruebas de trazabilidad}
-
-Cada ejecución conserva artefactos y trazas. Esto permite comprobar qué
-herramientas se usaron, qué archivos se generaron y qué decisiones se tomaron en
-cada etapa.
-
-\begin{verbatim}
-pipeline_state.json
-trace.jsonl
-report.md
-formulations/*.md
-reasoner/*.json
-builder/*_model.py
-builder/test_*.py
-\end{verbatim}
+Las pruebas comprueban que \texttt{decide} devuelve acciones válidas, que
+\texttt{update} concentra la mutación de estado y que \texttt{get\_state}
+expone datos serializables. Además, cada ejecución conserva
+\texttt{pipeline\_state.json}, \texttt{trace.jsonl}, informes, specs, modelos y
+tests para auditoría.
 
 \section{Amenazas a la validez}
-
-La validación del sistema debe leerse con cautela. Las pruebas y evals muestran
-que el pipeline funciona y produce artefactos auditables, pero no convierten cada
-modelo generado en una validación científica definitiva.
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{4.9cm}|>{\raggedright\arraybackslash}p{4.5cm}|} \hline
+\begin{tabular}{|p{3cm}|p{4.9cm}|p{4.5cm}|} \hline
 \textbf{Amenaza} & \textbf{Riesgo} & \textbf{Mitigación aplicada} \\ \hline
-Validez científica & Un modelo puede compilar y pasar tests sin representar de forma fiel el paradigma psicológico. & Revisión humana, juez externo con rúbrica y separación entre PASS técnico y aprobado con reservas. \\ \hline
-Validez interna & Los modelos de lenguaje no son deterministas y pueden variar con prompts, proveedor o contexto. & Suites versionadas, reportes JSON, trazas, costes, tiempos y bundles reproducibles. \\ \hline
-Validez externa & Solo se ejecutaron 2 casos con corpus cerrado de papers. & Los casos cubren dominios distintos, pero se declaran como evidencia interna y no como benchmark externo. \\ \hline
-Validez de construcción & El juez LLM puede compartir sesgos con el sistema generador. & El juez no participa en la generación y revisa artefactos congelados con una rúbrica explícita. \\ \hline
-Reproducibilidad & Las ejecuciones completas dependen de servicios, modelos remotos y presupuesto. & Snapshots de infraestructura, rutas versionadas, límites de coste y conservación de artefactos en MinIO y PostgreSQL. \\ \hline
+Validez científica & Un modelo puede pasar tests sin representar bien el paradigma. & Revisión humana y juez externo con rúbrica. \\ \hline
+Validez interna & Los LLMs pueden variar con prompts, proveedor o contexto. & Suites versionadas, reportes JSON, costes y trazas. \\ \hline
+Validez externa & Solo se ejecutaron 2 casos con corpus cerrado. & Se declaran como evidencia interna, no benchmark externo. \\ \hline
+Validez de construcción & El juez LLM puede compartir sesgos con el sistema. & El juez revisa artefactos congelados y no participa en generación. \\ \hline
+Reproducibilidad & Las ejecuciones completas dependen de servicios y presupuesto. & Bundles, snapshots y rutas versionadas. \\ \hline
 \end{tabular}
-\caption{Amenazas a la validez y mitigaciones aplicadas.}
+\caption{Amenazas a la validez y mitigaciones.}
 \end{center}
 \end{table}
-
-La principal limitación pendiente es la comparación externa. La memoria muestra
-regresiones internas, calidad de recuperación, crecimiento de memoria y evals con
-corpus cerrado. Sin embargo, aún no compara de forma sistemática los modelos
-generados contra implementaciones manuales ni contra resultados experimentales
-esperados. Esa comparación queda como trabajo futuro porque exige criterio
-experto y escenarios científicos de referencia.

@@ -1,268 +1,151 @@
 \chapter{Especificación de requisitos}
 
-Este capítulo define el alcance funcional de la fase 1 del laboratorio virtual.
-La especificación se centra en el sistema desarrollado en esta fase:
-el pipeline que transforma descripciones de problemas de decisión en modelos
-Python ejecutables. Se incluye también la infraestructura compartida que esta
-fase utiliza para persistencia, artefactos y memoria, pero no se describen
-detalles internos de la fase de simulación.
+Este capítulo define qué debe hacer la fase 1 del laboratorio virtual. La
+especificación se centra en el pipeline que transforma problemas de decisión en
+modelos Python ejecutables, y solo incluye la fase de simulación como sistema
+consumidor del contrato generado.
 
-\section{Alcance y actores}
-
-\subsection{Actores del sistema}
-
-Aunque el sistema está construido alrededor de agentes de lenguaje, desde el
-punto de vista de requisitos conviene distinguir entre usuarios humanos,
-componentes automáticos e infraestructura.
+\section{Actores}
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3.2cm}|p{9.4cm}|} \hline
-\textbf{Actor} & \textbf{Descripción} \\ \hline
-Usuario investigador & Persona que inicia una ejecución, revisa artefactos, selecciona paradigmas o formulaciones y decide qué modelos quedan aceptados. \\ \hline
-Router & Coordinador determinista del pipeline. Mantiene el estado, decide la siguiente etapa, solicita revisión humana y activa memoria cuando corresponde. \\ \hline
-Agentes de fase 1 & Classifier, Researcher, DeepResearcher, Formalizer, Reasoner, Builder y MemoryAgent. Cada uno resuelve una parte acotada del proceso. \\ \hline
-Infraestructura compartida & Servicios comunes del repositorio: PostgreSQL, MinIO, Neo4j, Qdrant, embeddings y reranking. La fase 1 los usa mediante el contenedor \texttt{Services}. \\ \hline
-Laboratorio virtual consumidor & Sistema que carga modelos aceptados mediante el contrato \texttt{DecisionModel}. Para esta memoria solo importa el contrato, no su implementación interna. \\ \hline
-Proveedor de modelos y búsqueda & Servicios externos de modelos de lenguaje, búsqueda web o búsqueda académica usados por los agentes. \\ \hline
+\begin{tabular}{|p{3.2cm}|p{9.3cm}|} \hline
+\textbf{Actor} & \textbf{Responsabilidad} \\ \hline
+Usuario investigador & Inicia ejecuciones, revisa artefactos, selecciona paradigmas o formulaciones y acepta modelos. \\ \hline
+Router & Coordina el pipeline, conserva estado, decide la siguiente etapa y solicita revisión humana. \\ \hline
+Agentes de fase 1 & Investigan, formalizan, adaptan, construyen, prueban y escriben memoria. \\ \hline
+Infraestructura compartida & Proporciona PostgreSQL, MinIO, Neo4j, Qdrant, embeddings y reranking. \\ \hline
+Laboratorio virtual consumidor & Carga modelos aprobados mediante el contrato \texttt{DecisionModel}. \\ \hline
+Proveedores externos & Ejecutan modelos de lenguaje, búsqueda web, búsqueda académica o embeddings. \\ \hline
 \end{tabular}
-\caption{Actores y componentes externos relevantes para la fase 1.}
+\caption{Actores de la fase 1.}
 \end{center}
 \end{table}
 
-\section{Requisitos del sistema}
+\section{Casos de uso}
 
-\subsection{Requisitos funcionales}
+La Figura~\ref{fig:req-use-cases} resume los casos de uso observables. El
+detalle interno de agentes se describe en diseño; en requisitos importa qué
+puede pedir o revisar el usuario.
 
-Los requisitos funcionales describen las capacidades que el sistema debe ofrecer
-para cubrir el flujo completo desde una descripción inicial hasta modelos
-registrables y reutilizables.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth,height=0.48\textheight,keepaspectratio]{figuras/phase1-interface-use-cases}
+\caption{Casos de uso principales de la fase 1.}
+\label{fig:req-use-cases}
+\end{figure}
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{2cm}|p{10.4cm}|} \hline
-\textbf{Código} & \textbf{Descripción} \\ \hline
-RF-01 & Permitir iniciar una ejecución a partir de una descripción en lenguaje natural de un problema de toma de decisiones. \\ \hline
-RF-02 & Clasificar el problema frente a paradigmas canónicos conocidos antes de iniciar la investigación amplia. \\ \hline
-RF-03 & Consultar conocimiento persistente de ejecuciones previas cuando la infraestructura de memoria esté disponible. \\ \hline
-RF-04 & Identificar paradigmas científicos relevantes y generar un informe de investigación persistente. \\ \hline
-RF-05 & Lanzar informes profundos por paradigma para conservar fundamentos, postulados, variables, supuestos, predicciones y referencias. \\ \hline
-RF-06 & Solicitar revisión humana de los paradigmas descubiertos antes de continuar. \\ \hline
-RF-07 & Generar formulaciones matemáticas alternativas para cada paradigma aprobado. \\ \hline
-RF-08 & Permitir que el usuario seleccione qué formulaciones pasan a adaptación ambiental. \\ \hline
-RF-09 & Recibir una especificación JSON del entorno de simulación y guardarla como artefacto de la ejecución. \\ \hline
-RF-10 & Adaptar formulaciones seleccionadas al entorno y producir especificaciones JSON implementables por el Builder. \\ \hline
-RF-11 & Validar que las especificaciones del Reasoner usan acciones, percepciones y variables compatibles con el entorno. \\ \hline
-RF-12 & Generar modelos Python autocontenidos que implementen \texttt{decide}, \texttt{update} y \texttt{get\_state}. \\ \hline
-RF-13 & Generar pruebas ejecutables asociadas a cada modelo producido. \\ \hline
-RF-14 & Ejecutar pruebas automáticas sobre los modelos generados y registrar el resultado. \\ \hline
-RF-15 & Permitir revisión humana de los modelos y rutas de nueva ejecución hacia Reasoner o Builder según el tipo de problema detectado. \\ \hline
-RF-16 & Registrar modelos aprobados en PostgreSQL con referencias a los artefactos almacenados en MinIO. \\ \hline
-RF-17 & Escribir memoria persistente solo a partir de artefactos aceptados tras revisión humana. \\ \hline
-RF-18 & Mantener trazas de herramientas, estado del pipeline y artefactos suficientes para auditar o reanudar la ejecución. \\ \hline
+\begin{tabular}{|p{2cm}|p{4.6cm}|p{5.8cm}|} \hline
+\textbf{Caso} & \textbf{Actor principal} & \textbf{Resultado} \\ \hline
+CU-01 & Usuario investigador & Iniciar una ejecución desde una descripción del problema. \\ \hline
+CU-02 & Usuario investigador & Revisar paradigmas y decidir cuáles continúan. \\ \hline
+CU-03 & Usuario investigador & Seleccionar formulaciones matemáticas útiles. \\ \hline
+CU-04 & Reasoner & Adaptar formulaciones al entorno de simulación. \\ \hline
+CU-05 & Builder & Generar modelo, pruebas y resultado de validación. \\ \hline
+CU-06 & MemoryAgent & Registrar conocimiento aceptado para reutilización futura. \\ \hline
 \end{tabular}
-\caption{Requisitos funcionales de la fase 1.}
+\caption{Resumen de casos de uso.}
 \end{center}
 \end{table}
 
-\subsection{Priorización de requisitos}
-
-La priorización se realizó como criterio interno de alcance: requisitos
-imprescindibles para la fase 1, requisitos importantes para robustez y
-requisitos convenientes que mejoran la calidad acumulativa del sistema.
+\section{Requisitos funcionales}
 
 \begin{table}[H]
 \begin{center}
-\small
-\begin{tabular}{|p{2.1cm}|p{7.6cm}|p{2.2cm}|} \hline
-\textbf{Código} & \textbf{Resumen} & \textbf{Prioridad} \\ \hline
-RF-01, RF-04, RF-07, RF-09, RF-10, RF-12, RF-13 & Flujo mínimo desde problema hasta modelo y pruebas. & Must \\ \hline
-RF-06, RF-08, RF-11, RF-14, RF-15, RF-16, RF-18 & Revisión, validación, registro y trazabilidad. & Must \\ \hline
-RF-02, RF-03, RF-05, RF-17 & Calidad científica, canonicalización y memoria tras aceptación. & Should \\ \hline
-Memoria avanzada, CRAG, consolidación, coste y latencia & Mejoras de calidad, mantenimiento y evaluación acumulativa. & Could \\ \hline
+\scriptsize
+\begin{tabular}{|p{1.45cm}|p{9.5cm}|p{1.7cm}|} \hline
+\textbf{Código} & \textbf{Requisito} & \textbf{Prioridad} \\ \hline
+RF-01 & Iniciar una ejecución desde una descripción en lenguaje natural. & Must \\ \hline
+RF-02 & Clasificar el problema frente a paradigmas canónicos antes de investigar. & Should \\ \hline
+RF-03 & Identificar paradigmas científicos y generar informes persistentes. & Must \\ \hline
+RF-04 & Solicitar revisión humana antes de formalizar paradigmas. & Must \\ \hline
+RF-05 & Generar formulaciones matemáticas alternativas para cada paradigma aprobado. & Must \\ \hline
+RF-06 & Permitir que el usuario seleccione formulaciones para adaptación ambiental. & Must \\ \hline
+RF-07 & Recibir una especificación de entorno y usarla como fuente autoritativa. & Must \\ \hline
+RF-08 & Producir specs JSON implementables o informes de invalidación. & Must \\ \hline
+RF-09 & Generar modelos Python con \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Must \\ \hline
+RF-10 & Generar y ejecutar pruebas automáticas para cada modelo. & Must \\ \hline
+RF-11 & Registrar modelos aprobados y artefactos en almacenamiento persistente. & Must \\ \hline
+RF-12 & Escribir memoria solo desde artefactos aceptados tras revisión humana. & Should \\ \hline
+RF-13 & Mantener trazas y estado suficientes para auditar o reanudar la ejecución. & Must \\ \hline
 \end{tabular}
-\caption{Priorización de requisitos funcionales.}
+\caption{Requisitos funcionales con prioridad integrada.}
 \end{center}
 \end{table}
 
-\section{Casos de uso representativos}
-
-Los casos de uso siguientes resumen las interacciones principales. No pretenden
-enumerar cada llamada interna, sino los flujos observables que justifican el
-diseño del sistema.
+\section{Requisitos no funcionales}
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-01} & \textbf{Iniciar una ejecución del pipeline} \\ \hline
-Actor principal & Usuario investigador. \\ \hline
-Precondiciones & PostgreSQL y MinIO están disponibles; existe configuración de modelo de lenguaje. \\ \hline
-Flujo básico & 1. El usuario proporciona una descripción del problema. 2. El sistema crea un \texttt{run}. 3. El Router inicializa el estado y lanza la clasificación e investigación. 4. Los artefactos se guardan en rutas asociadas al \texttt{run\_id}. \\ \hline
-Postcondiciones & Existe una ejecución trazable con estado, prefijo de artefactos y primeras salidas de investigación. \\ \hline
-\end{tabular}
-\caption{CU-01: iniciar una ejecución.}
-\end{center}
-\end{table}
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-02} & \textbf{Revisar paradigmas investigados} \\ \hline
-Actor principal & Usuario investigador. \\ \hline
-Precondiciones & Researcher y DeepResearcher generaron informe general e informes profundos. \\ \hline
-Flujo básico & 1. El sistema muestra los paradigmas candidatos. 2. El usuario aprueba, rechaza o solicita completar investigación. 3. El Router guarda la decisión. 4. Solo los paradigmas aprobados pasan a formalización. \\ \hline
-Postcondiciones & La fase siguiente recibe una lista acotada de paradigmas aprobados. Si hay memoria disponible, el artefacto aceptado puede escribirse en el Knowledge Backbone. \\ \hline
-\end{tabular}
-\caption{CU-02: revisión de investigación.}
-\end{center}
-\end{table}
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-03} & \textbf{Seleccionar formulaciones matemáticas} \\ \hline
-Actor principal & Usuario investigador. \\ \hline
-Precondiciones & Formalizer produjo varias formulaciones por paradigma aprobado. \\ \hline
-Flujo básico & 1. El usuario revisa variables, parámetros, ecuaciones y lógica de decisión. 2. Selecciona las formulaciones que considera científicamente útiles. 3. El sistema convierte la selección en slugs estables. 4. Reasoner recibe solo esas formulaciones. \\ \hline
-Postcondiciones & Se reduce la ambigüedad antes de adaptar el modelo al entorno. \\ \hline
-\end{tabular}
-\caption{CU-03: selección de formulaciones.}
-\end{center}
-\end{table}
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-04} & \textbf{Adaptar una formulación al entorno} \\ \hline
-Actor principal & Reasoner, con entrada del usuario. \\ \hline
-Precondiciones & Hay formulaciones seleccionadas y el usuario aporta un \texttt{env\_spec.json}. \\ \hline
-Flujo básico & 1. Reasoner lee informe profundo, formulación y especificación del entorno. 2. Comprueba acciones, percepciones, recompensas y recursos. 3. Genera una especificación JSON para Builder o un informe de invalidación. \\ \hline
-Postcondiciones & Existen specs implementables en \texttt{reasoner/} o informes de problemas concretos. \\ \hline
-\end{tabular}
-\caption{CU-04: adaptación al entorno.}
-\end{center}
-\end{table}
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-05} & \textbf{Generar y validar un modelo} \\ \hline
-Actor principal & Builder. \\ \hline
-Precondiciones & Existe una spec JSON aprobada. \\ \hline
-Flujo básico & 1. Builder valida implementabilidad. 2. Escribe el modelo Python y sus tests. 3. Ejecuta \texttt{uv run pytest}. 4. Corrige fallos dentro del límite de intentos. 5. Devuelve resultados para revisión. \\ \hline
-Postcondiciones & El modelo cumple el contrato \texttt{DecisionModel} o queda registrado un informe de invalidación. \\ \hline
-\end{tabular}
-\caption{CU-05: generación y validación de modelo.}
-\end{center}
-\end{table}
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3cm}|p{9.4cm}|} \hline
-\textbf{CU-06} & \textbf{Registrar conocimiento aceptado} \\ \hline
-Actor principal & MemoryAgent. \\ \hline
-Precondiciones & Un artefacto de una etapa fue aceptado por revisión humana y la infraestructura de memoria está disponible. \\ \hline
-Flujo básico & 1. MemoryAgent extrae nodos, relaciones y hechos. 2. Canonicaliza slugs nuevos cuando procede. 3. Escribe estructura en Neo4j y hechos en Qdrant. 4. Registra ciclo de vida, confianza y validez en PostgreSQL. \\ \hline
-Postcondiciones & El conocimiento aceptado queda disponible para recuperación en ejecuciones futuras. \\ \hline
-\end{tabular}
-\caption{CU-06: escritura de memoria aceptada.}
-\end{center}
-\end{table}
-
-\section{Requisitos no funcionales e interfaces}
-
-\subsection{Requisitos no funcionales}
-
-Los requisitos no funcionales se centran en trazabilidad, robustez,
-mantenibilidad y separación entre fases.
-
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{2cm}|p{10.4cm}|} \hline
-\textbf{Código} & \textbf{Descripción} \\ \hline
-RNF-01 & Trazabilidad: cada ejecución debe conservar estado, artefactos y trazas de herramientas. \\ \hline
-RNF-02 & Reanudación: el sistema debe poder continuar una ejecución desde el estado persistido. \\ \hline
+\begin{tabular}{|p{1.6cm}|p{10.8cm}|} \hline
+\textbf{Código} & \textbf{Requisito} \\ \hline
+RNF-01 & Trazabilidad: cada ejecución debe conservar estado, artefactos, herramientas y decisiones. \\ \hline
+RNF-02 & Reanudación: el sistema debe continuar desde estado persistido si los artefactos existen. \\ \hline
 RNF-03 & Modularidad: cada agente debe tener una responsabilidad clara y entradas acotadas. \\ \hline
-RNF-04 & Degradación controlada: la generación principal debe seguir funcionando aunque falten servicios opcionales de memoria. \\ \hline
-RNF-05 & Validación ejecutable: los modelos generados deben acompañarse de pruebas automáticas. \\ \hline
-RNF-06 & Separación de fases: la salida de esta fase debe integrarse con el laboratorio virtual mediante duck typing, sin acoplamiento rígido. \\ \hline
-RNF-07 & Persistencia auditable: los artefactos completos deben conservarse fuera del contexto conversacional del modelo. \\ \hline
-RNF-08 & Control de coste: las evals deben poder declarar presupuestos máximos para evitar ejecuciones no acotadas. \\ \hline
-RNF-09 & Mantenibilidad: la infraestructura debe inyectarse mediante \texttt{Services} y no mediante estado global compartido. \\ \hline
+RNF-04 & Escalabilidad: el fan-out por paradigmas, formulaciones y specs debe poder ejecutarse sin bloquear el pipeline completo. \\ \hline
+RNF-05 & Extensibilidad: añadir agentes, herramientas o tipos de memoria no debe cambiar el contrato del modelo generado. \\ \hline
+RNF-06 & Interoperabilidad: el sistema debe integrarse con modelos de lenguaje, búsqueda, almacenamiento S3, bases de datos y el laboratorio consumidor. \\ \hline
+RNF-07 & Degradación controlada: la generación principal debe seguir funcionando sin servicios opcionales de memoria. \\ \hline
+RNF-08 & Validación ejecutable: cada modelo aceptado debe acompañarse de pruebas. \\ \hline
+RNF-09 & Control de coste: las evals deben poder declarar presupuestos máximos. \\ \hline
 \end{tabular}
-\caption{Requisitos no funcionales de la fase 1.}
+\caption{Requisitos no funcionales.}
 \end{center}
 \end{table}
 
-\subsection{Información almacenada}
+\section{Interoperabilidad}
 
-El sistema almacena información en varias capas. Esta separación sigue la lógica
-de los sistemas de recuperación aumentada y de memoria externa: los artefactos
-completos se conservan como fuente auditable, los hechos se indexan para
-recuperación densa y léxica, y las relaciones se mantienen en un grafo de
-conocimiento
-\cite{lewis2020rag,karpukhin2020dpr,robertson2009bm25,hogan2021knowledgegraphs,zhong2023memorybank,packer2023memgpt}.
+La fase 1 se integra con otros sistemas mediante interfaces explícitas:
 
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3cm}|p{9.5cm}|} \hline
-\textbf{Sistema} & \textbf{Información almacenada} \\ \hline
-MinIO & Informes, deep reports, formulaciones, especificaciones, código generado, pruebas, estado del pipeline y trazas. \\ \hline
-PostgreSQL & Ejecuciones, metadatos de artefactos, modelos registrados, \texttt{pipeline\_memories}, \texttt{node\_run\_observations} y ciclo de vida de memorias. En el esquema compartido también existen \texttt{simulation\_observations}, que pueden recuperarse como contexto externo. \\ \hline
-Neo4j & Paradigmas, papers, autores, variables, postulados, formulaciones, modelos y relaciones científicas. \\ \hline
-Qdrant & Hechos de memoria indexados mediante embeddings densos y BM25 nativo. \\ \hline
+\begin{tabular}{|p{3.2cm}|p{6.2cm}|p{2.5cm}|} \hline
+\textbf{Sistema} & \textbf{Interfaz requerida} & \textbf{Requisito} \\ \hline
+Laboratorio virtual & Contrato \texttt{DecisionModel}. & RNF-06 \\ \hline
+Modelos de lenguaje & APIs de proveedor y salidas estructuradas. & RNF-06 \\ \hline
+Búsqueda y papers & Herramientas de consulta y lectura controlada. & RF-03 \\ \hline
+Persistencia & PostgreSQL y almacenamiento S3-compatible. & RF-11 \\ \hline
+Memoria avanzada & Neo4j, Qdrant, embeddings y reranking. & RF-12 \\ \hline
 \end{tabular}
-\caption{Información persistida por el sistema.}
+\caption{Interfaces de interoperabilidad.}
 \end{center}
 \end{table}
 
-\subsection{Interfaces con otros sistemas}
+\section{Plan de contingencia}
 
-La fase desarrollada se comunica con:
-
-\begin{itemize}
-\item proveedores de modelos de lenguaje;
-\item servicios de búsqueda web o académica;
-\item infraestructura compartida del repositorio;
-\item herramientas de ejecución de pruebas;
-\item el laboratorio virtual consumidor, mediante el contrato de modelo generado.
-\end{itemize}
-
-La interfaz más relevante con la segunda fase es el contrato
-\texttt{DecisionModel}. Este contrato evita que los modelos generados dependan
-de clases internas del simulador:
-
-\begin{lstlisting}[language=Python]
-def decide(self, perception: dict) -> Action
-def update(self, action, reward, new_perception) -> None
-def get_state(self) -> dict
-\end{lstlisting}
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{4.6cm}|p{4.6cm}|} \hline
+\textbf{Riesgo} & \textbf{Señal} & \textbf{Respuesta} \\ \hline
+Fallo de PostgreSQL o MinIO & No se puede crear run o guardar artefactos. & Detener ejecución y restaurar servicios antes de continuar. \\ \hline
+Fallo de Neo4j o Qdrant & No hay recuperación o escritura de memoria. & Continuar en modo degradado y registrar la limitación. \\ \hline
+Coste excesivo de evals & La suite supera presupuesto declarado. & Cortar ejecución y conservar reporte parcial. \\ \hline
+Salida LLM inválida & JSON incompleto, spec no implementable o test fallido. & Reintentar etapa acotada o devolver invalidación explícita. \\ \hline
+Ambigüedad científica & Paradigma o formulación dudosa. & Solicitar revisión humana antes de aceptar memoria o generar código. \\ \hline
+\end{tabular}
+\caption{Plan mínimo de contingencia.}
+\end{center}
+\end{table}
 
 \section{Trazabilidad}
 
-La tabla siguiente resume cómo se conectan los objetivos de la fase 1 con los
-requisitos y con las evidencias de validación disponibles en el repositorio.
-
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3.1cm}|p{3.1cm}|p{6.1cm}|} \hline
+\begin{tabular}{|p{3cm}|p{3.1cm}|p{6.2cm}|} \hline
 \textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
-Investigar paradigmas relevantes & RF-02 a RF-06 & Informes profundos del \texttt{sample-run}, tests de Researcher y suites \texttt{smoke}, \texttt{slug-accuracy}. \\ \hline
-Formalizar modelos matemáticos & RF-07 y RF-08 & Formulaciones del \texttt{sample-run} y tests de Formalizer. \\ \hline
-Adaptar al entorno & RF-09 a RF-11 & Specs JSON del \texttt{sample-run} y fixture de entorno grid 10x10. \\ \hline
-Generar código ejecutable & RF-12 a RF-15 & Modelos y tests del \texttt{sample-run}; suite \texttt{full-pipeline}. \\ \hline
-Persistir y reutilizar conocimiento & RF-16 a RF-18 & Tablas compartidas, MemoryAgent, suites \texttt{retrieval-quality} y \texttt{temporal-correctness}. \\ \hline
+Investigar & RF-02 a RF-04 & Informes del \texttt{sample-run} y evals de investigación. \\ \hline
+Formalizar & RF-05 y RF-06 & Formulaciones versionadas y pruebas de Formalizer. \\ \hline
+Adaptar & RF-07 y RF-08 & Specs JSON y validaciones del Reasoner. \\ \hline
+Construir & RF-09 y RF-10 & Modelos, tests y suite \texttt{full-pipeline}. \\ \hline
+Persistir y reutilizar & RF-11 a RF-13 & Artefactos, trazas, memoria y evals de recuperación. \\ \hline
 \end{tabular}
 \caption{Trazabilidad entre objetivos, requisitos y evidencias.}
 \end{center}

@@ -1,0 +1,621 @@
+\chapter[Material extendido]{Material extendido de diseño, desarrollo y evaluación}
+\label{ap:material-extendido}
+
+Este anexo conserva el detalle que se retiró del cuerpo principal para cumplir
+el límite de páginas. El cuerpo mantiene la línea argumental y las decisiones
+centrales. Este anexo permite revisar el razonamiento completo sin cargar los
+capítulos de diseño, desarrollo y pruebas.
+
+\section{Diseño extendido del pipeline}
+\label{ap:diseno-extendido}
+
+El problema de diseño no consiste solo en generar código. El sistema debe
+transformar conocimiento científico en comportamiento simulado. Esa
+transformación exige varios cambios de representación: investigación,
+formulación matemática, adaptación al entorno, generación de código y
+validación.
+
+Cada cambio reduce ambigüedad. La investigación decide qué marcos científicos
+son relevantes. La formalización convierte esos marcos en variables, parámetros
+y ecuaciones. El Reasoner adapta esas ecuaciones a acciones y percepciones
+disponibles. El Builder traduce la especificación a código ejecutable y tests.
+Separar estas etapas permite saber si un fallo procede de una fuente
+bibliográfica, de una formulación incoherente, de una adaptación imposible o de
+un error de implementación.
+
+\subsection{Router y control de estados}
+
+El Router coordina el pipeline mediante una máquina de estados explícita. No se
+dejó esta decisión a un planificador conversacional, porque la ejecución tenía
+que ser reanudable, auditable y compatible con revisión humana.
+
+El Router conserva el estado del pipeline. Ese estado incluye la etapa actual,
+los paradigmas aprobados, las formulaciones seleccionadas, las specs aprobadas
+y los artefactos registrados. También emite eventos de traza para reconstruir
+herramientas llamadas, tiempos, errores y artefactos producidos.
+
+Las etapas de memoria son condicionales. Se ejecutan cuando Neo4j, Qdrant y los
+servicios de embeddings están disponibles. Si esos servicios fallan, el
+pipeline puede seguir generando modelos en modo degradado. En cambio,
+PostgreSQL y MinIO son centrales: sin ellos no hay persistencia fiable de
+estado ni de artefactos.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{4.8cm}|p{4.6cm}|} \hline
+\textbf{Decisión} & \textbf{Motivo} & \textbf{Efecto en el sistema} \\ \hline
+Máquina de estados & Evitar que el orden de ejecución dependa de una respuesta LLM. & Reanudación, depuración y trazabilidad. \\ \hline
+Estado persistido & No confiar en la memoria conversacional. & Recuperación tras interrupciones. \\ \hline
+Rutas de corrección & Volver solo a la etapa responsable del error. & Menos coste y menos repetición innecesaria. \\ \hline
+Memoria condicional & No bloquear la generación por servicios opcionales. & Degradación controlada. \\ \hline
+\end{tabular}
+\caption{Motivos del diseño del Router.}
+\end{center}
+\end{table}
+
+\subsection{Agentes y subagentes}
+
+El sistema usa agentes principales y subagentes porque cada etapa tiene una
+unidad natural de trabajo. Un paradigma puede investigarse sin cargar todos los
+demás. Una formulación puede adaptarse sin mezclar su contexto con otras. Una
+spec puede implementarse sin leer todo el historial del pipeline.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{4.6cm}|p{4.7cm}|} \hline
+\textbf{Etapa} & \textbf{Agente principal} & \textbf{Subagentes} \\ \hline
+Researcher & Descubre candidatos y sintetiza el informe global. & DeepResearchers, uno por paradigma. \\ \hline
+Formalizer & Reparte paradigmas aprobados y registra formulaciones. & Un subagente por paradigma. \\ \hline
+Reasoner & Empareja formulaciones con el entorno. & Un subagente por paradigma y selección. \\ \hline
+Builder & Reparte specs aprobadas y registra modelos. & Un subagente por spec implementable. \\ \hline
+\end{tabular}
+\caption{Patrón de agente principal y subagentes.}
+\end{center}
+\end{table}
+
+Esta división controla la ventana de contexto. El agente padre conserva
+resúmenes y rutas de artefactos. Cada subagente recibe solo los ficheros que
+necesita. Esto reduce interferencias entre paradigmas y evita que variables,
+autores o supuestos de una rama aparezcan en otra.
+
+También mejora el aislamiento de fallos. Si una formulación no es válida, no
+invalida todo el run. Si un modelo falla tests, el sistema puede repetir solo el
+Builder para esa especificación o volver al Reasoner si el problema está en la
+adaptación.
+
+\subsection{Researcher y DeepResearcher}
+
+El Researcher mantiene la visión científica de conjunto. Primero consulta la
+memoria para recuperar paradigmas conocidos, nombres alternativos y relaciones
+previas. Después usa búsqueda acotada para descubrir huecos reales en la
+cobertura.
+
+Cada paradigma candidato se convierte en una tarea de investigación profunda.
+El DeepResearcher tiene un objetivo único: investigar ese paradigma con su
+propia ventana de contexto. Produce un informe con fundamentos, postulados,
+supuestos, predicciones, variables y referencias.
+
+El Researcher no carga todos los informes completos en su contexto. Recibe
+resúmenes, conserva rutas y sintetiza el informe global. Esta jerarquía separa
+cobertura y profundidad.
+
+Los artefactos de esta etapa tienen forma estable:
+
+\begin{verbatim}
+research/{run_id}/report.md
+research/{run_id}/deep/{paradigm}.md
+\end{verbatim}
+
+Antes de emitir la salida estructurada, el Researcher consulta slugs conocidos.
+La emisión final queda restringida a esos slugs o a una marca de nuevo
+paradigma. Si aparece un paradigma nuevo, el sistema lo canonicaliza antes de
+materializarlo en memoria. Esto evita fragmentar la base de conocimiento con
+nombres casi equivalentes.
+
+\subsection{Formalizer}
+
+El Formalizer recibe los paradigmas aprobados y genera formulaciones
+matemáticas. El componente principal actúa como orquestador: lanza un subagente
+por paradigma aprobado y registra los artefactos.
+
+Cada subagente lee el informe profundo de su paradigma y escribe un documento
+de formulaciones. El contexto se limita a ese paradigma para evitar que una
+ecuación, variable o supuesto se mezcle con otra línea científica.
+
+Cada formulación debe incluir variables, parámetros, ecuaciones y lógica de
+decisión. Las formulaciones de un mismo paradigma deben ser estructuralmente
+distintas. No basta con renombrar parámetros.
+
+El artefacto principal es:
+
+\begin{verbatim}
+research/{run_id}/formulations/{paradigm}.md
+\end{verbatim}
+
+Después de esta etapa, el usuario selecciona qué formulaciones continúan. Esta
+decisión evita que variantes débiles o redundantes pasen a Reasoner.
+
+\subsection{Reasoner}
+
+El Reasoner adapta las formulaciones seleccionadas al entorno de simulación. Su
+entrada incluye la formulación y el archivo \texttt{env\_spec.json}, que define
+acciones, percepción, recursos, recompensas y restricciones.
+
+Cada subagente lee:
+
+\begin{verbatim}
+deep/{paradigm}.md
+formulations/{paradigm}.md
+env_spec.json
+\end{verbatim}
+
+y produce una especificación JSON por formulación válida:
+
+\begin{verbatim}
+models/{run_id}/reasoner/{paradigm}/{formulation}.json
+\end{verbatim}
+
+La spec JSON es el contrato entre Reasoner y Builder. Contiene variables,
+parámetros, reglas de actualización, lógica de decisión, mapeo al entorno,
+comportamientos esperados y referencias.
+
+Antes de escribir una spec, el Reasoner valida que las acciones existan, que las
+variables estén definidas, que no haya dependencias circulares incoherentes y
+que las percepciones usadas sean observables o computables.
+
+Si una formulación no se puede adaptar, el Reasoner no fuerza una
+implementación. Escribe una salida con \texttt{status: invalid} y problemas
+explícitos. Así el fallo queda documentado en el nivel correcto.
+
+\subsection{Builder}
+
+El Builder traduce specs aprobadas a modelos Python y tests. El Builder
+principal reparte una tarea por especificación. Cada subagente genera:
+
+\begin{verbatim}
+models/{run_id}/builder/{paradigm}/{formulation}_model.py
+models/{run_id}/builder/{paradigm}/test_{formulation}.py
+\end{verbatim}
+
+El modelo debe ser autocontenido y cumplir el contrato:
+
+\begin{lstlisting}[language=Python]
+def decide(self, perception: dict) -> Action
+def update(self, action, reward, new_perception) -> None
+def get_state(self) -> dict
+\end{lstlisting}
+
+El Builder ejecuta \texttt{uv run pytest}. Si las pruebas fallan, el subagente
+puede corregir el código y repetir hasta un límite de intentos. Si la spec usa
+claves de percepción inexistentes o comportamientos no testeables, guarda una
+validación en vez de producir código defectuoso.
+
+\subsection{Herramientas de los agentes}
+
+Los agentes no comparten todas las herramientas. Cada etapa recibe solo las que
+necesita para su responsabilidad.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{2.8cm}|p{4.2cm}|p{5.2cm}|} \hline
+\textbf{Agente} & \textbf{Herramientas} & \textbf{Uso} \\ \hline
+Researcher & \texttt{retrieve\_knowledge}, búsqueda web, investigación profunda, lectura de informes. & Reutilizar memoria, detectar huecos y sintetizar cobertura. \\ \hline
+DeepResearcher & Búsqueda académica, búsqueda web y memoria cuando procede. & Investigar un paradigma con contexto propio. \\ \hline
+Formalizer & Lectura, escritura y memoria. & Convertir investigación aceptada en formulaciones. \\ \hline
+Reasoner & Lectura, escritura y memoria. & Adaptar formulaciones al entorno sin inventar observables. \\ \hline
+Builder & Lectura, escritura, \texttt{run\_tests} y memoria. & Generar código, tests y validar ejecución. \\ \hline
+MemoryAgent & Extracción, grafo, indexado y resolución de conflictos. & Consolidar artefactos aceptados. \\ \hline
+\end{tabular}
+\caption{Herramientas usadas por agente.}
+\end{center}
+\end{table}
+
+\section{Revisión humana y rutas de corrección}
+
+La revisión humana forma parte del diseño. El Router llama a un puerto de
+feedback. Ese puerto abstrae revisión por CLI, revisión por WebSocket y
+autoaprobación en evals.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3cm}|p{4.8cm}|p{4.8cm}|} \hline
+\textbf{Punto} & \textbf{Decisión humana} & \textbf{Motivo} \\ \hline
+Investigación & Aprobar paradigmas o pedir uno adicional. & Evitar marcos científicos irrelevantes o incompletos. \\ \hline
+Formalización & Seleccionar formulaciones concretas. & Reducir variantes a las que merece implementar. \\ \hline
+Entorno & Proporcionar \texttt{env\_spec.json}. & Definir acciones, percepción y recompensas. \\ \hline
+Razonamiento & Aprobar, rechazar o pedir nueva formalización. & Separar error matemático de error de adaptación. \\ \hline
+Construcción & Aprobar modelos o pedir corrección. & Separar bug de código de mala especificación. \\ \hline
+\end{tabular}
+\caption{Puntos de revisión humana del pipeline.}
+\end{center}
+\end{table}
+
+La revisión no solo permite continuar o parar. También redirige el pipeline al
+nivel adecuado. Un error conceptual vuelve a Formalizer. Una mala adaptación
+vuelve a Reasoner. Un bug de Python vuelve a Builder.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.5cm}|p{4.4cm}|p{4.5cm}|} \hline
+\textbf{Revisión} & \textbf{Acción posible} & \textbf{Efecto} \\ \hline
+Investigación & Pedir un paradigma adicional. & Lanza un DeepResearcher nuevo. \\ \hline
+Razonamiento & Rehacer formalización. & Repite Formalizer y después Reasoner. \\ \hline
+Razonamiento & Rechazar una spec. & Reejecuta Reasoner para esa rama. \\ \hline
+Construcción & Pedir nueva spec. & Regenera Reasoner y vuelve a Builder. \\ \hline
+Construcción & Rechazar un modelo. & Reejecuta Builder solo para esa formulación. \\ \hline
+\end{tabular}
+\caption{Rutas de corrección activadas por revisión humana.}
+\end{center}
+\end{table}
+
+\section{Artefactos, persistencia e integración}
+
+El sistema prioriza la persistencia de artefactos. MinIO guarda contenido
+completo. PostgreSQL guarda metadatos, ejecuciones, modelos aprobados y filas
+de memoria. Esta separación evita guardar grandes bloques de texto o código en
+SQL, pero mantiene referencias relacionales para listar runs y recuperar
+estado.
+
+\begin{verbatim}
+research/{run_id}/
+  report.md
+  deep/{paradigm}.md
+  formulations/{paradigm}.md
+  env_spec.json
+  pipeline_state.json
+  trace.jsonl
+
+models/{run_id}/
+  reasoner/{paradigm}/{formulation}.json
+  builder/{paradigm}/{formulation}_model.py
+  builder/{paradigm}/test_{formulation}.py
+  builder/{paradigm}/{formulation}_validation.json
+\end{verbatim}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.6cm}|p{4.3cm}|p{4.6cm}|} \hline
+\textbf{Artefacto} & \textbf{Contenido} & \textbf{Uso} \\ \hline
+\texttt{report.md} & Paradigmas, autores y conceptos. & Revisión de cobertura científica. \\ \hline
+\texttt{deep/*.md} & Fundamentos, postulados, variables y referencias. & Base para formalización. \\ \hline
+\texttt{formulations/*.md} & Variables, parámetros y ecuaciones. & Comparar alternativas implementables. \\ \hline
+\texttt{env\_spec.json} & Acciones, percepciones y recompensas. & Fuente autoritativa del entorno. \\ \hline
+\texttt{reasoner/*.json} & Reglas, mapeo y comportamientos esperados. & Entrada validable del Builder. \\ \hline
+\texttt{builder/*.py} y tests & Código y pruebas. & Evidencia del contrato ejecutable. \\ \hline
+\texttt{trace.jsonl} & Eventos, herramientas, tiempos y errores. & Auditoría y observabilidad. \\ \hline
+\end{tabular}
+\caption{Función de los artefactos generados.}
+\end{center}
+\end{table}
+
+La reanudación comprueba que los artefactos referenciados por el estado existen
+en MinIO. Si faltan formulaciones, specs o modelos, la reanudación se rechaza
+para evitar continuar desde un estado incoherente.
+
+\section{Sistema de memoria extendido}
+\label{ap:memoria-extendida}
+
+La memoria convierte el pipeline en un sistema acumulativo. Sin memoria, cada
+ejecución empieza desde cero. Con memoria, los artefactos aceptados se
+transforman en paradigmas, variables, postulados, formulaciones, parámetros,
+modelos, relaciones y observaciones reutilizables.
+
+La regla central es no guardar cualquier borrador generado por un LLM. Solo se
+consolida memoria después de revisión humana o validación. Esta decisión reduce
+ruido y evita que una formulación rechazada condicione ejecuciones futuras.
+
+\subsection{Representaciones complementarias}
+
+La memoria no usa un único almacén porque cada representación responde a una
+pregunta distinta.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{4.2cm}|p{5.1cm}|} \hline
+\textbf{Representación} & \textbf{Pregunta} & \textbf{Motivo} \\ \hline
+Hechos dense y sparse & Qué significa un concepto o qué variables aparecen. & Dense recupera similitud semántica. Sparse recupera nombres, símbolos y autores exactos. \\ \hline
+Grafo de conocimiento & De dónde sale una idea y cómo se relaciona con otras. & Permite procedencia mediante nodos y relaciones. \\ \hline
+Metadatos relacionales & Qué está vigente, aceptado o supersedido. & Mantiene confianza, validez temporal y auditoría. \\ \hline
+Observaciones & Qué se intentó antes y qué falló. & Evita repetir errores de adaptación o implementación. \\ \hline
+\end{tabular}
+\caption{Representaciones de la memoria.}
+\end{center}
+\end{table}
+
+La búsqueda dense permite recuperar hechos aunque la consulta use términos
+distintos. La búsqueda sparse con BM25 permite encontrar símbolos, slugs,
+autores o identificadores exactos. El grafo permite reconstruir procedencia:
+qué paper soporta un postulado, qué autor lo propuso, qué variables derivan de
+él o qué modelo lo implementa.
+
+\subsection{MemoryAgent}
+
+El MemoryAgent no es un agente conversacional libre. Ejecuta un pipeline fijo
+que usa modelos de lenguaje para extracción, pero mantiene control
+determinista.
+
+La extracción produce:
+
+\begin{itemize}
+\item nodos, como paradigmas, variables, papers, postulados, formulaciones y modelos;
+\item relaciones, como soporta, implementa, usa variable o deriva de;
+\item hechos y observaciones, como frases atómicas recuperables en ejecuciones futuras
+\end{itemize}
+
+Antes de escribir, el sistema normaliza identidades, poda nodos sin relación,
+materializa relaciones estructurales y resuelve propuestas nuevas contra
+paradigmas existentes. Este paso reduce duplicados semánticos.
+
+\subsection{Riesgos de memoria}
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3cm}|p{4.8cm}|p{4.8cm}|} \hline
+\textbf{Riesgo} & \textbf{Efecto posible} & \textbf{Mitigación} \\ \hline
+Duplicado semántico & El mismo paradigma aparece con nombres distintos. & Slugs canónicos, clasificación previa y revisión. \\ \hline
+Hecho falso consolidado & Una alucinación afecta a runs futuros. & Escritura solo tras aceptación. \\ \hline
+Recuperación irrelevante & El agente recibe contexto que distrae. & Búsqueda híbrida, reranking y filtros temporales. \\ \hline
+Memoria obsoleta & Un hecho superado sigue apareciendo. & Vigencia temporal y supersesión en PostgreSQL. \\ \hline
+Grafo incompleto & Se pierde procedencia de relaciones. & Artefactos completos en MinIO y snapshots de evals. \\ \hline
+\end{tabular}
+\caption{Riesgos de memoria y mitigaciones.}
+\end{center}
+\end{table}
+
+\section{Desarrollo con agentes extendido}
+\label{ap:desarrollo-agentes-extendido}
+
+El desarrollo se organizó con agentes de programación y revisión humana. La
+idea central fue separar decisiones de arquitectura y ejecución. El equipo
+humano definía objetivo, restricciones y evidencia esperada. El agente
+implementaba dentro de ese marco. Después se revisaban diffs, tests, logs,
+artefactos y CI.
+
+\subsection{Planificación con Linear}
+
+Las tareas se planificaron en Linear. Cada tarea incluía objetivo, criterios de
+aceptación, dependencias, prioridad, posible solapamiento y capacidad de
+ejecutarse en paralelo.
+
+Estos criterios fueron necesarios porque los agentes necesitan una definición
+objetiva de terminado. Sin criterios explícitos, un agente puede generar código
+funcional a primera vista pero incompleto desde producto o arquitectura.
+
+\subsection{División entre Codex, Claude Code e Hydra}
+
+El proyecto usó agentes distintos para tareas distintas:
+
+\begin{itemize}
+\item Codex se usó sobre todo para backend, infraestructura, persistencia, tests y razonamiento técnico;
+\item Claude Code se usó sobre todo para frontend, interacción y experiencia de usuario;
+\item Hydra se usó para ejecutar oleadas autónomas de tareas ya especificadas
+\end{itemize}
+
+Backend y frontend tienen ritmos de validación diferentes. En backend importan
+contratos, persistencia, migraciones y límites entre fases. En frontend importan
+coherencia visual, ergonomía, interacción y sensibilidad al detalle.
+
+\subsection{Orquestación autónoma con Hydra}
+
+Hydra no sustituía a Linear ni a la revisión humana. Convertía una lista de
+tareas especificadas en oleadas de ejecución autónoma. Leía tareas pendientes,
+agrupaba trabajo no conflictivo, lanzaba agentes en worktrees separados,
+recogía evidencias y cerraba o creaba seguimiento.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{4.4cm}|p{4.8cm}|} \hline
+\textbf{Paso} & \textbf{Responsable} & \textbf{Evidencia} \\ \hline
+Descubrir tareas & Hydra leyendo Linear. & Lista de tareas, dependencias y prioridad. \\ \hline
+Planificar oleada & Hydra. & Tareas ejecutables sin bloqueos ni solapamientos peligrosos. \\ \hline
+Asignar modelo & Hydra y criterio humano previo. & Codex para backend; Claude Code para frontend. \\ \hline
+Ejecutar tarea & Agente trabajador. & Worktree propio, implementación y pruebas locales. \\ \hline
+Revisar salida & Agente trabajador. & Revisión de bugs, fallos silenciosos y convenciones. \\ \hline
+Cerrar seguimiento & Hydra. & PR mergeada, nota o tarea nueva. \\ \hline
+\end{tabular}
+\caption{Fases del flujo autónomo con Hydra.}
+\end{center}
+\end{table}
+
+Hydra mantenía su contexto pequeño. No cargaba todos los documentos, diffs y
+logs de cada tarea. El agente trabajador leía el detalle dentro de su propia
+sesión. Al terminar, devolvía resumen, ficheros tocados, estado de pruebas y
+notas de seguimiento.
+
+\subsection{Revisión de trabajo generado}
+
+La revisión final de cada agente siguió 4 pasos:
+
+\begin{itemize}
+\item buscar bugs funcionales evidentes;
+\item detectar fallos silenciosos, donde el sistema parece funcionar pero pierde datos;
+\item revisar fallos de arquitectura, como acoplamientos indebidos;
+\item comprobar convenciones del repositorio, estilo, tests y contratos locales
+\end{itemize}
+
+Este patrón fue necesario porque las tareas largas de desarrollo autónomo
+siguen siendo difíciles. La metodología no consistió en confiar ciegamente en
+un agente, sino en aislar tareas, exigir evidencia ejecutable y mantener un
+humano responsable de producto y arquitectura.
+
+\section{Validación extendida}
+\label{ap:validacion-extendida}
+
+\subsection{Integración continua}
+
+El repositorio incluye un flujo de GitHub Actions llamado \texttt{CI}. Se
+ejecuta en cada push a \texttt{main}, en cada pull request contra \texttt{main}
+y de forma manual. También cancela ejecuciones antiguas de la misma rama cuando
+llega un push nuevo.
+
+La validación automática tiene 4 trabajos:
+
+\begin{itemize}
+\item \texttt{Lint + format}, que ejecuta \texttt{ruff} con \texttt{uv};
+\item \texttt{Tests - shared}, que sincroniza dependencias y ejecuta tests comunes;
+\item \texttt{Tests - phase1}, que ejecuta tests unitarios de fase 1;
+\item \texttt{Tests - phase2}, que ejecuta tests unitarios de fase 2
+\end{itemize}
+
+Las pruebas excluyen marcas de integración, e2e y \texttt{real\_llm}, porque
+esas suites dependen de servicios externos o ejecuciones caras. Las evals
+online se lanzan explícitamente para cambios de más riesgo.
+
+\subsection{Evals del sistema multiagente}
+
+Las evals se definen como suites YAML. Cada suite declara etapas, entradas,
+aprobaciones automáticas, presupuesto máximo y aserciones. Se ejecutan desde la
+CLI y generan reportes Markdown y JSON.
+
+\begin{verbatim}
+uv run decisionlab eval run evals/suites/smoke.yaml
+uv run decisionlab eval run evals/suites/full-pipeline.yaml
+\end{verbatim}
+
+El reporte incluye estado global, temas ejecutados, aserciones, crecimiento del
+grafo, escrituras de memoria, duración por etapa, latencia de herramientas y
+coste estimado.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
+\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
+Smoke & Research. & Arranque básico y descubrimiento mínimo de paradigmas. \\ \hline
+Full pipeline & Research a Build. & Investigación, formalización, razonamiento, generación, importación y llamada a \texttt{decide}. \\ \hline
+\end{tabular}
+\caption{Evals del flujo multiagente.}
+\end{center}
+\end{table}
+
+Estas evals cubren fallos que no aparecen en pruebas unitarias aisladas. Por
+ejemplo, comprueban que Researcher, Formalizer, Reasoner y Builder producen
+artefactos compatibles entre sí.
+
+\subsection{Evals de memoria}
+
+Las evals de memoria comprueban Qdrant, Neo4j, PostgreSQL, canonicalización,
+recuperación, deduplicación, crecimiento del grafo y validez temporal.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{2.5cm}|p{6.6cm}|} \hline
+\textbf{Suite} & \textbf{Etapas} & \textbf{Qué valida} \\ \hline
+Cumulative growth & Research. & Crecimiento controlado y reutilización de slugs. \\ \hline
+Canonicalization & Research. & Reutilización de paradigmas conocidos. \\ \hline
+Slug accuracy & Research. & Acierto contra oráculo de slugs y latencia de recuperación. \\ \hline
+Memory retrieval & Research. & Recuperación de paradigmas presentes en memoria. \\ \hline
+Retrieval quality & Offline. & Hechos sembrados aparecen en top-k. \\ \hline
+Temporal correctness & Offline. & Validez por fecha y cadenas de supersesión. \\ \hline
+\end{tabular}
+\caption{Evals del sistema de memoria.}
+\end{center}
+\end{table}
+
+Las aserciones combinan métricas agregadas y comprobaciones directas:
+
+\begin{verbatim}
+slug_hit_rate
+kg_growth_rate
+p95_below
+memory_at_time
+supersession_chain_length
+retrieval_finds
+\end{verbatim}
+
+\subsection{Corpus cerrado de papers}
+
+La evaluación más exigente se hizo con 2 casos basados en PDFs. En cada caso,
+el sistema solo podía acceder a los papers incluidos en el ZIP de entrada. Las
+herramientas de búsqueda devolvían metadatos y snippets de esos documentos.
+Cuando el pipeline necesitaba leer un paper, la herramienta devolvía el texto
+extraído completo.
+
+Esta configuración mide si el pipeline puede descubrir paradigmas, proponer
+formulaciones, razonar sobre un entorno, generar modelos y conservar artefactos
+usando solo un corpus cerrado. Después se usó un juez LLM con la misma rúbrica
+para ambos casos. El juez no participó en la generación.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{1.6cm}|p{2.5cm}|p{2.2cm}|p{5.7cm}|} \hline
+\textbf{Caso} & \textbf{Resultado} & \textbf{Tiempo / coste} & \textbf{Evidencia} \\ \hline
+CASO1 & Pipeline PASS. Juez: 72/100 con reservas. & 6152.0 s / \$33.71 & 3 papers, 6 paradigmas, 18 specs, 15 modelos y KG de 433 nodos. \\ \hline
+CASO2 & Pipeline PASS. Juez: 78/100 con reservas. & 4961.8 s / \$24.47 & 3 papers, 4 paradigmas, 12 specs, 12 modelos y KG de 272 nodos. \\ \hline
+\end{tabular}
+\caption{Resultados de evals con corpus cerrado.}
+\end{center}
+\end{table}
+
+El veredicto aprobado con reservas debe leerse como señal de utilidad, no como
+certificación científica final. La señal positiva es que el sistema produjo
+artefactos revisables con corpus cerrado. La señal negativa es que el juez
+encontró problemas reales de taxonomía, registro y trazabilidad.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{2.3cm}|p{1.5cm}|p{3cm}|p{3cm}|p{2.2cm}|} \hline
+\textbf{Reserva} & \textbf{Severidad} & \textbf{Efecto} & \textbf{Mitigación} & \textbf{Estado} \\ \hline
+Spec inválida en CASO1 & Alta & No debe generar un modelo aceptado. & Reasoner marca salida inválida y conserva problemas. & Revisión experta. \\ \hline
+Registro DDM desajustado & Alta & Puede apuntar a clase o test distinto. & Bundle conserva rutas y filas para auditar. & Detectado por juez. \\ \hline
+Errores en KG & Media & Reducen trazabilidad automática. & Artefactos, snapshots y conteos permiten localizar fallos. & Limitación conocida. \\ \hline
+Solapamiento taxonómico & Media & Puede mezclar paradigmas relacionados. & Revisión humana de paradigmas y formulaciones. & Necesita experto. \\ \hline
+Duplicados de ficheros & Baja & Dificultan revisión manual. & Tabla de modelos conserva ruta canónica. & Higiene pendiente. \\ \hline
+\end{tabular}
+\caption{Reservas detectadas por el juez.}
+\end{center}
+\end{table}
+
+La evidencia versionada queda en los bundles y reportes siguientes:
+
+\begin{small}
+\begin{itemize}
+\item bundle CASO1, \path{evals/reports/2026-06-29-caso1-pdf-corpus};
+\item bundle CASO2, \path{evals/reports/2026-06-29-caso2-pdf-corpus};
+\item reportes del juez en \path{evals/judge-reports};
+\item snapshot de infraestructura en \path{evals/infra-snapshots}
+\end{itemize}
+\end{small}
+
+\section{Limitaciones y trabajo futuro extendido}
+\label{ap:limitaciones-extendidas}
+
+La principal limitación es que la validez científica final de un modelo no
+queda garantizada por compilar o pasar tests. Las pruebas automáticas verifican
+propiedades funcionales, pero la adecuación psicológica o neurocientífica
+requiere revisión experta.
+
+Otra limitación es la dependencia de servicios externos y modelos de lenguaje.
+Las ejecuciones completas tienen coste, latencia y variabilidad. Por eso las
+evals se interpretan como señales de regresión interna, no como benchmark
+externo definitivo.
+
+También hay margen de mejora en la memoria. Aunque el sistema distingue hechos,
+relaciones y observaciones, la calidad de extracción depende de los artefactos
+producidos y de los criterios de consolidación. La canonicalización de
+paradigmas, detección de contradicciones y calibración de confianza pueden
+mejorar con más ejecuciones.
+
+Las líneas futuras principales son:
+
+\begin{itemize}
+\item ampliar el conjunto de paradigmas y ejecutar más casos con corpus cerrado;
+\item validar resultados con expertos del dominio;
+\item comparar modelos generados con implementaciones manuales;
+\item estudiar si los modelos reproducen patrones esperados en simulaciones;
+\item mejorar la extracción de observaciones procedurales;
+\item usar más el grafo para consultas multi-hop sobre procedencia científica;
+\item reforzar la integración con fase 2 y retroalimentar memoria desde resultados de simulación
+\end{itemize}
