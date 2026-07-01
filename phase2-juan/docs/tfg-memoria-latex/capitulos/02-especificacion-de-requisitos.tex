@@ -23,98 +23,188 @@ que da soporte a la recuperación avanzada de conocimiento y a la escritura
 indexada de memorias.
 \end{itemize}
 
-\section{Requisitos funcionales}
-
-El sistema debe cubrir el ciclo completo de una sesión de simulación: partir
-de la descripción inicial del problema, generar el informe final, mantener la
-conversación con el Orchestrator durante la sesión y permitir la inspección de
-ejecuciones pasadas.
-
-Cada requisito se prioriza con la técnica MoSCoW, indicando si es
-imprescindible (\emph{Must}), recomendable (\emph{Should}) u opcional
-(\emph{Could}) para que el sistema cumpla su objetivo. El catálogo completo de
-los trece requisitos funcionales (RF-01 a RF-13), con su descripción y
-prioridad, se recoge en el Apéndice~\ref{ap:requisitos}.
-
-La lista descompone los cinco artefactos definidos en la
-introducción. La especificación del entorno queda cubierta por RF-02 y
-por su visualización en RF-12; la ejecución y el registro estructurado
-por RF-01, RF-03 y RF-04; el análisis contrastado por RF-05 y RF-06; el
-informe final por RF-07; y la memoria reutilizable por RF-08 y RF-09.
-RF-10, RF-11 y RF-13 completan la forma de uso del laboratorio: chat
-continuo, recomendaciones del Orchestrator y vistas auxiliares de
-inspección desde la interfaz. RF-09 incluye dos formas de recuperación:
-la inspección directa de datos ya persistidos y la consulta en lenguaje
-natural del historial cuando la pregunta exige agregaciones o filtros
-relacionales.
-
-\section{Requisitos no funcionales}
-
-Los requisitos no funcionales se centran en el desacoplamiento entre
-fases, la trazabilidad de cada ejecución y el comportamiento ante fallos
-de servicios opcionales. Se especifican doce requisitos no funcionales
-(RNF-01 a RNF-12), cuyo enunciado completo se recoge en el
-Apéndice~\ref{ap:requisitos}.
-
-No describen pantallas concretas, sino condiciones que el sistema debe
-mantener durante todo el flujo. La carga dinámica evita acoplarse a una
-implementación concreta de la primera fase; la trazabilidad exige que cada
-ejecución deje datos auditables; el WebSocket permite seguir la sesión sin
-refrescos manuales; la degradación controlada evita que la ausencia de la
-capa semántica bloquee una simulación; la autocompactación impide que el
-historial conversacional crezca sin límite; la consulta NL-SQL permite
-recuperar información histórica con garantías de solo lectura y tablas
-acotadas; y la recuperación de predicciones procedentes de la primera fase
-mantiene visible qué esperaba la teoría antes de observar la simulación.
-
 \section{Casos de uso}
 
-Los casos de uso describen las interacciones principales del usuario
-investigador con el laboratorio. Todos comparten una sesión de chat mediada
-por el Orchestrator. La tabla siguiente resume los casos y los relaciona con
-los requisitos funcionales. La trazabilidad completa con evidencias de
-validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
+Los casos de uso recogen las interacciones que el usuario investigador puede
+realizar desde el laboratorio. En todos ellos la entrada pasa por una sesión de
+chat con el Orchestrator, que decide qué agentes y herramientas intervienen en
+cada momento.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.96\linewidth}{!}{%
+\begin{tikzpicture}[
+  actorlabel/.style={font=\small\sffamily, align=center},
+  usecase/.style={
+    ellipse, draw=black!75, line width=0.55pt, fill=black!3,
+    minimum width=36mm, minimum height=10mm,
+    align=center, font=\small\sffamily
+  },
+  systembox/.style={
+    rectangle, draw=black!60, rounded corners=2pt, line width=0.5pt,
+    fill=black!1, minimum width=104mm, minimum height=72mm
+  },
+  ext/.style={
+    rectangle, draw=black!65, rounded corners=2pt, line width=0.5pt,
+    fill=black!4, text width=28mm, minimum height=9mm,
+    align=center, font=\scriptsize\sffamily
+  },
+  assoc/.style={draw=black!65, line width=0.5pt},
+  include/.style={-{Stealth[length=2mm,width=1.6mm]}, draw=black!55,
+    dashed, line width=0.45pt}
+]
+  \node[systembox] (system) at (4.6,0) {};
+  \node[font=\small\sffamily\bfseries, anchor=north west] at
+    ([xshift=2mm,yshift=-2mm]system.north west) {Laboratorio virtual};
+
+  \coordinate (head) at (-2.0,1.7);
+  \draw[assoc] (head) circle (3mm);
+  \draw[assoc] (-2.0,1.4) -- (-2.0,0.4);
+  \draw[assoc] (-2.55,1.05) -- (-1.45,1.05);
+  \draw[assoc] (-2.0,0.4) -- (-2.45,-0.35);
+  \draw[assoc] (-2.0,0.4) -- (-1.55,-0.35);
+  \node[actorlabel, below] at (-2.0,-0.45) {Usuario\\investigador};
+
+  \node[usecase] (cu1) at (3.2,2.25) {Ejecutar\\simulación};
+  \node[usecase] (cu2) at (6.1,2.25) {Comparar\\modelos};
+  \node[usecase] (cu3) at (3.2,0.55) {Analizar\\resultados};
+  \node[usecase] (cu4) at (6.1,0.55) {Generar\\informe PDF};
+  \node[usecase] (cu5) at (3.2,-1.2) {Consultar\\experimentos};
+  \node[usecase] (cu6) at (6.1,-1.2) {Inspeccionar\\Knowledge Backbone};
+
+  \node[ext] (phase1) at (10.0,1.65) {Primera fase\\modelos aceptados};
+  \node[ext] (llm) at (10.0,-0.15) {OpenRouter\\y servicios semánticos};
+
+  \draw[assoc] (-1.4,1.1) -- (cu1.west);
+  \draw[assoc] (-1.4,0.85) -- (cu2.west);
+  \draw[assoc] (-1.4,0.55) -- (cu3.west);
+  \draw[assoc] (-1.4,0.25) -- (cu4.west);
+  \draw[assoc] (-1.4,-0.05) -- (cu5.west);
+  \draw[assoc] (-1.4,-0.35) -- (cu6.west);
+
+  \draw[include] (cu2) -- node[above, font=\scriptsize] {<<include>>} (cu1);
+  \draw[include] (cu4) -- node[right, font=\scriptsize] {<<include>>} (cu3);
+  \draw[assoc] (phase1) -- (cu1.east);
+  \draw[assoc] (phase1) -- (cu2.east);
+  \draw[assoc] (llm) -- (cu1.east);
+  \draw[assoc] (llm) -- (cu3.east);
+  \draw[assoc] (llm) -- (cu5.east);
+\end{tikzpicture}}
+\caption[Diagrama de casos de uso]{Diagrama de casos de uso UML de la
+segunda fase. Los sistemas externos quedan fuera del límite del laboratorio
+porque el usuario no los opera directamente.}
+\label{fig:casos-uso}
+\end{figure}
 
 \begin{table}[H]
 \begin{center}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{7.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|} \hline
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.45cm}|>{\raggedright\arraybackslash}p{6.6cm}|>{\raggedright\arraybackslash}p{3.0cm}|} \hline
 \textbf{Código} & \textbf{Caso de uso} & \textbf{RF relacionados} \\ \hline
 CU-01 & Ejecutar una simulación a partir de una descripción en lenguaje natural & RF-01, RF-02, RF-03, RF-04, RF-10, RF-11, RF-12 \\ \hline
 CU-02 & Comparar varios modelos en el mismo entorno & RF-01, RF-03, RF-06 \\ \hline
 CU-03 & Analizar los resultados y contrastarlos con conocimiento previo & RF-04, RF-05, RF-06, RF-08 \\ \hline
 CU-04 & Generar el informe PDF de la sesión & RF-06, RF-07 \\ \hline
 CU-05 & Consultar y comparar experimentos anteriores & RF-09, RNF-11 \\ \hline
+CU-06 & Inspeccionar el Knowledge Backbone desde la interfaz & RF-13 \\ \hline
 \end{tabular}
-\caption[Casos de uso]{Casos de uso. La tabla resume las interacciones
-principales y su trazabilidad con los requisitos funcionales.}
+\caption[Casos de uso]{Casos de uso y trazabilidad con requisitos
+funcionales.}
 \end{center}
 \end{table}
 
-El caso de uso principal es CU-01: el usuario describe un problema, el
-Orchestrator propone modelos y entorno, el Architect genera la
-especificación, el sistema ejecuta la simulación y la interfaz recibe los
-eventos en tiempo real. Los demás casos de uso especializan ese recorrido:
-CU-02 compara varios modelos bajo la misma semilla y entorno; CU-03 analiza
-la simulación y escribe memoria reutilizable; CU-04 materializa el análisis
-en un informe PDF; y CU-05 recupera experimentos anteriores, tanto por
-inspección como mediante preguntas en lenguaje natural traducidas a SQL
-seguro. RF-13 queda
-como requisito auxiliar de inspección y depuración, no como caso de uso
-principal del investigador.
+CU-01 es el recorrido base: el usuario describe un problema, el Orchestrator
+propone modelos y entorno, el Architect genera la especificación, se ejecuta la
+simulación y la interfaz muestra los eventos en tiempo real. Los demás casos
+de uso nacen de ese flujo. CU-02 compara modelos bajo la misma semilla y el
+mismo entorno; CU-03 interpreta la simulación y escribe memoria reutilizable;
+CU-04 convierte el análisis en un PDF; CU-05 recupera experimentos anteriores;
+y CU-06 permite revisar procedencia, observaciones y relaciones del Knowledge
+Backbone.
 
-\section{Información que el sistema debe almacenar}
+\section{Requisitos funcionales}
 
-Desde el punto de vista de requisitos, el sistema debe conservar cinco tipos de
-información: los metadatos de experimentos y ejecuciones, los modelos
-registrados por la primera fase, el historial conversacional de cada sesión, los
-artefactos generados (trazas e informes) y las observaciones de simulación que
-puedan reutilizarse como memoria.
+Los requisitos funcionales concretan qué debe poder hacer el laboratorio
+durante una sesión completa: recibir la descripción del problema, preparar y
+ejecutar la simulación, observar sus resultados, analizarlos y conservar la
+evidencia para consultas posteriores. La prioridad se expresa con MoSCoW:
+\emph{Must} para lo imprescindible, \emph{Should} para lo recomendable y
+\emph{Could} para mejoras útiles pero no necesarias para cerrar el alcance.
 
-Esa información no se guarda como un único bloque. Algunos datos deben
-consultarse de forma exacta, otros deben descargarse como artefactos y otros
-deben recuperarse por contenido o por relación con paradigmas previos. Por eso
-la persistencia se apoya en el Knowledge Backbone compartido con la primera
-fase. El reparto concreto entre PostgreSQL, MinIO, Qdrant y Neo4j se justifica
-en el capítulo de diseño; aquí basta con fijar el requisito: cada sesión debe
-dejar evidencia auditable y recuperable sin depender del estado efímero del
-navegador ni de la ventana de contexto del modelo.
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.14}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.1cm}|>{\raggedright\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{6.9cm}|>{\raggedright\arraybackslash}p{1.25cm}|} \hline
+\textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
+RF-01 & Carga dinámica de modelos & Cargar los modelos de decisión generados por la primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
+RF-02 & Generación de entornos & Generar especificaciones de entorno de simulación a partir de descripciones en lenguaje natural. & Must \\ \hline
+RF-03 & Ejecución de simulaciones & Ejecutar simulaciones con uno o varios modelos en el mismo entorno, soportando comparativas multi-modelo. & Must \\ \hline
+RF-04 & Registro estructurado & Registrar eventos, episodios y trayectorias de decisión producidos durante cada simulación. & Must \\ \hline
+RF-05 & Identificación de patrones & Identificar patrones de comportamiento, pasos críticos y eventos relevantes, contrastándolos con conocimiento previo. & Must \\ \hline
+RF-06 & Visualizaciones analíticas & Generar gráficas y visualizaciones sobre trayectorias y métricas para incorporarlas al informe final. & Should \\ \hline
+RF-07 & Generación de informes & Generar informes en PDF con resultados, evidencia visual y referencias a los paradigmas analizados. & Must \\ \hline
+RF-08 & Persistencia de observaciones & Persistir observaciones de simulación en el Knowledge Backbone como memorias reutilizables. & Must \\ \hline
+RF-09 & Historial de experimentos & Conservar el historial completo de experimentos y permitir su consulta, filtrado y comparativa, también mediante preguntas en lenguaje natural resolubles con SQL. & Should \\ \hline
+RF-10 & Interacción conversacional & Permitir la interacción mediante un chat gestionado por el Orchestrator, con continuidad de conversación dentro de la sesión. & Must \\ \hline
+RF-11 & Recomendaciones del Orchestrator & Recomendar al usuario qué hacer a continuación, qué modelos encajan y qué herramientas tiene disponibles. & Could \\ \hline
+RF-12 & Replay de simulación & Ofrecer una visualización del entorno con \textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
+RF-13 & Inspección del Knowledge Backbone & Exponer vistas de inspección del Knowledge Backbone, incluyendo grafo, memorias y procedencia, desde la interfaz web. & Could \\ \hline
+\end{tabular}
+\caption[Requisitos funcionales]{Requisitos funcionales de la segunda fase.}
+\label{tab:requisitos-funcionales}
+\end{center}
+\end{table}
+
+La tabla conecta los objetivos de la introducción con funciones verificables.
+RF-02 y RF-12 cubren la definición y visualización del entorno; RF-01, RF-03 y
+RF-04 cubren carga, ejecución y registro; RF-05 y RF-06 cubren el análisis;
+RF-07 cierra el informe; y RF-08 y RF-09 mantienen la memoria reutilizable. El
+uso diario del laboratorio queda recogido en RF-10, RF-11 y RF-13: conversación,
+recomendaciones e inspección desde la interfaz. La trazabilidad con evidencias
+de validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
+
+\section{Requisitos no funcionales}
+
+Los requisitos no funcionales fijan condiciones de calidad que atraviesan todo
+el sistema. No describen una pantalla concreta ni una acción puntual del
+usuario; describen cómo debe comportarse el laboratorio mientras carga modelos,
+ejecuta simulaciones, conversa con el usuario y consulta servicios externos.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.14}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.15cm}|>{\raggedright\arraybackslash}p{2.75cm}|>{\raggedright\arraybackslash}p{6.85cm}|>{\raggedright\arraybackslash}p{1.25cm}|} \hline
+\textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
+RNF-01 & Modularidad y desacoplamiento & Integrar la primera fase mediante un contrato mínimo de \textit{duck typing}, sin imponer dependencias de paquetes ni jerarquías de clases. & Must \\ \hline
+RNF-02 & Extensibilidad de modelos & Incorporar nuevos modelos generados por la primera fase sin modificar el código de la segunda fase. & Must \\ \hline
+RNF-03 & Trazabilidad & Conservar configuración, eventos y artefactos finales de cada ejecución con identificadores únicos auditables. & Must \\ \hline
+RNF-04 & Reactividad & Enviar al cliente web actualizaciones de simulación y actividad de agentes en tiempo real mediante WebSocket, sin \textit{polling}. & Must \\ \hline
+RNF-05 & Degradación controlada & Mantener operativo el flujo principal aunque no estén disponibles \textit{embeddings}, \textit{reranking} o escritura semántica en Qdrant. & Should \\ \hline
+RNF-06 & Determinismo & Producir resultados idénticos para una misma semilla y configuración, facilitando comparativas reproducibles. & Must \\ \hline
+RNF-07 & Portabilidad de despliegue & Levantar PostgreSQL, MinIO, Neo4j y Qdrant de forma reproducible mediante \texttt{docker compose}. & Should \\ \hline
+RNF-08 & Configuración por entorno & Aislar credenciales y \textit{endpoints} en variables de entorno, sin embebidos en código ni artefactos versionados. & Must \\ \hline
+RNF-09 & Observabilidad & Registrar acciones del Orchestrator y agentes especializados en los \textit{logs} del backend para diagnosticar sesiones \textit{a posteriori}. & Should \\ \hline
+RNF-10 & Acotación del contexto conversacional & Mantener el historial del chat dentro de un presupuesto acotado automáticamente, sin reiniciar la sesión ni perder trazabilidad. & Should \\ \hline
+RNF-11 & Recuperación relacional segura & Traducir preguntas en lenguaje natural a SQL de solo lectura, limitado a tablas permitidas y con máximo de resultados. & Must \\ \hline
+RNF-12 & Contraste previo con predicciones & Recuperar predicciones científicas antes de ejecutar la simulación para compararlas después con la trayectoria observada. & Should \\ \hline
+\end{tabular}
+\caption[Requisitos no funcionales]{Requisitos no funcionales de la segunda
+fase.}
+\label{tab:requisitos-no-funcionales}
+\end{center}
+\end{table}
+
+Estos requisitos protegen las decisiones principales del diseño. La segunda
+fase no debe quedar atada al código interno de la primera; una simulación debe
+poder auditarse después de ejecutarse; la interfaz debe recibir estado vivo por
+WebSocket; y la ausencia de la capa semántica no debe impedir que el flujo
+principal termine. También se acota el contexto conversacional, se limita la
+consulta NL-SQL a lecturas seguras y se recuperan predicciones antes de observar
+la simulación, para que el contraste posterior no dependa de una explicación
+hecha a posteriori.

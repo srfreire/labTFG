@@ -9,19 +9,18 @@ primera fase. El cliente web mantiene un canal bidireccional con el
 backend mediante WebSocket, de modo que cada paso del pipeline se refleja
 en la interfaz a medida que se produce, sin necesidad de \textit{polling}.
 
-La arquitectura lógica del sistema (Figura~\ref{fig:arquitectura}, en el
-Apéndice~\ref{ap:diagramas}) muestra las piezas coordinadas por el
-Orchestrator: agentes especializados, entorno de
-simulación, modelos cargados desde la primera fase y capa compartida de
-persistencia y recuperación. El capítulo desarrolla esas piezas desde el
-punto de vista del diseño de la segunda fase, no como inventario completo
-de todos los servicios del proyecto.
+Los diagramas de despliegue y componentes de este capítulo muestran las piezas
+coordinadas por el Orchestrator: agentes especializados, entorno de simulación,
+modelos cargados desde la primera fase y capa compartida de persistencia y
+recuperación. El capítulo desarrolla esas piezas desde el punto de vista del
+diseño de la segunda fase, no como inventario completo de todos los servicios
+del proyecto.
 
 Sobre esa estructura, el diseño de esta fase se apoya en tres decisiones
 principales:
 
 \begin{enumerate}
-\item La \textbf{orquestación agéntica} del pipeline: un coordinador que
+\item La \textbf{orquestación de agentes} del pipeline: un coordinador que
 modela la sesión como una secuencia canónica de \textit{tool calls} y
 reserva al modelo de lenguaje únicamente las desviaciones puntuales, en
 lugar de delegarle la planificación completa.
@@ -33,6 +32,133 @@ compartida}: las observaciones de simulación se persisten en el
 Knowledge Backbone y se reutilizan después para contrastar el
 comportamiento observado con los postulados previos.
 \end{enumerate}
+
+Para completar esta visión con una representación formal, la
+Figura~\ref{fig:despliegue-uml} muestra la arquitectura del sistema como
+diagrama de despliegue UML. En ella se separan los entornos de ejecución
+principales: navegador, backend de la segunda fase, servicios externos de
+modelo y capa de persistencia compartida. La Figura~\ref{fig:componentes-uml}
+refina esa vista con los componentes software de grano grueso que participan
+en una sesión del laboratorio: la primera figura muestra dónde se ejecuta cada
+pieza; la segunda baja al nivel de componentes software.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\linewidth}{!}{%
+\begin{tikzpicture}[
+  nodebox/.style={
+    rectangle, draw=black!75, rounded corners=2pt, line width=0.6pt,
+    fill=black!3, minimum height=12mm, text width=34mm,
+    align=center, font=\small\sffamily
+  },
+  artifact/.style={
+    rectangle, draw=black!60, rounded corners=1pt, line width=0.5pt,
+    fill=white, minimum height=7mm, text width=29mm,
+    align=center, font=\scriptsize\sffamily
+  },
+  storage/.style={
+    cylinder, shape border rotate=90, aspect=0.25, draw=black!65,
+    line width=0.55pt, fill=black!5, minimum height=10mm,
+    text width=24mm, align=center, font=\scriptsize\sffamily
+  }
+]
+  \node[nodebox] (browser) at (0,0) {<<device>>\\Navegador};
+  \node[artifact] (frontend) at (0,-1.45) {Frontend\\React + Vite};
+
+  \node[nodebox, text width=40mm] (backend) at (5.2,0) {<<execution environment>>\\Backend Phase 2};
+  \node[artifact] (api) at (3.6,-1.45) {FastAPI\\REST + WS};
+  \node[artifact] (orch) at (5.2,-2.65) {Orchestrator\\tools + sesión};
+  \node[artifact] (sim) at (6.8,-1.45) {Runtime\\simulación 2D};
+
+  \node[nodebox] (llm) at (10.4,0) {<<external service>>\\LLM providers};
+  \node[artifact] (openrouter) at (10.4,-1.45) {OpenRouter API};
+
+  \node[nodebox, text width=36mm] (phase1) at (0,-4.1) {<<execution environment>>\\Phase 1};
+  \node[artifact] (models) at (0,-5.45) {Modelos aceptados\\código Python};
+
+  \node[nodebox, text width=44mm] (shared) at (5.2,-4.1) {<<execution environment>>\\Infraestructura compartida};
+  \node[storage] (pg) at (2.4,-6.65) {PostgreSQL\\metadatos};
+  \node[storage] (minio) at (4.6,-6.65) {MinIO\\artefactos};
+  \node[storage] (qdrant) at (6.8,-6.65) {Qdrant\\memorias};
+  \node[storage] (neo4j) at (9.0,-6.65) {Neo4j\\grafo};
+
+  \draw[diagarrowbi] (frontend) -- node[above, font=\scriptsize] {HTTP / WS} (api);
+  \draw[diagarrow] (api) -- (orch);
+  \draw[diagarrowbi] (orch) -- (sim);
+  \draw[diagarrowbi] (orch) -- (openrouter);
+  \draw[diagarrow] (models) |- (sim);
+  \draw[diagarrowbi] (orch) -- (shared);
+  \draw[diagarrow] (phase1) -- (models);
+  \draw[diagarrow] (shared) -- (pg);
+  \draw[diagarrow] (shared) -- (minio);
+  \draw[diagarrow] (shared) -- (qdrant);
+  \draw[diagarrow] (shared) -- (neo4j);
+  \draw[diagarrow] (models) -- (minio);
+\end{tikzpicture}}
+\caption[Diagrama de despliegue UML]{Diagrama de despliegue UML del
+laboratorio virtual. Se muestran los nodos de ejecución, los artefactos
+desplegados y los servicios persistentes o externos utilizados durante una
+sesión.}
+\label{fig:despliegue-uml}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=7mm and 8mm,
+  comp/.style={
+    rectangle, draw=black!75, rounded corners=2pt, line width=0.55pt,
+    fill=#1, minimum height=8mm, text width=29mm,
+    align=center, font=\scriptsize\sffamily
+  }
+]
+  \node[comp=blue!7] (ui) {Cliente web\\dashboard, chat, replay};
+  \node[comp=blue!4, below=of ui] (api) {API FastAPI\\REST + WebSocket};
+  \node[comp=violet!9, below=of api] (orch) {Orchestrator\\estado de sesión};
+
+  \node[comp=green!8, below left=11mm and 25mm of orch] (architect) {Architect\\especificación};
+  \node[comp=green!8, below=11mm of orch] (tracker) {Tracker\\observación};
+  \node[comp=green!8, below right=11mm and 25mm of orch] (analyst) {Analyst\\análisis};
+  \node[comp=green!8, right=8mm of analyst] (reporter) {Reporter\\PDF};
+
+  \node[comp=orange!9, below=15mm of tracker, text width=35mm] (runtime) {Runtime de simulación\\Environment + Agent};
+  \node[comp=orange!5, left=10mm of runtime] (loader) {Model loader\\modelos fase 1};
+  \node[comp=red!6, right=10mm of runtime] (charts) {Charts\\figuras del análisis};
+
+  \node[comp=gray!8, below left=14mm and 24mm of runtime] (db) {DatabaseService\\PostgreSQL};
+  \node[comp=gray!8, below=14mm of runtime] (storage) {StorageService\\MinIO};
+  \node[comp=gray!8, below right=14mm and 24mm of runtime] (vector) {VectorStore\\Qdrant};
+  \node[comp=gray!8, right=8mm of vector] (kg) {KnowledgeGraph\\Neo4j};
+  \node[comp=gray!5, left=8mm of db] (memory) {TrackerMemoryWriter\\memoria de simulación};
+
+  \draw[diagarrowbi] (ui) -- (api);
+  \draw[diagarrowbi] (api) -- (orch);
+  \draw[diagarrow] (orch) -- (architect);
+  \draw[diagarrow] (orch) -- (tracker);
+  \draw[diagarrow] (orch) -- (analyst);
+  \draw[diagarrow] (orch) -- (reporter);
+  \draw[diagarrow] (architect) -- (runtime);
+  \draw[diagarrowbi] (runtime) -- (tracker);
+  \draw[diagarrow] (tracker) -- (analyst);
+  \draw[diagarrow] (analyst) -- (reporter);
+  \draw[diagarrow] (loader) -- (runtime);
+  \draw[diagarrow] (analyst) -- (charts);
+  \draw[diagarrow] (charts) -- (reporter);
+  \draw[diagarrow] (tracker) -- (memory);
+  \draw[diagarrow] (memory) -- (db);
+  \draw[diagarrow] (memory) -- (vector);
+  \draw[diagarrowbi] (orch) |- (db);
+  \draw[diagarrowbi] (orch) |- (storage);
+  \draw[diagarrowbi] (analyst) |- (vector);
+  \draw[diagarrowbi] (analyst) |- (kg);
+  \draw[diagarrow] (reporter) |- (storage);
+\end{tikzpicture}}
+\caption[Diagrama de componentes UML]{Diagrama de componentes UML de la
+segunda fase. El Orchestrator aparece como componente central y los agentes se
+separan de las capas de simulación, presentación y persistencia.}
+\label{fig:componentes-uml}
+\end{figure}
 
 Las secciones siguientes separan las aportaciones propias de esta fase y las
 capas que materializan la sesión.
@@ -96,15 +222,123 @@ decisión y las gráficas de alternativas valoradas. La generalidad de esta
 interfaz permite acomodar tanto modelos clásicos basados en Q-learning
 como paradigmas no tabulares o estrategias deliberativas más elaboradas.
 
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=8mm and 9mm,
+  cls/.style={
+    rectangle split, rectangle split parts=3, draw=black!75,
+    rounded corners=2pt, line width=0.55pt, fill=black!3,
+    text width=34mm, align=left, font=\scriptsize\sffamily
+  }
+]
+  \node[cls] (env) {
+    \textbf{Environment}
+    \nodepart{second}
+    width, height, step\\
+    agents, resources, events
+    \nodepart{third}
+    add\_agent()\\
+    step()\\
+    run()
+  };
+  \node[cls, left=13mm of env] (agent) {
+    \textbf{Agent}
+    \nodepart{second}
+    id, position\\
+    model
+    \nodepart{third}
+    --
+  };
+  \node[cls, right=13mm of env] (resource) {
+    \textbf{Resource}
+    \nodepart{second}
+    id, type\\
+    position, properties
+    \nodepart{third}
+    --
+  };
+  \node[cls, below=14mm of agent] (model) {
+    \textbf{DecisionModel}
+    \nodepart{second}
+    <<Protocol>>
+    \nodepart{third}
+    decide(perception)\\
+    update(action, reward, perception)\\
+    get\_state()
+  };
+  \node[cls, below=14mm of env] (event) {
+    \textbf{Event}
+    \nodepart{second}
+    step, agent\_id\\
+    action, reward\\
+    perception, state
+    \nodepart{third}
+    --
+  };
+  \node[cls, below=14mm of resource, text width=38mm] (rules) {
+    \textbf{ActionRule / ResourceRule}
+    \nodepart{second}
+    name, effect\\
+    spawn policy
+    \nodepart{third}
+    MoveEffect\\
+    ConsumeEffect\\
+    NoopEffect
+  };
+
+  \node[cls, below=18mm of event, text width=37mm] (orch) {
+    \textbf{Orchestrator}
+    \nodepart{second}
+    history, state\\
+    services, tools
+    \nodepart{third}
+    chat()\\
+    run\_simulation()\\
+    analyze\_results()
+  };
+  \node[cls, left=12mm of orch, text width=38mm] (agents) {
+    \textbf{Architect / Tracker / Analyst / Reporter}
+    \nodepart{second}
+    client, model
+    \nodepart{third}
+    run()
+  };
+  \node[cls, right=10mm of orch] (writer) {
+    \textbf{TrackerMemoryWriter}
+    \nodepart{second}
+    db, vector stores
+    \nodepart{third}
+    write()
+  };
+
+  \draw[diagarrow] (env) -- (agent);
+  \draw[diagarrow] (env) -- (resource);
+  \draw[diagarrow] (env) -- (event);
+  \draw[diagarrow] (agent) -- (model);
+  \draw[diagarrow] (rules) -- (env);
+  \draw[diagarrow] (orch) -- (agents);
+  \draw[diagarrow] (orch.east) -- (writer.west);
+  \draw[diagarrow] (orch.north) -- ++(0,8mm) -| (env.south);
+  \draw[diagarrow] (writer.north) -- ++(0,8mm) -| (event.south east);
+\end{tikzpicture}}
+\caption[Diagrama de clases UML]{Diagrama de clases UML simplificado de la
+segunda fase. Se incluyen las clases del dominio de simulación, el contrato
+\texttt{DecisionModel} y las clases que coordinan, observan y persisten la
+sesión.}
+\label{fig:clases-uml}
+\end{figure}
+
 \section{El Orchestrator y el ciclo de la sesión}
 
 El Orchestrator es la única pieza que entiende el pipeline en su
 conjunto. Mantiene el historial del chat, registra el catálogo de
 herramientas disponibles y despacha cada llamada al agente especializado
 correspondiente. La interfaz refleja ese pipeline en el panel lateral, donde
-cada agente expone su estado de ejecución (Figura~\ref{fig:pipeline}) y muestra
-el avance en tiempo real mientras los agentes trabajan
-(Figura~\ref{fig:pipeline-accion}). La planificación global no se delega en el modelo de
+cada agente expone su estado de ejecución y muestra el avance en tiempo real
+mientras los agentes trabajan (Figura~\ref{fig:pipeline-accion}). La
+planificación global no se delega en el modelo de
 lenguaje, sino que se modela como una secuencia canónica de \textit{tool
 calls}. Sobre esa secuencia, el LLM solo elige desviaciones puntuales:
 pedir una consulta adicional al Knowledge
@@ -164,6 +398,52 @@ secuencia canónica se mantiene como base; lo que el LLM decide es
 Esta combinación de plan fijo y desviaciones acotadas es lo que hace que
 una sesión sea a la vez previsible en coste y tolerante a los fallos
 puntuales propios de las salidas generativas.
+
+\begin{figure}[p]
+\centering
+\resizebox{0.82\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=6mm and 10mm,
+  startstop/.style={ellipse, draw=black!75, fill=black!8, minimum width=18mm,
+    minimum height=7mm, align=center, font=\scriptsize\sffamily},
+  action/.style={rectangle, rounded corners=2pt, draw=black!70, fill=black!3,
+    minimum height=8mm, text width=42mm, align=center, font=\scriptsize\sffamily},
+  decision/.style={diamond, aspect=2.1, draw=black!70, fill=black!4,
+    text width=28mm, align=center, font=\scriptsize\sffamily}
+]
+  \node[startstop] (start) {Inicio};
+  \node[action, below=of start] (msg) {Recibir petición del usuario por WebSocket};
+  \node[action, below=of msg] (models) {Listar modelos disponibles y recuperar contexto};
+  \node[action, below=of models] (architect) {Architect genera especificación de entorno};
+  \node[decision, below=of architect] (valid) {¿Es válida y aceptada?};
+  \node[action, right=18mm of valid] (revise) {Ajustar petición o regenerar especificación};
+  \node[action, below=of valid] (sim) {Cargar modelos y ejecutar simulación};
+  \node[action, below=of sim] (tracker) {Tracker registra eventos, trayectorias y episodios};
+  \node[action, below=of tracker] (memory) {Persistir observaciones en Knowledge Backbone};
+  \node[action, below=of memory] (analyst) {Analyst identifica patrones y genera gráficas};
+  \node[action, below=of analyst] (reporter) {Reporter compila informe PDF};
+  \node[action, below=of reporter] (ui) {Enviar tarjetas, replay, análisis y enlaces al frontend};
+  \node[startstop, below=of ui] (end) {Fin};
+
+  \draw[diagarrow] (start) -- (msg);
+  \draw[diagarrow] (msg) -- (models);
+  \draw[diagarrow] (models) -- (architect);
+  \draw[diagarrow] (architect) -- (valid);
+  \draw[diagarrow] (valid) -- node[left, font=\tiny] {sí} (sim);
+  \draw[diagarrow] (valid) -- node[above, font=\tiny] {no} (revise);
+  \draw[diagarrow] (revise) |- (architect);
+  \draw[diagarrow] (sim) -- (tracker);
+  \draw[diagarrow] (tracker) -- (memory);
+  \draw[diagarrow] (memory) -- (analyst);
+  \draw[diagarrow] (analyst) -- (reporter);
+  \draw[diagarrow] (reporter) -- (ui);
+  \draw[diagarrow] (ui) -- (end);
+\end{tikzpicture}}
+\caption[Diagrama de actividad UML]{Diagrama de actividad UML de una sesión
+completa. El flujo muestra la secuencia canónica del Orchestrator y el punto de
+confirmación humana antes de ejecutar la simulación.}
+\label{fig:actividad-uml}
+\end{figure}
 
 \paragraph{Autocompactación del historial.} El Orchestrator también debe
 cuidar su propia ventana de contexto. Una sesión larga acumula conversación,
@@ -238,14 +518,13 @@ abstracta cualquiera, sino un entorno compatible con las políticas que se
 van a comparar. El Orchestrator conserva la capacidad de presentar esa
 propuesta al usuario y de repetir la generación si la especificación no
 encaja con la intención de la sesión. El resultado se muestra en la interfaz
-como una tarjeta de especificación del entorno (Figura~\ref{fig:architect});
-el resto de la interacción se recoge en la galería del Apéndice~\ref{ap:ui}.
+como una tarjeta de especificación del entorno; el resto de la interacción se
+recoge en la galería del Apéndice~\ref{ap:ui}.
 
 \paragraph{Tracker.} Observa la simulación en bloque, una vez completada,
 y produce un JSON estructurado con los eventos por paso, las trayectorias
 por agente y los episodios significativos, que la interfaz resume como
-tarjetas de trayectoria por agente (Figura~\ref{fig:tracker}). Actúa como
-observador puro:
+tarjetas de trayectoria por agente. Actúa como observador puro:
 no escribe en el Knowledge Backbone; esa
 responsabilidad recae en el Orchestrator, como se explicó arriba.
 
@@ -332,6 +611,73 @@ interpretación y enlazar los resultados con el contexto de la sesión. Así
 el informe no es una captura del dashboard, sino un artefacto independiente
 que conserva la evidencia principal de la ejecución.
 
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  actor/.style={rectangle, draw=black!75, rounded corners=2pt, fill=black!5,
+    text width=25mm, align=center, font=\scriptsize\sffamily},
+  msg/.style={font=\tiny\sffamily, midway, fill=white, inner sep=1pt}
+]
+  \node[actor] (orch) {Orchestrator};
+  \node[actor, right=18mm of orch] (kb) {Knowledge Backbone};
+  \node[actor, right=18mm of kb] (analyst) {Analyst + Charts};
+  \node[actor, right=18mm of analyst] (reporter) {Reporter};
+  \node[actor, right=18mm of reporter] (storage) {MinIO + Frontend};
+
+  \foreach \x in {orch,kb,analyst,reporter,storage}
+    \draw[black!35] (\x.south) -- ++(0,-58mm);
+
+  \draw[diagarrow] ([yshift=-9mm]orch.south) -- node[msg] {persistir observaciones} ([yshift=-9mm]kb.south);
+  \draw[diagarrow] ([yshift=-18mm]orch.south) -- node[msg] {analyze\_results()} ([yshift=-18mm]analyst.south);
+  \draw[diagarrowbi] ([yshift=-27mm]analyst.south) -- node[msg] {retrieve\_context} ([yshift=-27mm]kb.south);
+  \draw[diagarrow] ([yshift=-36mm]analyst.south) -- node[msg] {patrones, métricas y figuras} ([yshift=-36mm]orch.south);
+  \draw[diagarrow] ([yshift=-45mm]orch.south) -- node[msg] {generate\_report()} ([yshift=-45mm]reporter.south);
+  \draw[diagarrow] ([yshift=-54mm]reporter.south) -- node[msg] {PDF + enlaces} ([yshift=-54mm]storage.south);
+  \draw[diagarrow] ([yshift=-63mm]storage.south) -- node[msg] {resultado descargable} ([yshift=-63mm]orch.south);
+\end{tikzpicture}}
+\caption[Diagrama de secuencia de análisis e informe]{Diagrama de secuencia
+UML del caso de uso de análisis y generación de informe. El Analyst contrasta
+las observaciones con el Knowledge Backbone y el Reporter almacena el PDF como
+artefacto descargable.}
+\label{fig:secuencia-informe}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  actor/.style={rectangle, draw=black!75, rounded corners=2pt, fill=black!5,
+    text width=24mm, align=center, font=\scriptsize\sffamily},
+  msg/.style={font=\tiny\sffamily, midway, fill=white, inner sep=1pt}
+]
+  \node[actor] (user) {Usuario + frontend};
+  \node[actor, right=17mm of user] (api) {FastAPI};
+  \node[actor, right=17mm of api] (orch) {Orchestrator};
+  \node[actor, right=17mm of orch] (arch) {Architect};
+  \node[actor, right=17mm of arch] (loader) {Model loader};
+  \node[actor, right=17mm of loader] (env) {Environment + Tracker};
+
+  \foreach \x in {user,api,orch,arch,loader,env}
+    \draw[black!35] (\x.south) -- ++(0,-68mm);
+
+  \draw[diagarrow] ([yshift=-9mm]user.south) -- node[msg] {petición por WebSocket} ([yshift=-9mm]api.south);
+  \draw[diagarrow] ([yshift=-17mm]api.south) -- node[msg] {chat()} ([yshift=-17mm]orch.south);
+  \draw[diagarrow] ([yshift=-25mm]orch.south) -- node[msg] {generar especificación} ([yshift=-25mm]arch.south);
+  \draw[diagarrow] ([yshift=-33mm]arch.south) -- node[msg] {spec validada} ([yshift=-33mm]orch.south);
+  \draw[diagarrow] ([yshift=-41mm]orch.south) -- node[msg] {cargar modelos} ([yshift=-41mm]loader.south);
+  \draw[diagarrow] ([yshift=-49mm]orch.south) -- node[msg] {ejecutar simulación} ([yshift=-49mm]env.south);
+  \draw[diagarrow] ([yshift=-57mm]env.south) -- node[msg] {eventos + JSON observacional} ([yshift=-57mm]orch.south);
+  \draw[diagarrow] ([yshift=-65mm]orch.south) -- node[msg] {tarjetas y replay} ([yshift=-65mm]api.south);
+  \draw[diagarrow] ([yshift=-73mm]api.south) -- node[msg] {actualización visual} ([yshift=-73mm]user.south);
+\end{tikzpicture}}
+\caption[Diagrama de secuencia de simulación]{Diagrama de secuencia UML del
+caso de uso de ejecución de una simulación. El Orchestrator valida la
+especificación, carga modelos de la primera fase y entrega al Tracker la traza
+producida por el entorno.}
+\label{fig:secuencia-simulacion}
+\end{figure}
+
 \section{Carga dinámica de modelos de la primera fase}
 
 El sistema no incorpora estáticamente los modelos generados por la primera
@@ -367,10 +713,9 @@ que habilita comparativas \textit{multi-modelo} sin reconfiguración.
 \section{El Knowledge Backbone como capa compartida}
 
 El Knowledge Backbone es la capa de persistencia común a ambas fases del
-proyecto. Esta memoria no necesita reconstruir toda su definición interna:
-lo relevante para el diseño de la segunda fase es qué partes consulta el
-laboratorio, qué partes escribe y cómo se conserva la trazabilidad entre
-ellas.
+proyecto. En esta memoria no hace falta repetir toda su definición interna;
+para el diseño de la segunda fase interesa, sobre todo, qué consulta el
+laboratorio, qué escribe y cómo mantiene la trazabilidad entre piezas.
 
 La capa de almacenamiento combina cuatro componentes con
 responsabilidades diferenciadas: PostgreSQL alberga los metadatos, el
@@ -386,14 +731,36 @@ esa capa no está disponible, no participa: el pipeline principal continúa, per
 sin recuperación semántica, sin \textit{reranking} y sin escritura indexada de
 memorias de simulación en Qdrant.
 
-La separación entre estos almacenes responde al tipo de pregunta que debe
-poder responder el laboratorio: auditar una ejecución, descargar un informe,
-encontrar un postulado relacionado y recuperar una observación parecida no
-son operaciones del mismo tipo. La coherencia se mantiene mediante
-identificadores, claves de artefacto y \textit{UUIDs} compartidos. Los
-informes del Reporter también quedan almacenados como artefactos: al
-generarse un PDF, el Orchestrator guarda su clave en el estado de la sesión,
-actualiza el experimento y expone enlaces de descarga mediante
+La decisión de repartir la información entre varios almacenes viene de una
+necesidad bastante práctica. El sistema conserva metadatos de experimentos y
+ejecuciones, modelos registrados por la primera fase, historial conversacional,
+artefactos generados y observaciones de simulación reutilizables. No todos esos
+datos se consultan igual: unos se filtran por identificador o fecha, otros se
+descargan como archivos y otros se recuperan por parecido semántico o por su
+relación con paradigmas previos.
+
+\begin{table}[H]
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}p{4.6cm}|} \hline
+\textbf{Almacén} & \textbf{Información principal} & \textbf{Motivo de diseño} \\ \hline
+PostgreSQL & Experimentos, sesiones, mensajes, modelos registrados y observaciones tipadas. & Consultas exactas, filtrado, trazabilidad relacional y recuperación histórica mediante SQL de solo lectura. \\ \hline
+MinIO & Informes PDF, trazas, artefactos binarios y código de modelos aceptados. & Almacenamiento de objetos descargables o de mayor tamaño, separado de las tablas transaccionales. \\ \hline
+Qdrant & Memorias densas y representaciones \textit{sparse} BM25 de observaciones y conocimiento recuperable. & Recuperación por similitud semántica o léxica cuando la pregunta no se resuelve bien con claves exactas. \\ \hline
+Neo4j & Paradigmas, formulaciones, autores, referencias y relaciones de procedencia. & Navegación por relaciones científicas y contraste entre observaciones y postulados conocidos. \\ \hline
+\end{tabular}
+\caption[Información almacenada en el Knowledge Backbone]{Reparto de la
+información almacenada entre los componentes del Knowledge Backbone.}
+\label{tab:almacenamiento-knowledge-backbone}
+\end{center}
+\end{table}
+
+La coherencia entre almacenes se mantiene mediante identificadores, claves de
+artefacto y \textit{UUIDs} compartidos. Por ejemplo, cuando el Reporter genera
+un PDF, el Orchestrator guarda la clave del artefacto en el estado de la
+sesión, actualiza el experimento y expone enlaces de descarga mediante
 \texttt{/api/reports/download} o la herramienta \texttt{get\_report\_links}.
 
 El capítulo anterior explicó por qué se combinan búsqueda semántica,
@@ -436,8 +803,8 @@ con el mismo \textit{UUID} compartido. Así, una observación de simulación
 queda disponible para recuperación posterior sin confundirse con un postulado
 procedente de la literatura. En esta fase no se materializa como nodo de Neo4j:
 se mantiene como memoria indexada y fila tipada, enlazable por sus metadatos.
-El flujo de escritura y recuperación de estas observaciones se resume en la
-Figura~\ref{fig:memoria-simulacion}.
+El flujo queda, por tanto, concentrado en tres pasos: observación estructurada,
+escritura indexada y recuperación posterior desde nuevas sesiones.
 
 \section{Capa de presentación reactiva}
 
@@ -493,3 +860,10 @@ consultas y convertía una sesión larga en una secuencia de cargas
 independientes. El precio es trasladar la sincronización al backend; el
 beneficio es que el usuario ve un proceso vivo: el agente piensa, el entorno
 se construye y el modelo decide, en lugar de cargas aisladas.
+
+El diseño de la interfaz se documenta mediante capturas reales del sistema
+implementado en el Apéndice~\ref{ap:ui}. Se ha optado por capturas en lugar de
+\textit{wireframes} porque la interfaz ya estaba materializada al cerrar esta
+fase del proyecto; las figuras muestran la organización del \textit{dashboard},
+la vista de simulación, el panel del pipeline y las salidas específicas de
+Architect, Tracker, Analyst y Reporter.

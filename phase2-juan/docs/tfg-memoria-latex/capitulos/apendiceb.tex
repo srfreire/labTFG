@@ -1,33 +1,36 @@
 \chapter{Manual de usuario}
+\label{ap:manual-usuario}
 
-\section{Arranque}
+Este manual describe el uso del laboratorio desde el punto de vista del usuario
+investigador. El Apéndice~\ref{ap:manual-tecnico} recoge instalación,
+configuración y mantenimiento; aquí se documenta el recorrido de uso una vez que
+la aplicación está disponible.
 
-Con la instalación ya preparada, el usuario levanta los servicios comunes,
-el backend y el cliente web:
+\section{Acceso}
 
-\begin{verbatim}
-docker compose up -d
-cd phase2-juan && uv run uvicorn simlab.api:app --port 8000
-cd phase2-juan/frontend && npm run dev
-\end{verbatim}
+Con la instalación ya preparada, la interfaz queda disponible en
+\url{http://localhost:5173}. También puede usarse la CLI desde
+\texttt{phase2-juan} con \texttt{uv run simlab}. El arranque de servicios,
+backend y cliente web se detalla en el manual técnico.
 
-La interfaz queda disponible en \texttt{http://localhost:5173}. También
-puede usarse la CLI con \texttt{uv run simlab}. La clave obligatoria es
-\texttt{OPENROUTER\_API\_KEY}; las de Voyage AI y ZeroEntropy activan la capa
-semántica del Knowledge Backbone. Si faltan, esa capa no participa.
+Si la página no carga, conviene comprobar primero que el backend esté escuchando
+en el puerto \texttt{8000} y que el cliente web se haya iniciado en el puerto
+\texttt{5173}. Si los agentes no responden, la causa más habitual es que falte
+\texttt{OPENROUTER\_API\_KEY}.
 
 \section{Uso general}
 
 El usuario describe en el chat el problema de toma de decisiones que quiere
-estudiar. El Orchestrator presenta los modelos disponibles de la primera
-fase, pide seleccionar uno o varios y delega la creación del entorno al
-Architect. Tras aceptar la configuración, se ejecuta la simulación y la
-interfaz muestra la rejilla, el \textit{replay}, los eventos críticos y el
-estado de cada agente.
+estudiar. A partir de esa petición, el Orchestrator presenta los modelos
+disponibles de la primera fase y pide seleccionar uno o varios. Después propone
+una configuración de entorno generada por el Architect. El usuario puede
+aceptarla o pedir ajustes antes de ejecutar la simulación.
 
-Al terminar, el Tracker resume las trayectorias, el Analyst interpreta los
-patrones observados y el Reporter genera un informe PDF descargable. La
-sesión queda registrada para consulta posterior.
+Tras la confirmación, se ejecuta la simulación. La interfaz muestra la rejilla,
+el \textit{replay}, los eventos críticos y el estado de cada agente. Al
+terminar, el Tracker resume las trayectorias, el Analyst interpreta los patrones
+observados y el Reporter genera un informe PDF descargable. La sesión queda
+registrada para consulta posterior.
 
 Durante el proceso se puede iterar, pedir recomendaciones al Orchestrator o
 volver a pasos anteriores. El Orchestrator guía la conversación y mantiene la
@@ -37,7 +40,7 @@ continuidad de la sesión.
 
 La pantalla principal combina cuatro zonas. El chat permite pedir nuevas
 simulaciones, aceptar propuestas del Orchestrator o solicitar explicaciones
-sobre resultados ya generados. El panel de agentes muestra qué componente está
+sobre resultados ya generados. El panel de agentes indica qué componente está
 trabajando en cada momento: Architect para el entorno, Tracker para la
 observación, Analyst para la interpretación y Reporter para el informe. La
 rejilla de simulación muestra agentes y recursos, y permite reproducir la
@@ -56,32 +59,31 @@ acciones poco eficaces.
 
 Al terminar la ejecución, el informe PDF puede descargarse desde la propia
 interfaz. El informe contiene la configuración del entorno, los modelos
-comparados, las métricas principales, las gráficas generadas por el Analyst y
-la interpretación textual de los patrones observados.
+comparados, las métricas principales, las gráficas generadas por el Analyst y la
+interpretación textual de los patrones observados.
 
 Las vistas del Knowledge Backbone permiten inspeccionar memorias, procedencia y
-relaciones disponibles. En esta fase, las observaciones de simulación se
-guardan en el \textit{namespace} \texttt{simulation}; los postulados y
-formulaciones procedentes de la primera fase usan otros espacios de memoria.
-Esta separación ayuda a distinguir entre conocimiento científico de entrada y
+relaciones disponibles. En esta fase, las observaciones de simulación se guardan
+en el \textit{namespace} \texttt{simulation}; los postulados y formulaciones
+procedentes de la primera fase usan otros espacios de memoria. Esta separación
+ayuda al usuario a distinguir entre conocimiento científico de entrada y
 evidencia producida por ejecuciones del laboratorio.
 
 \section{Errores frecuentes}
 
-Si los puertos \texttt{8000} o \texttt{5173} están ocupados, se puede
-levantar el backend en otro puerto y comunicarlo al frontend mediante
+Si los puertos \texttt{8000} o \texttt{5173} están ocupados, se puede levantar
+el backend en otro puerto y comunicarlo al frontend mediante
 \texttt{VITE\_API\_PORT}. Si fallan PostgreSQL, MinIO, Neo4j o Qdrant, la
-sesión no puede ejecutarse completa; normalmente basta con reiniciar
-\texttt{docker compose up -d}. Si falta \texttt{OPENROUTER\_API\_KEY}, los
-agentes no pueden invocarse.
+sesión no puede ejecutarse completa. Si falta \texttt{OPENROUTER\_API\_KEY},
+los agentes no pueden invocarse.
 
 Si no aparece ningún modelo disponible, conviene comprobar que la primera fase
 ha registrado modelos aceptados en PostgreSQL y que los archivos asociados
 existen en MinIO. Si el informe no se descarga, el problema suele estar en la
 compilación LaTeX o en la ruta del artefacto persistido. Si el análisis parece
-demasiado pobre o no aparecen memorias de simulación indexadas, puede deberse
-a que Voyage AI o ZeroEntropy no estén configurados. En ese caso la capa
-semántica del Knowledge Backbone no participa.
+demasiado pobre o no aparecen memorias de simulación indexadas, puede deberse a
+que Voyage AI o ZeroEntropy no estén configurados; en ese caso la capa semántica
+del Knowledge Backbone no participa.
 
 \section{Términos básicos}
 

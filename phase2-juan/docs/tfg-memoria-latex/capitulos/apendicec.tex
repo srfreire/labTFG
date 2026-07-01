@@ -1,24 +1,22 @@
 \chapter{Detalle de la batería de pruebas}
 \label{ap:capa1}
 
-Este apéndice reúne el detalle que no cabe en el capítulo de pruebas sin
-cortar el ritmo de la memoria. No añade una segunda discusión metodológica:
-solo deja constancia de qué se comprobó, con qué resultado y qué parte queda
-como revisión manual.
+Este apéndice reúne el detalle que habría cortado el ritmo del capítulo de
+pruebas. No añade otra discusión metodológica: deja constancia de qué se
+comprobó, con qué resultado y qué parte queda como revisión manual.
 
-\section{Núcleo determinista}
+\section{Núcleo determinista y persistencia}
 
-La primera capa se ejecuta sobre seis modelos: cuatro procedentes de la primera
-fase y dos \textit{baselines}. Antes de mirar si el comportamiento encaja con
-la teoría, se comprueba que todos respetan el contrato mínimo del laboratorio:
-\texttt{decide} no muta estado, \texttt{update} concentra los cambios tras la
-recompensa y \texttt{get\_state} expone \texttt{q\_values}. El resultado es
-6/6. También se repite cada ejecución con la misma semilla; en los seis casos
-la secuencia de acciones y eventos coincide byte a byte.
+Antes de interpretar el comportamiento, se comprueba que los modelos respetan el
+contrato mínimo del laboratorio: \texttt{decide} no muta
+estado, \texttt{update} concentra los cambios tras la recompensa y
+\texttt{get\_state} expone \texttt{q\_values}. También se repite cada ejecución
+con la misma semilla; la secuencia de acciones y eventos coincide byte a byte,
+lo que sostiene la comparativa multi-modelo.
 
-La persistencia se comprueba aparte porque una observación útil no basta con
-que exista en un JSON final. Debe quedar registrada con el mismo identificador
-en la tabla relacional y en los dos índices de recuperación.
+La persistencia se comprueba aparte porque una observación útil no basta con que
+exista en un JSON final: debe quedar registrada con el mismo identificador en la
+tabla relacional y en los dos índices de recuperación.
 
 \begin{table}[H]
 \begin{center}
@@ -31,8 +29,9 @@ Memorias densas escritas (Voyage, 1024 dim.) & $N$ \\ \hline
 Memorias \textit{sparse} escritas (BM25 nativo) & $N$ \\ \hline
 \end{tabular}
 \caption[Fidelidad de la persistencia]{Fidelidad de la persistencia. La igualdad
-$N=N=N$ valida que PostgreSQL, Qdrant denso y Qdrant \textit{sparse} quedan
-sincronizados por el mismo \textit{UUID}.}
+entre los tres conteos valida que PostgreSQL, Qdrant denso y Qdrant
+\textit{sparse} contienen el mismo número de observaciones bajo los mismos
+identificadores. En las ejecuciones evaluadas, $N=13$ (CASO1) y $N=9$ (CASO2).}
 \label{tab:joinable}
 \end{center}
 \end{table}
@@ -41,23 +40,24 @@ sincronizados por el mismo \textit{UUID}.}
 
 La suite de regresión combina pruebas unitarias y recorridos completos de la
 interfaz. Las pruebas de backend cubren dominio, agentes, Orchestrator,
-persistencia, recuperación, carga dinámica de modelos, escenarios dorados y
-fidelidad del Reporter. Playwright cubre tanto el modo \textit{mock} como la
-sesión real con backend levantado; esta última se mantiene separada porque
-depende de servicios vivos.
+persistencia, recuperación, carga dinámica de modelos, la verificación
+determinista de anclaje y la fidelidad del Reporter. Playwright cubre tanto el
+modo \textit{mock} como la sesión real con backend levantado; esta última se
+mantiene separada porque depende de servicios vivos.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|>{\raggedright\arraybackslash}p{4.6cm}|>{\raggedright\arraybackslash}p{1.6cm}|>{\raggedright\arraybackslash}p{1.4cm}|>{\raggedright\arraybackslash}p{4.0cm}|} \hline
 \textbf{Bloque} & \textbf{Estado} & \textbf{Casos} & \textbf{Qué demuestra} \\ \hline
-Backend (\textit{pytest}, 38 archivos) & PASA & 353/353 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos y Reporter. \\ \hline
+Backend (\textit{pytest}) & PASA & 387/387 & Dominio, agentes, Orchestrator, persistencia, recuperación, carga de modelos, anclaje determinista y Reporter. \\ \hline
 Determinismo del motor (misma semilla) & PASA & 1/1 & Dos ejecuciones con la misma semilla y configuración producen eventos idénticos. \\ \hline
 E2E web (modo \textit{mock}) & PASA & 4/4 & Pipeline completo en interfaz sin servicios externos. \\ \hline
-E2E web (sesión real y backbone) & Manual & 13 & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
+E2E web (sesión real y backbone) & Manual & 13 comprobaciones & Sesión completa y vistas del Knowledge Backbone; requieren el \textit{backend} en ejecución. \\ \hline
 \end{tabular}
 \caption[Suite automatizada]{Suite automatizada. Resultado del conjunto de
-regresión usado como base de la evaluación.}
+regresión usado como base de la evaluación. El estado \emph{Manual} indica
+pruebas ejecutadas sobre un entorno vivo, no ausencia de comprobación.}
 \label{tab:suite}
 \end{center}
 \end{table}
@@ -66,21 +66,91 @@ Las comprobaciones visuales no se dan por cerradas solo porque el test encuentre
 un elemento en pantalla. Cuando afectan a legibilidad, navegación o lectura del
 Knowledge Backbone, se revisan también sobre la aplicación en ejecución.
 
-\section{Juicio externo y revisión humana}
+\section{Fidelidad factual del Reporter}
+
+Como complemento determinista al juicio externo, el script
+\texttt{faithfulness.py} compara el PDF con los datos de origen y busca
+magnitudes como comida consumida, pasos, recompensa total y energía final. En una
+prueba controlada, el informe fiel obtiene fidelidad $1{,}00$; un informe
+adversario con errores plantados baja a $0{,}33$, señalando las magnitudes
+alteradas. Además, se comprueba que el PDF entregado sea el compilado real con
+\texttt{tectonic} y no el documento de respaldo generado si falla LaTeX.
+
+\section[Escenarios controlados]{Validación de comportamiento con escenarios controlados}
 \label{ap:capa3}
 
-La capa 3 usa Codex como juez externo para revisar salidas abiertas mediante
-rúbricas separadas por dimensión. Esta revisión no sustituye al criterio humano:
-los jueces basados en modelos de lenguaje pueden acercarse al acuerdo humano en
-algunas tareas~\cite{zheng2023judge}, pero también arrastran sesgos de posición,
-verbosidad o autopreferencia~\cite{calm2024biases}. Una calibración formal
-exigiría salidas etiquetadas por el tutor o por el grupo de investigación, así
-que queda planteada como trabajo futuro.
+Además de la fidelidad de observación que mide el capítulo de pruebas, el banco
+incluye una validación de comportamiento sobre los modelos de la \emph{ejecución
+de muestra} de la primera fase. Son modelos distintos de los dos casos evaluados;
+por eso se dejan aquí. La técnica usada es la de los \textit{golden scenarios}:
+escenarios controlados en los que se conoce de antemano la verdad, porque la fija
+la teoría que el modelo dice implementar, y se mide si el laboratorio la recupera
+a partir de la
+simulación~\cite{wilson2019tenrules,palminteri2017falsification}.
 
-La parte ejecutable de esta capa se limita a la fidelidad factual del Reporter.
-El script \texttt{benchmark/faithfulness.py} compara el PDF con los datos de
-origen y busca magnitudes como comida consumida, pasos, recompensa total y
-energía final. En una prueba controlada, el informe fiel obtiene fidelidad
-$1{,}00$; un informe adversario con errores plantados baja a $0{,}33$. Además,
-se comprueba que el PDF entregado sea el compilado real con \texttt{tectonic} y
-no el documento de respaldo generado si falla LaTeX.
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{5.0cm}|} \hline
+\textbf{Paradigma} & \textbf{Modelo} & \textbf{Predicción falsable} \\ \hline
+Forrajeo óptimo & Teorema del valor marginal (MVT) & Abandona el parche cuando la tasa marginal cae bajo la media del entorno~\cite{charnov1976mvt} \\ \hline
+Forrajeo óptimo & Amplitud de dieta & Regla cero-uno: ignora la presa pobre si abunda la buena~\cite{macarthur1966dietbreadth} \\ \hline
+Aprendizaje por refuerzo & Q-learning tabular & Curva de aprendizaje: el rendimiento mejora con la experiencia \\ \hline
+Aprendizaje por refuerzo & \textit{Actor-critic} & Aprende; el error TD actúa como señal de recompensa-predicción \\ \hline
+\end{tabular}
+\caption[Modelos de los escenarios controlados]{Modelos de la ejecución de
+muestra de la primera fase y la predicción falsable que debe reproducir cada uno.}
+\label{tab:modelos-sujeto}
+\end{center}
+\end{table}
+
+Para anclar las métricas se añaden dos modelos de referencia de verdad conocida,
+implementados a mano: \texttt{GreedyForagerOracle}, que se dirige siempre a la
+comida más cercana (define el \textbf{techo} de eficiencia), y
+\texttt{RandomModel}, que elige al azar (define el \textbf{suelo}). Un modelo que
+forrajee de verdad debe situarse cerca del oráculo y, como mínimo, batir al azar.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.35cm}|>{\raggedright\arraybackslash}p{2.35cm}|>{\raggedright\arraybackslash}p{4.65cm}|>{\raggedright\arraybackslash}p{1.3cm}|} \hline
+\textbf{ID} & \textbf{Modelo} & \textbf{Métrica observada} & \textbf{Est.} \\ \hline
+GS-OFT-1 & MVT & Residencia máx.\ 12 pasos, 8 abandonos con reinicio & PASA \\ \hline
+GS-OFT-2 & MVT & Residencia media al partir $2{,}14 \rightarrow 2{,}73$ al subir el coste de viaje & PASA \\ \hline
+GS-OFT-3 & Diet-breadth & Fracción de dieta $\{1\}$: $0{,}65$ (buena abundante) vs.\ $0{,}00$ (escasa) & PASA \\ \hline
+GS-RL-1 & Q-learning & Tasa de recompensa $+0{,}46$; $\varepsilon$ decae $0{,}99\rightarrow 0{,}05$ & PASA \\ \hline
+GS-RL-1 & Actor-critic & Tasa de recompensa $+0{,}01$; $\beta$ asciende $3\rightarrow 15$ & FALLA \\ \hline
+GS-RL-1 & MVT (control) & Tasa de recompensa $+0{,}00$ (plano) & PASA \\ \hline
+GS-RL-1 & Diet-breadth (control) & Tasa de recompensa $-0{,}01$ (plano) & PASA \\ \hline
+\end{tabular}
+}
+\caption[Resultados de los escenarios controlados]{Resultados de los escenarios
+controlados; seis de las siete predicciones se reproducen.}
+\label{tab:gs-resultados}
+\end{center}
+\end{table}
+
+Las predicciones del forrajeo óptimo se reproducen, y los \textit{baselines}
+anclan la escala: en la tarea de aprendizaje el oráculo alcanza $0{,}74$ y el azar
+$0{,}08$; el Q-learning, que parte del nivel del azar, aprende hasta $\approx
+0{,}55$. El resultado más informativo es el del \textit{actor-critic}, que
+\textbf{no} mejora su rendimiento pese a que su temperatura inversa $\beta$ crece
+según lo previsto: se vuelve menos exploratorio, pero no convierte esa
+explotación en más recompensa. El fallo persiste hasta $20\,000$ pasos y variando
+sus hiperparámetros; la política \textit{softmax} se fija antes de que el crítico
+aprenda valores útiles. El núcleo determinista no detecta esto --- el modelo carga,
+decide y actualiza ---, pero la validación de comportamiento sí, porque mira el
+comportamiento completo frente a una predicción falsable. Ahí está su valor: el
+laboratorio funciona incluso cuando un modelo generado no reproduce bien su
+teoría.
+
+Sobre esta misma batería se hizo un piloto de \textbf{recuperación de la verdad
+por el Analyst}: dado cada escenario, ¿atribuye el comportamiento al paradigma
+correcto? Contrastada contra las etiquetas de verdad conocida, su atribución obtiene
+\textbf{precisión $1{,}00$ y exhaustividad $0{,}80$} (cuatro de cinco). El único
+fallo es revelador: en el escenario del \textit{actor-critic}, el mismo que falla
+la prueba de comportamiento, el Analyst no se compromete con ningún paradigma,
+precisamente porque el modelo no exhibe el patrón de aprendizaje que delataría el
+refuerzo. Es un piloto de cinco escenarios, número insuficiente para potencia
+estadística; su valor es metodológico.

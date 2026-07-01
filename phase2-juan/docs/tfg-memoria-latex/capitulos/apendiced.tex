@@ -1,128 +1,11 @@
-\chapter{Catálogo de requisitos}
+\chapter{Trazabilidad de requisitos}
 \label{ap:requisitos}
-
-Este apéndice recoge el catálogo completo de requisitos de la segunda fase.
-El capítulo de especificación resume los objetivos principales; aquí se deja
-la lista completa para poder consultar cada requisito, su prioridad MoSCoW y
-la evidencia con la que se valida en las pruebas.
-
-\section{Requisitos funcionales}
-
-\begin{small}
-\begin{itemize}
-\item \textbf{RF-01: Carga dinámica de modelos.} Cargar dinámicamente los modelos
-de decisión generados por la primera fase, descubriéndolos sin intervención
-manual entre sesiones. \textit{Prioridad: Must}.
-\item \textbf{RF-02: Generación de entornos.} Generar especificaciones de entorno
-de simulación a partir de descripciones en lenguaje natural.
-\textit{Prioridad: Must}.
-\item \textbf{RF-03: Ejecución de simulaciones.} Ejecutar simulaciones con uno o
-varios modelos en el mismo entorno, soportando comparativas multi-modelo.
-\textit{Prioridad: Must}.
-\item \textbf{RF-04: Registro estructurado.} Registrar de forma estructurada los
-eventos, episodios y trayectorias de decisión producidos durante cada
-simulación. \textit{Prioridad: Must}.
-\item \textbf{RF-05: Identificación de patrones.} Identificar patrones de
-comportamiento en los resultados, incluyendo pasos concretos o eventos
-críticos, y contrastarlos con el Knowledge Backbone.
-\textit{Prioridad: Must}.
-\item \textbf{RF-06: Visualizaciones analíticas.} Generar, como parte del
-análisis, gráficas y visualizaciones sobre trayectorias y métricas para
-incorporarlas al informe final. \textit{Prioridad: Should}.
-\item \textbf{RF-07: Generación de informes.} Generar informes en PDF con los
-resultados, la evidencia visual y las referencias a los paradigmas
-analizados. \textit{Prioridad: Must}.
-\item \textbf{RF-08: Persistencia de observaciones.} Persistir las observaciones
-de simulación en el Knowledge Backbone como memorias reutilizables en
-ejecuciones posteriores. \textit{Prioridad: Must}.
-\item \textbf{RF-09: Historial de experimentos.} Conservar el historial completo de
-experimentos y permitir su consulta, filtrado y comparativa, también mediante
-preguntas en lenguaje natural resolubles con SQL. \textit{Prioridad: Should}.
-\item \textbf{RF-10: Interacción conversacional.} Permitir la interacción con el
-sistema mediante un chat conversacional gestionado por el Orchestrator, con
-continuidad de la conversación dentro de la sesión. \textit{Prioridad: Must}.
-\item \textbf{RF-11: Recomendaciones del Orchestrator.} Permitir al Orchestrator
-recomendar al usuario qué hacer a continuación, qué modelos encajan y qué
-herramientas tiene disponibles. \textit{Prioridad: Could}.
-\item \textbf{RF-12: Replay de simulación.} Ofrecer una visualización del entorno
-de simulación con \textit{replay} paso a paso y paneles de actividad por
-agente. \textit{Prioridad: Should}.
-\item \textbf{RF-13: Inspección del Knowledge Backbone.} Exponer vistas de
-inspección del Knowledge Backbone (grafo, memorias y procedencia) accesibles
-desde la propia interfaz web. \textit{Prioridad: Could}.
-\end{itemize}
-\end{small}
-
-\vspace{0.5\baselineskip}
-
-\section{Requisitos no funcionales}
-
-\begin{small}
-\begin{itemize}
-\item \textbf{RNF-01: Modularidad y desacoplamiento.} La integración con la primera
-fase debe realizarse mediante un contrato mínimo (\textit{duck typing}),
-sin imponer dependencias de paquetes ni jerarquías de clases. Mientras
-RF-01 fija el \emph{qué} (cargar los modelos sin intervención manual),
-este requisito fija el \emph{cómo} (sin acoplar la evolución de las dos
-fases).
-\item \textbf{RNF-02: Extensibilidad de modelos.} La incorporación de nuevos
-modelos generados por la primera fase no debe requerir modificaciones en
-el código de la segunda fase.
-\item \textbf{RNF-03: Trazabilidad.} Cada ejecución debe conservar su
-configuración, sus eventos y sus artefactos finales con un identificador
-único, de modo que sea posible reproducirla o auditarla.
-\item \textbf{RNF-04: Reactividad.} El cliente web debe recibir actualizaciones del
-estado de la simulación y de la actividad de cada agente en tiempo real,
-sin \textit{polling}, mediante WebSocket.
-\item \textbf{RNF-05: Degradación controlada.} Si la capa semántica opcional
-(\textit{embeddings} y \textit{reranking}) no está disponible, el flujo
-principal debe seguir funcionando. En ese modo la capa semántica no participa:
-no hay recuperación semántica, \textit{reranking} ni escritura indexada de
-memorias de simulación en Qdrant.
-\item \textbf{RNF-06: Determinismo.} Para una misma semilla
-y configuración, el motor de simulación debe producir resultados
-idénticos, de modo que las comparativas entre modelos sean
-reproducibles y comparables entre sesiones.
-\item \textbf{RNF-07: Portabilidad de despliegue.} Los servicios externos (PostgreSQL,
-MinIO, Neo4j, Qdrant) deben poder levantarse de forma reproducible
-mediante \texttt{docker compose}, sin pasos manuales de configuración
-específicos del entorno del desarrollador.
-\item \textbf{RNF-08: Configuración por entorno.} Las credenciales y \textit{endpoints} de
-los servicios externos deben aislarse en variables de entorno, sin
-quedar embebidos en el código fuente ni en los artefactos versionados.
-\item \textbf{RNF-09: Observabilidad.} Las acciones del Orchestrator y de los
-agentes especializados deben dejar traza en los \textit{logs} del
-\textit{backend} (emitidos por la salida estándar del proceso que sirve la
-API), suficientes para diagnosticar una sesión \textit{a posteriori} sin
-tener que reproducirla.
-\item \textbf{RNF-10: Acotación del contexto conversacional.} Una sesión larga no
-debe agotar la ventana de contexto del modelo. El historial del chat con
-el Orchestrator debe mantenerse dentro de un presupuesto acotado de forma
-automática, sin que el usuario tenga que reiniciar la sesión y sin perder
-la trazabilidad de las decisiones ya tomadas.
-\item \textbf{RNF-11: Recuperación relacional segura.} Las consultas en
-lenguaje natural sobre experimentos, modelos, observaciones y mensajes
-persistidos deben traducirse a SQL de solo lectura, limitarse a un conjunto
-explícito de tablas permitidas y aplicar un límite máximo de resultados. Si
-la pregunta queda fuera de ese alcance, el sistema debe rechazarla sin
-ejecutar SQL.
-\item \textbf{RNF-12: Contraste previo con predicciones.} Antes de ejecutar una
-simulación, el sistema debe poder recuperar las predicciones científicas
-asociadas al modelo o paradigma seleccionado en la primera fase, de modo que el
-análisis posterior pueda comparar la trayectoria observada con una expectativa
-formulada antes de ver los resultados.
-\end{itemize}
-\end{small}
-
-\clearpage
-\section{Trazabilidad de requisitos}
 \label{ap:trazabilidad-requisitos}
 
-La tabla siguiente conecta los objetivos operativos de esta segunda fase
-con los requisitos anteriores y con las evidencias usadas después en el
-capítulo de pruebas. Su finalidad es evitar que los requisitos queden como
-una lista declarativa: cada objetivo se vincula con una forma concreta de
-comprobar que el sistema lo cumple.
+El catálogo de requisitos funcionales y no funcionales se presenta en el
+capítulo de especificación. Este apéndice no lo repite: reúne la trazabilidad
+entre los objetivos operativos de la segunda fase, los requisitos que los
+materializan y las evidencias usadas en el capítulo de pruebas.
 
 \begin{table}[H]
 \begin{center}
@@ -136,10 +19,69 @@ Generar y validar entornos de simulación & RF-02, RF-03, RNF-06 & Tests de \tex
 Observar trayectorias y eventos de decisión & RF-04, RF-12, RNF-03 & Salida estructurada del Tracker, trazas de decisión por agente y pruebas de emisión de eventos en vivo mediante WebSocket. \\ \hline
 Analizar resultados y contrastarlos con conocimiento previo & RF-05, RF-06, RF-08, RNF-12 & \texttt{retrieve\_context}, pre-recuperación del Orchestrator, \texttt{read\_predictions} y gráficas del Analyst. \\ \hline
 Generar informes revisables & RF-07 & Informe PDF del Reporter, plantilla LaTeX, descarga REST y pruebas de generación y descarga de informes. \\ \hline
-Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10, RNF-11 & Tablas persistidas, \texttt{query\_history}/NL-SQL, autocompactación y escritura \(7=7=7\) en PostgreSQL y Qdrant. \\ \hline
+Persistir conversaciones, experimentos y memorias de simulación & RF-08, RF-09, RF-10, RNF-03, RNF-10, RNF-11 & Tablas persistidas, \texttt{query\_history}/NL-SQL, autocompactación y escritura consistente en PostgreSQL, Qdrant denso y Qdrant \textit{sparse}. \\ \hline
 Ofrecer una interfaz reactiva de uso & RF-10, RF-11, RF-12, RF-13, RNF-04 & Playwright, vistas de inspección, capturas de interfaz y verificación manual sobre la aplicación viva. \\ \hline
 \end{tabular}
 \caption[Trazabilidad de requisitos]{Trazabilidad de requisitos. Cada objetivo
-operativo se vincula con sus requisitos y evidencias de validación.}
+operativo se vincula con los requisitos que lo cubren y con la evidencia usada
+para comprobarlo.}
+\end{center}
+\end{table}
+
+\section{Plan de contingencia}
+
+Además de la trazabilidad anterior, durante el desarrollo se identificaron
+riesgos prácticos que podían impedir una ejecución completa del laboratorio. La
+Tabla~\ref{tab:plan-contingencia} resume las medidas previstas. No se trata de
+un plan de explotación formal, sino de una guía operativa para mantener el flujo
+principal funcionando o, al menos, dejar evidencia revisable cuando una pieza
+externa falla.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2.4cm}|} \hline
+\textbf{Riesgo} & \textbf{Efecto posible} & \textbf{Medida de contingencia} & \textbf{Evidencia o control} \\ \hline
+Fallo de servicios semánticos externos & No se generan \textit{embeddings}, \textit{reranking} o escritura semántica. & Mantener el flujo principal con degradación controlada y persistencia relacional/binaria. & RNF-05 y pruebas de ejecución sin capa semántica. \\ \hline
+Error de compilación del informe PDF & El usuario no recibe el informe final previsto. & Reintento por secciones y emisión de PDF estándar de respaldo cuando falla LaTeX. & Pruebas del Reporter y verificación de PDF real en CASO1/CASO2. \\ \hline
+Llamada de herramienta incompleta o malformada & Excepción del backend o pérdida de continuidad en la sesión. & Validación defensiva de argumentos y mensajes de error controlados. & Casos de regresión del Orchestrator. \\ \hline
+Contexto conversacional excesivo & El modelo pierde precisión o mezcla partes de la sesión. & Autocompactación del historial y acceso a detalle mediante herramientas específicas. & RNF-10, detalle del Tracker y ventanas compactas de simulación. \\ \hline
+Ausencia de modelos registrados por la primera fase & No se puede iniciar la simulación real. & Mostrar catálogo vacío de forma controlada y permitir diagnóstico de la carga dinámica. & Pruebas del \texttt{model\_loader} y manual técnico. \\ \hline
+Regresión en interfaz o canal WebSocket & El usuario no puede seguir el estado vivo de la simulación. & Recorridos Playwright, ejecución manual en navegador y verificación de eventos emitidos. & Pruebas E2E y capturas de interfaz. \\ \hline
+\end{tabular}
+\caption[Plan de contingencia]{Plan de contingencia ante riesgos principales
+de operación y desarrollo.}
+\label{tab:plan-contingencia}
+\end{center}
+\end{table}
+
+\clearpage
+
+\section{Comparativa del proceso de desarrollo}
+
+La Tabla~\ref{tab:comparativa-desarrollo-ia} sintetiza la diferencia entre el
+proceso seguido en esta fase y un proceso de desarrollo más clásico. Sirve como
+complemento del Capítulo~4, donde se describe el bucle de trabajo con más
+detalle.
+
+\begin{table}[H]
+\begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{4.4cm}|>{\raggedright\arraybackslash}p{4.4cm}|} \hline
+\textbf{Aspecto} & \textbf{Proceso clásico} & \textbf{Proceso asistido por agentes} \\ \hline
+Coste dominante & Escritura y depuración directa del código. & Especificación, revisión del \textit{diff} y verificación. \\ \hline
+Unidad de trabajo & Tarea implementada por una persona o equipo. & Tarea con contrato explícito que puede delegarse a un agente. \\ \hline
+Planificación & Iteraciones guiadas por capacidad de implementación. & Iteraciones cortas guiadas por alcance, pruebas e invariantes. \\ \hline
+Revisión & Lectura del código y pruebas posteriores. & Revisión humana más subagentes especializados cuando el riesgo lo justifica. \\ \hline
+Validación & Compilación, pruebas y revisión funcional. & Pruebas, revisión de alcance y comprobación manual de flujos vivos. \\ \hline
+Riesgo principal & Retraso en implementar o depurar. & Aceptar una salida plausible sin suficiente verificación. \\ \hline
+\end{tabular}
+\caption[Comparativa del proceso de desarrollo]{Comparativa entre un proceso
+clásico y el proceso asistido por agentes usado en esta fase.}
+\label{tab:comparativa-desarrollo-ia}
 \end{center}
 \end{table}

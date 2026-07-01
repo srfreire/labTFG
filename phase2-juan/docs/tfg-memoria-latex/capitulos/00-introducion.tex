@@ -6,9 +6,9 @@ El planteamiento inicial de este Trabajo de Fin de Grado partió de una
 propuesta del profesor Eduardo Manuel Sánchez Vila, tutor del trabajo,
 dirigida a su grupo de investigación. El punto de partida fue un TFM
 previo que el propio Eduardo había tutorizado, y que ya contenía una
-primera intuición de entorno de simulación. Aquella base era todavía
-limitada, pero tenía algo valioso: una forma clara de convertir una idea
-de investigación en un sistema observable. A partir de ahí, el alcance,
+primera intuición de entorno de simulación. Aunque aquella base tenía un
+alcance limitado, introducía una idea central para este trabajo: transformar
+una propuesta de investigación en un sistema observable y ejecutable. A partir de ahí, el alcance,
 la arquitectura y la división del proyecto en dos fases se fueron
 cerrando poco a poco entre Eduardo, mi compañero y yo, en reuniones de
 diseño donde la propuesta inicial fue cambiando de escala y ganando
@@ -17,11 +17,12 @@ concreción.
 El proyecto resultante es un laboratorio virtual para la simulación y el
 análisis de paradigmas de toma de decisiones humanas mediante agentes
 inteligentes, dividido en dos fases complementarias. La primera,
-desarrollada por Pablo Pazos Parada, implementa un pipeline que transforma
-descripciones en lenguaje natural en modelos de decisión ejecutables. Esta
-memoria documenta la segunda, desarrollada por Juan Freire Álvarez:
-la infraestructura que recoge esos modelos, los ejecuta en un entorno
-común, observa su comportamiento y sintetiza los hallazgos en informes
+desarrollada por Pablo Pazos Parada, implementa un flujo de agentes
+(\textit{pipeline}, en la terminología del sistema) que
+transforma descripciones en lenguaje natural en modelos de decisión
+ejecutables. Esta memoria documenta la segunda, desarrollada por Juan Freire
+Álvarez: la infraestructura que recoge esos modelos, los ejecuta en un entorno
+común, observa su comportamiento y sintetiza los resultados en informes
 comparativos.
 
 \section{Problema que se aborda}
@@ -48,28 +49,37 @@ en la capa de persistencia correspondiente. Además, el flujo debe poder
 seguirse desde la interfaz: el objetivo no es solo ejecutar código, sino
 reducir la fricción para un investigador que quiere explorar un paradigma.
 
-\section{Objetivos generales}
+\section{Objetivo general y objetivos específicos}
 
-El objetivo general de esta fase es construir una infraestructura que
-pueda ejecutar modelos de decisión heterogéneos y producir, en cada
-simulación, un conjunto de artefactos verificables:
+El objetivo general de esta fase es construir una infraestructura de
+laboratorio virtual que permita ejecutar modelos de decisión heterogéneos,
+observar su comportamiento en un entorno común y convertir cada simulación en
+evidencia revisable para el grupo de investigación.
+
+Para alcanzar ese objetivo general, se plantean los siguientes objetivos
+específicos:
 
 \begin{itemize}
-\item Una especificación del entorno de simulación adaptada al problema
-descrito;
-\item Un registro estructurado del comportamiento de los modelos durante
-la ejecución;
-\item Un análisis de los patrones observados, contrastado con postulados
-previos almacenados en la capa de conocimiento compartida del proyecto;
-\item Un informe en PDF con los resultados y la evidencia recogida;
-\item Un conjunto de memorias de simulación persistidas para alimentar
-ejecuciones futuras.
+\item Generar una especificación del entorno de simulación adaptada al problema
+descrito por el usuario.
+\item Ejecutar uno o varios modelos procedentes de la primera fase dentro de
+ese entorno común, sin acoplar ambas fases mediante herencia o dependencias
+estáticas.
+\item Registrar de forma estructurada el comportamiento de los modelos durante
+la ejecución, incluyendo eventos, trayectorias, episodios y variables internas
+expuestas por cada modelo.
+\item Analizar los patrones observados y contrastarlos con postulados previos
+almacenados en la capa de conocimiento compartida del proyecto.
+\item Generar un informe en PDF con los resultados, las métricas y la evidencia
+recogida durante la simulación.
+\item Persistir memorias de simulación que puedan recuperarse en ejecuciones
+posteriores.
 \end{itemize}
 
-Estos artefactos se obtienen mediante un pipeline de agentes
-especializados coordinados por un Orchestrator, y se exponen al
-usuario a través de una interfaz web. La justificación de cada uno de
-estos componentes se explica en los capítulos correspondientes.
+El sistema produce esos resultados mediante agentes especializados coordinados
+por un Orchestrator y los muestra desde una interfaz web. El Orchestrator decide
+qué agente actúa, qué datos recibe y cuándo se invoca cada herramienta; los
+capítulos de diseño y desarrollo explican cómo se materializa esa división.
 
 La relación con la primera fase es complementaria. La primera fase toma
 conocimiento científico y lo convierte en modelos ejecutables; esta
@@ -87,73 +97,26 @@ El sistema se usa principalmente desde una interfaz web y, de forma
 secundaria, desde una línea de comandos para uso interno y depuración. La
 interacción gira alrededor de un chat con el Orchestrator, que coordina
 cuatro agentes especializados: Architect, Tracker, Analyst y Reporter.
-Entre todos generan el entorno, ejecutan la simulación, observan el
-comportamiento de los modelos, producen el análisis y componen el informe
-en PDF.
+La sesión avanza a través de esos agentes: primero se define el entorno,
+después se ejecuta la simulación, se observa el comportamiento de los modelos,
+se analizan los resultados y se compone el informe en PDF.
 
-Los modelos se cargan dinámicamente al comenzar una simulación. A partir
-de ese momento, la segunda fase se encarga de situarlos en un entorno
-común, registrar su comportamiento y transformar la ejecución en análisis
-e informe.
+El Architect traduce la petición del usuario en una especificación de entorno;
+el Tracker registra eventos, trayectorias y episodios; el Analyst interpreta los
+patrones observados; y el Reporter redacta el informe final. Los modelos se
+cargan dinámicamente al comenzar la simulación y el Knowledge Backbone conserva
+modelos, memorias y observaciones para que ambas fases reutilicen evidencia
+previa.
 
-La capa de conocimiento compartida entre fases se usa en los dos
-sentidos: la segunda fase consume desde ella tanto los modelos
-disponibles para simular como las memorias previas que la primera fase
-consolida sobre cada paradigma, y devuelve las observaciones registradas
-por el Tracker para que las ejecuciones posteriores puedan apoyarse en
-ellas.
-
-\section{Decisiones técnicas destacadas}
-
-La arquitectura del sistema parte de varias decisiones técnicas que se
-resumen a continuación y se desarrollan con más detalle en el capítulo de
-diseño. Se incluyen aquí solo como mapa de lectura, para que el lector
-identifique desde el principio qué piezas sostienen la solución.
-
-\paragraph{Multi-agente coordinado por un Orchestrator centralizado.} El
-sistema podría haberse implementado como un único agente, pero dividir
-las responsabilidades en cuatro agentes especializados hace cada salida
-intermedia inspeccionable y reduce la superficie de error. El contraste
-con la alternativa monolítica se desarrolla en el capítulo de estado
-del arte.
-
-\paragraph{Acceso al conocimiento mediado por el Orchestrator.} El
-acceso a la capa de conocimiento se centraliza: el Analyst dispone de la
-herramienta de recuperación como \textit{tool call} y la invoca cuando
-necesita ampliar el contexto, mientras que el Architect y el Reporter
-no la consultan por su cuenta: reciben un contexto
-pre-recuperado por el propio Orchestrator antes de cada invocación. El
-detalle del esquema y de sus consecuencias se desarrolla en el capítulo
-de diseño.
-
-\paragraph{Backend FastAPI con un único canal WebSocket.} El cliente web
-debe reaccionar a la actividad de los agentes a medida que se produce,
-sin recurrir a \textit{polling}. Un canal WebSocket bidireccional,
-complementado por unos pocos \textit{endpoints} REST, simplifica el
-código del backend y la sincronización del cliente.
-
-\paragraph{Persistencia híbrida.} La capa de persistencia combina
-cuatro componentes con responsabilidades diferenciadas: metadatos
-relacionales, artefactos binarios, recuperación vectorial y léxica, y
-grafo de paradigmas. Los capítulos de requisitos y diseño explican
-qué datos residen en cada uno y por qué se separan de ese modo.
-
-\paragraph{Integración con la primera fase por \textit{duck typing}.}
-En lugar de compartir un paquete con clases base entre las dos fases,
-el contrato se reduce a tres métodos. La verificación se realiza en
-tiempo de ejecución mediante un \texttt{Protocol} marcado como
-\texttt{runtime\_checkable}. Esta decisión
-evita acoplar la evolución de ambas fases: cada una puede cambiar por
-dentro mientras respete la pequeña superficie común que las conecta.
+\input{capitulos/01-estado-del-arte}
 
 \section{Estructura de la memoria}
 
 La memoria sigue la estructura de un Trabajo de Fin de Grado de tipo B,
-orientado al desarrollo de un sistema software. Los capítulos principales
-son:
+orientado al desarrollo de un sistema software. Tras esta introducción, los
+capítulos principales son:
 
 \begin{itemize}
-\item Estado del arte;
 \item Especificación de requisitos;
 \item Diseño del sistema;
 \item Desarrollo del trabajo;
@@ -161,10 +124,10 @@ son:
 \item Conclusiones y posibles ampliaciones.
 \end{itemize}
 
-Los apéndices incluyen el manual técnico, el manual de usuario, el
-detalle de la batería de pruebas de la capa determinista, el catálogo
-completo de requisitos, la galería de la interfaz, los diagramas de
-arquitectura y la licencia. La bibliografía recoge tanto referencias
-sobre agentes inteligentes y modelos de decisión como trabajos en
-recuperación aumentada, grafos de conocimiento, evaluación de agentes y
-simulación multi-agente.
+Los apéndices recogen el manual técnico (Apéndice~\ref{ap:manual-tecnico}), el
+manual de usuario (Apéndice~\ref{ap:manual-usuario}), el detalle de la batería
+de pruebas, la trazabilidad de requisitos, la galería de la interfaz, el catálogo
+de \textit{tool calls} y la licencia (Apéndice~\ref{ap:licencia}). La
+bibliografía reúne referencias sobre agentes inteligentes, simulación,
+recuperación aumentada, grafos de conocimiento, evaluación de agentes y modelos
+de decisión.

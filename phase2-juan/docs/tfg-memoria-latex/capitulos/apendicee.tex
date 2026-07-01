@@ -1,10 +1,13 @@
 \chapter{Galería de la interfaz}
 \label{ap:ui}
 
-Este apéndice reúne las capturas de la interfaz web del laboratorio
-referenciadas a lo largo de la memoria: el \textit{dashboard} principal, la
-visualización de la simulación con \textit{replay} paso a paso y las gráficas
-comparativas generadas por el Analyst.
+Este apéndice reúne una selección de capturas de la interfaz web del
+laboratorio: la vista principal, el avance del pipeline, el \textit{replay} de
+simulación, las gráficas comparativas, las trazas de decisión, el informe final
+y la inspección del Knowledge Backbone.
+
+Las figuras no se incluyen solo como muestra visual: documentan los estados
+principales que el usuario debe poder inspeccionar durante una sesión completa.
 
 \begin{figure}[p]
 \centering
@@ -46,39 +49,6 @@ de los \textit{Q-values}.}
 \label{fig:analisis-charts}
 \end{figure}
 
-\clearpage
-\section{Salida de detalle de cada agente}
-
-Además de la vista general, cada agente del pipeline produce una salida propia
-en la conversación. El \textbf{Architect} traduce la descripción en lenguaje
-natural a una especificación de entorno (Figura~\ref{fig:architect}); el
-\textbf{Tracker} registra las trayectorias de cada agente
-(Figura~\ref{fig:tracker}); el \textbf{Analyst} detecta patrones y compara los
-modelos (Figura~\ref{fig:patrones}) y desglosa las trazas de decisión
-paso a paso (Figura~\ref{fig:traces}); el panel lateral resume el estado del
-pipeline (Figura~\ref{fig:pipeline}) y el \textbf{Reporter} compila el informe
-PDF final (Figura~\ref{fig:reporter}). Por último, la interfaz expone el
-\textit{Knowledge Graph} científico que los agentes consultan
-(Figura~\ref{fig:kg}).
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figuras/ui-02-architect-spec}
-\caption[Salida del Architect]{Salida del Architect. La tarjeta resume la
-especificación del entorno generada a partir del paradigma: rejilla, acciones y
-recursos.}
-\label{fig:architect}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figuras/ui-05-tracker-trayectorias}
-\caption[Salida del Tracker]{Salida del Tracker. La vista recoge las
-trayectorias por agente, los pasos sobrevividos, los recursos consumidos y la
-distribución de acciones.}
-\label{fig:tracker}
-\end{figure}
-
 \begin{figure}[p]
 \centering
 \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{figuras/ui-06-analyst-patrones}
@@ -97,19 +67,11 @@ pre/post del agente, las alternativas evaluadas y la recompensa de un paso.}
 
 \begin{figure}[p]
 \centering
-\begin{minipage}[t]{0.36\linewidth}
-\centering
-\includegraphics[height=0.58\textheight,keepaspectratio]{figuras/ui-08-pipeline-panel}
-\caption[Panel del pipeline]{Panel lateral del pipeline.}
-\label{fig:pipeline}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.60\linewidth}
-\centering
-\includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{figuras/ui-09-reporter-pdf}
+\includegraphics[width=0.78\linewidth,height=0.68\textheight,keepaspectratio]{figuras/ui-09-reporter-pdf}
 \caption[Informe del Reporter]{Informe del Reporter. Página de ejemplo del PDF
-generado a partir de las gráficas del análisis.}
+generado: el resumen ejecutivo sintetiza objetivo, resultado y hallazgo crítico
+del experimento a partir de las observaciones del Tracker y del Analyst.}
 \label{fig:reporter}
-\end{minipage}
 \end{figure}
 
 \begin{figure}[p]

@@ -7,6 +7,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
+\addto\captionsspanish{%
+  \renewcommand{\tablename}{Tabla}%
+  \renewcommand{\listtablename}{Índice de tablas}%
+}
 \usepackage{graphicx}
 \usepackage{amssymb}
 \usepackage{eurosym}
@@ -18,7 +22,7 @@
 \usepackage{url}
 \usepackage{xurl}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.multipart,fit,backgrounds}
 \usepackage{pgfgantt}
 \usepackage{pdflscape}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
@@ -91,8 +95,6 @@
 \pagestyle{headings}
 \include{capitulos/00-introducion}
 \cleardoublepage
-\include{capitulos/01-estado-del-arte}
-\cleardoublepage
 \include{capitulos/02-especificacion-de-requisitos}
 \cleardoublepage
 \include{capitulos/03-diseño}
@@ -115,8 +117,6 @@
 \include{capitulos/apendiced}
 \cleardoublepage
 \include{capitulos/apendicee}
-\cleardoublepage
-\include{capitulos/apendicef}
 \cleardoublepage
 \include{capitulos/apendiceg}
 \cleardoublepage

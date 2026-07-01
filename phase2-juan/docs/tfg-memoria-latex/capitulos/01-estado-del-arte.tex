@@ -1,21 +1,102 @@
-\chapter{Estado del arte}
+\section{Estado del arte}
 
-Esta fase se apoya en varias líneas de trabajo recientes: recuperación
-aumentada con conocimiento estructurado, sistemas multi-agente basados en
-modelos de lenguaje, uso de herramientas, auto-revisión y desarrollo
-asistido por \textit{coding agents}. El capítulo resume las ideas que
-condicionan el diseño del sistema y sitúa el trabajo frente a ellas.
+Para situar esta segunda fase conviene separar dos planos. El primero es el de
+los entornos de simulación y la validación de modelos: el laboratorio necesita
+ejecutar modelos, observarlos y conservar evidencia de lo que ocurre. El segundo
+es el de las tecnologías usadas para construirlo: sistemas multi-agente,
+recuperación aumentada y memoria, uso de herramientas y \textit{coding agents}.
 
-\section[Recuperación aumentada y memoria]{Recuperación aumentada y memoria\\ de agentes}
+\subsection{Entornos de simulación}
 
-La recuperación aumentada con conocimiento externo (RAG), formulada por
+El laboratorio desarrollado no pretende validar directamente una teoría
+psicológica o neurocientífica, sino ofrecer una infraestructura para
+ejecutar modelos, observar su comportamiento y conservar evidencias de esa
+ejecución. Por ello, las referencias más relevantes para esta fase no son
+solo las de toma de decisiones, sino también las de simulación basada en
+agentes y verificación de modelos.
+
+La simulación basada en agentes parte de una idea sencilla, formulada de
+manera clásica por Epstein \cite{epstein1999abm}: un modelo no solo describe
+un mecanismo, sino que permite ejecutarlo y observar los patrones que produce.
+Railsback y Grimm \cite{railsback2019abm} trasladan esa idea a una práctica de
+modelado donde implementar, ejecutar y analizar son parte del propio trabajo
+científico. Esta fase adopta esa perspectiva de forma instrumental. La
+generación de los modelos pertenece a la primera fase. Aquí la pregunta es otra:
+una vez existe el modelo, cómo se ejecuta, qué se observa de él y qué evidencia
+queda para juzgar su comportamiento.
+
+La literatura de verificación y validación de simulaciones subraya además
+que la validación no se agota en que el programa compile. Sargent
+\cite{sargent2013vv} distingue entre verificación del modelo implementado,
+validación conceptual y validación operacional. En este trabajo, esa
+separación se traduce en una estrategia de evaluación mixta: pruebas
+automatizadas para verificar el motor, los contratos y la persistencia;
+escenarios reproducibles para observar el comportamiento del sistema
+completo; y revisión humana para valorar si el análisis generado es
+útil como herramienta de investigación.
+
+\subsection{Tecnologías para desarrollar el entorno}
+
+El segundo bloque recoge las decisiones tecnológicas que hacen posible el
+laboratorio. No se revisan como un inventario separado del sistema, sino como
+antecedentes directos de su diseño: coordinación entre agentes, consulta de
+conocimiento externo, llamadas a herramientas y desarrollo asistido por agentes
+de programación.
+
+\subsubsection{Sistemas multi-agente basados en LLMs}
+
+Los modelos de lenguaje de gran tamaño (\textit{large language models}, LLMs)
+pueden utilizarse como un agente único: un sistema que mantiene todo el
+contexto, recibe la entrada del usuario y produce la respuesta directamente.
+Funciona bien para tareas
+acotadas, pero se resiente cuando hay que coordinar subtareas con
+dependencias, invocar herramientas externas o validar resultados
+intermedios. En esos casos, el agente único puede producir respuestas
+convincentes y, aun así, difíciles de auditar paso a paso. A medida que
+el contexto se llena con instrucciones, datos y resultados intermedios,
+el modelo pierde precisión sobre lo que se le ha pedido y aumenta la
+probabilidad de que invente detalles que no estaban en la entrada
+original: el fenómeno conocido como alucinación.
+
+Sobre esa limitación se han construido marcos de coordinación. Entre ellos,
+MetaGPT \cite{hong2024metagpt} es especialmente cercano al enfoque de este
+trabajo, ya que codifica procedimientos operativos estandarizados como
+secuencias de roles especializados (Architect, Engineer, etc.) que se
+invocan en un orden canónico.
+
+El \textit{survey} de Guo et al. \cite{guo2024llmbased} sistematiza el
+campo y propone una taxonomía con tres paradigmas de comunicación
+(cooperativo, debate, competitivo) y cuatro patrones estructurales
+(\textit{Layered}, \textit{Decentralized}, \textit{Centralized} y
+\textit{Shared Message Pool}). La arquitectura adoptada en esta fase, en
+la que un Orchestrator centraliza la comunicación y un conjunto de agentes
+especializados reciben tareas acotadas, se sitúa en el paradigma
+\textit{Cooperative}: todos los agentes trabajan sobre la misma sesión, no
+compiten ni debaten entre sí. Estructuralmente, el sistema es sobre todo
+\textit{Centralized}, porque el Orchestrator decide qué agente actúa y qué
+contexto recibe. El flujo mantiene además una organización por etapas cercana a
+\textit{Layered}: Architect prepara el entorno, Tracker observa, Analyst
+interpreta y Reporter redacta. Esa centralización también afecta al acceso al
+conocimiento externo: solo el Analyst lo consulta directamente como
+\textit{tool call}; el resto recibe contexto pre-recuperado.
+
+\subsubsection{Recuperación aumentada y memoria de agentes}
+
+En esta memoria, recuperar conocimiento significa consultar información externa
+antes de pedir al modelo que razone. Así, la respuesta no depende solo de lo que
+el modelo tenga en su contexto inmediato.
+
+La recuperación aumentada con generación (\textit{retrieval-augmented
+generation}, RAG), formulada por
 Lewis et al. \cite{lewis2020rag}, fijó un patrón hoy común en sistemas
 con modelos de lenguaje: en lugar de depender solo del contexto contenido
 en el modelo o del \textit{system prompt}, el sistema recupera fragmentos
 relevantes de un corpus externo y los incorpora a la generación. Dense
 retrieval consolidó la recuperación mediante \textit{embeddings}, mientras
 que BM25 \cite{robertson2009bm25} sigue siendo la base de la recuperación
-léxica con la que la densa se combina. Cuando ambas señales producen
+léxica con la que la densa se combina. En términos simples, el sistema usa dos
+maneras de buscar: una por parecido de significado y otra por coincidencia
+literal de palabras. Cuando ambas señales producen
 rankings distintos, técnicas sencillas de fusión como Reciprocal Rank
 Fusion \cite{cormack2009rrf} ofrecen una forma robusta de combinarlas sin
 entrenar un modelo específico para cada colección.
@@ -38,8 +119,8 @@ fragmento se convierte en un \textit{embedding}, es decir, un vector que
 permite comparar textos por cercanía semántica aunque no usen exactamente
 las mismas palabras. El segundo es un índice disperso, o \textit{sparse},
 basado en BM25, más literal y orientado a coincidencias exactas de términos.
-En la práctica se complementan bien. Si el usuario pregunta por ``conductas de exploración
-cuando el agente tiene poca energía'', la recuperación densa puede
+En la práctica se complementan bien. Si el usuario pregunta por ``conductas de
+exploración cuando el agente tiene poca energía'', la recuperación densa puede
 encontrar memorias que hablan de \textit{drive}, homeostasis o búsqueda de
 comida aunque no repitan esas palabras. Si la consulta contiene un nombre
 concreto, como \texttt{Rangel 2013}, un identificador de modelo o una cita
@@ -48,72 +129,7 @@ vecindad semántica aproximada. El detalle de qué consulta utiliza cada
 agente y cómo se mezclan los resultados se desarrolla en el capítulo de
 diseño.
 
-\section{Simulación y validación de modelos}
-
-El laboratorio desarrollado no pretende validar directamente una teoría
-psicológica o neurocientífica, sino ofrecer una infraestructura para
-ejecutar modelos, observar su comportamiento y conservar evidencias de esa
-ejecución. Por ello, las referencias más relevantes para esta fase no son
-solo las de toma de decisiones, sino también las de simulación basada en
-agentes y verificación de modelos.
-
-La simulación basada en agentes parte de una idea sencilla, formulada de
-manera clásica por Epstein \cite{epstein1999abm}: un modelo no solo describe
-un mecanismo, sino que permite ejecutarlo y observar los patrones que produce.
-Railsback y Grimm \cite{railsback2019abm} trasladan esa idea a una práctica de
-modelado donde implementar, ejecutar y analizar son parte del propio trabajo
-científico. Esta fase adopta esa perspectiva de forma instrumental. La
-generación de los modelos pertenece a la primera fase, pero la pregunta de esta
-memoria es distinta: una vez existe el modelo, cómo se ejecuta, qué se observa
-de él y qué evidencia queda para juzgar su comportamiento.
-
-La literatura de verificación y validación de simulaciones subraya además
-que la validación no se agota en que el programa compile. Sargent
-\cite{sargent2013vv} distingue entre verificación del modelo implementado,
-validación conceptual y validación operacional. En este trabajo, esa
-separación se traduce en una estrategia de evaluación mixta: pruebas
-automatizadas para verificar el motor, los contratos y la persistencia;
-escenarios reproducibles para observar el comportamiento del sistema
-completo; y revisión humana para valorar si el análisis generado es
-útil como herramienta de investigación.
-
-\section{Sistemas multi-agente basados en LLMs}
-
-La forma más sencilla de utilizar un modelo de lenguaje es como un agente
-único: un sistema que mantiene todo el contexto, recibe la entrada del
-usuario y produce la respuesta directamente. Funciona bien para tareas
-acotadas, pero se resiente cuando hay que coordinar subtareas con
-dependencias, invocar herramientas externas o validar resultados
-intermedios. En esos casos, el agente único puede producir respuestas
-convincentes y, aun así, difíciles de auditar paso a paso. A medida que
-el contexto se llena con instrucciones, datos y resultados intermedios,
-el modelo pierde precisión sobre lo que se le ha pedido y aumenta la
-probabilidad de que invente detalles que no estaban en la entrada
-original: el fenómeno conocido como alucinación.
-
-Sobre esa intuición se han construido marcos de coordinación; entre ellos,
-MetaGPT \cite{hong2024metagpt} es especialmente cercano al adoptado en este
-trabajo, ya que codifica procedimientos operativos estandarizados como
-secuencias de roles especializados (Architect, Engineer, etc.) que se
-invocan en un orden canónico.
-
-El \textit{survey} de Guo et al. \cite{guo2024llmbased} sistematiza el
-campo y propone una taxonomía con tres paradigmas de comunicación
-(cooperativo, debate, competitivo) y cuatro patrones estructurales
-(\textit{Layered}, \textit{Decentralized}, \textit{Centralized} y
-\textit{Shared Message Pool}). La arquitectura adoptada en esta fase, en
-la que un Orchestrator centraliza la comunicación y un conjunto de agentes
-especializados reciben tareas acotadas, se sitúa en el paradigma
-\textit{Cooperative}: todos los agentes trabajan sobre la misma sesión, no
-compiten ni debaten entre sí. Estructuralmente, el sistema es sobre todo
-\textit{Centralized}, porque el Orchestrator decide qué agente actúa y qué
-contexto recibe. El flujo mantiene además una organización por etapas cercana a
-\textit{Layered}: Architect prepara el entorno, Tracker observa, Analyst
-interpreta y Reporter redacta. Esa centralización también afecta al acceso al
-conocimiento externo: solo el Analyst lo consulta directamente como
-\textit{tool call}; el resto recibe contexto pre-recuperado.
-
-\section{Uso de herramientas y auto-revisión}
+\subsubsection{Uso de herramientas}
 
 ReAct \cite{yao2023react} introdujo el patrón de intercalar razonamiento y
 acción: el modelo de lenguaje produce trazas de pensamiento y llamadas a
@@ -134,7 +150,7 @@ quiere que el modelo ``diga'' que ha simulado, observado o consultado el
 historial: esas acciones deben corresponderse con herramientas concretas del
 backend.
 
-La idea de revisar salidas intermedias aparece también en trabajos como
+La revisión de salidas intermedias aparece también en trabajos como
 Self-Refine \cite{madaan2023selfrefine} y Reflexion
 \cite{shinn2023reflexion}, que exploran la mejora iterativa de respuestas
 mediante crítica o retroalimentación verbal. En este trabajo, esa auto-revisión
@@ -143,7 +159,7 @@ intensiva durante la construcción del sistema, mediante subagentes
 adversariales que revisan el código producido por el agente principal antes de
 fusionarlo, como se detalla en el capítulo correspondiente.
 
-\section{Coding agents y desarrollo asistido}
+\subsubsection{Coding agents y desarrollo asistido}
 
 La evaluación de modelos capaces de programar ha pasado de tareas aisladas
 de generación de funciones a problemas sobre repositorios completos.
@@ -152,26 +168,17 @@ modelos sobre \textit{issues} reales de GitHub que requieren coordinar
 cambios en varios archivos. Esa transición es la que hace relevante hablar
 de \textit{coding agents} en esta memoria.
 
-La evidencia empírica sobre el impacto de estas herramientas en la
-productividad de los desarrolladores ha crecido en los últimos años. Cui et
-al. \cite{cui2025effects} analizan tres ensayos aleatorizados a gran escala
-y Butler et al. \cite{butler2024dear} complementan esas medidas con un
-estudio cualitativo sobre la experiencia diaria del trabajo. Ambos trabajos
-ofrecen el sustento empírico sobre el que el capítulo de desarrollo
-construye su argumento sobre la deconstrucción del ciclo clásico de
-desarrollo.
-
-\section{Posicionamiento de esta fase}
+La evidencia empírica sobre el impacto de estas herramientas en la productividad
+de los desarrolladores ha crecido en los últimos años. Cui et al.
+\cite{cui2025effects} analizan tres ensayos aleatorizados a gran escala y
+Butler et al. \cite{butler2024dear} complementan esas medidas con un estudio
+cualitativo sobre el uso diario de estas herramientas. El capítulo de desarrollo
+retoma esa discusión desde la experiencia concreta de esta fase.
 
 Frente a los marcos revisados, este trabajo no propone una técnica nueva de
 recuperación, una arquitectura general de agentes ni un método nuevo de
-validación de teorías psicológicas. Su aportación está en combinar esas
-ideas dentro de una infraestructura concreta: un laboratorio que recibe
-modelos externos, los ejecuta en un entorno común, observa su comportamiento
-y deja evidencia persistente de cada sesión.
-
-Con ese alcance, el estado del arte funciona como marco de decisión, no
-como inventario exhaustivo. Las secciones siguientes pasan de esas familias
-generales a las decisiones concretas del proyecto: qué requisitos se derivan
-de ellas, cómo se organizan los agentes y la persistencia, cómo se implementó
-el sistema y qué evidencias se usaron para evaluarlo.
+validación de teorías psicológicas. Su aportación está en combinar esas ideas
+dentro de una infraestructura concreta: un laboratorio que recibe modelos
+externos, los ejecuta en un entorno común, observa su comportamiento y deja
+evidencia persistente de cada sesión. Por eso este estado del arte funciona como
+marco de decisión para los capítulos siguientes, no como inventario exhaustivo.
