@@ -123,11 +123,6 @@ def rollout(
     return records
 
 
-# ---------------------------------------------------------------------------
-# Scenario builders
-# ---------------------------------------------------------------------------
-
-
 # Fixed patch centres for the MVT scenarios — spread across the grid so that
 # leaving one patch for the next incurs several moves (and thus travel cost).
 _PATCH_CENTRES: list[tuple[int, int]] = [(2, 2), (9, 2), (2, 9), (9, 9), (6, 6)]

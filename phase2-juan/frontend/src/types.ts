@@ -17,7 +17,6 @@ export interface ChatMessage {
   replay?: ReplayData
   charts?: ChartSpec[]
   traces?: DecisionTrace[]
-  /** Recommended next steps the user can click to continue the conversation. */
   suggestions?: string[]
 }
 
@@ -126,8 +125,6 @@ export interface ReplayData {
   critical_events?: CriticalEvent[]
   traces?: Record<number, DecisionTrace[]>
 }
-
-// Knowledge graph — matches /api/knowledge/graph response shape
 export interface KGNode {
   id: string
   label: string

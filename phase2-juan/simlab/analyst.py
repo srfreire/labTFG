@@ -27,12 +27,6 @@ DEFAULT_MAX_ITERATIONS = 8
 # Comparative findings across several models don't fit a small cap — a truncated
 # final answer yields an incomplete report. Size for a multi-model comparison.
 DEFAULT_MAX_TOKENS = 8192
-
-
-# ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
-
 ANALYST_SYSTEM_PROMPT = """\
 You are the Analyst agent for a simulation laboratory studying decision-making paradigms. \
 You receive observation logs from the Tracker and raw simulation data, then produce \
@@ -290,11 +284,6 @@ from historical trends.
 If knowledge context is empty or absent, proceed normally — do not mention its \
 absence.
 """
-
-
-# ---------------------------------------------------------------------------
-# Analyst class
-# ---------------------------------------------------------------------------
 
 
 class Analyst:

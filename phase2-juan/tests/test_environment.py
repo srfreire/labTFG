@@ -19,8 +19,6 @@ from simlab.environment import (
     ResourceRule,
 )
 
-# --- Dummy models ---
-
 
 class _AlwaysStay:
     def decide(self, perception: dict) -> Action:
@@ -85,9 +83,6 @@ class _EnergyDepletingModel:
         return {"energy": self.energy}
 
 
-# --- Helpers ---
-
-
 def _basic_actions():
     return [
         ActionRule("right", MoveEffect(dx=1, dy=0)),
@@ -110,9 +105,6 @@ def _food_rule():
     ]
 
 
-# --- Environment init ---
-
-
 def test_environment_init():
     env = Environment(10, 10, actions=_basic_actions(), resources=[])
     assert env.width == 10 and env.height == 10
@@ -129,9 +121,6 @@ def test_add_agent():
     env = Environment(5, 5, actions=_basic_actions(), resources=[])
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysStay()))
     assert len(env.get_state()["agents"]) == 1
-
-
-# --- Movement ---
 
 
 def test_agent_moves_on_action():
@@ -198,9 +187,6 @@ def test_move_reward_propagates():
     env.add_agent(Agent(id="a1", position=Position(0, 0), decision_model=_AlwaysWalk()))
     events = env.step()
     assert events[0].outcome["reward"] == -0.01
-
-
-# --- Resource consumption ---
 
 
 def test_consume_resource():
@@ -288,9 +274,6 @@ def test_noop_action():
     assert events[0].outcome["reward"] == 0.1
 
 
-# --- Perception ---
-
-
 def test_perception_keys():
     food_rule = ResourceRule(
         type="food", properties={"palatability": (0.1, 1.0)}, count=1
@@ -319,9 +302,6 @@ def test_perception_resources_grouped_by_type():
     perception = env._build_perception(agent)
     assert len(perception["resources"]["food"]) == 2
     assert len(perception["resources"]["water"]) == 1
-
-
-# --- Step and run ---
 
 
 def test_step_returns_events_with_outcome():
@@ -382,9 +362,6 @@ def test_is_finished():
     assert not env.is_finished()
 
 
-# --- get_spec ---
-
-
 def test_get_spec():
     actions = [
         ActionRule("move_up", MoveEffect(dx=0, dy=-1)),
@@ -398,9 +375,6 @@ def test_get_spec():
     assert set(spec["available_actions"]) == {"move_up", "eat"}
     assert spec["resource_types"]["food"]["count"] == 5
     assert spec["grid"] == {"width": 5, "height": 5}
-
-
-# --- Determinism and serialization ---
 
 
 def test_seed_determinism():
@@ -441,9 +415,6 @@ def test_get_state_is_serializable():
     json.dumps(env.get_state())
 
 
-# --- Validation ---
-
-
 def test_duplicate_action_names_raises():
     actions = [
         ActionRule("move", MoveEffect(dx=1, dy=0)),
@@ -457,9 +428,6 @@ def test_duplicate_resource_types_raises():
     resources = [ResourceRule(type="food", count=1), ResourceRule(type="food", count=2)]
     with pytest.raises(ValueError, match="Duplicate resource types"):
         Environment(5, 5, actions=[], resources=resources)
-
-
-# --- Decision traces ---
 
 
 def test_step_populates_decision_trace_fields():

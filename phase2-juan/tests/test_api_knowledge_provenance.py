@@ -49,11 +49,6 @@ def _set_services(monkeypatch, *, kg=None):
     monkeypatch.setattr(api_module, "_services", services)
 
 
-# ---------------------------------------------------------------------------
-# AC1 — trail returned for a node with a path to a Paper
-# ---------------------------------------------------------------------------
-
-
 async def test_returns_trail_for_postulate_supported_by_paper(monkeypatch):
     row = _row(
         node={"id": "n1", "labels": ["Postulate"], "props": {"name": "P1"}},
@@ -74,13 +69,7 @@ async def test_returns_trail_for_postulate_supported_by_paper(monkeypatch):
     assert step["node"]["props"] == {"title": "X"}
 
 
-# ---------------------------------------------------------------------------
-# AC2 — empty trail when node exists but has no path to a Paper
-# ---------------------------------------------------------------------------
-
-
 async def test_empty_trail_when_no_path_to_paper(monkeypatch):
-    # Server-side: OPTIONAL MATCH + WHERE p IS NOT NULL → empty edge_lists.
     row = _row(node={"id": "orphan", "labels": ["Postulate"], "props": {"name": "P9"}})
     _set_services(monkeypatch, kg=_stub_kg(rows=[row]))
 
@@ -90,11 +79,6 @@ async def test_empty_trail_when_no_path_to_paper(monkeypatch):
     assert body["trail"] == []
 
 
-# ---------------------------------------------------------------------------
-# AC3 — 404 when node does not exist
-# ---------------------------------------------------------------------------
-
-
 async def test_returns_404_when_node_missing(monkeypatch):
     _set_services(monkeypatch, kg=_stub_kg(rows=[]))
 
@@ -102,11 +86,6 @@ async def test_returns_404_when_node_missing(monkeypatch):
         await knowledge_provenance(node_id="ghost")
 
     assert exc.value.status_code == 404
-
-
-# ---------------------------------------------------------------------------
-# AC4 — depth bound of 4 + LIMIT 25 still enforced in Cypher
-# ---------------------------------------------------------------------------
 
 
 async def test_path_cypher_caps_depth_and_fanout(monkeypatch):
@@ -119,11 +98,6 @@ async def test_path_cypher_caps_depth_and_fanout(monkeypatch):
     cypher = kg.captured_queries[0]
     assert "[*1..4]" in cypher
     assert "LIMIT 25" in cypher
-
-
-# ---------------------------------------------------------------------------
-# AC5 — 503 when Neo4j unavailable or query raises
-# ---------------------------------------------------------------------------
 
 
 async def test_returns_503_when_kg_is_none(monkeypatch):
@@ -157,11 +131,6 @@ async def test_returns_503_when_query_raises(monkeypatch):
         await knowledge_provenance(node_id="n1")
 
     assert exc.value.status_code == 503
-
-
-# ---------------------------------------------------------------------------
-# Extra — server-side ORDER BY DESC means we receive the longest path first
-# ---------------------------------------------------------------------------
 
 
 async def test_picks_longest_path_from_server_order(monkeypatch):

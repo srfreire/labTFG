@@ -64,11 +64,6 @@ def _set_services(monkeypatch, *, db=None):
     monkeypatch.setattr(api_module, "_services", services)
 
 
-# ---------------------------------------------------------------------------
-# AC1 — happy path
-# ---------------------------------------------------------------------------
-
-
 async def test_returns_paginated_items(monkeypatch):
     rows = [_stub_memory(namespace="paradigm"), _stub_memory(namespace="meta")]
     _set_services(monkeypatch, db=_stub_db(rows, total=2))
@@ -79,14 +74,8 @@ async def test_returns_paginated_items(monkeypatch):
     assert len(body["items"]) == 2
     assert body["page"] == 1
     assert body["page_size"] == 50
-    # All fields surface as strings (UUIDs serialised)
     assert isinstance(body["items"][0]["id"], str)
     assert isinstance(body["items"][0]["run_id"], str)
-
-
-# ---------------------------------------------------------------------------
-# AC2 / AC3 / AC4 — filters and pagination produce expected SQL state
-# ---------------------------------------------------------------------------
 
 
 async def test_namespace_filter_passes_through(monkeypatch):
@@ -126,11 +115,6 @@ async def test_valid_since_accepts_z_suffix(monkeypatch):
     assert body["total"] == 1
 
 
-# ---------------------------------------------------------------------------
-# AC5 — page_size capping
-# ---------------------------------------------------------------------------
-
-
 async def test_page_size_capped_to_max(monkeypatch):
     _set_services(monkeypatch, db=_stub_db([], total=0))
 
@@ -153,11 +137,6 @@ async def test_page_floor(monkeypatch):
     body = await knowledge_memories(page=-3)
 
     assert body["page"] == 1
-
-
-# ---------------------------------------------------------------------------
-# AC6 — 503 on DB error
-# ---------------------------------------------------------------------------
 
 
 async def test_returns_503_when_db_is_none(monkeypatch):

@@ -24,12 +24,6 @@ DEFAULT_MAX_ITERATIONS = 8
 # small cap and the loop returns truncated, unparseable JSON — so size for a
 # multi-model observation, not a single agent.
 DEFAULT_MAX_TOKENS = 8192
-
-
-# ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
-
 TRACKER_SYSTEM_PROMPT = """\
 You are the Tracker agent for a simulation laboratory. You observe completed simulations \
 and produce structured observation logs.
@@ -104,11 +98,6 @@ Tool results accumulate in your context. To avoid blowing the budget on long sim
 - If the simulation is short (<50 steps), report all notable events
 - If long (>200 steps), focus on the most significant episodes per agent
 """
-
-
-# ---------------------------------------------------------------------------
-# Tracker class
-# ---------------------------------------------------------------------------
 
 
 class Tracker:

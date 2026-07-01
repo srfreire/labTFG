@@ -11,8 +11,6 @@ import {
   Legend,
 } from 'recharts'
 import type { ChartSpec } from '../types'
-
-// Transform series data into recharts pivot format: [{x: 0, agent_0: 100, agent_1: 95}, ...]
 function pivotSeries(spec: ChartSpec, sortNumeric = true): Record<string, number | string>[] {
   const dataMap = new Map<number | string, Record<string, number | string>>()
   for (const s of spec.series) {
@@ -25,8 +23,6 @@ function pivotSeries(spec: ChartSpec, sortNumeric = true): Record<string, number
   const data = Array.from(dataMap.values())
   return sortNumeric ? data.sort((a, b) => Number(a.x) - Number(b.x)) : data
 }
-
-// Shared axis and tooltip styles for dark theme
 const AXIS_STROKE = 'rgba(255,255,255,0.3)'
 const AXIS_TICK = { fontSize: 10, fill: 'rgba(255,255,255,0.4)' }
 const GRID_STROKE = 'rgba(255,255,255,0.06)'

@@ -10,10 +10,6 @@ from __future__ import annotations
 import pytest
 from simlab.nlsql import validate_sql
 
-# ---------------------------------------------------------------------------
-# AC1 — every disallowed verb is rejected
-# ---------------------------------------------------------------------------
-
 _ADDITIONAL_DISALLOWED_STATEMENTS = [
     ("CREATE", "CREATE TABLE foo (id UUID)"),
     ("ALTER", "ALTER TABLE experiments ADD COLUMN bar INT"),
@@ -26,10 +22,6 @@ def test_additional_disallowed_verb_is_rejected(verb: str, stmt: str):
     assert error is not None, f"{verb} must be rejected: {stmt}"
     assert sql == ""
 
-
-# ---------------------------------------------------------------------------
-# AC2 — tables outside the whitelist are rejected
-# ---------------------------------------------------------------------------
 
 _ADDITIONAL_DISALLOWED_TABLES = [
     "SELECT * FROM nodes LIMIT 10",

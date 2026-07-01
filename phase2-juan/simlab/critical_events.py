@@ -29,11 +29,6 @@ class CriticalEvent:
     data: dict = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
-# Detectors
-# ---------------------------------------------------------------------------
-
-
 def _detect_consumption(events: list[Event]) -> list[CriticalEvent]:
     """Detect successful resource consumption."""
     result = []
@@ -212,11 +207,6 @@ def _detect_decision_confidence_drop(
                 )
             prev_gap = gap
     return result
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def detect_critical_events(events: list[Event]) -> list[CriticalEvent]:

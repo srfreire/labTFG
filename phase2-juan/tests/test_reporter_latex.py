@@ -157,8 +157,6 @@ def test_prepare_latex_body_escapes_unmatched_closing_braces_in_text():
 
 
 def test_prepare_latex_body_escapes_raw_underscores_in_text():
-    # Model identifiers leak into captions/prose as raw snake_case, which
-    # breaks tectonic with "Missing $ inserted" unless escaped.
     body = r"\caption{Evolución del drive (drive_reduction_rl)} y move_up."
 
     out = _prepare_latex_body(body)
@@ -190,7 +188,6 @@ def test_prepare_latex_body_preserves_underscores_in_includegraphics():
 
 
 def test_prepare_latex_body_escapes_hash_and_percent_in_text():
-    # Raw % silently eats the rest of the line (comment); raw # is an error.
     body = r"El 67% de las acciones y el agente #2 fracasaron."
     out = _prepare_latex_body(body)
     assert r"67\%" in out
@@ -217,13 +214,11 @@ def test_render_env_section_is_deterministic_with_real_facts():
     }
     out = _render_env_section(facts)
     assert r"\section{Entorno y modelo}" in out
-    # Facts come straight from the spec — never inferred by the LLM.
     assert r"8\times8" in out or "8x8" in out
     assert "30" in out
     assert "6" in out
     assert "drive_reduction_rl" in out
     assert "pi_negative_feedback" in out
-    # No hallucinated grid size can appear because there is no LLM call.
     assert "5\\times5" not in out and "5x5" not in out
 
 
@@ -233,8 +228,6 @@ def test_render_env_section_skips_missing_fields():
 
 
 def test_env_facts_note_pins_authoritative_foraging_total():
-    # Judge CASO2 caught "9 eventos de forrajeo" when trajectories sum to 7.
-    # The note must hand the LLM the exact total so it stops summing by eye.
     facts = {
         "grid_w": 10,
         "grid_h": 10,
@@ -250,18 +243,11 @@ def test_env_facts_note_pins_authoritative_foraging_total():
     note = _env_facts_note(facts)
     assert "Total de consumos observados: 7" in note
     assert "Continuo: 4" in note and "Jerárquico: 0" in note
-    # Judge CASO1 caught "10 de 15 recursos" (consumptions read as env resources)
-    # and a miscount of zero-consumption models. The note must pin both — and the
-    # zero-count is derived from the consumption dict itself (here: only
-    # "Jerárquico" at 0), so it stays correct no matter who built env_facts.
     assert "NO el número de recursos del entorno" in note
     assert "Modelos con 0 consumos: exactamente 1 (Jerárquico)" in note
 
 
 def test_env_facts_note_pins_per_model_action_distribution():
-    # Judge CASO2 caught "46 movimientos antes del paso 24" and CASO1 attributed
-    # a consumption to the wrong algebraic model. Handing the LLM the exact
-    # per-model action counts removes the room to invent them.
     facts = {
         "grid_w": 8,
         "grid_h": 8,
@@ -277,7 +263,6 @@ def test_env_facts_note_pins_per_model_action_distribution():
 
 
 def test_strip_section_scaffolding_drops_english_generation_preamble():
-    # Judge CASO1 flagged an "I'll write..." remnant leaking into the PDF.
     assert (
         _strip_section_scaffolding("I'll write the section.\nContenido real.")
         == "Contenido real."
@@ -285,16 +270,11 @@ def test_strip_section_scaffolding_drops_english_generation_preamble():
     assert (
         _strip_section_scaffolding("Let me provide the analysis.\nTexto.") == "Texto."
     )
-    # Genuine Spanish prose starting mid-sentence is untouched.
     body = "El modelo Wiener consumió 10 recursos."
     assert _strip_section_scaffolding(body) == body
 
 
 def test_strip_section_scaffolding_removes_embedded_sections_and_meta_paragraph():
-    # Judge CASO2: an exec-summary body leaked "Según tus instrucciones, debo
-    # escribir SOLO el contenido del body, sin incluir el heading ..." carrying
-    # embedded \section{} commands that spawned a phantom "2." and a duplicated
-    # "Resumen ejecutivo" in the table of contents.
     leak = (
         r"Este es un informe de sección única (\section{}). Según tus "
         r"instrucciones, debo escribir SOLO el contenido del body, sin incluir "
@@ -305,14 +285,11 @@ def test_strip_section_scaffolding_removes_embedded_sections_and_meta_paragraph(
     assert "\\section" not in out
     assert "instrucciones" not in out.lower()
     assert out == "Este experimento compara cuatro modelos."
-    # \subsection must survive — only top-level \section is stripped.
     sub = "\\subsection{Detalle}\nTexto real."
     assert "\\subsection{Detalle}" in _strip_section_scaffolding(sub)
 
 
 def test_env_facts_note_omits_consumption_when_absent():
-    # Production path (orchestrator) has no per-model consumption — the note must
-    # degrade cleanly instead of emitting an empty or "None" foraging line.
     note = _env_facts_note({"grid_w": 8, "grid_h": 8, "total_consumed": None})
     assert "forrajeos exitosos" not in note.lower()
     assert "Rejilla: 8x8" in note
@@ -327,7 +304,6 @@ def test_render_env_section_drops_malformed_resources_instead_of_fabricating():
     }
     out = _render_env_section(facts)
     assert "5 recursos de tipo water" in out
-    # malformed entries must not masquerade as facts in the authoritative section
     assert "?" not in out
     assert "de tipo recurso" not in out
 
@@ -352,10 +328,6 @@ def test_build_env_facts_from_real_state():
 
 
 def test_build_env_facts_populates_consumption_from_tracker_output():
-    # Regression: _env_facts_note reads consumption/total_consumed, but
-    # _build_env_facts never set them — the exact-total guidance was dead code
-    # and the LLM invented "10 de 15 recursos" and miscounted zero-consumption
-    # models. Pull the authoritative per-model counts from the Tracker output.
     import json
 
     from simlab.orchestrator import _build_env_facts
@@ -391,10 +363,8 @@ def test_build_env_facts_tolerates_missing_or_malformed_tracker_output():
         "spec": {"grid": {"width": 8, "height": 8}},
         "replay": {"grid_width": 8, "grid_height": 8, "total_steps": 60},
     }
-    # No tracker output yet → no consumption keys, but facts still returned.
     facts = _build_env_facts(base)
     assert facts is not None and "total_consumed" not in facts
-    # Malformed JSON must not crash the report path.
     facts = _build_env_facts({**base, "tracker_output": "{not json"})
     assert facts is not None and "total_consumed" not in facts
 
@@ -403,7 +373,6 @@ def test_build_env_facts_returns_none_when_core_facts_missing():
     from simlab.orchestrator import _build_env_facts
 
     assert _build_env_facts({"spec": {}, "replay": {}}) is None
-    # grid present but no steps → still None (don't trust a partial section)
     assert _build_env_facts({"replay": {"grid_width": 8, "grid_height": 8}}) is None
 
 
@@ -529,7 +498,6 @@ async def test_sectioned_compile_falls_back_to_llm_repair_then_succeeds():
         async def create(self, **kwargs):
             self.calls.append(kwargs)
             content = kwargs["messages"][0]["content"]
-            # Section calls have "Write section:" prefix; repair has "falló al compilar"
             if "compilar" in content:
                 text = r"\section{Resumen}Cuerpo reparado."
             else:
@@ -551,7 +519,6 @@ async def test_sectioned_compile_falls_back_to_llm_repair_then_succeeds():
                 returncode=1,
                 stderr="error: informe_final.tex:50: Missing $ inserted\nerror: halted",
             )
-        # Repair attempt succeeded
         pdf_path = Path(kwargs["cwd"]) / "informe_final.pdf"
         pdf_path.write_bytes(b"%PDF repaired ok")
         assert "reparado" in tex_text
@@ -569,8 +536,6 @@ async def test_sectioned_compile_falls_back_to_llm_repair_then_succeeds():
             run_id="run-1",
             experiment_id="exp-repair",
         )
-
-    # 5 sections + 1 repair = 6 LLM calls
     assert len(client.calls) == 6
     assert compile_attempts["count"] == 2
     assert reporter.last_pdf_key == "experiments/exp-repair/informe_final.pdf"
@@ -625,8 +590,6 @@ async def test_sectioned_compile_falls_back_to_standard_pdf_when_repair_also_fai
         )
 
     assert reporter.last_pdf_key == "experiments/exp-repair-fails/informe_final.pdf"
-    # When repair also fails we now persist the broken tex for debugging, so
-    # find the PDF upload by key instead of by index.
     pdf_uploads = [
         call.args
         for call in storage.put.await_args_list
@@ -636,7 +599,6 @@ async def test_sectioned_compile_falls_back_to_standard_pdf_when_repair_also_fai
     assert pdf_uploads[0][0] == "experiments/exp-repair-fails/informe_final.pdf"
     assert pdf_uploads[0][1].startswith(b"%PDF")
     assert pdf_uploads[0][2] == "application/pdf"
-    # The post-repair broken tex should have been uploaded
     tex_uploads = [
         call.args[0]
         for call in storage.put.await_args_list
@@ -862,7 +824,6 @@ async def test_compile_report_happy_path_produces_real_latex_pdf_not_fallback():
     real_pdf = b"%PDF-1.5\n% genuine tectonic output\n%%EOF\n"
 
     def fake_tectonic(cmd, **kwargs):
-        # Emulate a successful compile: write the sibling .pdf and exit 0.
         tex_path = Path(cmd[1])
         tex_path.with_suffix(".pdf").write_bytes(real_pdf)
         return SimpleNamespace(returncode=0, stderr="")
@@ -897,10 +858,8 @@ async def test_compile_report_happy_path_produces_real_latex_pdf_not_fallback():
         )
 
     result = captured["result"]
-    # The tool reports success WITHOUT the fallback marker.
     assert '"success": true' in result
     assert "fallback" not in result
-    # The stored PDF is exactly tectonic's output — not the matplotlib fallback.
     pdf_upload = storage.put.await_args_list[1].args
     assert pdf_upload[0] == "experiments/exp-ok/informe_ok.pdf"
     assert pdf_upload[1] == real_pdf

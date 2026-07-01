@@ -28,17 +28,11 @@ def _make_services(*, kg=None, vectors=None, embeddings=None) -> Services:
     )
 
 
-# ── Public imports ──────────────────────────────────────────────────────
-
-
 def test_public_imports():
     """AC1: public API is importable."""
     assert callable(retrieve_context)
     assert callable(build_retriever_from_settings)
     assert isinstance(RETRIEVE_CONTEXT_TOOL, dict)
-
-
-# ── Flag OFF (default) ─────────────────────────────────────────────────
 
 
 async def test_retrieve_context_flag_off_returns_empty():
@@ -60,9 +54,6 @@ async def test_retrieve_context_flag_off_never_calls_pablo():
     assert result == _EMPTY
 
 
-# ── Infra missing ──────────────────────────────────────────────────────
-
-
 async def test_retrieve_context_flag_on_but_no_infra():
     """With flag on but all infra None, returns empty without error."""
     services = _make_services()
@@ -70,9 +61,6 @@ async def test_retrieve_context_flag_on_but_no_infra():
     with patch("simlab.recall.retrieve.load_settings", return_value=settings):
         result = await retrieve_context(services=services, query="test")
     assert result == _EMPTY
-
-
-# ── Exception handling ──────────────────────────────────────────────────
 
 
 async def test_retrieve_context_exception_returns_empty(caplog):
@@ -121,9 +109,6 @@ async def test_retrieve_context_timeout_returns_empty(caplog, monkeypatch):
     assert any("retrieve_context timed out" in r.message for r in caplog.records)
 
 
-# ── Tool schema ─────────────────────────────────────────────────────────
-
-
 def test_tool_schema_is_json_serializable():
     """AC3: schema round-trips through JSON."""
     dumped = json.dumps(RETRIEVE_CONTEXT_TOOL)
@@ -139,9 +124,6 @@ def test_tool_schema_has_required_anthropic_keys():
     assert schema["type"] == "object"
     assert "query" in schema["properties"]
     assert "query" in schema["required"]
-
-
-# ── Factory ─────────────────────────────────────────────────────────────
 
 
 async def test_build_retriever_returns_none_flag_off():

@@ -64,11 +64,6 @@ def _simulation_request_signature(spec: dict, params: dict) -> str:
     return json.dumps(payload, sort_keys=True, default=str)
 
 
-# ---------------------------------------------------------------------------
-# Knowledge-Backbone wiring helpers (sim-memory / P2-002)
-# ---------------------------------------------------------------------------
-
-
 def _to_knowledge_model_info(data: dict):
     """Translate the orchestrator-state agent model dict to simlab.knowledge.ModelInfo.
 
@@ -130,10 +125,6 @@ async def _write_tracker_memories(writer, tracker_output: str, state: dict) -> N
         result.duration_ms,
     )
 
-
-# ---------------------------------------------------------------------------
-# Knowledge pre-fetch (kg-enrichment / P1-001)
-# ---------------------------------------------------------------------------
 
 # Query definitions per stage: (subsection_title, query_template, namespace, top_k)
 _PREFETCH_QUERIES: dict[str, list[tuple[str, str, str, int]]] = {
@@ -248,10 +239,6 @@ async def prefetch_knowledge(
 
     return "## Knowledge context\n\n" + "\n\n".join(sections)
 
-
-# ---------------------------------------------------------------------------
-# Tool schemas — what the Orchestrator can do (sent to Claude)
-# ---------------------------------------------------------------------------
 
 CREATE_ENVIRONMENT_TOOL = {
     "name": "create_environment",
@@ -531,12 +518,6 @@ ALL_TOOLS = [
     LIST_EXPERIMENTS_TOOL,
     QUERY_EXPERIMENTS_TOOL,
 ]
-
-
-# ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
-
 ORCHESTRATOR_SYSTEM_PROMPT = """\
 You are the Orchestrator of a virtual simulation laboratory (DecisionLab). You coordinate \
 4 specialized agents to help the user create, run, observe, analyze, and report on \
@@ -766,11 +747,6 @@ QUERY_HISTORY_TOOL = {
         "required": ["question"],
     },
 }
-
-
-# ---------------------------------------------------------------------------
-# Orchestrator class
-# ---------------------------------------------------------------------------
 
 
 def _build_env_facts(state: dict) -> dict | None:
@@ -1255,7 +1231,6 @@ class Orchestrator:
                 services=self._services,
             )
 
-        # --- create_environment: calls the Architect ---
         async def create_environment(params: dict) -> str:
             desc = params["description"]
             # Idempotency: the orchestrator LLM tends to re-call this in
@@ -1303,7 +1278,6 @@ class Orchestrator:
             state["experiment_id"] = exp_id
             return spec_json
 
-        # --- list_available_models: discovers Phase 1 models from Postgres ---
         async def list_available_models(params: dict) -> str:
             if self._discovered_models is None:
                 self._discovered_models = await discover_models(db=self._services.db)
@@ -1346,7 +1320,6 @@ class Orchestrator:
                 )
             return json.dumps(payload)
 
-        # --- read_predictions: reads deep research predictions from S3 ---
         async def read_predictions(params: dict) -> str:
             from shared.models import Model as DBModel
 
@@ -1428,7 +1401,6 @@ class Orchestrator:
             state["predictions"][slug] = predictions
             return json.dumps({"paradigm": slug, "predictions": predictions})
 
-        # --- run_simulation: creates agents, runs the simulation loop ---
         async def run_simulation(params: dict) -> str:
             if not state.get("spec"):
                 return json.dumps(
@@ -1615,7 +1587,6 @@ class Orchestrator:
                 }
             )
 
-        # --- observe_simulation: calls the Tracker ---
         async def observe_simulation(params: dict) -> str:
             if not state.get("events"):
                 return json.dumps(
@@ -1672,7 +1643,6 @@ class Orchestrator:
                 }
             )
 
-        # --- analyze_results: calls the Analyst (can be called multiple times) ---
         async def analyze_results(params: dict) -> str:
             if not state.get("tracker_output"):
                 return json.dumps(
@@ -1735,7 +1705,6 @@ class Orchestrator:
                 }
             )
 
-        # --- generate_report: calls the Reporter (can be called multiple times) ---
         async def generate_report(params: dict) -> str:
             if not state.get("analyst_output"):
                 return json.dumps(
@@ -1818,7 +1787,6 @@ class Orchestrator:
                 }
             )
 
-        # --- list_experiments: shows past experiments ---
         async def list_experiments_fn(params: dict) -> str:
             limit = params.get("limit", 10)
             async with self._services.db.get_session() as session:
@@ -1843,7 +1811,6 @@ class Orchestrator:
                 default=str,
             )
 
-        # --- get_tracker_detail: query slices of the latest tracker output ---
         async def get_tracker_detail(params: dict) -> str:
             raw = state.get("tracker_output")
             if not raw:
@@ -1903,7 +1870,6 @@ class Orchestrator:
                 }
             )
 
-        # --- get_simulation_step_window: live window over latest run events ---
         async def get_simulation_step_window(params: dict) -> str:
             events = state.get("events")
             if not events:
@@ -1941,7 +1907,6 @@ class Orchestrator:
                 }
             )
 
-        # --- get_analyst_detail: query slices of the latest analyst output ---
         async def get_analyst_detail(params: dict) -> str:
             raw = state.get("analyst_output")
             if not raw:
@@ -1977,7 +1942,6 @@ class Orchestrator:
                 {"error": f"Unknown part '{part}'. Use: patterns | comparisons."}
             )
 
-        # --- query_experiments: NL query over the experiment database ---
         async def query_experiments(params: dict) -> str:
             from simlab.nlsql import query_experiments as _query
 
@@ -1987,7 +1951,6 @@ class Orchestrator:
                 storage=self._services.storage,
             )
 
-        # --- get_report_links: current-session report download URLs ---
         async def get_report_links(params: dict) -> str:
             reports = []
             for key in state.get("pdf_paths") or []:
@@ -2026,8 +1989,6 @@ class Orchestrator:
             "list_experiments": list_experiments_fn,
             "query_experiments": query_experiments,
         }
-
-        # --- Knowledge Backbone retrieval (sim-recall / P1-002) ---
         tools = list(ALL_TOOLS)
         if settings.ENABLE_KNOWLEDGE_READ:
             from simlab.recall import RETRIEVE_CONTEXT_TOOL, retrieve_context
@@ -2048,8 +2009,6 @@ class Orchestrator:
 
             tools.append(RETRIEVE_CONTEXT_TOOL)
             registry["retrieve_context"] = retrieve_context_handler
-
-        # --- query_history ---
         if settings.ENABLE_QUERY_HISTORY:
             from simlab.nlsql import query_history as _query_history
 

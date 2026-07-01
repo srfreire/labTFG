@@ -17,11 +17,6 @@ def _make_orch() -> Orchestrator:
     return Orchestrator(client=MagicMock(), services=MagicMock())
 
 
-# ---------------------------------------------------------------------------
-# AC1 — flag OFF → no tool, no registry entry
-# ---------------------------------------------------------------------------
-
-
 def test_flag_off_omits_query_history_tool():
     orch = _make_orch()
     tools, registry = orch._build_tools(Settings(ENABLE_QUERY_HISTORY=False))
@@ -31,11 +26,6 @@ def test_flag_off_omits_query_history_tool():
     assert "query_history" not in registry
 
 
-# ---------------------------------------------------------------------------
-# AC2 — flag ON → tool registered + routes to query_history
-# ---------------------------------------------------------------------------
-
-
 def test_flag_on_registers_query_history_tool():
     orch = _make_orch()
     tools, registry = orch._build_tools(Settings(ENABLE_QUERY_HISTORY=True))
@@ -43,7 +33,6 @@ def test_flag_on_registers_query_history_tool():
     names = {t["name"] for t in tools}
     assert "query_history" in names
     assert "query_history" in registry
-    # Tool schema is the canonical one
     qh_schema = next(t for t in tools if t["name"] == "query_history")
     assert qh_schema is QUERY_HISTORY_TOOL
 
@@ -51,8 +40,6 @@ def test_flag_on_registers_query_history_tool():
 async def test_flag_on_handler_routes_to_query_history():
     orch = _make_orch()
     orch._services.db = MagicMock()
-    # Patch BEFORE _build_tools so the inner `from simlab.nlsql import ...`
-    # picks up the mock at registration time.
     with patch(
         "simlab.nlsql.query_history",
         new=AsyncMock(return_value="| col |\n| --- |\n| value |"),
@@ -83,11 +70,6 @@ async def test_handler_returns_friendly_message_when_db_none():
 
     out = await handler({"question": "anything"})
     assert "no disponible" in out.lower()
-
-
-# ---------------------------------------------------------------------------
-# AC3 — flag toggles the system prompt section
-# ---------------------------------------------------------------------------
 
 
 def test_system_prompt_includes_section_when_flag_on():

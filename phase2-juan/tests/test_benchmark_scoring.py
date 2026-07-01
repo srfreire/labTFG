@@ -34,9 +34,6 @@ PERCEPTION = {
 }
 
 
-# --- GS-0 contract ---------------------------------------------------------
-
-
 def test_contract_passes_for_readonly_model_with_q_values():
     v = check_contract(GreedyForagerOracle(seed=1), PERCEPTION)
     assert v.passed, v.detail
@@ -82,9 +79,6 @@ def test_contract_detects_decide_mutation():
     assert "decide" in v.detail
 
 
-# --- determinism -----------------------------------------------------------
-
-
 def test_determinism_identical_streams():
     assert check_determinism(["a", "b", "c"], ["a", "b", "c"]).passed
 
@@ -93,9 +87,6 @@ def test_determinism_reports_divergence_point():
     v = check_determinism(["a", "b", "c"], ["a", "x", "c"])
     assert not v.passed
     assert "step 1" in v.detail
-
-
-# --- GS-OFT-1 patch abandonment -------------------------------------------
 
 
 def test_residence_departures_extracts_pre_reset_peaks():
@@ -112,9 +103,6 @@ def test_patch_abandonment_fail_when_no_buildup():
     assert not score_patch_abandonment(prt).passed
 
 
-# --- GS-OFT-2 travel cost --------------------------------------------------
-
-
 def test_travel_cost_pass_when_high_exceeds_low():
     low = [0, 2, 0, 2, 0]  # mean departure 2
     high = [0, 4, 0, 4, 0]  # mean departure 4
@@ -123,9 +111,6 @@ def test_travel_cost_pass_when_high_exceeds_low():
 
 def test_travel_cost_fail_when_no_increase():
     assert not score_travel_cost([0, 3, 0, 3], [0, 2, 0, 2]).passed
-
-
-# --- GS-OFT-3 diet zero-one ------------------------------------------------
 
 
 def test_singleton_fraction_counts_good_prey_only_steps():
@@ -143,9 +128,6 @@ def test_diet_zero_one_fail_when_scarce_also_drops():
     dense = [[1], [1]]
     scarce = [[1], [1, 2]]  # scarce should never collapse to {1}
     assert not score_diet_zero_one(dense, scarce).passed
-
-
-# --- GS-RL-1 learning curve ------------------------------------------------
 
 
 def test_learning_delta_positive_for_improving_rewards():
@@ -212,13 +194,11 @@ def test_precision_recall_with_uncommitted_attribution():
     ]
     pred = ["optimal-foraging-theory", "none", "reinforcement-learning"]
     m = precision_recall(pred, truth)
-    # 2 correct of 2 committed -> precision 1.0; 2 of 3 truths -> recall 0.667
     assert m["precision"] == 1.0
     assert m["recall"] == round(2 / 3, 3)
 
 
 def test_random_model_is_not_flagged_as_learning():
-    # A random agent's reward stream should not register as a learning curve.
     rng_rewards = [(i * 7) % 3 == 0 for i in range(400)]
     rewards = [1.0 if b else 0.0 for b in rng_rewards]
     assert not score_learning_curve(rewards).passed

@@ -18,11 +18,6 @@ _FLAG_OFF = Settings()
 _FLAG_ON = Settings(ENABLE_KNOWLEDGE_READ=True)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _make_orchestrator():
     services = Services(
         db=MagicMock(),
@@ -38,22 +33,12 @@ def _tool_names(tools: list[dict]) -> list[str]:
     return [t["name"] for t in tools]
 
 
-# ---------------------------------------------------------------------------
-# AC1: Flag OFF — tool list unchanged
-# ---------------------------------------------------------------------------
-
-
 async def test_flag_off_tools_unchanged():
     """With ENABLE_KNOWLEDGE_READ=False, tools list has no retrieve_context."""
     tools, registry = _make_orchestrator()._build_tools(_FLAG_OFF)
 
     assert "retrieve_context" not in _tool_names(tools)
     assert "retrieve_context" not in registry
-
-
-# ---------------------------------------------------------------------------
-# AC2: Flag ON — tool list includes retrieve_context
-# ---------------------------------------------------------------------------
 
 
 async def test_flag_on_adds_retrieve_context_tool():
@@ -73,11 +58,6 @@ async def test_flag_on_tool_schema_correct():
     assert "input_schema" in tool
     assert "query" in tool["input_schema"]["properties"]
     assert "query" in tool["input_schema"]["required"]
-
-
-# ---------------------------------------------------------------------------
-# AC3: Handler calls retrieve_context with correct params
-# ---------------------------------------------------------------------------
 
 
 async def test_handler_calls_retrieve_context_correctly():
@@ -123,11 +103,6 @@ async def test_handler_uses_defaults_for_missing_params():
         top_k=5,
         stage="phase2-orchestrator",
     )
-
-
-# ---------------------------------------------------------------------------
-# AC4: System prompt conditional
-# ---------------------------------------------------------------------------
 
 
 async def test_system_prompt_includes_retrieve_context_when_flag_on():

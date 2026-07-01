@@ -1,4 +1,3 @@
-# phase2-juan/benchmark/run_lab_eval.py
 """Instrumented run of the full Phase 2 lab over one closed-corpus case.
 
 Parallel to Pazos's ``eval run``: drives Architect → simulation → Tracker →

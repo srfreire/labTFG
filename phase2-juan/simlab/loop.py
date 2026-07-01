@@ -24,11 +24,6 @@ ToolFunction = Callable[[dict], Awaitable[str]]
 Registry = dict[str, ToolFunction]
 
 
-# ---------------------------------------------------------------------------
-# Tool dispatcher
-# ---------------------------------------------------------------------------
-
-
 async def _execute_single_tool(call, registry: Registry) -> dict[str, Any]:
     """Run one tool call and return a tool_result block for the API."""
     if call.name not in registry:
@@ -66,11 +61,6 @@ async def dispatch_tools(tool_calls: list, registry: Registry) -> list[dict[str,
     return results
 
 
-# ---------------------------------------------------------------------------
-# Main agent loop
-# ---------------------------------------------------------------------------
-
-
 async def run_agent_loop(
     *,
     client,
@@ -95,8 +85,6 @@ async def run_agent_loop(
 
     for iteration in range(1, max_iterations + 1):
         logger.info("Iteration %d/%d — calling %s", iteration, max_iterations, model)
-
-        # Step 1: Ask Claude
         response = await client.messages.create(
             model=model,
             system=system,
@@ -105,13 +93,9 @@ async def run_agent_loop(
             max_tokens=max_tokens,
             cache_control={"type": "ephemeral"},
         )
-
-        # Step 2: Claude is done → return
         if response.stop_reason == "end_turn":
             logger.info("Agent finished after %d iteration(s)", iteration)
             return response
-
-        # Unexpected stop reason → return as-is
         if response.stop_reason != "tool_use":
             logger.warning(
                 "Unexpected stop_reason '%s' on iteration %d",
@@ -119,8 +103,6 @@ async def run_agent_loop(
                 iteration,
             )
             return response
-
-        # Step 3: Claude wants tools → extract, execute, append results
         tool_calls = [block for block in response.content if block.type == "tool_use"]
         if not tool_calls:
             logger.warning(

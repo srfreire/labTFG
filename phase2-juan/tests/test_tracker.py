@@ -22,9 +22,6 @@ def _make_event(
     )
 
 
-# --- Helper tests ---
-
-
 def test_event_to_dict():
     event = _make_event(5, "agent_0", "eat", reward=1.0)
     d = _event_to_dict(event)
@@ -54,9 +51,6 @@ def test_summarize_events_empty():
     summary = _summarize_events([])
     assert summary["total_events"] == 0
     assert summary["total_steps"] == 0
-
-
-# --- Tool factory tests ---
 
 
 def _make_events() -> list[Event]:
@@ -90,9 +84,6 @@ def test_get_simulation_events_summarizes_large():
 
 
 def test_get_simulation_events_summarizes_heavy_payload():
-    # Few events, but each carries a heavy model_state (e.g. dual Q-tables) — the
-    # count guard (500) would pass them through, yet the full dump would blow the
-    # context window. The size guard must fall back to the summary instead.
     big_q_table = {f"state_{i}": [0.1, 0.2, 0.3] for i in range(2000)}
     events = [
         Event(
@@ -190,7 +181,6 @@ def test_get_agent_trajectory_summary():
             )
         )
     )
-    # Field names mirror the Tracker Output Schema for direct copy.
     assert result["agent_id"] == "agent_0"
     assert result["steps_survived"] == 5
     assert result["resources_consumed"] == 0
@@ -290,7 +280,6 @@ def test_get_event_window_compact_by_default():
     result = json.loads(
         asyncio.run(registry["get_event_window"]({"center_step": 2, "radius": 5}))
     )
-    # Compact events shouldn't carry perception/pre_state blobs
     assert all("perception" not in e for e in result["events"])
     assert all(isinstance(e["action"], str) for e in result["events"])
 

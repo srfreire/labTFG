@@ -49,11 +49,6 @@ class _SeededRandomModule:
         return getattr(random, name)
 
 
-# ---------------------------------------------------------------------------
-# Model metadata
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class ModelInfo:
     """Metadata about a discovered decision model."""
@@ -74,11 +69,6 @@ def _has_decision_model_interface(cls: type) -> bool:
         and callable(getattr(cls, "update", None))
         and callable(getattr(cls, "get_state", None))
     )
-
-
-# ---------------------------------------------------------------------------
-# Discovery -- query Postgres for registered models
-# ---------------------------------------------------------------------------
 
 
 async def discover_models(*, db: DatabaseService) -> dict[str, ModelInfo]:
@@ -115,11 +105,6 @@ async def discover_models(*, db: DatabaseService) -> dict[str, ModelInfo]:
                 run_id=str(row.run_id) if row.run_id else None,
             )
     return models
-
-
-# ---------------------------------------------------------------------------
-# Instantiation -- download from S3, load via importlib
-# ---------------------------------------------------------------------------
 
 
 async def load_model(

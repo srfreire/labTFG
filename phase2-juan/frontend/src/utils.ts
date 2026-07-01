@@ -1,9 +1,3 @@
-/** Shared frontend utilities. */
-
-/**
- * Extract Q-values from a model state dict.
- * Looks for common key names: q_values, Q, q_table.
- */
 export function extractQValues(state: Record<string, unknown> | null): Record<string, number> | null {
   if (!state) return null
   for (const key of ['q_values', 'Q', 'q_table']) {

@@ -13,10 +13,6 @@ from simlab.orchestrator import prefetch_knowledge
 
 from shared.services import Services
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 _EMPTY = "## Retrieved Knowledge (0 results)\n\nNo results found."
 _POSTULATES = "## Retrieved Knowledge (2 results)\n\n### Result 1\nPostulate P1: ..."
 _SIMULATION = "## Retrieved Knowledge (1 results)\n\n### Result 1\nPrevious sim ..."
@@ -29,11 +25,6 @@ _FORMULATIONS = (
 def _stub_services() -> Services:
     """A non-None Services so prefetch_knowledge proceeds past its guard."""
     return Services(db=MagicMock(), storage=MagicMock())
-
-
-# ---------------------------------------------------------------------------
-# Analyst stage
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -94,11 +85,6 @@ async def test_prefetch_analyst_omits_empty_subsection():
     assert "### Formulations" in result
 
 
-# ---------------------------------------------------------------------------
-# Reporter stage
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_prefetch_reporter():
     """Reporter stage: 2 queries (meta + formulation)."""
@@ -116,11 +102,6 @@ async def test_prefetch_reporter():
     assert "## Knowledge context" in result
     assert "### References" in result
     assert "### Formulations" in result
-
-
-# ---------------------------------------------------------------------------
-# Failure scenarios
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -177,11 +158,6 @@ async def test_prefetch_total_failure():
     assert on_warning.call_count == 3
 
 
-# ---------------------------------------------------------------------------
-# Guard clauses
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_prefetch_disabled():
     """enabled=False -> '' without calling retrieve_context."""
@@ -216,10 +192,6 @@ async def test_prefetch_no_paradigm():
     assert result == ""
     mock_rc.assert_not_called()
 
-
-# ---------------------------------------------------------------------------
-# Architect stage (P2-002)
-# ---------------------------------------------------------------------------
 
 _PARADIGM_FACTS = (
     "## Retrieved Knowledge (2 results)\n\n### Result 1\nProspect theory facts..."
@@ -291,10 +263,6 @@ async def test_architect_no_knowledge_context():
     assert msg == "design an environment"
     assert "## Knowledge context" not in msg
 
-
-# ---------------------------------------------------------------------------
-# R2: Agent injection tests (P1-004)
-# ---------------------------------------------------------------------------
 
 _FAKE_EVENT = Event(step=0, agent_id="a1", action=Action(name="move"))
 _KNOWLEDGE_CTX = "## Knowledge context\n\n### Postulates\nSome postulate data"

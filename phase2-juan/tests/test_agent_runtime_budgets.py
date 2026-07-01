@@ -38,8 +38,6 @@ async def test_tracker_uses_demo_safe_runtime_budget():
         await tracker.run("observa", [event])
 
     assert captured["max_iterations"] <= 8
-    # Sized for a multi-model JSON observation: a smaller cap truncated the final
-    # answer (unparseable JSON → empty KG write) once a run had several models.
     assert captured["max_tokens"] <= 8192
     assert "Tool budget" in captured["system"]
 
@@ -61,7 +59,6 @@ async def test_analyst_uses_focused_runtime_budget():
         await analyst.run("analiza", "tracker", [event])
 
     assert captured["max_iterations"] <= 8
-    # Sized for a multi-model comparative report (see Tracker note above).
     assert captured["max_tokens"] <= 8192
     assert "Tool budget" in captured["system"]
     assert "get_agent_state aggressively" not in captured["system"]

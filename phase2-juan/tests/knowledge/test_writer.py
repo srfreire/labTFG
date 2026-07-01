@@ -8,10 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from simlab.knowledge import ModelInfo, SimulationContext, TrackerMemoryWriter
 
-# ---------------------------------------------------------------------------
-# Fixtures / helpers
-# ---------------------------------------------------------------------------
-
 
 def _model(**overrides):
     base = {
@@ -101,17 +97,10 @@ def _tracker_single_model():
     }
 
 
-# ---------------------------------------------------------------------------
-# 1. Happy path — 1 model, 2 agents
-# ---------------------------------------------------------------------------
-
-
 async def test_happy_path_single_model_two_agents():
     model = _model()
     ctx = _context(agent_to_model={"agent_0": model, "agent_1": model})
     tracker_json = json.dumps(_tracker_single_model())
-
-    # 4 facts expected: 1 summary + 2 trajectories + 1 episode
     writer, m = _make_writer(embed_return=[[0.1] * 5] * 4)
 
     with patch(
@@ -124,34 +113,18 @@ async def test_happy_path_single_model_two_agents():
     assert result.trajectories_written == 2
     assert result.episodes_written == 1
     assert result.episodes_filtered == 2
-
-    # Batch embed: exactly one call with 4 items.
     m["emb"].embed_texts.assert_awaited_once()
     assert len(m["emb"].embed_texts.await_args.args[0]) == 4
-
-    # Per-fact: 4 create_memory + 4 dense upserts + 4 sparse upserts.
     assert cm.await_count == 4
     assert m["vec"].upsert_dense.await_count == 4
     assert m["vec"].upsert_sparse.await_count == 4
-
-    # Sparse upsert receives raw text (Qdrant BM25 server-side), not indices/values.
     for call in m["vec"].upsert_sparse.await_args_list:
         assert isinstance(call.args[2], str), "upsert_sparse should receive text"
-
-    # Single commit at the end.
     m["session"].commit.assert_awaited_once()
-
-    # UUID shared between Postgres and Qdrant upsert calls for every fact.
     pg_ids = [call.kwargs["id"] for call in cm.await_args_list]
     dense_ids = [call.args[1] for call in m["vec"].upsert_dense.await_args_list]
     sparse_ids = [call.args[1] for call in m["vec"].upsert_sparse.await_args_list]
-    # create_memory receives uuid.UUID, upserts receive str(uuid) — compare as strings.
     assert [str(x) for x in pg_ids] == dense_ids == sparse_ids
-
-
-# ---------------------------------------------------------------------------
-# 2. Comparison run — 2 models, each with 2 agents
-# ---------------------------------------------------------------------------
 
 
 async def test_comparison_run_tags_correct_paradigm_per_fact():
@@ -181,7 +154,6 @@ async def test_comparison_run_tags_correct_paradigm_per_fact():
         },
         "episodes": [],
     }
-    # 3 facts: 1 summary + 2 trajectories
     writer, _m = _make_writer(embed_return=[[0.1]] * 3)
 
     with patch(
@@ -192,25 +164,12 @@ async def test_comparison_run_tags_correct_paradigm_per_fact():
     assert result.summaries_written == 1
     assert result.trajectories_written == 2
     assert result.episodes_written == 0
-
-    # Per-fact kwargs passed to create_simulation_observation.
     summary_call, traj0_call, traj1_call = cm.await_args_list
-
-    # Summary references BOTH class names via the JSONB ``metadata_``
-    # leftovers (``models_compared`` is not a typed column).
     assert set(summary_call.kwargs["metadata_"]["models_compared"]) == {"A", "B"}
-
-    # Trajectories carry paradigm/formulation/agent_id as typed kwargs now,
-    # not stuffed into JSONB metadata.
     assert traj0_call.kwargs["agent_id"] == "agent_0"
     assert traj0_call.kwargs["formulation"] == "f-a"
     assert traj1_call.kwargs["agent_id"] == "agent_2"
     assert traj1_call.kwargs["formulation"] == "f-b"
-
-
-# ---------------------------------------------------------------------------
-# 3. Invalid JSON
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("bad_input", ["not json", "", "[1, 2, 3]"])
@@ -233,11 +192,6 @@ async def test_invalid_json_short_circuits(bad_input):
     m["vec"].upsert_dense.assert_not_awaited()
     m["vec"].upsert_sparse.assert_not_awaited()
     cm.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
-# 4. Empty tracker
-# ---------------------------------------------------------------------------
 
 
 async def test_empty_tracker_returns_no_relevant_content():
@@ -281,17 +235,10 @@ async def test_all_routine_episodes_returns_no_relevant_content():
     assert result.episodes_filtered == 2
 
 
-# ---------------------------------------------------------------------------
-# 5. Qdrant dense fails on 2nd fact — others keep going
-# ---------------------------------------------------------------------------
-
-
 async def test_qdrant_dense_failure_does_not_abort_batch():
     model = _model()
     ctx = _context(agent_to_model={"agent_0": model, "agent_1": model})
     tracker_json = json.dumps(_tracker_single_model())  # 4 facts
-
-    # Second dense upsert raises, the other three succeed.
     call_count = {"n": 0}
 
     async def flaky_dense(*_args, **_kwargs):
@@ -308,26 +255,15 @@ async def test_qdrant_dense_failure_does_not_abort_batch():
         "simlab.knowledge.writer.create_simulation_observation", new=AsyncMock()
     ) as cm:
         result = await writer.write(tracker_json, ctx)
-
-    # Writer did not abort — result reflects all 4 facts as written (PG rows kept).
     assert result.skipped_reason is None
     assert (
         result.summaries_written + result.trajectories_written + result.episodes_written
         == 4
     )
-
-    # All 4 create_memory + 4 dense attempts + 4 sparse (text) upserts executed.
     assert cm.await_count == 4
     assert m["vec"].upsert_dense.await_count == 4
     assert m["vec"].upsert_sparse.await_count == 4
-
-    # Single commit still happens.
     m["session"].commit.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# 6. Voyage failure — captured, zero counters
-# ---------------------------------------------------------------------------
 
 
 async def test_voyage_failure_returns_error_skipped_reason():
@@ -357,11 +293,6 @@ async def test_voyage_failure_returns_error_skipped_reason():
     m["session"].commit.assert_not_awaited()
 
 
-# ---------------------------------------------------------------------------
-# 7. Unknown agent_id in episode — skipped, rest proceeds
-# ---------------------------------------------------------------------------
-
-
 async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
     model = _model()
     ctx = _context(agent_to_model={"agent_0": model})  # only agent_0 known
@@ -378,7 +309,6 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
             },
         ],
     }
-    # Only 1 fact survives (ghost skipped pre-embedding).
     writer, m = _make_writer(embed_return=[[0.1]])
 
     with patch(
@@ -393,11 +323,6 @@ async def test_unknown_agent_id_in_episode_is_skipped_not_written(caplog):
 
     cm.assert_awaited_once()
     m["vec"].upsert_dense.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# Sanity: sparse upsert is skipped when tokenizer emits empty vector
-# ---------------------------------------------------------------------------
 
 
 async def test_sparse_upsert_receives_raw_text():
@@ -419,13 +344,7 @@ async def test_sparse_upsert_receives_raw_text():
     assert result.summaries_written == 1
     m["vec"].upsert_dense.assert_awaited_once()
     m["vec"].upsert_sparse.assert_awaited_once()
-    # Text is passed directly — Qdrant handles BM25 server-side.
     assert isinstance(m["vec"].upsert_sparse.await_args.args[2], str)
-
-
-# ---------------------------------------------------------------------------
-# P4-003: _split_metadata + _coerce_uuid (typed-column projection)
-# ---------------------------------------------------------------------------
 
 
 class TestSplitMetadata:

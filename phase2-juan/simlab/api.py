@@ -71,12 +71,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ---------------------------------------------------------------------------
-# Agent status tracking — used by the web UI sidebar
-# ---------------------------------------------------------------------------
-
 # Single source of truth for agent names, colors, and which state key indicates "done"
 AGENTS = [
     {"name": "Architect", "color": "#4ade80", "state_key": "spec"},
@@ -111,11 +105,6 @@ def _build_agent_states(orch_state: dict | None = None) -> list[dict]:
         }
         for a in AGENTS
     ]
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
 
 
 @app.get("/health")
@@ -166,10 +155,6 @@ async def download_report_pdf(key: str):
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
-
-# ---------------------------------------------------------------------------
-# Knowledge Graph endpoints (knowledge P7)
-# ---------------------------------------------------------------------------
 
 _NODE_KEY_PROPS = (
     "slug",
@@ -541,8 +526,6 @@ async def websocket_chat(ws: WebSocket):
     # Monkey-patch orchestrator tools to emit real-time agent status via WebSocket
     original_build = orch._build_tools
 
-    # --- Intermediate card builders (one per pipeline step) ---
-
     def _env_card(state: dict) -> dict | None:
         spec = state.get("spec")
         if not spec:
@@ -737,8 +720,6 @@ async def websocket_chat(ws: WebSocket):
         return tools, wrapped
 
     orch._build_tools = patched_build
-
-    # --- Chat loop ---
     try:
         while True:
             data = await ws.receive_text()

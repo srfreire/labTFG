@@ -108,15 +108,10 @@ test.describe('Knowledge Panel — Memories tab (P7-005)', () => {
     await page.goto('/?mock')
     await page.getByTitle('Knowledge graph').click()
     await page.getByRole('button', { name: 'Memories' }).click()
-
-    // Match table cell, not the <option> in the select
     await expect(page.locator('td', { hasText: 'paradigm' })).toBeVisible()
     await expect(page.getByText('researcher')).toBeVisible()
     await expect(page.getByText(/1 memories/)).toBeVisible()
-
-    // Click the row to expand the full content
     await page.getByText('this is the long memory content').click()
-    // The full content is in a whitespace-pre-wrap div now
     await expect(page.getByText('this is the long memory content that should expand')).toBeVisible()
   })
 
@@ -130,11 +125,7 @@ test.describe('Knowledge Panel — Memories tab (P7-005)', () => {
     await page.goto('/?mock')
     await page.getByTitle('Knowledge graph').click()
     await page.getByRole('button', { name: 'Memories' }).click()
-
-    // Wait for the initial request
     await expect.poll(() => lastQuery?.has('page')).toBe(true)
-
-    // Set filters and apply
     await page.locator('select').selectOption('paradigm')
     await page.getByPlaceholder(/run_id/i).fill('11111111-1111-1111-1111-111111111111')
     await page.getByRole('button', { name: /^apply$/i }).click()
@@ -199,11 +190,7 @@ test.describe('Knowledge Panel — Provenance tab (P7-005)', () => {
     )
     await page.goto('/?mock')
     await page.getByTitle('Knowledge graph').click()
-
-    // Click the node renderer (P1 label visible inside the node card)
     await page.getByText('P1').click()
-
-    // Switched to Provenance tab
     await expect(page.getByText('SUPPORTED_BY')).toBeVisible()
     await expect(page.getByText('Foundational paper')).toBeVisible()
   })

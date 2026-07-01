@@ -25,10 +25,6 @@ if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.storage import StorageService
 
-# ---------------------------------------------------------------------------
-# Data extraction from events
-# ---------------------------------------------------------------------------
-
 
 def _get_agents(events: list[Event], agent_ids: list[str] | None) -> list[str]:
     all_agents = sorted(set(e.agent_id for e in events))
@@ -121,7 +117,6 @@ def _extract_q_table(events: list[Event], agents: list[str], **_) -> list[dict]:
                 if isinstance(v, (int, float)):
                     data.append({"x": str(k), "y": round(float(v), 4)})
                 elif isinstance(v, dict):
-                    # Nested dict: (state, action) -> value
                     for sub_k, sub_v in v.items():
                         if isinstance(sub_v, (int, float)):
                             data.append(
@@ -195,12 +190,6 @@ _AXIS_LABELS = {
     "action_scores_evolution": ("Paso", "Q-valor"),
     "pre_post_state_delta": None,  # dynamic — uses state_key
 }
-
-
-# ---------------------------------------------------------------------------
-# Matplotlib chart generation (for PDF reports)
-# ---------------------------------------------------------------------------
-
 # Professional style matching a clean academic report.
 _MPL_COLORS = ["#2563eb", "#059669", "#7c3aed", "#dc2626", "#d97706", "#0891b2"]
 _MPL_BG = "#fbfbf8"
@@ -345,10 +334,6 @@ def _generate_chart_image(spec: dict) -> bytes | None:
     return buf.read()
 
 
-# ---------------------------------------------------------------------------
-# Tool schemas
-# ---------------------------------------------------------------------------
-
 # Must match SIM_AGENT_COLORS in api.py (can't import due to circular dep)
 CHART_COLORS = ["#4ade80", "#fbbf24", "#a78bfa", "#f472b6", "#38bdf8", "#fb923c"]
 
@@ -423,11 +408,6 @@ LIST_STATE_KEYS_TOOL = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Tool builder
-# ---------------------------------------------------------------------------
-
-
 def build_chart_tools(
     events: list[Event],
     experiment_id: str,
@@ -469,7 +449,6 @@ def build_chart_tools(
         series = extractor(filtered, agents, state_key=state_key)
 
         if not any(s["data"] for s in series):
-            # Helpful error: list available state keys if state_evolution failed
             if metric == "state_evolution":
                 available = set()
                 for e in filtered:
@@ -484,8 +463,6 @@ def build_chart_tools(
                     }
                 )
             return json.dumps({"error": f"No data found for metric '{metric}'"})
-
-        # Assign frontend colors
         for i, s in enumerate(series):
             s["color"] = CHART_COLORS[i % len(CHART_COLORS)]
 
@@ -506,8 +483,6 @@ def build_chart_tools(
             "y_label": labels[1],
             "series": series,
         }
-
-        # Generate matplotlib PNG and upload to S3
         png_bytes = _generate_chart_image(spec)
         if png_bytes:
             s3_key = f"experiments/{experiment_id}/charts/{chart_id}.png"
@@ -536,7 +511,6 @@ def build_chart_tools(
         )
 
     async def list_state_keys(params: dict) -> str:
-        # Single pass to find last event per agent
         last_by_agent: dict[str, Event] = {}
         for e in events:
             last_by_agent[e.agent_id] = e

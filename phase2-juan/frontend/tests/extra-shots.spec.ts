@@ -12,9 +12,6 @@ async function hideBadge(page: Page) {
     content: '[data-testid="mock-badge"]{display:none !important}',
   })
 }
-
-// ui-10 — pipeline en acción: un agente en estado "working" con su tool label
-// y el chat "pensando", capturado a mitad de la fase del Analyst.
 test('pipeline en acción (mock)', async ({ page }) => {
   await page.goto(`${BASE}/?mock`)
   await page.getByRole('heading', { name: 'DecisionLab' }).waitFor()
@@ -29,8 +26,6 @@ test('pipeline en acción (mock)', async ({ page }) => {
     await btn.waitFor({ state: 'visible', timeout: 20_000 })
     await btn.click()
   }
-  // Dispara la fase del Analyst y captura a mitad de su ejecución (~3.8 s de
-  // tool calls): el panel muestra al Analyst "working" + tool, el chat piensa.
   const analyze = page.getByRole('button', { name: 'Analiza los resultados' })
   await analyze.waitFor({ state: 'visible', timeout: 20_000 })
   await analyze.click()
@@ -38,24 +33,17 @@ test('pipeline en acción (mock)', async ({ page }) => {
   await hideBadge(page)
   await page.screenshot({ path: path.join(FIG, 'ui-10-pipeline-accion.png') })
 })
-
-// ui-11 — panel de Knowledge Graph (datos reales del backend).
 test('knowledge graph (real)', async ({ page }) => {
   await page.goto(`${BASE}/`)
   await page.getByRole('heading', { name: 'DecisionLab' }).waitFor()
   await page.getByRole('button', { name: 'Knowledge graph' }).click()
   await page.getByText('Knowledge', { exact: true }).waitFor({ timeout: 10_000 })
   await page.waitForTimeout(2500) // deja cargar grafo / fetch
-  // Reajusta el grafo al contenedor ya estabilizado (fitView inicial corre
-  // antes de que el panel alcance su altura final y deja los nodos diminutos).
   const fit = page.locator('.react-flow__controls-fitview')
   if (await fit.count()) {
     await fit.click()
     await page.waitForTimeout(1200)
   }
-  // Capturar la REGIÓN VISIBLE del panel (clip sobre su bounding box), no el
-  // elemento completo: el grafo hace fitView al área visible, así que un
-  // element.screenshot del scrollHeight lo dejaba diminuto y descolgado.
   const panel = page.getByRole('complementary').last()
   const box = await panel.boundingBox()
   if (!box) throw new Error('KG panel sin bounding box')

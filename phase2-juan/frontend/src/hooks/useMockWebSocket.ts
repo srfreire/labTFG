@@ -1,24 +1,11 @@
-/**
- * Mock WebSocket hook — simulates the full pipeline with fake data.
- * Activate by adding ?mock to the URL: http://localhost:5173/?mock
- *
- * Turn-based: each user message advances the conversation one step. After every
- * step the Orchestrator proposes the recommended next action as clickable
- * suggestions, so the demo can be driven message by message instead of running
- * the whole pipeline in one shot.
- */
 import { useState, useCallback, useRef } from 'react'
 import type { AgentState, ChatMessage, SimAgent } from '../types'
 import { AGENT_COLORS, INITIAL_AGENTS } from '../constants'
 import { mockReplay, mockTracker, mockAnalyst, mockCharts, mockDecisionTraces } from './mockData'
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-// Conversation steps, in order. Each user message advances to the next one.
 const STEPS = ['architect', 'simulation', 'tracker', 'analyst', 'reporter', 'followup'] as const
 type Step = (typeof STEPS)[number]
-
-// Phrases that restart the demo from scratch (new experiment).
 const RESTART_HINTS = ['nuevo', 'otra', 'otro', 'empez', 'reinicia', 'de cero', 'desde el principio']
 
 export function useMockWebSocket() {
@@ -37,8 +24,6 @@ export function useMockWebSocket() {
   const setAgent = useCallback((name: string, status: AgentState['status'], activeTool?: string) => {
     setAgents(prev => prev.map(a => a.name === name ? { ...a, status, activeTool } : a))
   }, [])
-
-  // --- Individual conversation steps -------------------------------------
 
   const runArchitect = useCallback(async () => {
     setAgent('Orchestrator', 'working')
@@ -170,8 +155,6 @@ export function useMockWebSocket() {
     setAgent('Orchestrator', 'done')
   }, [addMsg, setAgent])
 
-  // --- Turn dispatcher ---------------------------------------------------
-
   const send = useCallback(async (text: string) => {
     if (runningRef.current) return
     runningRef.current = true
@@ -196,8 +179,6 @@ export function useMockWebSocket() {
       case 'reporter': await runReporter(); break
       case 'followup': await runFollowup(text); break
     }
-
-    // Advance, but stay on the followup step once the pipeline is done.
     if (stepRef.current < STEPS.length - 1) stepRef.current += 1
 
     setThinking(false)

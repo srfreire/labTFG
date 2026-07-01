@@ -35,11 +35,6 @@ def _stub_orchestrator_services() -> Services:
     return Services(db=db, storage=MagicMock())
 
 
-# ---------------------------------------------------------------------------
-# build_recall_extras
-# ---------------------------------------------------------------------------
-
-
 def test_build_recall_extras_returns_tool_registry_prompt():
     """Helper returns (tools, registry, prompt_section) tuple."""
     tools, registry, prompt = build_recall_extras("architect", _stub_services())
@@ -88,11 +83,6 @@ async def test_handler_uses_stage_prefix():
         top_k=3,
         stage="phase2-analyst",
     )
-
-
-# ---------------------------------------------------------------------------
-# Orchestrator wiring
-# ---------------------------------------------------------------------------
 
 
 def test_orchestrator_flag_off_does_not_initialise_recall_extras():

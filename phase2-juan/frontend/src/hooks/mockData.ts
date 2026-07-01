@@ -260,8 +260,6 @@ function mockReplayTraces(steps: number): Record<number, DecisionTrace[]> {
       },
     ]
   }
-
-  // Override step 16 with the specific mock data for chat traces
   traces[16] = mockDecisionTraces()
   return traces
 }

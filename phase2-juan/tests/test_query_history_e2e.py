@@ -115,11 +115,6 @@ async def seeded_db():
         await engine.dispose()
 
 
-# ---------------------------------------------------------------------------
-# AC4 — three planned queries return markdown with expected headers/rows
-# ---------------------------------------------------------------------------
-
-
 async def test_query_history_over_experiments(seeded_db):
     sql = "SELECT description, status FROM experiments ORDER BY description"
     with patch("simlab.nlsql._plan", new=AsyncMock(return_value={"sql": sql})):
@@ -149,6 +144,5 @@ async def test_query_history_over_pipeline_memories(seeded_db):
         out = await query_history("qué paradigmas hemos investigado", db=seeded_db)
 
     assert "| namespace | content |" in out
-    # both paradigms should be visible
     assert "homeostatic" in out
     assert "prospect theory" in out

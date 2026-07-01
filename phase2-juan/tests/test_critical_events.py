@@ -39,9 +39,6 @@ def test_detects_death_from_terminated_action_result():
 
 
 def test_confidence_drop_description_has_no_unverifiable_number():
-    # The gap is a derived metric whose definition is not in the judge bundle;
-    # the description must stay qualitative so the Tracker/Analyst cannot repeat
-    # an unverifiable figure. The exact values live in `data` instead.
     import re
 
     events = [
@@ -64,8 +61,6 @@ def test_confidence_drop_description_has_no_unverifiable_number():
 
     assert len(drops) == 1
     assert not re.search(r"\d\.\d", drops[0]["description"])  # no decimal in prose
-    # The raw gap floats must NOT be exposed anywhere — list_critical_events feeds
-    # `data` to the agents, who would quote "el gap colapsó de 0.576 a 0.0".
     assert "prev_gap" not in drops[0]["data"]
     assert "new_gap" not in drops[0]["data"]
     assert drops[0]["data"] == {}

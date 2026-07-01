@@ -18,11 +18,6 @@ from simlab.knowledge.writer import ModelInfo, SimulationContext
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Public types
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class FactSpec:
     """A single candidate memory: natural-language text + scoring + metadata."""
@@ -31,11 +26,6 @@ class FactSpec:
     importance: float
     memory_type: str  # "semantic" | "episodic"
     metadata: dict[str, Any]
-
-
-# ---------------------------------------------------------------------------
-# Rules
-# ---------------------------------------------------------------------------
 
 
 _FILTERED_EPISODE_TYPES: frozenset[str] = frozenset(
@@ -51,11 +41,6 @@ _DEFAULT_EPISODE_IMPORTANCE: float = 6
 
 _SUMMARY_IMPORTANCE: float = 5
 _TRAJECTORY_IMPORTANCE: float = 6
-
-
-# ---------------------------------------------------------------------------
-# Metadata
-# ---------------------------------------------------------------------------
 
 
 def _base_metadata(context: SimulationContext, model_info: ModelInfo) -> dict[str, Any]:
@@ -83,11 +68,6 @@ def _distinct_models(context: SimulationContext) -> list[ModelInfo]:
         seen_ids.add(info.model_id)
         out.append(info)
     return out
-
-
-# ---------------------------------------------------------------------------
-# Summary
-# ---------------------------------------------------------------------------
 
 
 def build_summary_fact(tracker: dict, context: SimulationContext) -> FactSpec | None:
@@ -121,11 +101,6 @@ def build_summary_fact(tracker: dict, context: SimulationContext) -> FactSpec | 
         memory_type="semantic",
         metadata=metadata,
     )
-
-
-# ---------------------------------------------------------------------------
-# Trajectories
-# ---------------------------------------------------------------------------
 
 
 def _format_top_actions(actions: dict[str, int], n: int = 3) -> str:
@@ -173,11 +148,6 @@ def build_trajectory_facts(tracker: dict, context: SimulationContext) -> list[Fa
         )
 
     return facts
-
-
-# ---------------------------------------------------------------------------
-# Episodes
-# ---------------------------------------------------------------------------
 
 
 def _episode_step_fragment(episode: dict) -> tuple[str, dict[str, Any]]:
@@ -246,11 +216,6 @@ def build_episode_facts(
         )
 
     return facts, filtered
-
-
-# ---------------------------------------------------------------------------
-# Orchestrator
-# ---------------------------------------------------------------------------
 
 
 def build_all_facts(

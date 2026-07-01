@@ -30,8 +30,6 @@ function SimulationGridInner({ replay }: Props) {
   const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
   const [activeTrace, setActiveTrace] = useState<{ traces: DecisionTrace[]; criticalEvent?: CriticalEvent } | null>(null)
-
-  // Index critical events by step for fast lookup
   const criticalByStep = useMemo(() => {
     const map = new Map<number, typeof replay.critical_events>()
     for (const ce of replay.critical_events || []) {
@@ -56,8 +54,6 @@ function SimulationGridInner({ replay }: Props) {
     }
     return next
   }, [currentStep, replay.frames])
-
-  // Playback — adaptive speed: slower at critical events
   useEffect(() => {
     if (!playing) return
     const tick = () => {
@@ -67,7 +63,6 @@ function SimulationGridInner({ replay }: Props) {
           return prev
         }
         const next = prev + 1
-        // Slow down 3x at critical events
         const isCritical = criticalByStep.has(next)
         const delay = isCritical ? (600 / speed) : (200 / speed)
         intervalRef.current = window.setTimeout(tick, delay)
@@ -91,8 +86,6 @@ function SimulationGridInner({ replay }: Props) {
   const cellSize = Math.min(28, Math.floor(300 / Math.max(replay.grid_width, replay.grid_height)))
   const gridWidth = replay.grid_width * cellSize + (replay.grid_width - 1)
   const gridHeight = replay.grid_height * cellSize + (replay.grid_height - 1)
-
-  // Pre-compute lookup maps — O(n) instead of O(width*height*n) find() calls
   const { resourceMap, agentMap, agentIdxMap, agentIdxById, trailSet } = useMemo(() => {
     const rMap = new Map<string, boolean>()
     const aMap = new Map<string, NonNullable<typeof frame>['agents'][0]>()

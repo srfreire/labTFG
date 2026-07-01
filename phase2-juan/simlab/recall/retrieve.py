@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 _EMPTY_RESULT = "## Retrieved Knowledge (0 results)\n\nNo results found."
 _RETRIEVE_CONTEXT_TIMEOUT_SECONDS = 20
 
-# ── Anthropic tool schema (R3) ──────────────────────────────────────────
-
 RETRIEVE_CONTEXT_TOOL: dict[str, Any] = {
     "name": "retrieve_context",
     "description": (
@@ -48,8 +46,6 @@ RETRIEVE_CONTEXT_TOOL: dict[str, Any] = {
         "required": ["query"],
     },
 }
-
-# ── Core wrapper ────────────────────────────────────────────────────────
 
 
 async def retrieve_context(
@@ -116,9 +112,6 @@ async def retrieve_context(
     except Exception:
         logger.exception("retrieve_context failed — returning empty result")
         return _EMPTY_RESULT
-
-
-# ── Factory ─────────────────────────────────────────────────────────────
 
 
 async def build_retriever_from_settings(

@@ -10,9 +10,6 @@ const FROM_COLORS_MAP: Record<string, string> = {
 }
 
 const PIPELINE_AGENTS = ['Orchestrator', 'Architect', 'Tracker', 'Analyst', 'Reporter'] as const
-
-// Simulation agent colors — fallback palette, overridden at runtime by backend via WS
-// Source of truth: SIM_AGENT_COLORS in api.py
 export const AGENT_COLORS = [
   FROM_COLORS_MAP.architect,
   FROM_COLORS_MAP.tracker,
@@ -27,24 +24,14 @@ export const INITIAL_AGENTS: AgentState[] = PIPELINE_AGENTS.map((name) => ({
   status: 'idle',
   color: FROM_COLORS_MAP[name.toLowerCase()],
 }))
-
-/** Case-insensitive color lookup for message senders. */
 export function getFromColor(name: string): string {
   return FROM_COLORS_MAP[name.toLowerCase()] || '#fff'
 }
-
-/**
- * Append a 2-char hex alpha byte to a 6-char hex color.
- * e.g. withAlpha('#4ade80', '20') → '#4ade8020' (~12% opacity).
- */
 export function withAlpha(color: string, alphaHex: string): string {
   return color + alphaHex
 }
 
 export const FROM_COLORS = FROM_COLORS_MAP
-
-// Knowledge graph — color per Cypher node label.
-// Unknown labels fall back to KG_LABEL_DEFAULT.
 export const KG_LABEL_COLORS: Record<string, string> = {
   Paradigm: '#4ade80',
   Postulate: '#a78bfa',
@@ -65,9 +52,6 @@ export function kgLabelColor(label: string): string {
 }
 
 const KG_NODE_TITLE_KEYS = ['name', 'title', 'id', 'doi'] as const
-
-/** Best human-readable title for a Cypher node, falling back to a slice
- * of the elementId so the renderer always has *something* to show. */
 export function kgNodeTitle(
   node: { id: string; props: Record<string, unknown> },
   fallbackLen = 12,
@@ -78,9 +62,6 @@ export function kgNodeTitle(
   }
   return node.id.slice(0, fallbackLen)
 }
-
-// Friendly labels for internal agent tool calls
-// Keep short — must fit in 200px sidebar
 export const TOOL_LABELS: Record<string, string> = {
   create_environment: 'Creando entorno',
   run_simulation: 'Simulando',

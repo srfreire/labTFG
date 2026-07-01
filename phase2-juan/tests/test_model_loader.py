@@ -13,10 +13,6 @@ from simlab.model_loader import (
     load_model,
 )
 
-# ---------------------------------------------------------------------------
-# Fixtures — fake DB rows matching the new Model schema
-# ---------------------------------------------------------------------------
-
 _SENTINEL = object()
 
 
@@ -53,11 +49,6 @@ def _mock_session_with_rows(rows: list) -> tuple[AsyncMock, MagicMock]:
     mock_db = MagicMock()
     mock_db.get_session.return_value = mock_session
     return mock_session, mock_db
-
-
-# ---------------------------------------------------------------------------
-# discover_models tests
-# ---------------------------------------------------------------------------
 
 
 async def test_discover_returns_dict_keyed_by_paradigm_formulation():
@@ -141,11 +132,6 @@ async def test_discover_models_duplicate_key_keeps_last_row():
     assert models["same/model"].run_id == str(newer_run)
 
 
-# ---------------------------------------------------------------------------
-# ModelInfo tests
-# ---------------------------------------------------------------------------
-
-
 def test_model_info_has_required_fields():
     info = ModelInfo(
         id="abc-123",
@@ -173,11 +159,6 @@ def test_model_info_run_id_defaults_to_none():
         s3_model_key="k",
     )
     assert info.run_id is None
-
-
-# ---------------------------------------------------------------------------
-# load_model tests
-# ---------------------------------------------------------------------------
 
 
 def _make_model_info(**overrides) -> ModelInfo:
@@ -296,8 +277,6 @@ async def test_load_model_with_seed():
     mock_storage.get = AsyncMock(return_value=MODEL_SOURCE.encode())
     m1 = await load_model(info, storage=mock_storage, seed=42)
     m2 = await load_model(info, storage=mock_storage, seed=42)
-
-    # Same seed → same random state → same initial energy and same decide() output
     assert m1.get_state() == m2.get_state()
     a1 = m1.decide(perception)
     a2 = m2.decide(perception)

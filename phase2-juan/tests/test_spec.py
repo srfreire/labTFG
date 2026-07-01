@@ -1,4 +1,3 @@
-# tests/test_spec.py
 from simlab.environment import ConsumeEffect, MoveEffect, NoopEffect
 from simlab.spec import spec_to_environment, validate_spec_dict
 
@@ -34,9 +33,6 @@ PHASE1_STYLE_SPEC = {
 }
 
 
-# --- Task 1: Happy path ---
-
-
 def test_valid_spec_returns_no_errors():
     errors = validate_spec_dict(VALID_SPEC)
     assert errors == []
@@ -45,9 +41,6 @@ def test_valid_spec_returns_no_errors():
 def test_phase1_style_spec_returns_no_errors():
     errors = validate_spec_dict(PHASE1_STYLE_SPEC)
     assert errors == []
-
-
-# --- Task 2: Error cases ---
 
 
 def test_missing_top_level_keys():
@@ -124,9 +117,6 @@ def test_consume_references_missing_resource():
     }
     errors = validate_spec_dict(spec)
     assert any("water" in e and "not defined" in e for e in errors)
-
-
-# --- Task 3: Conversion ---
 
 
 def test_spec_to_environment_creates_correct_grid():

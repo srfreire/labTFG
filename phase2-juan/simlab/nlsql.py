@@ -379,10 +379,6 @@ async def query_experiments(
         return "No encontré experimentos que coincidan con tu búsqueda."
 
 
-# ---------------------------------------------------------------------------
-# query_history — light NL→SQL path for the Orchestrator
-# ---------------------------------------------------------------------------
-
 _OUT_OF_SCOPE_MARKDOWN = (
     "> No puedo responder eso con SQL — la consulta está fuera del "
     "alcance de `query_history`."

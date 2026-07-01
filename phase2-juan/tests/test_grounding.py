@@ -25,7 +25,6 @@ def _events(agent_id: str, actions: list[str]) -> list[Event]:
 
 
 def _hierarchical_events() -> list[Event]:
-    # 50 moves + 10 stay = 60 total (matches CASO2 ground truth)
     actions = (
         ["move_down"] * 16
         + ["move_up"] * 14
@@ -37,7 +36,6 @@ def _hierarchical_events() -> list[Event]:
 
 
 def _hrl_events() -> list[Event]:
-    # 46 moves + 12 stay + 2 eat = 60 total
     actions = (
         ["move_up"] * 14
         + ["move_down"] * 13
@@ -110,7 +108,6 @@ def test_analyst_pattern_count_fabrication_is_corrected():
 
 
 def test_bare_movement_total_corrected_via_breakdown():
-    # CASO2 residual: "52 movimientos" while the listed breakdown sums to 50.
     tracker = json.dumps(
         {
             "episodes": [
@@ -134,7 +131,6 @@ def test_bare_movement_total_corrected_via_breakdown():
 
 
 def test_breakdown_rule_ignores_windowed_movement_counts():
-    # A windowed "13 movimientos en 24 pasos" with no breakdown must be left alone.
     tracker = json.dumps(
         {
             "episodes": [
@@ -152,7 +148,6 @@ def test_breakdown_rule_ignores_windowed_movement_counts():
 
 
 def test_does_not_touch_non_action_de_numbers():
-    # "paso 6 de 60" is a step reference, not an action count — must be left alone.
     tracker = json.dumps(
         {
             "episodes": [
@@ -171,8 +166,6 @@ def test_does_not_touch_non_action_de_numbers():
 
 
 def test_skips_multi_agent_patterns():
-    # When a pattern is attributed to two agents, whose count is "(58 de 60)"?
-    # Ambiguous — leave it for prompt-level handling, do not guess.
     analyst = json.dumps(
         {
             "patterns": [

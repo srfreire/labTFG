@@ -51,11 +51,6 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.storage import StorageService
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 # Meta-preamble the LLM prepends despite "start directly with the section's
 # content" — e.g. "Basándome en el contexto, aquí está el contenido para X:".
 # Matched only as a LEADING line so genuine prose is never touched.
@@ -567,12 +562,6 @@ SECTION_MAX_TOKENS = 2500
 REPORTER_LLM_TIMEOUT_SECONDS = 240
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "report_template.tex"
-
-
-# ---------------------------------------------------------------------------
-# Tool schemas
-# ---------------------------------------------------------------------------
-
 READ_RESEARCH_TOOL = {
     "name": "read_research",
     "description": (
@@ -622,12 +611,6 @@ COMPILE_REPORT_TOOL = {
         "required": ["content", "filename"],
     },
 }
-
-
-# ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
-
 REPORTER_SYSTEM_PROMPT = """\
 You are the Reporter agent for a simulation laboratory. You generate professional \
 LaTeX reports that integrate simulation results with scientific background.
@@ -773,11 +756,6 @@ nodes, complementing what read_research provides.
 If knowledge context is empty or absent, proceed with read_research as the sole \
 source — do not mention knowledge context absence in the report.
 """
-
-
-# ---------------------------------------------------------------------------
-# Reporter class
-# ---------------------------------------------------------------------------
 
 
 class Reporter:

@@ -6,11 +6,6 @@ interface Props {
   size?: number
   enableBlink?: boolean
 }
-
-/**
- * Solid single-color Facehash avatar — the default flavor used for chat
- * authors and sidebar agents. Use Facehash directly for gradient variants.
- */
 export function Avatar({ name, color, size = 28, enableBlink }: Props) {
   return (
     <Facehash

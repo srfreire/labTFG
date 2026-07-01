@@ -24,11 +24,6 @@ class Verdict:
     detail: str
 
 
-# ---------------------------------------------------------------------------
-# Layer 1 — observable contract (GS-0)
-# ---------------------------------------------------------------------------
-
-
 def _state_key(state: dict) -> str:
     """A stable, hashable representation of a model state for equality checks."""
     return repr(sorted((k, repr(v)) for k, v in state.items()))
@@ -61,11 +56,6 @@ def check_contract(model: object, perception: dict) -> Verdict:
     return Verdict(True, "decide read-only, q_values exposed")
 
 
-# ---------------------------------------------------------------------------
-# Determinism
-# ---------------------------------------------------------------------------
-
-
 def check_determinism(actions_a: Sequence[str], actions_b: Sequence[str]) -> Verdict:
     """Two runs with identical seed/config must emit an identical action stream."""
     identical = list(actions_a) == list(actions_b)
@@ -74,11 +64,6 @@ def check_determinism(actions_a: Sequence[str], actions_b: Sequence[str]) -> Ver
         return Verdict(True, f"{len(actions_a)} actions identical across runs")
     first_div = next((i for i in range(n) if actions_a[i] != actions_b[i]), n)
     return Verdict(False, f"diverged at step {first_div}")
-
-
-# ---------------------------------------------------------------------------
-# GS-OFT-1 — patch abandonment (Marginal Value Theorem)
-# ---------------------------------------------------------------------------
 
 
 def residence_departures(prt: Sequence[int]) -> list[int]:
@@ -106,11 +91,6 @@ def score_patch_abandonment(
     )
 
 
-# ---------------------------------------------------------------------------
-# GS-OFT-2 — travel cost ⇒ residence (central MVT comparative static)
-# ---------------------------------------------------------------------------
-
-
 def _mean(xs: Sequence[float]) -> float:
     return sum(xs) / len(xs) if xs else 0.0
 
@@ -125,11 +105,6 @@ def score_travel_cost(prt_low: Sequence[int], prt_high: Sequence[int]) -> Verdic
         f"mean residence low_cost={low:.2f} -> high_cost={high:.2f} "
         f"({'increases' if ok else 'does not increase'})",
     )
-
-
-# ---------------------------------------------------------------------------
-# GS-OFT-3 — diet-breadth zero-one rule
-# ---------------------------------------------------------------------------
 
 
 def singleton_fraction(diet_sets: Sequence[Sequence[int]]) -> float:
@@ -158,11 +133,6 @@ def score_diet_zero_one(
         f"singleton-diet fraction dense={dense_f:.2f}, scarce={scarce_f:.2f} "
         f"(dense must exclude poor prey, scarce must not)",
     )
-
-
-# ---------------------------------------------------------------------------
-# GS-RL-1 — learning curve
-# ---------------------------------------------------------------------------
 
 
 def reward_rate(rewards: Sequence[float]) -> float:
@@ -199,10 +169,6 @@ def score_flat(rewards: Sequence[float], *, max_abs_delta: float = 0.1) -> Verdi
         f"reward-rate change={delta:+.3f} (flat if |.|<={max_abs_delta})",
     )
 
-
-# ---------------------------------------------------------------------------
-# Analyst attribution (Layer 2, LLM part) — does the Analyst recover the truth?
-# ---------------------------------------------------------------------------
 
 # Distinctive terms that identify each paradigm in free-text analysis. Kept
 # specific (not generic words like "reward"/"learning") to avoid false hits.

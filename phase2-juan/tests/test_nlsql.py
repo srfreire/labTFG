@@ -10,10 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from simlab.nlsql import validate_sql
 
-# ---------------------------------------------------------------------------
-# Validator tests — pure function, no mocks needed
-# ---------------------------------------------------------------------------
-
 
 def test_validate_select_only():
     """Rejects INSERT, UPDATE, DELETE, DROP."""
@@ -100,11 +96,6 @@ def test_validate_valid_join():
     assert error is None
 
 
-# ---------------------------------------------------------------------------
-# Plan tests — mock LLM
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_plan_valid_json():
     """Mock LLM returns valid JSON plan."""
@@ -145,11 +136,6 @@ async def test_plan_invalid_json():
     assert result is None
 
 
-# ---------------------------------------------------------------------------
-# S3 fetch tests — pass an explicit StorageService mock
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_s3_fetch_respects_limit():
     """Only fetches up to max_rows."""
@@ -166,8 +152,6 @@ async def test_s3_fetch_respects_limit():
     mock_storage.get_text = AsyncMock(return_value='{"data": "test"}')
 
     await _fetch_s3(rows, ["analyst"], max_rows=2, storage=mock_storage)
-
-    # Should only fetch 2 rows, not 4
     assert mock_storage.get_text.call_count == 2
 
 
@@ -187,8 +171,6 @@ async def test_s3_fetch_partial_failure():
     )
 
     result = await _fetch_s3(rows, ["analyst"], max_rows=2, storage=mock_storage)
-
-    # Should have 1 result (the successful one)
     assert len(result) == 1
 
 
@@ -209,33 +191,22 @@ async def test_s3_fetch_truncation():
         assert len(v) <= 4100  # 4000 + some truncation marker
 
 
-# ---------------------------------------------------------------------------
-# Integration roundtrip tests
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_query_experiments_roundtrip():
     """Full pipeline: question → plan → validate → execute → synthesize → answer."""
     from simlab.nlsql import query_experiments
 
-    # Mock plan LLM
     plan_response = MagicMock()
     plan_response.content = [
         MagicMock(
             text='{"sql": "SELECT id, description FROM experiments", "fetch_s3": null, "reasoning": "list experiments"}'
         )
     ]
-
-    # Mock synthesize LLM
     synth_response = MagicMock()
     synth_response.content = [MagicMock(text="Tienes 2 experimentos recientes.")]
 
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(side_effect=[plan_response, synth_response])
-
-    # Mock Postgres — _execute calls session.execute twice:
-    # once for SET TRANSACTION READ ONLY and once for the actual query
     set_tx_result = MagicMock()
     mock_row1 = {"id": "uuid-1", "description": "test exp 1"}
     mock_row2 = {"id": "uuid-2", "description": "test exp 2"}

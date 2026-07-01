@@ -43,22 +43,12 @@ def _make_services_with_capturing_db():
     return services, captured
 
 
-# ---------------------------------------------------------------------------
-# AC1 — each Orchestrator gets its own session_id
-# ---------------------------------------------------------------------------
-
-
 def test_session_id_is_per_instance():
     o1 = Orchestrator(client=MagicMock(), services=MagicMock())
     o2 = Orchestrator(client=MagicMock(), services=MagicMock())
     assert isinstance(o1._session_id, uuid.UUID)
     assert isinstance(o2._session_id, uuid.UUID)
     assert o1._session_id != o2._session_id
-
-
-# ---------------------------------------------------------------------------
-# AC2 — flag OFF → zero rows written
-# ---------------------------------------------------------------------------
 
 
 async def test_flag_off_does_not_persist(monkeypatch):
@@ -80,11 +70,6 @@ async def test_flag_off_does_not_persist(monkeypatch):
     services.db.get_session.assert_not_called()
 
 
-# ---------------------------------------------------------------------------
-# AC3 — flag ON, simple text turn → 2 rows (user + assistant) same session
-# ---------------------------------------------------------------------------
-
-
 async def test_flag_on_persists_user_and_assistant_rows(monkeypatch):
     services, captured = _make_services_with_capturing_db()
     orch = Orchestrator(client=MagicMock(), services=services)
@@ -104,11 +89,6 @@ async def test_flag_on_persists_user_and_assistant_rows(monkeypatch):
     assert captured["rows"][0]["content"] == "can you do X?"
     assert captured["rows"][1]["content"] == "here is my reply"
     assert all(r["session_id"] == orch._session_id for r in captured["rows"])
-
-
-# ---------------------------------------------------------------------------
-# AC4 — flag ON, tool_use in final response → tool_use rows with names
-# ---------------------------------------------------------------------------
 
 
 async def test_flag_on_persists_tool_use_blocks_from_response(monkeypatch):
@@ -140,7 +120,6 @@ async def test_flag_on_persists_tool_use_blocks_from_response(monkeypatch):
         await orch.chat("simulate")
 
     roles = [r["role"] for r in captured["rows"]]
-    # 1 user + 1 assistant (text) + 2 tool_use = 4 rows
     assert roles == ["user", "assistant", "tool_use", "tool_use"]
     tool_use_rows = [r for r in captured["rows"] if r["role"] == "tool_use"]
     assert {r["tool_name"] for r in tool_use_rows} == {
@@ -149,19 +128,12 @@ async def test_flag_on_persists_tool_use_blocks_from_response(monkeypatch):
     }
 
 
-# ---------------------------------------------------------------------------
-# AC5 — experiment_id snapshot at write time
-# ---------------------------------------------------------------------------
-
-
 async def test_experiment_id_is_snapshotted(monkeypatch):
     services, captured = _make_services_with_capturing_db()
     orch = Orchestrator(client=MagicMock(), services=services)
 
     fake_settings = MagicMock(ENABLE_CHAT_PERSISTENCE=True, ENABLE_KNOWLEDGE_READ=False)
     monkeypatch.setattr("simlab.orchestrator.load_settings", lambda: fake_settings)
-
-    # First turn — no experiment yet
     with patch(
         "simlab.orchestrator.run_agent_loop",
         new=AsyncMock(return_value=_make_text_response("a")),
@@ -169,8 +141,6 @@ async def test_experiment_id_is_snapshotted(monkeypatch):
         await orch.chat("hi")
     first_turn_eids = [r["experiment_id"] for r in captured["rows"]]
     assert all(eid is None for eid in first_turn_eids)
-
-    # Set experiment_id, then second turn
     exp_id = uuid.uuid4()
     orch._state["experiment_id"] = exp_id
     captured["rows"].clear()
@@ -183,11 +153,6 @@ async def test_experiment_id_is_snapshotted(monkeypatch):
 
     second_turn_eids = [r["experiment_id"] for r in captured["rows"]]
     assert all(eid == exp_id for eid in second_turn_eids)
-
-
-# ---------------------------------------------------------------------------
-# AC6 — persist failure does NOT raise into chat(); user gets reply
-# ---------------------------------------------------------------------------
 
 
 async def test_persist_failure_does_not_propagate(monkeypatch, caplog):
@@ -210,11 +175,6 @@ async def test_persist_failure_does_not_propagate(monkeypatch, caplog):
 
     assert text == "survives the failure"
     assert any("chat persistence failed" in r.message for r in caplog.records)
-
-
-# ---------------------------------------------------------------------------
-# Sanity — string experiment_id is coerced to UUID
-# ---------------------------------------------------------------------------
 
 
 async def test_string_experiment_id_is_coerced_to_uuid(monkeypatch):
@@ -306,5 +266,4 @@ async def test_autocompact_replaces_old_context_and_notifies(monkeypatch):
     assert any(r["role"] == "context_summary" for r in captured["rows"])
 
 
-# Hidden import (used by AsyncMock side_effect helper)
 _ = pytest  # silence unused-import warning if pytest isn't directly referenced

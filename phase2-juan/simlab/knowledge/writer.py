@@ -40,11 +40,6 @@ _COLLECTION_DENSE = "memories_dense"
 _COLLECTION_SPARSE = "memories_sparse"
 
 
-# ---------------------------------------------------------------------------
-# Data classes
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class ModelInfo:
     """Identifies the Phase 1 model that governs an agent in a simulation.
@@ -87,11 +82,6 @@ class WriteResult:
     episodes_filtered: int
     duration_ms: int
     skipped_reason: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
 
 
 def _zero_result(
@@ -373,11 +363,6 @@ class TrackerMemoryWriter:
             episodes_filtered=episodes_filtered,
             duration_ms=duration_ms,
         )
-
-
-# ---------------------------------------------------------------------------
-# Factory
-# ---------------------------------------------------------------------------
 
 
 async def build_writer_from_settings(settings: Settings) -> TrackerMemoryWriter | None:

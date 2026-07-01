@@ -11,10 +11,6 @@ This module validates specs and converts them into Environment objects.
 
 from __future__ import annotations
 
-# ---------------------------------------------------------------------------
-# Validation constants
-# ---------------------------------------------------------------------------
-
 VALID_EFFECT_TYPES = {"MoveEffect", "ConsumeEffect", "NoopEffect"}
 
 REQUIRED_EFFECT_FIELDS: dict[str, list[str]] = {
@@ -40,11 +36,6 @@ def _canonicalize_spec(spec: dict) -> dict:
         else:
             result["resources"] = resource_types
     return result
-
-
-# ---------------------------------------------------------------------------
-# Spec validation
-# ---------------------------------------------------------------------------
 
 
 def validate_spec_dict(spec: dict) -> list[str]:
@@ -137,10 +128,6 @@ def validate_spec_dict(spec: dict) -> list[str]:
 
     return errors
 
-
-# ---------------------------------------------------------------------------
-# Spec → Environment conversion
-# ---------------------------------------------------------------------------
 
 from simlab.environment import (  # noqa: E402  — local import keeps this module's section ordering readable
     ActionRule,

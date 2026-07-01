@@ -256,11 +256,6 @@ async def main() -> None:
     _write_reports(results)
 
 
-# ---------------------------------------------------------------------------
-# Reporting
-# ---------------------------------------------------------------------------
-
-
 def _mark(passed: bool) -> str:
     return "PASS" if passed else "FALLA"
 

@@ -30,8 +30,6 @@ def test_export_bundle_structure(tmp_path):
 
 
 def test_export_bundle_serializes_tuple_keyed_state(tmp_path):
-    # A Q-table keyed by (state, action) tuples is not JSON-serializable raw;
-    # the bundle must normalize keys to strings instead of crashing.
     bundle = export_judge_bundle(
         tmp_path,
         env_spec={},

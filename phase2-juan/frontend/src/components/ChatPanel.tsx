@@ -46,7 +46,6 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
   const isEmpty = messages.length === 0 && !thinking
 
   useEffect(() => {
-    // Delay to let recharts measure containers before scrolling
     const id = setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }, 100)
@@ -74,8 +73,6 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
       compact={!isEmpty}
     />
   )
-
-  // Empty state — centered with prompts
   if (isEmpty) {
     return (
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-8">
@@ -106,8 +103,6 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
       </div>
     )
   }
-
-  // Active chat state
   const orchColor = getFromColor('orchestrator')
   const latestReplayMessageId = [...messages].reverse().find(msg => msg.replay)?.id
   const lastMessage = messages[messages.length - 1]

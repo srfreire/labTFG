@@ -57,9 +57,6 @@ def test_close_but_off_value_is_hallucination():
     assert 150.0 in rep.results[0].claimed
 
 
-# --- fallback-PDF detection ------------------------------------------------
-
-
 def test_real_report_is_not_flagged_as_fallback():
     text = "Resultados de la simulación: el agente consumió 42 unidades de comida."
     assert not is_fallback_report(text)

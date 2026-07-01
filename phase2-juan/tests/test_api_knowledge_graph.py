@@ -54,11 +54,6 @@ def _set_services(monkeypatch, *, kg=None, db=None):
     monkeypatch.setattr(api_module, "_services", services)
 
 
-# ---------------------------------------------------------------------------
-# AC1 — happy path
-# ---------------------------------------------------------------------------
-
-
 async def test_returns_nodes_and_edges_when_kg_available(monkeypatch):
     nodes = [
         {"id": "n1", "labels": ["Paradigm"], "props": {"name": "homeostatic"}},
@@ -82,11 +77,6 @@ async def test_returns_nodes_and_edges_when_kg_available(monkeypatch):
     assert body["current_run_node_ids"] == []
     assert body["nodes"][0]["label"] == "Paradigm"
     assert body["edges"][0]["type"] == "BELONGS_TO"
-
-
-# ---------------------------------------------------------------------------
-# AC2 — run_id populates current_run_node_ids
-# ---------------------------------------------------------------------------
 
 
 async def test_run_id_populates_current_run_node_ids(monkeypatch):
@@ -127,12 +117,6 @@ async def test_invalid_run_id_returns_empty_highlight(monkeypatch):
     assert body["current_run_node_ids"] == []
 
 
-# ---------------------------------------------------------------------------
-# AC3 — label filter (deviation: spec said `namespace` but Neo4j nodes
-# carry Cypher labels, not namespace props — see completion summary)
-# ---------------------------------------------------------------------------
-
-
 async def test_label_filter_keeps_only_matching_nodes(monkeypatch):
     nodes = [
         {"id": "n1", "labels": ["Paradigm"], "props": {"name": "a"}},
@@ -145,7 +129,6 @@ async def test_label_filter_keeps_only_matching_nodes(monkeypatch):
 
     assert len(body["nodes"]) == 1
     assert body["nodes"][0]["label"] == "Paradigm"
-    # Edge pointing to a filtered-out node must be dropped too
     assert body["edges"] == []
 
 
@@ -170,11 +153,6 @@ async def test_scope_overview_keeps_only_scientific_summary_nodes(monkeypatch):
         "Postulate",
     ]
     assert [edge["id"] for edge in body["edges"]] == ["e1"]
-
-
-# ---------------------------------------------------------------------------
-# AC4 — 503 when Neo4j unavailable
-# ---------------------------------------------------------------------------
 
 
 async def test_returns_503_when_kg_is_none(monkeypatch):

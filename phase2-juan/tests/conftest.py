@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 from shared.settings import derive_test_postgres_dsn
 
-# Load .env from project root (phase2-juan/)
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 if "LABTFG_TEST_POSTGRES_DSN" in os.environ:

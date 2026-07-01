@@ -14,11 +14,6 @@ SID = uuid.uuid4()
 EID = uuid.uuid4()
 
 
-# ---------------------------------------------------------------------------
-# AC1 — user string → one user row
-# ---------------------------------------------------------------------------
-
-
 def test_user_string_message_yields_one_user_row():
     msg = {"role": "user", "content": "hello, world"}
     rows = serialize_message(msg, session_id=SID, experiment_id=EID)
@@ -38,11 +33,6 @@ def test_empty_user_string_yields_no_rows():
         {"role": "user", "content": "   "}, session_id=SID, experiment_id=None
     )
     assert rows == []
-
-
-# ---------------------------------------------------------------------------
-# AC2 — assistant with 1 text + 2 tool_use → 3 rows
-# ---------------------------------------------------------------------------
 
 
 def test_assistant_text_plus_two_tool_use_yields_three_rows():
@@ -69,11 +59,6 @@ def test_assistant_text_plus_two_tool_use_yields_three_rows():
 
     assert rows[2]["role"] == "tool_use"
     assert rows[2]["tool_name"] == "analyze_results"
-
-
-# ---------------------------------------------------------------------------
-# AC3 — user with tool_result blocks → N tool_result rows
-# ---------------------------------------------------------------------------
 
 
 def test_user_tool_result_blocks_yield_tool_result_rows():
@@ -109,11 +94,6 @@ def test_user_tool_result_unknown_tool_use_id_yields_null_tool_name():
     assert rows[0]["tool_name"] is None
 
 
-# ---------------------------------------------------------------------------
-# AC4 — empty/whitespace text blocks are skipped
-# ---------------------------------------------------------------------------
-
-
 def test_assistant_empty_text_blocks_are_skipped():
     blocks = [
         SimpleNamespace(type="text", text=""),
@@ -124,7 +104,6 @@ def test_assistant_empty_text_blocks_are_skipped():
     rows = serialize_message(
         {"role": "assistant", "content": blocks}, session_id=SID, experiment_id=None
     )
-    # 1 assistant (the non-empty text) + 1 tool_use
     assert len(rows) == 2
     assert rows[0]["content"] == "real content"
 
@@ -156,11 +135,6 @@ def test_context_summary_role_serializes_as_audit_row():
     assert rows[0]["tool_name"] is None
 
 
-# ---------------------------------------------------------------------------
-# AC5 — persist_messages bulk-inserts in one round-trip
-# ---------------------------------------------------------------------------
-
-
 async def test_persist_messages_uses_one_execute_call():
     session = MagicMock()
     session.execute = AsyncMock()
@@ -182,7 +156,6 @@ async def test_persist_messages_uses_one_execute_call():
 
     assert session.execute.call_count == 1
     args, _ = session.execute.call_args
-    # Second positional arg is the rows list — confirms bulk path
     assert args[1] == rows
     session.commit.assert_awaited_once()
 
@@ -196,11 +169,6 @@ async def test_persist_messages_empty_rows_noop():
 
     session.execute.assert_not_called()
     session.commit.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# AC6 — DB error inside persist_messages does NOT propagate
-# ---------------------------------------------------------------------------
 
 
 async def test_persist_messages_swallows_db_errors(caplog):
@@ -218,19 +186,12 @@ async def test_persist_messages_swallows_db_errors(caplog):
             "tool_name": None,
         }
     ]
-
-    # Must not raise
     with caplog.at_level("WARNING"):
         await persist_messages(session, rows)
 
     assert any(
         "persist_messages: bulk insert failed" in r.message for r in caplog.records
     )
-
-
-# ---------------------------------------------------------------------------
-# Integration — real Postgres round-trip (gated by marker)
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration

@@ -83,14 +83,11 @@ function layoutNodes(
     arr.push(n)
     byLabel.set(n.label, arr)
   }
-  // LAYER_ORDER drives top→bottom; unknown labels go to the bottom.
   const labels = [...byLabel.keys()].sort((a, b) => {
     const ia = LAYER_ORDER.indexOf(a as (typeof LAYER_ORDER)[number])
     const ib = LAYER_ORDER.indexOf(b as (typeof LAYER_ORDER)[number])
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
   })
-
-  // Build a neighbour-index once so we can compute barycenters cheaply.
   const neighbours = new Map<string, Set<string>>()
   for (const e of edges) {
     if (!neighbours.has(e.source)) neighbours.set(e.source, new Set())
@@ -98,10 +95,6 @@ function layoutNodes(
     neighbours.get(e.source)!.add(e.target)
     neighbours.get(e.target)!.add(e.source)
   }
-
-  // Place each layer: alphabetical seed, then a barycenter sort against
-  // the previous layer to reduce edge crossings. Cheap one-pass; gives
-  // a clean tree-ish look without pulling in a layout dep.
   const positions: Record<string, { x: number; y: number }> = {}
   const placedX = new Map<string, number>()
   labels.forEach((label, layerIndex) => {

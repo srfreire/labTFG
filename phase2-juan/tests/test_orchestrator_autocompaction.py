@@ -48,12 +48,10 @@ def test_autocompaction_triggers_over_message_threshold():
 
     assert payload is not None
     keep = AUTOCOMPACT_KEEP_MESSAGES
-    # History is now a single summary message followed by the kept tail.
     assert len(orch._messages) == keep + 1
     assert orch._messages[0]["role"] == "assistant"
     assert payload["retained_messages"] == keep
     assert payload["compacted_messages"] == total - keep
-    # The newest turns survive verbatim.
     assert orch._messages[-1]["content"] == f"mensaje {total - 1}"
 
 

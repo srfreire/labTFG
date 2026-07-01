@@ -11,10 +11,6 @@ from simlab.knowledge.facts import (
     build_trajectory_facts,
 )
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 def _model(
     class_name="HomeostaticDriveReductionRL",
@@ -40,11 +36,6 @@ def _context(agent_to_model=None, env="grid_10x10", steps=200, seed=42, exp_id="
         seed=seed,
         agent_to_model=agent_to_model or {},
     )
-
-
-# ---------------------------------------------------------------------------
-# Single-model happy path (1 summary + 2 trajectories + mixed episodes)
-# ---------------------------------------------------------------------------
 
 
 def test_single_model_full_pipeline():
@@ -87,8 +78,6 @@ def test_single_model_full_pipeline():
     }
 
     facts, filtered = build_all_facts(tracker, context)
-
-    # 1 summary + 2 trajectories + 1 episode (2 filtered out)
     assert len(facts) == 4
     assert filtered == 2
 
@@ -111,20 +100,14 @@ def test_single_model_full_pipeline():
         assert "survived" in traj.text
         assert "top actions" in traj.text
         assert "agent_id" in traj.metadata
-
-    # Trajectory order mirrors trajectories dict iteration
     assert traj0.metadata["agent_id"] == "agent_0"
     assert traj1.metadata["agent_id"] == "agent_1"
-
-    # Top-3 actions verified for agent_0 (4 actions, take top 3 by count)
     assert "move_east(80)" in traj0.text
     assert "move_west(60)" in traj0.text
     assert "wait(55)" in traj0.text
     assert (
         "consume" not in traj0.text.split("top actions:")[1]
     )  # consume had 5, excluded
-
-    # Episode
     assert episode.memory_type == "episodic"
     assert episode.importance == 9  # starvation
     assert "starvation" in episode.text
@@ -133,11 +116,6 @@ def test_single_model_full_pipeline():
     assert episode.metadata["episode_type"] == "starvation"
     assert episode.metadata["step"] == 120
     assert episode.metadata["agent_id"] == "agent_1"
-
-
-# ---------------------------------------------------------------------------
-# Comparison run — 2 models, 2 agents each
-# ---------------------------------------------------------------------------
 
 
 def test_comparison_run_tags_each_fact_with_correct_model():
@@ -211,11 +189,6 @@ def test_comparison_run_tags_each_fact_with_correct_model():
     assert ep_by_agent["agent_2"].metadata["model_class_name"] == "PINegativeFeedback"
 
 
-# ---------------------------------------------------------------------------
-# Filtering
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize("ep_type", ["foraging_success", "exploration", "exploitation"])
 def test_routine_episodes_are_filtered(ep_type):
     model = _model()
@@ -257,11 +230,6 @@ def test_episode_importance_by_type(ep_type, expected_importance):
     assert facts[0].importance == expected_importance
 
 
-# ---------------------------------------------------------------------------
-# Step range
-# ---------------------------------------------------------------------------
-
-
 def test_episode_with_step_range():
     model = _model()
     context = _context(agent_to_model={"agent_0": model})
@@ -284,11 +252,6 @@ def test_episode_with_step_range():
     assert fact.metadata["step_start"] == 100
     assert fact.metadata["step_end"] == 120
     assert "step" not in fact.metadata
-
-
-# ---------------------------------------------------------------------------
-# Unknown agent_id — skip + warn, never crash
-# ---------------------------------------------------------------------------
 
 
 def test_unknown_agent_in_trajectory_is_skipped(caplog):
@@ -332,11 +295,6 @@ def test_unknown_agent_in_episode_is_skipped(caplog):
     assert any("ghost" in r.message for r in caplog.records)
 
 
-# ---------------------------------------------------------------------------
-# Empty tracker
-# ---------------------------------------------------------------------------
-
-
 def test_empty_tracker_yields_no_facts():
     context = _context()
     tracker = {"summary": "", "trajectories": {}, "episodes": []}
@@ -350,11 +308,6 @@ def test_missing_keys_are_tolerated():
     facts, filtered = build_all_facts({}, context)
     assert facts == []
     assert filtered == 0
-
-
-# ---------------------------------------------------------------------------
-# Spanish summary — preserved as raw quote inside English prefix
-# ---------------------------------------------------------------------------
 
 
 def test_spanish_summary_wrapped_in_english_prefix():
@@ -378,11 +331,6 @@ def test_empty_summary_returns_none():
     assert build_summary_fact({}, context) is None
 
 
-# ---------------------------------------------------------------------------
-# Unknown episode type preserved with importance=6
-# ---------------------------------------------------------------------------
-
-
 def test_unknown_episode_type_preserved_with_default_importance():
     model = _model()
     context = _context(agent_to_model={"agent_0": model})
@@ -403,11 +351,6 @@ def test_unknown_episode_type_preserved_with_default_importance():
     assert len(facts) == 1
     assert facts[0].importance == 6
     assert facts[0].metadata["episode_type"] == "sudden_cooperation"
-
-
-# ---------------------------------------------------------------------------
-# build_all_facts concatenation order
-# ---------------------------------------------------------------------------
 
 
 def test_build_all_facts_order_is_summary_trajectories_episodes():

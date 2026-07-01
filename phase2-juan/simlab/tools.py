@@ -27,10 +27,6 @@ if TYPE_CHECKING:
     from shared.database import DatabaseService
     from shared.storage import StorageService
 
-# ---------------------------------------------------------------------------
-# Helpers — data conversion and summarization
-# ---------------------------------------------------------------------------
-
 
 def _make_serializable(obj):
     """Recursively convert non-serializable types (tuple keys, etc.) for JSON."""
@@ -162,10 +158,6 @@ def _summarize_events(events: list[Event]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Tool schemas — these are sent to Claude so it knows what tools exist
-# ---------------------------------------------------------------------------
-
 GET_SIMULATION_EVENTS_TOOL = {
     "name": "get_simulation_events",
     "description": "Get all events from the simulation. Returns raw events when the set is small, otherwise a summary with global metrics (agents, events_per_agent, action_counts) — then drill in with get_agent_trajectory or get_event_window.",
@@ -223,12 +215,6 @@ GET_AGENT_STATE_TOOL = {
         "required": ["agent_id", "step"],
     },
 }
-
-
-# ---------------------------------------------------------------------------
-# Tool factory — creates closures bound to a specific simulation's events
-# ---------------------------------------------------------------------------
-
 GET_EVENT_WINDOW_TOOL = {
     "name": "get_event_window",
     "description": (
@@ -344,11 +330,7 @@ def build_simulation_tools(
       - registry: dict mapping tool names to their async implementations
     """
     _critical = critical_events or []
-
-    # Index events by agent for fast lookup
     by_agent = group_by_agent(events)
-
-    # --- Tool implementations (closures over `events` and `by_agent`) ---
 
     async def get_simulation_events(params: dict) -> str:
         """Return all events, or a summary if the payload is too large.
@@ -414,7 +396,6 @@ def build_simulation_tools(
             if start <= e.step <= end
             and (not agent_filter or e.agent_id == agent_filter)
         ]
-        # Find any critical events in this window
         window_critical = [
             ce
             for ce in _critical
@@ -483,10 +464,6 @@ def build_simulation_tools(
     }
     return schemas, registry
 
-
-# ---------------------------------------------------------------------------
-# Cross-experiment tools (DB) — for the Analyst
-# ---------------------------------------------------------------------------
 
 LIST_PAST_EXPERIMENTS_TOOL = {
     "name": "list_past_experiments",
@@ -560,7 +537,6 @@ def build_cross_experiment_tools(
             exp = result.scalar_one_or_none()
         if not exp:
             return json.dumps({"error": f"Experiment {exp_id} not found"})
-        # Fetch tracker and analyst data from S3
         tracker_data = None
         analyst_data = None
         if exp.s3_tracker_key:

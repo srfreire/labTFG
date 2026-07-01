@@ -31,11 +31,6 @@ def _make_services(*, kg=None, vectors=None, embeddings=None) -> Services:
     )
 
 
-# ---------------------------------------------------------------------------
-# Flag ON + mocked handler — happy path
-# ---------------------------------------------------------------------------
-
-
 async def test_flag_on_calls_create_retrieve_knowledge_with_correct_args():
     """With flag on and infra mocked, the handler factory is called correctly."""
     services = _make_services(
@@ -59,8 +54,6 @@ async def test_flag_on_calls_create_retrieve_knowledge_with_correct_args():
             stage="phase2-architect",
             run_id="test-run-id",
         )
-
-    # Factory called with correct infra singletons
     mock_factory.assert_called_once()
     call_kwargs = mock_factory.call_args.kwargs
     assert call_kwargs["kg"] is services.kg
@@ -69,15 +62,11 @@ async def test_flag_on_calls_create_retrieve_knowledge_with_correct_args():
     assert call_kwargs["search_adapter"] is None
     assert call_kwargs["run_id"] == "test-run-id"
     assert call_kwargs["stage"] == "phase2-architect"
-
-    # Handler called with params dict
     fake_handler.assert_awaited_once()
     params = fake_handler.await_args.args[0]
     assert params["query"] == "homeostatic models"
     assert params["namespace"] == "paradigm"
     assert params["top_k"] == 3
-
-    # Result is the handler's output
     assert result == "## Retrieved Knowledge (2 results)\n\nFact A\nFact B"
 
 

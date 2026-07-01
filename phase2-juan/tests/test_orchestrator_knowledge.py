@@ -103,11 +103,6 @@ async def _run_observe(state: dict, *, sim_memory_writer=None) -> tuple[str, obj
     return result, mock_tracker
 
 
-# ---------------------------------------------------------------------------
-# 1. Happy path — writer is invoked with a well-formed SimulationContext
-# ---------------------------------------------------------------------------
-
-
 async def test_observe_simulation_invokes_writer_when_set():
     writer = MagicMock()
     writer.write = AsyncMock(
@@ -127,35 +122,21 @@ async def test_observe_simulation_invokes_writer_when_set():
 
     writer.write.assert_awaited_once()
     tracker_arg, context_arg = writer.write.await_args.args
-    # Writer receives the full tracker JSON (slim-summary is only the tool return value)
     assert tracker_arg == _tracker_json()
-    # experiment_id absent → empty string via str(None or "") fallback
     assert context_arg.phase2_experiment_id == ""
     assert context_arg.environment == "grid_10x8"
     assert context_arg.steps == 25
     assert context_arg.seed == 7
     assert "f-a_0" in context_arg.agent_to_model
     assert context_arg.agent_to_model["f-a_0"].paradigm == "p"
-    # observe_simulation returns a slim summary; full tracker output is in state
     _assert_slim_summary(result)
 
 
-# ---------------------------------------------------------------------------
-# 2. Writer not set (flag OFF) — observe_simulation behaves identically
-# ---------------------------------------------------------------------------
-
-
 async def test_observe_simulation_skips_when_writer_is_none():
-    # Should NOT touch any writer and must return the slim summary.
     result, mock_tracker = await _run_observe(_prepopulated_state(experiment_id=None))
 
     _assert_slim_summary(result)
     mock_tracker.run.assert_awaited_once()
-
-
-# ---------------------------------------------------------------------------
-# 3. Writer raises — observe_simulation logs and returns normally
-# ---------------------------------------------------------------------------
 
 
 async def test_observe_simulation_swallows_writer_exception(caplog):

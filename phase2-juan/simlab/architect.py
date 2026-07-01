@@ -17,10 +17,6 @@ from simlab.loop import Registry, run_agent_loop
 from simlab.spec import validate_spec_dict
 from simlab.utils import extract_text
 
-# ---------------------------------------------------------------------------
-# System prompt — tells Claude how to generate environment specs
-# ---------------------------------------------------------------------------
-
 ARCHITECT_SYSTEM_PROMPT = """\
 You generate JSON environment specs for a 2D grid simulation lab.
 
@@ -89,12 +85,6 @@ binary signals, keep rewards at 0/1.
 If knowledge context is empty or absent, generate the spec from scratch based \
 solely on the user description.
 """
-
-
-# ---------------------------------------------------------------------------
-# Validation tool — the Architect calls this to check its own output
-# ---------------------------------------------------------------------------
-
 VALIDATE_SPEC_TOOL = {
     "name": "validate_spec",
     "description": "Validate a JSON environment spec. Call this with your generated spec before returning it.",
@@ -126,11 +116,6 @@ async def _validate_spec_tool(params: dict) -> str:
 ARCHITECT_REGISTRY: Registry = {
     "validate_spec": _validate_spec_tool,
 }
-
-
-# ---------------------------------------------------------------------------
-# Architect class
-# ---------------------------------------------------------------------------
 
 
 class Architect:

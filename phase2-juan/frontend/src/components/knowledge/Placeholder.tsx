@@ -1,8 +1,6 @@
 interface PlaceholderProps {
   title: string
   body: string
-  /** ``absolute`` overlays a fitted parent (e.g. inside a ReactFlow);
-   * ``fill`` takes full height (table/list panels). Default ``fill``. */
   variant?: 'absolute' | 'fill'
 }
 

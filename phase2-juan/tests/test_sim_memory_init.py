@@ -28,7 +28,6 @@ def test_build_writer_from_services_with_full_infra():
     writer = build_writer_from_services(services)
 
     assert isinstance(writer, TrackerMemoryWriter)
-    # The writer holds the exact instances passed in — no new connections made.
     assert writer._vectors is fake_vectors
     assert writer._embeddings is fake_embeddings
     assert writer._db is fake_db

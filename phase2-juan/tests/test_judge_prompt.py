@@ -1,4 +1,3 @@
-# phase2-juan/tests/test_judge_prompt.py
 from pathlib import Path
 
 PROMPT = Path(__file__).resolve().parents[1] / "benchmark" / "JUDGE_PROMPT.md"

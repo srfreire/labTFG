@@ -14,8 +14,6 @@ from simlab.recall.retrieve import RETRIEVE_CONTEXT_TOOL, retrieve_context
 if TYPE_CHECKING:
     from shared.services import Services
 
-# ── Per-agent prompt sections ───────────────────────────────────────────
-
 _PROMPT_SECTIONS: dict[str, str] = {
     "architect": """
 
@@ -68,9 +66,6 @@ use one targeted query, e.g.:
   `retrieve_context(query="full equation for <formulation>", namespace="formulation")`.
 """,
 }
-
-
-# ── Public API ──────────────────────────────────────────────────────────
 
 
 def build_recall_extras(

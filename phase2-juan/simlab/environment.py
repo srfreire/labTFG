@@ -18,10 +18,6 @@ import random
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-# ---------------------------------------------------------------------------
-# Data types
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class Position:
@@ -53,11 +49,6 @@ class Resource:
     properties: dict = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
-# Effect types — what happens when an action is executed
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class MoveEffect:
     dx: int
@@ -79,11 +70,6 @@ class NoopEffect:
 Effect = MoveEffect | ConsumeEffect | NoopEffect
 
 
-# ---------------------------------------------------------------------------
-# Configuration — how the environment is set up
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class ActionRule:
     """Maps an action name to its effect."""
@@ -102,21 +88,11 @@ class ResourceRule:
     regenerate: bool = True
 
 
-# ---------------------------------------------------------------------------
-# DecisionModel protocol — Phase 1 models implement this interface
-# ---------------------------------------------------------------------------
-
-
 @runtime_checkable
 class DecisionModel(Protocol):
     def decide(self, perception: dict) -> Action: ...
     def update(self, action: Action, reward: float, new_perception: dict) -> None: ...
     def get_state(self) -> dict: ...
-
-
-# ---------------------------------------------------------------------------
-# Agent — wraps a decision model with position and alive state
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -125,11 +101,6 @@ class Agent:
     position: Position
     decision_model: DecisionModel | None = None
     alive: bool = True
-
-
-# ---------------------------------------------------------------------------
-# Environment — the 2D grid simulation
-# ---------------------------------------------------------------------------
 
 
 class Environment:
@@ -152,8 +123,6 @@ class Environment:
     ) -> None:
         self.width = width
         self.height = height
-
-        # Validate uniqueness
         action_names = [a.name for a in actions]
         if len(action_names) != len(set(action_names)):
             duped = {n for n in action_names if action_names.count(n) > 1}
@@ -166,8 +135,6 @@ class Environment:
         self._action_registry: dict[str, ActionRule] = {a.name: a for a in actions}
         self._resource_rules: dict[str, ResourceRule] = {r.type: r for r in resources}
         self._rng = random.Random(seed)
-
-        # Mutable state
         self._agents: list[Agent] = []
         self._resources: list[Resource] = []
         self._step: int = 0
@@ -175,8 +142,6 @@ class Environment:
         self._resource_counter: int = 0
 
         self._spawn_initial_resources()
-
-    # --- Resource spawning ---
 
     def _spawn_initial_resources(self) -> None:
         """Place initial resources according to the resource rules."""
@@ -203,8 +168,6 @@ class Environment:
                 properties=properties,
             )
         )
-
-    # --- Public API ---
 
     def add_agent(self, agent: Agent) -> None:
         self._agents.append(agent)
@@ -245,8 +208,6 @@ class Environment:
             "grid": {"width": self.width, "height": self.height},
         }
 
-    # --- Perception: what an agent can see ---
-
     def _get_all_resource_types(self) -> set[str]:
         """Get all resource types (both currently placed and defined in rules)."""
         placed = {
@@ -281,8 +242,6 @@ class Environment:
             },
             "last_action_result": {},
         }
-
-    # --- Action execution ---
 
     def _apply_action(self, agent: Agent, action: Action) -> tuple[float, dict]:
         """Execute an action and return (reward, result_dict)."""
@@ -327,18 +286,12 @@ class Environment:
 
         if idx is None:
             return 0.0, {"consumed": False}
-
-        # Remove the resource
         self._resources.pop(idx)
-
-        # Regenerate it elsewhere if the rule says so
         rule = self._resource_rules.get(effect.resource_type)
         if rule and rule.regenerate:
             self._spawn_resource(rule)
 
         return effect.reward, {"consumed": True, "resource_type": effect.resource_type}
-
-    # --- Simulation loop ---
 
     def _snapshot_model_state(self, model: DecisionModel) -> dict:
         """Capture the model's internal state, converting numpy arrays to lists."""
@@ -367,20 +320,10 @@ class Environment:
         for agent in self._agents:
             if not agent.alive or agent.decision_model is None:
                 continue
-
-            # 1. What does the agent see?
             perception = self._build_perception(agent)
-
-            # 1b. Snapshot internal state BEFORE deciding (for decision traces)
             pre_state = self._snapshot_model_state(agent.decision_model)
-
-            # 2. What does the agent decide to do?
             action = agent.decision_model.decide(perception)
-
-            # 3. Execute the action
             reward, action_result = self._apply_action(agent, action)
-
-            # 4. Tell the model what happened
             new_perception = self._build_perception(agent)
             new_perception["last_action_result"] = action_result
             agent.decision_model.update(action, reward, new_perception)
@@ -392,8 +335,6 @@ class Environment:
                     "terminated": True,
                     "termination_reason": "energy_depleted",
                 }
-
-            # 5. Record the event (with full decision trace)
             event = Event(
                 step=self._step,
                 agent_id=agent.id,

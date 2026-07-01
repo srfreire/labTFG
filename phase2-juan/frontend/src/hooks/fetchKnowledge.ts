@@ -25,11 +25,6 @@ export function buildQuery(params: Record<string, string | number | undefined>):
   const s = q.toString()
   return s ? `?${s}` : ''
 }
-
-/**
- * Shared loader for the three knowledge hooks. ``url === null`` disables
- * the fetch (replaces both ``enabled`` flags and ``!nodeId`` early returns).
- */
 export function useKnowledgeFetch<T>(url: string | null): KnowledgeFetchResult<T> {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(false)
