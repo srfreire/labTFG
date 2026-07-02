@@ -1,16 +1,13 @@
 @startuml
 !pragma layout smetana
-top to bottom direction
+left to right direction
 skinparam backgroundColor white
-skinparam dpi 180
+skinparam dpi 190
 skinparam shadowing false
 skinparam defaultFontName Helvetica
+skinparam linetype ortho
 skinparam componentStyle rectangle
 skinparam packageStyle rectangle
-skinparam package {
-  BorderColor #334155
-  BackgroundColor #F8FAFC
-}
 skinparam component {
   BorderColor #334155
   BackgroundColor #EEF2FF
@@ -20,44 +17,25 @@ skinparam database {
   BackgroundColor #ECFDF5
 }
 
-package "Escritura" {
-  component "Artefacto aceptado" as Accepted
-  component "Extractor" as Extractor
-  component "Canonicalizador" as Canon
-  component "Resolver de conflictos" as Resolver
-  component "Consolidacion" as Consolidation
-}
+component "Router" as Router
+component "Agentes del pipeline" as Agents
 
-package "Almacenes" {
-  database "MinIO\nartefacto completo" as MinIO
-  database "PostgreSQL\nconfianza y vigencia" as PG
-  database "Neo4j\ngrafo" as Neo4j
-  database "Qdrant\ndense + BM25" as Qdrant
-}
+component "MemoryAgent\n<<component>>\nExtractor\nCanonicalizador\nResolver\nWriter" as Memory
+component "Retriever\n<<component>>\nBusqueda hibrida\nReranking\nContextBuilder" as Retriever
 
-package "Lectura" {
-  component "retrieve_knowledge" as Retrieve
-  component "Contexto filtrado" as Context
-  component "Agentes futuros" as FutureAgents
-}
+database "MinIO\nartefactos completos" as MinIO
+database "PostgreSQL\nmetadatos\nconfianza\nvigencia" as PG
+database "Neo4j\ngrafo de conocimiento" as Neo4j
+database "Qdrant\nvectores\nBM25" as Qdrant
 
-Accepted -down-> Extractor
-Extractor -down-> Canon
-Canon -down-> Resolver
-Resolver -down-> Consolidation
+Router --> Memory : artefacto aceptado
+Memory --> MinIO : fuente
+Memory --> PG : revision
+Memory --> Neo4j : relaciones
+Memory --> Qdrant : hechos
 
-Consolidation -down-> MinIO
-Consolidation -down-> PG
-Consolidation -down-> Neo4j
-Consolidation -down-> Qdrant
-
-Neo4j -down-> Retrieve : relaciones
-Qdrant -down-> Retrieve : candidatos
-PG -down-> Retrieve : confianza
-MinIO -[hidden]right- PG
-PG -[hidden]right- Neo4j
-Neo4j -[hidden]right- Qdrant
-
-Retrieve -down-> Context
-Context -down-> FutureAgents
+Agents --> Retriever : retrieve_knowledge\ncontexto con procedencia
+Retriever --> Neo4j : relaciones
+Retriever --> Qdrant : candidatos
+Retriever --> PG : confianza
 @enduml

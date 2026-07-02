@@ -1,40 +1,57 @@
 @startuml
-!pragma layout smetana
-top to bottom direction
-
+!pragma teoz true
 skinparam backgroundColor white
 skinparam dpi 210
 skinparam shadowing false
 skinparam defaultFontName Helvetica
-skinparam ArrowColor #334155
-skinparam ComponentBorderColor #334155
-skinparam ComponentBackgroundColor #F8FAFC
-skinparam ComponentFontColor #0F172A
-skinparam DatabaseBorderColor #334155
-skinparam DatabaseBackgroundColor #EEF2FF
-skinparam ActorBorderColor #334155
-skinparam ActorFontColor #0F172A
+skinparam sequence {
+  ArrowColor #334155
+  LifeLineBorderColor #94A3B8
+  ParticipantBorderColor #334155
+  ParticipantBackgroundColor #F8FAFC
+  ActorBorderColor #334155
+  ActorBackgroundColor #ECFEFF
+  DatabaseBorderColor #166534
+  DatabaseBackgroundColor #ECFDF5
+}
 
-actor "Usuario\ninvestigador" as User
-component "Router\norquesta ejecucion" as Router
-component "Agentes de transformacion\nResearcher -> Formalizer -> Reasoner -> Builder" as Agents
-component "Revision humana\naprobar, rechazar o pedir rerun" as Review
-component "MemoryAgent\nconsolida aceptados" as Memory
-component "Laboratorio virtual\ncarga DecisionModel" as Lab
-database "MinIO + PostgreSQL\nruns, artefactos, estado y trazas" as Store
-database "Neo4j + Qdrant\nrelaciones, vectores y BM25" as KG
+actor "Usuario" as User
+participant "Router" as Router
+participant "Agentes especializados" as Agents
+participant "MemoryAgent" as Memory
+database "Artefactos y estado\nMinIO + PostgreSQL" as Store
+database "Memoria recuperable\nNeo4j + Qdrant" as KG
+participant "Laboratorio virtual" as Lab
 
-User --> Router : 1 descripcion inicial
-Router --> Agents : 2 genera artefactos
-Agents --> Review : 3 evidencia revisable
-User --> Review : decision humana
-Review --> Router : 4 rerun si falla
-Router --> Memory : 5 solo si queda aceptado
-Memory --> Lab : 6 modelo validado
+User -> Router : descripcion inicial
+Router -> Store : crear run y estado inicial
+Router -> KG : recuperar contexto previo
+KG --> Router : hechos y relaciones
 
-Agents --> Store : informes, specs,\ncodigo y tests
-Agents --> KG : retrieve_knowledge
-Memory --> Store : procedencia y metadatos
-Memory --> KG : hechos consolidados
-Lab --> Store : carga modelo
+Router -> Agents : Researcher investiga paradigmas
+Agents -> Store : guardar informe y deep reports
+Agents --> User : paradigmas revisables
+User -> Router : aprobar o pedir correccion
+
+Router -> Agents : Formalizer genera formulaciones
+Agents -> Store : guardar formulaciones
+Agents --> User : formulaciones revisables
+User -> Router : seleccionar formulaciones
+
+Router -> Agents : Reasoner adapta al entorno
+Agents -> Store : guardar env spec y specs tecnicas
+Agents --> User : specs revisables
+User -> Router : aprobar o pedir rerun
+
+Router -> Agents : Builder genera modelo y tests
+Agents -> Store : guardar codigo, tests y resultado
+Agents --> User : modelo revisable
+User -> Router : aprobar modelo
+
+Router -> Memory : consolidar artefactos aceptados
+Memory -> Store : registrar procedencia y metadatos
+Memory -> KG : escribir nodos, relaciones y hechos
+
+Router -> Lab : registrar modelo compatible
+Lab -> Store : cargar DecisionModel
 @enduml

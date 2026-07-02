@@ -15,7 +15,10 @@ central \cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
 La regla principal fue separar decisiones y ejecución. El equipo humano definía
 objetivo, restricciones y evidencia esperada. El agente implementaba dentro de
 ese marco. Después se revisaban diffs, tests, logs, artefactos y resultados de
-CI. Este flujo sitúa al humano como \textit{human-in-the-loop}: no corrige cada
+integración continua (CI). CI es el proceso que ejecuta comprobaciones
+automáticas en GitHub cada vez que se suben cambios. En este proyecto ejecuta
+lint, formato y tests para detectar errores antes de aceptar una modificación.
+Este flujo sitúa al humano como \textit{human-in-the-loop}: no corrige cada
 línea manualmente, pero decide cuándo una salida puede aceptarse.
 
 Esta separación fue necesaria porque el proyecto no consistía solo en escribir
@@ -60,7 +63,7 @@ seguimiento.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.86\textwidth,height=0.46\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
-\caption{Flujo de orquestación autónoma con Hydra.}
+\caption{Actividad de orquestación autónoma con Hydra.}
 \end{figure}
 
 La figura muestra por qué la planificación se trató como parte del método y no
@@ -294,8 +297,8 @@ muestra la interfaz final sobre una ejecución real, no un diseño inicial.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.86\textwidth,height=0.34\textheight,keepaspectratio]{figuras/phase1-ui-replay-run}
-\caption{Interfaz web reproduciendo la ejecución CASO1 restaurada.}
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-replay-run-zoom}
+\caption{Detalle ampliado de la interfaz web reproduciendo CASO1 en un estado avanzado del pipeline.}
 \label{fig:phase1-ui-replay-run}
 \end{figure}
 
@@ -306,7 +309,7 @@ al revisar una ejecución de evaluación.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.86\textwidth,height=0.34\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run}
-\caption{Interfaz web mostrando el grafo de conocimiento de CASO1.}
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run-zoom}
+\caption{Grafo de conocimiento de CASO1. Cada punto representa un nodo de memoria y cada línea una relación entre nodos; la vista agrupa comunidades de conocimiento relacionadas.}
 \label{fig:phase1-ui-knowledge-run}
 \end{figure}

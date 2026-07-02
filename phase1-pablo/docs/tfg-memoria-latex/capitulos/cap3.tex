@@ -28,10 +28,10 @@ formulación, una formulación antes de una spec y una spec antes del código.
 \end{figure}
 
 La Figura~\ref{fig:phase1-system-architecture} separa entornos de ejecución. El
-usuario opera desde CLI, web o evals. El servidor de fase 1 ejecuta Router,
-agentes y herramientas. Los almacenes compartidos se ejecutan como servicios
-externos al proceso. Las APIs externas solo se invocan desde el runtime de
-agentes.
+acceso al sistema se hace desde CLI, web o evals. El servidor de fase 1 ejecuta
+Router, agentes y herramientas. Los almacenes compartidos se ejecutan como
+servicios externos al proceso. Las APIs externas solo se invocan desde el
+runtime de agentes.
 
 Esta separación evita 2 acoplamientos. Primero, el usuario no depende de cómo se
 ejecutan internamente los agentes. Puede lanzar una ejecución desde CLI, web o
@@ -62,16 +62,17 @@ grande, pero deja límites más claros para depurar errores.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{figuras/phase1-data-flow}
-\caption{Flujo de datos de alto nivel.}
+\caption{Actividad de transformación y persistencia de artefactos.}
 \label{fig:phase1-data-flow}
 \end{figure}
 
-El flujo de datos distingue documentos científicos, artefactos de ejecución,
-estado del pipeline, memoria y código generado. Esta separación es necesaria
-porque cada tipo de dato tiene un ciclo de vida distinto: algunos se revisan
-por humanos, otros se validan por tests y otros se indexan para recuperación.
+El diagrama de actividad distingue documentos científicos, artefactos de
+ejecución, estado del pipeline, memoria y código generado. Esta separación es
+necesaria porque cada tipo de dato tiene un ciclo de vida distinto: algunos se
+revisan por humanos, otros se validan por tests y otros se indexan para
+recuperación.
 
-El flujo también marca dónde se puede perder validez. Un paper leído por el
+La actividad también marca dónde se puede perder validez. Un paper leído por el
 Researcher no tiene el mismo estado que una formulación aceptada o que un modelo
 que pasa tests. Si esos datos se mezclasen, la memoria podría reutilizar
 borradores o el Builder podría compilar una decisión que todavía no fue
@@ -109,14 +110,14 @@ se detallan en el Anexo~\ref{ap:revision-humana}.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-end-to-end-sequence}
-\caption{Traza completa de generación, validación y memoria.}
+\caption{Secuencia completa de generación, validación y memoria.}
 \label{fig:phase1-end-to-end-sequence}
 \end{figure}
 
 La Figura~\ref{fig:phase1-end-to-end-sequence} muestra la traza normal de
-extremo a extremo. El Router no solo encadena agentes: registra cada artefacto,
-pide revisión cuando cambia el nivel de abstracción y solo activa memoria cuando
-el resultado ya fue aceptado.
+extremo a extremo como diagrama de secuencia. El Router no solo encadena
+agentes: registra cada artefacto, pide revisión cuando cambia el nivel de
+abstracción y solo activa memoria cuando el resultado ya fue aceptado.
 
 \begin{table}[H]
 \begin{center}
@@ -221,14 +222,14 @@ pero mantener procedencia, vigencia y revisión.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-memory-architecture}
-\caption{Sistema de memoria y recuperación.}
+\caption{Diagrama de componentes del sistema de memoria y recuperación.}
 \label{fig:phase1-memory-architecture}
 \end{figure}
 
-El diseño usa representaciones complementarias. MinIO conserva documentos
-completos. PostgreSQL conserva metadatos, ciclo de vida y relaciones
-operativas. Neo4j representa entidades y relaciones científicas. Qdrant permite
-recuperación semántica y léxica.
+El diagrama separa componentes de escritura, componentes de recuperación y
+almacenes. MinIO conserva documentos completos. PostgreSQL conserva metadatos,
+ciclo de vida y relaciones operativas. Neo4j representa entidades y relaciones
+científicas. Qdrant permite recuperación semántica y léxica.
 
 Se descartó usar un único almacén para todo porque las consultas necesarias son
 distintas. Para auditar se necesita el artefacto completo. Para saber qué runs

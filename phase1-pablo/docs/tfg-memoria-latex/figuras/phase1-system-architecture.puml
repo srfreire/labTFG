@@ -24,8 +24,6 @@ skinparam cloud {
   BackgroundColor #FFF7ED
 }
 
-actor "Usuario" as User
-
 node "Equipo del usuario" as Client {
   component "CLI\ndecisionlab" as CLI
   component "Navegador web" as Browser
@@ -53,8 +51,6 @@ cloud "APIs externas" as External {
   component "ZeroEntropy\nrerank" as ZE
 }
 
-User --> CLI : comandos
-User --> Browser : revision
 CLI --> API : HTTP
 Browser --> API : WebSocket
 Evals --> API : ejecuciones
