@@ -258,6 +258,7 @@ grafo o una spec JSON no son solo texto para leer. Son datos que otra etapa va a
 usar. Por eso se validan antes de persistirse o antes de pasarse a Builder.
 
 \section{Revisión humana y rutas de corrección}
+\label{ap:revision-humana}
 
 La revisión humana forma parte del diseño. El Router llama a un puerto de
 feedback. Ese puerto abstrae revisión por CLI, revisión por WebSocket y
@@ -1184,6 +1185,8 @@ Las líneas futuras principales son:
 \item ampliar el conjunto de paradigmas y ejecutar más casos con corpus cerrado;
 \item validar resultados con expertos del dominio;
 \item comparar modelos generados con implementaciones manuales;
+\item medir la variación de resultados al cambiar Opus, Sonnet, Haiku, GPT y
+      futuros modelos de frontera;
 \item estudiar si los modelos reproducen patrones esperados en simulaciones;
 \item mejorar la extracción de observaciones procedurales;
 \item usar más el grafo para consultas multi-hop sobre procedencia científica;

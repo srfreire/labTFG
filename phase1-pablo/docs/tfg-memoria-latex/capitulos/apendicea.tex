@@ -86,6 +86,7 @@ La configuración de modelos de lenguaje se gestiona desde la configuración de
 correspondiente, como Anthropic u OpenRouter.
 
 \subsection{Configuración de modelos y umbrales}
+\label{ap:modelos-llm}
 
 La fase 1 permite configurar modelos por etapa sin cambiar código. Esta
 separación fue necesaria porque no todas las tareas requieren la misma
@@ -113,6 +114,37 @@ razonamiento o extracción estructurada pueden usar modelos más potentes. Las
 tareas de clasificación, reescritura o evaluación correctiva pueden usar
 modelos rápidos. Los umbrales evitan llamadas LLM cuando la evidencia recuperada
 ya es suficiente.
+
+La configuración usada en las ejecuciones de referencia siguió una asignación
+por tipo de trabajo. No todos los agentes necesitaban el mismo modelo: algunos
+pasos requerían razonamiento abierto, otros solo clasificación o validación
+estructurada.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.2cm}|p{3.5cm}|p{5.4cm}|} \hline
+\textbf{Rol} & \textbf{Modelo usado} & \textbf{Motivo} \\ \hline
+Researcher & \path{anthropic/claude-sonnet-4.6} & Lee corpus científico, propone paradigmas y debe mantener trazabilidad con papers. \\ \hline
+DeepResearcher & \path{anthropic/claude-sonnet-4.6} & Amplía investigación con más contexto y más incertidumbre semántica. \\ \hline
+Resumen & \path{anthropic/claude-haiku-4.5} & Resume salidas ya generadas con una tarea cerrada y barata. \\ \hline
+Formalizer & \path{anthropic/claude-opus-4.6} & Convierte informes en formulaciones matemáticas. Es una fase de alto razonamiento. \\ \hline
+Reasoner & \path{anthropic/claude-opus-4.6} & Adapta formulaciones a restricciones de entorno y contrato ejecutable. \\ \hline
+Builder & \path{anthropic/claude-sonnet-4.6} & Genera código, tests y correcciones sobre errores observables. \\ \hline
+Clasificador y feedback & \path{anthropic/claude-haiku-4.5} & Decide entre opciones acotadas y rutas de reejecución. \\ \hline
+Memoria rápida & \path{anthropic/claude-haiku-4.5} & NER, CRAG, scoring y tareas mecánicas de bajo coste. \\ \hline
+Memoria estructurada & \path{anthropic/claude-sonnet-4.6} & Extracción estructurada, conflictos y consolidación de hechos. \\ \hline
+Juez externo & Codex sobre GPT-5.5 & Revisa bundles congelados desde una familia distinta a la usada por el pipeline. \\ \hline
+\end{tabular}
+\caption{Asignación de modelos de lenguaje por rol.}
+\end{center}
+\end{table}
+
+La elección buscó usar modelos de frontera disponibles en el momento del
+desarrollo sin acoplar la arquitectura a un proveedor. Si aparecen modelos
+mejores, se pueden cambiar variables de entorno y repetir las mismas suites.
+Esto permite estudiar si la calidad científica mejora por capacidad del modelo
+o por cambios de diseño.
 
 \section{Arranque de infraestructura}
 

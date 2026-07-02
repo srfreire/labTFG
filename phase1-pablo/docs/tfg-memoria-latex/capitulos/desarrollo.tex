@@ -6,8 +6,8 @@
 
 El proyecto se desarrolló con una metodología apoyada en agentes de
 programación. Codex y Claude Code ejecutaron tareas de implementación,
-refactorización, pruebas y documentación. El criterio humano se mantuvo en las
-decisiones de arquitectura, alcance, aceptación y validación.
+refactorización y pruebas. El criterio humano se mantuvo en las decisiones de
+arquitectura, alcance, aceptación y validación.
 Este enfoque se apoya en trabajos sobre generación de código y agentes de
 programación, donde el uso de herramientas y validación ejecutable resulta
 central \cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
@@ -33,7 +33,7 @@ una tarea no se consideraba cerrada.
 \textbf{Nivel} & \textbf{Responsable} & \textbf{Control aplicado} \\ \hline
 Producto y alcance & Humano & Decide qué problema se resuelve y qué queda fuera. \\ \hline
 Arquitectura & Humano con apoyo de agentes & Define contratos, límites entre fases y riesgos aceptables. \\ \hline
-Implementación & Agente de programación & Escribe código, tests, migraciones, UI o documentación. \\ \hline
+Implementación & Agente de programación & Escribe código, tests, migraciones o UI. \\ \hline
 Aceptación & Humano y CI & Revisa evidencia, resultados locales, CI y comportamiento observado. \\ \hline
 \end{tabular}
 \caption{Modelo de colaboración humano-agente.}
@@ -72,8 +72,8 @@ final antes de integrar cambios.
 
 Los agentes de desarrollo se configuraron mediante instrucciones persistentes,
 skills y herramientas. Las skills encapsulan prácticas reutilizables: cómo
-trabajar con UI, cómo publicar cambios, cómo revisar CI, cómo usar estilos de
-documentación o cómo coordinar agentes.
+trabajar con UI, cómo publicar cambios, cómo revisar CI o cómo coordinar
+agentes.
 
 La configuración no se limitó a escribir buenos prompts. Un agente que trabaja
 en un repositorio grande necesita conocer convenciones locales, comandos de
@@ -88,7 +88,7 @@ el mismo proceso de lectura, edición, pruebas y publicación.
 \begin{tabular}{|p{3.1cm}|p{4.4cm}|p{4.8cm}|} \hline
 \textbf{Configuración} & \textbf{Uso} & \textbf{Por qué fue necesaria} \\ \hline
 Instrucciones del repo & Convenciones de \texttt{uv}, \texttt{pnpm}, commits, estilo y verificación. & Evitan que cada agente reinvente reglas locales. \\ \hline
-Skills de desarrollo & UI, GitHub, CI, revisión, documentación y orquestación. & Convierten prácticas repetidas en protocolos reutilizables. \\ \hline
+Skills de desarrollo & UI, GitHub, CI, revisión y orquestación. & Convierten prácticas repetidas en protocolos reutilizables. \\ \hline
 Contexto acotado & Cada agente recibe solo la tarea y los ficheros relevantes. & Reduce ruido y evita degradación por exceso de contexto. \\ \hline
 Evidencia obligatoria & Tests, logs, capturas, PDF o CI según la tarea. & Permite aceptar trabajo por pruebas, no por confianza en la respuesta. \\ \hline
 \end{tabular}
@@ -96,7 +96,7 @@ Evidencia obligatoria & Tests, logs, capturas, PDF o CI según la tarea. & Permi
 \end{center}
 \end{table}
 
-\subsection{Tools, MCP y modelos de lenguaje}
+\subsection{Tools y MCP de desarrollo}
 
 Los agentes usaron herramientas externas para trabajar sobre el repositorio y
 los servicios del proyecto. En desarrollo, las herramientas más importantes
@@ -110,19 +110,11 @@ código plausible. El agente tenía que ejecutar tests, inspeccionar logs, levan
 servicios, revisar capturas y comprobar CI. Las herramientas convierten una
 respuesta generada en una acción verificable dentro del repositorio.
 
-\begin{table}[H]
-\begin{center}
-\small
-\begin{tabular}{|p{3.1cm}|p{4.5cm}|p{4.7cm}|} \hline
-\textbf{Agente o uso} & \textbf{Modelo o plataforma} & \textbf{Función principal} \\ \hline
-Codex & Modelo de programación en entorno terminal & Backend, tests, infraestructura, LaTeX, CI y razonamiento sobre el repo. \\ \hline
-Claude Code & Modelo de programación con foco en producto & Frontend, interacción, experiencia de usuario y pulido visual. \\ \hline
-Agentes de fase 1 & Modelos vía Anthropic SDK u OpenRouter & Investigación, formalización, adaptación, construcción y memoria. \\ \hline
-Juez de evals & LLM externo con rúbrica fija & Revisión separada de artefactos congelados. \\ \hline
-\end{tabular}
-\caption{Modelos de lenguaje usados por tipo de tarea.}
-\end{center}
-\end{table}
+En el desarrollo se usó Codex para backend, infraestructura, pruebas y CI.
+Claude Code se usó sobre todo para frontend, interacción y pulido visual.
+La selección de modelos del sistema construido no se trata aquí porque forma
+parte del diseño. Se describe en la
+Sección~\ref{subsec:modelos-por-rol}.
 
 \section{Decisiones técnicas y tradeoffs}
 

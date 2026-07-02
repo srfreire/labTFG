@@ -68,6 +68,7 @@ científicas y aceptar modelos generados \cite{chen2021codex,yang2024sweagent}.
 \begin{tabular}{|p{3.1cm}|p{4.9cm}|p{4.5cm}|} \hline
 \textbf{Limitación} & \textbf{Mitigación actual} & \textbf{Trabajo futuro} \\ \hline
 Validez científica final & Revisión humana, juez externo y trazabilidad de artefactos. & Evaluación con expertos del dominio. \\ \hline
+Sensibilidad al modelo LLM & Roles separados para Opus, Sonnet, Haiku y juez externo. & Medir variación de resultados al cambiar modelo, versión y proveedor. \\ \hline
 No determinismo y coste & Suites versionadas, reportes, costes y bundles reproducibles. & Repetir evals con versiones fijadas de modelos. \\ \hline
 Memoria imperfecta & Canonicalización, ciclo de vida, dense, sparse y grafo. & Medir contradicciones y calidad de reinyección en más dominios. \\ \hline
 Generalización limitada & Dos casos con corpus cerrado y suites internas. & Comparar contra implementaciones manuales y resultados esperados. \\ \hline

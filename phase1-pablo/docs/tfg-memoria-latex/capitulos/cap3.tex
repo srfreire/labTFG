@@ -88,19 +88,23 @@ bloquea el avance.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.70\textheight,keepaspectratio]{figuras/phase1-pipeline-activity}
-\caption{Actividad del pipeline con revisión humana.}
+\caption{Actividad nominal del pipeline con revisión humana.}
 \label{fig:phase1-pipeline-activity}
 \end{figure}
 
-La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo general. Las
-etapas de memoria son condicionales: se ejecutan cuando existe infraestructura
-disponible y cuando el artefacto correspondiente ha sido aceptado.
+La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo general. La
+revisión humana no es una fase aislada. Aparece como puertas de decisión entre
+fases: paradigmas candidatos, formulaciones, especificación de entorno, spec
+técnica y modelo ejecutable.
 
-La revisión humana aparece en los puntos donde el sistema cambia de
-representación. Pasar de investigación a formulación, o de formulación a spec,
-no es una conversión mecánica. Requiere elegir qué supuestos se aceptan y qué
+Esta posición evita que los agentes automaticen cambios de representación sin
+control. Pasar de investigación a formulación, o de formulación a spec, no es
+una conversión mecánica. Requiere elegir qué supuestos se aceptan y qué
 variantes se descartan. La arquitectura coloca esas decisiones antes de que el
-conocimiento llegue a memoria o a código ejecutable.
+conocimiento llegue a memoria o a código ejecutable. Las etapas de memoria son
+condicionales: se ejecutan cuando existe infraestructura disponible y cuando el
+artefacto correspondiente ha sido aceptado. Las rutas de corrección completas
+se detallan en el Anexo~\ref{ap:revision-humana}.
 
 \begin{figure}[H]
 \centering
@@ -141,6 +145,35 @@ artefactos aceptados en conocimiento recuperable.
 Los subagentes aparecen cuando una etapa puede dividirse por paradigma,
 formulación o spec. El objetivo no es añadir complejidad, sino aislar fallos:
 una formulación inválida no debe cancelar todas las demás.
+
+\subsection{Selección de modelos por rol}
+\label{subsec:modelos-por-rol}
+
+La elección de modelos forma parte del diseño del sistema. No todos los
+componentes necesitan la misma capacidad. El pipeline reserva modelos más
+potentes para decisiones abiertas y usa modelos rápidos cuando la tarea está
+acotada por un esquema, una clase o una rúbrica.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.1cm}|p{3.7cm}|p{5.4cm}|} \hline
+\textbf{Rol de diseño} & \textbf{Modelo usado} & \textbf{Motivo} \\ \hline
+Tareas rápidas & Claude Haiku 4.5 & Classifier, feedback, NER, scoring y memoria rápida. Priorizan latencia y coste. \\ \hline
+Investigación, código y memoria & Claude Sonnet 4.6 & Researcher, sus subagentes, Builder y memoria estructurada. Combinan síntesis, código y extracción. \\ \hline
+Razonamiento científico & Claude Opus 4.6 & Formalizer y Reasoner transforman investigación en formulaciones y specs. \\ \hline
+Evaluación externa & Codex sobre GPT-5.5 & El juez revisa artefactos congelados desde una familia distinta y con más capacidad que los modelos generadores. \\ \hline
+\end{tabular}
+\caption{Asignación de modelos por rol del sistema.}
+\label{tab:modelos-por-rol}
+\end{center}
+\end{table}
+
+Esta asignación reduce 2 riesgos. Primero, evita pagar el coste de un modelo
+de alto razonamiento en tareas mecánicas. Segundo, separa generación y
+evaluación: el juez no participa en el pipeline y revisa bundles cerrados. La
+configuración exacta y las variables de entorno se detallan en el
+Anexo~\ref{ap:modelos-llm}.
 
 \section{Diseño de interfaz}
 

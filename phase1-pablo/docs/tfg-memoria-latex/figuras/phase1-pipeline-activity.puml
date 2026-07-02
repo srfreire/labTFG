@@ -8,6 +8,7 @@ skinparam activity {
   BackgroundColor #F8FAFC
   BorderColor #334155
   ArrowColor #334155
+  FontSize 11
   DiamondBackgroundColor #FEF3C7
   DiamondBorderColor #92400E
   StartColor #0F766E
@@ -19,45 +20,45 @@ start
 :Describe problema;
 
 |Router|
-:Crea run;
-:Clasifica paradigma inicial;
+:Crea run y clasifica;
 
 |Agentes|
 :Researcher investiga paradigmas;
+
+|Usuario|
+:Revisa paradigmas;
+
+|Agentes|
 :Formalizer genera formulaciones;
 
 |Usuario|
-:Revisa paradigmas y formulaciones;
-if (Aprobado?) then (si)
-else (no)
-  :Pide ampliacion o rerun;
-  |Router|
-  :Reprograma etapa afectada;
-  |Agentes|
-  :Repite rama cientifica;
-endif
+:Selecciona formulaciones;
 
 |Router|
-:Obtiene especificacion de entorno;
+:Solicita especificacion de entorno;
+
+|Usuario|
+:Valida env_spec;
 
 |Agentes|
 :Reasoner adapta al entorno;
-:Builder genera codigo;
-:Builder ejecuta pruebas;
 
 |Usuario|
-:Revisa specs y modelos;
-if (Aprobado?) then (si)
-else (no)
-  :Indica correccion;
-  |Router|
-  :Reprograma Reasoner o Builder;
-  |Agentes|
-  :Repite rama tecnica;
-endif
+:Revisa spec tecnica;
+
+|Agentes|
+:Builder genera codigo y tests;
+
+|Usuario|
+:Revisa modelo ejecutable;
 
 |Router|
 :Registra modelos aprobados;
+note right
+  Si una puerta se rechaza,
+  el Router reprograma la
+  etapa afectada.
+end note
 
 |Memoria|
 :Consolida artefactos aceptados;
