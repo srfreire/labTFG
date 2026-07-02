@@ -52,6 +52,30 @@ CU-06 & MemoryAgent & Registrar conocimiento aceptado para reutilización futura
 \end{center}
 \end{table}
 
+\subsection{Casos representativos}
+
+Para no repetir en el cuerpo todos los flujos del sistema, se detallan los 2
+casos que concentran más riesgo: iniciar una ejecución completa y consolidar
+memoria. El primero prueba la utilidad principal del sistema. El segundo prueba
+que la memoria no se alimenta de borradores ni de respuestas no revisadas.
+El Anexo~\ref{ap:manual-usuario}, Secciones~\ref{ap:usuario-flujo}
+y~\ref{ap:usuario-memoria}, amplía estos flujos desde el punto de vista de uso.
+
+\begin{table}[H]
+\begin{center}
+\footnotesize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.3cm}|>{\raggedright\arraybackslash}p{4.8cm}|>{\raggedright\arraybackslash}p{4.8cm}|} \hline
+\textbf{Campo} & \textbf{CU-01: iniciar ejecución} & \textbf{CU-06: consolidar memoria} \\ \hline
+Actor principal & Usuario investigador. & MemoryAgent, activado por Router tras aceptación. \\ \hline
+Precondición & El usuario aporta una descripción del problema y existe persistencia disponible. & Existe un artefacto aceptado o validado con ruta, run y procedencia. \\ \hline
+Flujo principal & Crear run; investigar; revisar; formalizar; seleccionar; adaptar; construir; ejecutar tests; registrar el modelo aceptado. & Leer artefacto; extraer entidades y hechos; resolver conflictos; escribir metadatos, grafo y vectores. \\ \hline
+Excepciones & Si el usuario rechaza una etapa, Router repite solo la rama afectada. Si una spec no es implementable, Reasoner devuelve invalidación. & Si falta Neo4j o Qdrant, se registra modo degradado. Si el artefacto no está aceptado, no se escribe memoria persistente. \\ \hline
+Postcondición & Quedan modelos, tests, estado, trazas y artefactos auditables. & Quedan nodos, relaciones, hechos recuperables y enlaces al artefacto original. \\ \hline
+\end{tabular}
+\caption{Casos de uso representativos detallados.}
+\end{center}
+\end{table}
+
 \section{Requisitos funcionales}
 
 \begin{table}[H]
@@ -141,7 +165,7 @@ Ambigüedad científica & Paradigma o formulación dudosa. & Solicitar revisión
 \small
 \begin{tabular}{|p{3cm}|p{3.1cm}|p{6.2cm}|} \hline
 \textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
-Investigar & RF-02 a RF-04 & Informes del \texttt{sample-run} y evals de investigación. \\ \hline
+Investigar & RF-02 a RF-04 & Informes de CASO1, CASO2 y evals de investigación. \\ \hline
 Formalizar & RF-05 y RF-06 & Formulaciones versionadas y pruebas de Formalizer. \\ \hline
 Adaptar & RF-07 y RF-08 & Specs JSON y validaciones del Reasoner. \\ \hline
 Construir & RF-09 y RF-10 & Modelos, tests y suite \texttt{full-pipeline}. \\ \hline

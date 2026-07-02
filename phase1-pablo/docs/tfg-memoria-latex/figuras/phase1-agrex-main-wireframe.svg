@@ -23,15 +23,15 @@
 
   <rect class="bg" x="0" y="0" width="1600" height="1000"/>
 
-  <text class="text" x="80" y="78">Wireframe de la vista principal de Agrex</text>
-  <text class="label" x="80" y="112">Seguimiento de una ejecución multiagente con revisión humana y reproducción temporal</text>
+  <text class="text" x="80" y="78">Wireframe de la interfaz principal de seguimiento</text>
+  <text class="label" x="80" y="112">Observación de una ejecución multiagente con revisión humana y reproducción temporal</text>
 
   <rect class="shell" x="80" y="150" width="1440" height="760" rx="18"/>
   <rect class="panel-soft" x="80" y="150" width="1440" height="58" rx="18"/>
   <circle class="dark" cx="118" cy="179" r="10"/>
   <circle class="dark" cx="148" cy="179" r="10"/>
   <circle class="dark" cx="178" cy="179" r="10"/>
-  <text class="label" x="220" y="187">DecisionLab / Agrex run viewer</text>
+  <text class="label" x="220" y="187">DecisionLab / visor de trazas</text>
 
   <rect class="status" x="1140" y="166" width="112" height="28" rx="14"/>
   <text class="tiny" x="1164" y="186">Running</text>

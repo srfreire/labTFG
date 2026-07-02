@@ -1,4 +1,5 @@
 \chapter{Manual técnico}
+\label{ap:manual-tecnico}
 
 Este anexo resume la instalación, estructura y operación técnica de la fase 1.
 No documenta la implementación interna de la fase de simulación; solo menciona
@@ -16,7 +17,8 @@ phase1-pablo/
     tools/
     eval/
     router.py
-  examples/sample-run/
+  evals/reports/2026-06-29-caso1-pdf-corpus/
+  evals/reports/2026-06-29-caso2-pdf-corpus/
   evals/
     suites/
     fixtures/
@@ -120,8 +122,9 @@ modelos.
 \section{Artefactos generados}
 
 La fase 1 genera artefactos por ejecución. En una ejecución real se almacenan en
-MinIO con prefijos asociados al \texttt{run\_id}; en la ejecución de ejemplo del
-repositorio aparecen materializados en \texttt{examples/sample-run/}.
+MinIO con prefijos asociados al \texttt{run\_id}. En la memoria se usan como
+referencia los bundles de CASO1 y CASO2, porque conservan ejecuciones recientes
+con corpus cerrado, snapshot de memoria y reportes de evaluación.
 
 \begin{verbatim}
 report.md
@@ -139,20 +142,23 @@ El estado del pipeline permite reanudar la ejecución. Las trazas permiten
 reconstruir herramientas llamadas, tiempos, errores y artefactos producidos.
 
 \section{Agrex: visualización de trazas de agentes}
+\label{ap:agrex}
 
 Durante el desarrollo se creó Agrex, una librería open source para visualizar
 flujos de ejecución de agentes como grafos temporales. La librería está
-publicada como visor en:
+publicada como repositorio en:
+
+\begin{verbatim}
+https://github.com/ppazosp/agrex
+\end{verbatim}
+
+También está publicada como visor en:
 
 \begin{verbatim}
 https://agrex.ppazosp.dev
 \end{verbatim}
 
-y como paquete npm:
-
-\begin{verbatim}
-https://www.npmjs.com/package/@ppazosp/agrex
-\end{verbatim}
+El paquete de frontend usado en la interfaz es \texttt{@ppazosp/agrex}.
 
 Agrex define un formato de eventos para nodos, aristas, estados, etapas,
 marcadores temporales y metadatos. La fase 1 usa el paquete Python

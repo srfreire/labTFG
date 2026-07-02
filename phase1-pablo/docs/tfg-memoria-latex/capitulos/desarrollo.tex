@@ -8,6 +8,9 @@ El proyecto se desarrolló con una metodología apoyada en agentes de
 programación. Codex y Claude Code ejecutaron tareas de implementación,
 refactorización, pruebas y documentación. El criterio humano se mantuvo en las
 decisiones de arquitectura, alcance, aceptación y validación.
+Este enfoque se apoya en trabajos sobre generación de código y agentes de
+programación, donde el uso de herramientas y validación ejecutable resulta
+central \cite{chen2021codex,austin2021programsynthesis,yang2024sweagent}.
 
 La regla principal fue separar decisiones y ejecución. El equipo humano definía
 objetivo, restricciones y evidencia esperada. El agente implementaba dentro de
@@ -108,7 +111,7 @@ trazabilidad, coste, escalabilidad y validez científica del sistema.
 Estado del pipeline & Router determinista con máquina de estados. & Planner libre basado en LLM. & Menos flexibilidad, pero más reanudación, depuración y control humano. \\ \hline
 Metadatos y aceptación & PostgreSQL como base relacional. & MongoDB, documentos JSON o solo ficheros. & Más esquema y migraciones, pero consultas fiables sobre runs, modelos, memoria, confianza y validez. \\ \hline
 Artefactos grandes & MinIO/S3 para informes, specs, código y trazas. & Guardar blobs en SQL o carpetas locales. & Añade servicio externo, pero evita inflar SQL y permite rutas auditables por run. \\ \hline
-Recuperación de memoria & Búsqueda híbrida dense y sparse. & Solo embeddings o solo BM25. & Más coste e infraestructura, pero cubre sinonimia científica y coincidencias exactas de nombres, slugs y variables. \\ \hline
+Recuperación de memoria & Búsqueda híbrida dense y sparse. & Embeddings como único índice; BM25 como único índice. & Más coste e infraestructura, pero cubre sinonimia científica y coincidencias exactas de nombres, slugs y variables. \\ \hline
 Tamaño de memoria & Grafo, vectores y metadatos separados. & Memoria corta en prompt o un único almacén. & Mayor complejidad, pero permite recuperar hechos, relaciones y procedencia sin saturar contexto. \\ \hline
 Escritura de memoria & Solo artefactos aceptados por revisión. & Guardar toda salida del agente. & Menos automatismo, pero evita consolidar alucinaciones o formulaciones rechazadas. \\ \hline
 Contrato con fase 2 & Duck typing con \texttt{decide}, \texttt{update} y \texttt{get\_state}. & Clase base común, adaptadores o API remota. & Menos garantías estáticas, pero modelos autocontenidos y bajo acoplamiento entre fases. \\ \hline
@@ -137,25 +140,49 @@ Specs no implementables & Reasoner podía proponer variables no observables o re
 \end{center}
 \end{table}
 
-\section{Reglas de comportamiento de los agentes}
+\section{Reglas implementadas en el pipeline}
 
-Los criterios de aceptación se redactaron como reglas operativas para agentes de
-desarrollo y agentes del sistema.
+Las reglas de diseño del Capítulo 3 se trasladaron a código como condiciones
+de avance del pipeline. Esta sección no redefine los agentes. Explica qué
+controles se implementaron para que cada etapa dejase evidencia revisable antes
+de pasar a la siguiente.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|p{3.2cm}|p{5.1cm}|p{4.1cm}|} \hline
-\textbf{Regla} & \textbf{Comportamiento esperado} & \textbf{Evidencia} \\ \hline
+\textbf{Regla implementada} & \textbf{Comportamiento esperado} & \textbf{Evidencia} \\ \hline
 Persistir antes de avanzar & Cada etapa guarda artefactos y estado. & MinIO, PostgreSQL y trazas. \\ \hline
 No inventar observables & Reasoner solo usa acciones y percepciones del entorno. & Validación de spec o invalidación explícita. \\ \hline
 Probar código generado & Builder crea y ejecuta tests. & Resultado de \texttt{pytest}. \\ \hline
 No consolidar borradores & MemoryAgent escribe solo artefactos aceptados. & Registro de revisión y memoria. \\ \hline
 Devolver errores estructurados & Herramientas y agentes comunican fallos revisables. & Logs, JSON de validación y reportes. \\ \hline
 \end{tabular}
-\caption{Reglas de comportamiento de los agentes.}
+\caption{Reglas implementadas como controles del pipeline.}
 \end{center}
 \end{table}
+
+\section{Agrex y observabilidad de trazas}
+
+Durante el desarrollo apareció un problema que no resolvían bien los logs de
+texto: entender una ejecución multiagente larga. El pipeline no solo llama a un
+modelo. Encadena agentes, herramientas, revisiones, artefactos, errores,
+reintentos y escrituras de memoria. Leer ese proceso como una lista lineal hacía
+difícil detectar qué había ocurrido y por qué.
+
+Para resolverlo se creó Agrex, una librería open source desarrollada
+específicamente para este TFG \cite{pazos2026agrex}. El proyecto está publicado
+en \url{https://github.com/ppazosp/agrex}. Agrex define un formato de eventos y
+un visor temporal de grafos para observar sistemas multiagente. En esta memoria
+no se trata como el sistema principal, sino como una herramienta de
+observabilidad integrada en la fase 1.
+
+La fase 1 usa Agrex en 2 niveles. En backend, el paquete Python escribe eventos
+en \texttt{trace.jsonl}. En frontend, \texttt{@ppazosp/agrex} reproduce la
+ejecución como un grafo navegable. Esto permitió revisar llamadas a
+herramientas, artefactos generados, puntos de revisión humana y errores
+intermedios sin depender del contexto efímero del chat. El
+Anexo~\ref{ap:manual-tecnico}, Sección~\ref{ap:agrex}, documenta su uso técnico.
 
 \section{Componentes implementados y tecnologías}
 
@@ -191,4 +218,16 @@ muestra la interfaz final sobre una ejecución real, no un diseño inicial.
 \includegraphics[width=0.86\textwidth,height=0.34\textheight,keepaspectratio]{figuras/phase1-ui-replay-run}
 \caption{Interfaz web reproduciendo la ejecución CASO1 restaurada.}
 \label{fig:phase1-ui-replay-run}
+\end{figure}
+
+La misma ejecución permite inspeccionar el grafo de conocimiento construido por
+la memoria. La Figura~\ref{fig:phase1-ui-knowledge-run} muestra esa vista. Esta
+captura no pertenece al diseño inicial: es evidencia de cómo quedó la interfaz
+al revisar una ejecución de evaluación.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth,height=0.34\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run}
+\caption{Interfaz web mostrando el grafo de conocimiento de CASO1.}
+\label{fig:phase1-ui-knowledge-run}
 \end{figure}

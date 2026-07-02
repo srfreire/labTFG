@@ -26,6 +26,22 @@ usuario puede aprobar paradigmas, seleccionar formulaciones, revisar specs,
 rechazar modelos y forzar nuevas ejecuciones. Esta estructura reduce el riesgo
 de que un error temprano llegue al código final sin ser detectado.
 
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.0cm}|p{6.2cm}|p{3.1cm}|} \hline
+\textbf{Objetivo} & \textbf{Evidencia de cumplimiento} & \textbf{Estado} \\ \hline
+Investigar paradigmas & Researcher genera informes, deep reports y corpus cerrado revisado por juez. & Cumplido con revisión científica pendiente. \\ \hline
+Formalizar mecanismos & Formalizer produce formulaciones con variables, parámetros y reglas. & Cumplido. \\ \hline
+Adaptar al entorno & Reasoner convierte formulaciones en specs o invalidaciones explícitas. & Cumplido con reservas. \\ \hline
+Generar modelos & Builder produce modelos Python, tests y contrato \texttt{DecisionModel}. & Cumplido. \\ \hline
+Conservar evidencia & MinIO, PostgreSQL, trazas, bundles y memoria guardan artefactos auditables. & Cumplido. \\ \hline
+Reutilizar conocimiento & MemoryAgent consolida artefactos aceptados en grafo, vectores y registros. & Cumplido con medición ampliable. \\ \hline
+\end{tabular}
+\caption{Cumplimiento de objetivos y evidencia.}
+\end{center}
+\end{table}
+
 \section{Conclusiones técnicas}
 
 La primera conclusión técnica es que los agentes de lenguaje funcionan mejor

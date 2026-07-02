@@ -17,11 +17,12 @@ necesaria para persistencia, trazabilidad y memoria.
 
 \section{Problema y motivación}
 
-El laboratorio necesita modelos de decisión que actúen dentro de entornos de
-simulación. Crear esos modelos a mano es costoso porque antes de escribir código
-hay que identificar paradigmas científicos, traducir postulados a variables y
-ecuaciones, adaptar la formulación a acciones y percepciones concretas, y
-comprobar que el resultado cumple un contrato ejecutable.
+Para que el laboratorio que construimos pueda estudiar decisiones humanas,
+necesitamos modelos que actúen dentro de entornos de simulación. Crear esos
+modelos a mano es costoso. Antes de escribir código hay que identificar
+paradigmas científicos, traducir postulados a variables y ecuaciones, adaptar
+la formulación a acciones y percepciones concretas, y comprobar que el resultado
+cumple un contrato ejecutable.
 
 El problema principal es la distancia entre una descripción en lenguaje natural
 y un modelo computacional verificable. Una petición como ``simular toma de
@@ -92,6 +93,8 @@ teoría prospectiva \cite{kahneman1979prospect}, racionalidad limitada
 \cite{simon1955behavioral} y modelos de difusión \cite{ratcliff1978theory}.
 Estos trabajos aportan mecanismos formales, pero suelen requerir trabajo
 experto para convertir literatura en modelos ejecutables.
+También existen simulaciones de agentes generativos que muestran cómo observar
+comportamientos complejos en entornos interactivos \cite{park2023generativeagents}.
 
 El segundo bloque son tecnologías de Agentic AI. Los agentes con herramientas,
 como ReAct y Toolformer, combinan razonamiento y acción
@@ -126,9 +129,22 @@ RAG y memoria & Recuperación de conocimiento previo. & Requieren política de a
 
 \section{Estructura de la memoria}
 
-La memoria sigue una estructura de TFG de desarrollo software. El capítulo 2
-presenta requisitos. El capítulo 3 describe el diseño. El capítulo 4 explica el
-desarrollo con IA y las decisiones técnicas. El capítulo 5 resume pruebas y
-evals. El capítulo 6 recoge conclusiones y ampliaciones. Los anexos contienen
-manual técnico, manual de usuario y material extendido de diseño, desarrollo y
-evaluación.
+La memoria separa la línea principal de lectura del material operativo. El
+cuerpo explica qué problema se resuelve, cómo se diseña la solución, cómo se
+desarrolló y qué evidencia permite defenderla. Los anexos conservan el detalle
+técnico que haría demasiado pesada la lectura principal.
+
+El capítulo 2 presenta actores, casos de uso y requisitos. El capítulo 3
+describe la arquitectura, los componentes, la interfaz y la memoria. Cuando el
+diseño necesita más detalle, se remite al Anexo~\ref{ap:material-extendido},
+Sección~\ref{ap:diseno-extendido}, y a la Sección~\ref{ap:memoria-extendida}.
+
+El capítulo 4 explica el desarrollo con IA, las decisiones técnicas y las
+herramientas creadas durante el proyecto. La metodología ampliada se conserva
+en el Anexo~\ref{ap:material-extendido}, Sección~\ref{ap:desarrollo-agentes-extendido}.
+
+El capítulo 5 resume la validación. Los resultados detallados, las reservas del
+juez y las amenazas a la validez se amplían en el
+Anexo~\ref{ap:material-extendido}, Secciones~\ref{ap:validacion-extendida}
+y~\ref{ap:limitaciones-extendidas}. El capítulo 6 recoge conclusiones y trabajo
+futuro.

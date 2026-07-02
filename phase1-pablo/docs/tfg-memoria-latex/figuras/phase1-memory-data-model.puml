@@ -1,0 +1,76 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam backgroundColor white
+skinparam dpi 180
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam class {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  ArrowColor #334155
+}
+
+class Run {
+  run_id
+  estado
+  etapa_actual
+}
+
+class Artifact {
+  artifact_id
+  tipo
+  ruta_minio
+  hash
+  estado_revision
+}
+
+class HumanReview {
+  decision
+  reviewer
+  timestamp
+}
+
+class MemoryRecord {
+  memory_id
+  confidence
+  valid_from
+  supersedes
+}
+
+class GraphNode {
+  slug
+  tipo
+  nombre
+}
+
+class GraphEdge {
+  tipo
+  source_slug
+  target_slug
+}
+
+class VectorFact {
+  fact_id
+  dense_vector
+  bm25_terms
+  provenance
+}
+
+class ModelRecord {
+  model_id
+  paradigm_slug
+  formulation_slug
+  test_status
+}
+
+Run "1" --> "*" Artifact : produce
+Artifact "1" --> "0..1" HumanReview : revisa
+Artifact "1" --> "*" MemoryRecord : consolida
+MemoryRecord "1" --> "*" GraphNode : materializa
+GraphNode "1" --> "*" GraphEdge : relaciona
+MemoryRecord "1" --> "*" VectorFact : indexa
+Artifact "1" --> "0..1" ModelRecord : registra
+ModelRecord --> GraphNode : implementa
+VectorFact --> Artifact : procede de
+@enduml

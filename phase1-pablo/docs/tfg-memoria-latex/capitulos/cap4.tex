@@ -34,10 +34,10 @@ evals, corpus cerrado, reservas del juez y amenazas a la validez.
 \small
 \begin{tabular}{|p{4.1cm}|p{2.1cm}|p{6.1cm}|} \hline
 \textbf{Evidencia} & \textbf{Cantidad} & \textbf{Qué demuestra} \\ \hline
-Informes del \texttt{sample-run} & 7 deep reports & Investigación estructurada por paradigma. \\ \hline
-Formulaciones del \texttt{sample-run} & 7 documentos & Conversión de investigación en variables y reglas. \\ \hline
-Specs del Reasoner & 24 specs JSON & Adaptación de formulaciones al entorno. \\ \hline
-Builder del \texttt{sample-run} & 2 modelos + tests & Código Python autocontenido y validado. \\ \hline
+Informes de CASO1 y CASO2 & 10 deep reports & Investigación estructurada por paradigma. \\ \hline
+Formulaciones de CASO1 y CASO2 & 10 documentos & Conversión de investigación en variables y reglas. \\ \hline
+Specs del Reasoner & 30 specs JSON & Adaptación de formulaciones al entorno. \\ \hline
+Builder en CASO1 y CASO2 & 27 modelos + tests & Código Python autocontenido y validado. \\ \hline
 Tests de fase 1 y shared & 131 archivos & Agentes, runtime, memoria, herramientas e infraestructura. \\ \hline
 Suites YAML & 10 suites & Evals reproducibles de pipeline, memoria y recuperación. \\ \hline
 Corpus cerrado & 2 casos, 6 PDFs & Ejecuciones completas con corpus limitado y juez externo. \\ \hline
@@ -59,9 +59,9 @@ comportamiento exigido existe, se ejecuta y deja evidencia revisable.
 \textbf{Req.} & \textbf{Estado} & \textbf{Evidencia principal} & \textbf{Reserva} \\ \hline
 RF-01 & Cumplido & CLI, servidor y suites de pipeline arrancan runs desde descripción. & Depende de proveedor LLM. \\ \hline
 RF-02 & Cumplido & Classifier y evals de slugs miden reutilización canónica. & Hay alerta histórica de fragmentación. \\ \hline
-RF-03 & Cumplido & \texttt{sample-run}, deep reports y corpus cerrado generan informes. & Calidad final requiere revisión. \\ \hline
+RF-03 & Cumplido & CASO1, CASO2, deep reports y corpus cerrado generan informes. & Calidad final requiere revisión. \\ \hline
 RF-04 & Cumplido & Router y \texttt{FeedbackPort} bloquean antes de formalizar. & En evals se usa autoaprobación. \\ \hline
-RF-05 & Cumplido & 7 documentos de formulación en \texttt{sample-run}. & Algunas variantes pueden ser descartadas. \\ \hline
+RF-05 & Cumplido & Formulaciones versionadas en CASO1 y CASO2. & Algunas variantes pueden ser descartadas. \\ \hline
 RF-06 & Cumplido & Selección humana o autoaprobada antes de Reasoner. & La selección afecta cobertura final. \\ \hline
 RF-07 & Cumplido & Reasoner usa \texttt{env\_spec.json} como fuente autoritativa. & Specs pobres limitan el resultado. \\ \hline
 RF-08 & Cumplido & 24 specs JSON y salidas inválidas explícitas. & CASO1 incluye una spec inválida. \\ \hline
@@ -69,7 +69,7 @@ RF-09 & Cumplido & Modelos con \texttt{decide}, \texttt{update} y \texttt{get\_s
 RF-10 & Cumplido & Builder genera tests y ejecuta \texttt{pytest}. & Tests prueban contrato, no validez científica. \\ \hline
 RF-11 & Cumplido & MinIO, PostgreSQL, bundles y modelos registrados. & Requiere servicios centrales activos. \\ \hline
 RF-12 & Cumplido con reservas & MemoryAgent escribe tras aceptación y evals de memoria. & Calidad de extracción depende del artefacto. \\ \hline
-RF-13 & Cumplido & \texttt{pipeline\_state.json}, \texttt{trace.jsonl} y Agrex. & Reanudación exige artefactos presentes. \\ \hline
+RF-13 & Cumplido & \texttt{pipeline\_state.json}, \texttt{trace.jsonl} y visor basado en Agrex. & Reanudación exige artefactos presentes. \\ \hline
 \end{tabular}
 \caption{Cierre de requisitos funcionales.}
 \end{center}
@@ -135,14 +135,40 @@ La fila de \texttt{slug-accuracy} se conserva como alerta histórica. No invalid
 el estado final, pero muestra por qué fue necesario medir identidad científica y
 no solo éxito técnico.
 
-\subsection{Evaluación con corpus cerrado de papers}
+\subsection{CASO1 como traza completa}
+
+El caso CASO1 permite seguir una ejecución completa desde corpus cerrado hasta
+modelo registrado. No se presenta como certificación científica externa. Sirve
+para comprobar que el sistema produce evidencias revisables en cada etapa.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{2.4cm}|p{3.2cm}|p{3.1cm}|p{3.5cm}|} \hline
+\textbf{Etapa} & \textbf{Entrada} & \textbf{Salida} & \textbf{Evidencia revisable} \\ \hline
+Researcher & ZIP con 3 papers. & 6 paradigmas y deep reports. & Informes con referencias y rutas de artefactos. \\ \hline
+Formalizer & Paradigmas aceptados. & Formulaciones matemáticas. & Variables, parámetros y supuestos por paradigma. \\ \hline
+Reasoner & Formulación y \texttt{env\_spec.json}. & 18 specs o invalidaciones. & JSON, errores explícitos y trazas de adaptación. \\ \hline
+Builder & Specs implementables. & 15 modelos y tests. & Ficheros Python, \texttt{pytest} y contrato \texttt{DecisionModel}. \\ \hline
+MemoryAgent & Artefactos aceptados. & KG de 433 nodos. & Nodos, relaciones, vectores y enlaces a MinIO. \\ \hline
+Juez externo & Bundle congelado. & 72/100 con reservas. & Rúbrica, reservas y coste de ejecución. \\ \hline
+\end{tabular}
+\caption{Caso completo de validación del pipeline.}
+\end{center}
+\end{table}
+
+La lectura del caso es doble. Técnicamente, el flujo produjo artefactos,
+modelos y memoria. Científicamente, el juez detectó reservas que deben quedar
+cerradas o declaradas como limitación.
+
+\subsection{Comparación de corpus cerrado}
 \label{sec:evaluacion-corpus-cerrado}
 
-La evaluación más exigente se hizo con 2 casos basados en PDFs. En cada caso,
-el sistema solo podía acceder a los papers incluidos en el ZIP de entrada. Un
-LLM juez revisó artefactos congelados con la misma rúbrica: fidelidad al corpus,
-calidad de paradigmas, formulaciones, modelos, memoria, trazabilidad y
-advertencias.
+La sección anterior usa CASO1 para leer el pipeline de extremo a extremo. Esta
+sección compara CASO1 y CASO2 con la misma rúbrica. En ambos casos, el sistema
+solo podía acceder a los papers incluidos en el ZIP de entrada. Un LLM juez
+revisó artefactos congelados con criterios de fidelidad al corpus, calidad de
+paradigmas, formulaciones, modelos, memoria, trazabilidad y advertencias.
 
 Esta prueba separa la validez técnica de la validez científica. La validez
 técnica pregunta si el pipeline termina, registra artefactos, genera modelos y
@@ -180,31 +206,25 @@ pipeline puede ser técnicamente correcto y aun así requerir revisión científ
 
 \begin{table}[H]
 \begin{center}
-\small
-\begin{tabular}{|p{3.0cm}|p{2.1cm}|p{7.0cm}|} \hline
-\textbf{Reserva} & \textbf{Severidad} & \textbf{Lectura} \\ \hline
-Spec inválida en CASO1 & Alta & Reasoner detectó una formulación que no debía generar modelo aceptado. \\ \hline
-Desajuste de registro en DDM & Alta & El bundle permitió localizar que el registro podía apuntar a clase o test distinto. \\ \hline
-Errores de escritura en KG & Media & Reducen trazabilidad automática, pero no eliminan artefactos ni reportes. \\ \hline
-Solapamiento taxonómico & Media & CASO2 mezcló mecanismos cercanos como homeostasis, HRL y active inference. \\ \hline
-Duplicados de ficheros & Baja & Afectan higiene de revisión, no el contrato ejecutable del modelo. \\ \hline
+\scriptsize
+\begin{tabular}{|p{2.8cm}|p{2.0cm}|p{4.6cm}|p{3.0cm}|} \hline
+\textbf{Reserva} & \textbf{Cierre} & \textbf{Acción o evidencia} & \textbf{Queda pendiente} \\ \hline
+Spec inválida en CASO1 & Corregida en diseño & Reasoner puede devolver invalidación y no forzar Builder. & Ampliar casos con más entornos. \\ \hline
+Desajuste de registro en DDM & Mitigada & El bundle permite auditar modelo, test y ruta registrada. & Endurecer validación de registro canónico. \\ \hline
+Errores de escritura en KG & Aceptada como limitación & MinIO y PostgreSQL conservan artefactos aunque falle Neo4j. & Reintentos y reconciliación del grafo. \\ \hline
+Solapamiento taxonómico & Aceptada como limitación & El juez separa solapamientos y mantiene revisión humana. & Evaluación con expertos del dominio. \\ \hline
+Duplicados de ficheros & Mitigada & No afectan al contrato ejecutable ni al reporte. & Limpieza automática de bundles. \\ \hline
 \end{tabular}
-\caption{Reservas detectadas por el juez externo.}
+\caption{Cierre de reservas detectadas por el juez externo.}
 \end{center}
 \end{table}
 
 Por tanto, ``aprobado con reservas'' debe leerse como señal de utilidad, no
 como certificación científica final. La eval reduce el riesgo de evaluar solo
 que el sistema termina, porque obliga a revisar si los artefactos son fieles al
-corpus y auditables por una persona.
-
-Las reservas también orientan trabajo futuro. La spec inválida muestra que el
-Reasoner debe poder rechazar una formulación en lugar de forzar código. El
-desajuste de registro muestra que no basta con generar ficheros: hay que auditar
-la ruta que se registra como modelo canónico. Los errores del grafo muestran que
-MinIO y PostgreSQL deben conservar evidencia aunque falle una escritura de
-Neo4j. El solapamiento taxonómico muestra que la revisión humana sigue siendo
-necesaria en paradigmas cercanos.
+corpus y auditables por una persona. Las reservas se dividen en 3 grupos:
+corregidas en diseño, mitigadas por trazabilidad o aceptadas como limitaciones
+explícitas.
 
 \section{Pruebas técnicas}
 

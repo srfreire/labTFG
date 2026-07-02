@@ -1,0 +1,40 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+
+skinparam backgroundColor white
+skinparam dpi 210
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ArrowColor #334155
+skinparam ComponentBorderColor #334155
+skinparam ComponentBackgroundColor #F8FAFC
+skinparam ComponentFontColor #0F172A
+skinparam DatabaseBorderColor #334155
+skinparam DatabaseBackgroundColor #EEF2FF
+skinparam ActorBorderColor #334155
+skinparam ActorFontColor #0F172A
+
+actor "Usuario\ninvestigador" as User
+component "Router\norquesta ejecucion" as Router
+component "Agentes de transformacion\nResearcher -> Formalizer -> Reasoner -> Builder" as Agents
+component "Revision humana\naprobar, rechazar o pedir rerun" as Review
+component "MemoryAgent\nconsolida aceptados" as Memory
+component "Laboratorio virtual\ncarga DecisionModel" as Lab
+database "MinIO + PostgreSQL\nruns, artefactos, estado y trazas" as Store
+database "Neo4j + Qdrant\nrelaciones, vectores y BM25" as KG
+
+User --> Router : 1 descripcion inicial
+Router --> Agents : 2 genera artefactos
+Agents --> Review : 3 evidencia revisable
+User --> Review : decision humana
+Review --> Router : 4 rerun si falla
+Router --> Memory : 5 solo si queda aceptado
+Memory --> Lab : 6 modelo validado
+
+Agents --> Store : informes, specs,\ncodigo y tests
+Agents --> KG : retrieve_knowledge
+Memory --> Store : procedencia y metadatos
+Memory --> KG : hechos consolidados
+Lab --> Store : carga modelo
+@enduml

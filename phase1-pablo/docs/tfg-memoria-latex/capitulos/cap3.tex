@@ -68,6 +68,18 @@ La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo general. Las
 etapas de memoria son condicionales: se ejecutan cuando existe infraestructura
 disponible y cuando el artefacto correspondiente ha sido aceptado.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-end-to-end-sequence}
+\caption{Traza completa de generación, validación y memoria.}
+\label{fig:phase1-end-to-end-sequence}
+\end{figure}
+
+La Figura~\ref{fig:phase1-end-to-end-sequence} muestra la traza normal de
+extremo a extremo. El Router no solo encadena agentes: registra cada artefacto,
+pide revisión cuando cambia el nivel de abstracción y solo activa memoria cuando
+el resultado ya fue aceptado.
+
 \begin{table}[H]
 \begin{center}
 \small
@@ -97,7 +109,7 @@ evidencia queda después de la ejecución.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{figuras/phase1-agrex-main-wireframe}
-\caption{Wireframe de la vista principal de Agrex.}
+\caption{Wireframe de la interfaz principal de seguimiento.}
 \label{fig:phase1-agrex-main-wireframe}
 \end{figure}
 
@@ -106,12 +118,17 @@ principal: navegación temporal a la izquierda, lienzo central de ejecución,
 panel de inspección a la derecha y controles de reproducción en la parte
 inferior. El diseño separa seguimiento, revisión y auditoría para no depender
 del contexto efímero del chat.
+La implementación del visor usa Agrex como librería de visualización, no como
+nombre del sistema. El origen y uso de esa librería se explican en el
+Anexo~\ref{ap:manual-tecnico}, Sección~\ref{ap:agrex}.
 
 \section{Sistema de memoria y conocimiento}
 
 La memoria convierte artefactos aceptados en conocimiento reutilizable. No es
 un log completo de todas las respuestas del modelo: solo consolida información
-que superó revisión humana o validación.
+que superó revisión humana o validación. El diseño toma ideas de recuperación
+aumentada, memoria persistente y grafos de conocimiento
+\cite{lewis2020rag,zhong2023memorybank,packer2023memgpt,gutierrez2024hipporag,hogan2021knowledgegraphs}.
 
 \begin{figure}[H]
 \centering
@@ -133,11 +150,23 @@ recuperación semántica y léxica.
 MinIO & Informes, formulaciones, specs, código, tests, estado y trazas. & Fuente auditable de artefactos completos. \\ \hline
 PostgreSQL & Runs, metadatos, modelos, memorias y ciclo de vida. & Consulta operativa y consistencia transaccional. \\ \hline
 Neo4j & Paradigmas, papers, autores, postulados, variables y relaciones. & Navegación por conocimiento científico. \\ \hline
-Qdrant & Hechos indexados con embeddings y BM25 nativo. & Recuperación por similitud y términos. \\ \hline
+Qdrant & Hechos representados con señal densa y léxica. & Recuperación por similitud y términos. \\ \hline
 \end{tabular}
 \caption{Información almacenada por la arquitectura.}
 \end{center}
 \end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.60\textheight,keepaspectratio]{figuras/phase1-memory-data-model}
+\caption{Modelo mínimo de datos de memoria.}
+\label{fig:phase1-memory-data-model}
+\end{figure}
+
+La Figura~\ref{fig:phase1-memory-data-model} resume el modelo lógico de
+memoria. Un run produce artefactos. Cada artefacto puede recibir una revisión
+humana y, si queda aceptado, genera registros de memoria. Esos registros se
+materializan como nodos, relaciones y hechos vectoriales con procedencia.
 
 \subsection{MemoryAgent y consolidación de memoria}
 
@@ -166,12 +195,31 @@ Recuperación & Expone hechos mediante \texttt{retrieve\_knowledge}. & Los agent
 \end{center}
 \end{table}
 
-La separación entre dense y sparse responde a un problema práctico. La búsqueda
-densa recupera hechos aunque el agente formule la consulta con sinónimos. La
-búsqueda sparse recupera términos exactos, como slugs, autores, variables,
-acciones o nombres de formulaciones. Usar solo una de las dos degradaba una
-parte de la recuperación: solo dense perdía coincidencias exactas, y solo BM25
-fallaba cuando la consulta usaba vocabulario distinto.
+Un ejemplo concreto ayuda a leer el diseño. Si el Researcher genera un informe
+aceptado sobre drift diffusion model, MemoryAgent no guarda el texto como una
+respuesta aislada. Extrae entidades, las enlaza con slugs y registra qué artefacto
+justifica cada hecho.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{2.6cm}|p{3.5cm}|p{3.4cm}|p{3.0cm}|} \hline
+\textbf{Paso} & \textbf{Ejemplo} & \textbf{Escritura} & \textbf{Uso posterior} \\ \hline
+Artefacto & Deep report aceptado sobre \texttt{drift\_diffusion\_model}. & MinIO conserva el documento y PostgreSQL su revisión. & Permite auditar el origen. \\ \hline
+Entidades & Paradigma, paper, variable, parámetro y formulación. & Neo4j crea nodos y relaciones con slugs. & Evita duplicar nombres equivalentes. \\ \hline
+Hechos & ``La evidencia se acumula hasta un umbral''. & Qdrant conserva señal densa y BM25 con procedencia. & Researcher o Reasoner lo recuperan por similitud o término exacto. \\ \hline
+Control & Confianza, vigencia y posible supersesión. & PostgreSQL registra estado y enlaces. & Un agente futuro recibe contexto filtrado. \\ \hline
+\end{tabular}
+\caption{Ejemplo auditable de consolidación de memoria.}
+\end{center}
+\end{table}
+
+La separación entre recuperación densa y léxica responde a una decisión de
+diseño. La señal densa permite recuperar hechos relacionados aunque la consulta
+use vocabulario distinto. La señal BM25 preserva coincidencias exactas, como
+slugs, autores, variables, acciones o nombres de formulaciones. En esta
+arquitectura se combinan ambas señales para que los agentes no dependan de una
+única forma de buscar evidencia \cite{karpukhin2020dpr,robertson2009bm25}.
 
 El grafo cumple otra función. No está pensado para buscar frases similares,
 sino para reconstruir procedencia. Permite saber qué paper soporta un postulado,
