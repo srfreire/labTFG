@@ -4,15 +4,15 @@
 
 El catálogo de requisitos funcionales y no funcionales se presenta en el
 capítulo de especificación. Este apéndice no lo repite: reúne la trazabilidad
-entre los objetivos operativos de la segunda fase, los requisitos que los
+entre los objetivos operativos de este TFG, los requisitos que los
 materializan y las evidencias usadas en el capítulo de pruebas.
 
 \begin{table}[H]
-\begin{center}
-\small
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{2.7cm}|>{\raggedright\arraybackslash}p{5.7cm}|} \hline
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.04}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.35cm}|>{\raggedright\arraybackslash}p{2.45cm}|>{\raggedright\arraybackslash}p{5.45cm}|} \hline
 \textbf{Objetivo} & \textbf{Requisitos} & \textbf{Evidencia} \\ \hline
 Cargar modelos de la primera fase sin acoplamiento rígido & RF-01, RNF-01, RNF-02 & Pruebas del \texttt{model\_loader}, contrato \texttt{DecisionModel} y escenario multi-modelo. \\ \hline
 Generar y validar entornos de simulación & RF-02, RF-03, RNF-06 & Tests de \texttt{simlab.spec} y \texttt{simlab.environment}; escenario con rejilla \(8\times8\), semilla fija y 30 pasos. \\ \hline
@@ -25,8 +25,9 @@ Ofrecer una interfaz reactiva de uso e inspección auxiliar & RF-10, RF-11, RF-1
 \caption[Trazabilidad de requisitos]{Trazabilidad de requisitos. Cada objetivo
 operativo se vincula con los requisitos que lo cubren y con la evidencia usada
 para comprobarlo.}
-\end{center}
 \end{table}
+
+\clearpage
 
 \section{Plan de contingencia}
 
@@ -62,7 +63,7 @@ de operación y desarrollo.}
 \section{Comparativa del proceso de desarrollo}
 
 La Tabla~\ref{tab:comparativa-desarrollo-ia} sintetiza la diferencia entre el
-proceso seguido en esta fase y un proceso de desarrollo más clásico. Sirve como
+proceso seguido en este TFG y un proceso de desarrollo más clásico. Sirve como
 complemento del Capítulo~4, donde se describe el bucle de trabajo con más
 detalle.
 
@@ -81,7 +82,7 @@ Validación & Compilación, pruebas y revisión funcional. & Pruebas, revisión 
 Riesgo principal & Retraso en implementar o depurar. & Aceptar una salida plausible sin suficiente verificación. \\ \hline
 \end{tabular}
 \caption[Comparativa del proceso de desarrollo]{Comparativa entre un proceso
-clásico y el proceso asistido por agentes usado en esta fase.}
+clásico y el proceso asistido por agentes usado en este TFG.}
 \label{tab:comparativa-desarrollo-ia}
 \end{center}
 \end{table}

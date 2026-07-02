@@ -25,6 +25,13 @@ ejecutables. Esta memoria documenta la segunda, desarrollada por Juan Freire
 común, observa su comportamiento y lleva los resultados a informes
 comparativos.
 
+Por claridad, a partir de aquí la memoria se centra en esa infraestructura. En
+los capítulos siguientes, expresiones como ``el sistema'', ``el laboratorio'' o
+``este TFG'' se refieren a la parte desarrollada en este trabajo. La primera
+fase vuelve a aparecer solo cuando hace falta explicar de dónde vienen los
+modelos, qué contrato de integración se comparte o qué piezas pertenecen al
+proyecto completo.
+
 \section{Problema que se aborda}
 
 Un modelo que compila y cumple una interfaz todavía no basta para
@@ -34,7 +41,7 @@ modelos y conservar una evidencia que pueda revisarse después. De lo
 contrario, el resultado queda en un punto intermedio: existe código, pero
 no todavía un experimento.
 
-La aportación de esta fase consiste en cerrar ese recorrido. El sistema
+La aportación de este TFG consiste en cerrar ese recorrido. El sistema
 convierte modelos ya construidos en sesiones de simulación comparables,
 trazables y revisables, donde el grupo de investigación pueda ver qué
 hacen, cómo evolucionan sus variables internas y qué evidencias quedan
@@ -51,7 +58,7 @@ reducir la fricción para un investigador que quiere explorar un paradigma.
 
 \section{Objetivo general y objetivos específicos}
 
-El objetivo general de esta fase es construir una infraestructura de
+El objetivo general de este TFG es construir una infraestructura de
 laboratorio virtual capaz de ejecutar modelos de decisión heterogéneos,
 observar su comportamiento en un entorno común y conservar cada simulación como
 evidencia que el grupo de investigación pueda revisar.
@@ -83,9 +90,9 @@ capítulos de diseño y desarrollo explican cómo se materializa esa división.
 
 La relación con la primera fase es complementaria. La primera fase toma
 conocimiento científico y lo convierte en modelos ejecutables; esta
-segunda fase toma esos modelos y los convierte en registro experimental
+infraestructura toma esos modelos y los convierte en registro experimental
 observable, comparable y reutilizable. La integración técnica entre ambas
-se realiza por \textit{duck typing}: la segunda fase no exige que los
+se realiza por \textit{duck typing}: este TFG no exige que los
 modelos hereden de una clase concreta, sino que comprueba que expongan
 los métodos \texttt{decide}, \texttt{update} y \texttt{get\_state}. Esto
 deja que ambas fases evolucionen de forma independiente mientras mantengan

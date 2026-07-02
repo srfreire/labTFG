@@ -1,13 +1,13 @@
 \chapter{Desarrollo del trabajo}
 
 Este capítulo no documenta solo el sistema construido, sino también el proceso
-por el que se construyó. En esta fase, trabajar de forma habitual con
+por el que se construyó. En este TFG, trabajar de forma habitual con
 \textit{coding agents} (en este caso, Codex y Claude Code) desplazó el
 centro de gravedad del ciclo clásico de desarrollo de software: la
 implementación dejó de ser la actividad dominante y ganaron peso la
 especificación, la revisión y la verificación. La sección que sigue desarrolla
 esta idea; el resto del capítulo describe el bucle de trabajo que se usó en
-esta segunda fase del proyecto.
+este TFG.
 
 El capítulo se mueve en dos planos. Primero, el bucle de trabajo con agentes
 y el reparto de responsabilidades entre persona y modelo. Luego, la historia
@@ -24,7 +24,7 @@ prácticas habituales: separar análisis de implementación para no malgastar
 trabajo, producir documentación intermedia para guiar al programador o
 planificar iteraciones en función de la velocidad de implementación.
 
-En esta fase esa premisa cambió. Con \textit{coding agents} como ejecutores
+En este TFG esa premisa cambió. Con \textit{coding agents} como ejecutores
 habituales, implementar una función concreta o un módulo acotado a partir de una
 especificación clara dejó de ser la parte más costosa. La literatura reciente
 sobre productividad asistida por IA sirve de contexto~\cite{cui2025effects,butler2024dear},
@@ -80,7 +80,7 @@ tareas no triviales.
     node[cyclelabel, above] {siguiente tarea} (spec.north);
 \end{tikzpicture}}
 \caption[Ciclo de desarrollo asistido por agentes]{Ciclo de desarrollo
-asistido por agentes seguido durante la segunda fase. Las decisiones de alcance
+asistido por agentes seguido durante este TFG. Las decisiones de alcance
 y aceptación permanecen en el lado humano; la implementación se delega cuando la
 tarea tiene un contrato verificable.}
 \label{fig:ciclo-desarrollo-ia}
@@ -123,7 +123,7 @@ recordada de forma aproximada varios días después.
 
 \section{Reparto de responsabilidades}
 
-Las decisiones de alcance, contratos entre fases, diseño visual, prioridades y
+Las decisiones de alcance, contratos de integración, diseño visual, prioridades y
 aceptación final se mantuvieron en el lado humano. La implementación de módulos
 acotados, pruebas, migraciones, refactores y depuración local se delegó cuando
 la especificación fijaba claramente el comportamiento esperado. Esta frontera
@@ -171,17 +171,17 @@ tarea necesitaba.
 
 \section{Planificación y coordinación con la primera fase}
 
-Esta fase se desarrolló en paralelo con la primera. Para evitar
+Este TFG se desarrolló en paralelo con la primera fase. Para evitar
 acoplamiento prematuro entre ambas se siguió una estrategia explícita:
-fijar pronto el contrato de integración y dejar que cada fase evolucionara
+fijar pronto el contrato de integración y dejar que cada parte evolucionara
 por su cuenta sobre ese contrato. El
 contrato resultante (los tres métodos \texttt{decide},
 \texttt{update} y \texttt{get\_state}) es lo suficientemente mínimo
-como para que ninguna de las dos fases haya necesitado coordinar
+como para que ninguna de las dos partes haya necesitado coordinar
 \textit{releases} con la otra durante los meses siguientes.
 
-La planificación y la coordinación entre fases se apoyaron en Linear como
-gestor de tareas compartido. El trabajo se dividió en fases, cada una con
+La planificación y la coordinación del proyecto se apoyaron en Linear como
+gestor de tareas compartido. El trabajo se dividió en iteraciones, cada una con
 sus criterios de aceptación, y cada tarea declaraba, además de su
 descripción funcional, sus dependencias, su prioridad, su posible
 solapamiento con otras tareas y si podía ejecutarse en paralelo. Esas
@@ -189,7 +189,7 @@ mismas tareas son las que alimentaban el bucle descrito al principio del
 capítulo: no eran solo una lista de pendientes, sino el lugar donde se
 guardaba el plan operativo que después seguía el agente. Para cambios
 pequeños bastaba con la descripción y los criterios de aceptación; para
-cambios transversales, de cualquiera de las dos fases o de la capa común,
+cambios transversales, de cualquiera de las dos partes o de la capa común,
 la propia tarea incorporaba más detalle técnico y servía como documento de
 discusión con el otro autor.
 
@@ -200,7 +200,7 @@ requería revisión humana. La comunicación complementaria del día a día se
 mantuvo en mensajería directa, reservada a desbloqueos puntuales. Los
 cambios que afectaban al esquema compartido del Knowledge Backbone se
 discutían en la tarea correspondiente antes de implementarse en cualquiera
-de las dos fases.
+de las dos partes.
 
 \section{Componentes implementados y tecnologías}
 
@@ -286,7 +286,7 @@ memoria.
 \gantttitle{Mayo}{2}
 \gantttitle{Junio}{2} \\
 \gantttitlelist{1,2,3,4,5,6,7,8}{1} \\
-\ganttbar{Diseño y contrato con fase 1}{1}{2} \\
+\ganttbar{Diseño y contrato de integración}{1}{2} \\
 \ganttbar{Núcleo de simulación y CLI}{1}{3} \\
 \ganttbar{Frontend, WebSocket y replay}{2}{4} \\
 \ganttbar{Comparativa multi-modelo}{3}{4} \\
@@ -295,7 +295,7 @@ memoria.
 \ganttbar{Knowledge Backbone y consulta histórica}{5}{7} \\
 \ganttbar{Despliegue, evaluación y memoria}{6}{8}
 \end{ganttchart}}
-\caption[Cronograma de desarrollo de la segunda fase]{Cronograma sintético de
+\caption[Cronograma de desarrollo]{Cronograma sintético de
 los hitos principales. Las barras reflejan líneas de trabajo solapadas, no
 fases cerradas.}
 \label{fig:cronograma-desarrollo}
@@ -353,8 +353,8 @@ Estas comprobaciones se apoyan en una compuerta automática de integración
 continua.
 El repositorio compartido ejecuta un \textit{workflow} de GitHub Actions en
 cada \textit{push} y \textit{pull request} contra \texttt{main}, que comprueba
-formato y \textit{linting} con \texttt{ruff} y lanza las suites unitarias de
-las dos fases y de la capa común, excluyendo las pruebas de integración,
+formato y \textit{linting} con \texttt{ruff} y lanza las suites unitarias del
+laboratorio, del sistema generador de modelos y de la capa común, excluyendo las pruebas de integración,
 \textit{end-to-end} y las que requieren un modelo real por su coste. Con esa
 compuerta, ningún cambio se integra sin pasar antes esa verificación rápida y
 reproducible, y las pruebas más caras quedan reservadas para una ejecución
@@ -433,8 +433,8 @@ distintas de la sesión.
 
 La solución fue aplicar el patrón usado en el resto del sistema: resumen por
 defecto y detalle bajo demanda. El historial antiguo se autocompacta en un
-resumen determinista que conserva decisiones, artefactos y preferencias del
-usuario; las trazas voluminosas se consultan mediante herramientas específicas
-como \texttt{get\_tracker\_detail}, \texttt{get\_analyst\_detail} o
-\texttt{get\_simulation\_step\_window}. Así el agente ve lo necesario para cada
-pregunta sin volver a cargar toda la simulación en la conversación.
+resumen determinista que conserva decisiones y artefactos; las trazas
+voluminosas se consultan mediante herramientas específicas como
+\texttt{get\_tracker\_detail}, \texttt{get\_analyst\_detail} o
+\texttt{get\_simulation\_step\_window}. Así el agente ve lo necesario sin volver
+a cargar toda la simulación en la conversación.

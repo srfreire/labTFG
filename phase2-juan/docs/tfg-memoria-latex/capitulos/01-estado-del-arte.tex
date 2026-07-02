@@ -1,6 +1,6 @@
 \section{Estado del arte}
 
-Para situar esta segunda fase conviene separar dos planos. El primero es el de
+Para situar este TFG conviene separar dos planos. El primero es el de
 los entornos de simulación y la validación de modelos: el laboratorio necesita
 ejecutar modelos, observarlos y conservar evidencia de lo que ocurre. El segundo
 es el de las tecnologías usadas para construirlo: sistemas multi-agente,
@@ -11,7 +11,7 @@ recuperación aumentada y memoria, uso de herramientas y \textit{coding agents}.
 El laboratorio desarrollado no pretende validar directamente una teoría
 psicológica o neurocientífica, sino ofrecer una infraestructura para
 ejecutar modelos, observar su comportamiento y conservar evidencias de esa
-ejecución. Por ello, las referencias más relevantes para esta fase no son
+ejecución. Por ello, las referencias más relevantes para este TFG no son
 solo las de toma de decisiones, sino también las de simulación basada en
 agentes y verificación de modelos.
 
@@ -20,7 +20,7 @@ por Epstein \cite{epstein1999abm}: un modelo describe un mecanismo, pero
 también lo ejecuta y deja ver los patrones que produce.
 Railsback y Grimm \cite{railsback2019abm} trasladan esa idea a una práctica de
 modelado donde implementar, ejecutar y analizar son parte del propio trabajo
-científico. Esta fase adopta esa perspectiva de forma instrumental. La
+científico. Este TFG adopta esa perspectiva de forma instrumental. La
 generación de los modelos pertenece a la primera fase. Aquí la pregunta es otra:
 una vez existe el modelo, cómo se ejecuta, qué se observa de él y qué evidencia
 queda para juzgar su comportamiento.
@@ -68,7 +68,7 @@ El \textit{survey} de Guo et al. \cite{guo2024llmbased} sistematiza el
 campo y propone una taxonomía con tres paradigmas de comunicación
 (cooperativo, debate, competitivo) y cuatro patrones estructurales
 (\textit{Layered}, \textit{Decentralized}, \textit{Centralized} y
-\textit{Shared Message Pool}). La arquitectura adoptada en esta fase, en
+\textit{Shared Message Pool}). La arquitectura adoptada en este TFG, en
 la que un Orchestrator centraliza la comunicación y un conjunto de agentes
 especializados reciben tareas acotadas, se sitúa en el paradigma
 \textit{Cooperative}: todos los agentes trabajan sobre la misma sesión, no
@@ -112,7 +112,7 @@ Las arquitecturas de grafo de conocimiento, formalizadas en el
 un sustrato para representar relaciones explícitas entre entidades.
 En el laboratorio desarrollado, esa estructura encaja bien: paradigmas,
 formulaciones, autores y procedencias forman relaciones que el grafo expone
-directamente y que un índice plano de documentos no captura. Esta fase
+directamente y que un índice plano de documentos no captura. Este TFG
 combina ese grafo con dos modos complementarios de recuperación sobre el
 mismo repositorio de conocimiento. El primero es un índice denso: cada
 fragmento se convierte en un \textit{embedding}, es decir, un vector con el que
@@ -145,7 +145,7 @@ herramienta y argumentos; el sistema anfitrión valida esa petición, invoca el
 código correspondiente y devuelve la observación al modelo. Esta separación
 reduce la ambigüedad operativa de las respuestas en lenguaje natural y deja una
 traza auditable de qué operación se pidió, con qué parámetros y qué resultado
-produjo. Para esta fase es especialmente relevante porque el laboratorio no
+produjo. Para este TFG es especialmente relevante porque el laboratorio no
 quiere que el modelo ``diga'' que ha simulado, observado o consultado el
 historial: esas acciones deben corresponderse con herramientas concretas del
 backend.
@@ -173,7 +173,7 @@ de los desarrolladores ha crecido en los últimos años. Cui et al.
 \cite{cui2025effects} analizan tres ensayos aleatorizados a gran escala y
 Butler et al. \cite{butler2024dear} complementan esas medidas con un estudio
 cualitativo sobre el uso diario de estas herramientas. El capítulo de desarrollo
-retoma esa discusión desde la experiencia concreta de esta fase.
+retoma esa discusión desde la experiencia concreta de este TFG.
 
 Frente a los trabajos revisados, este proyecto no propone una técnica nueva de
 recuperación, una arquitectura general de agentes ni un método nuevo de

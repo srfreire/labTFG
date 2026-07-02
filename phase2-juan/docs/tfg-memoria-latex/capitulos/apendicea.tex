@@ -2,9 +2,16 @@
 \label{ap:manual-tecnico}
 
 Este manual recoge la información operativa necesaria para desplegar, probar y
-mantener la segunda fase del laboratorio. No sustituye a los capítulos de
+mantener el laboratorio desarrollado en este TFG. No sustituye a los capítulos de
 diseño y evaluación: sirve de guía de referencia para reproducir una
 instalación de desarrollo, diagnosticar fallos habituales y extender el sistema.
+
+\section{Repositorio}
+
+El código fuente del proyecto está disponible en el repositorio:
+\begin{center}
+\url{https://github.com/srfreire/labTFG}
+\end{center}
 
 \section{Estructura relevante}
 
@@ -19,7 +26,7 @@ phase2-juan/
     analyst.py          analisis de patrones
     charts.py           graficas del analisis
     reporter.py         generacion de informes PDF
-    model_loader.py     carga de modelos de fase 1
+    model_loader.py     carga de modelos aceptados
     knowledge/          escritura de memorias de simulacion
     recall/             lectura del Knowledge Backbone
     api.py              FastAPI + WebSocket
@@ -114,7 +121,7 @@ observaciones de simulación.
 PostgreSQL guarda los metadatos principales: experimentos, ejecuciones,
 mensajes de chat, modelos registrados, artefactos y observaciones de
 simulación. MinIO conserva los binarios, principalmente modelos Python de la
-primera fase e informes PDF de esta fase. Qdrant almacena las memorias densas y
+primera fase e informes PDF de este TFG. Qdrant almacena las memorias densas y
 \textit{sparse}; Neo4j mantiene el grafo de paradigmas, formulaciones, modelos
 y procedencia científica cuando esos datos existen.
 
@@ -140,7 +147,7 @@ flujo, pero no sustituye la inspección visual.
 \section{Mantenimiento y extensión}
 
 Un nuevo modelo de decisión generado por la primera fase queda disponible para
-esta fase sin necesidad de tocar el código del laboratorio: la primera fase lo
+este TFG sin necesidad de tocar el código del laboratorio: la primera fase lo
 registra en la tabla \texttt{models} de PostgreSQL y sube el archivo Python a
 MinIO; el \texttt{model\_loader} de \texttt{simlab/model\_loader.py} descubre la
 nueva entrada en la siguiente sesión y carga el archivo desde MinIO al

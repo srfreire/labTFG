@@ -1,10 +1,9 @@
 %
 % Memoria del TFG redactada en castellano. Codificación UTF-8.
-% Compilación recomendada con tectonic: tectonic JUANFREIREALVAREZ_TFG.tex
+% Compilación recomendada con tectonic: tectonic -X compile JUANFREIREALVAREZ_TFG.tex
 %
 
-\documentclass[12pt,twoside,openright,a4paper]{book}
-\usepackage[utf8]{inputenc}
+\documentclass[12pt,twoside,openany,a4paper]{book}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
 \addto\captionsspanish{%
@@ -27,16 +26,14 @@
 \usepackage{pdflscape}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
 
-% Las paginas insertadas automaticamente para abrir capitulos en impar no
-% deben mostrar cabecera ni numero de pagina.
-\let\originalcleardoublepage\cleardoublepage
-\renewcommand{\cleardoublepage}{%
-  \clearpage{\pagestyle{empty}\originalcleardoublepage}%
-}
+% Maquetación compacta para mantener el cuerpo principal en 50 páginas.
+% Los capítulos empiezan en la página siguiente, sin insertar páginas blancas
+% automáticas para forzar apertura en impar.
+\let\cleardoublepage\clearpage
+\addtolength{\textheight}{0.37cm}
+\addtolength{\topmargin}{-0.185cm}
 
-% Maquetación para impresión a doble cara. Con book + twoside + openright,
-% LaTeX inserta páginas en blanco cuando hace falta para que cada capítulo
-% empiece en página impar, es decir, a la derecha al imprimir en formato libro.
+% Evita estirar verticalmente las páginas con poco contenido.
 \raggedbottom
 
 % Holgura de última línea para resolver overfull menores (palabras \texttt{}

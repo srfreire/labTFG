@@ -13,10 +13,10 @@ Los diagramas de despliegue y componentes de este capítulo muestran las piezas
 coordinadas por el Orchestrator: agentes especializados, entorno de simulación,
 modelos cargados desde la primera fase y capa compartida de persistencia y
 recuperación. El capítulo desarrolla esas piezas desde el punto de vista del
-diseño de la segunda fase, no como inventario completo de todos los servicios
+diseño de este TFG, no como inventario completo de todos los servicios
 del proyecto.
 
-Sobre esa estructura, el diseño de esta fase se apoya en tres decisiones
+Sobre esa estructura, el diseño de este TFG se apoya en tres decisiones
 principales:
 
 \begin{enumerate}
@@ -24,7 +24,7 @@ principales:
 modela la sesión como una secuencia canónica de \textit{tool calls} y
 reserva al modelo de lenguaje únicamente las desviaciones puntuales, en
 lugar de delegarle la planificación completa.
-\item La \textbf{carga dinámica de modelos}: la segunda fase descubre los
+\item La \textbf{carga dinámica de modelos}: el laboratorio descubre los
 modelos aceptados por la primera, los instancia bajo demanda y los ejecuta
 sin incorporarlos como dependencias estáticas del laboratorio.
 \item El \textbf{laboratorio como productor y consumidor de memoria
@@ -36,15 +36,14 @@ comportamiento observado con los postulados previos.
 Para completar esta visión con una representación formal, la
 Figura~\ref{fig:despliegue-uml} muestra la arquitectura del sistema como
 diagrama de despliegue UML. En ella se separan los entornos de ejecución
-principales: navegador, backend de la segunda fase, servicios externos de
+principales: navegador, backend del laboratorio, servicios externos de
 modelo y capa de persistencia compartida. La Figura~\ref{fig:componentes-uml}
-refina esa vista con los componentes software de grano grueso que participan
-en una sesión del laboratorio: la primera figura muestra dónde se ejecuta cada
-pieza; la segunda baja al nivel de componentes software.
+es el diagrama de componentes del sistema y recoge los componentes software de
+grano grueso que participan en una sesión del laboratorio.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.92\linewidth}{!}{%
+\resizebox{0.82\linewidth}{!}{%
 \begin{tikzpicture}[
   nodebox/.style={
     rectangle, draw=black!75, rounded corners=2pt, line width=0.6pt,
@@ -65,7 +64,7 @@ pieza; la segunda baja al nivel de componentes software.
   \node[nodebox] (browser) at (-1.1,0) {<<device>>\\Navegador};
   \node[artifact] (frontend) at (-1.1,-1.45) {Frontend\\React + Vite};
 
-  \node[nodebox, text width=40mm] (backend) at (5.2,0) {<<execution environment>>\\Backend Phase 2};
+  \node[nodebox, text width=40mm] (backend) at (5.2,0) {<<execution environment>>\\Backend del laboratorio};
   \node[artifact] (api) at (3.8,-1.45) {FastAPI\\REST + WS};
   \node[artifact] (orch) at (5.2,-2.75) {Orchestrator\\tools + sesión};
   \node[artifact] (sim) at (7.0,-1.45) {Runtime\\simulación 2D};
@@ -73,7 +72,7 @@ pieza; la segunda baja al nivel de componentes software.
   \node[nodebox] (llm) at (10.4,0) {<<external service>>\\LLM providers};
   \node[artifact] (openrouter) at (10.4,-2.75) {OpenRouter API};
 
-  \node[nodebox, text width=36mm] (phase1) at (-1.1,-4.1) {<<execution environment>>\\Phase 1};
+  \node[nodebox, text width=36mm] (phase1) at (-1.1,-4.1) {<<execution environment>>\\Primera fase};
   \node[artifact] (models) at (-1.1,-5.45) {Modelos aceptados\\código Python};
 
   \node[nodebox, text width=44mm] (shared) at (5.2,-4.45) {<<execution environment>>\\Infraestructura compartida};
@@ -99,11 +98,11 @@ laboratorio virtual. Se muestran los nodos de ejecución, los artefactos
 desplegados y los servicios persistentes o externos utilizados durante una
 sesión.}
 \label{fig:despliegue-uml}
-\end{figure}
 
-\begin{figure}[H]
+\vspace{0.8em}
+
 \centering
-\resizebox{\linewidth}{!}{%
+\resizebox{0.84\linewidth}{!}{%
 \begin{tikzpicture}[
   comp/.style={
     rectangle, draw=black!75, rounded corners=2pt, line width=0.55pt,
@@ -120,7 +119,7 @@ sesión.}
   \node[comp=green!8] (analyst) at (2.6,-4.4) {Analyst\\análisis};
   \node[comp=green!8] (reporter) at (6.6,-4.4) {Reporter\\PDF};
 
-  \node[comp=orange!5] (loader) at (-6.6,-6.0) {Model loader\\modelos fase 1};
+  \node[comp=orange!5] (loader) at (-6.6,-6.0) {Model loader\\modelos aceptados};
   \node[comp=orange!9, text width=35mm] (runtime) at (-2.6,-6.0) {Runtime de simulación\\Environment + Agent};
   \node[comp=red!6] (charts) at (4.6,-6.0) {Charts\\figuras del análisis};
 
@@ -151,20 +150,20 @@ sesión.}
   \draw[diagarrowbi] (analyst.south) -- (kg.north);
   \draw[diagarrow] (reporter.south) -- (storage.north);
 \end{tikzpicture}}
-\caption[Diagrama de componentes UML]{Diagrama de componentes UML de la
-segunda fase. El Orchestrator aparece como componente central y los agentes se
+\caption[Diagrama de componentes UML]{Diagrama de componentes UML del
+sistema. El Orchestrator aparece como componente central y los agentes se
 separan de las capas de simulación, presentación y persistencia.}
 \label{fig:componentes-uml}
 \end{figure}
 
-Las secciones siguientes separan las aportaciones propias de esta fase y las
+Las secciones siguientes separan las aportaciones propias de este TFG y las
 capas que materializan la sesión.
 
-\section{Aportaciones propias de la fase}
+\section{Aportaciones propias de este TFG}
 
-La segunda fase parte de dos piezas que ya existen en el proyecto: los modelos
+Este TFG parte de dos piezas que ya existen en el proyecto: los modelos
 generados por la primera fase y el Knowledge Backbone compartido. El trabajo de
-esta fase consiste en convertir esas piezas en un laboratorio utilizable: cargar
+este TFG consiste en convertir esas piezas en un laboratorio utilizable: cargar
 los modelos, ejecutarlos en un entorno común, observar lo que hacen y dejar la
 sesión registrada para poder analizarla después.
 
@@ -176,7 +175,7 @@ generar el informe. El canal \textbf{WebSocket} hace visible ese proceso en la
 interfaz, de modo que la simulación no queda reducida a una respuesta final del
 modelo, sino que puede seguirse paso a paso.
 
-La fase también añade la comparación de varios modelos en el mismo entorno,
+Este TFG también añade la comparación de varios modelos en el mismo entorno,
 con trazas de decisión, métricas y \textit{replay}. Con esas trazas se observan
 diferencias entre modelos sin cambiar las condiciones de la simulación. Por
 último, cada sesión deja persistidos sus datos principales:
@@ -320,8 +319,8 @@ deliberativas más elaboradas.
   \draw[diagarrow] (orch.north) -- ++(0,8mm) -- ++(-28mm,0) |- (env.south west);
   \draw[diagarrow] (writer.north) -- ++(0,8mm) -| (event.south east);
 \end{tikzpicture}}
-\caption[Diagrama de clases UML]{Diagrama de clases UML simplificado de la
-segunda fase. Se incluyen las clases del dominio de simulación, el contrato
+\caption[Diagrama de clases UML]{Diagrama de clases UML simplificado del
+laboratorio. Se incluyen las clases del dominio de simulación, el contrato
 \texttt{DecisionModel} y las clases que coordinan, observan y persisten la
 sesión.}
 \label{fig:clases-uml}
@@ -411,22 +410,22 @@ permite iterar en cualquiera de sus artefactos intermedios.
   \node[action, text width=42mm] (orch) at (0,0.15) {Orchestrator interpreta intención y estado de sesión};
   \node[decision] (intent) at (0,-1.35) {Siguiente acción del usuario};
 
-  \node[action] (env) at (-5.0,-3.0) {Preparar o ajustar entorno\\Architect + contexto};
-  \node[action] (run) at (0,-3.0) {Ejecutar o repetir simulación\\modelos + Tracker};
-  \node[action] (inspect) at (5.0,-3.0) {Inspeccionar detalle\\eventos, episodios, replay};
-  \node[action] (analysis) at (-2.6,-4.65) {Analizar o comparar\\patrones y gráficas};
-  \node[action] (report) at (2.6,-4.65) {Generar o actualizar informe\\Reporter + PDF};
+  \node[action] (env) at (-6.1,-3.15) {Preparar o ajustar entorno\\Architect + contexto};
+  \node[action] (run) at (0,-3.15) {Ejecutar o repetir simulación\\modelos + Tracker};
+  \node[action] (inspect) at (6.1,-3.15) {Inspeccionar detalle\\eventos, episodios, replay};
+  \node[action] (analysis) at (-3.2,-5.05) {Analizar o comparar\\patrones y gráficas};
+  \node[action] (report) at (3.2,-5.05) {Generar o actualizar informe\\Reporter + PDF};
 
-  \node[action, text width=47mm] (ui) at (0,-6.15) {Enviar resultado parcial al frontend};
-  \node[decision, text width=25mm] (continue) at (0,-7.7) {Continuar sesión};
-  \node[startstop] (end) at (4.8,-7.7) {Fin};
+  \node[action, text width=47mm] (ui) at (0,-6.9) {Enviar resultado parcial al frontend};
+  \node[decision, text width=25mm] (continue) at (0,-8.75) {Continuar sesión};
+  \node[startstop] (end) at (7.0,-8.75) {Fin};
 
   \draw[diagarrow] (start) -- (msg);
   \draw[diagarrow] (msg) -- (orch);
   \draw[diagarrow] (intent.south west) -- (env.north east);
   \draw[diagarrow] (intent.south east) -- (inspect.north west);
-  \draw[diagarrow] (intent.west) -- ++(-5.2,0) |- (analysis.west);
-  \draw[diagarrow] (intent.east) -- ++(5.2,0) |- (report.east);
+  \draw[diagarrow] (intent.west) -- ++(-6.0,0) |- (analysis.west);
+  \draw[diagarrow] (intent.east) -- ++(6.0,0) |- (report.east);
 
   \draw[diagarrow] (env) |- (ui);
   \draw[diagarrow] (run) -- (ui);
@@ -434,8 +433,9 @@ permite iterar en cualquiera de sus artefactos intermedios.
   \draw[diagarrow] (analysis) -- (ui);
   \draw[diagarrow] (report) -- (ui);
   \draw[diagarrow] (ui) -- (continue);
-  \draw[diagarrow] (continue) -- node[note, above] {no} (end);
-  \draw[diagarrow] (continue.west) -- node[note, pos=0.35, above] {sí} ++(-5.8,0) |- (msg.west);
+  \draw[diagarrow] (continue.east) -- node[note, midway, above] {no} (end.west);
+  \draw[diagarrow] (continue.west) -- ++(-7.0,0)
+    node[note, pos=0.25, above] {sí} |- (msg.west);
   \draw[diagarrow, preaction={draw=white, line width=1.6pt}] (orch.south) -- (intent.north);
   \draw[diagarrow, preaction={draw=white, line width=1.6pt}] (intent.south) -- (run.north);
 \end{tikzpicture}}
@@ -488,7 +488,7 @@ Reporter & Cómo presentar los resultados para que puedan revisarse fuera de la 
 \end{tabular}
 \caption[División en agentes]{División en agentes. La tabla resume qué
 responsabilidad justifica cada agente especializado.}
-\label{tab:razon-agentes-fase2}
+\label{tab:razon-agentes}
 \end{center}
 \end{table}
 
@@ -690,7 +690,7 @@ descripción y la clave \texttt{s3\_model\_key} del archivo de código en
 MinIO) y carga el archivo Python correspondiente bajo demanda en un
 directorio temporal por sesión. A continuación importa dinámicamente
 las clases que cumplen el contrato esperado. La verificación se hace
-por \textit{duck typing}: la segunda fase no impone ninguna clase base ni
+por \textit{duck typing}: el laboratorio no impone ninguna clase base ni
 dependencia compartida entre ambos sistemas; el \texttt{Protocol}
 \texttt{runtime\_checkable} de \texttt{simlab.environment} solo aporta una
 comprobación estructural en la carga, y basta con que la clase exponga los
@@ -705,8 +705,8 @@ variabilidad accidental y hace que la comparación multi-modelo dependa de la
 semilla de la sesión, no de inicializaciones implícitas en el archivo cargado.
 
 Esta decisión tiene tres efectos prácticos. Primero, la incorporación de
-un nuevo paradigma no requiere ningún cambio en el código de la segunda
-fase. Segundo, el Orchestrator puede presentar al usuario la lista de
+un nuevo paradigma no requiere ningún cambio en el código del laboratorio.
+Segundo, el Orchestrator puede presentar al usuario la lista de
 modelos disponibles en tiempo real, descubriendo automáticamente los que
 la primera fase haya producido entre sesiones. Tercero, una misma
 simulación puede instanciar varios modelos sobre el mismo entorno, lo
@@ -714,9 +714,9 @@ que habilita comparativas \textit{multi-modelo} sin reconfiguración.
 
 \section{El Knowledge Backbone como capa compartida}
 
-El Knowledge Backbone es la capa de persistencia común a ambas fases del
-proyecto. En esta memoria no hace falta repetir toda su definición interna;
-para el diseño de la segunda fase interesa, sobre todo, qué consulta el
+El Knowledge Backbone es la capa de persistencia común del proyecto. En esta
+memoria no hace falta repetir toda su definición interna;
+para el diseño de este TFG interesa, sobre todo, qué consulta el
 laboratorio, qué escribe y cómo mantiene la trazabilidad entre piezas.
 
 La capa de almacenamiento combina cuatro componentes con
@@ -803,7 +803,7 @@ calcula sus \textit{embeddings} en un único \textit{batch} y los inserta en
 \texttt{memories\_sparse}, bajo el \textit{namespace} \texttt{simulation} y
 con el mismo \textit{UUID} compartido. Una observación de simulación queda
 disponible para recuperación posterior sin confundirse con un postulado
-procedente de la literatura. En esta fase no se materializa como nodo de Neo4j:
+procedente de la literatura. En este TFG no se materializa como nodo de Neo4j:
 se mantiene como memoria indexada y fila tipada, enlazable por sus metadatos.
 El flujo queda concentrado en tres pasos: observación estructurada, escritura
 indexada y recuperación posterior desde nuevas sesiones.
@@ -811,7 +811,7 @@ indexada y recuperación posterior desde nuevas sesiones.
 \section{Capa de presentación reactiva}
 
 La interfaz no se diseñó como una capa decorativa sobre el pipeline, sino
-como parte de la observabilidad del laboratorio. Si el objetivo de la fase
+como parte de la observabilidad del laboratorio. Si el objetivo de este TFG
 es convertir modelos ejecutables en material revisable, el usuario debe
 poder ver cómo se construye ese material: qué agente está trabajando, qué
 entorno se ha generado, cómo se mueven los modelos, qué eventos aparecen y
@@ -851,8 +851,28 @@ por el Tracker, y un panel lateral que refleja el estado de cada agente
 mientras ejecuta. La visualización del entorno (Figura~\ref{fig:replay})
 reproduce la simulación paso a paso, y al cierre de la sesión el Reporter
 genera un informe PDF descargable con las gráficas comparativas de ambos
-modelos (Figura~\ref{fig:analisis-charts}). Las capturas de estas tres
-vistas se recogen en la galería del Apéndice~\ref{ap:ui}.
+modelos (Figura~\ref{fig:analisis-charts}). Por su relación directa con la
+observabilidad del laboratorio, las capturas de simulación y análisis se
+incluyen en este apartado; el resto de estados de interfaz se recoge en la
+galería del Apéndice~\ref{ap:ui}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.42\textheight,keepaspectratio]{figuras/ui-03-simulacion-replay}
+\caption[Replay de la simulación]{Replay de la simulación. La vista combina la
+rejilla con agentes y recursos, la línea de eventos críticos y los controles de
+reproducción.}
+\label{fig:replay}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.48\textheight,keepaspectratio]{figuras/ui-04-analisis-charts}
+\caption[Gráficas comparativas del Analyst]{Gráficas comparativas del Analyst.
+Se muestran la energía por agente, la distribución de acciones y la evolución
+de los \textit{Q-values}.}
+\label{fig:analisis-charts}
+\end{figure}
 
 El canal WebSocket único busca que cada paso del pipeline aparezca en la
 interfaz en cuanto ocurre, sin que el cliente tenga que preguntar por él. La
@@ -866,6 +886,6 @@ se construye y el modelo decide, en lugar de cargas aisladas.
 El diseño de la interfaz se documenta mediante capturas reales del sistema
 implementado en el Apéndice~\ref{ap:ui}. Se ha optado por capturas en lugar de
 \textit{wireframes} porque la interfaz ya estaba materializada al cerrar esta
-fase del proyecto; las figuras muestran la organización del \textit{dashboard},
+parte del proyecto; las figuras muestran la organización del \textit{dashboard},
 la vista de simulación, el panel del pipeline y las salidas específicas de
 Architect, Tracker, Analyst y Reporter.

@@ -9,11 +9,11 @@ en los objetivos específicos. El sistema genera la especificación del entorno,
 registra la ejecución, analiza los patrones, produce el informe y guarda
 observaciones reutilizables en la memoria compartida.
 
-Vista en conjunto, la segunda fase completa el recorrido iniciado por la
-primera. Allí el esfuerzo se concentra en pasar de un paradigma descrito en
+Vista en conjunto, este TFG completa el recorrido iniciado por la primera fase.
+Allí el esfuerzo se concentra en pasar de un paradigma descrito en
 lenguaje natural a un modelo Python ejecutable; aquí, en convertir la ejecución
 de ese modelo en evidencia revisable: trayectoria, métricas, interpretación y
-memoria recuperable. La integración se mantuvo estable porque ambas fases
+memoria recuperable. La integración se mantuvo estable porque ambas partes
 compartieron una frontera pequeña, sin coordinar publicaciones intermedias.
 
 \section{Conclusiones técnicas}
@@ -44,7 +44,7 @@ incompletas y el \emph{writer} puede evolucionar sin tocar el agente.
 
 Más allá de las limitaciones técnicas detalladas en el capítulo de pruebas,
 conviene cerrar con las de mayor alcance. El sistema cumple los objetivos de
-esta fase, pero no valida automáticamente teorías de decisión: ejecuta modelos,
+este TFG, pero no valida automáticamente teorías de decisión: ejecuta modelos,
 observa trayectorias y contrasta patrones con conocimiento previo, pero la
 adecuación científica de cada modelo sigue requiriendo revisión experta. Además,
 depende de modelos de lenguaje y servicios externos cuyas salidas, a diferencia
@@ -54,7 +54,7 @@ Las otras dos limitaciones son de alcance. El dominio de rejilla 2D es adecuado
 para comparar modelos en un entorno común y explicable, pero no cubre entornos
 continuos, escenarios multi-agente o tareas no espaciales, que exigirían
 extenderlo y revisar qué métricas son comparables. La escritura de
-conocimiento desde la segunda fase es aún conservadora: las observaciones se
+conocimiento desde este TFG es aún conservadora: las observaciones se
 indexan en el \textit{namespace} \texttt{simulation} para poder recuperarlas
 después, pero no se materializan como nodos del grafo. La decisión es
 deliberada: antes de añadir nodos y relaciones conviene tener claro cuáles

@@ -97,8 +97,8 @@ cada momento.
   \draw[assoc] (llmbus) |- (cu3.east);
   \draw[assoc] (llmbus) |- (cu5.east);
 \end{tikzpicture}}
-\caption[Diagrama de casos de uso]{Diagrama de casos de uso UML de la
-segunda fase. Los sistemas externos quedan fuera del límite del laboratorio
+\caption[Diagrama de casos de uso]{Diagrama de casos de uso UML del
+laboratorio virtual. Los sistemas externos quedan fuera del límite del laboratorio
 porque el usuario no los opera directamente.}
 \label{fig:casos-uso}
 \end{figure}
@@ -133,19 +133,15 @@ depuración, no como caso de uso principal del investigador.
 \section{Requisitos funcionales}
 
 Los requisitos funcionales concretan qué debe poder hacer el laboratorio
-durante una sesión completa: recibir la descripción del problema, preparar y
-ejecutar la simulación, observar sus resultados, analizarlos y guardar la
-evidencia para consultas posteriores. La prioridad se expresa con MoSCoW:
-\emph{Must} para lo imprescindible, \emph{Should} para lo recomendable y
-\emph{Could} para mejoras que aportan valor pero no son necesarias para cerrar
-el alcance.
+durante una sesión completa. La prioridad se expresa con MoSCoW:
+\emph{Must}, \emph{Should} y \emph{Could}.
 
 \begin{table}[H]
 \begin{center}
 \scriptsize
-\setlength{\tabcolsep}{4.6pt}
-\renewcommand{\arraystretch}{1.22}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.1cm}|>{\raggedright\arraybackslash}p{2.55cm}|>{\raggedright\arraybackslash}p{6.25cm}|>{\raggedright\arraybackslash}p{1.05cm}|} \hline
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.08cm}|>{\raggedright\arraybackslash}p{2.45cm}|>{\raggedright\arraybackslash}p{5.92cm}|>{\raggedright\arraybackslash}p{0.95cm}|} \hline
 \textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
 RF-01 & Carga dinámica de modelos & Cargar los modelos de decisión generados por la primera fase, descubriéndolos sin intervención manual entre sesiones. & Must \\ \hline
 RF-02 & Generación de entornos & Generar especificaciones de entorno de simulación a partir de descripciones en lenguaje natural. & Must \\ \hline
@@ -161,7 +157,7 @@ RF-11 & Recomendaciones del Orchestrator & Recomendar al usuario qué hacer a co
 RF-12 & Replay de simulación & Ofrecer una visualización del entorno con \textit{replay} paso a paso y paneles de actividad por agente. & Should \\ \hline
 RF-13 & Inspección del Knowledge Backbone & Exponer vistas de inspección del Knowledge Backbone, incluyendo grafo, memorias y procedencia, desde la interfaz web. & Could \\ \hline
 \end{tabular}
-\caption[Requisitos funcionales]{Requisitos funcionales de la segunda fase.}
+\caption[Requisitos funcionales]{Requisitos funcionales del laboratorio virtual.}
 \label{tab:requisitos-funcionales}
 \end{center}
 \end{table}
@@ -190,7 +186,7 @@ ejecuta simulaciones, conversa con el usuario y consulta servicios externos.
 \begin{tabular}{|>{\raggedright\arraybackslash}p{1.05cm}|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{6.3cm}|>{\raggedright\arraybackslash}p{1.1cm}|} \hline
 \textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
 RNF-01 & Modularidad y desacoplamiento & Integrar la primera fase mediante un contrato mínimo de \textit{duck typing}, sin imponer dependencias de paquetes ni jerarquías de clases. & Must \\ \hline
-RNF-02 & Extensibilidad de modelos & Incorporar nuevos modelos generados por la primera fase sin modificar el código de la segunda fase. & Must \\ \hline
+RNF-02 & Extensibilidad de modelos & Incorporar nuevos modelos generados por la primera fase sin modificar el código del laboratorio. & Must \\ \hline
 RNF-03 & Trazabilidad & Conservar configuración, eventos y artefactos finales de cada ejecución con identificadores únicos auditables. & Must \\ \hline
 RNF-04 & Reactividad & Enviar al cliente web actualizaciones de simulación y actividad de agentes en tiempo real mediante WebSocket, sin \textit{polling}. & Must \\ \hline
 RNF-05 & Degradación controlada & Mantener operativo el flujo principal aunque no estén disponibles \textit{embeddings}, \textit{reranking} o escritura semántica en Qdrant. & Should \\ \hline
@@ -201,18 +197,26 @@ RNF-09 & Observabilidad & Registrar acciones del Orchestrator y agentes especial
 RNF-10 & Acotación del contexto conversacional & Mantener el historial del chat dentro de un presupuesto acotado automáticamente, sin reiniciar la sesión ni perder trazabilidad. & Should \\ \hline
 RNF-11 & Recuperación relacional segura & Traducir preguntas en lenguaje natural a SQL de solo lectura, restringido a tablas permitidas y con máximo de resultados. & Must \\ \hline
 RNF-12 & Contraste previo con predicciones & Recuperar predicciones científicas antes de ejecutar la simulación para compararlas después con la trayectoria observada. & Should \\ \hline
+RNF-13 & Interoperabilidad de modelos & Aceptar modelos externos siempre que expongan el contrato \texttt{decide}, \texttt{update} y \texttt{get\_state}, independientemente de su implementación interna. & Must \\ \hline
+RNF-14 & Interoperabilidad con servicios externos & Integrarse mediante interfaces explícitas y configurables con OpenRouter, Voyage AI, ZeroEntropy, PostgreSQL, MinIO, Neo4j y Qdrant, evitando credenciales o rutas embebidas. & Must \\ \hline
 \end{tabular}
-\caption[Requisitos no funcionales]{Requisitos no funcionales de la segunda
-fase.}
+\caption[Requisitos no funcionales]{Requisitos no funcionales del laboratorio
+virtual.}
 \label{tab:requisitos-no-funcionales}
 \end{center}
 \end{table}
 
-Estos requisitos fijan las decisiones principales del diseño. La segunda
-fase no debe quedar atada al código interno de la primera; una simulación debe
+La interoperabilidad es especialmente relevante porque el laboratorio no opera
+aislado: consume modelos y metadatos generados por la primera fase, usa APIs de
+modelos de lenguaje y servicios semánticos, y persiste evidencia en una
+infraestructura compartida.
+
+Estos requisitos fijan las decisiones principales del diseño. El laboratorio
+no debe quedar atado al código interno de la primera fase ni a proveedores
+configurados de forma rígida; una simulación debe
 poder auditarse después de ejecutarse; la interfaz debe recibir estado vivo por
 WebSocket; y la ausencia de la capa semántica no debe impedir que el flujo
 principal termine. También se acota el contexto conversacional, se limita la
-consulta NL-SQL a lecturas seguras y se recuperan predicciones antes de observar
-la simulación, para que el contraste posterior no dependa de una explicación
-hecha a posteriori.
+consulta NL-SQL a lecturas seguras, se recuperan predicciones antes de observar
+la simulación y se explicita la interoperabilidad con modelos, APIs y servicios
+de persistencia externos.
