@@ -6,6 +6,12 @@ Un sistema basado en agentes no se valida solo comprobando tipos de retorno. Hay
 que verificar coordinación entre etapas, persistencia, revisión humana,
 recuperación de memoria, coste y calidad de los artefactos científicos.
 
+La validación se diseñó con 2 objetivos. El primero es técnico: comprobar que el
+pipeline termina, guarda estado, genera código y conserva evidencia. El segundo
+es de calidad: comprobar que los artefactos científicos son revisables y que las
+reservas no quedan ocultas detrás de un test verde. Por eso se combinan pruebas
+automáticas, evals reproducibles y revisión separada de bundles congelados.
+
 \begin{table}[H]
 \begin{center}
 \small
@@ -21,6 +27,12 @@ Evals & Suites reproducibles para medir pipeline, memoria, coste, latencia y cal
 \caption{Niveles de validación.}
 \end{center}
 \end{table}
+
+Cada nivel cubre un riesgo distinto. Los contratos evitan errores de forma. Las
+pruebas de pipeline detectan fallos de coordinación. Las pruebas de código
+generado comprueban que el modelo puede ejecutarse. Las pruebas de memoria
+revisan si el conocimiento se escribe y se recupera con procedencia. Las evals
+unen todo el flujo y añaden coste, latencia y reservas de calidad.
 
 La evidencia versionada incluye tests unitarios, suites YAML, ejecuciones de
 ejemplo, bundles de evals y reportes de juez. Esto permite revisar el resultado
@@ -46,11 +58,25 @@ Corpus cerrado & 2 casos, 6 PDFs & Ejecuciones completas con corpus limitado y j
 \end{center}
 \end{table}
 
+La tabla resume volumen de evidencia, pero no debe leerse como una carrera de
+cantidades. Lo importante es que cada tipo de artefacto cubre una transición del
+sistema. Los deep reports justifican la investigación. Las formulaciones
+justifican el paso a variables y reglas. Las specs justifican la adaptación al
+entorno. Los modelos y tests justifican que el resultado puede ejecutarse. Los
+bundles congelados permiten que un evaluador revise el proceso sin depender de
+la sesión que lo generó.
+
 \subsection{Cierre de requisitos}
 
 La tabla siguiente cierra los requisitos funcionales contra evidencia
 versionada. El estado no significa certificación científica final. Indica que el
 comportamiento exigido existe, se ejecuta y deja evidencia revisable.
+
+Este cierre separa cumplimiento funcional y validez científica. Un requisito
+como generar modelos puede estar cumplido aunque un modelo concreto necesite
+revisión experta. Del mismo modo, una memoria puede escribir hechos con
+procedencia y aun así contener reservas sobre la calidad de extracción. Por eso
+cada fila incluye evidencia y reserva.
 
 \begin{table}[H]
 \begin{center}
@@ -94,12 +120,23 @@ RNF-09 & Cumplido & Presupuestos y costes en reportes de evals. & Suites online 
 \end{center}
 \end{table}
 
+Las reservas son parte del resultado, no notas al margen. En un sistema con
+agentes, ocultarlas daría una imagen falsa de madurez. El objetivo de las
+pruebas fue demostrar qué está cerrado, qué depende de servicios externos y qué
+requiere revisión o ampliación futura.
+
 \section{Evals y benchmarks}
 
 Las evals se definen como suites YAML. Cada suite declara etapas, entradas,
 aprobaciones automáticas, presupuesto máximo y aserciones esperadas. El reporte
 incluye estado, tiempos, costes, crecimiento del grafo, llamadas a herramientas
 y aserciones superadas o fallidas.
+
+Se usaron suites YAML porque las ejecuciones completas son demasiado largas y
+caras para lanzarlas de forma manual sin estructura. La suite fija entradas,
+presupuesto y condiciones de éxito. Así una evaluación no depende de recordar
+qué comandos se ejecutaron ni de interpretar un log suelto. El reporte queda
+como artefacto comparable entre runs.
 
 \begin{table}[H]
 \begin{center}
@@ -115,7 +152,18 @@ Corpus cerrado & CASO1 y CASO2 PDF corpus & Descubrimiento, formalización, adap
 \end{center}
 \end{table}
 
+Los grupos se eligieron para no mezclar preguntas distintas. Las evals de
+pipeline preguntan si la cadena completa funciona. Las de memoria preguntan si
+el conocimiento se mantiene consistente. Las de recuperación offline aíslan el
+buscador sin gastar una run completa. Las de corpus cerrado preguntan si el
+sistema puede trabajar con fuentes limitadas y producir un resultado auditable.
+
 \subsection{Resultados representativos}
+
+La tabla siguiente muestra resultados representativos, no todos los resultados
+del proyecto. Se incluyen una suite completa, una prueba de recuperación, una
+prueba temporal y una alerta histórica. La alerta se conserva porque explica una
+decisión posterior: endurecer canonicalización de slugs e identidad científica.
 
 \begin{table}[H]
 \begin{center}
@@ -135,11 +183,22 @@ La fila de \texttt{slug-accuracy} se conserva como alerta histórica. No invalid
 el estado final, pero muestra por qué fue necesario medir identidad científica y
 no solo éxito técnico.
 
+Esta forma de presentar resultados evita una conclusión demasiado simple. Un
+PASS técnico dice que la suite cumplió sus aserciones. Una alerta histórica
+explica dónde el diseño tuvo que cambiar. En ambos casos, el valor está en la
+traza: la memoria conserva qué se midió, qué falló y qué regla se ajustó.
+
 \subsection{CASO1 como traza completa}
 
 El caso CASO1 permite seguir una ejecución completa desde corpus cerrado hasta
 modelo registrado. No se presenta como certificación científica externa. Sirve
 para comprobar que el sistema produce evidencias revisables en cada etapa.
+
+CASO1 se mantiene en el cuerpo porque enseña cómo se encadenan las piezas del
+sistema. Si solo se mostrasen métricas agregadas, no se vería dónde aparece la
+revisión humana, qué produce cada agente ni cómo la memoria enlaza el resultado
+con los artefactos originales. El detalle largo del bundle queda en anexos y
+artefactos versionados.
 
 \begin{table}[H]
 \begin{center}
@@ -161,6 +220,12 @@ La lectura del caso es doble. Técnicamente, el flujo produjo artefactos,
 modelos y memoria. Científicamente, el juez detectó reservas que deben quedar
 cerradas o declaradas como limitación.
 
+Esta doble lectura es intencionada. La memoria no busca presentar el sistema
+como una herramienta científica ya validada por expertos. Busca demostrar que el
+pipeline construye una cadena de evidencia que permite detectar reservas. En
+otras palabras, el sistema no elimina la revisión científica; la hace más
+trazable.
+
 \subsection{Comparación de corpus cerrado}
 \label{sec:evaluacion-corpus-cerrado}
 
@@ -170,22 +235,28 @@ solo podía acceder a los papers incluidos en el ZIP de entrada. Un LLM juez
 revisó artefactos congelados con criterios de fidelidad al corpus, calidad de
 paradigmas, formulaciones, modelos, memoria, trazabilidad y advertencias.
 
-Esta prueba separa la validez técnica de la validez científica. La validez
-técnica pregunta si el pipeline termina, registra artefactos, genera modelos y
-ejecuta tests. La validez científica pregunta si los paradigmas y formulaciones
-son fieles al corpus y si un experto podría defender el modelo. Las dos son
-necesarias, pero no equivalentes.
+Esta prueba separa lo demostrado de lo que queda fuera del alcance. Esa
+distinción evita que un \texttt{PASS} técnico se lea como certificación
+científica.
+
+El corpus cerrado no se implementó como una instrucción textual al agente. La
+evaluación reemplazó las herramientas de búsqueda por proveedores locales que
+solo devolvían metadatos, fragmentos y texto extraído de los PDFs incluidos en
+el ZIP. Además, cada ejecución exportó un bundle congelado con artefactos,
+filas de base de datos, snapshot del grafo y corpus usado. El mecanismo se
+describe en el Anexo~\ref{ap:material-extendido},
+Sección~\ref{ap:bundles-eval}.
 
 \begin{table}[H]
 \begin{center}
 \small
 \begin{tabular}{|p{3.1cm}|p{4.9cm}|p{4.5cm}|} \hline
-\textbf{Lectura} & \textbf{Qué demuestra} & \textbf{Qué no demuestra} \\ \hline
+\textbf{Resultado} & \textbf{Qué queda demostrado} & \textbf{Qué no queda demostrado} \\ \hline
 PASS técnico & El sistema completa etapas, persiste artefactos y genera modelos ejecutables. & Que el modelo represente perfectamente el paradigma científico. \\ \hline
-Juez externo & Un evaluador separado revisa fidelidad, taxonomía, trazabilidad y reservas. & Que la evaluación sustituya a un experto humano del dominio. \\ \hline
+Juez externo & Una revisión separada aplica rúbrica sobre fidelidad, taxonomía, trazabilidad y reservas. & Que la evaluación sustituya a un experto humano del dominio. \\ \hline
 Aprobado con reservas & Los artefactos son útiles y auditables, pero tienen fallos localizados. & Que el resultado pueda aceptarse sin revisión posterior. \\ \hline
 \end{tabular}
-\caption{Diferencia entre validación técnica y científica.}
+\caption{Qué queda demostrado y qué queda fuera de alcance.}
 \end{center}
 \end{table}
 
@@ -201,8 +272,10 @@ CASO2 & Pipeline PASS; juez 78/100, aprobado con reservas. & 4961.8 s / \$24.47 
 \end{center}
 \end{table}
 
-El resultado fue positivo, pero no perfecto. Esa lectura es importante: el
-pipeline puede ser técnicamente correcto y aun así requerir revisión científica.
+La comparación evita basar la evaluación en un único ejemplo. Ambos casos
+completan el pipeline, pero producen reservas distintas y tamaños de grafo
+distintos. Esto muestra que la arquitectura soporta más de una ejecución, aunque
+todavía no permite afirmar generalización científica.
 
 \begin{table}[H]
 \begin{center}
@@ -219,12 +292,11 @@ Duplicados de ficheros & Mitigada & No afectan al contrato ejecutable ni al repo
 \end{center}
 \end{table}
 
-Por tanto, ``aprobado con reservas'' debe leerse como señal de utilidad, no
-como certificación científica final. La eval reduce el riesgo de evaluar solo
-que el sistema termina, porque obliga a revisar si los artefactos son fieles al
-corpus y auditables por una persona. Las reservas se dividen en 3 grupos:
-corregidas en diseño, mitigadas por trazabilidad o aceptadas como limitaciones
-explícitas.
+La tabla anterior muestra cómo se trataron los fallos. Una spec inválida en
+CASO1 no destruye el resultado si Reasoner la declara inválida y Builder no la
+fuerza. Un error de escritura en el grafo no borra la evidencia si MinIO y
+PostgreSQL conservan artefactos y estado. En cambio, los solapamientos
+taxonómicos quedan como limitación porque requieren criterio experto.
 
 \section{Pruebas técnicas}
 
@@ -240,7 +312,16 @@ expone datos serializables. Además, cada ejecución conserva
 \texttt{pipeline\_state.json}, \texttt{trace.jsonl}, informes, specs, modelos y
 tests para auditoría.
 
+Estas pruebas validan forma, importación y comportamiento mínimo. La calidad
+científica se revisa con informes, formulaciones, juez externo y, en trabajo
+futuro, expertos del dominio.
+
 \section{Amenazas a la validez}
+
+Las amenazas a la validez se declaran porque el resultado no debe interpretarse
+como benchmark externo definitivo. La fase 1 demuestra una arquitectura y una
+cadena de evidencia. La generalización a más paradigmas, más entornos y revisión
+por expertos queda fuera del alcance cerrado de esta memoria.
 
 \begin{table}[H]
 \begin{center}

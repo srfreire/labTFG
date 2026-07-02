@@ -13,6 +13,13 @@ persistentes y memoria recuperable.
 Las Secciones~\ref{ap:diseno-extendido} y~\ref{ap:memoria-extendida} amplían
 el detalle de agentes, subagentes, herramientas, persistencia y memoria.
 
+La decisión de separar estas capas responde al riesgo principal del proyecto:
+una respuesta aparentemente correcta puede contener errores científicos,
+errores de adaptación al entorno o código que no cumple el contrato de
+simulación. Por eso el diseño no trata la generación como una llamada única al
+LLM. Cada cambio de nivel deja un artefacto revisable: un informe antes de una
+formulación, una formulación antes de una spec y una spec antes del código.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{figuras/phase1-system-architecture}
@@ -26,6 +33,13 @@ agentes y herramientas. Los almacenes compartidos se ejecutan como servicios
 externos al proceso. Las APIs externas solo se invocan desde el runtime de
 agentes.
 
+Esta separación evita 2 acoplamientos. Primero, el usuario no depende de cómo se
+ejecutan internamente los agentes. Puede lanzar una ejecución desde CLI, web o
+una suite de evaluación. Segundo, los agentes no escriben directamente en una
+carpeta local sin control: cada salida relevante pasa por almacenamiento,
+metadatos y trazas. Así se puede reconstruir una ejecución aunque el chat o el
+proceso que la inició ya no exista.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.68\textheight,keepaspectratio]{figuras/phase1-software-architecture}
@@ -38,6 +52,13 @@ subsistemas: interfaz, API, CLI, Router, agentes, herramientas, artefactos,
 persistencia, grafo y recuperación. Esta separación permite cambiar una
 tecnología concreta sin modificar el contrato entre etapas.
 
+La alternativa más simple habría sido un servicio monolítico con agentes,
+estado, ficheros y memoria en el mismo módulo. Se descartó porque dificultaba
+probar cada etapa y reanudar ejecuciones parciales. En cambio, el Router solo
+coordina. Los agentes producen artefactos. Las herramientas resuelven tareas
+externas. Los almacenes conservan evidencia. Esta división hace el sistema más
+grande, pero deja límites más claros para depurar errores.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{figuras/phase1-data-flow}
@@ -49,6 +70,13 @@ El flujo de datos distingue documentos científicos, artefactos de ejecución,
 estado del pipeline, memoria y código generado. Esta separación es necesaria
 porque cada tipo de dato tiene un ciclo de vida distinto: algunos se revisan
 por humanos, otros se validan por tests y otros se indexan para recuperación.
+
+El flujo también marca dónde se puede perder validez. Un paper leído por el
+Researcher no tiene el mismo estado que una formulación aceptada o que un modelo
+que pasa tests. Si esos datos se mezclasen, la memoria podría reutilizar
+borradores o el Builder podría compilar una decisión que todavía no fue
+revisada. Por eso el diseño hace explícito qué artefactos son entrada, qué
+artefactos son salida y qué condición permite avanzar.
 
 \section{Componentes del pipeline}
 
@@ -67,6 +95,12 @@ bloquea el avance.
 La Figura~\ref{fig:phase1-pipeline-activity} muestra el flujo general. Las
 etapas de memoria son condicionales: se ejecutan cuando existe infraestructura
 disponible y cuando el artefacto correspondiente ha sido aceptado.
+
+La revisión humana aparece en los puntos donde el sistema cambia de
+representación. Pasar de investigación a formulación, o de formulación a spec,
+no es una conversión mecánica. Requiere elegir qué supuestos se aceptan y qué
+variantes se descartan. La arquitectura coloca esas decisiones antes de que el
+conocimiento llegue a memoria o a código ejecutable.
 
 \begin{figure}[H]
 \centering
@@ -96,6 +130,14 @@ MemoryAgent & Extrae conocimiento de artefactos aceptados. & Nodos, relaciones y
 \end{center}
 \end{table}
 
+La tabla no pretende listar clases internas. Resume responsabilidades de diseño.
+Cada componente existe porque reduce un tipo de incertidumbre distinto. El
+Classifier reduce duplicados conceptuales antes de investigar. El Researcher
+abre el espacio científico. El Formalizer convierte texto en variables y reglas.
+El Reasoner comprueba si esas reglas pueden observarse en el entorno. El Builder
+solo recibe specs implementables. MemoryAgent cierra el ciclo cuando convierte
+artefactos aceptados en conocimiento recuperable.
+
 Los subagentes aparecen cuando una etapa puede dividirse por paradigma,
 formulación o spec. El objetivo no es añadir complejidad, sino aislar fallos:
 una formulación inválida no debe cancelar todas las demás.
@@ -105,6 +147,12 @@ una formulación inválida no debe cancelar todas las demás.
 La interfaz web se diseña para hacer visible el estado del pipeline. El usuario
 necesita saber qué está haciendo el sistema, qué artefacto debe revisar y qué
 evidencia queda después de la ejecución.
+
+Una interfaz basada solo en chat no era suficiente para este caso. El chat
+explica el último mensaje, pero no muestra bien una ejecución larga con ramas,
+herramientas, errores, artefactos y memoria. El diseño de la vista principal se
+orienta a auditoría: el usuario debe poder ver la historia de la ejecución,
+seleccionar un evento y comprobar qué documento o decisión lo justifica.
 
 \begin{figure}[H]
 \centering
@@ -130,6 +178,13 @@ que superó revisión humana o validación. El diseño toma ideas de recuperaci�
 aumentada, memoria persistente y grafos de conocimiento
 \cite{lewis2020rag,zhong2023memorybank,packer2023memgpt,gutierrez2024hipporag,hogan2021knowledgegraphs}.
 
+La memoria se diseñó porque el pipeline no parte siempre de cero. Un paradigma
+investigado en una ejecución puede volver a aparecer con otro nombre, otro paper
+o una formulación parecida. Sin memoria, cada agente tendría que redescubrir
+conocimiento ya aceptado. Con una memoria sin control, el sistema podría
+arrastrar errores. El diseño busca el punto intermedio: reutilizar conocimiento,
+pero mantener procedencia, vigencia y revisión.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-memory-architecture}
@@ -141,6 +196,14 @@ El diseño usa representaciones complementarias. MinIO conserva documentos
 completos. PostgreSQL conserva metadatos, ciclo de vida y relaciones
 operativas. Neo4j representa entidades y relaciones científicas. Qdrant permite
 recuperación semántica y léxica.
+
+Se descartó usar un único almacén para todo porque las consultas necesarias son
+distintas. Para auditar se necesita el artefacto completo. Para saber qué runs
+están aceptadas se necesitan metadatos transaccionales. Para navegar entre
+papers, paradigmas y variables se necesita estructura de grafo. Para recuperar
+hechos desde una consulta en lenguaje natural se necesita búsqueda vectorial y
+léxica. Un único almacén simplificaría el despliegue, pero escondería esas
+diferencias y haría más difícil explicar por qué se recuperó una evidencia.
 
 \begin{table}[H]
 \begin{center}
@@ -232,6 +295,13 @@ estructura científica. Qdrant conserva candidatos recuperables. MinIO mantiene
 el artefacto completo. Esta división añade infraestructura, pero permite
 auditar por qué un agente recibió cierto contexto y qué evidencia lo sostiene.
 
+La memoria también se diseña como puente entre fases. La fase 2 puede consultar
+el mismo Knowledge Backbone para contextualizar entornos, análisis e informes.
+También puede escribir observaciones de simulación separadas de las memorias de
+pipeline. Así se distingue entre conocimiento científico aceptado y resultados
+experimentales observados. El detalle queda en el
+Anexo~\ref{ap:material-extendido}, Sección~\ref{ap:integracion-fase2}.
+
 El principal riesgo de este diseño es consolidar conocimiento incorrecto. La
 mitigación no es confiar más en el modelo, sino cerrar el punto de escritura:
 solo se guarda memoria persistente cuando el artefacto ha sido aceptado o
@@ -251,6 +321,19 @@ El modelo generado no hereda de una clase del simulador. Debe cumplir la
 interfaz por duck typing. Esta decisión reduce acoplamiento entre fase 1 y fase
 2, y permite cargar modelos autocontenidos generados por Builder.
 
+La clase base común era una alternativa razonable, pero obligaba a los modelos
+generados a depender de código interno de la fase 2. Eso habría hecho más fácil
+validar tipos, pero más difícil transportar el modelo, probarlo de forma aislada
+y conservarlo como artefacto autocontenido. El contrato pequeño mantiene una
+frontera clara: fase 1 genera comportamiento; fase 2 decide cómo simularlo.
+
+El diseño tampoco trata el modelo generado como un fichero local aislado. Cada
+modelo aprobado queda ligado a un run, un paradigma, una formulación y una ruta
+persistente. De ese modo, el laboratorio puede cargar varios modelos en el
+mismo entorno y compararlos con una semilla común. La integración concreta con
+la fase 2 se detalla en el Anexo~\ref{ap:material-extendido},
+Sección~\ref{ap:integracion-fase2}.
+
 \begin{table}[H]
 \begin{center}
 \small
@@ -269,3 +352,9 @@ La robustez se apoya en degradación controlada. PostgreSQL y MinIO son
 necesarios para ejecuciones auditables. Neo4j, Qdrant, embeddings y reranking
 mejoran memoria y recuperación, pero el pipeline puede seguir generando modelos
 si esos servicios no están disponibles.
+
+Esta degradación no significa que todos los modos sean equivalentes. Sin memoria
+avanzada se pierde reutilización de conocimiento y recuperación semántica. Aun
+así, el sistema debe poder terminar una ejecución básica y dejar constancia de
+la limitación. La decisión prioriza no bloquear la generación de modelos cuando
+falla un servicio auxiliar, siempre que la evidencia mínima siga guardándose.

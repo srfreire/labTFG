@@ -54,6 +54,38 @@ Memoria condicional & No bloquear la generación por servicios opcionales. & Deg
 \end{center}
 \end{table}
 
+\subsection{Servicios compartidos y runtime común}
+\label{ap:servicios-runtime}
+
+Los puntos de entrada no acceden a infraestructura mediante variables globales.
+La CLI, el servidor web, las evals y los scripts crean un contenedor
+\texttt{Services} y lo pasan a los componentes que lo necesitan. El contenedor
+incluye PostgreSQL, MinIO, Neo4j, Qdrant, embeddings y, cuando procede, el
+writer de memoria de simulación.
+
+PostgreSQL y MinIO se tratan como servicios necesarios. Sin ellos no hay
+estado, modelos registrados ni artefactos auditables. Neo4j, Qdrant y
+embeddings se tratan como servicios opcionales. Si faltan, el sistema pierde
+memoria avanzada, pero no oculta el fallo ni bloquea una generación básica.
+
+Esta decisión evita 3 problemas. Primero, reduce estado oculto entre CLI,
+servidor y evals. Segundo, permite probar componentes con dobles de servicio
+sin mutar módulos globales. Tercero, corta el ciclo de importación entre fase 1
+y fase 2: el writer de memoria de simulación se inyecta desde fase 2, no desde
+el paquete compartido.
+
+El runtime común de agentes aplica el mismo criterio. El bucle de herramientas
+limita iteraciones, registra uso de tokens y falla si un agente agota
+\texttt{max\_tokens}. El dispatcher ejecuta herramientas, mide duración y
+devuelve resultados estructurados aunque una herramienta falle. Además, el
+ledger de tool calls etiqueta cada llamada con etapa, nombre, hash de argumentos
+y duración. Las evals usan ese ledger para comprobar comportamiento, no solo
+salida final.
+
+Agrex se integra en este runtime mediante contexto asíncrono. Así una llamada a
+herramienta hecha dentro del dispatcher puede aparecer como nodo de la traza
+sin pasar manualmente el tracer por todos los agentes.
+
 \subsection{Agentes y subagentes}
 
 El sistema usa agentes principales y subagentes porque cada etapa tiene una
@@ -213,6 +245,18 @@ MemoryAgent & Extracción, grafo, indexado y resolución de conflictos. & Consol
 \end{center}
 \end{table}
 
+\subsection{Salidas estructuradas y contratos internos}
+
+Varias salidas del sistema no se aceptan como texto libre. El clasificador de
+paradigmas, la extracción de memoria, la reescritura de consultas y las specs
+del Reasoner usan esquemas estructurados. Cuando una respuesta no cumple el
+esquema, el sistema puede rechazarla o reintentar sin contaminar el siguiente
+paso.
+
+Esta regla reduce fallos silenciosos. Un slug de paradigma, una relación del
+grafo o una spec JSON no son solo texto para leer. Son datos que otra etapa va a
+usar. Por eso se validan antes de persistirse o antes de pasarse a Builder.
+
 \section{Revisión humana y rutas de corrección}
 
 La revisión humana forma parte del diseño. El Router llama a un puerto de
@@ -298,6 +342,231 @@ La reanudación comprueba que los artefactos referenciados por el estado existen
 en MinIO. Si faltan formulaciones, specs o modelos, la reanudación se rechaza
 para evitar continuar desde un estado incoherente.
 
+\subsection{Integración real con fase 2}
+\label{ap:integracion-fase2}
+
+La integración con la fase 2 no depende de copiar manualmente un fichero Python
+a una carpeta. Cuando Builder produce un modelo aceptado, el sistema conserva
+el código y sus tests en MinIO y registra metadatos en PostgreSQL: run,
+paradigma, formulación, clase y ruta S3. La fase 2 descubre modelos consultando
+esa tabla y descarga el \texttt{.py} desde MinIO.
+
+Al cargar un modelo, la fase 2 comprueba que la clase implementa
+\texttt{decide}, \texttt{update} y \texttt{get\_state}. Si se proporciona una
+semilla, el loader la inyecta en el módulo o en el constructor cuando el modelo
+lo permite. Esto hace posible comparar modelos generados bajo el mismo entorno
+y condiciones iniciales.
+
+El entorno de simulación de fase 2 es Python puro, sin llamadas LLM durante la
+ejecución. La percepción que recibe el modelo incluye posición, tamaño del
+grid, paso, recursos agrupados por tipo y resultado de la última acción. Cada
+evento registra percepción, estado interno previo, acción, recompensa, estado
+interno posterior y acciones disponibles. Esta estructura hace visible no solo
+dónde se movió un agente, sino qué mecanismo interno condujo a la decisión.
+
+El orquestador de fase 2 puede ejecutar varios modelos en el mismo entorno.
+También puede leer predicciones de los deep reports de fase 1 antes de simular.
+Así la investigación generada se convierte en hipótesis que después pueden
+contrastarse con eventos y análisis.
+
+La memoria compartida cierra el ciclo. Fase 2 puede consultar
+\path{retrieve_knowledge} mediante un wrapper llamado
+\path{retrieve_context}. Architect, Analyst y Reporter reciben contexto
+prebuscado cuando la infraestructura está disponible. Después, el Tracker puede
+escribir observaciones de simulación en PostgreSQL y Qdrant con el mismo UUID
+por hecho. Esas observaciones quedan separadas de las memorias de pipeline,
+pero son recuperables por agentes futuros.
+
+La consulta histórica añade otra capa de auditoría. El módulo NL-SQL solo
+permite consultas \texttt{SELECT}, limita tablas permitidas y fuerza
+\texttt{LIMIT 50}. Esto permite preguntar por runs, modelos, experimentos,
+observaciones y mensajes de chat sin dar escritura SQL libre a un LLM.
+
+\subsection{Plantillas de artefactos}
+
+Los artefactos tienen una estructura estable. Esto permite revisar una
+ejecución sin depender de la conversación que la produjo. También permite que
+una etapa lea la salida de la anterior como contrato.
+
+El informe global de investigación resume la cobertura científica. No contiene
+todo el detalle de cada paradigma. Contiene lo necesario para que el usuario
+decida qué paradigmas siguen adelante.
+
+\begin{lstlisting}
+# Decision-making paradigms: {topic}
+
+## 1. {paradigm name}
+Short definition.
+
+Key authors: ...
+Key concepts: ...
+
+## Cross-paradigm interaction map
+| Paradigm | Region A | Region B | ... |
+|---|:---:|:---:|---|
+
+## References
+- Author (year), title, venue, DOI or URL.
+
+## Research Tree Map
+{paradigm}
+  - {formulation candidate}
+\end{lstlisting}
+
+El informe profundo de cada paradigma conserva la evidencia que no cabe en el
+cuerpo principal. Este artefacto es el puente entre literatura y matemática. Por
+eso mezcla explicación, citas, variables y predicciones.
+
+\begin{lstlisting}
+# {Paradigm} -- Deep Research
+
+## Foundations
+Origin, theoretical basis and main authors.
+
+## Postulates
+P1. ...
+P2. ...
+
+## Assumptions
+- ...
+
+## Predictions
+- ...
+
+## Primary Locus
+Brain regions or computational locus.
+
+## Key Concepts
+- concept: definition
+
+## Identified Variables
+| Variable | Role | Type | Range | Behavior |
+
+## References
+- Paper with DOI, URL or corpus source.
+\end{lstlisting}
+
+El documento de formulaciones convierte el paradigma en alternativas
+implementables. Cada formulación debe ser distinta. Una variante puede ser
+algebraica, otra estocástica y otra dinámica. Esta variedad es importante
+porque el mismo paradigma científico puede expresarse con modelos
+computacionales diferentes.
+
+\begin{lstlisting}
+# {Paradigm} -- Mathematical Formulations
+
+## Formulation 1: {name}
+Approach: algebraic, probabilistic, SDE or ODE.
+Based on: papers, postulates and prior memory.
+
+### Variables
+| Symbol | Name | Description | Type |
+
+### Parameters
+| Symbol | Name | Default | Source |
+
+### Equations
+Eq. 1 -- ...
+
+### Decision logic
+1. Read perception.
+2. Compute state variables.
+3. Select action.
+4. Update internal state.
+\end{lstlisting}
+
+La especificación del Reasoner es deliberadamente más estricta. El Builder no
+debe inferir qué variables existen o qué acciones puede usar. Debe recibir un
+contrato explícito.
+
+\begin{lstlisting}
+{
+  "formulation_id": "...",
+  "paradigm": "...",
+  "name": "...",
+  "description": "...",
+  "variables": [
+    {
+      "symbol": "...",
+      "name": "...",
+      "type": "float",
+      "initial_value": 0.0,
+      "range": [0, 1]
+    }
+  ],
+  "parameters": [
+    {
+      "symbol": "...",
+      "name": "...",
+      "default": 0.1,
+      "source": "paper or design reason"
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "type": "decision",
+      "pseudocode": "..."
+    }
+  ],
+  "env_mapping": {
+    "perception_to_variables": {},
+    "actions_used": []
+  },
+  "expected_behaviors": []
+}
+\end{lstlisting}
+
+El Builder produce el modelo y sus pruebas. El modelo mantiene el contrato
+compartido con fase 2. Las pruebas no validan la teoría científica final, pero
+sí validan que el contrato ejecutable se cumple.
+
+\begin{lstlisting}[language=Python]
+class GeneratedDecisionModel:
+    def __init__(self):
+        self.state = {}
+
+    def decide(self, perception: dict) -> Action:
+        ...
+
+    def update(self, action, reward, new_perception) -> None:
+        ...
+
+    def get_state(self) -> dict:
+        return dict(self.state)
+\end{lstlisting}
+
+El estado del pipeline y la traza son artefactos de control. No son salida
+científica, pero explican cómo se llegó a esa salida.
+
+\begin{lstlisting}
+pipeline_state.json
+{
+  "stage": "builder",
+  "approved_paradigms": [...],
+  "approved_formulations": {...},
+  "approved_specs": {...},
+  "artifacts": {...}
+}
+
+trace.jsonl
+{"type": "tool_call", "agent": "researcher", ...}
+{"type": "artifact_written", "path": "...", ...}
+{"type": "agent_status", "agent": "memory_agent", ...}
+\end{lstlisting}
+
+\subsection{Por qué los artefactos son contratos}
+
+El pipeline usa artefactos como contratos porque las etapas no comparten una
+memoria conversacional completa. Esto evita que una etapa dependa de detalles
+implícitos. El Formalizer lee investigación. El Reasoner lee formulaciones y
+entorno. El Builder lee specs. El MemoryAgent lee salidas aceptadas.
+
+Esta decisión también mejora la revisión. Un humano puede abrir el informe de
+un paradigma, revisar sus formulaciones, comprobar la spec usada por Builder y
+ver el código final. Si algo falla, el error se puede situar en el artefacto
+que introdujo la incoherencia.
+
 \section{Sistema de memoria extendido}
 \label{ap:memoria-extendida}
 
@@ -318,12 +587,14 @@ pregunta distinta.
 \begin{table}[H]
 \begin{center}
 \small
-\begin{tabular}{|p{3.1cm}|p{4.2cm}|p{5.1cm}|} \hline
-\textbf{Representación} & \textbf{Pregunta} & \textbf{Motivo} \\ \hline
-Hechos dense y sparse & Qué significa un concepto o qué variables aparecen. & Dense recupera similitud semántica. Sparse recupera nombres, símbolos y autores exactos. \\ \hline
-Grafo de conocimiento & De dónde sale una idea y cómo se relaciona con otras. & Permite procedencia mediante nodos y relaciones. \\ \hline
-Metadatos relacionales & Qué está vigente, aceptado o supersedido. & Mantiene confianza, validez temporal y auditoría. \\ \hline
-Observaciones & Qué se intentó antes y qué falló. & Evita repetir errores de adaptación o implementación. \\ \hline
+\begin{tabular}{|p{3cm}|p{4.2cm}|p{5.2cm}|} \hline
+\textbf{Representación} & \textbf{Qué responde} & \textbf{Motivo} \\ \hline
+PostgreSQL & Qué memoria está vigente, con qué confianza y desde cuándo. & Es la fuente de verdad temporal. Permite superseder hechos y filtrar memoria obsoleta. \\ \hline
+Neo4j & Qué entidades existen y cómo se relacionan. & Permite procedencia científica y consultas multi-salto entre papers, paradigmas, variables y modelos. \\ \hline
+Qdrant dense & Qué hechos son parecidos aunque usen otro vocabulario. & Recupera sinonimia, descripciones largas y conceptos científicos expresados de forma distinta. \\ \hline
+Qdrant sparse & Qué hechos contienen símbolos, autores o slugs exactos. & BM25 evita perder coincidencias literales que un embedding puede diluir. \\ \hline
+MinIO & Dónde está el artefacto completo. & La memoria guarda hechos recuperables, pero la auditoría necesita el documento original. \\ \hline
+Observaciones & Qué nodos tocó un run y qué ocurrió en simulación. & Une procedencia de fase 1 con resultados de fase 2. \\ \hline
 \end{tabular}
 \caption{Representaciones de la memoria.}
 \end{center}
@@ -335,11 +606,273 @@ autores o identificadores exactos. El grafo permite reconstruir procedencia:
 qué paper soporta un postulado, qué autor lo propuso, qué variables derivan de
 él o qué modelo lo implementa.
 
-\subsection{MemoryAgent}
+\subsection{Tipos de memoria}
 
-El MemoryAgent no es un agente conversacional libre. Ejecuta un pipeline fijo
-que usa modelos de lenguaje para extracción, pero mantiene control
-determinista.
+El sistema distingue el tipo de memoria porque no todos los recuerdos se deben
+tratar igual. Un postulado científico, una clase Python y una observación de
+simulación tienen ciclos de vida diferentes.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{2.8cm}|p{3.5cm}|p{5.9cm}|} \hline
+\textbf{Tipo} & \textbf{Origen} & \textbf{Uso} \\ \hline
+Semántica & Researcher, Formalizer y Reasoner. & Guarda hechos científicos, variables, ecuaciones, supuestos y decisiones de adaptación. \\ \hline
+Procedural & Builder. & Guarda patrones de implementación y decisiones de código asociadas a un modelo. \\ \hline
+Episódica & Resolución de conflictos y observaciones. & Guarda eventos concretos de una ejecución, como contradicciones o resultados observados. \\ \hline
+Reflexión & Consolidación periódica. & Resume memoria previa para reducir ruido y conservar aprendizajes de alto nivel. \\ \hline
+Simulación & Tracker de fase 2. & Guarda resultados de ejecución, trayectorias y episodios observados en experimentos. \\ \hline
+\end{tabular}
+\caption{Tipos de memoria usados por el sistema.}
+\end{center}
+\end{table}
+
+Esta separación evita que una observación puntual tenga la misma fuerza que una
+formulación aprobada. También permite aplicar políticas distintas. Las memorias
+de fase 1 pueden tener supersesión, contradicciones y corroboraciones. Las
+observaciones de simulación se escriben una vez, con confianza fija, porque
+representan lo que ocurrió en un experimento concreto.
+
+\subsection{Nodos y relaciones almacenables}
+
+El grafo conserva entidades de grano científico y técnico. No guarda todos los
+trozos de texto. Guarda los nodos que sirven para explicar procedencia,
+adaptación e implementación.
+
+\begin{table}[H]
+\begin{center}
+\scriptsize
+\begin{tabular}{|p{2.6cm}|p{2.6cm}|p{6.9cm}|} \hline
+\textbf{Nodo} & \textbf{Clave única} & \textbf{Uso} \\ \hline
+Paradigm & \texttt{slug} & Marco científico principal, como drift-diffusion-model. \\ \hline
+Variable & \texttt{id} & Variable ligada a un paradigma o formulación. \\ \hline
+Paper & \texttt{doi} & Fuente bibliográfica trazable. \\ \hline
+Author & \texttt{name} & Autor citado en papers o paradigmas. \\ \hline
+BrainRegion & \texttt{name} & Región neural asociada a un mecanismo. \\ \hline
+Postulate & \texttt{id} & Postulado científico usado por formulaciones. \\ \hline
+Equation & \texttt{latex} & Ecuación extraída de una formulación. \\ \hline
+Formulation & \texttt{id} & Variante matemática aprobada o generada. \\ \hline
+Parameter & \texttt{id} & Parámetro ligado a una formulación concreta. \\ \hline
+Model & \texttt{formulation\_id} & Implementación Python generada para una formulación. \\ \hline
+Reflection & \texttt{id} & Resumen de aprendizajes o contradicciones. \\ \hline
+\end{tabular}
+\caption{Tipos principales de nodos del grafo de conocimiento.}
+\end{center}
+\end{table}
+
+Las relaciones permitidas forman un conjunto cerrado:
+
+\begin{small}
+\begin{verbatim}
+SUPPORTS, CONTRADICTS, EXTENDS, MEASURES, MODULATES, AUTHORED,
+DERIVES_FROM, IMPLEMENTS, USES_EQUATION, USES_VARIABLE,
+HAS_PARAMETER, GOVERNS, BELONGS_TO, CITES
+\end{verbatim}
+\end{small}
+
+Si el extractor inventa un tipo de relación, el escritor del grafo lo rechaza.
+
+\subsection{Doble pasada del MemoryAgent}
+
+El MemoryAgent no es un agente conversacional libre. Ejecuta un flujo fijo.
+Usa modelos de lenguaje para extraer estructura, pero las decisiones de
+escritura, poda, revisión y persistencia siguen reglas deterministas.
+
+La primera pasada transforma la salida de una etapa en candidatos de memoria.
+El extractor genera nodos, relaciones y hechos. Después el sistema normaliza
+identidades, alinea formulaciones aprobadas, elimina relaciones imposibles,
+poda nodos sin relación y materializa relaciones estructurales. Al final de
+esta pasada, el grafo recibe una propuesta coherente.
+
+La segunda pasada revisa lo escrito y decide qué hechos entran en memoria
+recuperable. El sistema revisa el grafo escrito, ejecuta una auditoría de
+salud, resuelve duplicados o contradicciones y guarda filas en PostgreSQL. Solo
+entonces indexa los hechos en Qdrant con el mismo identificador que la fila
+relacional. Así Qdrant no se convierte en una fuente de verdad paralela.
+
+\begin{lstlisting}
+stage output
+  -> extraction: nodes, relations, facts
+  -> canonicalization and id normalization
+  -> graph pruning and structural relations
+  -> Neo4j write
+  -> graph review and health audit
+  -> conflict resolution in PostgreSQL
+  -> dense and sparse indexing in Qdrant
+\end{lstlisting}
+
+Esta doble pasada existe por una razón práctica. La extracción LLM es útil para
+pasar de texto a estructura, pero no debe decidir por sí sola qué queda
+consolidado. La segunda pasada introduce controles sobre identidad, vigencia,
+duplicados y contradicciones.
+
+\subsection{Canonicalización}
+
+La canonicalización evita que un mismo paradigma aparezca con nombres
+distintos. El Researcher y el MemoryAgent pueden usar la marca
+\texttt{\_\_NEW\_\_} cuando no encuentran un slug conocido. Antes de escribir
+en el grafo, el sistema intenta resolver esa marca.
+
+El proceso usa 3 pasos:
+
+\begin{enumerate}
+\item Embebe el nombre y la descripción del paradigma candidato.
+\item Consulta el índice vectorial nativo de Neo4j para recuperar hasta 3
+candidatos de tipo \texttt{Paradigm}.
+\item Si algún candidato supera el umbral de similitud $\tau=0.75$, un modelo
+estructurado decide si se debe fusionar o crear un slug nuevo.
+\end{enumerate}
+
+Si hay fusión, el sistema reescribe el slug en el paradigma, sus variables, sus
+postulados y los extremos de las relaciones. Si falla Neo4j, embeddings o el
+modelo de verificación, el sistema crea un slug nuevo con \texttt{slugify}. El
+fallo no detiene la ejecución, pero queda registrado.
+
+\subsection{Indexado de hechos}
+
+El sistema no indexa todos los artefactos completos en Qdrant. Los artefactos
+completos viven en MinIO. Qdrant guarda hechos extraídos y recuperables. Esta
+decisión reduce ruido porque el agente no recupera páginas enteras cuando solo
+necesita una afirmación concreta.
+
+Cada etapa usa una estrategia de troceado distinta para contar y revisar
+artefactos:
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{2.8cm}|p{4.5cm}|p{5cm}|} \hline
+\textbf{Etapa} & \textbf{Troceado} & \textbf{Motivo} \\ \hline
+Researcher & Secciones Markdown de nivel 2. & Mantiene juntos fundamentos, conceptos y referencias de cada bloque. \\ \hline
+Formalizer & Cabeceras \texttt{Formulation N}. & Cada formulación se puede revisar como unidad. \\ \hline
+Reasoner & JSON completo o claves principales si es grande. & Conserva el contrato entre formulación y Builder. \\ \hline
+Builder & Modelo y test como bloques separados. & Separa código ejecutable y evidencia de prueba. \\ \hline
+\end{tabular}
+\caption{Estrategias de troceado de artefactos.}
+\end{center}
+\end{table}
+
+Los hechos extraídos reciben un identificador estable y se escriben primero en
+la tabla de memorias de pipeline. Después se indexan en las colecciones dense y
+sparse de Qdrant. La carga de Qdrant incluye namespace, etapa, run, importancia
+y una vista previa de texto. La confianza no vive en Qdrant. Se lee desde
+PostgreSQL en recuperación para evitar que dense y sparse diverjan.
+
+\subsection{Búsqueda híbrida}
+
+La herramienta \texttt{retrieve\_knowledge} combina 3 canales. Cada canal
+recupera bien un tipo de señal:
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{2.5cm}|p{4.1cm}|p{5.7cm}|} \hline
+\textbf{Canal} & \textbf{Algoritmo} & \textbf{Qué recupera mejor} \\ \hline
+Dense & Embedding de la consulta y búsqueda vectorial en Qdrant. & Sinonimia, explicaciones largas y conceptos escritos con otras palabras. \\ \hline
+Sparse & BM25 nativo de Qdrant. & Slugs, autores, símbolos, nombres de variables y coincidencias literales. \\ \hline
+Grafo & NER, linking vectorial y recorrido PPR. & Relaciones de procedencia y vecindarios científicos relevantes. \\ \hline
+\end{tabular}
+\caption{Canales de recuperación de memoria.}
+\end{center}
+\end{table}
+
+Antes de consultar, un reescritor genera un concepto focal y una lista corta de
+palabras clave. El canal dense usa el concepto focal. El canal sparse usa la
+consulta original más las palabras clave. El grafo usa esas palabras como pista
+para extraer entidades.
+
+El recorrido del grafo usa extracción de entidades, enlace aproximado con
+índices vectoriales de Neo4j y expansión por relaciones. La puntuación penaliza
+nodos demasiado conectados:
+
+\[
+score = confidence \cdot 0.85^{hops} / \log(2 + degree)
+\]
+
+Esta penalización evita que nodos genéricos dominen la respuesta. Un nodo
+pequeño y cercano suele ser más útil que un nodo enorme conectado con casi
+todo.
+
+\subsection{Fusión RRF y reranking}
+
+Los 3 canales producen rankings distintos. El sistema los fusiona con
+Reciprocal Rank Fusion, una técnica simple y robusta cuando los scores de
+origen no son comparables \cite{cormack2009rrf}. Para cada documento $d$:
+
+\[
+RRF(d)=\sum_r \frac{1}{k + rank_r(d)}
+\]
+
+En la implementación se usa $k=60$. Antes de fusionar, el sistema deduplica por
+los primeros 200 caracteres normalizados. Después de RRF, un reranker ordena
+los candidatos finales con la consulta completa y filtra resultados por debajo
+de un umbral de relevancia de 0.3.
+
+RRF decide qué candidatos sobreviven desde cada canal. El reranking decide el
+orden final que ve el agente. Separar ambas tareas evita confiar demasiado en
+un único índice.
+
+\subsection{CRAG y fallback web}
+
+La recuperación puede devolver contexto insuficiente o ambiguo. Para esos
+casos se usa un evaluador correctivo inspirado en CRAG
+\cite{yan2024corrective}. El evaluador clasifica cada pasaje como
+\texttt{CORRECT}, \texttt{AMBIGUOUS} o \texttt{INCORRECT}.
+
+La ruta depende de esa clasificación:
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{3.5cm}|p{8.4cm}|} \hline
+\textbf{Resultado del evaluador} & \textbf{Acción} \\ \hline
+Todo correcto & Devuelve los resultados rerankeados sin búsqueda externa. \\ \hline
+Todo incorrecto & Usa búsqueda web si el adaptador está disponible. \\ \hline
+Correcto e incorrecto & Conserva solo los resultados correctos. \\ \hline
+Ambiguo & Conserva correcto y ambiguo, y añade resultados web rerankeados. \\ \hline
+Fallo del evaluador & Devuelve los resultados actuales con marca de degradación y evita una tormenta de búsquedas web. \\ \hline
+\end{tabular}
+\caption{Rutas correctivas de recuperación.}
+\end{center}
+\end{table}
+
+Además, CRAG no siempre se ejecuta. Si el mejor resultado del reranking supera
+un umbral de confianza, el sistema salta el evaluador para reducir latencia.
+Esta decisión fue importante porque el evaluador añade una llamada LLM por
+consulta.
+
+\subsection{Vigencia temporal y acceso}
+
+PostgreSQL gobierna la vida de la memoria. Cada fila de
+\texttt{pipeline\_memories} tiene \texttt{valid\_from}, \texttt{valid\_to},
+\texttt{superseded\_by}, confianza, importancia, corroboraciones y
+contradicciones. La recuperación actual solo devuelve memoria viva. La
+recuperación histórica usa \texttt{as\_of} para consultar qué era válido en un
+momento concreto.
+
+La herramienta también actualiza \texttt{last\_accessed\_at} y
+\texttt{access\_count} para memorias de fase 1. Las observaciones de fase 2 no
+se actualizan al leerlas, porque son registros de experimento.
+
+\subsection{Observaciones}
+
+El sistema usa 2 clases de observaciones. \texttt{node\_run\_observations}
+registra qué nodos del grafo tocó un run. Antes esta información vivía como un
+array dentro del nodo de Neo4j. Se sacó a PostgreSQL para evitar que los nodos
+crecieran sin límite.
+
+\texttt{simulation\_observations} pertenece a fase 2. Guarda hechos emitidos
+por el Tracker, como resúmenes, trayectorias y episodios. Incluye columnas para
+experimento, modelo, paradigma, formulación, run de fase 1, entorno, pasos y
+semilla. Así se pueden unir modelos generados con resultados de simulación sin
+meter todo en JSON.
+
+Estas observaciones son importantes porque cierran el ciclo. La fase 1 genera
+modelos. La fase 2 los ejecuta. Las observaciones permiten que el sistema
+recupere después no solo qué teoría generó un modelo, sino también cómo se
+comportó.
+
+\subsection{MemoryAgent}
 
 La extracción produce:
 
@@ -352,6 +885,11 @@ La extracción produce:
 Antes de escribir, el sistema normaliza identidades, poda nodos sin relación,
 materializa relaciones estructurales y resuelve propuestas nuevas contra
 paradigmas existentes. Este paso reduce duplicados semánticos.
+
+El resultado del MemoryAgent informa de nodos creados, nodos fusionados,
+relaciones creadas, hechos guardados, duplicados saltados, conflictos resueltos
+y errores de grafo. El Router emite estos datos como estado de agente para que
+la interfaz pueda mostrar si la memoria trabajó, terminó o falló.
 
 \subsection{Riesgos de memoria}
 
@@ -500,6 +1038,38 @@ Full pipeline & Research a Build. & Investigación, formalización, razonamiento
 Estas evals cubren fallos que no aparecen en pruebas unitarias aisladas. Por
 ejemplo, comprueban que Researcher, Formalizer, Reasoner y Builder producen
 artefactos compatibles entre sí.
+
+\subsection{Aserciones y bundles de auditoría}
+\label{ap:bundles-eval}
+
+El sistema de evals no solo ejecuta el pipeline. También registra qué
+herramientas se llamaron, en qué etapa, cuánto duraron y si fallaron. Por eso
+las suites pueden comprobar propiedades de proceso, como uso de
+\texttt{retrieve\_knowledge}, crecimiento del grafo, acierto de slugs,
+presupuesto máximo, latencia y validez temporal.
+
+Las aserciones se definen en YAML. Esto permite repetir una evaluación con la
+misma entrada y las mismas condiciones de éxito. También evita que el resultado
+dependa de una revisión manual del log.
+
+Cuando una suite usa corpus cerrado, la restricción se aplica en las
+herramientas. \texttt{web\_search} devuelve resultados sintéticos construidos
+desde los PDFs del ZIP. \texttt{search\_papers} devuelve metadatos y texto
+extraído de esos mismos PDFs. El agente no puede recuperar fuentes externas a
+través de esas herramientas durante la eval.
+
+Cada ejecución puede exportar un bundle congelado. El bundle agrupa 4 tipos de
+evidencia:
+
+\begin{itemize}
+\item artefactos de MinIO, como informes, specs, código, tests, estado y trazas;
+\item filas de PostgreSQL ligadas al run, incluidos modelos y memorias;
+\item snapshot del grafo de conocimiento cuando Neo4j está disponible;
+\item corpus usado, con PDFs, textos extraídos y manifiesto
+\end{itemize}
+
+Esta exportación separa generación y revisión. El juez o una persona revisan
+un paquete ya cerrado, no una ejecución viva que todavía pueda cambiar.
 
 \subsection{Evals de memoria}
 

@@ -85,6 +85,35 @@ La configuración de modelos de lenguaje se gestiona desde la configuración de
 \texttt{decisionlab}. En despliegue se usan variables de entorno del proveedor
 correspondiente, como Anthropic u OpenRouter.
 
+\subsection{Configuración de modelos y umbrales}
+
+La fase 1 permite configurar modelos por etapa sin cambiar código. Esta
+separación fue necesaria porque no todas las tareas requieren la misma
+capacidad ni el mismo coste.
+
+\begin{table}[H]
+\begin{center}
+\small
+\begin{tabular}{|p{4.2cm}|p{7.6cm}|} \hline
+\textbf{Variable} & \textbf{Uso} \\ \hline
+\path{DECISIONLAB_<STAGE>_MODEL} & Sustituye el modelo de Researcher, Formalizer, Reasoner, Builder o MemoryAgent. \\ \hline
+\path{DECISIONLAB_<STAGE>_MAX_TOKENS} & Ajusta el límite de salida de cada etapa. \\ \hline
+\path{DECISIONLAB_<STAGE>_MAX_ITERATIONS} & Limita vueltas del bucle de herramientas por etapa. \\ \hline
+\path{DECISIONLAB_KNOWLEDGE_FAST_MODEL} & Modelo rápido para NER, reescritura, scoring y tareas mecánicas de memoria. \\ \hline
+\path{DECISIONLAB_KNOWLEDGE_STRUCTURED_MODEL} & Modelo de más capacidad para extracción y decisiones estructuradas de memoria. \\ \hline
+\path{DECISIONLAB_CRAG_SKIP_THRESHOLD} & Umbral para saltar el evaluador CRAG si el reranking ya es suficientemente alto. \\ \hline
+\path{DECISIONLAB_NER_SKIP_THRESHOLD} & Umbral para evitar NER de grafo cuando la recuperación densa ya ofrece una coincidencia fuerte. \\ \hline
+\end{tabular}
+\caption{Configuración operativa de modelos y umbrales.}
+\end{center}
+\end{table}
+
+El objetivo de estos parámetros es controlar coste y latencia. Las etapas de
+razonamiento o extracción estructurada pueden usar modelos más potentes. Las
+tareas de clasificación, reescritura o evaluación correctiva pueden usar
+modelos rápidos. Los umbrales evitan llamadas LLM cuando la evidencia recuperada
+ya es suficiente.
+
 \section{Arranque de infraestructura}
 
 Desde la raíz del repositorio, el stack común se levanta con:
