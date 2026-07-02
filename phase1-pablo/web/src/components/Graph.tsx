@@ -117,11 +117,25 @@ function OutputRenderer({ node, status, theme }: AgrexNodeProps) {
   );
 }
 
-function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
+function DatabaseRenderer({
+  node,
+  status,
+  theme,
+  collapsed,
+  childCount,
+  childrenAllDone,
+  onCollapseToggle,
+}: AgrexNodeProps) {
   const borderColor =
     status === 'running' ? theme.statusRunning
     : status === 'done' ? theme.statusDone
     : status === 'error' ? theme.statusError
+    : theme.nodeBorder;
+  const canCollapse = typeof childCount === 'number' && childCount > 0 && onCollapseToggle;
+  const collapseColor = collapsed
+    ? childrenAllDone
+      ? theme.statusDone
+      : theme.accent
     : theme.nodeBorder;
 
   return (
@@ -143,6 +157,35 @@ function DatabaseRenderer({ node, status, theme }: AgrexNodeProps) {
       >
         <Database size={52} strokeWidth={1.85} aria-hidden="true" style={{ color: theme.nodeIcon }} />
       </div>
+      {canCollapse ? (
+        <button
+          type="button"
+          aria-label={collapsed ? 'Expand children' : 'Collapse children'}
+          title={collapsed ? 'Expand memory edges' : 'Collapse memory edges'}
+          onClick={(event) => {
+            event.stopPropagation();
+            onCollapseToggle?.();
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+          className="absolute flex items-center justify-center rounded-full"
+          style={{
+            top: 14,
+            right: 28,
+            width: 24,
+            height: 24,
+            border: `1px solid ${collapseColor}`,
+            background: theme.nodeFill,
+            color: theme.foreground,
+            fontSize: 10,
+            fontWeight: 700,
+            lineHeight: 1,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            cursor: 'pointer',
+          }}
+        >
+          {childCount}
+        </button>
+      ) : null}
       <div
         className="mt-1 text-center"
         style={{

@@ -322,6 +322,7 @@ describe("sanitizeLabTraceEvents", () => {
         target: "builder:homeostatic:pi_controller",
         type: "memory_retrieve",
         label: "retrieves",
+        collapseOwnerId: "db:knowledge-graph",
       }),
       expect.objectContaining({
         id: "edge:memory-retrieve:vectors:builder:homeostatic:pi_controller",
@@ -329,6 +330,7 @@ describe("sanitizeLabTraceEvents", () => {
         target: "builder:homeostatic:pi_controller",
         type: "memory_retrieve",
         label: "retrieves",
+        collapseOwnerId: "db:vector-memory",
       }),
     ]);
   });
@@ -383,6 +385,7 @@ describe("sanitizeLabTraceEvents", () => {
         target: "db:knowledge-graph",
         type: "memory_store",
         label: "stores",
+        collapseOwnerId: "db:knowledge-graph",
       }),
       expect.objectContaining({
         id: "edge:memory-store:vectors:memory_agent:research",
@@ -390,6 +393,7 @@ describe("sanitizeLabTraceEvents", () => {
         target: "db:vector-memory",
         type: "memory_store",
         label: "stores",
+        collapseOwnerId: "db:vector-memory",
       }),
     ]);
   });
@@ -589,6 +593,7 @@ describe("labReducers", () => {
         id: "edge:memory-retrieve:kg:builder:homeostatic:pi_controller",
         source: "db:knowledge-graph",
         target: "builder:homeostatic:pi_controller",
+        collapseOwnerId: "db:knowledge-graph",
       }),
     );
     expect(store.addEdge).toHaveBeenCalledWith(
@@ -596,6 +601,7 @@ describe("labReducers", () => {
         id: "edge:memory-retrieve:vectors:builder:homeostatic:pi_controller",
         source: "db:vector-memory",
         target: "builder:homeostatic:pi_controller",
+        collapseOwnerId: "db:vector-memory",
       }),
     );
   });
@@ -623,6 +629,7 @@ describe("labReducers", () => {
         target: "db:knowledge-graph",
         type: "memory_store",
         label: "stores",
+        collapseOwnerId: "db:knowledge-graph",
       }),
     );
     expect(store.updateNode).not.toHaveBeenCalled();
@@ -747,6 +754,7 @@ describe("labReducers", () => {
           target: "agent-1",
           type: "memory_retrieve",
           label: "retrieves",
+          collapseOwnerId: "db:knowledge-graph",
         }),
         expect.objectContaining({
           id: "edge:memory-retrieve:vectors:agent-1",
@@ -754,6 +762,7 @@ describe("labReducers", () => {
           target: "agent-1",
           type: "memory_retrieve",
           label: "retrieves",
+          collapseOwnerId: "db:vector-memory",
         }),
         expect.objectContaining({
           id: "edge:memory-store:vectors:memory_agent:research",
@@ -761,6 +770,7 @@ describe("labReducers", () => {
           target: "db:vector-memory",
           type: "memory_store",
           label: "stores",
+          collapseOwnerId: "db:vector-memory",
         }),
       ],
     });

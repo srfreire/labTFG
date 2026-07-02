@@ -292,24 +292,59 @@ Validación & uv, pytest, GitHub Actions & Tests de modelos, unit tests, lint y 
 
 Como evidencia del resultado implementado, se restauró en local el paquete de
 artefactos de CASO1 usado en la evaluación de corpus cerrado de la
-Sección~\ref{sec:evaluacion-corpus-cerrado}. La Figura~\ref{fig:phase1-ui-replay-run}
-muestra la interfaz final sobre una ejecución real, no un diseño inicial.
+Sección~\ref{sec:evaluacion-corpus-cerrado}. Las capturas muestran la interfaz
+final sobre una ejecución real, no un diseño inicial. El recorrido visual es el
+mismo que se usa para revisar una run: primero se observa la traza completa,
+después se inspecciona un evento concreto, luego se abre el grafo de
+conocimiento, y por último se revisa el detalle de un nodo de memoria.
+
+La Figura~\ref{fig:phase1-ui-run-overview} muestra la traza temporal de CASO1.
+La vista permite localizar agentes, herramientas, artefactos y almacenes de
+memoria en una sola escena. También conserva los controles de replay, el estado
+por fase y la leyenda, para que la ejecución pueda revisarse después de haber
+terminado.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-replay-run-zoom}
-\caption{Detalle ampliado de la interfaz web reproduciendo CASO1 en un estado avanzado del pipeline.}
-\label{fig:phase1-ui-replay-run}
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-run-overview}
+\caption{Vista completa de la traza de CASO1 en la interfaz web. Los rectángulos representan agentes, los círculos herramientas, los hexágonos artefactos y los cilindros almacenes de memoria. Las líneas distinguen creación, lectura, escritura y aprobación.}
+\label{fig:phase1-ui-run-overview}
+\end{figure}
+
+Cuando se selecciona un nodo, la interfaz abre un panel lateral con la
+información auditable de ese evento. La Figura~\ref{fig:phase1-ui-run-node-detail}
+muestra una herramienta \texttt{web\_search}. El panel incluye estado, tiempo,
+argumentos, salida y metadatos. Esta vista evita que la depuración dependa solo
+de logs textuales.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-run-node-detail}
+\caption{Detalle de un nodo de herramienta de CASO1. El panel lateral muestra estado, tiempo, argumentos, salida y metadatos de la llamada seleccionada.}
+\label{fig:phase1-ui-run-node-detail}
 \end{figure}
 
 La misma ejecución permite inspeccionar el grafo de conocimiento construido por
-la memoria. La Figura~\ref{fig:phase1-ui-knowledge-run} muestra esa vista. Esta
-captura no pertenece al diseño inicial: es evidencia de cómo quedó la interfaz
-al revisar una ejecución de evaluación.
+la memoria. La Figura~\ref{fig:phase1-ui-knowledge-overview} muestra la vista
+global. Cada agrupación corresponde a conocimiento consolidado en torno a
+papers, paradigmas, postulados, variables o formulaciones.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-run-zoom}
-\caption{Grafo de conocimiento de CASO1. Cada punto representa un nodo de memoria y cada línea una relación entre nodos; la vista agrupa comunidades de conocimiento relacionadas.}
-\label{fig:phase1-ui-knowledge-run}
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-overview}
+\caption{Vista completa del grafo de conocimiento de CASO1. Cada punto representa un nodo de memoria y las aristas representan relaciones almacenadas en Neo4j.}
+\label{fig:phase1-ui-knowledge-overview}
+\end{figure}
+
+La Figura~\ref{fig:phase1-ui-knowledge-node-detail} muestra la inspección de un
+nodo del grafo de conocimiento. En este ejemplo se selecciona un paper. El panel
+lateral muestra sus propiedades, las relaciones salientes y la procedencia de la
+información, lo que permite revisar por qué ese conocimiento forma parte de la
+memoria.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-ui-knowledge-node-detail}
+\caption{Detalle de un nodo del grafo de conocimiento de CASO1. El panel lateral muestra tipo, propiedades, relaciones salientes y procedencia del nodo seleccionado.}
+\label{fig:phase1-ui-knowledge-node-detail}
 \end{figure}

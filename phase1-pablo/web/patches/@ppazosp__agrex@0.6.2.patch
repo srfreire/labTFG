@@ -1,0 +1,234 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 4efbc543ac796430ea330d15733ddda1d6c6d62a..cb448555767c7b25617086b777ae2f80ba71a142 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -828,7 +828,15 @@ function wrapNodeRenderer(Renderer, theme, displayType) {
+   function AgrexRendererAdapter({ data }) {
+     const node = data.__agrexNode;
+     if (!node) return null;
+-    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Renderer, { node, status: node.status ?? "idle", theme });
++    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Renderer, {
++      node,
++      status: node.status ?? "idle",
++      theme,
++      collapsed: data.collapsed,
++      childCount: data.childCount,
++      childrenAllDone: data.childrenAllDone,
++      onCollapseToggle: data.onCollapseToggle
++    });
+   }
+   AgrexRendererAdapter.displayName = `AgrexRenderer(${displayType})`;
+   return AgrexRendererAdapter;
+@@ -879,6 +887,12 @@ function buildChildrenMap(nodes) {
+   }
+   return map;
+ }
++function isVisibleEdge(edge, hiddenIds, collapsedNodes) {
++  if (hiddenIds.has(edge.source) || hiddenIds.has(edge.target)) return false;
++  const ownerId = edge.collapseOwnerId;
++  if (typeof ownerId !== "string" || ownerId.length === 0) return true;
++  return !hiddenIds.has(ownerId) && !collapsedNodes.has(ownerId);
++}
+ var Graph = (0, import_react3.forwardRef)(function Graph2({
+   nodes,
+   edges,
+@@ -996,22 +1010,28 @@ var Graph = (0, import_react3.forwardRef)(function Graph2({
+   }, [nodes, collapsedNodes]);
+   const visibleNodes = (0, import_react3.useMemo)(() => nodes.filter((n) => !hiddenIds.has(n.id)), [nodes, hiddenIds]);
+   const visibleEdges = (0, import_react3.useMemo)(
+-    () => edges.filter((e) => !hiddenIds.has(e.source) && !hiddenIds.has(e.target)),
+-    [edges, hiddenIds]
++    () => edges.filter((e) => isVisibleEdge(e, hiddenIds, collapsedNodes)),
++    [edges, hiddenIds, collapsedNodes]
+   );
+   const childCounts = (0, import_react3.useMemo)(() => {
+     const parentCounts = /* @__PURE__ */ new Map();
+-    const agentIds = /* @__PURE__ */ new Set();
++    const collapsibleIds = /* @__PURE__ */ new Set();
+     for (const n of nodes) {
+-      if (n.type === "agent" || n.type === "sub_agent") agentIds.add(n.id);
++      if (n.type === "agent" || n.type === "sub_agent") collapsibleIds.add(n.id);
+       if (n.parentId) parentCounts.set(n.parentId, (parentCounts.get(n.parentId) ?? 0) + 1);
+     }
++    for (const edge of edges) {
++      const ownerId = edge.collapseOwnerId;
++      if (typeof ownerId !== "string" || ownerId.length === 0) continue;
++      collapsibleIds.add(ownerId);
++      parentCounts.set(ownerId, (parentCounts.get(ownerId) ?? 0) + 1);
++    }
+     const counts = /* @__PURE__ */ new Map();
+     for (const [pid, count] of parentCounts) {
+-      if (agentIds.has(pid)) counts.set(pid, count);
++      if (collapsibleIds.has(pid)) counts.set(pid, count);
+     }
+     return counts;
+-  }, [nodes]);
++  }, [nodes, edges]);
+   (0, import_react3.useEffect)(() => {
+     if (visibleNodes.length === 0) {
+       posRef.current.clear();
+@@ -1193,9 +1213,14 @@ var Graph = (0, import_react3.forwardRef)(function Graph2({
+       fitView,
+       collapseAll: () => {
+         const ids = /* @__PURE__ */ new Set();
++        const edgeOwners = new Set(
++          agrexEdgesRef.current.map((edge) => edge.collapseOwnerId).filter((ownerId) => typeof ownerId === "string" && ownerId.length > 0)
++        );
+         for (const n of agrexNodesRef.current) {
+           if ((n.type === "agent" || n.type === "sub_agent") && agrexNodesRef.current.some((c) => c.parentId === n.id)) {
+             ids.add(n.id);
++          } else if (edgeOwners.has(n.id)) {
++            ids.add(n.id);
+           }
+         }
+         setCollapsedNodes(ids);
+@@ -1764,7 +1789,7 @@ var codeBlockStyle = {
+   opacity: 0.85,
+   whiteSpace: "pre-wrap",
+   wordBreak: "break-word",
+-  maxHeight: 100,
++  maxHeight: 400,
+   overflowY: "auto"
+ };
+ var errorBoxStyle = {
+diff --git a/dist/index.js b/dist/index.js
+index 0a5dd6ce220f701e2fd4bfab268ea57d6f64aab5..d0f65978568528082250bb99a55230da87098c5e 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -782,7 +782,15 @@ function wrapNodeRenderer(Renderer, theme, displayType) {
+   function AgrexRendererAdapter({ data }) {
+     const node = data.__agrexNode;
+     if (!node) return null;
+-    return /* @__PURE__ */ jsx9(Renderer, { node, status: node.status ?? "idle", theme });
++    return /* @__PURE__ */ jsx9(Renderer, {
++      node,
++      status: node.status ?? "idle",
++      theme,
++      collapsed: data.collapsed,
++      childCount: data.childCount,
++      childrenAllDone: data.childrenAllDone,
++      onCollapseToggle: data.onCollapseToggle
++    });
+   }
+   AgrexRendererAdapter.displayName = `AgrexRenderer(${displayType})`;
+   return AgrexRendererAdapter;
+@@ -833,6 +841,12 @@ function buildChildrenMap(nodes) {
+   }
+   return map;
+ }
++function isVisibleEdge(edge, hiddenIds, collapsedNodes) {
++  if (hiddenIds.has(edge.source) || hiddenIds.has(edge.target)) return false;
++  const ownerId = edge.collapseOwnerId;
++  if (typeof ownerId !== "string" || ownerId.length === 0) return true;
++  return !hiddenIds.has(ownerId) && !collapsedNodes.has(ownerId);
++}
+ var Graph = forwardRef(function Graph2({
+   nodes,
+   edges,
+@@ -950,22 +964,28 @@ var Graph = forwardRef(function Graph2({
+   }, [nodes, collapsedNodes]);
+   const visibleNodes = useMemo(() => nodes.filter((n) => !hiddenIds.has(n.id)), [nodes, hiddenIds]);
+   const visibleEdges = useMemo(
+-    () => edges.filter((e) => !hiddenIds.has(e.source) && !hiddenIds.has(e.target)),
+-    [edges, hiddenIds]
++    () => edges.filter((e) => isVisibleEdge(e, hiddenIds, collapsedNodes)),
++    [edges, hiddenIds, collapsedNodes]
+   );
+   const childCounts = useMemo(() => {
+     const parentCounts = /* @__PURE__ */ new Map();
+-    const agentIds = /* @__PURE__ */ new Set();
++    const collapsibleIds = /* @__PURE__ */ new Set();
+     for (const n of nodes) {
+-      if (n.type === "agent" || n.type === "sub_agent") agentIds.add(n.id);
++      if (n.type === "agent" || n.type === "sub_agent") collapsibleIds.add(n.id);
+       if (n.parentId) parentCounts.set(n.parentId, (parentCounts.get(n.parentId) ?? 0) + 1);
+     }
++    for (const edge of edges) {
++      const ownerId = edge.collapseOwnerId;
++      if (typeof ownerId !== "string" || ownerId.length === 0) continue;
++      collapsibleIds.add(ownerId);
++      parentCounts.set(ownerId, (parentCounts.get(ownerId) ?? 0) + 1);
++    }
+     const counts = /* @__PURE__ */ new Map();
+     for (const [pid, count] of parentCounts) {
+-      if (agentIds.has(pid)) counts.set(pid, count);
++      if (collapsibleIds.has(pid)) counts.set(pid, count);
+     }
+     return counts;
+-  }, [nodes]);
++  }, [nodes, edges]);
+   useEffect(() => {
+     if (visibleNodes.length === 0) {
+       posRef.current.clear();
+@@ -1147,9 +1167,14 @@ var Graph = forwardRef(function Graph2({
+       fitView,
+       collapseAll: () => {
+         const ids = /* @__PURE__ */ new Set();
++        const edgeOwners = new Set(
++          agrexEdgesRef.current.map((edge) => edge.collapseOwnerId).filter((ownerId) => typeof ownerId === "string" && ownerId.length > 0)
++        );
+         for (const n of agrexNodesRef.current) {
+           if ((n.type === "agent" || n.type === "sub_agent") && agrexNodesRef.current.some((c) => c.parentId === n.id)) {
+             ids.add(n.id);
++          } else if (edgeOwners.has(n.id)) {
++            ids.add(n.id);
+           }
+         }
+         setCollapsedNodes(ids);
+@@ -1718,7 +1743,7 @@ var codeBlockStyle = {
+   opacity: 0.85,
+   whiteSpace: "pre-wrap",
+   wordBreak: "break-word",
+-  maxHeight: 100,
++  maxHeight: 400,
+   overflowY: "auto"
+ };
+ var errorBoxStyle = {
+diff --git a/dist/types-D0aAlylq.d.cts b/dist/types-D0aAlylq.d.cts
+index 265a1e085d9c4593a479fcbaf82cbf757a785277..086de806ea0db949e58a7739d942fdea277e6b3c 100644
+--- a/dist/types-D0aAlylq.d.cts
++++ b/dist/types-D0aAlylq.d.cts
+@@ -142,6 +142,8 @@ interface AgrexEdge {
+     target: string;
+     type?: 'spawn' | 'read' | 'write' | (string & {});
+     label?: string;
++    /** Hide this edge when the referenced node is collapsed or hidden. */
++    collapseOwnerId?: string;
+ }
+ type NodeStatus = 'idle' | 'running' | 'done' | 'error';
+ interface ThemeObject {
+@@ -228,6 +230,10 @@ interface AgrexNodeProps {
+     node: AgrexNode;
+     status: NodeStatus;
+     theme: ResolvedTheme;
++    collapsed?: boolean;
++    childCount?: number;
++    childrenAllDone?: boolean;
++    onCollapseToggle?: () => void;
+ }
+ interface ResolvedTheme {
+     background: string;
+diff --git a/dist/types-D0aAlylq.d.ts b/dist/types-D0aAlylq.d.ts
+index 265a1e085d9c4593a479fcbaf82cbf757a785277..086de806ea0db949e58a7739d942fdea277e6b3c 100644
+--- a/dist/types-D0aAlylq.d.ts
++++ b/dist/types-D0aAlylq.d.ts
+@@ -142,6 +142,8 @@ interface AgrexEdge {
+     target: string;
+     type?: 'spawn' | 'read' | 'write' | (string & {});
+     label?: string;
++    /** Hide this edge when the referenced node is collapsed or hidden. */
++    collapseOwnerId?: string;
+ }
+ type NodeStatus = 'idle' | 'running' | 'done' | 'error';
+ interface ThemeObject {
+@@ -228,6 +230,10 @@ interface AgrexNodeProps {
+     node: AgrexNode;
+     status: NodeStatus;
+     theme: ResolvedTheme;
++    collapsed?: boolean;
++    childCount?: number;
++    childrenAllDone?: boolean;
++    onCollapseToggle?: () => void;
+ }
+ interface ResolvedTheme {
+     background: string;

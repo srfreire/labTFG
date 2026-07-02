@@ -430,6 +430,7 @@ function memoryRetrieveEdges(parentId: string): AgrexEdge[] {
       target: parentId,
       type: "memory_retrieve",
       label: "retrieves",
+      collapseOwnerId: MEMORY_DB_NODES.kg.id,
     },
     {
       id: `edge:memory-retrieve:vectors:${parentId}`,
@@ -437,6 +438,7 @@ function memoryRetrieveEdges(parentId: string): AgrexEdge[] {
       target: parentId,
       type: "memory_retrieve",
       label: "retrieves",
+      collapseOwnerId: MEMORY_DB_NODES.vectors.id,
     },
   ];
 }
@@ -448,6 +450,7 @@ function memoryStoreEdge(kind: MemoryDbKind, parentId: string): AgrexEdge {
     target: MEMORY_DB_NODES[kind].id,
     type: "memory_store",
     label: "stores",
+    collapseOwnerId: MEMORY_DB_NODES[kind].id,
   };
 }
 
