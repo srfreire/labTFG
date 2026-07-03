@@ -1,6 +1,6 @@
 \chapter{Desarrollo del trabajo}
 
-Este capítulo no documenta solo el sistema construido, sino también el proceso
+Este capítulo documenta el sistema construido y también el proceso
 por el que se construyó. En este TFG, trabajar de forma habitual con
 \textit{coding agents} (en este caso, Codex y Claude Code) desplazó el
 centro de gravedad del ciclo clásico de desarrollo de software: la
@@ -27,7 +27,7 @@ planificar iteraciones en función de la velocidad de implementación.
 En este TFG esa premisa cambió. Con \textit{coding agents} como ejecutores
 habituales, implementar una función concreta o un módulo acotado a partir de una
 especificación clara dejó de ser la parte más costosa. La literatura reciente
-sobre productividad asistida por IA sirve de contexto~\cite{cui2025effects,butler2024dear},
+sobre productividad asistida por IA aporta contexto~\cite{cui2025effects,butler2024dear},
 pero la decisión metodológica nace de la práctica del proyecto: una salida
 generada solo era aceptable cuando respetaba alcance, contrato y pruebas. La
 comparación sintética con un proceso clásico se recoge en la
@@ -112,9 +112,9 @@ visual, el equivalente fue combinar pruebas de recorrido con revisión manual en
 navegador: que el flujo se pudiera usar, que el estado se actualizara en tiempo
 real y que la pantalla encajara con el diseño esperado.
 
-Linear funcionó como memoria operativa de ese proceso. Las tareas no eran solo
-un listado de pendientes, sino el lugar donde quedaban visibles las decisiones
-tomadas antes de delegar: prioridad, dependencias, alcance, criterios de
+Linear funcionó como memoria operativa de ese proceso. Las tareas no eran una
+lista de pendientes: dejaban visibles las decisiones tomadas antes de delegar
+prioridad, dependencias, alcance, criterios de
 aceptación y posibles conflictos con otros cambios en curso. Esa información
 permitía decidir si dos tareas podían lanzarse en paralelo o si debían
 resolverse una detrás de otra. También facilitaba la revisión: el
@@ -186,8 +186,7 @@ sus criterios de aceptación, y cada tarea declaraba, además de su
 descripción funcional, sus dependencias, su prioridad, su posible
 solapamiento con otras tareas y si podía ejecutarse en paralelo. Esas
 mismas tareas son las que alimentaban el bucle descrito al principio del
-capítulo: no eran solo una lista de pendientes, sino el lugar donde se
-guardaba el plan operativo que después seguía el agente. Para cambios
+capítulo: guardaban el plan operativo que después seguía el agente. Para cambios
 pequeños bastaba con la descripción y los criterios de aceptación; para
 cambios transversales, de cualquiera de las dos partes o de la capa común,
 la propia tarea incorporaba más detalle técnico y servía como documento de
@@ -350,11 +349,12 @@ evaluación.}
 \end{table}
 
 Estas comprobaciones se apoyan en una compuerta automática de integración
-continua.
-El repositorio compartido ejecuta un \textit{workflow} de GitHub Actions en
+continua. El repositorio compartido ejecuta un \textit{workflow} de GitHub
+Actions en
 cada \textit{push} y \textit{pull request} contra \texttt{main}, que comprueba
 formato y \textit{linting} con \texttt{ruff} y lanza las suites unitarias del
-laboratorio, del sistema generador de modelos y de la capa común, excluyendo las pruebas de integración,
+laboratorio, del sistema generador de modelos y de la capa común, excluyendo las
+pruebas de integración,
 \textit{end-to-end} y las que requieren un modelo real por su coste. Con esa
 compuerta, ningún cambio se integra sin pasar antes esa verificación rápida y
 reproducible, y las pruebas más caras quedan reservadas para una ejecución

@@ -25,7 +25,7 @@ indexada de memorias.
 
 \section{Casos de uso}
 
-Los casos de uso recogen las interacciones que el usuario investigador puede
+Los casos de uso describen las interacciones que el usuario investigador puede
 realizar desde el laboratorio. En todos ellos la entrada pasa por una sesión de
 chat con el Orchestrator, que decide qué agentes y herramientas intervienen en
 cada momento.
@@ -162,28 +162,19 @@ RF-13 & Inspección del Knowledge Backbone & Exponer vistas de inspección del K
 \end{center}
 \end{table}
 
-La tabla aterriza los objetivos de la introducción en funciones verificables.
-RF-02 y RF-12 cubren la definición y visualización del entorno; RF-01, RF-03 y
-RF-04 cubren carga, ejecución y registro; RF-05 y RF-06 cubren el análisis;
-RF-07 cierra el informe; y RF-08 y RF-09 mantienen la memoria reutilizable. El
-uso diario del laboratorio queda recogido en RF-10 y RF-11: conversación y
-recomendaciones del Orchestrator. RF-13 queda como capacidad auxiliar de
-inspección y depuración desde la interfaz. La trazabilidad con evidencias de
-validación se recoge en el Apéndice~\ref{ap:trazabilidad-requisitos}.
+La tabla traduce los objetivos de la introducción en funciones verificables:
+carga, generación de entornos, ejecución, registro, análisis, informes,
+persistencia, conversación e inspección auxiliar. La trazabilidad con evidencias
+de validación se detalla en el Apéndice~\ref{ap:trazabilidad-requisitos}.
 
 \section{Requisitos no funcionales}
-
-Los requisitos no funcionales fijan condiciones de calidad que atraviesan todo
-el sistema. No describen una pantalla concreta ni una acción puntual del
-usuario; describen cómo debe comportarse el laboratorio mientras carga modelos,
-ejecuta simulaciones, conversa con el usuario y consulta servicios externos.
 
 \begin{table}[H]
 \begin{center}
 \scriptsize
-\setlength{\tabcolsep}{4.6pt}
-\renewcommand{\arraystretch}{1.22}
-\begin{tabular}{|>{\raggedright\arraybackslash}p{1.05cm}|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{6.3cm}|>{\raggedright\arraybackslash}p{1.1cm}|} \hline
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.02}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.15cm}|>{\raggedright\arraybackslash}p{2.35cm}|>{\raggedright\arraybackslash}p{6.25cm}|>{\raggedright\arraybackslash}p{0.95cm}|} \hline
 \textbf{Código} & \textbf{Nombre} & \textbf{Descripción} & \textbf{Prio.} \\ \hline
 RNF-01 & Modularidad y desacoplamiento & Integrar la primera fase mediante un contrato mínimo de \textit{duck typing}, sin imponer dependencias de paquetes ni jerarquías de clases. & Must \\ \hline
 RNF-02 & Extensibilidad de modelos & Incorporar nuevos modelos generados por la primera fase sin modificar el código del laboratorio. & Must \\ \hline
@@ -206,13 +197,18 @@ virtual.}
 \end{center}
 \end{table}
 
+Los requisitos no funcionales fijan condiciones de calidad que atraviesan todo
+el sistema. No describen una pantalla concreta ni una acción puntual del
+usuario; describen cómo debe comportarse el laboratorio mientras carga modelos,
+ejecuta simulaciones, conversa con el usuario y consulta servicios externos.
+
 La interoperabilidad es especialmente relevante porque el laboratorio no opera
 aislado: consume modelos y metadatos generados por la primera fase, usa APIs de
 modelos de lenguaje y servicios semánticos, y persiste evidencia en una
 infraestructura compartida.
 
 Estos requisitos fijan las decisiones principales del diseño. El laboratorio
-no debe quedar atado al código interno de la primera fase ni a proveedores
+no debe depender del código interno de la primera fase ni de proveedores
 configurados de forma rígida; una simulación debe
 poder auditarse después de ejecutarse; la interfaz debe recibir estado vivo por
 WebSocket; y la ausencia de la capa semántica no debe impedir que el flujo

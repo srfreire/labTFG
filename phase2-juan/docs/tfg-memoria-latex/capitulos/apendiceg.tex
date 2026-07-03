@@ -1,13 +1,16 @@
 \chapter{Catálogo de \textit{tool calls}}
 \label{ap:toolcalls}
 
-Este apéndice resume las herramientas que los agentes pueden invocar durante
-una sesión. No recoge el esquema JSON completo de cada llamada, sino su papel en
+Este apéndice reúne las herramientas que los agentes pueden invocar durante
+una sesión. No incluye el esquema JSON completo de cada llamada, sino su papel en
 el flujo: qué agente la usa, qué decisión habilita y qué tipo de salida devuelve
 al modelo. La lista separa dos responsabilidades: el LLM decide cuándo
 necesita una operación, pero la operación real la ejecuta código del backend.
 
 \section{Herramientas del Orchestrator}
+
+La Tabla~\ref{tab:toolcalls-orchestrator-ejecucion} reúne las herramientas que
+ejecutan el flujo principal de simulación.
 
 \begin{table}[H]
 \begin{center}
@@ -28,8 +31,12 @@ necesita una operación, pero la operación real la ejecuta código del backend.
 }
 \caption[Herramientas de ejecución del Orchestrator]{Herramientas de ejecución
 del Orchestrator.}
+\label{tab:toolcalls-orchestrator-ejecucion}
 \end{center}
 \end{table}
+
+La Tabla~\ref{tab:toolcalls-orchestrator-inspeccion} reúne las herramientas de
+consulta, inspección y recuperación usadas durante una sesión.
 
 \begin{table}[H]
 \begin{center}
@@ -49,10 +56,15 @@ del Orchestrator.}
 }
 \caption[Herramientas de inspección del Orchestrator]{Herramientas de
 inspección y recuperación del Orchestrator.}
+\label{tab:toolcalls-orchestrator-inspeccion}
 \end{center}
 \end{table}
 
 \section{Herramientas de agentes especializados}
+
+Las Tablas~\ref{tab:toolcalls-architect-tracker} y
+\ref{tab:toolcalls-analyst-reporter} separan las herramientas por agente
+especializado.
 
 \begin{table}[H]
 \begin{center}
@@ -73,6 +85,7 @@ Tracker & \texttt{compare\_\allowbreak decision\_\allowbreak traces} & Compara t
 }
 \caption[Herramientas del Architect y Tracker]{Herramientas del Architect y del
 Tracker.}
+\label{tab:toolcalls-architect-tracker}
 \end{center}
 \end{table}
 
@@ -95,5 +108,6 @@ Reporter & \texttt{compile\_report} & Compila el cuerpo LaTeX del informe en un 
 }
 \caption[Herramientas del Analyst y Reporter]{Herramientas del Analyst y del
 Reporter.}
+\label{tab:toolcalls-analyst-reporter}
 \end{center}
 \end{table}

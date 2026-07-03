@@ -8,8 +8,8 @@ dirigida a su grupo de investigación. El punto de partida fue un TFM
 previo que el propio Eduardo había tutorizado, y que ya contenía una
 primera intuición de entorno de simulación. Aunque aquella base tenía un
 alcance limitado, introducía una idea central para este trabajo: transformar
-una propuesta de investigación en un sistema observable y ejecutable. A partir de ahí, el alcance,
-la arquitectura y la división del proyecto en dos fases se fueron
+una propuesta de investigación en un sistema observable y ejecutable. A partir
+de ahí, el alcance, la arquitectura y la división del proyecto en dos fases se fueron
 cerrando poco a poco entre Eduardo, mi compañero y yo, en reuniones de
 diseño donde la propuesta inicial fue cambiando de escala y ganando
 concreción.
@@ -53,8 +53,8 @@ heterogéneos generados externamente, construir un entorno común para ellos,
 emitir eventos observables en tiempo real, transformar la ejecución en
 trayectorias y episodios, preparar un análisis aprovechable y persistir los
 resultados en la capa correspondiente. El flujo también debe poder
-seguirse desde la interfaz: el objetivo no es solo ejecutar código, sino
-reducir la fricción para un investigador que quiere explorar un paradigma.
+seguirse desde la interfaz: además de ejecutar código, debe reducir la fricción
+para un investigador que quiere explorar un paradigma.
 
 \section{Objetivo general y objetivos específicos}
 
@@ -93,7 +93,7 @@ conocimiento científico y lo convierte en modelos ejecutables; esta
 infraestructura toma esos modelos y los convierte en registro experimental
 observable, comparable y reutilizable. La integración técnica entre ambas
 se realiza por \textit{duck typing}: este TFG no exige que los
-modelos hereden de una clase concreta, sino que comprueba que expongan
+modelos hereden de una clase concreta; basta con que expongan
 los métodos \texttt{decide}, \texttt{update} y \texttt{get\_state}. Esto
 deja que ambas fases evolucionen de forma independiente mientras mantengan
 esa pequeña superficie común.

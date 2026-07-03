@@ -10,11 +10,11 @@ generados en la primera fase y convertir esa observación en análisis e informe
 revisables.
 
 El laboratorio combina dos partes que conviene evaluar por separado. Por un
-lado, un núcleo determinista --- el motor de simulación, el
-Tracker y la persistencia en el \textit{Knowledge Backbone} ---, cuyo
+lado está el núcleo determinista (el motor de simulación, el
+Tracker y la persistencia en el \textit{Knowledge Backbone}), cuyo
 comportamiento es reproducible y se puede comprobar contra una verdad
-programática. Por otro, una capa de juicio basada en modelos de
-lenguaje --- Architect, Analyst y Reporter ---, cuyas salidas son abiertas y no
+programática. Por otro está la capa de juicio basada en modelos de
+lenguaje (Architect, Analyst y Reporter), cuyas salidas son abiertas y no
 tienen una única respuesta correcta. Si se mezclan ambas partes, se corre el
 riesgo de exigir determinismo donde no lo hay o de aceptar como válido cualquier
 texto plausible. La literatura de evaluación de agentes basados en modelos de
@@ -38,8 +38,8 @@ Dos principios articulan esta organización:
 
 \begin{itemize}
 \item La verdad de referencia son los datos de la simulación, no la
-teoría. Las trayectorias de cada modelo --- paso, acción, recompensa y estado
-interno --- son el patrón contra el que se mide todo lo demás. Los artículos que
+teoría. Las trayectorias de cada modelo (paso, acción, recompensa y estado
+interno) son el patrón contra el que se mide todo lo demás. Los artículos que
 inspiran cada caso son contexto, no la vara de medir. Si un modelo se comporta de
 forma anómala y el laboratorio lo reporta \emph{con fidelidad}, el laboratorio
 acierta. Lo que se evalúa es el anclaje (\textit{groundedness}) de la
@@ -67,9 +67,9 @@ representados por un modelo cada uno (tabla~\ref{tab:run-metrics}). El
 CASO1 aborda la decisión basada en valor (neuroeconomía del forrajeo
 alimentario) con seis modelos; CASO2 aborda la regulación
 homeostática y la interocepción con cuatro.
-Cada caso cubre mecanismos distintos --- acumulación de
+Cada caso cubre mecanismos distintos: acumulación de
 evidencia, control homeostático, aprendizaje por refuerzo, inferencia activa,
-codificación predictiva ---, de modo que la comparación dentro de un mismo
+codificación predictiva. Así, la comparación dentro de un mismo
 entorno sea informativa.
 
 Estos dos casos no pretenden estimar el rendimiento general del laboratorio;
@@ -127,13 +127,13 @@ compilación falla, asegura que se evalúa el producto real del Reporter. Estas
 comprobaciones son binarias y no requieren juicio; en las dos ejecuciones se
 satisfacen.
 
-El detalle de la suite de regresión que respalda estas ejecuciones --- 387
-pruebas en \textit{pytest}, más recorridos de interfaz con Playwright y la
-compilación LaTeX --- se recoge en el Apéndice~\ref{ap:capa1}.
-Los paquetes evaluados quedan versionados en
-\texttt{phase2-juan/benchmark/reports/2026-06-30-caso1-lab/} y
-\texttt{phase2-juan/benchmark/reports/2026-06-30-caso2-lab/}, con
-trayectorias, métricas, análisis, informe PDF y dictamen del juez externo.
+El detalle de la suite de regresión que respalda estas ejecuciones se recoge en
+el Apéndice~\ref{ap:capa1}: 387 pruebas en \textit{pytest}, recorridos de
+interfaz con Playwright y compilación LaTeX.
+Los paquetes evaluados quedan versionados en los directorios de CASO1 y CASO2
+dentro de \texttt{phase2-juan/\allowbreak benchmark/\allowbreak reports/}.
+Incluyen trayectorias,
+métricas, análisis, informe PDF y dictamen del juez externo.
 
 \section{Juicio externo con Codex}
 
@@ -141,10 +141,10 @@ Las salidas del Architect, el Analyst y el Reporter son abiertas: no hay una
 única especificación de entorno correcta, ni un único análisis válido, ni un
 único informe. Para evaluarlas se recurre a un juez externo, Codex. El juez
 recibe un paquete autocontenido con todo el material de
-una ejecución --- la especificación del entorno, las trayectorias por modelo (la
+una ejecución: la especificación del entorno, las trayectorias por modelo (la
 verdad de referencia), la observación del Tracker, el análisis del Analyst, el
-informe PDF y las métricas duras --- y emite un veredicto anclado en datos
-concretos, citando rutas y valores como evidencia de cada juicio.
+informe PDF y las métricas duras. Con ese material emite un veredicto anclado en
+datos concretos, citando rutas y valores como evidencia de cada juicio.
 
 Este juicio no se usa como validación científica del dominio, sino como prueba
 de consistencia factual del paquete generado. Su función es detectar
@@ -258,7 +258,7 @@ redacción; y es la razón de fondo por la que el juicio externo debe calibrarse
 contra criterio humano y no sustituirlo~\cite{zheng2023judge}.
 
 La tercera es el carácter aproximado del juez. La parte automatizable queda
-instrumentada --- juicio por rúbrica con un evaluador de otra familia ---, pero
+instrumentada mediante un juicio por rúbrica con un evaluador de otra familia, pero
 su meta-evaluación, es decir, medir de forma estadística el acuerdo con
 criterio humano mediante $\kappa$ y $\rho$, requiere un corpus más amplio de
 casos etiquetados y se deja como trabajo futuro~\cite{li2024judges}. A ello se
@@ -266,10 +266,10 @@ suma que cada caso se evalúa sobre una única semilla y un entorno de forrajeo
 deliberadamente simple: suficiente para juzgar la fidelidad de observación, pero
 no para sostener conclusiones neurocientíficas fuertes.
 
-Por último, una validación de comportamiento complementaria sobre los modelos de
-la ejecución de muestra de la primera fase --- escenarios controlados de verdad
-conocida, con \textit{baselines} oráculo y aleatorio --- se documenta en el
-Apéndice~\ref{ap:capa3}. Se mantiene como apéndice porque esos modelos no son los
-de los casos evaluados aquí, pero ilustra una capacidad adicional del banco de
-pruebas: detectar cuándo un modelo generado no reproduce la predicción falsable de
-su propia teoría.
+Por último, el Apéndice~\ref{ap:capa3} documenta una validación de
+comportamiento complementaria sobre los modelos de la ejecución de muestra de la
+primera fase: escenarios controlados de verdad conocida, con \textit{baselines}
+oráculo y aleatorio. Se mantiene como apéndice porque esos modelos no son los de
+los casos evaluados aquí, pero ilustra una capacidad adicional del banco de
+pruebas: detectar cuándo un modelo generado no reproduce la predicción falsable
+de su propia teoría.

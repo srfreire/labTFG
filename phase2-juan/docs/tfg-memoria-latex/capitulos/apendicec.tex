@@ -9,7 +9,8 @@ qué resultado y qué parte quedó como revisión manual.
 Se comprueba que los modelos respetan el contrato mínimo
 \texttt{decide}, \texttt{update} y \texttt{get\_state}; que dos ejecuciones con
 la misma semilla generan la misma traza; y que cada observación queda registrada
-con el mismo identificador en PostgreSQL y Qdrant.
+con el mismo identificador en PostgreSQL y Qdrant. La comprobación de
+persistencia cruzada aparece en la Tabla~\ref{tab:joinable}.
 
 \begin{table}[H]
 \begin{center}
@@ -34,7 +35,8 @@ bajo los mismos identificadores.}
 
 La suite combina pruebas unitarias, integración backend y recorridos de
 interfaz. La sesión real con backbone se mantiene como comprobación manual
-porque depende de servicios vivos.
+porque depende de servicios vivos. Los bloques de regresión usados se muestran
+en la Tabla~\ref{tab:suite}.
 
 \begin{table}[H]
 \begin{center}
@@ -73,7 +75,8 @@ El banco incluye además escenarios controlados sobre modelos de la
 \emph{ejecución de muestra} de la primera fase. Son distintos de CASO1/CASO2 y
 se usan como \textit{golden scenarios}: la predicción esperada se conoce de
 antemano y se comprueba contra la simulación
-~\cite{wilson2019tenrules,palminteri2017falsification}.
+~\cite{wilson2019tenrules,palminteri2017falsification}. Los modelos evaluados
+se enumeran en la Tabla~\ref{tab:modelos-sujeto}.
 
 \begin{table}[H]
 \begin{center}
@@ -93,7 +96,8 @@ muestra de la primera fase y la predicción falsable que debe reproducir cada un
 \end{table}
 
 Como referencia se añaden dos modelos manuales: \texttt{GreedyForagerOracle}
-(techo de eficiencia) y \texttt{RandomModel} (suelo).
+(techo de eficiencia) y \texttt{RandomModel} (suelo). Los resultados se
+presentan en la Tabla~\ref{tab:gs-resultados}.
 
 \begin{table}[H]
 \begin{center}

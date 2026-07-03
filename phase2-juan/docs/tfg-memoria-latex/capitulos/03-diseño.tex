@@ -33,7 +33,7 @@ Knowledge Backbone y se reutilizan después para contrastar el
 comportamiento observado con los postulados previos.
 \end{enumerate}
 
-Para completar esta visión con una representación formal, la
+Para completar esta visión, la
 Figura~\ref{fig:despliegue-uml} muestra la arquitectura del sistema como
 diagrama de despliegue UML. En ella se separan los entornos de ejecución
 principales: navegador, backend del laboratorio, servicios externos de
@@ -172,8 +172,8 @@ Sobre esa base, la aportación principal está en la sesión de simulación. El
 agentes especializados: Architect para construir el entorno, Tracker para
 registrar la ejecución, Analyst para interpretar los resultados y Reporter para
 generar el informe. El canal \textbf{WebSocket} hace visible ese proceso en la
-interfaz, de modo que la simulación no queda reducida a una respuesta final del
-modelo, sino que puede seguirse paso a paso.
+interfaz. Así, la simulación puede seguirse paso a paso y no queda reducida a
+una respuesta final del modelo.
 
 Este TFG también añade la comparación de varios modelos en el mismo entorno,
 con trazas de decisión, métricas y \textit{replay}. Con esas trazas se observan
@@ -334,9 +334,9 @@ herramientas disponibles y despacha cada llamada al agente especializado
 correspondiente. La interfaz refleja ese pipeline en el panel lateral, donde
 cada agente expone su estado de ejecución y muestra el avance en tiempo real
 mientras los agentes trabajan (Figura~\ref{fig:pipeline-accion}). La
-planificación global no se delega en el modelo de
-lenguaje, sino que se modela como una secuencia canónica de \textit{tool
-calls}. Sobre esa secuencia, el LLM solo elige desviaciones puntuales:
+planificación global se modela como una secuencia canónica de \textit{tool
+calls}, en vez de delegarse por completo en el modelo de lenguaje. Sobre esa
+secuencia, el LLM solo elige desviaciones puntuales:
 pedir una consulta adicional al Knowledge
 Backbone, repetir un paso o descartar un intento fallido.
 
@@ -346,16 +346,16 @@ El catálogo de herramientas combina llamadas de ejecución, como
 con llamadas de inspección. Estas últimas no lanzan una fase nueva del
 pipeline; recuperan detalle bajo demanda: episodios, trayectorias, eventos
 críticos, comparaciones del Analyst o una ventana de pasos alrededor de un
-instante de la simulación. Con esto, el Orchestrator puede responder a preguntas precisas del
+instante de la simulación. Así, el Orchestrator puede responder a preguntas precisas del
 usuario sin introducir de nuevo todo el JSON del Tracker en el contexto del
 modelo. El catálogo completo de \textit{tool calls} expuestas a cada agente se
 recoge en el Apéndice~\ref{ap:toolcalls}.
 
-Este patrón corresponde a una composición
-centralizada con organización por capas en la taxonomía reciente de
-sistemas multi-agente basados en LLMs \cite{guo2024llmbased}, y se
-alinea con frameworks que codifican procedimientos operativos como
-secuencias de roles especializados \cite{hong2024metagpt}.
+El patrón encaja con una composición centralizada y por capas en la taxonomía
+reciente de sistemas multi-agente basados en LLMs
+\cite{guo2024llmbased}. También es cercano a frameworks que codifican
+procedimientos operativos como secuencias de roles especializados
+\cite{hong2024metagpt}.
 
 Tres responsabilidades adicionales viven exclusivamente en el
 Orchestrator y no se delegan a ningún agente especializado:
@@ -382,8 +382,8 @@ esperar al final del pipeline.
 
 La sesión no avanza como una cadena cerrada de pasos, sino como un ciclo
 iterativo guiado por la intención del usuario. Tras cada salida visible
----una especificación de entorno, una ejecución, una tarjeta del Tracker,
-una gráfica del Analyst o un borrador de informe--- el usuario puede pedir
+(una especificación de entorno, una ejecución, una tarjeta del Tracker,
+una gráfica del Analyst o un borrador de informe), el usuario puede pedir
 ajustes, inspeccionar detalle, repetir una fase o continuar hacia la
 siguiente. El Orchestrator mantiene el estado de la sesión y traduce esa
 intención en la \textit{tool call} correspondiente. En paralelo, conserva
@@ -477,8 +477,9 @@ criterio de salida propio.
 
 \begin{table}[H]
 \begin{center}
-\small
-\renewcommand{\arraystretch}{1.16}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.04}
 \begin{tabular}{|>{\raggedright\arraybackslash}p{2.4cm}|>{\raggedright\arraybackslash}p{4.5cm}|>{\raggedright\arraybackslash}p{5.3cm}|} \hline
 \textbf{Agente} & \textbf{Pregunta que resuelve} & \textbf{Razón de separación} \\ \hline
 Architect & En qué entorno común se pueden ejecutar los modelos disponibles para el problema descrito. & Requiere traducir lenguaje natural y contexto científico a una especificación formal del dominio de simulación. \\ \hline
@@ -661,17 +662,17 @@ artefacto descargable.}
   \node[actor, right=7mm of loader] (env) {Environment + Tracker};
 
   \foreach \x in {user,api,orch,arch,loader,env}
-    \draw[black!35] (\x.south) -- ++(0,-68mm);
+    \draw[black!35] (\x.south) -- ++(0,-58mm);
 
-  \draw[diagarrow] ([yshift=-8mm]user.south) -- node[msg] {petición por WebSocket} ([yshift=-8mm]api.south);
-  \draw[diagarrow] ([yshift=-15mm]api.south) -- node[msg] {chat()} ([yshift=-15mm]orch.south);
-  \draw[diagarrow] ([yshift=-22mm]orch.south) -- node[msg] {generar especificación} ([yshift=-22mm]arch.south);
-  \draw[diagarrow] ([yshift=-29mm]arch.south) -- node[msg] {spec validada} ([yshift=-29mm]orch.south);
-  \draw[diagarrow] ([yshift=-36mm]orch.south) -- node[msg] {cargar modelos} ([yshift=-36mm]loader.south);
-  \draw[diagarrow] ([yshift=-43mm]orch.south) -- node[msg] {ejecutar simulación} ([yshift=-43mm]env.south);
-  \draw[diagarrow] ([yshift=-50mm]env.south) -- node[msg] {eventos + JSON observacional} ([yshift=-50mm]orch.south);
-  \draw[diagarrow] ([yshift=-57mm]orch.south) -- node[msg] {tarjetas y replay} ([yshift=-57mm]api.south);
-  \draw[diagarrow] ([yshift=-64mm]api.south) -- node[msg] {actualización visual} ([yshift=-64mm]user.south);
+  \draw[diagarrow] ([yshift=-7mm]user.south) -- node[msg] {petición por WebSocket} ([yshift=-7mm]api.south);
+  \draw[diagarrow] ([yshift=-13mm]api.south) -- node[msg] {chat()} ([yshift=-13mm]orch.south);
+  \draw[diagarrow] ([yshift=-19mm]orch.south) -- node[msg] {generar especificación} ([yshift=-19mm]arch.south);
+  \draw[diagarrow] ([yshift=-25mm]arch.south) -- node[msg] {spec validada} ([yshift=-25mm]orch.south);
+  \draw[diagarrow] ([yshift=-31mm]orch.south) -- node[msg] {cargar modelos} ([yshift=-31mm]loader.south);
+  \draw[diagarrow] ([yshift=-37mm]orch.south) -- node[msg] {ejecutar simulación} ([yshift=-37mm]env.south);
+  \draw[diagarrow] ([yshift=-43mm]env.south) -- node[msg] {eventos + JSON observacional} ([yshift=-43mm]orch.south);
+  \draw[diagarrow] ([yshift=-49mm]orch.south) -- node[msg] {tarjetas y replay} ([yshift=-49mm]api.south);
+  \draw[diagarrow] ([yshift=-55mm]api.south) -- node[msg] {actualización visual} ([yshift=-55mm]user.south);
 \end{tikzpicture}}
 \caption[Diagrama de secuencia de simulación]{Diagrama de secuencia UML del
 caso de uso de ejecución de una simulación. El Orchestrator valida la
@@ -805,7 +806,7 @@ con el mismo \textit{UUID} compartido. Una observación de simulación queda
 disponible para recuperación posterior sin confundirse con un postulado
 procedente de la literatura. En este TFG no se materializa como nodo de Neo4j:
 se mantiene como memoria indexada y fila tipada, enlazable por sus metadatos.
-El flujo queda concentrado en tres pasos: observación estructurada, escritura
+El flujo se concentra en tres pasos: observación estructurada, escritura
 indexada y recuperación posterior desde nuevas sesiones.
 
 \section{Capa de presentación reactiva}

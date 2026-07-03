@@ -3,7 +3,7 @@
 % Compilación recomendada con tectonic: tectonic -X compile JUANFREIREALVAREZ_TFG.tex
 %
 
-\documentclass[12pt,twoside,openany,a4paper]{book}
+\documentclass[12pt,twoside,openright,a4paper]{book}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
 \addto\captionsspanish{%
@@ -26,12 +26,29 @@
 \usepackage{pdflscape}
 \usepackage[hidelinks,plainpages=false,pdfpagelabels]{hyperref}
 
-% Maquetación compacta para mantener el cuerpo principal en 50 páginas.
-% Los capítulos empiezan en la página siguiente, sin insertar páginas blancas
-% automáticas para forzar apertura en impar.
-\let\cleardoublepage\clearpage
+% Maquetación compacta. Con openright, los capítulos empiezan en página impar
+% y LaTeX inserta páginas blancas cuando hacen falta para mantener el formato libro.
 \addtolength{\textheight}{0.37cm}
 \addtolength{\topmargin}{-0.185cm}
+
+% Las páginas blancas insertadas por openright no deben llevar cabecera ni número.
+\makeatletter
+\renewcommand{\cleardoublepage}{%
+  \clearpage
+  \if@twoside
+    \ifodd\c@page
+    \else
+      \hbox{}%
+      \thispagestyle{empty}%
+      \newpage
+    \fi
+  \fi
+}
+% En páginas formadas solo por figuras/tablas, coloca el bloque arriba en vez
+% de centrarlo verticalmente.
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
 
 % Evita estirar verticalmente las páginas con poco contenido.
 \raggedbottom

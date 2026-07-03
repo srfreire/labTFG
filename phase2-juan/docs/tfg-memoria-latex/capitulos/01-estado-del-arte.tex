@@ -31,14 +31,14 @@ que la validación no se agota cuando el programa compila. Sargent
 validación conceptual y validación operacional. En este trabajo, esa
 separación se traduce en una estrategia de evaluación mixta: pruebas
 automatizadas para verificar el motor, los contratos y la persistencia;
-escenarios reproducibles para observar el comportamiento del sistema
-completo; y revisión humana para valorar si el análisis generado sirve como
+escenarios reproducibles para observar el comportamiento del sistema completo;
+y revisión humana para decidir si el análisis generado resulta útil como
 herramienta de investigación.
 
 \subsection{Tecnologías para desarrollar el entorno}
 
-El segundo bloque recoge las decisiones tecnológicas que hacen posible el
-laboratorio. No se revisan como un inventario separado del sistema, sino como
+El segundo bloque trata las decisiones tecnológicas que hacen posible el
+laboratorio. No aparecen como un inventario separado del sistema, sino como
 antecedentes directos de su diseño: coordinación entre agentes, consulta de
 conocimiento externo, llamadas a herramientas y desarrollo asistido por agentes
 de programación.
@@ -89,9 +89,8 @@ que el modelo tenga en su contexto inmediato.
 La recuperación aumentada con generación (\textit{retrieval-augmented
 generation}, RAG), formulada por
 Lewis et al. \cite{lewis2020rag}, fijó un patrón hoy común en sistemas
-con modelos de lenguaje: en lugar de depender solo del contexto contenido
-en el modelo o del \textit{system prompt}, el sistema recupera fragmentos
-relevantes de un corpus externo y los incorpora a la generación. Dense
+con modelos de lenguaje: el sistema recupera fragmentos relevantes de un corpus
+externo y los incorpora a la generación. Dense
 retrieval consolidó la recuperación mediante \textit{embeddings}, mientras
 que BM25 \cite{robertson2009bm25} sigue siendo la base de la recuperación
 léxica con la que la densa se combina. Dicho de forma directa, el sistema usa
@@ -140,7 +139,7 @@ simulación, observación y análisis.
 
 En las aplicaciones actuales, esa idea se materializa normalmente mediante
 \textit{tool calls} o llamadas a función: el modelo no ejecuta directamente una
-acción externa, sino que emite una petición estructurada con nombre de
+acción externa; emite una petición estructurada con nombre de
 herramienta y argumentos; el sistema anfitrión valida esa petición, invoca el
 código correspondiente y devuelve la observación al modelo. Esta separación
 reduce la ambigüedad operativa de las respuestas en lenguaje natural y deja una
