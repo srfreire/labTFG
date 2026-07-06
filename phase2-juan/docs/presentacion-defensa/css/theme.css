@@ -1,0 +1,137 @@
+@import "./tokens.css";
+@import "./fonts.css";
+
+/* ─────────────────────────────────────────────────────────────
+   Base — reveal.js theme built on the frontend design tokens.
+   Dark, dense, data-first. Satoshi + IBM Plex Mono.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --r-background-color: var(--color-bg);
+  /* subtle lab grid backdrop */
+  --grid-line: rgba(255, 255, 255, 0.028);
+}
+
+html, body, .reveal-viewport { background-color: var(--color-bg) !important; }
+
+.reveal {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  font-weight: var(--weight-normal);
+  font-size: 30px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Faint engineering grid behind every slide */
+.reveal .backgrounds,
+.reveal:after { }
+.reveal .slides > section,
+.reveal .slides > section > section {
+  text-align: left;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.reveal .slides { text-align: left; }
+
+/* Consistent slide canvas so content is vertically balanced and absolute
+   layers line up. Content block is centered within the 640px canvas. */
+.reveal .slides > section {
+  height: 640px;
+  box-sizing: border-box;
+  padding: 44px 56px;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.reveal .slides > section.s-portada,
+.reveal .slides > section[data-slide="demo"] { padding: 0; justify-content: stretch; }
+
+/* Headings */
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  text-transform: none;
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+  margin: 0 0 0.5em;
+}
+.reveal h1 { font-size: 2.1rem; }
+.reveal h2 { font-size: 1.55rem; }   /* default slide title */
+.reveal h3 { font-size: 1.1rem; }
+.reveal p, .reveal li { line-height: var(--leading-normal); color: var(--color-text-muted); }
+.reveal strong { color: var(--color-text); font-weight: var(--weight-semibold); }
+.reveal em { font-style: normal; color: var(--color-text); }
+
+/* Uppercase mono micro-label — the signature of the design system */
+.reveal .label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: var(--weight-medium);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+.reveal .mono { font-family: var(--font-mono); }
+.reveal .dim { color: var(--color-text-dim); }
+.reveal .muted { color: var(--color-text-muted); }
+
+/* Kicker line above a title */
+.reveal .kicker {
+  font-family: var(--font-mono);
+  font-size: 0.6rem; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--color-text-faint); margin-bottom: 0.6rem;
+}
+
+/* Slide index / progress accents */
+.reveal .progress { color: var(--color-text-ghost); height: 3px; }
+.reveal .controls { color: var(--color-text-ghost); }
+
+/* Links */
+.reveal a { color: var(--color-accent-blue); text-decoration: none; }
+
+/* Fragments: gentle rise-in, matching the app's card entrance */
+.reveal .fragment.fade-in-up { opacity: 0; transform: translateY(10px); transition: all 0.4s var(--ease-out); }
+.reveal .fragment.fade-in-up.visible { opacity: 1; transform: none; }
+
+/* ─── Code (highlight.js) ─── */
+.reveal pre {
+  width: 100%; box-shadow: var(--shadow-panel);
+  font-size: 0.8rem; line-height: 1.75; margin: 0.4em 0;
+}
+.reveal pre.contract { max-width: 860px; font-size: 0.86rem; }
+.reveal pre code {
+  display: block;
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.2em 1.5em;
+  max-height: none;
+  white-space: pre;
+  overflow-x: auto;
+  word-wrap: normal;
+}
+.hljs { color: var(--color-text); background: transparent; }
+.hljs-keyword, .hljs-built_in { color: var(--color-accent-purple); }
+.hljs-title, .hljs-title.function_ { color: var(--color-accent-green-light); }
+.hljs-params { color: var(--color-text-muted); }
+.hljs-string { color: var(--color-accent-amber); }
+.hljs-comment { color: var(--color-text-dim); font-style: italic; }
+.hljs-number { color: var(--color-accent-cyan); }
+.hljs-type, .hljs-class .hljs-title { color: var(--color-accent-cyan); }
+
+/* Projector fallback: if backdrop-filter unsupported, use solid surfaces */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel, .reveal .panel { background: var(--color-surface) !important; }
+}

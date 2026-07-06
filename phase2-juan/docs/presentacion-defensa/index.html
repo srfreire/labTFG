@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Defensa TFG · Laboratorio virtual de paradigmas de decisión</title>
+<link rel="stylesheet" href="vendor/reset.css">
+<link rel="stylesheet" href="vendor/reveal.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/diagrams.css">
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+  <!-- 1 · PORTADA -->
+  <section data-slide="portada" class="s-portada" data-background-color="#0a0a0a">
+    <video class="hero-video" autoplay muted loop playsinline poster="assets/img/ui-01-dashboard-inicial.png">
+      <source src="assets/video/demo.mp4" type="video/mp4">
+    </video>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="label">TFG · Grao en Enxeñaría Informática · USC</div>
+      <h1>Laboratorio virtual para la simulación<br>y análisis de paradigmas de decisión</h1>
+      <p class="hero-sub mono">Agentes inteligentes · Fase 2 — Infraestructura de simulación y análisis</p>
+      <div class="hero-meta mono">
+        <span><strong>Juan Freire Alvarez</strong></span>
+        <span class="dim">Director: Eduardo M. Sánchez Vila</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · PROBLEMA -->
+  <section data-slide="problema">
+    <div class="kicker">El problema</div>
+    <h2>De un paradigma descrito<br>a un experimento revisable</h2>
+    <ul class="clean" style="margin-top:1.2rem;max-width:70%">
+      <li class="fragment fade-in-up">La <strong>Fase 1</strong> produce modelos de decisión ejecutables a partir de descripciones en lenguaje natural.</li>
+      <li class="fragment fade-in-up">Pero, ¿cómo se <strong>ejecutan, observan y comparan</strong> de forma trazable y reproducible?</li>
+      <li class="fragment fade-in-up"><strong>Fase 2:</strong> cerrar el recorrido — de modelo compilado a evidencia revisable.</li>
+    </ul>
+  </section>
+
+  <!-- 3 · DEMO -->
+  <section data-slide="demo" data-background-color="#050505">
+    <div class="demo-wrap">
+      <div class="label">Demo · El sistema en marcha</div>
+      <div class="shot demo-shot">
+        <video class="demo-video" controls muted loop playsinline poster="assets/img/ui-01-dashboard-inicial.png">
+          <source src="assets/video/demo.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · DOS FASES -->
+  <section data-slide="dos-fases">
+    <div class="kicker">Visión general</div>
+    <h2>Dos fases, una frontera fina</h2>
+    <div class="diagram" style="margin-top:1rem">
+      <div class="grid-2" style="position:relative">
+        <div class="panel agent--architect" data-anim="p1">
+          <div class="panel__title">Fase 1 · Pablo Pazos</div>
+          <p>Lenguaje natural <span class="mono dim">→</span> modelo Python ejecutable.</p>
+          <p class="mono dim" style="margin-top:8px;font-size:0.62rem">Researcher · Reasoner · Builder</p>
+        </div>
+        <div class="panel agent--orchestrator" data-anim="p2">
+          <div class="panel__title">Fase 2 · Juan Freire</div>
+          <p>Ejecutar · observar · analizar · informar · <strong>recordar</strong>.</p>
+          <p class="mono dim" style="margin-top:8px;font-size:0.62rem">Este TFG</p>
+        </div>
+      </div>
+      <div class="bridge" data-anim="bridge"></div>
+    </div>
+    <p class="muted fragment fade-in-up" style="margin-top:1.4rem;font-size:0.82rem">Integración por <strong>duck typing</strong>: sin herencia, sin dependencias estáticas, sin coordinar releases.</p>
+  </section>
+
+  <!-- 5 · CONTRATO -->
+  <section data-slide="contrato">
+    <div class="kicker">La integración</div>
+    <h2>Un contrato mínimo compartido</h2>
+    <pre class="contract"><code class="language-python">class DecisionModel(Protocol):
+    def decide(self, perception: dict) -> Action:
+        ...   # elegir acción — solo lectura
+    def update(self, action, reward, new_perception):
+        ...   # ajustar el estado interno
+    def get_state(self) -> dict:
+        ...   # exponer internals (q_values)
+</code></pre>
+    <div class="row" style="margin-top:1rem;gap:var(--space-6)">
+      <p class="muted" style="flex:1;font-size:0.8rem"><strong>Tres métodos, cero acoplamiento.</strong> Ambas fases comparten esta interfaz y evolucionan por separado: el laboratorio carga cualquier modelo que la cumpla.</p>
+      <p class="mono dim" style="flex:1;font-size:0.6rem">perception: <span class="muted">x, y, grid_width, grid_height, step, resources, last_action_result</span></p>
+    </div>
+  </section>
+
+  <!-- 6 · OBJETIVOS -->
+  <section data-slide="objetivos">
+    <div class="kicker">Introducción</div>
+    <h2>Seis objetivos específicos</h2>
+    <div class="grid-3" style="margin-top:1rem">
+      <div class="panel fragment fade-in-up"><div class="panel__title">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">02</div><p>Ejecutar modelos <strong>sin acoplamiento</strong>, incluso varios a la vez.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">03</div><p>Registrar el comportamiento de forma <strong>estructurada</strong>.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">04</div><p>Analizar <strong>patrones</strong> comportamiento–objetivo.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">05</div><p>Generar un <strong>informe PDF</strong> reproducible.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 · REQUISITOS -->
+  <section data-slide="requisitos">
+    <div class="kicker">Especificación de requisitos</div>
+    <h2>Requisitos, de un vistazo</h2>
+    <div class="grid-3" style="margin-top:1.4rem">
+      <div class="stat"><div class="stat__num" data-to="5">0</div><div class="stat__label">Casos de uso</div></div>
+      <div class="stat"><div class="stat__num" data-to="13">0</div><div class="stat__label">Requisitos funcionales</div></div>
+      <div class="stat"><div class="stat__num" data-to="14">0</div><div class="stat__label">Requisitos no funcionales</div></div>
+    </div>
+    <div class="chips" style="margin-top:2rem">
+      <span class="chip">Degradación controlada</span>
+      <span class="chip">Recuperación segura NL-SQL</span>
+      <span class="chip">Determinismo reproducible</span>
+      <span class="chip">Reactividad por WebSocket</span>
+      <span class="chip">Portabilidad · Docker Compose</span>
+    </div>
+  </section>
+
+  <!-- 8 · ARQUITECTURA -->
+  <section data-slide="arquitectura">
+    <div class="kicker">Diseño</div>
+    <h2>Arquitectura de despliegue</h2>
+    <div class="diagram" style="margin-top:0.4rem">
+      <div class="canvas" id="arch-canvas">
+        <svg class="edges" viewBox="0 0 1140 460" preserveAspectRatio="none">
+          <line class="edge" pathLength="1" x1="150" y1="230" x2="300" y2="230"/>
+          <line class="edge" pathLength="1" x1="430" y1="230" x2="560" y2="230"/>
+          <line class="edge" pathLength="1" x1="700" y1="205" x2="850" y2="95"/>
+          <line class="edge" pathLength="1" x1="700" y1="255" x2="850" y2="365"/>
+        </svg>
+        <div class="node" data-anim="n" style="left:1%;top:44%;width:150px"><div class="node__name">Navegador</div><div class="node__sub">React 19 · Vite · Tailwind 4</div></div>
+        <div class="node node--api" data-anim="n" style="left:23%;top:44%;width:150px"><div class="node__name">API</div><div class="node__sub">FastAPI · REST + /ws</div></div>
+        <div class="node node--hub" data-anim="n" style="left:44%;top:42%;width:180px"><div class="node__name">Orchestrator</div><div class="node__sub">OpenRouter · tool calls</div></div>
+        <div class="node" data-anim="n" style="left:72%;top:12%;width:190px"><div class="node__name">Fase 1</div><div class="node__sub">modelos Python (duck typing)</div></div>
+        <div class="node" data-anim="n" style="left:72%;top:70%;width:230px"><div class="node__name">Infraestructura compartida</div><div class="node__sub">Postgres · MinIO · Qdrant · Neo4j</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · DOMINIO 2D -->
+  <section data-slide="dominio">
+    <div class="kicker">Diseño · el dominio</div>
+    <h2>Una rejilla 2D común</h2>
+    <div class="grid-2" style="margin-top:0.6rem;align-items:center">
+      <div class="simgrid-wrap" style="position:relative;max-width:340px">
+        <div class="simgrid" id="dom-grid" style="grid-template-columns:repeat(8,1fr)"></div>
+        <div class="simdot" id="dom-agent" style="background:var(--color-architect);box-shadow:0 0 12px var(--color-architect)"></div>
+      </div>
+      <div class="stack">
+        <div class="panel"><div class="panel__title">Agent</div><p><strong>quién y dónde</strong> — posición en la rejilla, energía, historia.</p></div>
+        <div class="panel"><div class="panel__title">DecisionModel</div><p><strong>cómo decide</strong> — la política, separada del cuerpo.</p></div>
+        <p class="mono dim" style="font-size:0.62rem">Recursos, reglas del entorno y <strong>eventos inmutables</strong>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · ORCHESTRATOR -->
+  <section data-slide="orchestrator">
+    <div class="kicker">Diseño</div>
+    <h2 style="color:var(--color-orchestrator)">Orchestrator: coordinador único</h2>
+    <ul class="clean agentic agent--orchestrator" style="margin-top:1rem;max-width:78%">
+      <li class="fragment fade-in-up">Ejecuta una <strong>secuencia canónica</strong> de tool calls; el LLM solo elige las desviaciones.</li>
+      <li class="fragment fade-in-up"><strong>Pre-recupera contexto</strong> del Knowledge Backbone antes de despachar a cada agente.</li>
+      <li class="fragment fade-in-up"><strong>Difiere la persistencia</strong> y controla presupuesto y ventana de contexto.</li>
+      <li class="fragment fade-in-up">Transmite en vivo por <strong>WebSocket</strong> — observabilidad sin polling.</li>
+    </ul>
+  </section>
+
+  <!-- 11 · LOS 4 AGENTES -->
+  <section data-slide="agentes">
+    <div class="kicker">Diseño · los agentes</div>
+    <h2>Cuatro agentes, cuatro cambios de representación</h2>
+    <div class="diagram" style="margin-top:1rem">
+      <div class="agents-row">
+        <div class="node agent--architect" data-anim="agent"><div class="node__name">Architect</div><div class="node__sub">NL + contexto → spec JSON</div></div>
+        <div class="agent-arrow" data-anim="edge">→</div>
+        <div class="node agent--tracker" data-anim="agent"><div class="node__name">Tracker</div><div class="node__sub">ejecución → observaciones</div></div>
+        <div class="agent-arrow" data-anim="edge">→</div>
+        <div class="node agent--analyst" data-anim="agent"><div class="node__name">Analyst</div><div class="node__sub">observaciones → patrones + gráficas</div></div>
+        <div class="agent-arrow" data-anim="edge">→</div>
+        <div class="node agent--reporter" data-anim="agent"><div class="node__name">Reporter</div><div class="node__sub">análisis → LaTeX → PDF</div></div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cada agente registra <strong>eventos, trayectorias y episodios</strong>; el Reporter compila con <span class="mono">tectonic</span>, sin fallback.</p>
+  </section>
+
+  <!-- 12 · KNOWLEDGE BACKBONE -->
+  <section data-slide="knowledge">
+    <div class="kicker">Diseño · memoria compartida</div>
+    <h2>Knowledge Backbone</h2>
+    <div class="diagram" style="margin-top:0.4rem">
+      <div class="canvas" id="kb-canvas" style="height:420px">
+        <div class="node node--hub" data-anim="hub" style="left:39%;top:40%;width:200px;text-align:center"><div class="node__name">Orchestrator</div><div class="node__sub">acceso centralizado</div></div>
+        <div class="node" data-anim="store" style="left:2%;top:6%;width:250px"><div class="node__name">PostgreSQL</div><div class="node__sub">metadatos · historial · simulation_observations</div></div>
+        <div class="node" data-anim="store" style="left:70%;top:6%;width:220px"><div class="node__name">MinIO</div><div class="node__sub">PDF y artefactos binarios</div></div>
+        <div class="node" data-anim="store" style="left:2%;top:74%;width:230px"><div class="node__name">Qdrant</div><div class="node__sub">memorias densas + sparse BM25</div></div>
+        <div class="node" data-anim="store" style="left:70%;top:74%;width:230px"><div class="node__name">Neo4j</div><div class="node__sub">grafo de paradigmas y procedencia</div></div>
+      </div>
+    </div>
+    <div class="chips" style="margin-top:0.6rem"><span class="chip">Voyage AI · embeddings</span><span class="chip">ZeroEntropy · reranking</span><span class="chip dim">opcionales · con degradación controlada</span></div>
+  </section>
+
+  <!-- 13 · UI EN DETALLE -->
+  <section data-slide="ui">
+    <div class="kicker">Diseño · capa reactiva</div>
+    <h2>La interfaz, en detalle</h2>
+    <div class="grid-3" style="margin-top:0.8rem">
+      <div class="shot fragment fade-in-up"><img src="assets/img/ui-06-analyst-patrones.png" alt="Patrones del Analyst"><div class="shot__cap">Patrones del Analyst</div></div>
+      <div class="shot fragment fade-in-up"><img src="assets/img/ui-07-decision-traces.png" alt="Decision traces"><div class="shot__cap">Decision traces · Q-values</div></div>
+      <div class="shot fragment fade-in-up"><img src="assets/img/ui-09-reporter-pdf.png" alt="Informe PDF del Reporter"><div class="shot__cap">Informe PDF del Reporter</div></div>
+    </div>
+    <p class="mono dim" style="margin-top:1rem;font-size:0.62rem">Dashboard oscuro · replay 2D animado · tarjetas de datos en vivo por WebSocket</p>
+  </section>
+
+  <!-- 14 · BUCLE DE DESARROLLO -->
+  <section data-slide="bucle">
+    <div class="kicker">Desarrollo del trabajo</div>
+    <h2>Un nuevo bucle de desarrollo</h2>
+    <div class="diagram" style="margin-top:0.6rem">
+      <div class="canvas" id="loop-canvas" style="height:380px">
+        <svg class="edges" viewBox="0 0 1140 380" preserveAspectRatio="none">
+          <line class="edge edge--arrow" pathLength="1" x1="230" y1="90" x2="470" y2="90"/>
+          <line class="edge edge--arrow" pathLength="1" x1="700" y1="90" x2="920" y2="90"/>
+          <line class="edge edge--arrow" pathLength="1" x1="990" y1="140" x2="990" y2="230"/>
+          <line class="edge edge--arrow" pathLength="1" x1="850" y1="290" x2="200" y2="290"/>
+          <line class="edge edge--arrow" pathLength="1" x1="120" y1="240" x2="120" y2="140"/>
+        </svg>
+        <div class="node" data-anim="step" style="left:2%;top:16%;width:180px"><div class="node__name">Especificar</div><div class="node__sub">alcance · pruebas · invariantes</div></div>
+        <div class="node" data-anim="step" style="left:38%;top:16%;width:170px"><div class="node__name">Ejecutar</div><div class="node__sub">el agente implementa</div></div>
+        <div class="node" data-anim="step" style="left:76%;top:16%;width:190px"><div class="node__name">Revisar</div><div class="node__sub">diff · diseño · regresiones</div></div>
+        <div class="node agent--architect" data-anim="step" style="left:60%;top:64%;width:220px"><div class="node__name">Aceptar / Ajustar</div><div class="node__sub">pruebas + revisión OK</div></div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:0.4rem;font-size:0.8rem">Implementar deja de ser lo caro; <strong>especificar y verificar</strong> pasan al centro.</p>
+  </section>
+
+  <!-- 15 · COORDINACION -->
+  <section data-slide="coordinacion">
+    <div class="kicker">Desarrollo · coordinación</div>
+    <h2>Cómo nos coordinamos</h2>
+    <div class="grid-2" style="margin-top:0.8rem">
+      <div class="panel"><div class="panel__title">Frontera mínima con la Fase 1</div><p>Tres métodos compartidos. Sin coordinar releases durante meses de desarrollo: cada fase avanzó por su cuenta.</p></div>
+      <div class="panel"><div class="panel__title">Linear como memoria operativa</div><p>Tareas con criterios de aceptación, dependencias, prioridades y paralelismo. Las decisiones, visibles antes de delegar.</p></div>
+    </div>
+    <div class="panel" style="margin-top:1.2rem"><div class="panel__title">Reparto humano · agente</div><p><strong>El humano</strong> decide alcance, contratos, diseño visual y aceptación final. <strong>El agente</strong> implementa módulos acotados, pruebas, migraciones y refactores.</p></div>
+  </section>
+
+  <!-- 16 · CRONOGRAMA -->
+  <section data-slide="cronograma">
+    <div class="kicker">Desarrollo · planificación</div>
+    <h2>Marzo – junio 2026</h2>
+    <div class="gantt" style="margin-top:1rem" id="gantt">
+      <div></div>
+      <div class="gantt__month">Marzo</div><div class="gantt__month">Abril</div><div class="gantt__month">Mayo</div><div class="gantt__month">Junio</div>
+      <div class="gantt__task">Diseño + contrato</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-architect);left:0%;width:24%"></div></div>
+      <div class="gantt__task">Núcleo + CLI</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-architect);left:8%;width:30%"></div></div>
+      <div class="gantt__task">Frontend + WebSocket</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-accent-cyan);left:18%;width:34%"></div></div>
+      <div class="gantt__task">Comparativa multi-modelo</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-accent-cyan);left:32%;width:22%"></div></div>
+      <div class="gantt__task">Tracker · Analyst · Reporter</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-tracker);left:30%;width:40%"></div></div>
+      <div class="gantt__task">Persistencia (Postgres/MinIO)</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-analyst);left:42%;width:32%"></div></div>
+      <div class="gantt__task">Knowledge Backbone + NL-SQL</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-analyst);left:56%;width:30%"></div></div>
+      <div class="gantt__task">Despliegue + evaluación</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-reporter);left:74%;width:26%"></div></div>
+    </div>
+  </section>
+
+  <!-- 17 · VERIFICACION -->
+  <section data-slide="verificacion">
+    <div class="kicker">Desarrollo</div>
+    <h2>La verificación, el nuevo cuello de botella</h2>
+    <div class="grid-3" style="margin-top:1rem">
+      <div class="panel fragment fade-in-up"><div class="panel__title">Pruebas como contrato</div><p>pytest · Playwright · compilación LaTeX. Un cambio no entra si rompe el contrato.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">Revisión combinada</div><p>Lectura humana + subagentes especializados de alta confianza sobre el diff.</p></div>
+      <div class="panel fragment fade-in-up"><div class="panel__title">Ejecución instrumentada</div><p>Métricas duras contra la propia simulación — no basta con que pasen los tests.</p></div>
+    </div>
+  </section>
+
+  <!-- 18 · EVALUACION -->
+  <section data-slide="evaluacion">
+    <div class="kicker">Pruebas y evaluación</div>
+    <h2>Cómo se evalúa</h2>
+    <div class="chips" style="margin:0.4rem 0 1.2rem">
+      <span class="chip chip--accent">Verdad = datos de simulación, no teoría</span>
+      <span class="chip chip--accent">Evaluado (Claude) ≠ evaluador (Codex)</span>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel__title">Caso 1 · valor / forrajeo</div><p><strong>6 paradigmas</strong> — rejilla 8×8 · 360 eventos · 15 consumos.</p><p class="mono dim" style="font-size:0.6rem;margin-top:6px">DDM · homeostasis · dirigido-vs-hábito · valor por atributos · autocontrol · pavloviano</p></div>
+      <div class="panel"><div class="panel__title">Caso 2 · homeostasis / interocepción</div><p><strong>4 paradigmas</strong> — rejilla 10×10 · 199 eventos · 7 consumos.</p><p class="mono dim" style="font-size:0.6rem;margin-top:6px">impulso con umbral · RL homeostático · inferencia activa · codificación predictiva</p></div>
+    </div>
+  </section>
+
+  <!-- 19 · RESULTADOS -->
+  <section data-slide="resultados">
+    <div class="kicker">Pruebas y evaluación · resultados</div>
+    <h2>Resultados</h2>
+    <div class="grid-2" style="margin-top:0.6rem;align-items:center">
+      <div class="stack">
+        <div class="check"><span class="check__mark">✓</span> Tripleta joinable — Postgres = Qdrant denso = Qdrant sparse</div>
+        <div class="check"><span class="check__mark">✓</span> Determinismo con semilla 42 → trayectoria idéntica</div>
+        <div class="check"><span class="check__mark">✓</span> PDF compilado con tectonic — real, sin fallback</div>
+        <div class="check"><span class="check__mark">✓</span> Pipeline completo sin intervención manual</div>
+      </div>
+      <div class="grid-2">
+        <div class="panel agent--architect" style="text-align:center"><div class="stat__num stat__num--sm" data-to="88">0</div><div class="stat__label">Caso 1 / 100</div></div>
+        <div class="panel agent--architect" style="text-align:center"><div class="stat__num stat__num--sm" data-to="86">0</div><div class="stat__label">Caso 2 / 100</div></div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:1.2rem;font-size:0.76rem">Juez externo <span class="mono">Codex</span>, rúbrica de 6 criterios: alta fidelidad de observación e informe real; reservas por imprecisiones puntuales de cita paso a paso.</p>
+  </section>
+
+  <!-- 20 · CIERRE -->
+  <section data-slide="cierre">
+    <div class="kicker">Conclusiones</div>
+    <h2>Lo que queda</h2>
+    <ul class="clean" style="margin-top:0.6rem;max-width:80%">
+      <li class="fragment fade-in-up"><strong>La forma de conectar importa más que cada pieza</strong> — fronteras acotadas, contratos finos.</li>
+      <li class="fragment fade-in-up"><strong>Centralizar el acceso al conocimiento compensa</strong> — control de presupuesto y diagnóstico.</li>
+      <li class="fragment fade-in-up"><strong>Separar observación de persistencia</strong> — el observador nunca deja memorias a medias.</li>
+    </ul>
+    <p class="muted fragment fade-in-up" style="margin-top:1rem;font-size:0.74rem">Límites: no valida teorías por sí solo · depende del LLM · dominio 2D. &nbsp;Ampliaciones: más paradigmas y entornos · métricas estandarizadas · reanudación de sesiones.</p>
+    <p class="closing fragment fade-in-up" style="margin-top:1.4rem">«De <span class="dim">cómo lo escribo</span> a <strong>qué quiero exactamente que ocurra</strong>.»</p>
+    <p class="mono dim fragment fade-in-up" style="margin-top:1.6rem;font-size:0.7rem">Gracias · Juan Freire Alvarez · TFG Fase 2 · USC</p>
+  </section>
+
+</div>
+</div>
+
+<script src="vendor/reveal.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/highlight-python.min.js"></script>
+<script src="js/animations.js"></script>
+<script src="js/slides-anim.js"></script>
+<script src="js/deck.js"></script>
+</body>
+</html>

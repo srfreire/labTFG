@@ -1,0 +1,101 @@
+/* Auto-generated from system.md — do not edit manually */
+/* Regenerate with: /chisel lay */
+
+:root {
+  /* ── Colors ── */
+  --color-bg: #0a0a0a;
+  --color-surface: #090909;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-surface-frosted: rgba(9, 9, 9, 0.96);
+  --color-overlay: rgba(0, 0, 0, 0.85);
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-faint: rgba(255, 255, 255, 0.06);
+
+  --color-text: #fff;
+  --color-text-muted: rgba(255, 255, 255, 0.6);
+  --color-text-dim: rgba(255, 255, 255, 0.4);
+  --color-text-faint: rgba(255, 255, 255, 0.3);
+  --color-text-ghost: rgba(255, 255, 255, 0.15);
+
+  --color-accent-green: #22c55e;
+  --color-accent-green-light: #4ade80;
+  --color-accent-amber: #fbbf24;
+  --color-accent-amber-dark: #f59e0b;
+  --color-accent-red: #ef4444;
+  --color-accent-blue: #4a9eff;
+  --color-accent-cyan: #38bdf8;
+  --color-accent-purple: #a78bfa;
+  --color-accent-pink: #f472b6;
+
+  --color-scrollbar: #333;
+
+  /* ── Agent palette ── */
+  --color-architect: #4ade80;
+  --color-tracker: #fbbf24;
+  --color-analyst: #a78bfa;
+  --color-reporter: #f472b6;
+  --color-orchestrator: #94a3b8;
+  --color-user: rgba(255, 255, 255, 0.5);
+
+  /* ── Simulation agents ── */
+  --color-sim-1: #4ade80;
+  --color-sim-2: #fbbf24;
+  --color-sim-3: #a78bfa;
+  --color-sim-4: #f472b6;
+  --color-sim-5: #38bdf8;
+  --color-sim-6: #fb923c;
+
+  /* ── Typography ── */
+  --font-sans: 'Satoshi', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+
+  --text-xs: 0.5rem;      /* 8px — micro labels */
+  --text-sm: 0.625rem;    /* 10px — card titles, labels */
+  --text-base: 0.6875rem; /* 11px — secondary text */
+  --text-md: 0.9375rem;   /* 15px — body / messages */
+  --text-lg: 1.0625rem;   /* 17px — app title */
+  --text-xl: 1.25rem;     /* 20px — empty state heading */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ── Spacing (4px base) ── */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Shape ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-panel: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-popover: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+  /* ── Animation ── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 300ms;
+  --duration-entrance: 600ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}

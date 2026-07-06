@@ -1,0 +1,49 @@
+/* ─────────────────────────────────────────────────────────────
+   Diagram primitives — nodes + SVG edges, animated with GSAP.
+   ───────────────────────────────────────────────────────────── */
+
+.reveal .diagram { position: relative; width: 100%; }
+.reveal .diagram svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+/* Each edge carries pathLength="1" so dashoffset 1→0 draws it regardless of length */
+.reveal .diagram .edge {
+  fill: none; stroke: var(--color-border); stroke-width: 1.5;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+}
+.reveal .diagram .edge--arrow { marker-end: url(#arrow); }
+
+.reveal .node {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-card);
+}
+.reveal .node__name { font-family: var(--font-sans); font-weight: var(--weight-semibold); font-size: 0.9rem; color: var(--color-text); }
+.reveal .node__sub  { font-family: var(--font-mono); font-size: 0.6rem; color: var(--color-text-dim); margin-top: 4px; letter-spacing: 0.3px; }
+
+/* agent-colored node */
+.reveal .node[class*="agent--"] { border-color: color-mix(in srgb, var(--agent) 40%, transparent); }
+.reveal .node[class*="agent--"] .node__name { color: var(--agent); }
+
+.reveal .node--hub {
+  background: color-mix(in srgb, var(--color-orchestrator) 10%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-orchestrator) 45%, transparent);
+}
+
+/* Absolute grid layout container for hand-placed diagrams */
+.reveal .canvas { position: relative; width: 100%; height: 460px; }
+.reveal .canvas .node { position: absolute; }
+.reveal .place { position: absolute; }
+
+/* 2D simulation mini-grid */
+.reveal .simgrid { display: grid; gap: 3px; background: var(--color-bg); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); }
+.reveal .simgrid .cell { background: rgba(255,255,255,0.02); border-radius: 3px; aspect-ratio: 1; }
+.reveal .simdot { position: absolute; border-radius: var(--radius-full); }
+
+/* Gantt */
+.reveal .gantt { display: grid; grid-template-columns: 220px repeat(4, 1fr); gap: 8px 6px; align-items: center; }
+.reveal .gantt__month { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-faint); text-align: center; }
+.reveal .gantt__task { font-family: var(--font-mono); font-size: 0.62rem; color: var(--color-text-muted); }
+.reveal .gantt__track { position: relative; grid-column: 2 / -1; height: 14px; }
+.reveal .gantt__bar { position: absolute; top: 0; height: 14px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--bar, var(--color-accent-blue)) 65%, transparent); transform: scaleX(0); transform-origin: left; }
