@@ -24,14 +24,13 @@ Es estático y autocontenido (librerías y fuentes vendorizadas en `vendor/` y
 
 ## El vídeo de la demo
 
-Coloca tu grabación del mock/demo en:
+Ya incluido: `assets/video/demo.webm` — grabación del **mock animado del dashboard**
+(`mock/hero-mock.html`), usado en la **slide 1** (fondo en loop silenciado) y en la
+**slide 3** (demo). Para sustituirlo por una grabación real de tu demo, coloca un
+`assets/video/demo.mp4`: el deck lo prioriza sobre el webm.
 
-```
-assets/video/demo.mp4
-```
-
-Se usa en la **slide 1** (fondo en loop silenciado) y en la **slide 3** (demo, con
-controles). Mientras no exista, se muestra el póster `assets/img/ui-01-dashboard-inicial.png`.
+Regenerar el webm desde el mock: servir el deck y grabar `mock/hero-mock.html`
+(1280×720, ~15,6 s = una vuelta del loop). Ver `assets/video/README.txt`.
 
 ## Exportar a PDF (plan B para el proyector)
 
