@@ -47,11 +47,11 @@ body::before {
   box-sizing: border-box;
   padding: 44px 56px;
   overflow: visible;
-  display: flex;
+  /* !important beats reveal's inline display:block so content centers vertically */
+  display: flex !important;
   flex-direction: column;
   justify-content: center;
 }
-.reveal .slides > section.s-portada,
 .reveal .slides > section[data-slide="demo"] { padding: 0; justify-content: stretch; }
 
 /* Headings */

@@ -13,6 +13,16 @@ function countUp(tl, el, at = 0.1) {
   });
 }
 
+/* 1 · Portada — agent faces stagger in, then title */
+SlideAnim.register('portada', el => {
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(el.querySelectorAll('[data-anim="face"]'),
+    { opacity: 0, y: 16, scale: 0.9 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, ease: 'back.out(1.5)' }, 0);
+  tl.fromTo(el.querySelector('h1'), { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.45);
+  return tl;
+});
+
 /* 4 · Dos fases */
 SlideAnim.register('dos-fases', el => {
   const tl = gsap.timeline({ paused: true });

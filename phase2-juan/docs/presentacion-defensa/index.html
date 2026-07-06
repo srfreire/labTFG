@@ -16,12 +16,14 @@
 
   <!-- 1 · PORTADA -->
   <section data-slide="portada" class="s-portada" data-background-color="#0a0a0a">
-    <video class="hero-video" autoplay muted loop playsinline poster="assets/img/ui-01-dashboard-inicial.png">
-      <source src="assets/video/demo.mp4" type="video/mp4">
-      <source src="assets/video/demo.webm" type="video/webm">
-    </video>
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
+    <div class="portada-inner">
+      <div class="faces">
+        <div class="face agent--orchestrator" data-anim="face"><span class="face__av"><img src="assets/img/faces/orchestrator.png" alt="Orchestrator"></span><span class="face__name">Orchestrator</span></div>
+        <div class="face agent--architect" data-anim="face"><span class="face__av"><img src="assets/img/faces/architect.png" alt="Architect"></span><span class="face__name">Architect</span></div>
+        <div class="face agent--tracker" data-anim="face"><span class="face__av"><img src="assets/img/faces/tracker.png" alt="Tracker"></span><span class="face__name">Tracker</span></div>
+        <div class="face agent--analyst" data-anim="face"><span class="face__av"><img src="assets/img/faces/analyst.png" alt="Analyst"></span><span class="face__name">Analyst</span></div>
+        <div class="face agent--reporter" data-anim="face"><span class="face__av"><img src="assets/img/faces/reporter.png" alt="Reporter"></span><span class="face__name">Reporter</span></div>
+      </div>
       <div class="label">TFG · Grao en Enxeñaría Informática · USC</div>
       <h1>Laboratorio virtual para la simulación<br>y análisis de paradigmas de decisión</h1>
       <p class="hero-sub mono">Agentes inteligentes · Fase 2 — Infraestructura de simulación y análisis</p>
@@ -32,14 +34,15 @@
     </div>
   </section>
 
-  <!-- 2 · PROBLEMA -->
+  <!-- 2 · ORIGEN / MOTIVACIÓN -->
   <section data-slide="problema">
-    <div class="kicker">El problema</div>
-    <h2>De un paradigma descrito<br>a un experimento revisable</h2>
-    <ul class="clean" style="margin-top:1.2rem;max-width:70%">
-      <li class="fragment fade-in-up">La <strong>Fase 1</strong> produce modelos de decisión ejecutables a partir de descripciones en lenguaje natural.</li>
-      <li class="fragment fade-in-up">Pero, ¿cómo se <strong>ejecutan, observan y comparan</strong> de forma trazable y reproducible?</li>
-      <li class="fragment fade-in-up"><strong>Fase 2:</strong> cerrar el recorrido — de modelo compilado a evidencia revisable.</li>
+    <div class="kicker">Origen · motivación</div>
+    <h2>Un problema abierto, iterado entre tres</h2>
+    <ul class="clean" style="margin-top:1.1rem;max-width:82%">
+      <li class="fragment fade-in-up">Nace de una propuesta de <strong>Eduardo Sánchez Vila</strong> a su grupo de investigación, sobre un TFM previo con una primera intuición de entorno de simulación.</li>
+      <li class="fragment fade-in-up">Yo quería hacer el TFG con Edu; a <strong>Pablo y a mí</strong> se nos propuso un problema <strong>sin definir</strong>.</li>
+      <li class="fragment fade-in-up">El alcance, la arquitectura y la <strong>división en dos fases</strong> se fueron cerrando poco a poco, en reuniones de diseño — iterando una solución casi desde cero.</li>
+      <li class="fragment fade-in-up">La idea que sobrevivió: <strong>transformar una propuesta de investigación en un sistema observable y ejecutable</strong>.</li>
     </ul>
   </section>
 
@@ -56,43 +59,32 @@
     </div>
   </section>
 
-  <!-- 4 · DOS FASES -->
+  <!-- 4 · DOS FASES + CONTRATO -->
   <section data-slide="dos-fases">
-    <div class="kicker">Visión general</div>
+    <div class="kicker">Visión general · la integración</div>
     <h2>Dos fases, una frontera fina</h2>
-    <div class="diagram" style="margin-top:1rem">
+    <div class="diagram" style="margin-top:0.7rem">
       <div class="grid-2" style="position:relative">
-        <div class="panel agent--architect" data-anim="p1">
+        <div class="panel agent--architect" data-anim="p1" style="padding:16px 20px">
           <div class="panel__title">Fase 1 · Pablo Pazos</div>
           <p>Lenguaje natural <span class="mono dim">→</span> modelo Python ejecutable.</p>
-          <p class="mono dim" style="margin-top:8px;font-size:0.62rem">Researcher · Reasoner · Builder</p>
+          <p class="mono dim" style="margin-top:6px;font-size:0.6rem">Researcher · Reasoner · Builder</p>
         </div>
-        <div class="panel agent--orchestrator" data-anim="p2">
+        <div class="panel agent--orchestrator" data-anim="p2" style="padding:16px 20px">
           <div class="panel__title">Fase 2 · Juan Freire</div>
           <p>Ejecutar · observar · analizar · informar · <strong>recordar</strong>.</p>
-          <p class="mono dim" style="margin-top:8px;font-size:0.62rem">Este TFG</p>
+          <p class="mono dim" style="margin-top:6px;font-size:0.6rem">Este TFG · <em>infraestructura</em></p>
         </div>
       </div>
       <div class="bridge" data-anim="bridge"></div>
     </div>
-    <p class="muted fragment fade-in-up" style="margin-top:1.4rem;font-size:0.82rem">Integración por <strong>duck typing</strong>: sin herencia, sin dependencias estáticas, sin coordinar releases.</p>
-  </section>
-
-  <!-- 5 · CONTRATO -->
-  <section data-slide="contrato">
-    <div class="kicker">La integración</div>
-    <h2>Un contrato mínimo compartido</h2>
-    <pre class="contract"><code class="language-python">class DecisionModel(Protocol):
-    def decide(self, perception: dict) -> Action:
-        ...   # elegir acción — solo lectura
-    def update(self, action, reward, new_perception):
-        ...   # ajustar el estado interno
-    def get_state(self) -> dict:
-        ...   # exponer internals (q_values)
+    <div class="grid-2" style="margin-top:1.1rem;align-items:center;gap:var(--space-6)">
+      <pre class="contract" style="max-width:none;font-size:0.72rem;margin:0"><code class="language-python">class DecisionModel(Protocol):
+    def decide(self, perception: dict) -> Action: ...
+    def update(self, action, reward, new_perception): ...
+    def get_state(self) -> dict: ...
 </code></pre>
-    <div class="row" style="margin-top:1rem;gap:var(--space-6)">
-      <p class="muted" style="flex:1;font-size:0.8rem"><strong>Tres métodos, cero acoplamiento.</strong> Ambas fases comparten esta interfaz y evolucionan por separado: el laboratorio carga cualquier modelo que la cumpla.</p>
-      <p class="mono dim" style="flex:1;font-size:0.6rem">perception: <span class="muted">x, y, grid_width, grid_height, step, resources, last_action_result</span></p>
+      <p class="muted" style="font-size:0.8rem">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento. Sin herencia ni dependencias estáticas — ambas fases evolucionan por separado, sin coordinar releases.</p>
     </div>
   </section>
 

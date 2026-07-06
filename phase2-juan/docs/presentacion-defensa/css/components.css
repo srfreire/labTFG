@@ -91,17 +91,23 @@
 
 /* ─── Slide-specific layout ─── */
 
-/* Portada / hero video */
-.reveal .s-portada { height: 100%; padding: 0; }
-.reveal .hero-video, .reveal .demo-video { width: 100%; height: 100%; object-fit: cover; }
-.reveal .s-portada .hero-video { position: absolute; inset: 0; z-index: 0; opacity: 0.32; }
-.reveal .hero-overlay { position: absolute; inset: 0; z-index: 1;
-  background: radial-gradient(120% 80% at 20% 20%, transparent 0%, var(--color-bg) 78%); }
-.reveal .hero-content { position: absolute; z-index: 2; left: 6%; right: 6%; bottom: 12%; }
-.reveal .s-portada h1 { font-size: 2.4rem; line-height: 1.12; margin: 0.4em 0 0.5rem; }
+/* Portada — agent faces + title */
+.reveal .portada-inner { max-width: 1060px; }
+.reveal .s-portada h1 { font-size: 2.5rem; line-height: 1.12; margin: 0.4rem 0 0.6rem; }
+.reveal .faces { display: flex; gap: 22px; margin-bottom: 32px; }
+.reveal .face { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.reveal .face__av {
+  width: 74px; height: 74px; border-radius: var(--radius-lg); overflow: hidden;
+  background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--agent) 50%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--agent) 22%, transparent);
+}
+.reveal .face__av img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.reveal .face__name { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-dim); }
 .reveal .hero-sub { font-size: 0.72rem; color: var(--color-text-muted); letter-spacing: 0.5px; }
 .reveal .hero-meta { display: flex; gap: var(--space-6); margin-top: 1.4rem; font-size: 0.72rem; }
 .reveal .hero-meta strong { color: var(--color-text); }
+.reveal .demo-video { width: 100%; height: 100%; }
 
 /* Demo slide */
 .reveal .demo-wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
