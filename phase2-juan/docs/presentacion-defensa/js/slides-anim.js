@@ -35,22 +35,33 @@ SlideAnim.register('dos-fases', el => {
   return tl;
 });
 
-/* 7 · Requisitos — counters */
-SlideAnim.register('requisitos', el => {
+/* Estado del arte — panels stagger in on entry, then footer */
+SlideAnim.register('arte', el => {
   const tl = gsap.timeline({ paused: true });
-  countUp(tl, el, 0);
-  tl.fromTo(el.querySelectorAll('.chip'),
-    { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power2.out' }, 0.5);
+  tl.fromTo(el.querySelectorAll('[data-anim="p"]'),
+    { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.12, ease: 'power2.out' }, 0);
+  tl.fromTo(el.querySelector('[data-anim="foot"]'),
+    { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.55);
   return tl;
 });
 
-/* 8 · Arquitectura — nodes in, edges draw */
+/* LLM-as-a-judge — three families, then rubric line, then two principles */
+SlideAnim.register('judge', el => {
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(el.querySelectorAll('[data-anim="fam"]'),
+    { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.12, ease: 'power2.out' }, 0);
+  tl.fromTo(el.querySelector('[data-anim="rub"]'),
+    { opacity: 0 }, { opacity: 1, duration: 0.35 }, 0.5);
+  tl.fromTo(el.querySelectorAll('[data-anim="pri"]'),
+    { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.12, ease: 'power2.out' }, 0.6);
+  return tl;
+});
+
+/* Arquitectura — layered bands cascade top to bottom */
 SlideAnim.register('arquitectura', el => {
   const tl = gsap.timeline({ paused: true });
-  const nodes = el.querySelectorAll('[data-anim="n"]');
-  tl.fromTo(nodes, { opacity: 0, scale: 0.85 },
-    { opacity: 1, scale: 1, duration: 0.45, stagger: 0.12, ease: 'back.out(1.4)' }, 0);
-  drawEdge(tl, '.edge', el, 0.5, 0.5);
+  tl.fromTo(el.querySelectorAll('[data-anim="band"]'),
+    { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.14, ease: 'power2.out' }, 0);
   return tl;
 });
 
@@ -76,18 +87,23 @@ SlideAnim.register('dominio', el => {
   return tl;
 });
 
-/* 11 · Los 4 agentes — light up in sequence, in color */
+/* Recuperación híbrida — two columns in, query dot pulses */
+SlideAnim.register('retrieval', el => {
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(el.querySelectorAll('[data-anim="col"]'),
+    { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.15, ease: 'power2.out' }, 0);
+  tl.fromTo(el.querySelector('[data-anim="foot"]'), { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.6);
+  const ring = el.querySelector('.retr-qring');
+  if (ring) tl.fromTo(ring, { attr: { r: 9 }, opacity: 0.6 },
+    { attr: { r: 22 }, opacity: 0, duration: 1.5, ease: 'sine.out', repeat: -1 }, 0.6);
+  return tl;
+});
+
+/* 11 · Los 4 agentes — dim face strip staggers in; each lights up on advance (CSS :has) */
 SlideAnim.register('agentes', el => {
   const tl = gsap.timeline({ paused: true });
-  const nodes = el.querySelectorAll('[data-anim="agent"]');
-  const arrows = el.querySelectorAll('[data-anim="edge"]');
-  nodes.forEach((n, i) => {
-    const color = getComputedStyle(n).getPropertyValue('--agent').trim();
-    tl.fromTo(n, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, i * 0.4);
-    tl.fromTo(n, { boxShadow: '0 0 0 rgba(0,0,0,0)' },
-      { boxShadow: `0 0 26px ${color}66`, duration: 0.35 }, i * 0.4 + 0.2);
-    if (arrows[i]) tl.fromTo(arrows[i], { opacity: 0, x: -8 }, { opacity: 1, x: 0, duration: 0.25 }, i * 0.4 + 0.35);
-  });
+  tl.fromTo(el.querySelectorAll('[data-anim="tile"]'),
+    { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.09, ease: 'power2.out' }, 0);
   return tl;
 });
 
@@ -102,6 +118,7 @@ SlideAnim.register('knowledge', el => {
     tl.fromTo(s, { opacity: 0, x: offs[i][0], y: offs[i][1] },
       { opacity: 1, x: 0, y: 0, duration: 0.45, ease: 'power2.out' }, 0.25 + i * 0.12);
   });
+  drawEdge(tl, '.kb-edge', el, 0.3, 0.8);
   return tl;
 });
 
@@ -114,19 +131,20 @@ SlideAnim.register('bucle', el => {
   return tl;
 });
 
-/* 16 · Cronograma — grow bars */
-SlideAnim.register('cronograma', el => {
-  const tl = gsap.timeline({ paused: true });
-  tl.to(el.querySelectorAll('.gantt__bar'),
-    { scaleX: 1, duration: 0.6, stagger: 0.09, ease: 'power2.out' }, 0.1);
-  return tl;
-});
-
-/* 19 · Resultados — counters + check rows */
+/* Resultados — counters + check rows */
 SlideAnim.register('resultados', el => {
   const tl = gsap.timeline({ paused: true });
   tl.fromTo(el.querySelectorAll('.check'),
     { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.12, ease: 'power2.out' }, 0);
   countUp(tl, el, 0.4);
+  return tl;
+});
+
+/* Anécdota — stat count-up */
+SlideAnim.register('anecdota', el => {
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(el.querySelectorAll('.panel'),
+    { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.1, ease: 'power2.out' }, 0);
+  countUp(tl, el, 0.3);
   return tl;
 });

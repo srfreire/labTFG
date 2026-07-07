@@ -15,21 +15,21 @@
 <div class="slides">
 
   <!-- 1 · PORTADA -->
-  <section data-slide="portada" class="s-portada" data-background-color="#0a0a0a">
+  <section data-slide="portada" class="s-portada">
     <div class="portada-inner">
       <div class="faces">
-        <div class="face agent--orchestrator" data-anim="face"><span class="face__av"><img src="assets/img/faces/orchestrator.png" alt="Orchestrator"></span><span class="face__name">Orchestrator</span></div>
-        <div class="face agent--architect" data-anim="face"><span class="face__av"><img src="assets/img/faces/architect.png" alt="Architect"></span><span class="face__name">Architect</span></div>
-        <div class="face agent--tracker" data-anim="face"><span class="face__av"><img src="assets/img/faces/tracker.png" alt="Tracker"></span><span class="face__name">Tracker</span></div>
-        <div class="face agent--analyst" data-anim="face"><span class="face__av"><img src="assets/img/faces/analyst.png" alt="Analyst"></span><span class="face__name">Analyst</span></div>
-        <div class="face agent--reporter" data-anim="face"><span class="face__av"><img src="assets/img/faces/reporter.png" alt="Reporter"></span><span class="face__name">Reporter</span></div>
+        <div class="face agent--orchestrator" data-anim="face"><span class="face__av"><img src="assets/img/faces/orchestrator.svg" alt="Orchestrator"></span><span class="face__name">Orchestrator</span></div>
+        <div class="face agent--architect" data-anim="face"><span class="face__av"><img src="assets/img/faces/architect.svg" alt="Architect"></span><span class="face__name">Architect</span></div>
+        <div class="face agent--tracker" data-anim="face"><span class="face__av"><img src="assets/img/faces/tracker.svg" alt="Tracker"></span><span class="face__name">Tracker</span></div>
+        <div class="face agent--analyst" data-anim="face"><span class="face__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span><span class="face__name">Analyst</span></div>
+        <div class="face agent--reporter" data-anim="face"><span class="face__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span><span class="face__name">Reporter</span></div>
       </div>
       <div class="label">TFG · Grao en Enxeñaría Informática · USC</div>
       <h1>Laboratorio virtual para la simulación<br>y análisis de paradigmas de decisión</h1>
       <p class="hero-sub mono">Agentes inteligentes · Fase 2 — Infraestructura de simulación y análisis</p>
       <div class="hero-meta mono">
         <span><strong>Juan Freire Alvarez</strong></span>
-        <span class="dim">Director: Eduardo M. Sánchez Vila</span>
+        <span class="dim">Tutor: Eduardo M. Sánchez Vila</span>
       </div>
     </div>
   </section>
@@ -38,12 +38,31 @@
   <section data-slide="problema">
     <div class="kicker">Origen · motivación</div>
     <h2>Un problema abierto, iterado entre tres</h2>
-    <ul class="clean" style="margin-top:1.1rem;max-width:82%">
-      <li class="fragment fade-in-up">Nace de una propuesta de <strong>Eduardo Sánchez Vila</strong> a su grupo de investigación, sobre un TFM previo con una primera intuición de entorno de simulación.</li>
-      <li class="fragment fade-in-up">Yo quería hacer el TFG con Edu; a <strong>Pablo y a mí</strong> se nos propuso un problema <strong>sin definir</strong>.</li>
-      <li class="fragment fade-in-up">El alcance, la arquitectura y la <strong>división en dos fases</strong> se fueron cerrando poco a poco, en reuniones de diseño — iterando una solución casi desde cero.</li>
-      <li class="fragment fade-in-up">La idea que sobrevivió: <strong>transformar una propuesta de investigación en un sistema observable y ejecutable</strong>.</li>
-    </ul>
+    <div class="xform">
+      <div class="xform__side xform__open fragment fade-in-up">
+        <div class="xform__tag">El punto de partida</div>
+        <div class="xform__title">Una propuesta abierta</div>
+        <p>Idea de <strong>Eduardo Sánchez Vila</strong> a su grupo, a partir de un TFM previo. A Pablo y a mí se nos planteó <strong>sin alcance cerrado</strong>.</p>
+      </div>
+      <div class="xform__arrow fragment fade-in-up">
+        <span class="xform__arrow-label">iterado · a tres</span>
+        <svg viewBox="0 0 134 20" fill="none" aria-hidden="true">
+          <defs><linearGradient id="xfg" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="var(--color-text-dim)"/>
+            <stop offset="1" stop-color="var(--color-architect)"/>
+          </linearGradient></defs>
+          <path d="M2 10 H120" stroke="url(#xfg)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M114 4 L124 10 L114 16" stroke="var(--color-architect)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="xform__arrow-sub">reuniones de diseño</span>
+      </div>
+      <div class="xform__side xform__done fragment fade-in-up">
+        <div class="xform__tag">La idea que sobrevivió</div>
+        <div class="xform__title">Un sistema observable y ejecutable</div>
+        <p>Convertir la propuesta de investigación en algo que <strong>se ejecuta, se observa y se audita</strong> — con el alcance y la arquitectura repartidos en <strong>dos fases</strong>.</p>
+      </div>
+    </div>
+    <p class="mono dim fragment fade-in-up" style="margin-top:1.4rem;font-size:0.66rem;text-align:center">Eduardo Sánchez Vila&nbsp;·&nbsp;Pablo Pazos&nbsp;·&nbsp;Juan Freire — alcance, arquitectura y división en fases cerrados en común</p>
   </section>
 
   <!-- 3 · DEMO -->
@@ -88,55 +107,159 @@
     </div>
   </section>
 
+  <!-- 5 · ESTADO DEL ARTE -->
+  <section data-slide="arte">
+    <div class="kicker">Estado del arte</div>
+    <h2>Sobre qué se construye</h2>
+    <div class="grid-2" style="margin-top:0.7rem;align-items:start">
+      <div class="stack">
+        <div class="panel" data-anim="p"><div class="panel__title">Simular para validar</div><p>Un modelo no solo describe un mecanismo: lo <strong>ejecuta</strong> y deja ver sus patrones. Y la validación no acaba cuando compila.</p>
+          <div class="panel__fig"><svg viewBox="0 0 132 40" fill="none" aria-hidden="true">
+            <g stroke="var(--color-border)" stroke-width="1">
+              <path d="M2 2H130 M2 14H130 M2 26H130 M2 38H130"/>
+              <path d="M2 2V38 M23.6 2V38 M45.2 2V38 M66.8 2V38 M88.4 2V38 M110 2V38 M129.6 2V38"/>
+            </g>
+            <polyline points="13,32 34,32 34,20 77,20 77,8 117,8" stroke="var(--color-accent-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="13" cy="32" r="3" fill="var(--color-accent-green)"/>
+            <rect x="113" y="4" width="8" height="8" rx="1.5" fill="none" stroke="var(--color-accent-green-light)" stroke-width="2"/>
+          </svg></div>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Epstein · Railsback &amp; Grimm · Sargent (V&amp;V)</p></div>
+        <div class="panel" data-anim="p"><div class="panel__title">Multi-agente LLM</div><p>Roles especializados en orden canónico, frente al agente único que todo lo hace y nada deja auditar.</p>
+          <div class="panel__fig"><svg viewBox="0 0 132 40" fill="none" aria-hidden="true">
+            <g stroke="var(--color-text-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 20H41 M38 17l3 3-3 3"/>
+              <path d="M57 20H75 M72 17l3 3-3 3"/>
+              <path d="M91 20H109 M106 17l3 3-3 3"/>
+            </g>
+            <circle cx="15" cy="20" r="7" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+            <circle cx="49" cy="20" r="7" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+            <circle cx="83" cy="20" r="7" fill="none" stroke="#a78bfa" stroke-width="2.5"/>
+            <circle cx="117" cy="20" r="7" fill="none" stroke="#f472b6" stroke-width="2.5"/>
+          </svg></div>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">MetaGPT · Guo et al.</p></div>
+      </div>
+      <div class="stack">
+        <div class="panel" data-anim="p"><div class="panel__title">Recuperación + memoria</div><p>RAG denso + BM25 disperso sobre un grafo de conocimiento explícito.</p>
+          <div class="panel__fig"><svg viewBox="0 0 132 46" fill="none" aria-hidden="true">
+            <g fill="#4ade80">
+              <rect x="2" y="4" width="6" height="20" rx="1.5" opacity="0.95"/>
+              <rect x="9.4" y="4" width="6" height="20" rx="1.5" opacity="0.4"/>
+              <rect x="16.8" y="4" width="6" height="20" rx="1.5" opacity="0.75"/>
+              <rect x="24.2" y="4" width="6" height="20" rx="1.5" opacity="0.55"/>
+              <rect x="31.6" y="4" width="6" height="20" rx="1.5" opacity="0.9"/>
+              <rect x="39" y="4" width="6" height="20" rx="1.5" opacity="0.3"/>
+              <rect x="46.4" y="4" width="6" height="20" rx="1.5" opacity="0.65"/>
+              <rect x="53.8" y="4" width="6" height="20" rx="1.5" opacity="0.5"/>
+            </g>
+            <line x1="66" y1="3" x2="66" y2="25" stroke="var(--color-border)" stroke-width="1"/>
+            <g>
+              <rect x="74" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="77.8" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="81.6" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="85.4" y="4" width="2.6" height="20" rx="1" fill="#4ade80"/>
+              <rect x="89.2" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="93" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="96.8" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="100.6" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="104.4" y="4" width="2.6" height="20" rx="1" fill="#4ade80"/>
+              <rect x="108.2" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="112" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="115.8" y="4" width="2.6" height="20" rx="1" fill="#4ade80"/>
+              <rect x="119.6" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="123.4" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+              <rect x="127.2" y="4" width="2.6" height="20" rx="1" fill="none" stroke="var(--color-border)" stroke-width="1"/>
+            </g>
+            <text x="31" y="39" text-anchor="middle" class="figlabel">denso</text>
+            <text x="102" y="39" text-anchor="middle" class="figlabel">disperso · BM25</text>
+          </svg></div>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Lewis (RAG) · GraphRAG · Hogan</p></div>
+        <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p>Razonar y actuar con <em>tool calls</em> auditables; agentes que programan sobre repos reales.</p>
+          <div class="panel__fig"><svg viewBox="0 0 132 44" fill="none" aria-hidden="true">
+            <path d="M39.2 14.3 A12 12 0 1 1 30 10" fill="none" stroke="var(--color-accent-cyan)" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M34 10 L28.5 7 L28.5 13 Z" fill="var(--color-accent-cyan)"/>
+            <rect x="66" y="7" width="60" height="30" rx="4" fill="none" stroke="var(--color-accent-cyan)" stroke-width="1.8"/>
+            <line x1="66" y1="16" x2="126" y2="16" stroke="var(--color-accent-cyan)" stroke-width="1.4" opacity="0.5"/>
+            <circle cx="72" cy="11.5" r="1.3" fill="var(--color-accent-cyan)"/>
+            <circle cx="77" cy="11.5" r="1.3" fill="var(--color-accent-cyan)" opacity="0.5"/>
+            <path d="M73 23 l5 4 l-5 4" fill="none" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="86" y1="31" x2="102" y2="31" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round"/>
+          </svg></div>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">ReAct · SWE-bench</p></div>
+      </div>
+    </div>
+    <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
+  </section>
+
   <!-- 6 · OBJETIVOS -->
   <section data-slide="objetivos">
-    <div class="kicker">Introducción</div>
+    <div class="kicker">Objetivos</div>
     <h2>Seis objetivos específicos</h2>
-    <div class="grid-3" style="margin-top:1rem">
-      <div class="panel fragment fade-in-up"><div class="panel__title">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">02</div><p>Ejecutar modelos <strong>sin acoplamiento</strong>, incluso varios a la vez.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">03</div><p>Registrar el comportamiento de forma <strong>estructurada</strong>.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">04</div><p>Analizar <strong>patrones</strong> comportamiento–objetivo.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">05</div><p>Generar un <strong>informe PDF</strong> reproducible.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
+    <p class="muted" style="margin-top:-0.2rem;font-size:0.8rem">No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño.</p>
+    <div class="grid-3" style="margin-top:0.9rem">
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-architect)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <div class="panel__title" style="color:var(--acc)">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-blue)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7 L11 12 L5 17 Z"/><path d="M12 7 L18 12 L12 17 Z"/></svg>
+        <div class="panel__title" style="color:var(--acc)">02</div><p>Ejecutar modelos <strong>sin acoplamiento</strong>, incluso varios a la vez.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-tracker)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="1.5"/><path d="M10 7h9"/><circle cx="6" cy="12" r="1.5"/><path d="M10 12h9"/><circle cx="6" cy="17" r="1.5"/><path d="M10 17h6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">03</div><p>Registrar el comportamiento de forma <strong>estructurada</strong>.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-analyst)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16"/><path d="M7 15l4-5 3 3 4-6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">04</div><p>Analizar <strong>patrones</strong> comportamiento–objetivo.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-reporter)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 14h5M10 17h3"/></svg>
+        <div class="panel__title" style="color:var(--acc)">05</div><p>Generar un <strong>informe PDF</strong> reproducible.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-cyan)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
     </div>
   </section>
 
-  <!-- 7 · REQUISITOS -->
-  <section data-slide="requisitos">
-    <div class="kicker">Especificación de requisitos</div>
-    <h2>Requisitos, de un vistazo</h2>
-    <div class="grid-3" style="margin-top:1.4rem">
-      <div class="stat"><div class="stat__num" data-to="5">0</div><div class="stat__label">Casos de uso</div></div>
-      <div class="stat"><div class="stat__num" data-to="13">0</div><div class="stat__label">Requisitos funcionales</div></div>
-      <div class="stat"><div class="stat__num" data-to="14">0</div><div class="stat__label">Requisitos no funcionales</div></div>
-    </div>
-    <div class="chips" style="margin-top:2rem">
-      <span class="chip">Degradación controlada</span>
-      <span class="chip">Recuperación segura NL-SQL</span>
-      <span class="chip">Determinismo reproducible</span>
-      <span class="chip">Reactividad por WebSocket</span>
-      <span class="chip">Portabilidad · Docker Compose</span>
-    </div>
-  </section>
-
-  <!-- 8 · ARQUITECTURA -->
+  <!-- 7 · ARQUITECTURA -->
   <section data-slide="arquitectura">
-    <div class="kicker">Diseño</div>
-    <h2>Arquitectura de despliegue</h2>
-    <div class="diagram" style="margin-top:0.4rem">
-      <div class="canvas" id="arch-canvas">
-        <svg class="edges" viewBox="0 0 1140 460" preserveAspectRatio="none">
-          <line class="edge" pathLength="1" x1="150" y1="230" x2="300" y2="230"/>
-          <line class="edge" pathLength="1" x1="430" y1="230" x2="560" y2="230"/>
-          <line class="edge" pathLength="1" x1="700" y1="205" x2="850" y2="95"/>
-          <line class="edge" pathLength="1" x1="700" y1="255" x2="850" y2="365"/>
-        </svg>
-        <div class="node" data-anim="n" style="left:1%;top:44%;width:150px"><div class="node__name">Navegador</div><div class="node__sub">React 19 · Vite · Tailwind 4</div></div>
-        <div class="node node--api" data-anim="n" style="left:23%;top:44%;width:150px"><div class="node__name">API</div><div class="node__sub">FastAPI · REST + /ws</div></div>
-        <div class="node node--hub" data-anim="n" style="left:44%;top:42%;width:180px"><div class="node__name">Orchestrator</div><div class="node__sub">OpenRouter · tool calls</div></div>
-        <div class="node" data-anim="n" style="left:72%;top:12%;width:190px"><div class="node__name">Fase 1</div><div class="node__sub">modelos Python (duck typing)</div></div>
-        <div class="node" data-anim="n" style="left:72%;top:70%;width:230px"><div class="node__name">Infraestructura compartida</div><div class="node__sub">Postgres · MinIO · Qdrant · Neo4j</div></div>
+    <div class="kicker">Diseño · arquitectura</div>
+    <h2>Una arquitectura por capas</h2>
+    <div class="arch">
+      <div class="arch__band" data-anim="band">
+        <div class="arch__tag">Presentación</div>
+        <div class="arch__items">
+          <div class="acell"><div class="acell__t">Cliente web</div><div class="acell__s">dashboard · chat · replay</div></div>
+          <div class="acell"><div class="acell__t">API · FastAPI</div><div class="acell__s">REST + WebSocket</div></div>
+        </div>
+      </div>
+      <div class="arch__band" data-anim="band">
+        <div class="arch__tag">Orquestación</div>
+        <div class="arch__items">
+          <div class="acell acell--hub"><img class="acell__face" src="assets/img/faces/orchestrator.svg" alt=""><div class="acell__txt"><div class="acell__t">Orchestrator</div><div class="acell__s">estado de sesión · tool calls</div></div></div>
+        </div>
+      </div>
+      <div class="arch__band" data-anim="band">
+        <div class="arch__tag">Agentes</div>
+        <div class="arch__items">
+          <div class="acell agent--architect"><img class="acell__face" src="assets/img/faces/architect.svg" alt=""><div class="acell__txt"><div class="acell__t">Architect</div><div class="acell__s">especificación</div></div></div>
+          <div class="acell agent--tracker"><img class="acell__face" src="assets/img/faces/tracker.svg" alt=""><div class="acell__txt"><div class="acell__t">Tracker</div><div class="acell__s">observación</div></div></div>
+          <div class="acell agent--analyst"><img class="acell__face" src="assets/img/faces/analyst.svg" alt=""><div class="acell__txt"><div class="acell__t">Analyst</div><div class="acell__s">análisis</div></div></div>
+          <div class="acell agent--reporter"><img class="acell__face" src="assets/img/faces/reporter.svg" alt=""><div class="acell__txt"><div class="acell__t">Reporter</div><div class="acell__s">PDF</div></div></div>
+        </div>
+      </div>
+      <div class="arch__band" data-anim="band">
+        <div class="arch__tag">Simulación</div>
+        <div class="arch__items">
+          <div class="acell"><div class="acell__t">Model loader</div><div class="acell__s">modelos Fase 1 · duck typing</div></div>
+          <div class="acell"><div class="acell__t">Runtime 2D</div><div class="acell__s">Environment + Agent</div></div>
+          <div class="acell"><div class="acell__t">Charts</div><div class="acell__s">figuras del análisis</div></div>
+        </div>
+      </div>
+      <div class="arch__band" data-anim="band">
+        <div class="arch__tag">Persistencia</div>
+        <div class="arch__items">
+          <div class="acell"><div class="acell__t">PostgreSQL</div><div class="acell__s">metadatos</div></div>
+          <div class="acell"><div class="acell__t">MinIO</div><div class="acell__s">artefactos</div></div>
+          <div class="acell"><div class="acell__t">Qdrant</div><div class="acell__s">memorias</div></div>
+          <div class="acell"><div class="acell__t">Neo4j</div><div class="acell__s">grafo</div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -151,41 +274,72 @@
         <div class="simdot" id="dom-agent" style="background:var(--color-architect);box-shadow:0 0 12px var(--color-architect)"></div>
       </div>
       <div class="stack">
-        <div class="panel"><div class="panel__title">Agent</div><p><strong>quién y dónde</strong> — posición en la rejilla, energía, historia.</p></div>
-        <div class="panel"><div class="panel__title">DecisionModel</div><p><strong>cómo decide</strong> — la política, separada del cuerpo.</p></div>
-        <p class="mono dim" style="font-size:0.62rem">Recursos, reglas del entorno y <strong>eventos inmutables</strong>.</p>
+        <div class="panel"><p><strong>El cuerpo</strong> <span class="dim">(Agent)</span> — quién y dónde: posición en la rejilla, energía e historia.</p></div>
+        <div class="panel"><p><strong>La política</strong> <span class="dim">(DecisionModel)</span> — cómo decide, separada del cuerpo.</p></div>
+        <p class="dim" style="font-size:0.78rem;line-height:1.5">Sobre recursos, reglas del entorno y <strong>eventos inmutables</strong> — la frontera compartida con la Fase 1.</p>
       </div>
     </div>
   </section>
 
   <!-- 10 · ORCHESTRATOR -->
   <section data-slide="orchestrator">
-    <div class="kicker">Diseño</div>
-    <h2 style="color:var(--color-orchestrator)">Orchestrator: coordinador único</h2>
-    <ul class="clean agentic agent--orchestrator" style="margin-top:1rem;max-width:78%">
-      <li class="fragment fade-in-up">Ejecuta una <strong>secuencia canónica</strong> de tool calls; el LLM solo elige las desviaciones.</li>
-      <li class="fragment fade-in-up"><strong>Pre-recupera contexto</strong> del Knowledge Backbone antes de despachar a cada agente.</li>
-      <li class="fragment fade-in-up"><strong>Difiere la persistencia</strong> y controla presupuesto y ventana de contexto.</li>
-      <li class="fragment fade-in-up">Transmite en vivo por <strong>WebSocket</strong> — observabilidad sin polling.</li>
-    </ul>
+    <div class="kicker">Diseño · orquestación</div>
+    <h2 style="color:var(--color-orchestrator)">El Orchestrator conduce a los demás</h2>
+    <div class="grid-2" style="margin-top:1.1rem;align-items:center;gap:var(--space-8)">
+      <div class="orch-hero" data-anim="hero">
+        <span class="orch-hero__av"><img src="assets/img/faces/orchestrator.svg" alt="Orchestrator"></span>
+        <p>Un <strong>único coordinador</strong> decide el orden, pre-carga el contexto y controla el presupuesto. Los cuatro agentes solo transforman.</p>
+        <div class="orch-dispatch">
+          <span class="orch-dispatch__mini agent--architect"><img src="assets/img/faces/architect.svg" alt=""></span>
+          <span class="orch-dispatch__mini agent--tracker"><img src="assets/img/faces/tracker.svg" alt=""></span>
+          <span class="orch-dispatch__mini agent--analyst"><img src="assets/img/faces/analyst.svg" alt=""></span>
+          <span class="orch-dispatch__mini agent--reporter"><img src="assets/img/faces/reporter.svg" alt=""></span>
+          <span class="orch-dispatch__lbl">despacha en secuencia</span>
+        </div>
+      </div>
+      <ul class="orch-list">
+        <li class="fragment fade-in-up"><strong>Secuencia canónica</strong> — un orden fijo de tool calls; el LLM solo elige las desviaciones.</li>
+        <li class="fragment fade-in-up"><strong>Pre-recupera contexto</strong> — consulta el Knowledge Backbone antes de despachar a cada agente.</li>
+        <li class="fragment fade-in-up"><strong>Difiere la persistencia</strong> — controla presupuesto y ventana de contexto.</li>
+        <li class="fragment fade-in-up"><strong>Observabilidad en vivo</strong> — transmite por WebSocket, sin polling.</li>
+      </ul>
+    </div>
   </section>
 
   <!-- 11 · LOS 4 AGENTES -->
   <section data-slide="agentes">
     <div class="kicker">Diseño · los agentes</div>
     <h2>Cuatro agentes, cuatro cambios de representación</h2>
-    <div class="diagram" style="margin-top:1rem">
-      <div class="agents-row">
-        <div class="node agent--architect" data-anim="agent"><div class="node__name">Architect</div><div class="node__sub">NL + contexto → spec JSON</div></div>
-        <div class="agent-arrow" data-anim="edge">→</div>
-        <div class="node agent--tracker" data-anim="agent"><div class="node__name">Tracker</div><div class="node__sub">ejecución → observaciones</div></div>
-        <div class="agent-arrow" data-anim="edge">→</div>
-        <div class="node agent--analyst" data-anim="agent"><div class="node__name">Analyst</div><div class="node__sub">observaciones → patrones + gráficas</div></div>
-        <div class="agent-arrow" data-anim="edge">→</div>
-        <div class="node agent--reporter" data-anim="agent"><div class="node__name">Reporter</div><div class="node__sub">análisis → LaTeX → PDF</div></div>
+    <div class="agallery">
+      <div class="agtile agent--architect" data-anim="tile">
+        <span class="agtile__av"><img src="assets/img/faces/architect.svg" alt="Architect"></span>
+        <span class="agtile__name">Architect</span>
+        <span class="agtile__flow">lenguaje natural <span class="arw">→</span> <span class="to">especificación</span></span>
+        <span class="agtile__detail fragment" data-fragment-index="0">Traduce la petición en un entorno 2D ejecutable y lo valida.</span>
+      </div>
+      <span class="aglink" data-anim="tile">→</span>
+      <div class="agtile agent--tracker" data-anim="tile">
+        <span class="agtile__av"><img src="assets/img/faces/tracker.svg" alt="Tracker"></span>
+        <span class="agtile__name">Tracker</span>
+        <span class="agtile__flow">simulación <span class="arw">→</span> <span class="to">observaciones</span></span>
+        <span class="agtile__detail fragment" data-fragment-index="1">Registra eventos, trayectorias y episodios; detecta lo crítico de forma determinista.</span>
+      </div>
+      <span class="aglink" data-anim="tile">→</span>
+      <div class="agtile agent--analyst" data-anim="tile">
+        <span class="agtile__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span>
+        <span class="agtile__name">Analyst</span>
+        <span class="agtile__flow">observaciones <span class="arw">→</span> <span class="to">patrones</span></span>
+        <span class="agtile__detail fragment" data-fragment-index="2">Contrasta el comportamiento contra los postulados del Knowledge Backbone.</span>
+      </div>
+      <span class="aglink" data-anim="tile">→</span>
+      <div class="agtile agent--reporter" data-anim="tile">
+        <span class="agtile__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span>
+        <span class="agtile__name">Reporter</span>
+        <span class="agtile__flow">patrones <span class="arw">→</span> <span class="to">informe PDF</span></span>
+        <span class="agtile__detail fragment" data-fragment-index="3">Redacta y compila el PDF con LaTeX (<span class="mono">tectonic</span>), sin fallback.</span>
       </div>
     </div>
-    <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cada agente registra <strong>eventos, trayectorias y episodios</strong>; el Reporter compila con <span class="mono">tectonic</span>, sin fallback.</p>
+    <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cuatro <strong>cambios de representación</strong> encadenados: del lenguaje al entorno, del entorno a los datos, de los datos al informe.</p>
   </section>
 
   <!-- 12 · KNOWLEDGE BACKBONE -->
@@ -193,136 +347,182 @@
     <div class="kicker">Diseño · memoria compartida</div>
     <h2>Knowledge Backbone</h2>
     <div class="diagram" style="margin-top:0.4rem">
-      <div class="canvas" id="kb-canvas" style="height:420px">
+      <div class="canvas kb-canvas" id="kb-canvas" style="height:420px">
+        <svg class="edges" viewBox="0 0 1140 420" preserveAspectRatio="none">
+          <line class="edge kb-edge" pathLength="1" x1="541" y1="197" x2="150" y2="60"/>
+          <line class="edge kb-edge" pathLength="1" x1="541" y1="197" x2="900" y2="60"/>
+          <line class="edge kb-edge" pathLength="1" x1="541" y1="197" x2="150" y2="340"/>
+          <line class="edge kb-edge" pathLength="1" x1="541" y1="197" x2="905" y2="340"/>
+        </svg>
         <div class="node node--hub" data-anim="hub" style="left:39%;top:40%;width:200px;text-align:center"><div class="node__name">Orchestrator</div><div class="node__sub">acceso centralizado</div></div>
-        <div class="node" data-anim="store" style="left:2%;top:6%;width:250px"><div class="node__name">PostgreSQL</div><div class="node__sub">metadatos · historial · simulation_observations</div></div>
-        <div class="node" data-anim="store" style="left:70%;top:6%;width:220px"><div class="node__name">MinIO</div><div class="node__sub">PDF y artefactos binarios</div></div>
-        <div class="node" data-anim="store" style="left:2%;top:74%;width:230px"><div class="node__name">Qdrant</div><div class="node__sub">memorias densas + sparse BM25</div></div>
-        <div class="node" data-anim="store" style="left:70%;top:74%;width:230px"><div class="node__name">Neo4j</div><div class="node__sub">grafo de paradigmas y procedencia</div></div>
+        <div class="node kb-store" data-anim="store" style="left:2%;top:5%;width:270px;--store:var(--color-accent-blue)"><div class="node__name"><span class="node__dot"></span>PostgreSQL</div><div class="node__use">La verdad estructurada: qué modelo hizo qué, paso a paso.</div><div class="node__sub">metadatos · historial · simulation_observations</div></div>
+        <div class="node kb-store" data-anim="store" style="left:66%;top:5%;width:270px;--store:var(--color-accent-amber)"><div class="node__name"><span class="node__dot"></span>MinIO</div><div class="node__use">Los entregables pesados: los informes y sus figuras.</div><div class="node__sub">PDF y artefactos binarios</div></div>
+        <div class="node kb-store" data-anim="store" style="left:2%;top:72%;width:270px;--store:var(--color-analyst)"><div class="node__name"><span class="node__dot"></span>Qdrant</div><div class="node__use">Recuerda experiencias por significado y por término exacto.</div><div class="node__sub">memorias densas + sparse BM25</div></div>
+        <div class="node kb-store" data-anim="store" style="left:66%;top:72%;width:270px;--store:var(--color-architect)"><div class="node__name"><span class="node__dot"></span>Neo4j</div><div class="node__use">El conocimiento del dominio: paradigmas y de dónde sale cada dato.</div><div class="node__sub">grafo de paradigmas y procedencia</div></div>
       </div>
     </div>
     <div class="chips" style="margin-top:0.6rem"><span class="chip">Voyage AI · embeddings</span><span class="chip">ZeroEntropy · reranking</span><span class="chip dim">opcionales · con degradación controlada</span></div>
   </section>
 
-  <!-- 13 · UI EN DETALLE -->
-  <section data-slide="ui">
-    <div class="kicker">Diseño · capa reactiva</div>
-    <h2>La interfaz, en detalle</h2>
-    <div class="grid-3" style="margin-top:0.8rem">
-      <div class="shot fragment fade-in-up"><img src="assets/img/ui-06-analyst-patrones.png" alt="Patrones del Analyst"><div class="shot__cap">Patrones del Analyst</div></div>
-      <div class="shot fragment fade-in-up"><img src="assets/img/ui-07-decision-traces.png" alt="Decision traces"><div class="shot__cap">Decision traces · Q-values</div></div>
-      <div class="shot fragment fade-in-up"><img src="assets/img/ui-09-reporter-pdf.png" alt="Informe PDF del Reporter"><div class="shot__cap">Informe PDF del Reporter</div></div>
+  <!-- 11b · RECUPERACIÓN HÍBRIDA -->
+  <section data-slide="retrieval">
+    <div class="kicker">Diseño · recuperación</div>
+    <h2>Dos formas de buscar en la memoria</h2>
+    <div class="grid-2" style="margin-top:0.7rem;align-items:stretch">
+      <div class="panel" data-anim="col" style="display:flex;flex-direction:column;gap:9px">
+        <div class="panel__title" style="color:var(--color-analyst)">Densa · embedding</div>
+        <div class="retr__fig">
+          <svg viewBox="0 0 300 160" preserveAspectRatio="xMidYMid meet">
+            <line class="retr-link" x1="150" y1="85" x2="118" y2="64"/>
+            <line class="retr-link" x1="150" y1="85" x2="184" y2="72"/>
+            <line class="retr-link" x1="150" y1="85" x2="158" y2="118"/>
+            <circle class="retr-dot" cx="40" cy="34" r="4"/>
+            <circle class="retr-dot" cx="70" cy="126" r="4"/>
+            <circle class="retr-dot" cx="255" cy="42" r="4"/>
+            <circle class="retr-dot" cx="268" cy="122" r="4"/>
+            <circle class="retr-dot" cx="234" cy="100" r="4"/>
+            <circle class="retr-dot" cx="52" cy="86" r="4"/>
+            <circle class="retr-dot" cx="262" cy="74" r="4"/>
+            <circle class="retr-dot" cx="98" cy="26" r="4"/>
+            <circle class="retr-dot" cx="212" cy="134" r="4"/>
+            <circle class="retr-near" cx="118" cy="64" r="5"/>
+            <circle class="retr-near" cx="184" cy="72" r="5"/>
+            <circle class="retr-near" cx="158" cy="118" r="5"/>
+            <circle class="retr-qring" cx="150" cy="85" r="13"/>
+            <circle class="retr-q" cx="150" cy="85" r="7"/>
+          </svg>
+        </div>
+        <p class="mono dim" style="font-size:0.62rem;line-height:1.45">Cercanía de <strong style="color:var(--color-text)">significado</strong>: encuentra «drive», «homeostasis» o «buscar comida» aunque no repita las palabras.</p>
+      </div>
+      <div class="panel" data-anim="col" style="display:flex;flex-direction:column;gap:9px">
+        <div class="panel__title" style="color:var(--color-accent-cyan)">Dispersa · BM25</div>
+        <div class="retr__fig retr__text">
+          <p>…conductas de exploración<br>con poca energía descritas por<br><mark>Rangel</mark> <mark>2013</mark>, en el modelo<br><mark>DDM-v2</mark> del <mark>CASO1</mark>…</p>
+        </div>
+        <p class="mono dim" style="font-size:0.62rem;line-height:1.45">Coincidencia <strong style="color:var(--color-text)">literal</strong>: fiable con nombres, IDs de modelo y citas exactas que el vector diluiría.</p>
+      </div>
     </div>
-    <p class="mono dim" style="margin-top:1rem;font-size:0.62rem">Dashboard oscuro · replay 2D animado · tarjetas de datos en vivo por WebSocket</p>
+    <p class="muted" data-anim="foot" style="margin-top:0.9rem;font-size:0.8rem">Se combinan sin entrenar nada <span class="mono dim">(Reciprocal Rank Fusion)</span> — cada consulta usa la mezcla que le conviene.</p>
   </section>
 
-  <!-- 14 · BUCLE DE DESARROLLO -->
+  <!-- 12 · BUCLE DE DESARROLLO -->
   <section data-slide="bucle">
     <div class="kicker">Desarrollo del trabajo</div>
     <h2>Un nuevo bucle de desarrollo</h2>
     <div class="diagram" style="margin-top:0.6rem">
-      <div class="canvas" id="loop-canvas" style="height:380px">
-        <svg class="edges" viewBox="0 0 1140 380" preserveAspectRatio="none">
-          <line class="edge edge--arrow" pathLength="1" x1="230" y1="90" x2="470" y2="90"/>
-          <line class="edge edge--arrow" pathLength="1" x1="700" y1="90" x2="920" y2="90"/>
-          <line class="edge edge--arrow" pathLength="1" x1="990" y1="140" x2="990" y2="230"/>
-          <line class="edge edge--arrow" pathLength="1" x1="850" y1="290" x2="200" y2="290"/>
-          <line class="edge edge--arrow" pathLength="1" x1="120" y1="240" x2="120" y2="140"/>
+      <div class="canvas" id="loop-canvas" style="height:320px">
+        <svg class="edges" viewBox="0 0 1140 320" preserveAspectRatio="none">
+          <defs>
+            <marker id="arrow" markerWidth="11" markerHeight="11" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L8,4 L0,8 Z" fill="var(--color-text-dim)"/>
+            </marker>
+          </defs>
+          <!-- fila superior: Especificar → Ejecutar → Revisar -->
+          <line class="edge edge--arrow" pathLength="1" x1="196" y1="66" x2="384" y2="66"/>
+          <line class="edge edge--arrow" pathLength="1" x1="556" y1="66" x2="748" y2="66"/>
+          <!-- Revisar ↓ Aceptar / Ajustar -->
+          <line class="edge edge--arrow" pathLength="1" x1="845" y1="100" x2="845" y2="175"/>
+          <!-- retorno: ← por abajo y ↑ hasta Especificar (siguiente tarea) -->
+          <line class="edge edge--return" pathLength="1" x1="752" y1="206" x2="110" y2="206"/>
+          <line class="edge edge--arrow edge--return" pathLength="1" x1="110" y1="206" x2="110" y2="95"/>
         </svg>
-        <div class="node" data-anim="step" style="left:2%;top:16%;width:180px"><div class="node__name">Especificar</div><div class="node__sub">alcance · pruebas · invariantes</div></div>
-        <div class="node" data-anim="step" style="left:38%;top:16%;width:170px"><div class="node__name">Ejecutar</div><div class="node__sub">el agente implementa</div></div>
-        <div class="node" data-anim="step" style="left:76%;top:16%;width:190px"><div class="node__name">Revisar</div><div class="node__sub">diff · diseño · regresiones</div></div>
-        <div class="node agent--architect" data-anim="step" style="left:60%;top:64%;width:220px"><div class="node__name">Aceptar / Ajustar</div><div class="node__sub">pruebas + revisión OK</div></div>
+        <div class="node node--acc" data-anim="step" style="left:2%;top:12%;width:170px;--agent:var(--color-accent-cyan)"><div class="node__name">Especificar</div><div class="node__sub">alcance · pruebas · invariantes</div></div>
+        <div class="node node--acc" data-anim="step" style="left:34%;top:12%;width:150px;--agent:var(--color-analyst)"><div class="node__name">Ejecutar</div><div class="node__sub">el agente implementa</div></div>
+        <div class="node node--acc" data-anim="step" style="left:66%;top:12%;width:170px;--agent:var(--color-tracker)"><div class="node__name">Revisar</div><div class="node__sub">diff · diseño · regresiones</div></div>
+        <div class="node agent--architect" data-anim="step" style="left:66%;top:56%;width:200px"><div class="node__name">Aceptar / Ajustar</div><div class="node__sub">si cumple / si no cumple</div></div>
+        <div class="mono dim" style="position:absolute;left:13%;top:70%;font-size:0.62rem">siguiente tarea ↑</div>
       </div>
     </div>
-    <p class="muted" style="margin-top:0.4rem;font-size:0.8rem">Implementar deja de ser lo caro; <strong>especificar y verificar</strong> pasan al centro.</p>
+    <p class="muted" style="margin-top:0.4rem;font-size:0.8rem">Implementar deja de ser lo caro; <strong>especificar y verificar</strong> pasan al centro. Cada tarea es un <strong>contrato verificable</strong>.</p>
   </section>
 
-  <!-- 15 · COORDINACION -->
-  <section data-slide="coordinacion">
-    <div class="kicker">Desarrollo · coordinación</div>
-    <h2>Cómo nos coordinamos</h2>
-    <div class="grid-2" style="margin-top:0.8rem">
-      <div class="panel"><div class="panel__title">Frontera mínima con la Fase 1</div><p>Tres métodos compartidos. Sin coordinar releases durante meses de desarrollo: cada fase avanzó por su cuenta.</p></div>
-      <div class="panel"><div class="panel__title">Linear como memoria operativa</div><p>Tareas con criterios de aceptación, dependencias, prioridades y paralelismo. Las decisiones, visibles antes de delegar.</p></div>
+  <!-- 15 · REPARTO DE RESPONSABILIDADES -->
+  <section data-slide="reparto">
+    <div class="kicker">Desarrollo · reparto</div>
+    <h2>Quién decide, quién implementa</h2>
+    <div class="grid-2" style="margin-top:0.8rem;align-items:stretch">
+      <div class="panel agent--architect"><div class="panel__title">El humano decide</div><p>Alcance, contratos de integración, diseño visual, prioridades y <strong>aceptación final</strong>.</p></div>
+      <div class="panel"><div class="panel__title">El agente implementa</div><p>Módulos acotados, pruebas, migraciones, refactores y depuración local — <strong>cuando el contrato fija el comportamiento</strong>.</p></div>
     </div>
-    <div class="panel" style="margin-top:1.2rem"><div class="panel__title">Reparto humano · agente</div><p><strong>El humano</strong> decide alcance, contratos, diseño visual y aceptación final. <strong>El agente</strong> implementa módulos acotados, pruebas, migraciones y refactores.</p></div>
+    <div class="panel" style="margin-top:1.1rem"><div class="panel__title">El riesgo cambió de sitio</div><p>Ya no es <em>no llegar a escribir</em> una pieza, sino <strong>aceptar una pieza plausible sin comprobar si respeta el sistema</strong>. El <span class="mono">diff</span> se revisa siempre contra la tarea: un cambio puede compilar y aun así rechazarse por ampliar el alcance o meter una abstracción que nadie usa.</p></div>
+    <p class="mono dim" style="margin-top:0.9rem;font-size:0.66rem">Codex → backend · persistencia · pruebas &nbsp;·&nbsp; Claude Code → frontend · interacción</p>
   </section>
 
-  <!-- 16 · CRONOGRAMA -->
-  <section data-slide="cronograma">
-    <div class="kicker">Desarrollo · planificación</div>
-    <h2>Marzo – junio 2026</h2>
-    <div class="gantt" style="margin-top:1rem" id="gantt">
-      <div></div>
-      <div class="gantt__month">Marzo</div><div class="gantt__month">Abril</div><div class="gantt__month">Mayo</div><div class="gantt__month">Junio</div>
-      <div class="gantt__task">Diseño + contrato</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-architect);left:0%;width:24%"></div></div>
-      <div class="gantt__task">Núcleo + CLI</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-architect);left:8%;width:30%"></div></div>
-      <div class="gantt__task">Frontend + WebSocket</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-accent-cyan);left:18%;width:34%"></div></div>
-      <div class="gantt__task">Comparativa multi-modelo</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-accent-cyan);left:32%;width:22%"></div></div>
-      <div class="gantt__task">Tracker · Analyst · Reporter</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-tracker);left:30%;width:40%"></div></div>
-      <div class="gantt__task">Persistencia (Postgres/MinIO)</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-analyst);left:42%;width:32%"></div></div>
-      <div class="gantt__task">Knowledge Backbone + NL-SQL</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-analyst);left:56%;width:30%"></div></div>
-      <div class="gantt__task">Despliegue + evaluación</div><div class="gantt__track"><div class="gantt__bar" style="--bar:var(--color-reporter);left:74%;width:26%"></div></div>
-    </div>
-  </section>
-
-  <!-- 17 · VERIFICACION -->
+  <!-- 15 · VERIFICACIÓN + EVALUACIÓN (fusión) -->
   <section data-slide="verificacion">
-    <div class="kicker">Desarrollo</div>
-    <h2>La verificación, el nuevo cuello de botella</h2>
-    <div class="grid-3" style="margin-top:1rem">
-      <div class="panel fragment fade-in-up"><div class="panel__title">Pruebas como contrato</div><p>pytest · Playwright · compilación LaTeX. Un cambio no entra si rompe el contrato.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">Revisión combinada</div><p>Lectura humana + subagentes especializados de alta confianza sobre el diff.</p></div>
-      <div class="panel fragment fade-in-up"><div class="panel__title">Ejecución instrumentada</div><p>Métricas duras contra la propia simulación — no basta con que pasen los tests.</p></div>
+    <div class="kicker">Desarrollo · verificación y evaluación</div>
+    <h2>Verificar lo que no tiene una única respuesta correcta</h2>
+    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">Si implementar deja de ser lo caro, el problema se desplaza: <strong>¿qué garantiza que lo generado es correcto?</strong></p>
+    <div class="grid-2" style="margin-top:0.7rem;align-items:stretch;gap:var(--space-6)">
+      <div class="panel fragment fade-in-up">
+        <div class="panel__title">Cómo se verifica</div>
+        <div class="vlist">
+          <div class="vrow" style="--dot:var(--color-architect)"><span class="vrow__dot"></span><p><b>Pruebas como contrato</b> — pytest + Playwright; sin prueba no está terminado, compuerta de CI en cada push.</p></div>
+          <div class="vrow" style="--dot:var(--color-tracker)"><span class="vrow__dot"></span><p><b>Revisión combinada</b> — diff humano + subagentes de alta confianza. Enfocan, no reemplazan.</p></div>
+          <div class="vrow" style="--dot:var(--color-reporter)"><span class="vrow__dot"></span><p><b>Verificación en vivo</b> — la interfaz debe poder usarse en el navegador antes de aceptarse.</p></div>
+        </div>
+      </div>
+      <div class="panel fragment fade-in-up" style="border-color:color-mix(in srgb,var(--color-accent-cyan) 42%,transparent);background:color-mix(in srgb,var(--color-accent-cyan) 6%,var(--color-surface-frosted))">
+        <div class="panel__title" style="color:var(--color-accent-cyan)">Evaluar lo abierto · LLM-as-a-judge</div>
+        <div class="vlist">
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Tres familias</b> — código (binario) · juez LLM (salidas abiertas) · revisión humana.</p></div>
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Verdad = datos, no teoría</b> — la vara son las trayectorias; rúbrica de 6 criterios.</p></div>
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Evaluado ≠ evaluador</b> — el lab razona con Claude; el juez es Codex, de otra familia.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="fragment fade-in-up" style="margin-top:0.8rem">
+      <div class="grid-2" style="gap:var(--space-4)">
+        <div class="panel" style="padding:12px 16px"><div class="panel__title" style="margin-bottom:6px">Caso 1 · valor / forrajeo</div><p style="font-size:0.76rem"><strong>6 paradigmas</strong> <span class="mono dim">· 8×8 · 360 eventos · 15 consumos</span></p></div>
+        <div class="panel" style="padding:12px 16px"><div class="panel__title" style="margin-bottom:6px">Caso 2 · homeostasis / interocepción</div><p style="font-size:0.76rem"><strong>4 paradigmas</strong> <span class="mono dim">· 10×10 · 199 eventos · 7 consumos</span></p></div>
+      </div>
+      <p class="mono dim" style="margin-top:8px;font-size:0.62rem">dos ejecuciones instrumentadas reales del tutor (Fase 1) — fidelidad de observación de extremo a extremo</p>
     </div>
   </section>
 
-  <!-- 18 · EVALUACION -->
-  <section data-slide="evaluacion">
-    <div class="kicker">Pruebas y evaluación</div>
-    <h2>Cómo se evalúa</h2>
-    <div class="chips" style="margin:0.4rem 0 1.2rem">
-      <span class="chip chip--accent">Verdad = datos de simulación, no teoría</span>
-      <span class="chip chip--accent">Evaluado (Claude) ≠ evaluador (Codex)</span>
+  <!-- 16 · QUÉ EVALÚA EL JUEZ -->
+  <section data-slide="anecdota" data-background-color="#0a0a0a">
+    <div class="kicker">Pruebas y evaluación · el juez</div>
+    <h2>¿Qué evalúa el juez?</h2>
+    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo <span class="mono">Codex</span> —de otra familia— con una rúbrica de 6 criterios, uno por etapa del lab.</p>
+    <div class="grid-3" style="margin-top:0.8rem;gap:var(--space-4)">
+      <div class="panel jcrit" style="--acc:var(--color-architect)"><div class="panel__title"><span>01 · Entorno</span><span class="jcrit__ag">Architect</span></div><p>¿El <span class="mono">env_spec</span> es coherente con el caso y permite <strong>observar</strong> el comportamiento?</p></div>
+      <div class="panel jcrit" style="--acc:var(--color-tracker)"><div class="panel__title"><span>02 · Observación</span><span class="jcrit__ag">Tracker</span></div><p>¿Las trayectorias y eventos <strong>reflejan la simulación</strong>? Tripleta joinable · determinismo.</p></div>
+      <div class="panel jcrit" style="--acc:var(--color-analyst)"><div class="panel__title"><span>03 · Análisis</span><span class="jcrit__ag">Analyst</span></div><p>¿Los patrones están <strong>anclados en las trayectorias</strong>, sin inventar?</p></div>
+      <div class="panel jcrit" style="--acc:var(--color-reporter)"><div class="panel__title"><span>04 · Informe</span><span class="jcrit__ag">Reporter</span></div><p>¿El PDF es <strong>fiel a los datos</strong>, sin cifras alucinadas? ¿Real o fallback?</p></div>
+      <div class="panel jcrit" style="--acc:var(--color-accent-cyan)"><div class="panel__title"><span>05 · Robustez</span><span class="jcrit__ag">Pipeline</span></div><p>Errores, fallos de etapa y determinismo de principio a fin.</p></div>
+      <div class="panel jcrit" style="--acc:var(--color-orchestrator)"><div class="panel__title"><span>06 · Juicio global</span><span class="jcrit__ag">Veredicto</span></div><p>Síntesis de los cinco y <strong>puntuación /100</strong>, con evidencia citada.</p></div>
     </div>
-    <div class="grid-2">
-      <div class="panel"><div class="panel__title">Caso 1 · valor / forrajeo</div><p><strong>6 paradigmas</strong> — rejilla 8×8 · 360 eventos · 15 consumos.</p><p class="mono dim" style="font-size:0.6rem;margin-top:6px">DDM · homeostasis · dirigido-vs-hábito · valor por atributos · autocontrol · pavloviano</p></div>
-      <div class="panel"><div class="panel__title">Caso 2 · homeostasis / interocepción</div><p><strong>4 paradigmas</strong> — rejilla 10×10 · 199 eventos · 7 consumos.</p><p class="mono dim" style="font-size:0.6rem;margin-top:6px">impulso con umbral · RL homeostático · inferencia activa · codificación predictiva</p></div>
-    </div>
-  </section>
-
-  <!-- 19 · RESULTADOS -->
-  <section data-slide="resultados">
-    <div class="kicker">Pruebas y evaluación · resultados</div>
-    <h2>Resultados</h2>
-    <div class="grid-2" style="margin-top:0.6rem;align-items:center">
-      <div class="stack">
-        <div class="check"><span class="check__mark">✓</span> Tripleta joinable — Postgres = Qdrant denso = Qdrant sparse</div>
-        <div class="check"><span class="check__mark">✓</span> Determinismo con semilla 42 → trayectoria idéntica</div>
-        <div class="check"><span class="check__mark">✓</span> PDF compilado con tectonic — real, sin fallback</div>
-        <div class="check"><span class="check__mark">✓</span> Pipeline completo sin intervención manual</div>
-      </div>
-      <div class="grid-2">
-        <div class="panel agent--architect" style="text-align:center"><div class="stat__num stat__num--sm" data-to="88">0</div><div class="stat__label">Caso 1 / 100</div></div>
-        <div class="panel agent--architect" style="text-align:center"><div class="stat__num stat__num--sm" data-to="86">0</div><div class="stat__label">Caso 2 / 100</div></div>
+    <div class="scoreband" style="margin-top:1rem">
+      <span class="mono dim" style="font-size:0.68rem;max-width:48%">Veredicto del juez: alta fidelidad de observación e informe real; reservas por imprecisiones puntuales de cita paso a paso.</span>
+      <div class="scoreband__nums">
+        <div class="score"><div class="stat__num stat__num--sm" data-to="88">0</div><div class="stat__label">Caso 1 / 100</div></div>
+        <div class="score"><div class="stat__num stat__num--sm" data-to="86">0</div><div class="stat__label">Caso 2 / 100</div></div>
       </div>
     </div>
-    <p class="muted" style="margin-top:1.2rem;font-size:0.76rem">Juez externo <span class="mono">Codex</span>, rúbrica de 6 criterios: alta fidelidad de observación e informe real; reservas por imprecisiones puntuales de cita paso a paso.</p>
   </section>
 
   <!-- 20 · CIERRE -->
   <section data-slide="cierre">
     <div class="kicker">Conclusiones</div>
     <h2>Lo que queda</h2>
-    <ul class="clean" style="margin-top:0.6rem;max-width:80%">
-      <li class="fragment fade-in-up"><strong>La forma de conectar importa más que cada pieza</strong> — fronteras acotadas, contratos finos.</li>
-      <li class="fragment fade-in-up"><strong>Centralizar el acceso al conocimiento compensa</strong> — control de presupuesto y diagnóstico.</li>
-      <li class="fragment fade-in-up"><strong>Separar observación de persistencia</strong> — el observador nunca deja memorias a medias.</li>
+    <ul class="clean agentic" style="margin-top:0.6rem;max-width:82%">
+      <li class="fragment fade-in-up" style="--agent:var(--color-architect)"><strong>La conexión importa más que la pieza.</strong> Fronteras acotadas, contratos finos.</li>
+      <li class="fragment fade-in-up" style="--agent:var(--color-orchestrator)"><strong>Centralizar el conocimiento compensa.</strong> Control de presupuesto y diagnóstico.</li>
+      <li class="fragment fade-in-up" style="--agent:var(--color-tracker)"><strong>Observar ≠ persistir.</strong> El observador nunca deja memorias a medias.</li>
     </ul>
     <p class="muted fragment fade-in-up" style="margin-top:1rem;font-size:0.74rem">Límites: no valida teorías por sí solo · depende del LLM · dominio 2D. &nbsp;Ampliaciones: más paradigmas y entornos · métricas estandarizadas · reanudación de sesiones.</p>
-    <p class="closing fragment fade-in-up" style="margin-top:1.4rem">«De <span class="dim">cómo lo escribo</span> a <strong>qué quiero exactamente que ocurra</strong>.»</p>
-    <p class="mono dim fragment fade-in-up" style="margin-top:1.6rem;font-size:0.7rem">Gracias · Juan Freire Alvarez · TFG Fase 2 · USC</p>
+    <p class="closing closing--accent fragment fade-in-up" style="margin-top:1.4rem">«De <span class="dim">cómo lo escribo</span> a <strong>qué quiero exactamente que ocurra</strong>.»</p>
+    <div class="cierre-foot fragment fade-in-up">
+      <div class="faces faces--mini">
+        <div class="face agent--orchestrator"><span class="face__av"><img src="assets/img/faces/orchestrator.svg" alt=""></span></div>
+        <div class="face agent--architect"><span class="face__av"><img src="assets/img/faces/architect.svg" alt=""></span></div>
+        <div class="face agent--tracker"><span class="face__av"><img src="assets/img/faces/tracker.svg" alt=""></span></div>
+        <div class="face agent--analyst"><span class="face__av"><img src="assets/img/faces/analyst.svg" alt=""></span></div>
+        <div class="face agent--reporter"><span class="face__av"><img src="assets/img/faces/reporter.svg" alt=""></span></div>
+      </div>
+      <p class="mono dim" style="font-size:0.7rem;margin:0">Gracias · Juan Freire Alvarez · TFG Fase 2 · USC</p>
+    </div>
   </section>
 
 </div>

@@ -23,6 +23,14 @@
 }
 .reveal .panel p { margin: 0; font-size: 0.82rem; }
 
+/* Little diagram inside a panel */
+.reveal .panel__fig { margin-top: var(--space-4); }
+.reveal .panel__fig svg { display: block; width: 100%; max-width: 224px; height: auto; }
+.reveal .figlabel {
+  font-family: var(--font-mono); font-size: 6px; letter-spacing: 0.6px;
+  text-transform: uppercase; fill: var(--color-text-dim);
+}
+
 /* Agent color coding — sets --agent, tints panel border + title */
 .reveal .agent--architect   { --agent: var(--color-architect); }
 .reveal .agent--tracker      { --agent: var(--color-tracker); }
@@ -78,6 +86,70 @@
 .reveal .check { display: flex; align-items: center; gap: var(--space-3); font-size: 0.82rem; color: var(--color-text-muted); }
 .reveal .check__mark { color: var(--color-accent-green); font-weight: 700; font-family: var(--font-mono); }
 
+/* Objective cards — agent-colored, with a small icon */
+.reveal .panel.obj { border-color: color-mix(in srgb, var(--acc) 28%, var(--color-border)); padding-right: 46px; }
+.reveal .obj__ico { position: absolute; top: 16px; right: 16px; width: 22px; height: 22px; opacity: 0.92; }
+
+/* Compact bulleted list inside a panel (verification / judge) */
+.reveal .vlist { display: flex; flex-direction: column; gap: 11px; margin-top: 4px; }
+.reveal .vrow { display: flex; gap: 10px; align-items: flex-start; }
+.reveal .vrow__dot {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex: none;
+  background: var(--dot, var(--color-text-dim));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--dot, var(--color-text-dim)) 60%, transparent);
+}
+.reveal .vrow p { margin: 0; font-size: 0.78rem; line-height: 1.4; }
+.reveal .vrow b { color: var(--color-text); font-weight: var(--weight-semibold); }
+
+/* Judge rubric criterion cards */
+.reveal .panel.jcrit { border-color: color-mix(in srgb, var(--acc) 30%, var(--color-border)); padding: var(--space-4) var(--space-5); }
+.reveal .jcrit .panel__title { color: var(--acc); display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.reveal .jcrit__ag { color: var(--color-text-faint); }
+.reveal .jcrit p { font-size: 0.74rem; margin: 0; line-height: 1.4; }
+
+/* Global score band (moved into the anecdote slide) */
+.reveal .scoreband {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  border-top: 1px solid var(--color-border-subtle); padding-top: 14px;
+}
+.reveal .scoreband__nums { display: flex; gap: 40px; }
+.reveal .scoreband .score { text-align: center; }
+.reveal .scoreband .stat__num { color: var(--color-architect); }
+
+/* Closing bookend — compact agent faces */
+.reveal .faces--mini { gap: 14px; margin-bottom: 0; justify-content: flex-start; }
+.reveal .faces--mini .face__av { width: 38px; height: 38px; }
+.reveal .faces--mini .face__name { display: none; }
+.reveal .cierre-foot { display: flex; align-items: center; gap: 20px; margin-top: 1.5rem; }
+.reveal .closing--accent { position: relative; padding-left: 18px; }
+.reveal .closing--accent::before {
+  content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 3px; border-radius: 3px;
+  background: var(--color-orchestrator);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--color-orchestrator) 55%, transparent);
+}
+
+/* Transformation layout — open problem → concrete system */
+.reveal .xform { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-5); margin-top: 1.7rem; }
+.reveal .xform__side {
+  border-radius: var(--radius-2xl); border: 1px solid var(--color-border);
+  padding: var(--space-6); background: var(--color-surface-frosted); min-height: 148px;
+}
+.reveal .xform__open { border-style: dashed; background: transparent; }
+.reveal .xform__open .xform__title { color: var(--color-text-muted); }
+.reveal .xform__done {
+  border-color: color-mix(in srgb, var(--color-architect) 45%, transparent);
+  background: color-mix(in srgb, var(--color-architect) 7%, var(--color-surface-frosted));
+  box-shadow: 0 0 34px color-mix(in srgb, var(--color-architect) 13%, transparent);
+}
+.reveal .xform__tag { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-faint); margin-bottom: 10px; }
+.reveal .xform__done .xform__tag { color: var(--color-architect); }
+.reveal .xform__title { font-size: 1.15rem; font-weight: var(--weight-semibold); color: var(--color-text); margin-bottom: 9px; line-height: 1.2; }
+.reveal .xform__side p { font-size: 0.82rem; margin: 0; }
+.reveal .xform__arrow { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 138px; }
+.reveal .xform__arrow-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 1px; text-transform: uppercase; color: var(--color-architect); }
+.reveal .xform__arrow svg { width: 134px; height: 20px; display: block; }
+.reveal .xform__arrow-sub { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.5px; color: var(--color-text-dim); }
+
 /* Framed screenshot */
 .reveal .shot { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-surface); box-shadow: var(--shadow-card); }
 .reveal .shot img { display: block; width: 100%; height: auto; }
@@ -97,12 +169,12 @@
 .reveal .faces { display: flex; gap: 22px; margin-bottom: 32px; }
 .reveal .face { display: flex; flex-direction: column; align-items: center; gap: 9px; }
 .reveal .face__av {
-  width: 74px; height: 74px; border-radius: var(--radius-lg); overflow: hidden;
+  width: 74px; height: 74px; border-radius: 50%; overflow: hidden;
   background: var(--color-surface);
   border: 1.5px solid color-mix(in srgb, var(--agent) 50%, transparent);
   box-shadow: 0 0 24px color-mix(in srgb, var(--agent) 22%, transparent);
 }
-.reveal .face__av img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.reveal .face__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .reveal .face__name { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-dim); }
 .reveal .hero-sub { font-size: 0.72rem; color: var(--color-text-muted); letter-spacing: 0.5px; }
 .reveal .hero-meta { display: flex; gap: var(--space-6); margin-top: 1.4rem; font-size: 0.72rem; }
@@ -130,6 +202,68 @@
 .reveal .agents-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .reveal .agents-row .node { flex: 1; }
 .reveal .agent-arrow { font-family: var(--font-mono); color: var(--color-text-dim); font-size: 1.1rem; flex: 0 0 auto; }
+
+/* Agent gallery — dim strip of faces that lights up per agent on advance (slide "agentes") */
+.reveal .agallery { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-1); margin-top: 1.8rem; }
+.reveal .agtile {
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 11px;
+  padding: 18px 12px 16px; border-radius: var(--radius-lg); border: 1px solid transparent;
+  transition: background .5s ease, border-color .5s ease, transform .5s cubic-bezier(.22,1,.36,1);
+}
+.reveal .agtile__av {
+  width: 80px; height: 80px; border-radius: 50%; overflow: hidden; background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--agent) 40%, transparent);
+  filter: grayscale(1) brightness(.75); opacity: .42;
+  transition: filter .55s ease, opacity .55s ease, box-shadow .55s ease, border-color .55s ease;
+}
+.reveal .agtile__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reveal .agtile__name { font-family: var(--font-sans); font-weight: var(--weight-semibold); font-size: 1rem; color: var(--color-text-muted); transition: color .5s ease; }
+.reveal .agtile__flow { font-size: 0.76rem; line-height: 1.4; color: var(--color-text-muted); }
+.reveal .agtile__flow .arw { color: var(--color-text-dim); margin: 0 .28em; transition: color .5s ease; }
+.reveal .agtile__flow .to { transition: color .5s ease; }
+.reveal .agtile__detail { font-size: 0.7rem; line-height: 1.5; color: var(--color-text-muted); max-width: 23ch; }
+
+/* active — its detail fragment has been revealed */
+.reveal .agtile:has(> .agtile__detail.visible) {
+  background: color-mix(in srgb, var(--agent) 9%, transparent);
+  border-color: color-mix(in srgb, var(--agent) 28%, transparent);
+  transform: translateY(-5px);
+}
+.reveal .agtile:has(> .agtile__detail.visible) .agtile__av {
+  filter: none; opacity: 1;
+  border-color: color-mix(in srgb, var(--agent) 70%, transparent);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--agent) 32%, transparent);
+}
+.reveal .agtile:has(> .agtile__detail.visible) .agtile__name,
+.reveal .agtile:has(> .agtile__detail.visible) .agtile__flow .to,
+.reveal .agtile:has(> .agtile__detail.visible) .agtile__flow .arw { color: var(--agent); }
+
+.reveal .aglink { flex: 0 0 auto; align-self: flex-start; margin-top: 46px; color: var(--color-border); font-size: 1.3rem; }
+
+/* Orchestrator slide — slate hero + dispatch strip */
+.reveal .orch-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
+.reveal .orch-hero__av {
+  width: 116px; height: 116px; border-radius: 50%; overflow: hidden; background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--color-orchestrator) 55%, transparent);
+  box-shadow: 0 0 42px color-mix(in srgb, var(--color-orchestrator) 26%, transparent);
+}
+.reveal .orch-hero__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reveal .orch-hero p { font-size: 0.95rem; line-height: 1.5; color: var(--color-text-muted); max-width: 32ch; margin: 0; }
+.reveal .orch-hero p strong { color: var(--color-text); }
+.reveal .orch-dispatch { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+.reveal .orch-dispatch__mini { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 1px solid color-mix(in srgb, var(--agent) 55%, transparent); background: var(--color-surface); }
+.reveal .orch-dispatch__mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reveal .orch-dispatch__lbl { font-size: 0.66rem; color: var(--color-text-dim); }
+
+/* Orchestrator responsibilities — slate-accented rows, not naked bullets */
+.reveal .orch-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.reveal .orch-list li {
+  padding: 12px 16px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-orchestrator) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-orchestrator) 20%, transparent);
+  font-size: 0.86rem; line-height: 1.4; color: var(--color-text-muted);
+}
+.reveal .orch-list li strong { color: var(--color-orchestrator); font-weight: var(--weight-semibold); }
 
 /* Closing line */
 .reveal .closing { font-size: 1.35rem; color: var(--color-text); font-weight: var(--weight-medium); }

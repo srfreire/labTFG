@@ -54,11 +54,6 @@ function AppShell({ connected, agents, messages, thinking, simAgents, envCard: e
               className="w-2 h-2 rounded-full inline-block shrink-0"
               style={{ background: connected ? 'var(--color-accent-green-light)' : 'var(--color-accent-red)' }}
             />
-            {isMock && (
-              <span data-testid="mock-badge" className="text-[9px] px-1.5 py-0.5 uppercase tracking-[1px] rounded-[var(--radius-sm)] text-accent-amber" style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent-amber) 25%, transparent)' }}>
-                mock
-              </span>
-            )}
             <button
               onClick={() => setKgOpen(v => !v)}
               className="ml-auto p-1 rounded-[var(--radius-sm)] text-text-faint hover:text-text transition-colors"

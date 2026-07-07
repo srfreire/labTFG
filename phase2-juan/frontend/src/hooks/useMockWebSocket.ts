@@ -4,7 +4,7 @@ import { AGENT_COLORS, INITIAL_AGENTS } from '../constants'
 import { mockReplay, mockTracker, mockAnalyst, mockCharts, mockDecisionTraces } from './mockData'
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
-const STEPS = ['architect', 'simulation', 'tracker', 'analyst', 'reporter', 'followup'] as const
+const STEPS = ['architect', 'models', 'simulation', 'tracker', 'analyst', 'reporter', 'followup'] as const
 type Step = (typeof STEPS)[number]
 const RESTART_HINTS = ['nuevo', 'otra', 'otro', 'empez', 'reinicia', 'de cero', 'desde el principio']
 
@@ -34,23 +34,42 @@ export function useMockWebSocket() {
     setAgent('Architect', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Architect** ha diseñado el entorno de simulación: un grid 8×8 con food ×6.',
+      text: 'El **Architect** ha diseñado el entorno de simulación: un grid 10×10 con food ×8 regenerable.',
       card: {
         title: 'Environment Spec',
         data: {
-          Grid: '8 × 8',
+          Grid: '10 × 10',
           'Acciones posibles': 'move_up, move_down, move_left, move_right, eat, stay',
-          Recursos: 'food ×6',
+          Recursos: 'food ×8 (regenera)',
         },
       },
     })
 
-    setAgent('Orchestrator', 'working', 'read_predictions')
+    setAgent('Orchestrator', 'working', 'list_available_models')
     await delay(900)
     addMsg({
       from: 'orchestrator',
-      text: 'Según la teoría de **regulación homeostática**, esperamos que:\n- El agente **drive_reduction** coma más agresivamente cuando su energía baje\n- El agente **PI** mantenga niveles más estables pero sea menos eficiente\n- Ambos muestren saciación: dejar de comer tras alcanzar el set point\n\n¿Procedemos con la simulación?',
-      suggestions: ['Lanza la simulación', 'Compara los dos modelos'],
+      text: 'He encontrado **3 modelos de Fase 1** compatibles con la **regulación homeostática**. ¿Cuáles quieres ejecutar en este entorno? Puedo correr varios a la vez y comparar sus trayectorias.',
+      card: {
+        title: 'Modelos de Fase 1 disponibles',
+        data: {
+          'homeostatic-regulation/continuous-drive-dynamics': 'Drive-dynamics ODE · umbral de urgencia',
+          'homeostatic-reinforcement-learning/drive-reduction-td-q': 'HRL drive-reduction · Q-learning TD',
+          'interoceptive-active-inference/expected-free-energy': 'Inferencia activa · energía libre esperada + alostasis',
+        },
+      },
+      suggestions: ['Compara los tres modelos', 'Ejecuta solo el modelo drive-dynamics'],
+    })
+    setAgent('Orchestrator', 'done')
+  }, [addMsg, setAgent])
+
+  const runModels = useCallback(async () => {
+    setAgent('Orchestrator', 'working', 'read_predictions')
+    await delay(1100)
+    addMsg({
+      from: 'orchestrator',
+      text: 'Perfecto — ejecutaré los **tres modelos** en el mismo entorno para compararlos.\n\nSegún la teoría de **regulación homeostática**, espero que:\n- El modelo **drive-dynamics** conserve energía en reposo hasta que el drive cruce su umbral de urgencia, y entonces busque comida\n- El **HRL (TD-Q)** explore más y aprenda las asociaciones estado-recompensa poco a poco\n- La **inferencia activa** mantenga la homeostasis vía priors alostáticos… aunque es el mecanismo más frágil si su política no se reorienta a tiempo\n\n¿Lanzo la simulación?',
+      suggestions: ['Lanza la simulación'],
     })
     setAgent('Orchestrator', 'done')
   }, [addMsg, setAgent])
@@ -63,7 +82,7 @@ export function useMockWebSocket() {
     setSimAgents(ids.map((id, i) => ({ id, color: AGENT_COLORS[i % AGENT_COLORS.length] })))
     addMsg({
       from: 'orchestrator',
-      text: `Simulación completada: **2 agentes** durante **30 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos**. Puedes explorar el replay — se ralentiza automáticamente en los momentos importantes.\n\nTe recomiendo que el **Tracker** registre las trayectorias antes de analizar.`,
+      text: `Simulación completada: **3 agentes** durante **60 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos** — incluida la **muerte por inanición** del modelo de inferencia activa en el paso 18. Puedes explorar el replay; se ralentiza automáticamente en los momentos importantes.\n\nTe recomiendo que el **Tracker** registre las trayectorias antes de analizar.`,
       replay,
       suggestions: ['Registra las trayectorias con el Tracker'],
     })
@@ -83,7 +102,7 @@ export function useMockWebSocket() {
     setAgent('Tracker', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Tracker** ha registrado las trayectorias de **2 agentes**.\n\nEpisodios detectados:\n- **drive_reduction_rl**: aprendió a dirigirse a recursos (paso 5)\n- **drive_reduction_rl**: energía crítica en paso 8 (12.3)\n- **drive_reduction_rl**: cambio de estrategia en paso 18\n- **pi_negative_feedback**: competencia por recursos en paso 14\n\n¿Paso el **Analyst** sobre estos datos?',
+      text: 'El **Tracker** ha registrado las trayectorias de **3 agentes** (99 eventos, tripleta joinable consistente).\n\nEpisodios detectados:\n- **drive-dynamics**: reposo estratégico y primer consumo tras cruzar el umbral (paso 11)\n- **active-inference**: consumo en el paso 6, y **colapso post-recuperación → muerte en el paso 18**\n- **HRL (TD-Q)**: exploración activa, primer consumo en el paso 24\n- **HRL (TD-Q)**: pérdida de confianza en la decisión en el paso 46\n\n¿Paso el **Analyst** sobre estos datos?',
       tracker: mockTracker(),
       suggestions: ['Analiza los resultados'],
     })
@@ -107,11 +126,11 @@ export function useMockWebSocket() {
     setAgent('Analyst', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Analyst** ha encontrado **3 patrones**, realizado **3 comparaciones** y generado **3 gráficas** (incluyendo evolución de Q-values por acción).\n\nCon esto ya puedo redactar el informe final.',
+      text: 'El **Analyst** ha encontrado **5 patrones**, realizado **3 comparaciones** y generado **3 gráficas** (energía, distribución de acciones y acumulación de drive).\n\nLo más llamativo: el modelo de **drive-dynamics** ganó en eficiencia (4 recursos, 73% de reposo) y la **inferencia activa** murió pese a haber comido, porque sus Q-values uniformemente altos no diferenciaron las acciones.\n\nAntes de redactar, dime el **alcance del informe**: ¿uno completo comparativo, o enfocado en el modelo que murió? ¿calidad estándar o detallada?',
       analyst: mockAnalyst(),
       charts: mockCharts(),
       traces: mockDecisionTraces(),
-      suggestions: ['Genera el informe PDF'],
+      suggestions: ['Informe completo, calidad estándar', 'Enfócalo en la inferencia activa que murió'],
     })
     setAgent('Orchestrator', 'done')
   }, [addMsg, setAgent])
@@ -125,10 +144,10 @@ export function useMockWebSocket() {
     setAgent('Reporter', 'done')
     addMsg({
       from: 'orchestrator',
-      text: 'El **Reporter** ha generado el informe PDF: `experiments/mock/analisis_homeostatic_regulation.pdf`.',
+      text: 'El **Reporter** ha compilado el informe PDF (LaTeX real, no fallback): `experiments/caso2/informe_final.pdf`. Incluye el entorno, los 3 modelos, los patrones y las gráficas — y documenta con fidelidad la muerte por inanición del modelo de inferencia activa.',
       reports: [{
-        key: 'experiments/mock/analisis_homeostatic_regulation.pdf',
-        filename: 'analisis_homeostatic_regulation.pdf',
+        key: 'experiments/caso2/informe_final.pdf',
+        filename: 'informe_final.pdf',
       }],
     })
     await delay(300)
@@ -136,8 +155,8 @@ export function useMockWebSocket() {
       from: 'orchestrator',
       text: '¿Quieres explorar algo más? Algunas opciones:',
       suggestions: [
-        'Muéstrame la evolución de la Q-table',
-        'Analiza qué pasó en los pasos 6-12',
+        'Muéstrame la evolución del drive del modelo drive-dynamics',
+        'Analiza qué pasó en los pasos 6-18 con la inferencia activa',
         'Empezar un nuevo experimento',
       ],
     })
@@ -149,8 +168,8 @@ export function useMockWebSocket() {
     await delay(1200)
     addMsg({
       from: 'orchestrator',
-      text: `He revisado de nuevo los datos registrados para responder a *"${text}"*. Los **Q-values** de \`eat\` dominan en cuanto la energía baja del set point, lo que confirma la saciación esperada.`,
-      suggestions: ['Genera un informe solo del agente PI', 'Empezar un nuevo experimento'],
+      text: `He revisado de nuevo los datos registrados para responder a *"${text}"*. En el modelo **drive-dynamics**, el drive se acumula en reposo y se reinicia a 0 justo tras cada consumo (pasos 11, 23, 40 y 56), lo que confirma el acoplamiento urgencia→acción esperado por la teoría homeostática.`,
+      suggestions: ['Genera un informe solo del modelo que murió', 'Empezar un nuevo experimento'],
     })
     setAgent('Orchestrator', 'done')
   }, [addMsg, setAgent])
@@ -173,6 +192,7 @@ export function useMockWebSocket() {
 
     switch (step) {
       case 'architect': await runArchitect(); break
+      case 'models': await runModels(); break
       case 'simulation': await runSimulation(); break
       case 'tracker': await runTracker(); break
       case 'analyst': await runAnalyst(); break
@@ -183,7 +203,7 @@ export function useMockWebSocket() {
 
     setThinking(false)
     runningRef.current = false
-  }, [addMsg, runArchitect, runSimulation, runTracker, runAnalyst, runReporter, runFollowup])
+  }, [addMsg, runArchitect, runModels, runSimulation, runTracker, runAnalyst, runReporter, runFollowup])
 
   return { connected: true, agents, messages, thinking, simAgents, envCard: null, send }
 }

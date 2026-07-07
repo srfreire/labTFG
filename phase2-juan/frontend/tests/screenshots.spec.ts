@@ -17,22 +17,22 @@ async function shotElement(page: Page, testid: string, file: string) {
 test('galería de la interfaz para la memoria (modo mock)', async ({ page }) => {
   await page.goto('/?mock')
   await page.getByRole('heading', { name: 'DecisionLab' }).waitFor()
-  await page.addStyleTag({
-    content: '[data-testid="mock-badge"]{display:none !important}',
-  })
-  await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
+  await page.getByText('Quiero estudiar la regulación homeostática del hambre').click()
+  const chooseBtn = page.getByRole('button', { name: 'Compara los tres modelos' })
+  await chooseBtn.waitFor({ state: 'visible', timeout: 20_000 })
+  await chooseBtn.click()
   for (const label of [
     'Lanza la simulación',
     'Registra las trayectorias con el Tracker',
     'Analiza los resultados',
-    'Genera el informe PDF',
+    'Informe completo, calidad estándar',
   ]) {
     const btn = page.getByRole('button', { name: label })
     await btn.waitFor({ state: 'visible', timeout: 20_000 })
     await btn.click()
   }
   await page
-    .getByRole('button', { name: 'Muéstrame la evolución de la Q-table' })
+    .getByRole('button', { name: 'Muéstrame la evolución del drive del modelo drive-dynamics' })
     .waitFor({ timeout: 20_000 })
   await page.waitForTimeout(1400) // deja asentar charts/animaciones
   await shotElement(page, 'env-card', 'ui-02-architect-spec.png')

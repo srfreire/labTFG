@@ -10,6 +10,11 @@
   stroke-dasharray: 1; stroke-dashoffset: 1;
 }
 .reveal .diagram .edge--arrow { marker-end: url(#arrow); }
+/* accent-colored node (inline --agent) */
+.reveal .node--acc { border-color: color-mix(in srgb, var(--agent) 45%, transparent); }
+.reveal .node--acc .node__name { color: var(--agent); }
+/* loop-back edge (the task closing) */
+.reveal .diagram .edge--return { stroke: color-mix(in srgb, var(--color-architect) 60%, transparent); }
 
 .reveal .node {
   position: relative;
@@ -27,8 +32,30 @@
 .reveal .node[class*="agent--"] .node__name { color: var(--agent); }
 
 .reveal .node--hub {
-  background: color-mix(in srgb, var(--color-orchestrator) 10%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-orchestrator) 45%, transparent);
+  background: color-mix(in srgb, var(--color-orchestrator) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-orchestrator) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-orchestrator) 25%, transparent),
+              0 0 34px color-mix(in srgb, var(--color-orchestrator) 30%, transparent);
+}
+.reveal .node--hub .node__name { color: var(--color-orchestrator); }
+
+/* Knowledge Backbone — colored stores wired to a central hub */
+.reveal .kb-canvas .kb-edge {
+  stroke: color-mix(in srgb, var(--color-orchestrator) 55%, transparent);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--color-orchestrator) 45%, transparent));
+}
+.reveal .kb-store {
+  border-color: color-mix(in srgb, var(--store) 42%, transparent);
+  background: color-mix(in srgb, var(--store) 7%, var(--color-surface));
+}
+.reveal .kb-store .node__name { color: var(--store); display: flex; align-items: center; gap: 8px; }
+.reveal .node__use { font-family: var(--font-sans); font-size: 0.7rem; line-height: 1.35; color: var(--color-text-muted); margin-top: 6px; }
+.reveal .kb-store .node__sub { margin-top: 6px; }
+.reveal .node__dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--store); flex: none;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--store) 70%, transparent);
 }
 
 /* Absolute grid layout container for hand-placed diagrams */
@@ -40,6 +67,58 @@
 .reveal .simgrid { display: grid; gap: 3px; background: var(--color-bg); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); }
 .reveal .simgrid .cell { background: rgba(255,255,255,0.02); border-radius: 3px; aspect-ratio: 1; }
 .reveal .simdot { position: absolute; border-radius: var(--radius-full); }
+
+/* Layered architecture — horizontal bands, one per layer */
+.reveal .arch { display: flex; flex-direction: column; gap: 9px; margin-top: 0.6rem; }
+.reveal .arch__band { display: grid; grid-template-columns: 104px 1fr; align-items: stretch; gap: 18px; }
+.reveal .arch__tag {
+  font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--color-text-faint);
+  display: flex; align-items: center; justify-content: flex-end; text-align: right;
+}
+.reveal .arch__items { display: flex; gap: 10px; }
+.reveal .arch__items .acell {
+  flex: 1; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 7px 13px; min-height: 44px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.reveal .acell__t { font-family: var(--font-sans); font-weight: var(--weight-semibold); font-size: 0.8rem; color: var(--color-text); line-height: 1.15; }
+.reveal .acell__s { font-family: var(--font-sans); font-size: 0.64rem; color: var(--color-text-muted); margin-top: 3px; }
+.reveal .acell[class*="agent--"] { border-color: color-mix(in srgb, var(--agent) 42%, transparent); }
+.reveal .acell[class*="agent--"] .acell__t { color: var(--agent); }
+.reveal .acell--hub {
+  background: color-mix(in srgb, var(--color-orchestrator) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-orchestrator) 50%, transparent);
+}
+.reveal .acell--hub .acell__t { color: var(--color-orchestrator); }
+.reveal .acell--hub { --agent: var(--color-orchestrator); }
+
+/* agent cells with a facehash avatar → row layout */
+.reveal .acell:has(> .acell__face) { flex-direction: row; align-items: center; gap: 11px; }
+.reveal .acell__face {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; background: var(--color-surface);
+  border: 1.5px solid color-mix(in srgb, var(--agent) 45%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--agent) 20%, transparent);
+}
+
+/* Retrieval figure — dense (embedding space) vs sparse (literal match) */
+.reveal .retr__fig {
+  border-radius: var(--radius-md); background: var(--color-bg);
+  border: 1px solid var(--color-border-subtle); padding: 12px;
+  min-height: 158px; display: flex; align-items: center; justify-content: center;
+}
+.reveal .retr__fig svg { width: 100%; height: auto; }
+.reveal .retr__text { justify-content: flex-start; }
+.reveal .retr__text p { font-family: var(--font-mono); font-size: 0.74rem; line-height: 2; color: var(--color-text-faint); margin: 0; }
+.reveal .retr__text mark {
+  background: color-mix(in srgb, var(--color-accent-cyan) 26%, transparent);
+  color: var(--color-text); border-radius: 3px; padding: 1px 5px;
+}
+.reveal .retr-dot  { fill: color-mix(in srgb, var(--color-text) 20%, transparent); }
+.reveal .retr-near { fill: var(--color-analyst); }
+.reveal .retr-q    { fill: var(--color-analyst); }
+.reveal .retr-qring{ fill: none; stroke: var(--color-analyst); stroke-width: 1.5; opacity: 0.55; }
+.reveal .retr-link { stroke: color-mix(in srgb, var(--color-analyst) 50%, transparent); stroke-width: 1.2; }
 
 /* Gantt */
 .reveal .gantt { display: grid; grid-template-columns: 220px repeat(4, 1fr); gap: 8px 6px; align-items: center; }

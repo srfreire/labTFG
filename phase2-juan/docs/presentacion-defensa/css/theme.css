@@ -41,9 +41,10 @@ body::before {
 .reveal .slides { text-align: left; }
 
 /* Consistent slide canvas so content is vertically balanced and absolute
-   layers line up. Content block is centered within the 640px canvas. */
+   layers line up. Full stage height so justify-content:center truly centers
+   the content block (a shorter canvas anchored high, leaving a gap below). */
 .reveal .slides > section {
-  height: 640px;
+  height: 100%;
   box-sizing: border-box;
   padding: 44px 56px;
   overflow: visible;

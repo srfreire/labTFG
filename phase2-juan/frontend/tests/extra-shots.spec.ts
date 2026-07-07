@@ -1,4 +1,4 @@
-import { test, type Page } from '@playwright/test'
+import { test } from '@playwright/test'
 import path from 'node:path'
 
 const FIG =
@@ -7,17 +7,14 @@ const BASE = 'http://localhost:5173'
 
 test.use({ viewport: { width: 1680, height: 1050 }, deviceScaleFactor: 2 })
 
-async function hideBadge(page: Page) {
-  await page.addStyleTag({
-    content: '[data-testid="mock-badge"]{display:none !important}',
-  })
-}
 test('pipeline en acción (mock)', async ({ page }) => {
   await page.goto(`${BASE}/?mock`)
   await page.getByRole('heading', { name: 'DecisionLab' }).waitFor()
-  await hideBadge(page)
 
-  await page.getByText('Ejecuta una run corta con drive_reduction_rl').click()
+  await page.getByText('Quiero estudiar la regulación homeostática del hambre').click()
+  const choose = page.getByRole('button', { name: 'Compara los tres modelos' })
+  await choose.waitFor({ state: 'visible', timeout: 20_000 })
+  await choose.click()
   for (const label of [
     'Lanza la simulación',
     'Registra las trayectorias con el Tracker',
@@ -30,7 +27,6 @@ test('pipeline en acción (mock)', async ({ page }) => {
   await analyze.waitFor({ state: 'visible', timeout: 20_000 })
   await analyze.click()
   await page.waitForTimeout(1700)
-  await hideBadge(page)
   await page.screenshot({ path: path.join(FIG, 'ui-10-pipeline-accion.png') })
 })
 test('knowledge graph (real)', async ({ page }) => {

@@ -25,9 +25,9 @@ function StrongWithColor(props: { children?: ReactNode }) {
 const mdComponents = { strong: StrongWithColor }
 
 const EXAMPLE_PROMPTS = [
-  'Ejecuta una run corta con drive_reduction_rl',
-  'Compara drive_reduction_rl con pi_negative_feedback',
-  'Analiza un entorno de forrajeo con recursos limitados',
+  'Quiero estudiar la regulación homeostática del hambre',
+  'Compara modelos de decisión en un entorno de forrajeo',
+  'Simula agentes que buscan comida con energía limitada',
 ]
 
 interface Props {

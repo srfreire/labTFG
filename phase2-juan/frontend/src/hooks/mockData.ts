@@ -1,56 +1,106 @@
 import type { ReplayData, TrackerData, AnalystData, ChartSpec, CriticalEvent, DecisionTrace } from '../types'
 
-function energyA(step: number): number {
-  return Math.max(0, 80 - step * 3 + Math.sin(step * 0.5) * 20 + (step === 8 ? -40 : 0) + (step === 9 ? 45 : 0))
+/*
+ * Datos del modo mock reconstruidos a partir de una RUN REAL del laboratorio:
+ * benchmark/reports/2026-06-30-caso2-lab (paradigma "regulación homeostática",
+ * seed 42, grid 10×10, food×8, 60 pasos). De los 4 modelos de esa run se curan
+ * los 3 más ilustrativos; los números, episodios, patrones y comparaciones son
+ * los que produjeron el Tracker y el Analyst reales.
+ */
+
+const DRIVE = 'continuous_drive_dynamics'
+const HRL = 'drive_reduction_td_q'
+const AI = 'active_inference_efe'
+
+const EAT_DRIVE = [11, 23, 40, 56] // consumos reales del modelo drive-dynamics
+const EAT_HRL = [24, 45] // consumos reales del modelo HRL TD-Q
+const AI_DEATH_STEP = 18 // el modelo de inferencia activa muere por inanición
+
+/* Energía normalizada [0,1] — anclada a los valores reales de la run. */
+function energyDrive(step: number): number {
+  let e = 0.72 + Math.sin(step * 0.25) * 0.05 - step * 0.001
+  for (const s of EAT_DRIVE) if (step >= s) e += 0.04 * Math.exp(-(step - s) / 6)
+  return Math.max(0.55, Math.min(0.85, e))
+}
+function energyHRL(step: number): number {
+  let e = 0.7 - step * 0.004
+  for (const s of EAT_HRL) if (step >= s) e += 0.12 * Math.exp(-(step - s) / 8)
+  return Math.max(0.3, Math.min(0.8, e))
+}
+/* Inferencia activa: crisis desde el inicio (0.45→0.26), come en el paso 6
+ * (→0.56) y colapsa linealmente hasta 0.0 en el paso 18. null = ya muerto. */
+function energyAI(step: number): number | null {
+  if (step > AI_DEATH_STEP) return null
+  if (step <= 5) return +(0.45 - step * 0.038).toFixed(3)
+  if (step === 6) return 0.56
+  return +Math.max(0, 0.51 - (step - 7) * (0.51 / 11)).toFixed(3)
 }
 
-function energyB(step: number): number {
-  return 70 + Math.sin(step * 0.3) * 8
+/* Acumulación de drive del modelo drive-dynamics: crece y se reinicia al comer. */
+function driveSignal(step: number): number {
+  let last = 0
+  for (const s of EAT_DRIVE) if (s <= step) last = s
+  return +((step - last) * 0.0018).toFixed(4)
 }
 
 export function mockCriticalEvents(): CriticalEvent[] {
   return [
-    { step: 3, agent_id: 'drive_reduction_rl', type: 'consumption', severity: 0.5, description: 'drive_reduction_rl consumió food (reward=1.0)' },
-    { step: 8, agent_id: 'drive_reduction_rl', type: 'starvation', severity: 0.7, description: 'drive_reduction_rl energía crítica: 12.3' },
-    { step: 9, agent_id: 'drive_reduction_rl', type: 'energy_spike', severity: 0.8, description: 'drive_reduction_rl energía subió 45.0 (12.3→57.3)' },
-    { step: 14, agent_id: 'pi_negative_feedback', type: 'consumption', severity: 0.5, description: 'pi_negative_feedback consumió food (reward=1.0)' },
-    { step: 16, agent_id: 'drive_reduction_rl', type: 'decision_confidence_drop', severity: 0.7, description: 'drive_reduction_rl perdió confianza en su decisión: gap Q-values bajó de 2.10 a 0.35' },
-    { step: 18, agent_id: 'drive_reduction_rl', type: 'strategy_shift', severity: 0.6, description: 'drive_reduction_rl cambió de \'move_up\' a \'eat\'' },
-    { step: 22, agent_id: 'pi_negative_feedback', type: 'starvation', severity: 0.9, description: 'pi_negative_feedback energía crítica: 5.1' },
+    { step: 5, agent_id: AI, type: 'starvation', severity: 0.99, description: 'active_inference_efe energía crítica: 0.26 (bajo el umbral 0.5)' },
+    { step: 6, agent_id: AI, type: 'consumption', severity: 0.5, description: 'active_inference_efe consumió food — energía se recuperó 0.26→0.56' },
+    { step: 11, agent_id: DRIVE, type: 'consumption', severity: 0.4, description: 'continuous_drive_dynamics consumió food tras cruzar el umbral de urgencia (drive=0.0196)' },
+    { step: 18, agent_id: AI, type: 'death', severity: 1.0, description: 'active_inference_efe murió por agotamiento de energía (0.0) en el paso 18' },
+    { step: 23, agent_id: DRIVE, type: 'consumption', severity: 0.4, description: 'continuous_drive_dynamics consumió food (búsqueda local eficiente)' },
+    { step: 24, agent_id: HRL, type: 'consumption', severity: 0.5, description: 'drive_reduction_td_q primer consumo tras 24 pasos de exploración' },
+    { step: 40, agent_id: DRIVE, type: 'consumption', severity: 0.4, description: 'continuous_drive_dynamics consumió food (3.º)' },
+    { step: 45, agent_id: HRL, type: 'consumption', severity: 0.5, description: 'drive_reduction_td_q segundo consumo' },
+    { step: 46, agent_id: HRL, type: 'decision_confidence_drop', severity: 0.7, description: 'drive_reduction_td_q perdió confianza: el margen entre los dos mejores Q-values cayó bajo el umbral' },
+    { step: 56, agent_id: DRIVE, type: 'consumption', severity: 0.4, description: 'continuous_drive_dynamics consumió food (4.º) — supervivencia completa con 73% de reposo' },
   ]
 }
 
 export function mockReplay(): ReplayData {
-  const W = 8, H = 8, STEPS = 30
+  const W = 10, H = 10, STEPS = 60
   const frames = []
-  let ax = 1, ay = 1, bx = 6, by = 6
+  const pos: Record<string, { x: number; y: number }> = {
+    [DRIVE]: { x: 5, y: 5 }, [HRL]: { x: 2, y: 2 }, [AI]: { x: 7, y: 3 },
+  }
 
   const resources = [
-    { type: 'food', x: 3, y: 2 }, { type: 'food', x: 5, y: 1 },
-    { type: 'food', x: 2, y: 5 }, { type: 'food', x: 6, y: 3 },
-    { type: 'food', x: 4, y: 6 }, { type: 'food', x: 1, y: 4 },
+    { type: 'food', x: 3, y: 2 }, { type: 'food', x: 5, y: 1 }, { type: 'food', x: 8, y: 4 },
+    { type: 'food', x: 2, y: 6 }, { type: 'food', x: 6, y: 7 }, { type: 'food', x: 4, y: 3 },
+    { type: 'food', x: 9, y: 8 }, { type: 'food', x: 1, y: 9 },
   ]
+  const dirs: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1], [0, 0]]
+  // drive-dynamics reposa el 73% del tiempo; los demás exploran
+  const stayBias: Record<string, number> = { [DRIVE]: 0.73, [HRL]: 0.2, [AI]: 0.15 }
 
   for (let step = 0; step < STEPS; step++) {
-    const dirs: [number, number][] = [[-1,0],[1,0],[0,-1],[0,1],[0,0]]
-    const [dax, day] = dirs[Math.floor(Math.random() * 4)]
-    ax = Math.max(0, Math.min(W - 1, ax + dax))
-    ay = Math.max(0, Math.min(H - 1, ay + day))
-    const [dbx, dby] = dirs[Math.floor(Math.random() * 5)]
-    bx = Math.max(0, Math.min(W - 1, bx + dbx))
-    by = Math.max(0, Math.min(H - 1, by + dby))
+    const aiAlive = step <= AI_DEATH_STEP
+    for (const id of [DRIVE, HRL, AI]) {
+      if (id === AI && !aiAlive) continue
+      const staying = Math.random() < stayBias[id]
+      const [dx, dy] = staying ? [0, 0] : dirs[Math.floor(Math.random() * 4)]
+      pos[id].x = Math.max(0, Math.min(W - 1, pos[id].x + dx))
+      pos[id].y = Math.max(0, Math.min(H - 1, pos[id].y + dy))
+    }
+    const ate = (id: string) =>
+      (id === DRIVE && EAT_DRIVE.includes(step)) ||
+      (id === HRL && EAT_HRL.includes(step)) ||
+      (id === AI && step === 6)
 
     frames.push({
       step,
       agents: [
-        { id: 'drive_reduction_rl', x: ax, y: ay, alive: step < 28 },
-        { id: 'pi_negative_feedback', x: bx, y: by, alive: true },
+        { id: DRIVE, x: pos[DRIVE].x, y: pos[DRIVE].y, alive: true },
+        { id: HRL, x: pos[HRL].x, y: pos[HRL].y, alive: true },
+        { id: AI, x: pos[AI].x, y: pos[AI].y, alive: aiAlive },
       ],
-      resources: resources.filter(() => Math.random() > 0.15),
-      actions: [
-        { agent_id: 'drive_reduction_rl', action: dax === 0 && day === 0 ? 'stay' : 'move', reward: Math.random() > 0.7 ? 1 : 0 },
-        { agent_id: 'pi_negative_feedback', action: dbx === 0 && dby === 0 ? 'stay' : 'move', reward: Math.random() > 0.85 ? 1 : 0 },
-      ],
+      resources: resources.filter(() => Math.random() > 0.1),
+      actions: [DRIVE, HRL, AI].map(id => ({
+        agent_id: id,
+        action: ate(id) ? 'eat' : 'move',
+        reward: ate(id) ? 1 : 0,
+      })),
     })
   }
 
@@ -59,24 +109,31 @@ export function mockReplay(): ReplayData {
 
 export function mockTracker(): TrackerData {
   return {
-    summary: 'Simulación con 2 agentes de regulación homeostática durante 30 pasos.',
+    summary: 'Simulación de 60 pasos con 3 agentes de distintas arquitecturas cognitivas homeostáticas: 2 sobrevivieron completos y el modelo de inferencia activa murió por agotamiento de energía en el paso 18.',
     trajectories: {
-      drive_reduction_rl: {
-        steps_survived: 28,
-        resources_consumed: 7,
-        actions: { move_up: 8, move_down: 4, move_left: 3, move_right: 5, eat: 7, stay: 1 },
+      [DRIVE]: {
+        steps_survived: 60,
+        resources_consumed: 4,
+        actions: { stay: 44, move_down: 7, eat: 4, move_right: 2, move_up: 1, move_left: 2 },
       },
-      pi_negative_feedback: {
-        steps_survived: 30,
-        resources_consumed: 3,
-        actions: { move_up: 9, move_down: 7, move_left: 5, move_right: 6, eat: 3 },
+      [HRL]: {
+        steps_survived: 60,
+        resources_consumed: 2,
+        actions: { move_up: 14, move_down: 13, move_right: 12, stay: 12, move_left: 7, eat: 2 },
+      },
+      [AI]: {
+        steps_survived: 19,
+        resources_consumed: 1,
+        actions: { move_down: 5, move_right: 5, move_up: 4, stay: 3, eat: 1, move_left: 1 },
       },
     },
     episodes: [
-      { agent: 'drive_reduction_rl', type: 'learning', step: 5, description: 'El agente comenzó a dirigirse hacia recursos tras aprender Q-values iniciales' },
-      { agent: 'drive_reduction_rl', type: 'starvation', step: 8, description: 'Energía bajó a nivel crítico (12.3) antes de encontrar comida' },
-      { agent: 'drive_reduction_rl', type: 'strategy_shift', step: 18, description: 'Cambió de exploración a explotación al aprender la ubicación de recursos' },
-      { agent: 'pi_negative_feedback', type: 'competition', step: 14, description: 'Compitió con drive_reduction_rl por el mismo recurso' },
+      { agent: DRIVE, type: 'exploitation', steps: [0, 11], description: 'Estrategia conservadora inicial: permaneció en reposo (modo REST) durante 7 pasos con energía estable (0.68-0.66), hasta que su drive aumentó lo suficiente para activar búsqueda activa y consumir en el paso 11, demostrando un umbral de urgencia eficaz.' },
+      { agent: DRIVE, type: 'foraging_success', step: 23, description: 'Explotación pasiva post-consumo: permaneció mayormente en stay hasta el paso 22; un movimiento estratégico (move_right) le permitió consumir de nuevo en el paso 23, mostrando búsqueda local eficiente.' },
+      { agent: AI, type: 'foraging_success', step: 6, description: 'Consumo exitoso en el paso 6 en la posición (4,3): la energía se recuperó de 0.26 a 0.56, pero el prior alostático mu_p=0.656 no logró reorientar su política hacia conservación sostenible.' },
+      { agent: AI, type: 'starvation', steps: [7, 18], description: 'Colapso post-recuperación: pese al consumo del paso 6, siguió explorando de forma errática (11 movimientos en 12 pasos) sin localizar recursos. La energía declinó linealmente de 0.51 a 0.0, muriendo por agotamiento en el paso 18. Fallo crítico en el balance exploración-explotación.' },
+      { agent: HRL, type: 'exploration', steps: [0, 24], description: 'Exploración inicial activa con distribución balanceada de acciones. El patrón de movimiento diversificado le permitió descubrir y consumir el primer recurso en el paso 24, tras cambiar de stay a move_up en el paso 23.' },
+      { agent: HRL, type: 'state_change', step: 46, description: 'Pérdida de confianza en la decisión: el margen entre los dos mejores Q-values se estrechó bajo el umbral crítico, indicando un equilibrio exploración-explotación inestable en fase tardía de aprendizaje.' },
     ],
   }
 }
@@ -85,52 +142,55 @@ export function mockAnalyst(): AnalystData {
   return {
     patterns: [
       {
-        id: 'P1', type: 'estrategia', agents: ['drive_reduction_rl'],
-        description: 'El agente drive_reduction aprendió a moverse hacia los recursos tras los primeros 5 pasos, formando un patrón de búsqueda dirigida basado en Q-values',
-        evidence: 'Entre los pasos 1-5 el movimiento era aleatorio (tasa de acierto 12%), pero a partir del paso 6 subió al 45%',
+        id: 'P1', type: 'estrategia', agents: [DRIVE],
+        description: 'Estrategia de conservación energética mediante umbral de urgencia: el agente permaneció en reposo hasta que su drive alcanzó un nivel crítico, momento en que activó búsqueda focalizada y logró 4 consumos exitosos con 73% de acciones stay',
+        evidence: 'En el paso 0 drive=0.0 con energía=0.78 mantuvo modo REST durante 6 pasos. En el paso 6 drive=0.014 cruzó el umbral y cambió a búsqueda activa. En el paso 11 ejecutó eat exitosamente y el drive se reinició a 0.0, volviendo a REST inmediatamente',
       },
       {
-        id: 'P2', type: 'recursos', agents: ['drive_reduction_rl', 'pi_negative_feedback'],
-        description: 'El modelo PI mantuvo niveles de energía más estables gracias a su mecanismo de control proporcional-integral, pero fue menos eficiente recolectando',
-        evidence: 'Desviación estándar de energía: PI=8.2, Drive=15.7. Recursos: PI=3, Drive=7',
+        id: 'P2', type: 'estrategia', agents: [HRL],
+        description: 'Exploración activa con aprendizaje Q lento: el agente distribuyó acciones de forma balanceada, consumiendo recursos tras 24 pasos de exploración, pero con baja eficiencia general comparado con el modelo de drive continuo',
+        evidence: 'Distribución uniforme de movimientos con 20% stay vs 73% del agente de drive. Primer consumo en el paso 24 tras exploración extensa. Segundo consumo en el paso 45. Total: 2 recursos en 60 pasos',
       },
       {
-        id: 'P3', type: 'anomaly', agents: ['drive_reduction_rl'],
-        description: 'El agente drive_reduction experimentó un pico crítico de hambre en el paso 8, con energía cayendo a 12.3 antes de recuperarse',
-        evidence: 'Energía paso 7: 58.1, paso 8: 12.3, paso 9: 57.3 (tras consumo exitoso)',
+        id: 'P3', type: 'comportamiento', agents: [AI],
+        description: 'Fallo catastrófico post-recuperación en el agente de energía libre esperada: tras consumir en el paso 6 y recuperar energía de 0.26 a 0.56, continuó explorando sin ajustar su política, muriendo por agotamiento en el paso 18',
+        evidence: 'Entre los pasos 0-6 la energía cayó de 0.45 a 0.26. En el paso 6 consumió y recuperó a 0.56. Entre los pasos 7-18 realizó 11 movimientos sin nuevos consumos, con la energía declinando hasta 0.0. Los valores de energía libre esperada fueron uniformemente altos (>8.5) sin diferenciación clara entre acciones',
+      },
+      {
+        id: 'P4', type: 'temporal', agents: [DRIVE],
+        description: 'Acoplamiento entre la señal de drive y el cambio conductual: transiciones limpias entre los modos REST y EAT basadas en umbrales de drive, con reinicio inmediato tras el consumo',
+        evidence: 'En el paso 11 pre-consumo: drive=0.055, modo=EAT, Q_eat=0.055 fue máximo. Post-consumo: drive=0.0, modo=REST, todos los Q-values=0.0. La velocidad del drive aumentó de 0.0004 (paso 0) a 0.011 (paso 11), indicando acumulación gradual de urgencia homeostática',
+      },
+      {
+        id: 'P5', type: 'anomalía', agents: [AI],
+        description: 'Colapso del prior alostático sin efecto protector: a pesar de tener mu_p=0.656 en el paso 7 tras recuperarse, la distribución sobre estados concentró toda la certeza en el estado inmediato sin generar políticas conservadoras',
+        evidence: 'En el paso 7: mu_p=0.656 (prior alto), pero q_s concentró el valor 0.90 en el estado actual. Los costes esperados C variaron poco entre acciones (rango -1.17 a -0.013). La acción elegida fue move_up en vez de stay o búsqueda conservadora',
       },
     ],
     comparisons: [
       {
-        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
-        metric: 'Recursos recogidos',
-        values: { drive_reduction_rl: 7, pi_negative_feedback: 3 },
-        insight: 'Drive reduction recogió más del doble porque su señal de impulso le motiva a buscar comida activamente cuando tiene hambre',
+        agents: [DRIVE, HRL],
+        metric: 'Recursos consumidos',
+        values: { [DRIVE]: 4, [HRL]: 2 },
+        insight: 'El modelo de dinámicas continuas de drive con umbral de urgencia superó en eficiencia al Q-learning libre de modelo porque el umbral homeostático permitió conservar energía mediante reposo estratégico',
       },
       {
-        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
-        metric: 'Estabilidad energética',
-        values: { drive_reduction_rl: 15.7, pi_negative_feedback: 8.2 },
-        insight: 'PI fue más estable gracias a su mecanismo de control integral que suaviza las oscilaciones, aunque a costa de menor recolección',
+        agents: [DRIVE, HRL],
+        metric: 'Proporción de acciones stay',
+        values: { [DRIVE]: 0.73, [HRL]: 0.2 },
+        insight: 'La política de umbral generó comportamiento pasivo dominante hasta alcanzar necesidad crítica, mientras que el agente Q-learning mantuvo exploración activa constante, con mayor gasto energético sin ganancia proporcional',
       },
       {
-        agents: ['drive_reduction_rl', 'pi_negative_feedback'],
+        agents: [AI, DRIVE],
         metric: 'Pasos sobrevividos',
-        values: { drive_reduction_rl: 28, pi_negative_feedback: 30 },
-        insight: 'PI sobrevivió toda la simulación con regulación conservadora, drive_reduction murió por agotamiento tras no encontrar comida a tiempo',
+        values: { [AI]: 19, [DRIVE]: 60 },
+        insight: 'El agente de energía libre esperada murió en el paso 18 porque sus Q-values uniformemente altos no diferenciaron entre acciones arriesgadas y conservadoras, mientras que el modelo de drive generó señales claras que acoplaron urgencia con acción',
       },
     ],
     metrics: {
-      drive_reduction_rl: {
-        'pasos vivo': 28,
-        'recursos comidos': 7,
-        'tasa supervivencia': 0.93,
-      },
-      pi_negative_feedback: {
-        'pasos vivo': 30,
-        'recursos comidos': 3,
-        'tasa supervivencia': 1.0,
-      },
+      [DRIVE]: { 'pasos vivo': 60, 'recursos comidos': 4, 'tasa supervivencia': 1.0, 'proporción reposo': 0.73 },
+      [HRL]: { 'pasos vivo': 60, 'recursos comidos': 2, 'tasa supervivencia': 1.0, 'proporción movimiento': 0.8 },
+      [AI]: { 'pasos vivo': 19, 'recursos comidos': 1, 'tasa supervivencia': 0.32, 'energía final': 0.0 },
     },
   }
 }
@@ -140,17 +200,15 @@ export function mockCharts(): ChartSpec[] {
     {
       id: 'chart_1',
       type: 'line',
-      title: 'Evolución de energía por agente',
+      title: 'Evolución de energía (normalizada) por agente',
       x_label: 'Paso',
       y_label: 'Energía',
       series: [
+        { name: DRIVE, color: '#4ade80', data: Array.from({ length: 60 }, (_, i) => ({ x: i, y: +energyDrive(i).toFixed(3) })) },
+        { name: HRL, color: '#fbbf24', data: Array.from({ length: 60 }, (_, i) => ({ x: i, y: +energyHRL(i).toFixed(3) })) },
         {
-          name: 'drive_reduction_rl', color: '#4ade80',
-          data: Array.from({ length: 28 }, (_, i) => ({ x: i, y: energyA(i) })),
-        },
-        {
-          name: 'pi_negative_feedback', color: '#fbbf24',
-          data: Array.from({ length: 30 }, (_, i) => ({ x: i, y: energyB(i) })),
+          name: AI, color: '#a78bfa',
+          data: Array.from({ length: AI_DEATH_STEP + 1 }, (_, i) => ({ x: i, y: energyAI(i) ?? 0 })),
         },
       ],
     },
@@ -161,41 +219,19 @@ export function mockCharts(): ChartSpec[] {
       x_label: 'Acción',
       y_label: 'Cantidad',
       series: [
-        {
-          name: 'drive_reduction_rl', color: '#4ade80',
-          data: [{ x: 'eat', y: 7 }, { x: 'move_down', y: 4 }, { x: 'move_left', y: 3 }, { x: 'move_right', y: 5 }, { x: 'move_up', y: 8 }, { x: 'stay', y: 1 }],
-        },
-        {
-          name: 'pi_negative_feedback', color: '#fbbf24',
-          data: [{ x: 'eat', y: 3 }, { x: 'move_down', y: 7 }, { x: 'move_left', y: 5 }, { x: 'move_right', y: 6 }, { x: 'move_up', y: 9 }, { x: 'stay', y: 0 }],
-        },
+        { name: DRIVE, color: '#4ade80', data: [{ x: 'stay', y: 44 }, { x: 'move_down', y: 7 }, { x: 'eat', y: 4 }, { x: 'move_right', y: 2 }, { x: 'move_left', y: 2 }, { x: 'move_up', y: 1 }] },
+        { name: HRL, color: '#fbbf24', data: [{ x: 'stay', y: 12 }, { x: 'move_down', y: 13 }, { x: 'eat', y: 2 }, { x: 'move_right', y: 12 }, { x: 'move_left', y: 7 }, { x: 'move_up', y: 14 }] },
+        { name: AI, color: '#a78bfa', data: [{ x: 'stay', y: 3 }, { x: 'move_down', y: 5 }, { x: 'eat', y: 1 }, { x: 'move_right', y: 5 }, { x: 'move_left', y: 1 }, { x: 'move_up', y: 4 }] },
       ],
     },
     {
       id: 'chart_3',
       type: 'line',
-      title: 'Evolución Q-values por acción (drive_reduction_rl)',
+      title: 'Acumulación de drive y reinicio al consumir (Drive-dynamics ODE)',
       x_label: 'Paso',
-      y_label: 'Q-valor',
+      y_label: 'Drive',
       series: [
-        {
-          name: 'drive_reduction_rl:eat', color: '#4ade80',
-          data: Array.from({ length: 28 }, (_, i) => ({
-            x: i, y: Math.round((0.5 + i * 0.4 + Math.sin(i * 0.3) * 0.5) * 100) / 100,
-          })),
-        },
-        {
-          name: 'drive_reduction_rl:move_up', color: '#38bdf8',
-          data: Array.from({ length: 28 }, (_, i) => ({
-            x: i, y: Math.round((0.3 + i * 0.15 + Math.cos(i * 0.4) * 0.3) * 100) / 100,
-          })),
-        },
-        {
-          name: 'drive_reduction_rl:stay', color: '#f472b6',
-          data: Array.from({ length: 28 }, (_, i) => ({
-            x: i, y: Math.round((0.1 + i * 0.05) * 100) / 100,
-          })),
-        },
+        { name: `${DRIVE}:drive`, color: '#4ade80', data: Array.from({ length: 60 }, (_, i) => ({ x: i, y: driveSignal(i) })) },
       ],
     },
   ]
@@ -204,21 +240,21 @@ export function mockCharts(): ChartSpec[] {
 export function mockDecisionTraces(): DecisionTrace[] {
   return [
     {
-      agent_id: 'drive_reduction_rl',
-      step: 16,
-      perception: { x: 3, y: 4, grid_width: 8, grid_height: 8, step: 16, resources: { food: [{ x: 3, y: 4 }, { x: 5, y: 1 }] } },
-      pre_state: { energy: 25.3, drive: 0.82, epsilon: 0.15, q_table: { eat: 12.3, move_right: 8.1, stay: 5.4, move_left: 3.2 } },
-      post_state: { energy: 40.3, drive: 0.31, epsilon: 0.14, q_table: { eat: 12.8, move_right: 8.1, stay: 5.4, move_left: 3.2 } },
+      agent_id: DRIVE,
+      step: 11,
+      perception: { x: 4, y: 3, grid_width: 10, grid_height: 10, step: 11, resources: { food: [{ x: 4, y: 3 }, { x: 5, y: 1 }] } },
+      pre_state: { energy_level: 0.66, setpoint: 0.8, drive: 0.0196, previous_drive: 0.0144, drive_velocity: 0.011, behavioural_mode: 1, q_values: { eat: 0.055, move_down: 0.031, stay: 0.012, move_right: 0.009 } },
+      post_state: { energy_level: 0.79, setpoint: 0.8, drive: 0.0, previous_drive: 0.0196, drive_velocity: 0.0, behavioural_mode: 0, q_values: { eat: 0.0, move_down: 0.0, stay: 0.0, move_right: 0.0 } },
       available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
       action_chosen: { name: 'eat', params: {} },
-      outcome: { reward: 15, action_result: { consumed: true, resource_type: 'food' } },
+      outcome: { reward: 1, action_result: { consumed: true, resource_type: 'food' } },
     },
     {
-      agent_id: 'pi_negative_feedback',
-      step: 16,
-      perception: { x: 5, y: 3, grid_width: 8, grid_height: 8, step: 16, resources: { food: [{ x: 5, y: 1 }, { x: 6, y: 3 }] } },
-      pre_state: { energy: 62.1, error_signal: 0.31, proportional_control: 0.15, integral_control: 0.08, total_control_signal: 0.23 },
-      post_state: { energy: 60.1, error_signal: 0.42, proportional_control: 0.21, integral_control: 0.10, total_control_signal: 0.31 },
+      agent_id: AI,
+      step: 7,
+      perception: { x: 4, y: 4, grid_width: 10, grid_height: 10, step: 7, resources: { food: [{ x: 8, y: 4 }] } },
+      pre_state: { energy: 0.51, mu_p: 0.656, rho: 0.42, q_values: { move_up: 8.71, move_down: 8.69, move_right: 8.66, stay: 8.62 } },
+      post_state: { energy: 0.465, mu_p: 0.651, rho: 0.44, q_values: { move_up: 8.70, move_down: 8.68, move_right: 8.65, stay: 8.61 } },
       available_actions: ['eat', 'move_up', 'move_down', 'move_left', 'move_right', 'stay'],
       action_chosen: { name: 'move_up', params: {} },
       outcome: { reward: 0, action_result: {} },
@@ -231,35 +267,49 @@ function mockReplayTraces(steps: number): Record<number, DecisionTrace[]> {
   const traces: Record<number, DecisionTrace[]> = {}
 
   for (let step = 0; step < steps; step++) {
-    const eA = energyA(step)
-    const eB = energyB(step)
-    const driveA = Math.min(1, Math.max(0, 1 - eA / 100))
-    const qEat = 0.5 + step * 0.4 + Math.sin(step * 0.3) * 0.5
-    const qMove = 0.3 + step * 0.15 + Math.cos(step * 0.4) * 0.3
-    const qStay = 0.1 + step * 0.05
-    const chosenA = qEat > qMove ? 'eat' : 'move_right'
+    const eD = energyDrive(step)
+    const drive = driveSignal(step)
+    const driveEats = EAT_DRIVE.includes(step)
+    const aiEnergy = energyAI(step)
 
-    traces[step] = [
+    const perStep: DecisionTrace[] = [
       {
-        agent_id: 'drive_reduction_rl', step,
-        perception: { x: Math.floor(Math.random() * 8), y: Math.floor(Math.random() * 8), grid_width: 8, grid_height: 8, step, resources: { food: [{ x: 3, y: 2 }] } },
-        pre_state: { energy: +eA.toFixed(1), drive: +driveA.toFixed(2), epsilon: +(0.25 - step * 0.005).toFixed(3), q_table: { eat: +qEat.toFixed(1), move_right: +qMove.toFixed(1), stay: +qStay.toFixed(1), move_up: +(qMove * 0.8).toFixed(1) } },
-        post_state: { energy: +(eA + (chosenA === 'eat' ? 15 : -2)).toFixed(1), drive: +Math.min(1, Math.max(0, driveA + (chosenA === 'eat' ? -0.3 : 0.02))).toFixed(2), epsilon: +(0.25 - step * 0.005 - 0.001).toFixed(3), q_table: { eat: +(qEat + 0.1).toFixed(1), move_right: +qMove.toFixed(1), stay: +qStay.toFixed(1), move_up: +(qMove * 0.8).toFixed(1) } },
+        agent_id: DRIVE, step,
+        perception: { x: 4 + (step % 3), y: 3, grid_width: 10, grid_height: 10, step, resources: { food: [{ x: 4, y: 3 }] } },
+        pre_state: { energy_level: +eD.toFixed(3), setpoint: 0.8, drive: +drive.toFixed(4), behavioural_mode: driveEats ? 1 : 0, q_values: { eat: +(driveEats ? 0.055 : 0.0).toFixed(3), move_down: +(drive * 1.5).toFixed(3), stay: +(drive * 0.5).toFixed(3) } },
+        post_state: { energy_level: +(driveEats ? eD + 0.13 : eD).toFixed(3), setpoint: 0.8, drive: +(driveEats ? 0 : drive).toFixed(4), behavioural_mode: 0, q_values: { eat: 0.0, move_down: 0.0, stay: 0.0 } },
         available_actions: actions,
-        action_chosen: { name: chosenA, params: {} },
-        outcome: { reward: chosenA === 'eat' ? 15 : 0, action_result: chosenA === 'eat' ? { consumed: true, resource_type: 'food' } : {} },
+        action_chosen: { name: driveEats ? 'eat' : 'stay', params: {} },
+        outcome: { reward: driveEats ? 1 : 0, action_result: driveEats ? { consumed: true, resource_type: 'food' } : {} },
       },
       {
-        agent_id: 'pi_negative_feedback', step,
-        perception: { x: Math.floor(Math.random() * 8), y: Math.floor(Math.random() * 8), grid_width: 8, grid_height: 8, step, resources: { food: [{ x: 5, y: 1 }] } },
-        pre_state: { energy: +eB.toFixed(1), error_signal: +(0.3 + Math.sin(step * 0.2) * 0.15).toFixed(2), proportional_control: 0.15, integral_control: 0.08, total_control_signal: 0.23 },
-        post_state: { energy: +(eB - 2).toFixed(1), error_signal: +(0.3 + Math.sin(step * 0.2) * 0.15 + 0.05).toFixed(2), proportional_control: 0.18, integral_control: 0.09, total_control_signal: 0.27 },
+        agent_id: HRL, step,
+        perception: { x: 2 + (step % 5), y: 2 + (step % 4), grid_width: 10, grid_height: 10, step, resources: { food: [{ x: 5, y: 1 }] } },
+        pre_state: { hunger_level: +(0.3 + step * 0.006).toFixed(3), homeostatic_setpoint: 0.5, drive: +(step * 0.09).toFixed(2), hRPE: +(Math.sin(step * 0.3) * 0.2).toFixed(3), q_values: { move_up: +(0.4 + step * 0.01).toFixed(2), move_right: +(0.35 + step * 0.008).toFixed(2), stay: +(0.2 + step * 0.004).toFixed(2), eat: +(EAT_HRL.includes(step) ? 0.9 : 0.15).toFixed(2) } },
+        post_state: { hunger_level: +(0.3 + step * 0.006 + (EAT_HRL.includes(step) ? -0.2 : 0.004)).toFixed(3), homeostatic_setpoint: 0.5, drive: +(step * 0.09).toFixed(2), hRPE: +(Math.sin(step * 0.3) * 0.2 + 0.05).toFixed(3), q_values: { move_up: +(0.4 + step * 0.01).toFixed(2), move_right: +(0.35 + step * 0.008).toFixed(2), stay: +(0.2 + step * 0.004).toFixed(2), eat: +(EAT_HRL.includes(step) ? 1.0 : 0.15).toFixed(2) } },
         available_actions: actions,
-        action_chosen: { name: actions[1 + Math.floor(Math.random() * 4)], params: {} },
-        outcome: { reward: 0, action_result: {} },
+        action_chosen: { name: EAT_HRL.includes(step) ? 'eat' : actions[1 + Math.floor(Math.random() * 4)], params: {} },
+        outcome: { reward: EAT_HRL.includes(step) ? 1 : 0, action_result: EAT_HRL.includes(step) ? { consumed: true, resource_type: 'food' } : {} },
       },
     ]
+
+    if (aiEnergy !== null) {
+      const aiEats = step === 6
+      perStep.push({
+        agent_id: AI, step,
+        perception: { x: 4, y: 3 + (step % 3), grid_width: 10, grid_height: 10, step, resources: { food: [{ x: 8, y: 4 }] } },
+        pre_state: { energy: +aiEnergy.toFixed(3), mu_p: +(0.65 - step * 0.002).toFixed(3), rho: 0.42, q_values: { move_up: +(8.7 - step * 0.01).toFixed(2), move_down: +(8.68 - step * 0.01).toFixed(2), move_right: +(8.66 - step * 0.01).toFixed(2), stay: +(8.62 - step * 0.01).toFixed(2) } },
+        post_state: { energy: +Math.max(0, aiEnergy - (aiEats ? -0.3 : 0.045)).toFixed(3), mu_p: +(0.65 - step * 0.002).toFixed(3), rho: 0.44, q_values: { move_up: +(8.69 - step * 0.01).toFixed(2), move_down: +(8.67 - step * 0.01).toFixed(2), move_right: +(8.65 - step * 0.01).toFixed(2), stay: +(8.61 - step * 0.01).toFixed(2) } },
+        available_actions: actions,
+        action_chosen: { name: aiEats ? 'eat' : 'move_up', params: {} },
+        outcome: { reward: aiEats ? 1 : 0, action_result: aiEats ? { consumed: true, resource_type: 'food' } : {} },
+      })
+    }
+
+    traces[step] = perStep
   }
-  traces[16] = mockDecisionTraces()
+
+  traces[11] = [mockDecisionTraces()[0], ...(traces[11]?.slice(1) ?? [])]
+  traces[7] = [...(traces[7]?.slice(0, 2) ?? []), mockDecisionTraces()[1]]
   return traces
 }
