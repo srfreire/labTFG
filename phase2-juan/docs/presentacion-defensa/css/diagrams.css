@@ -11,7 +11,10 @@
 }
 .reveal .diagram .edge--arrow { marker-end: url(#arrow); }
 /* accent-colored node (inline --agent) */
-.reveal .node--acc { border-color: color-mix(in srgb, var(--agent) 45%, transparent); }
+.reveal .node--acc {
+  border-color: color-mix(in srgb, var(--agent) 65%, transparent);
+  background: color-mix(in srgb, var(--agent) 8%, var(--color-surface));
+}
 .reveal .node--acc .node__name { color: var(--agent); }
 /* loop-back edge (the task closing) */
 .reveal .diagram .edge--return { stroke: color-mix(in srgb, var(--color-architect) 60%, transparent); }
@@ -51,7 +54,15 @@
 }
 .reveal .kb-store .node__name { color: var(--store); display: flex; align-items: center; gap: 8px; }
 .reveal .node__use { font-family: var(--font-sans); font-size: 0.7rem; line-height: 1.35; color: var(--color-text-muted); margin-top: 6px; }
-.reveal .kb-store .node__sub { margin-top: 6px; }
+.reveal .node__ex {
+  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2px; line-height: 1.3;
+  color: color-mix(in srgb, var(--store) 82%, var(--color-text)); margin-top: 8px;
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--store) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--store) 22%, transparent);
+  display: inline-block;
+}
+.reveal .kb-store .node__sub { margin-top: 8px; }
 .reveal .node__dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--store); flex: none;
@@ -63,9 +74,32 @@
 .reveal .canvas .node { position: absolute; }
 .reveal .place { position: absolute; }
 
+/* Development loop — clockwise ring of stations around a contract hub */
+.reveal .loopring .loop-ring {
+  fill: none; stroke: color-mix(in srgb, var(--color-text) 20%, transparent);
+  stroke-width: 1.5; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke;
+}
+.reveal .loopring .loop-ring--close {
+  stroke: var(--color-architect); stroke-width: 2.5; stroke-dasharray: none;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-architect) 55%, transparent));
+}
+.reveal .loop-hub__cyc { font-size: 1.55rem; line-height: 1; color: var(--color-orchestrator); margin-bottom: 5px; }
+.reveal .loop-hub .node__name { font-size: 0.95rem; }
+.reveal .loop-st { text-align: center; }
+.reveal .loop-st .node__name { font-size: 0.92rem; }
+.reveal .loop-st__own {
+  font-family: var(--font-mono); font-size: 0.5rem; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--color-text-dim); margin-bottom: 5px;
+}
+.reveal .loop-st__own--hi { color: color-mix(in srgb, var(--color-analyst) 82%, var(--color-text)); }
+.reveal .loop-next {
+  position: absolute; transform: translate(-50%, -50%);
+  font-size: 0.6rem; letter-spacing: 0.5px; color: var(--color-architect);
+}
+
 /* 2D simulation mini-grid */
 .reveal .simgrid { display: grid; gap: 3px; background: var(--color-bg); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); }
-.reveal .simgrid .cell { background: rgba(255,255,255,0.02); border-radius: 3px; aspect-ratio: 1; }
+.reveal .simgrid .cell { background: rgba(13,15,18,0.04); border-radius: 3px; aspect-ratio: 1; }
 .reveal .simdot { position: absolute; border-radius: var(--radius-full); }
 
 /* Layered architecture — horizontal bands, one per layer */
@@ -119,6 +153,36 @@
 .reveal .retr-q    { fill: var(--color-analyst); }
 .reveal .retr-qring{ fill: none; stroke: var(--color-analyst); stroke-width: 1.5; opacity: 0.55; }
 .reveal .retr-link { stroke: color-mix(in srgb, var(--color-analyst) 50%, transparent); stroke-width: 1.2; }
+
+/* Retrieval fan-out — one query across the four stores */
+.reveal .rquery {
+  display: inline-flex; align-items: center; gap: 12px; margin-top: 0.9rem;
+  padding: 11px 18px; border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-orchestrator) 45%, transparent);
+  background: color-mix(in srgb, var(--color-orchestrator) 9%, var(--color-surface));
+  box-shadow: 0 0 26px color-mix(in srgb, var(--color-orchestrator) 16%, transparent);
+}
+.reveal .rquery__ic { font-family: var(--font-mono); font-size: 0.92rem; color: var(--color-orchestrator); }
+.reveal .rquery__q  { font-family: var(--font-mono); font-size: 0.9rem; color: var(--color-text); }
+.reveal .rgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-top: 1.1rem; align-items: stretch; }
+.reveal .rcard {
+  display: flex; flex-direction: column; gap: 9px; min-height: 210px;
+  padding: 16px 16px 14px; border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--store) 40%, transparent);
+  background: color-mix(in srgb, var(--store) 7%, var(--color-surface));
+}
+.reveal .rcard__h {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-sans); font-weight: var(--weight-semibold); font-size: 0.92rem; color: var(--store);
+}
+.reveal .rcard__mode {
+  margin-left: auto; font-family: var(--font-mono); font-size: 0.5rem;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--color-text-dim);
+}
+.reveal .rcard p { font-size: 0.72rem; line-height: 1.42; color: var(--color-text-muted); margin: 0; }
+.reveal .rcard__two { display: flex; flex-direction: column; gap: 9px; font-size: 0.71rem; line-height: 1.35; color: var(--color-text-muted); }
+.reveal .rcard__two b { color: var(--store); }
+.reveal .rcard .node__ex { margin-top: auto; }
 
 /* Gantt */
 .reveal .gantt { display: grid; grid-template-columns: 220px repeat(4, 1fr); gap: 8px 6px; align-items: center; }

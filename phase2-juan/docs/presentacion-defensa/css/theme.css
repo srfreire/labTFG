@@ -6,10 +6,64 @@
    Dark, dense, data-first. Satoshi + IBM Plex Mono.
    ───────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────
+   LIGHT MODE — legibility-first palette for projection to a tribunal.
+   Overrides the auto-generated dark tokens (tokens.css is regenerated
+   by `/chisel lay`, so the theme override lives here, not there).
+   Accents are darkened vs. the dark deck so they keep contrast on white.
+   ───────────────────────────────────────────────────────────── */
 :root {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-hover: rgba(0, 0, 0, 0.045);
+  --color-surface-frosted: rgba(255, 255, 255, 0.86);
+  --color-overlay: rgba(0, 0, 0, 0.5);
+
+  --color-border: rgba(0, 0, 0, 0.14);
+  --color-border-subtle: rgba(0, 0, 0, 0.1);
+  --color-border-faint: rgba(0, 0, 0, 0.06);
+
+  --color-text: #0d0f12;
+  --color-text-muted: rgba(13, 15, 18, 0.66);
+  --color-text-dim: rgba(13, 15, 18, 0.48);
+  --color-text-faint: rgba(13, 15, 18, 0.38);
+  --color-text-ghost: rgba(13, 15, 18, 0.16);
+
+  --color-accent-green: #15803d;
+  --color-accent-green-light: #16a34a;
+  --color-accent-amber: #b45309;
+  --color-accent-amber-dark: #92400e;
+  --color-accent-red: #dc2626;
+  --color-accent-blue: #2563eb;
+  --color-accent-cyan: #0369a1;
+  --color-accent-purple: #7c3aed;
+  --color-accent-pink: #db2777;
+
+  --color-scrollbar: #c4c8ce;
+
+  /* Agent palette — darkened for contrast on white */
+  --color-architect: #15803d;
+  --color-tracker: #b45309;
+  --color-analyst: #7c3aed;
+  --color-reporter: #db2777;
+  --color-orchestrator: #475569;
+  --color-user: rgba(13, 15, 18, 0.5);
+
+  /* Simulation agents */
+  --color-sim-1: #15803d;
+  --color-sim-2: #b45309;
+  --color-sim-3: #7c3aed;
+  --color-sim-4: #db2777;
+  --color-sim-5: #0369a1;
+  --color-sim-6: #c2410c;
+
+  /* Softer shadows read better on a light canvas */
+  --shadow-panel: 0 18px 40px -12px rgba(13, 15, 18, 0.16), 0 4px 12px -6px rgba(13, 15, 18, 0.1);
+  --shadow-card: 0 12px 28px -10px rgba(13, 15, 18, 0.12), 0 3px 8px -5px rgba(13, 15, 18, 0.08);
+
   --r-background-color: var(--color-bg);
-  /* subtle lab grid backdrop */
-  --grid-line: rgba(255, 255, 255, 0.028);
+  /* subtle lab grid backdrop — dark line on light ground */
+  --grid-line: rgba(13, 15, 18, 0.035);
 }
 
 html, body, .reveal-viewport { background-color: var(--color-bg) !important; }
@@ -135,4 +189,23 @@ body::before {
 /* Projector fallback: if backdrop-filter unsupported, use solid surfaces */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .panel, .reveal .panel { background: var(--color-surface) !important; }
+}
+
+/* PDF export (?print-pdf). reveal wraps every <section> in a `.pdf-page` div,
+   so the live centering selector `.reveal .slides > section` stops matching and
+   sections fall back to top-anchored display:block — content crams to the top of
+   each page. Re-apply the slide canvas to the wrapped section so the PDF matches
+   the on-screen composition. Scoped to .print-pdf, so the live deck is untouched. */
+.print-pdf .reveal .slides .pdf-page > section {
+  height: 100% !important;
+  top: 0 !important;
+  box-sizing: border-box;
+  padding: 44px 56px;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+.print-pdf .reveal .slides .pdf-page > section[data-slide="demo"] {
+  padding: 0;
+  justify-content: stretch !important;
 }
