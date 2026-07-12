@@ -1,0 +1,209 @@
+/* @theme labdark
+   Minimalist black & white theme mirroring the phase-1 web UI tokens
+   (web/src/index.css): pure black bg, white text at opacity tiers, Satoshi.
+
+   Common template for every slide:
+     · title (h1) pinned top-left
+     · content centered vertically and horizontally
+     · footer pinned bottom (author · TFG · university)
+   No white rules or border separators. */
+
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap');
+
+:root {
+  --bg: #000;
+  --surface: #0d0d0d;
+  --text: #fff;
+  --muted: rgba(255, 255, 255, 0.6);
+  --dim: rgba(255, 255, 255, 0.4);
+  --faint: rgba(255, 255, 255, 0.3);
+  --border: rgba(255, 255, 255, 0.1);
+}
+
+section {
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-size: 26px;
+  line-height: 1.5;
+  padding: 150px 96px 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* Title — pinned top-left on every slide */
+h1 {
+  position: absolute;
+  top: 60px;
+  left: 96px;
+  right: 96px;
+  margin: 0;
+  text-align: left;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+/* Page number — top-right */
+section::after {
+  position: absolute;
+  top: 62px;
+  right: 96px;
+  left: auto;
+  bottom: auto;
+  font-size: 14px;
+  color: var(--faint);
+  content: attr(data-marpit-pagination);
+  padding: 0;
+}
+
+/* Footer — author · TFG · university */
+footer {
+  position: absolute;
+  bottom: 40px;
+  left: 96px;
+  right: 96px;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  font-size: 13px;
+  color: var(--faint);
+  letter-spacing: 0.01em;
+}
+
+/* ── Centered content ── */
+
+p {
+  margin: 8px 0;
+  max-width: 60ch;
+}
+
+.lead, p {
+  color: var(--text);
+}
+
+strong { font-weight: 600; color: var(--text); }
+
+ul, ol {
+  margin: 12px 0;
+  padding-left: 26px;
+  text-align: left;
+}
+
+li { margin: 8px 0; color: var(--text); }
+li::marker { color: var(--faint); }
+
+table {
+  border-collapse: collapse;
+  margin: 8px auto;
+  font-size: 24px;
+}
+
+th, td {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 34px;
+  text-align: left;
+  background: none;
+}
+
+th {
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+tr:last-child td { border-bottom: none; }
+
+code {
+  font-family: 'Satoshi', system-ui, sans-serif;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 0.92em;
+  color: var(--text);
+}
+
+/* ── Layout helpers ── */
+
+/* Diagram: fixed-height box with a letterboxed SVG. The box gives a definite
+   height so the SVG's `height:100%` resolves deterministically; each <svg>
+   carries preserveAspectRatio="xMidYMid meet" so it scales without distortion. */
+.diagram {
+  width: 100%;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.diagram svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Big centered statement */
+.big {
+  font-size: 42px;
+  font-weight: 500;
+  margin: 8px 0;
+  color: var(--text);
+}
+
+/* Footnote-style supporting line */
+.note {
+  color: var(--dim);
+  font-size: 21px;
+  margin-top: 20px;
+}
+
+/* Two-column split — no separator rule */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  text-align: left;
+  width: 100%;
+  max-width: 940px;
+}
+
+.cols h2 {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 0 0 14px;
+}
+
+/* ── Cover slide ── */
+section.title { padding: 96px; }
+section.title h1 {
+  position: static;
+  text-align: left;
+  font-size: 58px;
+  line-height: 1.12;
+  max-width: 22ch;
+}
+section.title .subtitle {
+  color: var(--muted);
+  font-size: 28px;
+  margin-top: 28px;
+}
+section.title .meta {
+  margin-top: 72px;
+  color: var(--dim);
+  font-size: 20px;
+  line-height: 1.7;
+  text-align: left;
+}
+section.title { align-items: flex-start; text-align: left; }
