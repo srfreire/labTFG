@@ -99,3 +99,49 @@ Reveal.on('slidechanged', ev => {
     if (k === 'n') { ev.preventDefault(); toggle(); }
   });
 })();
+
+/* Click-to-zoom lightbox for inset videos marked .zoomable — enlarges the clip
+   over a dim backdrop so small on-slide insets stay readable from the audience. */
+(function videoZoom() {
+  const overlay = document.createElement('div');
+  overlay.className = 'video-zoom';
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.innerHTML = '<video class="video-zoom__v" autoplay loop muted playsinline></video><div class="video-zoom__hint">clic o Esc para cerrar</div>';
+  document.body.appendChild(overlay);
+  const zv = overlay.querySelector('video');
+
+  function openZoom(frame) {
+    const src = frame.querySelector('video');
+    if (!src) return;
+    zv.innerHTML = '';
+    src.querySelectorAll('source').forEach(s => {
+      const c = document.createElement('source');
+      c.src = s.src; c.type = s.type; zv.appendChild(c);
+    });
+    zv.load();
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    zv.play().catch(() => {});
+  }
+  function closeZoom() {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    zv.pause();
+  }
+
+  document.addEventListener('click', ev => {
+    const frame = ev.target.closest ? ev.target.closest('.zoomable') : null;
+    if (frame) { ev.preventDefault(); openZoom(frame); return; }
+    if (ev.target.closest && ev.target.closest('.video-zoom')) closeZoom();
+  });
+  document.addEventListener('keydown', ev => {
+    const frame = ev.target.closest ? ev.target.closest('.zoomable') : null;
+    if (frame && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); openZoom(frame); }
+  });
+  // Capture phase so Escape closes the lightbox without also opening reveal's overview.
+  document.addEventListener('keydown', ev => {
+    if (overlay.classList.contains('is-open') && ev.key === 'Escape') {
+      ev.preventDefault(); ev.stopImmediatePropagation(); closeZoom();
+    }
+  }, true);
+})();

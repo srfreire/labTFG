@@ -105,6 +105,39 @@ SlideAnim.register('dominio', el => {
   return tl;
 });
 
+/* Casos de uso (UML) — the actor reaches out to each use case in turn:
+   frame settles, actor pops, then ray-draws + case-pop pair up one by one,
+   finally the external systems slide in with their links and the «include» arcs. */
+SlideAnim.register('casos-uso', el => {
+  const tl = gsap.timeline({ paused: true });
+  const frame = el.querySelector('[data-anim="frame"]');
+  const actor = el.querySelector('[data-anim="actor"]');
+  const cases = el.querySelectorAll('[data-anim="case"]');
+  const exts = el.querySelectorAll('[data-anim="ext"]');
+  const rays = el.querySelectorAll('.uc-edge:not(.uc-edge--inc):not(.uc-edge--ext)');
+  const incs = el.querySelectorAll('.uc-edge--inc');
+  const extEdges = el.querySelectorAll('.uc-edge--ext');
+
+  if (frame) tl.fromTo(frame, { opacity: 0, scale: 0.985 },
+    { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out', transformOrigin: 'center' }, 0);
+  tl.fromTo(actor, { opacity: 0, x: -16, scale: 0.9 },
+    { opacity: 1, x: 0, scale: 1, duration: 0.45, ease: 'back.out(1.5)' }, 0.15);
+
+  cases.forEach((c, i) => {
+    const at = 0.55 + i * 0.26;
+    if (rays[i]) tl.to(rays[i], { strokeDashoffset: 0, duration: 0.3, ease: 'power1.inOut' }, at);
+    tl.fromTo(c, { opacity: 0, scale: 0.82, x: -6 },
+      { opacity: 1, scale: 1, x: 0, duration: 0.42, ease: 'back.out(1.7)' }, at + 0.14);
+  });
+
+  const tail = 0.55 + cases.length * 0.26;
+  tl.fromTo(exts, { opacity: 0, x: 22 },
+    { opacity: 1, x: 0, duration: 0.45, stagger: 0.14, ease: 'power2.out' }, tail);
+  tl.to(extEdges, { opacity: 1, duration: 0.4 }, tail + 0.15);
+  tl.to(incs, { opacity: 1, duration: 0.45 }, tail + 0.45);
+  return tl;
+});
+
 /* Recuperación híbrida — two columns in, query dot pulses */
 SlideAnim.register('retrieval', el => {
   const tl = gsap.timeline({ paused: true });

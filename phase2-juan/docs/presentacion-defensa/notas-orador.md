@@ -13,17 +13,11 @@ Lo primero que debe entender el tribunal es que el trabajo son **dos fases que s
 
 Todo eso lo hacen **cinco agentes** —programas gobernados por un modelo de lenguaje, cada uno con un papel—: un **Orchestrator** que coordina y cuatro especialistas (Architect, Tracker, Analyst, Reporter). Las caras que se ven en la portada son ellos; volverán en cada diapo.
 
-> **❓ Si me preguntan qué es mío y qué de mi compañero:** la frontera entre las dos fases son solo **tres funciones** (`decide`, `update`, `get_state`). Él construye el modelo que decide; yo lo convierto en un experimento que se puede observar y revisar. Esa frontera tan fina es una de las decisiones de diseño de las que más orgulloso estoy, y la explico en la diapo cuatro.
+> **❓ Si me preguntan qué es mío y qué de mi compañero: la frontera entre las dos fases son solo **tres funciones** (`decide`, `update`, `get_state`). Él construye el modelo que decide; yo lo convierto en un experimento que se puede observar y revisar. Esa frontera tan fina es una de las decisiones de diseño de las que más orgulloso estoy, y la explico en la diapo cuatro.**
 
 ---
 
-## 2 · Índice de la defensa
-
-Un mapa rápido de la charla, para que el tribunal sepa por dónde voy. Empiezo por la **motivación** y el problema; luego una **visión general** con las dos fases y una demo del sistema funcionando; el **estado del arte** y los objetivos; el **diseño y la arquitectura**; cómo fue el **desarrollo** apoyándome en agentes; la **verificación y evaluación**; y cierro con las **conclusiones**. No me detengo aquí, es solo la hoja de ruta.
-
----
-
-## 3 · Origen · motivación
+## 2 · Un problema abierto, iterado entre tres
 
 Aquí cuento de dónde salió el proyecto, porque explica muchas decisiones posteriores. Nació de una **propuesta abierta de Eduardo Sánchez Vila**, apoyada en un **trabajo de fin de máster previo** (de Denis Yamunaque) que ya intuía la idea de un entorno de simulación, pero con un alcance limitado.
 
@@ -33,7 +27,21 @@ Y el problema concreto que identificamos es este: **un modelo que compila y resp
 
 El reto técnico central, que menciono de pasada, fue coordinar todo ese recorrido **sin acoplar las dos fases**, es decir, sin que un cambio en el trabajo de mi compañero Pablo me obligara a rehacer el mío.
 
-> **❓ Si me preguntan cómo fijamos el límite entre fases si la propuesta era abierta:** con un contrato mínimo de tres funciones, tan pequeño que ninguna de las dos fases tuvo que coordinar sus versiones con la otra. Es la idea de la diapo siguiente.
+> **❓ Si me preguntan cómo fijamos el límite entre fases si la propuesta era abierta: con un contrato mínimo de tres funciones, tan pequeño que ninguna de las dos fases tuvo que coordinar sus versiones con la otra. Es la idea de la diapo siguiente.**
+
+---
+
+## 3 · Dos fases, una frontera fina
+
+Esta es la diapo de la integración, la decisión de la que más orgulloso estoy. Recuerdo el reparto: la Fase 1 convierte lenguaje natural en un modelo Python; este TFG lo **ejecuta, observa, analiza, informa y recuerda**.
+
+Lo importante es *cómo* encajan las dos fases. En lugar de que mi código dependa del suyo con herencia o con una librería compartida, uso lo que se llama **«duck typing»**: mi laboratorio no exige que el modelo sea de un tipo concreto, solo comprueba que sepa hacer **tres cosas**. La metáfora es la de siempre: «si camina como un pato y hace cuac como un pato, lo trato como un pato». Da igual quién lo escribió o cómo, mientras cumpla las tres funciones.
+
+Esas tres funciones son el contrato entero: `decide` (mira lo que percibe y elige una acción), `update` (aprende de la recompensa que recibió) y `get_state` (enseña sus tripas para que yo pueda dibujarlas). Lo que el modelo «percibe» es una lista corta de datos: su posición, el tamaño del tablero, el paso en que va, los recursos y el resultado de su última acción. A quien conozca el campo le sonará al *aprendizaje por refuerzo*, y no es casualidad: ese formato admite desde un Q-learning clásico hasta estrategias más deliberativas.
+
+Esta decisión responde a tres requisitos no funcionales del proyecto: desacoplamiento, extensibilidad e interoperabilidad. El resultado práctico es que **las dos fases evolucionan por separado, sin coordinar versiones**.
+
+> **❓ Si me preguntan por qué duck typing y no una clase base de la que ambos heredaran: una clase base crearía una dependencia de paquete y nos obligaría a coordinar cada versión. Con el contrato fino, el laboratorio solo comprueba al cargar el modelo que expone las tres funciones, y ya está.**
 
 ---
 
@@ -45,25 +53,33 @@ Un detalle técnico que merece la pena señalar: todo lo que se ve llega por un 
 
 El recorrido que muestra la demo es el caso de uso principal: **describo un problema con mis palabras** → el Orchestrator me propone modelos y un entorno → el Architect genera la especificación de ese entorno → se simula → se observa en directo → se analiza → y el Reporter genera un **informe PDF que puedo descargar**. De extremo a extremo, sin tocar código.
 
-> **❓ Si me preguntan por qué ese canal permanente y no consultar al servidor cada pocos segundos:** porque consultar cada poco añade retraso y multiplica las peticiones; con un solo canal el usuario ve el proceso al instante. El precio es que la complejidad de sincronizar se mueve al servidor, y asumo ese coste a conciencia.
+> **❓ Si me preguntan por qué ese canal permanente y no consultar al servidor cada pocos segundos: porque consultar cada poco añade retraso y multiplica las peticiones; con un solo canal el usuario ve el proceso al instante. El precio es que la complejidad de sincronizar se mueve al servidor, y asumo ese coste a conciencia.**
 
 ---
 
-## 5 · Dos fases, una frontera fina
+## 5 · Seis objetivos específicos
 
-Esta es la diapo de la integración, la decisión de la que más orgulloso estoy. Recuerdo el reparto: la Fase 1 convierte lenguaje natural en un modelo Python; este TFG lo **ejecuta, observa, analiza, informa y recuerda**.
+Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: **(1)** generar la especificación del entorno a partir de lenguaje natural; **(2)** ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; **(3)** registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); **(4)** analizar patrones y contrastarlos con lo que ya se sabía; **(5)** generar un informe PDF; y **(6)** guardar memorias que se puedan reutilizar en experimentos posteriores.
 
-Lo importante es *cómo* encajan las dos fases. En lugar de que mi código dependa del suyo con herencia o con una librería compartida, uso lo que se llama **«duck typing»**: mi laboratorio no exige que el modelo sea de un tipo concreto, solo comprueba que sepa hacer **tres cosas**. La metáfora es la de siempre: «si camina como un pato y hace cuac como un pato, lo trato como un pato». Da igual quién lo escribió o cómo, mientras cumpla las tres funciones.
+Un matiz honesto que quiero decir en voz alta: estos objetivos **no estaban fijados de antemano**, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.
 
-Esas tres funciones son el contrato entero: `decide` (mira lo que percibe y elige una acción), `update` (aprende de la recompensa que recibió) y `get_state` (enseña sus tripas para que yo pueda dibujarlas). Lo que el modelo «percibe» es una lista corta de datos: su posición, el tamaño del tablero, el paso en que va, los recursos y el resultado de su última acción. A quien conozca el campo le sonará al *aprendizaje por refuerzo*, y no es casualidad: ese formato admite desde un Q-learning clásico hasta estrategias más deliberativas.
-
-Esta decisión responde a tres requisitos no funcionales del proyecto: desacoplamiento, extensibilidad e interoperabilidad. El resultado práctico es que **las dos fases evolucionan por separado, sin coordinar versiones**.
-
-> **❓ Si me preguntan por qué duck typing y no una clase base de la que ambos heredaran:** una clase base crearía una dependencia de paquete y nos obligaría a coordinar cada versión. Con el contrato fino, el laboratorio solo comprueba al cargar el modelo que expone las tres funciones, y ya está.
+> **❓ Si me preguntan si se cumplieron todos: sí, los seis, y así lo recojo en las conclusiones. Además, la evaluación instrumentada con dos casos reales (los enseño al final) comprueba que el recorrido completo es fiel de principio a fin, no solo que cada pieza funciona por separado.**
 
 ---
 
-## 6 · Estado del arte · Sobre qué se construye
+## 6 · Qué puede hacer el usuario
+
+Los objetivos se aterrizan en **requisitos** —13 funcionales y 14 no funcionales, priorizados con MoSCoW— y en **cinco casos de uso** con un **único actor humano**, el *usuario investigador*. Todo lo demás son sistemas externos que el usuario no opera directamente, por eso quedan **fuera del límite** del laboratorio.
+
+Los cinco casos son el recorrido de la demo: **Ejecutar simulación**, **Comparar modelos** —que incluye ejecutar—, **Analizar resultados**, **Generar informe PDF** —que incluye analizar— y **Consultar experimentos** anteriores. Los coloreo con el agente que lidera cada uno para enlazar con la arquitectura.
+
+Dos sistemas externos los alimentan: la **Primera fase** aporta los modelos que se ejecutan y comparan, y **OpenRouter** (más los servicios semánticos) da el músculo de lenguaje que usan los agentes al analizar y consultar.
+
+> **❓ Si me preguntan por qué OpenRouter queda fuera del límite: porque el usuario no lo invoca; lo usan los agentes por dentro. El actor solo habla con el laboratorio.**
+
+---
+
+## 7 · Sobre qué se construye
 
 Aquí sitúo el trabajo respecto a lo que ya existe. El mensaje que quiero dejar es honesto: **no invento una técnica nueva, combino cuatro líneas que ya estaban ahí**. Las repaso por encima; no hace falta que el tribunal retenga los nombres, solo la idea de cada bloque.
 
@@ -73,25 +89,15 @@ Aquí sitúo el trabajo respecto a lo que ya existe. El mensaje que quiero dejar
 
 **(c) Recuperación y memoria.** Combinar búsqueda por significado y búsqueda por palabra exacta sobre un grafo de conocimiento, para que el sistema recuerde y consulte lo que ya sabe. Es la base de las técnicas RAG y GraphRAG.
 
-**(d) Herramientas y agentes que programan.** Modelos que razonan y **actúan llamando a herramientas** cuyo uso queda registrado, e incluso agentes que escriben código sobre repositorios reales. Referencias: ReAct, SWE-bench.
+**(d) Herramientas y agentes que programan.** Modelos que razonan y **actúan llamando a herramientas** cuyo uso queda registrado, e incluso agentes que escriben código sobre repositorios reales. Una idea clave de esta línea es la **auto-revisión**: el agente critica y corrige sus propias salidas antes de darlas por buenas (Self-Refine, Reflexion). En este trabajo aparece como **subagentes adversariales que revisan el código** del agente principal antes de fusionarlo. Referencias: ReAct, Self-Refine, Reflexion, SWE-bench.
 
 Mi arquitectura se coloca en un punto concreto de ese mapa: **cooperativa** (los agentes colaboran, no compiten), **centralizada** (un coordinador manda) y **por capas** (roles en orden).
 
-> **❓ Si me preguntan cuál es la novedad si solo combino:** está en la **integración**. Un laboratorio que recibe modelos de fuera, los ejecuta en un entorno común y deja evidencia persistente y auditable de todo el recorrido. Ninguna de esas técnicas por separado cubre ese camino completo.
+> **❓ Si me preguntan cuál es la novedad si solo combino: está en la **integración**. Un laboratorio que recibe modelos de fuera, los ejecuta en un entorno común y deja evidencia persistente y auditable de todo el recorrido. Ninguna de esas técnicas por separado cubre ese camino completo.**
 
 ---
 
-## 7 · Seis objetivos específicos
-
-Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: **(1)** generar la especificación del entorno a partir de lenguaje natural; **(2)** ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; **(3)** registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); **(4)** analizar patrones y contrastarlos con lo que ya se sabía; **(5)** generar un informe PDF; y **(6)** guardar memorias que se puedan reutilizar en experimentos posteriores.
-
-Un matiz honesto que quiero decir en voz alta: estos objetivos **no estaban fijados de antemano**, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.
-
-> **❓ Si me preguntan si se cumplieron todos:** sí, los seis, y así lo recojo en las conclusiones. Además, la evaluación instrumentada con dos casos reales (los enseño al final) comprueba que el recorrido completo es fiel de principio a fin, no solo que cada pieza funciona por separado.
-
----
-
-## 8 · Una arquitectura por capas
+## 8 · Una arquitectura por capas, y dónde se despliega
 
 Presento la arquitectura como una tarta de **cinco capas**, de arriba abajo. La idea que quiero transmitir es que cada capa tiene una única responsabilidad y solo habla con la de al lado.
 
@@ -103,9 +109,11 @@ Presento la arquitectura como una tarta de **cinco capas**, de arriba abajo. La 
 
 **Simulación**: el cargador que trae los modelos de la Fase 1, el motor que ejecuta el mundo 2D y el módulo que dibuja las gráficas del análisis.
 
-**Persistencia**: cuatro almacenes de datos distintos —PostgreSQL, MinIO, Qdrant y Neo4j— más algún servicio externo opcional. Todo se despliega con Docker, de forma que montar el laboratorio en otra máquina es un solo comando.
+**Persistencia**: cuatro almacenes de datos distintos —PostgreSQL, MinIO, Qdrant y Neo4j— cada uno elegido por cómo se consulta el dato.
 
-> **❓ Si me preguntan por qué cuatro almacenes y no uno:** porque los datos no se consultan igual. Unos se buscan por identificador o fecha (una base de datos clásica), otros son archivos grandes (un almacén de objetos), otros se buscan por parecido (una base vectorial) y otros por sus relaciones (un grafo). Uso la herramienta adecuada a cada pregunta, y las mantengo coherentes con identificadores compartidos. Lo detallo en las dos diapos siguientes.
+**Dónde se despliega**: en producción **todo corre en Railway** —un frontend, un backend y los cuatro almacenes como servicios—; en local se levanta con **Docker Compose** en un solo comando. Fuera del despliegue quedan los servicios **externos** por API: OpenRouter (el LLM) y los semánticos Voyage y ZeroEntropy.
+
+> **❓ Si me preguntan por qué cuatro almacenes y no uno: porque los datos no se consultan igual. Unos se buscan por identificador o fecha (una base de datos clásica), otros son archivos grandes (un almacén de objetos), otros se buscan por parecido (una base vectorial) y otros por sus relaciones (un grafo). Uso la herramienta adecuada a cada pregunta, y las mantengo coherentes con identificadores compartidos. Lo detallo en las dos diapos siguientes.**
 
 ---
 
@@ -119,7 +127,7 @@ La separación importante, y que conviene explicar despacio, es entre el **cuerp
 
 Cada evento guarda, por cada paso: en qué momento fue, qué agente actuó, qué acción tomó, qué recompensa recibió, qué percibía y en qué estado interno quedó. Esa es la materia prima de todo lo que viene después.
 
-> **❓ Si me preguntan si no es demasiado simple una rejilla 2D:** es una limitación que reconozco y elegí a propósito. Mi aportación está en la infraestructura de observación, no en la riqueza del mundo. Ampliar el entorno —a espacios continuos o multi-agente— es una de las líneas de continuación que propongo al final.
+> **❓ Si me preguntan si no es demasiado simple una rejilla 2D: es una limitación que reconozco y elegí a propósito. Mi aportación está en la infraestructura de observación, no en la riqueza del mundo. Ampliar el entorno —a espacios continuos o multi-agente— es una de las líneas de continuación que propongo al final.**
 
 ---
 
@@ -133,7 +141,7 @@ Tiene tres tareas que no delega en nadie. Primera, **prepara el contexto** antes
 
 Un detalle fino: cuando la conversación se hace muy larga, los turnos antiguos se resumen con una **plantilla fija, escrita por código, no por el modelo**. Así el resumen es siempre igual de fiable y no introduce alucinaciones.
 
-> **❓ Si me preguntan que, si el modelo apenas planifica, para qué usar un modelo de lenguaje como orquestador:** aporta justo lo que el código no sabe hacer —interpretar lo que el usuario quiere en lenguaje natural y decidir esas desviaciones puntuales—. La columna vertebral va codificada a propósito, para que el pipeline sea auditable y reproducible.
+> **❓ Si me preguntan que, si el modelo apenas planifica, para qué usar un modelo de lenguaje como orquestador: aporta justo lo que el código no sabe hacer —interpretar lo que el usuario quiere en lenguaje natural y decidir esas desviaciones puntuales—. La columna vertebral va codificada a propósito, para que el pipeline sea auditable y reproducible.**
 
 ---
 
@@ -149,7 +157,7 @@ La forma más útil de entender los cuatro agentes es verlos como una cadena de 
 
 **Reporter**: traduce *patrones → PDF*. Redacta el informe y lo compila con LaTeX. Y lo hace **sin red de seguridad**: si la compilación falla, falla de verdad, no se inventa un PDF alternativo. Prefiero un error visible a un informe silenciosamente degradado.
 
-> **❓ Si me preguntan por qué separo Tracker y Analyst:** para mantener la frontera entre los **hechos** de la simulación y las **conclusiones**. El Tracker registra sin interpretar; el Analyst interpreta. Y como el detector de eventos críticos es código determinista, los puntos de atención los calcula una regla, no se los inventa el modelo.
+> **❓ Si me preguntan por qué separo Tracker y Analyst: para mantener la frontera entre los **hechos** de la simulación y las **conclusiones**. El Tracker registra sin interpretar; el Analyst interpreta. Y como el detector de eventos críticos es código determinista, los puntos de atención los calcula una regla, no se los inventa el modelo.**
 
 ---
 
@@ -167,7 +175,7 @@ Esta es la memoria del sistema, compartida con la Fase 1. Se accede a ella de fo
 
 Sobre cómo se llena: cuando el Tracker termina, un componente descompone sus observaciones en hechos pequeños y los guarda bajo una misma etiqueta, con el **mismo identificador compartido** en todos los almacenes, para poder cruzarlos después. Dos servicios externos por API refuerzan la parte semántica: **Voyage AI** genera los **embeddings** —convierte cada texto en un vector para poder buscarlo por significado— y **ZeroEntropy** hace **reranking** —reordena por relevancia los resultados recuperados antes de usarlos—. Ambos son **opcionales**: si sus claves de API no están, esa capa se apaga.
 
-> **❓ Si me preguntan qué pasa si esos servicios externos no están:** la capa semántica se apaga con elegancia —no hay memoria indexada ni reordenación de resultados—, pero simular, observar, analizar e informar sigue funcionando igual. Es una degradación controlada, no una caída.
+> **❓ Si me preguntan qué pasa si esos servicios externos no están: la capa semántica se apaga con elegancia —no hay memoria indexada ni reordenación de resultados—, pero simular, observar, analizar e informar sigue funcionando igual. Es una degradación controlada, no una caída.**
 
 ---
 
@@ -181,7 +189,9 @@ El corazón es **Qdrant**, y aquí conviene ir despacio porque es lo más técni
 
 Las otras tres tiendas aportan lo que Qdrant no puede. **PostgreSQL** da los hechos del run sin ambigüedad —modelo, caso, paso, recompensa— con un filtro exacto (`WHERE case='CASO1' AND step=19`). **Neo4j** guarda los postulados de la teoría y de dónde salen, para poder decir contra qué se contrasta lo observado (`(exploración)←[POSTULA]—(Rangel 2013)`). Y **MinIO** devuelve los entregables ya hechos —informes y figuras— servidos por una dirección web.
 
-> **❓ Si me preguntan por qué no uso solo búsqueda semántica moderna:** porque cada pregunta necesita una mezcla distinta. La semántica se pierde con autores, identificadores y citas literales —ahí gana BM25—, y ni la densa ni la dispersa saben dar un hecho exacto, una relación entre conceptos o un archivo. RRF me deja fundir significado, hechos, dominio y artefactos sin entrenar nada.
+El desenlace de la diapo es esa fusión: el Orchestrator junta significado, hechos exactos, dominio y artefactos en **un solo contexto** y responde **anclado en la memoria** —no improvisa, se apoya en lo que el sistema ya sabe—.
+
+> **❓ Si me preguntan por qué no uso solo búsqueda semántica moderna: porque cada pregunta necesita una mezcla distinta. La semántica se pierde con autores, identificadores y citas literales —ahí gana BM25—, y ni la densa ni la dispersa saben dar un hecho exacto, una relación entre conceptos o un archivo. RRF me deja fundir significado, hechos, dominio y artefactos sin entrenar nada.**
 
 ---
 
@@ -195,7 +205,7 @@ Esto cambia lo que significa «especificar». Ya no es escribir un párrafo de r
 
 Cada contrato fija cuatro cosas: qué comportamiento nuevo aparece, qué archivos cambian, qué pruebas se añaden y qué invariantes no se pueden romper. Usé Linear como memoria operativa del proyecto, entre marzo y junio de 2026.
 
-> **❓ Si me preguntan qué mérito de ingeniería tiene el trabajo si el código lo genera un agente:** tres de las cuatro estaciones siguen siendo humanas. Lo que cambió es el nivel de abstracción, no la responsabilidad: pasé de pensar «cómo escribo esto» a pensar «qué quiero exactamente que ocurra». Esa frase, de hecho, es la que cierra la presentación.
+> **❓ Si me preguntan qué mérito de ingeniería tiene el trabajo si el código lo genera un agente: tres de las cuatro estaciones siguen siendo humanas. Lo que cambió es el nivel de abstracción, no la responsabilidad: pasé de pensar «cómo escribo esto» a pensar «qué quiero exactamente que ocurra». Esa frase, de hecho, es la que cierra la presentación.**
 
 ---
 
@@ -211,7 +221,7 @@ Tengo un ejemplo real que cuento si hay tiempo: las llamadas a herramientas daba
 
 En la práctica repartí las herramientas: Codex para el backend, la persistencia y las pruebas; Claude Code para el frontend y la interacción. Nada rígido, pero funcionó bien así.
 
-> **❓ Si me preguntan cómo garantizo no aceptar código incorrecto pero convincente:** con tres capas. Las pruebas como contrato, una revisión combinada (mi lectura del cambio más subagentes revisores de alta confianza) y una verificación manual sobre la aplicación ya en marcha.
+> **❓ Si me preguntan cómo garantizo no aceptar código incorrecto pero convincente: con tres capas. Las pruebas como contrato, una revisión combinada (mi lectura del cambio más subagentes revisores de alta confianza) y una verificación manual sobre la aplicación ya en marcha.**
 
 ---
 
@@ -225,7 +235,7 @@ La **evaluación** es más sutil, porque aquí no hay una única respuesta corre
 
 Conviene decir **de dónde salen los dos casos**, aunque ya no lo ponga en pantalla: no me los inventé para la demo, son **dos ejecuciones instrumentadas reales de modelos de la Fase 1** —los que aporta mi compañero Pablo—, con las que compruebo la **fidelidad de observación de extremo a extremo**. El **caso 1** (valor y forrajeo): 6 paradigmas en un tablero 8×8, 360 eventos, 15 consumos, nota 88 sobre 100. El **caso 2** (homeostasis e interocepción): 4 paradigmas en 10×10, 199 eventos, 7 consumos, nota 86. Ambos «aprobado con reservas».
 
-> **❓ Si me preguntan si es fiable que un modelo juzgue a otro:** tomo tres precauciones. Son de familias distintas (Claude frente a Codex), la vara de medir son datos duros verificados por código, y leo el veredicto como una **auditoría de consistencia**, no como una validación científica. Una meta-evaluación estadística más formal la dejo como trabajo futuro.
+> **❓ Si me preguntan si es fiable que un modelo juzgue a otro: tomo tres precauciones. Son de familias distintas (Claude frente a Codex), la vara de medir son datos duros verificados por código, y leo el veredicto como una **auditoría de consistencia**, no como una validación científica. Una meta-evaluación estadística más formal la dejo como trabajo futuro.**
 
 ---
 
@@ -237,11 +247,11 @@ El ejemplo que más me gusta contar es del caso 2. Uno de los modelos, el de **i
 
 Los veredictos fueron 88 y 86 sobre 100, con reservas por imprecisiones puntuales al citar pasos concretos.
 
-> **❓ Si me preguntan qué demuestra esa muerte por inanición:** que la observación es fiel **incluso cuando el modelo fracasa**. El laboratorio no maquilla, no inventa pasos y reporta el fracaso —que es exactamente lo que se le pide a una infraestructura de laboratorio: contar lo que pasó, no lo que gustaría que hubiera pasado—.
+> **❓ Si me preguntan qué demuestra esa muerte por inanición: que la observación es fiel **incluso cuando el modelo fracasa**. El laboratorio no maquilla, no inventa pasos y reporta el fracaso —que es exactamente lo que se le pide a una infraestructura de laboratorio: contar lo que pasó, no lo que gustaría que hubiera pasado—.**
 
 ---
 
-## 18 · Conclusiones · Lo aprendido
+## 18 · Lo aprendido
 
 Cierro con tres lecciones, que son la conclusión del trabajo. La idea de fondo es que importó más **la forma de conectar las piezas** que las decisiones internas de cada una.
 
@@ -251,4 +261,6 @@ Soy honesto con los **límites**: el laboratorio no valida teorías por sí solo
 
 Y propongo **ampliaciones**: más paradigmas y entornos (continuos, multi-agente), métricas cuantitativas estandarizadas para comparar de forma directa, poder reanudar sesiones (el historial ya se guarda, falta recuperarlo) y probarlo de verdad con investigadores del grupo —una revisión experta de qué paradigmas estudiarían y qué les ahorra trabajo—.
 
-> **❓ Si me preguntan qué haría primero con más tiempo:** una capa común de métricas estandarizadas —recompensa, eficiencia, exploración, estabilidad— para poder comparar modelos de forma directa; y la reanudación de sesiones, porque el historial ya está guardado y solo falta rehidratarlo.
+> **❓ Si me preguntan qué haría primero con más tiempo: una capa común de métricas estandarizadas —recompensa, eficiencia, exploración, estabilidad— para poder comparar modelos de forma directa; y la reanudación de sesiones, porque el historial ya está guardado y solo falta rehidratarlo.**
+
+---

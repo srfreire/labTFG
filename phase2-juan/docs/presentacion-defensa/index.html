@@ -6,13 +6,15 @@
 <title>Defensa TFG · Laboratorio virtual de paradigmas de decisión</title>
 <link rel="stylesheet" href="vendor/reset.css">
 <link rel="stylesheet" href="vendor/reveal.css">
-<link rel="stylesheet" href="css/theme.css?v=6">
-<link rel="stylesheet" href="css/components.css?v=6">
-<link rel="stylesheet" href="css/diagrams.css?v=6">
+<link rel="stylesheet" href="css/theme.css?v=12">
+<link rel="stylesheet" href="css/components.css?v=12">
+<link rel="stylesheet" href="css/diagrams.css?v=12">
 </head>
 <body>
 <div class="reveal">
 <div class="slides">
+
+  
 
   <!-- 1 · PORTADA -->
   <section data-slide="portada" class="s-portada">
@@ -41,28 +43,7 @@
     </aside>
   </section>
 
-  <!-- 2 · ÍNDICE DE LA DEFENSA -->
-  <section data-slide="indice">
-    <div class="kicker">Índice de la defensa</div>
-    <h2>Contenidos</h2>
-    <div class="s-body">
-<ol class="agenda">
-      <li style="--agent:var(--color-orchestrator)"><span class="agenda__n">01</span><span class="agenda__b"><b>Motivación y problema</b><span class="agenda__s">de una propuesta abierta a un sistema observable</span></span></li>
-      <li style="--agent:var(--color-architect)"><span class="agenda__n">02</span><span class="agenda__b"><b>Visión general</b><span class="agenda__s">las dos fases, el contrato fino y una demo en marcha</span></span></li>
-      <li style="--agent:var(--color-accent-blue)"><span class="agenda__n">03</span><span class="agenda__b"><b>Estado del arte y objetivos</b><span class="agenda__s">sobre qué se construye · seis objetivos</span></span></li>
-      <li style="--agent:var(--color-tracker)"><span class="agenda__n">04</span><span class="agenda__b"><b>Diseño y arquitectura</b><span class="agenda__s">capas · dominio 2D · agentes · Knowledge Backbone</span></span></li>
-      <li style="--agent:var(--color-analyst)"><span class="agenda__n">05</span><span class="agenda__b"><b>Desarrollo asistido por agentes</b><span class="agenda__s">un nuevo bucle · reparto de responsabilidades</span></span></li>
-      <li style="--agent:var(--color-accent-cyan)"><span class="agenda__n">06</span><span class="agenda__b"><b>Verificación y evaluación</b><span class="agenda__s">pruebas como contrato · LLM-as-a-judge · dos casos reales</span></span></li>
-      <li style="--agent:var(--color-reporter)"><span class="agenda__n">07</span><span class="agenda__b"><b>Conclusiones</b><span class="agenda__s">lo que queda y por dónde seguir</span></span></li>
-    </ol>
-    
-</div>
-    <aside class="notes">
-      <p>Un mapa rápido de la charla, para que el tribunal sepa por dónde voy. Empiezo por la <strong>motivación</strong> y el problema; luego una <strong>visión general</strong> con las dos fases y una demo del sistema funcionando; el <strong>estado del arte</strong> y los objetivos; el <strong>diseño y la arquitectura</strong>; cómo fue el <strong>desarrollo</strong> apoyándome en agentes; la <strong>verificación y evaluación</strong>; y cierro con las <strong>conclusiones</strong>. No me detengo aquí, es solo la hoja de ruta.</p>
-    </aside>
-  </section>
-
-  <!-- 3 · ORIGEN / MOTIVACIÓN -->
+  <!-- 2 · PROBLEMA -->
   <section data-slide="problema">
     <div class="kicker">Origen · motivación</div>
     <h2>Un problema abierto, iterado entre tres</h2>
@@ -102,26 +83,7 @@
     </aside>
   </section>
 
-  <!-- 3 · DEMO -->
-  <section data-slide="demo">
-    <div class="demo-wrap">
-      <div class="label">Demo · El sistema en marcha</div>
-      <div class="shot demo-shot">
-        <video class="demo-video" autoplay controls muted loop playsinline poster="assets/img/ui-01-dashboard-light.png">
-          <source src="assets/video/demo.mp4" type="video/mp4">
-          <source src="assets/video/demo.webm" type="video/webm">
-        </video>
-      </div>
-    </div>
-    <aside class="notes">
-      <p>Antes de arrancar el vídeo lo enmarco para que se sepa qué se está mirando: es el <strong>panel de control (dashboard) de la aplicación web</strong>. A la izquierda, un chat donde converso con el Orchestrator en lenguaje natural; en el centro, el entorno de simulación animado, que puedo <strong>reproducir paso a paso</strong> como si fuera un vídeo; y alrededor, tarjetas con métricas, los eventos que el Tracker marcó como importantes y el estado de cada agente.</p>
-      <p>Un detalle técnico que merece la pena señalar: todo lo que se ve llega por un <strong>único canal permanente</strong> (un WebSocket) entre el navegador y el servidor. Eso significa que la pantalla refleja cada paso del proceso <strong>en el momento en que ocurre</strong>, sin tener que estar preguntando al servidor cada poco. Se ve un proceso vivo, no una pantalla que se refresca.</p>
-      <p>El recorrido que muestra la demo es el caso de uso principal: <strong>describo un problema con mis palabras</strong> → el Orchestrator me propone modelos y un entorno → el Architect genera la especificación de ese entorno → se simula → se observa en directo → se analiza → y el Reporter genera un <strong>informe PDF que puedo descargar</strong>. De extremo a extremo, sin tocar código.</p>
-      <p class="q">Si me preguntan por qué ese canal permanente y no consultar al servidor cada pocos segundos: porque consultar cada poco añade retraso y multiplica las peticiones; con un solo canal el usuario ve el proceso al instante. El precio es que la complejidad de sincronizar se mueve al servidor, y asumo ese coste a conciencia.</p>
-    </aside>
-  </section>
-
-  <!-- 4 · DOS FASES + CONTRATO -->
+  <!-- 3 · DOS-FASES -->
   <section data-slide="dos-fases">
     <div class="kicker">Visión general · la integración</div>
     <h2>Dos fases, una frontera fina</h2>
@@ -160,7 +122,113 @@
     </aside>
   </section>
 
-  <!-- 5 · ESTADO DEL ARTE -->
+  <!-- 4 · DEMO -->
+  <section data-slide="demo">
+    <div class="demo-wrap">
+      <div class="label">Demo · El sistema en marcha</div>
+      <div class="shot demo-shot">
+        <video class="demo-video" autoplay controls muted loop playsinline poster="assets/img/ui-01-dashboard-light.png">
+          <source src="assets/video/demo.mp4?v=3" type="video/mp4">
+          <source src="assets/video/demo.webm?v=3" type="video/webm">
+        </video>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>Antes de arrancar el vídeo lo enmarco para que se sepa qué se está mirando: es el <strong>panel de control (dashboard) de la aplicación web</strong>. A la izquierda, un chat donde converso con el Orchestrator en lenguaje natural; en el centro, el entorno de simulación animado, que puedo <strong>reproducir paso a paso</strong> como si fuera un vídeo; y alrededor, tarjetas con métricas, los eventos que el Tracker marcó como importantes y el estado de cada agente.</p>
+      <p>Un detalle técnico que merece la pena señalar: todo lo que se ve llega por un <strong>único canal permanente</strong> (un WebSocket) entre el navegador y el servidor. Eso significa que la pantalla refleja cada paso del proceso <strong>en el momento en que ocurre</strong>, sin tener que estar preguntando al servidor cada poco. Se ve un proceso vivo, no una pantalla que se refresca.</p>
+      <p>El recorrido que muestra la demo es el caso de uso principal: <strong>describo un problema con mis palabras</strong> → el Orchestrator me propone modelos y un entorno → el Architect genera la especificación de ese entorno → se simula → se observa en directo → se analiza → y el Reporter genera un <strong>informe PDF que puedo descargar</strong>. De extremo a extremo, sin tocar código.</p>
+      <p class="q">Si me preguntan por qué ese canal permanente y no consultar al servidor cada pocos segundos: porque consultar cada poco añade retraso y multiplica las peticiones; con un solo canal el usuario ve el proceso al instante. El precio es que la complejidad de sincronizar se mueve al servidor, y asumo ese coste a conciencia.</p>
+    </aside>
+  </section>
+
+  <!-- 5 · OBJETIVOS -->
+  <section data-slide="objetivos">
+    <div class="kicker">Objetivos</div>
+    <h2>Seis objetivos específicos</h2>
+    <p class="muted" style="margin-top:-0.2rem;font-size:0.8rem">No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño.</p>
+    <div class="s-body">
+<div class="grid-3" style="margin-top:0.9rem;grid-auto-rows:1fr">
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-architect)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <div class="panel__title" style="color:var(--acc)">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-blue)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7 L11 12 L5 17 Z"/><path d="M12 7 L18 12 L12 17 Z"/></svg>
+        <div class="panel__title" style="color:var(--acc)">02</div><p>Ejecutar modelos <strong>sin acoplamiento</strong>, incluso varios a la vez.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-tracker)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="1.5"/><path d="M10 7h9"/><circle cx="6" cy="12" r="1.5"/><path d="M10 12h9"/><circle cx="6" cy="17" r="1.5"/><path d="M10 17h6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">03</div><p>Registrar el comportamiento de forma <strong>estructurada</strong>.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-analyst)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16"/><path d="M7 15l4-5 3 3 4-6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">04</div><p>Analizar <strong>patrones</strong> comportamiento–objetivo.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-reporter)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 14h5M10 17h3"/></svg>
+        <div class="panel__title" style="color:var(--acc)">05</div><p>Generar un <strong>informe PDF</strong> reproducible.</p></div>
+      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-cyan)">
+        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg>
+        <div class="panel__title" style="color:var(--acc)">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
+    </div>
+    
+</div>
+    <aside class="notes">
+      <p>Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: <strong>(1)</strong> generar la especificación del entorno a partir de lenguaje natural; <strong>(2)</strong> ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; <strong>(3)</strong> registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); <strong>(4)</strong> analizar patrones y contrastarlos con lo que ya se sabía; <strong>(5)</strong> generar un informe PDF; y <strong>(6)</strong> guardar memorias que se puedan reutilizar en experimentos posteriores.</p>
+      <p>Un matiz honesto que quiero decir en voz alta: estos objetivos <strong>no estaban fijados de antemano</strong>, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.</p>
+      <p class="q">Si me preguntan si se cumplieron todos: sí, los seis, y así lo recojo en las conclusiones. Además, la evaluación instrumentada con dos casos reales (los enseño al final) comprueba que el recorrido completo es fiel de principio a fin, no solo que cada pieza funciona por separado.</p>
+    </aside>
+  </section>
+
+  <!-- 6 · CASOS DE USO -->
+  <section data-slide="casos-uso">
+    <div class="kicker">Especificación · casos de uso</div>
+    <h2>Qué puede hacer el usuario</h2>
+    <div class="s-body">
+<div class="diagram" style="margin-top:0.3rem">
+      <div class="canvas uc-canvas" style="height:472px">
+        <svg class="edges" viewBox="0 0 1140 472" preserveAspectRatio="none">
+          <!-- actor → casos -->
+          <line class="edge uc-edge" pathLength="1" x1="150" y1="190" x2="388" y2="35"/>
+          <line class="edge uc-edge" pathLength="1" x1="150" y1="190" x2="388" y2="125"/>
+          <line class="edge uc-edge" pathLength="1" x1="150" y1="190" x2="388" y2="214"/>
+          <line class="edge uc-edge" pathLength="1" x1="150" y1="190" x2="388" y2="303"/>
+          <line class="edge uc-edge" pathLength="1" x1="150" y1="190" x2="388" y2="393"/>
+          <!-- «include» -->
+          <path class="edge uc-edge uc-edge--inc" pathLength="1" d="M598 125 C 648 100, 648 60, 598 35"/>
+          <path class="edge uc-edge uc-edge--inc" pathLength="1" d="M598 303 C 648 278, 648 238, 598 214"/>
+          <!-- externos → casos -->
+          <line class="edge uc-edge uc-edge--ext" pathLength="1" x1="844" y1="82" x2="598" y2="35"/>
+          <line class="edge uc-edge uc-edge--ext" pathLength="1" x1="844" y1="82" x2="598" y2="125"/>
+          <line class="edge uc-edge uc-edge--ext" pathLength="1" x1="844" y1="324" x2="598" y2="214"/>
+          <line class="edge uc-edge uc-edge--ext" pathLength="1" x1="844" y1="324" x2="598" y2="393"/>
+        </svg>
+        <!-- límite del sistema -->
+        <div class="uc-sysframe" data-anim="frame" style="left:31%;top:0;width:27.5%;height:472px"><span class="uc-systag">Laboratorio virtual</span></div>
+        <!-- actor -->
+        <div class="uc-actor" data-anim="actor" style="left:0%;top:29%;width:150px">
+          <svg class="uc-actor__fig" viewBox="0 0 40 58" fill="none" stroke="var(--color-orchestrator)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="20" cy="9" r="7"/><path d="M20 16 V39"/><path d="M6 25 H34"/><path d="M20 39 L8 56"/><path d="M20 39 L32 56"/></svg>
+          <div class="node__name">Usuario investigador</div>
+          <div class="node__sub">único actor humano</div>
+        </div>
+        <!-- casos de uso -->
+        <div class="node uc-case agent--orchestrator" data-anim="case" style="left:34%;top:2%;width:210px"><div class="node__name">Ejecutar simulación</div></div>
+        <div class="node uc-case agent--architect" data-anim="case" style="left:34%;top:21%;width:210px"><div class="node__name">Comparar modelos</div><div class="uc-inc">«include» Ejecutar</div></div>
+        <div class="node uc-case agent--analyst" data-anim="case" style="left:34%;top:40%;width:210px"><div class="node__name">Analizar resultados</div></div>
+        <div class="node uc-case agent--reporter" data-anim="case" style="left:34%;top:59%;width:210px"><div class="node__name">Generar informe PDF</div><div class="uc-inc">«include» Analizar</div></div>
+        <div class="node uc-case uc-case--blue" data-anim="case" style="left:34%;top:78%;width:210px"><div class="node__name">Consultar experimentos</div></div>
+        <!-- sistemas externos -->
+        <div class="node uc-ext" data-anim="ext" style="left:74%;top:9%;width:220px"><div class="node__name">Primera fase</div><div class="node__sub">modelos aceptados · Python</div></div>
+        <div class="node uc-ext" data-anim="ext" style="left:74%;top:60%;width:220px"><div class="node__name">OpenRouter</div><div class="node__sub">LLM · servicios semánticos</div></div>
+      </div>
+    </div>
+    <div class="chips" style="margin-top:0.55rem;justify-content:center;gap:28px"><span class="chip">1 actor humano</span><span class="chip">5 casos de uso</span><span class="chip dim">sistemas externos, fuera del límite</span></div>
+</div>
+    <aside class="notes">
+      <p>Los objetivos se aterrizan en <strong>requisitos</strong> —13 funcionales y 14 no funcionales, priorizados con MoSCoW— y en <strong>cinco casos de uso</strong> con un <strong>único actor humano</strong>, el <em>usuario investigador</em>. Todo lo demás son sistemas externos que el usuario no opera directamente, por eso quedan <strong>fuera del límite</strong> del laboratorio.</p>
+      <p>Los cinco casos son el recorrido de la demo: <strong>Ejecutar simulación</strong>, <strong>Comparar modelos</strong> —que incluye ejecutar—, <strong>Analizar resultados</strong>, <strong>Generar informe PDF</strong> —que incluye analizar— y <strong>Consultar experimentos</strong> anteriores. Los coloreo con el agente que lidera cada uno para enlazar con la arquitectura.</p>
+      <p>Dos sistemas externos los alimentan: la <strong>Primera fase</strong> aporta los modelos que se ejecutan y comparan, y <strong>OpenRouter</strong> (más los servicios semánticos) da el músculo de lenguaje que usan los agentes al analizar y consultar.</p>
+      <p class="q">Si me preguntan por qué OpenRouter queda fuera del límite: porque el usuario no lo invoca; lo usan los agentes por dentro. El actor solo habla con el laboratorio.</p>
+    </aside>
+  </section>
+
+  <!-- 7 · ESTADO DEL ARTE -->
   <section data-slide="arte">
     <div class="kicker">Estado del arte</div>
     <h2>Sobre qué se construye</h2>
@@ -226,8 +294,8 @@
             <text x="31" y="39" text-anchor="middle" class="figlabel">denso</text>
             <text x="102" y="39" text-anchor="middle" class="figlabel">disperso · BM25</text>
           </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Lewis (RAG) · GraphRAG · Hogan</p></div>
-        <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p>Razonar y actuar con <em>tool calls</em> auditables; agentes que programan sobre repos reales.</p>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Lewis (RAG) · BM25 (Robertson) · RRF (Cormack) · GraphRAG · Hogan</p></div>
+        <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p>Razonar y actuar con <em>tool calls</em> auditables; agentes que programan sobre repos reales y <strong>revisan sus propias salidas</strong> antes de aceptarlas.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 44" fill="none" aria-hidden="true">
             <path d="M39.2 14.3 A12 12 0 1 1 30 10" fill="none" stroke="var(--color-accent-cyan)" stroke-width="2.2" stroke-linecap="round"/>
             <path d="M34 10 L28.5 7 L28.5 13 Z" fill="var(--color-accent-cyan)"/>
@@ -238,7 +306,7 @@
             <path d="M73 23 l5 4 l-5 4" fill="none" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <line x1="86" y1="31" x2="102" y2="31" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round"/>
           </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">ReAct · SWE-bench</p></div>
+          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">ReAct · Self-Refine · Reflexion · SWE-bench</p></div>
       </div>
     </div>
     <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem;text-align:center;max-width:900px;margin-left:auto;margin-right:auto">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
@@ -249,51 +317,16 @@
       <p><strong>(a) Simular para validar.</strong> En ciencia se usan modelos que no solo describen un mecanismo con palabras, sino que lo <strong>ejecutan</strong> para ver qué patrones emergen. Y la validación no termina cuando el programa compila: hay que comprobar que hace lo correcto. Autores de referencia: Epstein, Railsback y Grimm, Sargent.</p>
       <p><strong>(b) Varios agentes de IA cooperando.</strong> En lugar de un único agente que lo hace todo y no deja nada auditable, se reparte el trabajo en <strong>roles especializados que actúan en un orden fijo</strong>. Es la idea de sistemas como MetaGPT.</p>
       <p><strong>(c) Recuperación y memoria.</strong> Combinar búsqueda por significado y búsqueda por palabra exacta sobre un grafo de conocimiento, para que el sistema recuerde y consulte lo que ya sabe. Es la base de las técnicas RAG y GraphRAG.</p>
-      <p><strong>(d) Herramientas y agentes que programan.</strong> Modelos que razonan y <strong>actúan llamando a herramientas</strong> cuyo uso queda registrado, e incluso agentes que escriben código sobre repositorios reales. Referencias: ReAct, SWE-bench.</p>
+      <p><strong>(d) Herramientas y agentes que programan.</strong> Modelos que razonan y <strong>actúan llamando a herramientas</strong> cuyo uso queda registrado, e incluso agentes que escriben código sobre repositorios reales. Una idea clave de esta línea es la <strong>auto-revisión</strong>: el agente critica y corrige sus propias salidas antes de darlas por buenas (Self-Refine, Reflexion). En este trabajo aparece como <strong>subagentes adversariales que revisan el código</strong> del agente principal antes de fusionarlo. Referencias: ReAct, Self-Refine, Reflexion, SWE-bench.</p>
       <p>Mi arquitectura se coloca en un punto concreto de ese mapa: <strong>cooperativa</strong> (los agentes colaboran, no compiten), <strong>centralizada</strong> (un coordinador manda) y <strong>por capas</strong> (roles en orden).</p>
       <p class="q">Si me preguntan cuál es la novedad si solo combino: está en la <strong>integración</strong>. Un laboratorio que recibe modelos de fuera, los ejecuta en un entorno común y deja evidencia persistente y auditable de todo el recorrido. Ninguna de esas técnicas por separado cubre ese camino completo.</p>
     </aside>
   </section>
 
-  <!-- 6 · OBJETIVOS -->
-  <section data-slide="objetivos">
-    <div class="kicker">Objetivos</div>
-    <h2>Seis objetivos específicos</h2>
-    <p class="muted" style="margin-top:-0.2rem;font-size:0.8rem">No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño.</p>
-    <div class="s-body">
-<div class="grid-3" style="margin-top:0.9rem;grid-auto-rows:1fr">
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-architect)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-        <div class="panel__title" style="color:var(--acc)">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-blue)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7 L11 12 L5 17 Z"/><path d="M12 7 L18 12 L12 17 Z"/></svg>
-        <div class="panel__title" style="color:var(--acc)">02</div><p>Ejecutar modelos <strong>sin acoplamiento</strong>, incluso varios a la vez.</p></div>
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-tracker)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="7" r="1.5"/><path d="M10 7h9"/><circle cx="6" cy="12" r="1.5"/><path d="M10 12h9"/><circle cx="6" cy="17" r="1.5"/><path d="M10 17h6"/></svg>
-        <div class="panel__title" style="color:var(--acc)">03</div><p>Registrar el comportamiento de forma <strong>estructurada</strong>.</p></div>
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-analyst)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16"/><path d="M7 15l4-5 3 3 4-6"/></svg>
-        <div class="panel__title" style="color:var(--acc)">04</div><p>Analizar <strong>patrones</strong> comportamiento–objetivo.</p></div>
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-reporter)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 14h5M10 17h3"/></svg>
-        <div class="panel__title" style="color:var(--acc)">05</div><p>Generar un <strong>informe PDF</strong> reproducible.</p></div>
-      <div class="panel obj fragment fade-in-up" style="--acc:var(--color-accent-cyan)">
-        <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg>
-        <div class="panel__title" style="color:var(--acc)">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
-    </div>
-    
-</div>
-    <aside class="notes">
-      <p>Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: <strong>(1)</strong> generar la especificación del entorno a partir de lenguaje natural; <strong>(2)</strong> ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; <strong>(3)</strong> registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); <strong>(4)</strong> analizar patrones y contrastarlos con lo que ya se sabía; <strong>(5)</strong> generar un informe PDF; y <strong>(6)</strong> guardar memorias que se puedan reutilizar en experimentos posteriores.</p>
-      <p>Un matiz honesto que quiero decir en voz alta: estos objetivos <strong>no estaban fijados de antemano</strong>, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.</p>
-      <p class="q">Si me preguntan si se cumplieron todos: sí, los seis, y así lo recojo en las conclusiones. Además, la evaluación instrumentada con dos casos reales (los enseño al final) comprueba que el recorrido completo es fiel de principio a fin, no solo que cada pieza funciona por separado.</p>
-    </aside>
-  </section>
-
-  <!-- 7 · ARQUITECTURA -->
+  <!-- 8 · ARQUITECTURA -->
   <section data-slide="arquitectura">
     <div class="kicker">Diseño · arquitectura</div>
-    <h2>Una arquitectura por capas</h2>
+    <h2>Una arquitectura por capas, y dónde se despliega</h2>
     <div class="s-body">
 <div class="arch">
       <div class="arch__band" data-anim="band">
@@ -302,12 +335,14 @@
           <div class="acell"><div class="acell__t">Cliente web</div><div class="acell__s">dashboard · chat · replay</div></div>
           <div class="acell"><div class="acell__t">API · FastAPI</div><div class="acell__s">REST + WebSocket</div></div>
         </div>
+        <div class="arch__deploy"><span class="arch__deploy-env">frontend + API</span></div>
       </div>
       <div class="arch__band" data-anim="band">
         <div class="arch__tag">Orquestación</div>
         <div class="arch__items">
           <div class="acell acell--hub"><img class="acell__face" src="assets/img/faces/orchestrator.svg" alt=""><div class="acell__txt"><div class="acell__t">Orchestrator</div><div class="acell__s">estado de sesión · tool calls</div></div></div>
         </div>
+        <div class="arch__deploy"><span class="arch__deploy-env">backend</span></div>
       </div>
       <div class="arch__band" data-anim="band">
         <div class="arch__tag">Agentes</div>
@@ -317,6 +352,7 @@
           <div class="acell agent--analyst"><img class="acell__face" src="assets/img/faces/analyst.svg" alt=""><div class="acell__txt"><div class="acell__t">Analyst</div><div class="acell__s">análisis</div></div></div>
           <div class="acell agent--reporter"><img class="acell__face" src="assets/img/faces/reporter.svg" alt=""><div class="acell__txt"><div class="acell__t">Reporter</div><div class="acell__s">PDF</div></div></div>
         </div>
+        <div class="arch__deploy"><span class="arch__deploy-env">backend</span><span class="arch__deploy-sub">→ OpenRouter</span></div>
       </div>
       <div class="arch__band" data-anim="band">
         <div class="arch__tag">Simulación</div>
@@ -325,6 +361,7 @@
           <div class="acell"><div class="acell__t">Runtime 2D</div><div class="acell__s">Environment + Agent</div></div>
           <div class="acell"><div class="acell__t">Charts</div><div class="acell__s">figuras del análisis</div></div>
         </div>
+        <div class="arch__deploy"><span class="arch__deploy-env">backend</span></div>
       </div>
       <div class="arch__band" data-anim="band">
         <div class="arch__tag">Persistencia</div>
@@ -334,9 +371,13 @@
           <div class="acell"><div class="acell__t">Qdrant</div><div class="acell__s">memorias</div></div>
           <div class="acell"><div class="acell__t">Neo4j</div><div class="acell__s">grafo</div></div>
         </div>
+        <div class="arch__deploy"><span class="arch__deploy-env">datos</span><span class="arch__deploy-sub">4 servicios</span></div>
       </div>
     </div>
-    
+    <div class="arch__legend" data-anim="band">
+      <span class="arch__env"><span class="arch__env-dot" style="--d:var(--color-accent-blue)"></span><b>Todo desplegado en Railway</b> — un frontend, un backend y los 4 almacenes como servicios</span>
+      <span class="arch__env"><span class="arch__env-dot" style="--d:var(--color-text-dim)"></span><b>Externos</b> · OpenRouter · Voyage · ZeroEntropy</span>
+    </div>
 </div>
     <aside class="notes">
       <p>Presento la arquitectura como una tarta de <strong>cinco capas</strong>, de arriba abajo. La idea que quiero transmitir es que cada capa tiene una única responsabilidad y solo habla con la de al lado.</p>
@@ -344,12 +385,13 @@
       <p><strong>Orquestación</strong>: el Orchestrator, que lleva el estado de la conversación y decide qué agente actúa en cada momento.</p>
       <p><strong>Agentes</strong>: los cuatro especialistas —Architect, Tracker, Analyst, Reporter—.</p>
       <p><strong>Simulación</strong>: el cargador que trae los modelos de la Fase 1, el motor que ejecuta el mundo 2D y el módulo que dibuja las gráficas del análisis.</p>
-      <p><strong>Persistencia</strong>: cuatro almacenes de datos distintos —PostgreSQL, MinIO, Qdrant y Neo4j— más algún servicio externo opcional. Todo se despliega con Docker, de forma que montar el laboratorio en otra máquina es un solo comando.</p>
+      <p><strong>Persistencia</strong>: cuatro almacenes de datos distintos —PostgreSQL, MinIO, Qdrant y Neo4j— cada uno elegido por cómo se consulta el dato.</p>
+      <p><strong>Dónde se despliega</strong>: en producción <strong>todo corre en Railway</strong> —un frontend, un backend y los cuatro almacenes como servicios—; en local se levanta con <strong>Docker Compose</strong> en un solo comando. Fuera del despliegue quedan los servicios <strong>externos</strong> por API: OpenRouter (el LLM) y los semánticos Voyage y ZeroEntropy.</p>
       <p class="q">Si me preguntan por qué cuatro almacenes y no uno: porque los datos no se consultan igual. Unos se buscan por identificador o fecha (una base de datos clásica), otros son archivos grandes (un almacén de objetos), otros se buscan por parecido (una base vectorial) y otros por sus relaciones (un grafo). Uso la herramienta adecuada a cada pregunta, y las mantengo coherentes con identificadores compartidos. Lo detallo en las dos diapos siguientes.</p>
     </aside>
   </section>
 
-  <!-- 9 · DOMINIO 2D -->
+  <!-- 9 · DOMINIO -->
   <section data-slide="dominio">
     <div class="kicker">Diseño · el dominio</div>
     <h2>Una rejilla 2D común</h2>
@@ -412,7 +454,7 @@
     </aside>
   </section>
 
-  <!-- 11 · LOS 4 AGENTES -->
+  <!-- 11 · AGENTES -->
   <section data-slide="agentes">
     <div class="kicker">Diseño · los agentes</div>
     <h2>Cuatro agentes, cuatro cambios de representación</h2>
@@ -463,7 +505,7 @@
     </aside>
   </section>
 
-  <!-- 12 · KNOWLEDGE BACKBONE -->
+  <!-- 12 · KNOWLEDGE -->
   <section data-slide="knowledge">
     <div class="kicker">Diseño · memoria compartida</div>
     <h2>Knowledge Backbone</h2>
@@ -497,6 +539,7 @@
     </aside>
   </section>
 
+  <!-- 13 · RETRIEVAL -->
   <!-- 11b · RECUPERACIÓN HÍBRIDA -->
   <section data-slide="retrieval">
     <div class="kicker">Diseño · recuperación</div>
@@ -506,6 +549,7 @@
       <span class="rquery__ic">›_</span>
       <span class="rquery__q">«¿qué modelos exploran con poca energía?»</span>
     </div>
+    <p class="rsub" data-anim="foot">La misma pregunta se lanza <strong>a la vez</strong> contra los cuatro almacenes — cada uno responde lo que los otros no saben:</p>
     <div class="rgrid">
       <div class="rcard" data-anim="col" style="--store:var(--color-analyst)">
         <div class="rcard__h"><span class="node__dot"></span>Qdrant<span class="rcard__mode">búsqueda híbrida</span></div>
@@ -513,7 +557,7 @@
           <div><b>densa</b> · significado<br><span class="dim">«drive», «homeostasis»</span></div>
           <div><b>dispersa</b> · BM25<br><span class="dim">Rangel 2013 · DDM-v2</span></div>
         </div>
-        <div class="node__ex">episodios similares → RRF</div>
+        <div class="node__ex">episodios similares</div>
       </div>
       <div class="rcard" data-anim="col" style="--store:var(--color-accent-blue)">
         <div class="rcard__h"><span class="node__dot"></span>PostgreSQL<span class="rcard__mode">filtro exacto</span></div>
@@ -531,19 +575,31 @@
         <div class="node__ex">informe-caso1.pdf</div>
       </div>
     </div>
-    <p class="muted" data-anim="foot" style="margin-top:0.9rem;font-size:0.8rem">El Orchestrator funde <strong>significado</strong>, <strong>hechos exactos</strong>, <strong>dominio</strong> y <strong>artefactos</strong> en un solo contexto <span class="mono dim">— Reciprocal Rank Fusion, sin entrenar nada</span>.</p>
-    
+    <div class="rfuse" data-anim="foot">
+      <div class="rfuse__flow">
+        <span class="rfuse__dot" style="--d:var(--color-analyst)"></span>
+        <span class="rfuse__dot" style="--d:var(--color-accent-blue)"></span>
+        <span class="rfuse__dot" style="--d:var(--color-architect)"></span>
+        <span class="rfuse__dot" style="--d:var(--color-accent-amber)"></span>
+        <span class="rfuse__arrow">→</span>
+        <span class="rfuse__one">un solo contexto</span>
+        <span class="rfuse__tag mono">Reciprocal Rank Fusion · sin entrenar nada</span>
+      </div>
+      <p>El Orchestrator <strong>funde</strong> significado, hechos exactos, dominio y artefactos, y responde <strong>anclado en la memoria</strong>.</p>
+    </div>
+
 </div>
     <aside class="notes">
       <p>La idea de esta diapo es sencilla de contar aunque por dentro tenga varias piezas: <strong>cuando el usuario hace una pregunta, esa misma pregunta se lanza a la vez contra los cuatro almacenes</strong>, y el Orchestrator junta todo lo que devuelven en un único contexto. Cada almacén sabe responder a algo que los otros no saben; por eso uso los cuatro en vez de quedarme con uno.</p>
       <p>El corazón es <strong>Qdrant</strong>, y aquí conviene ir despacio porque es lo más técnico. Guardo la memoria de experiencias de dos formas que se complementan. La primera es <strong>búsqueda por significado</strong> —en la jerga, «densa»—: cada texto se convierte en una lista de números que captura su sentido, así que si pregunto por «explorar con poca energía» encuentra episodios que hablan de <em>drive</em> o de homeostasis aunque no repitan esas palabras. La segunda es <strong>búsqueda por término exacto</strong> —«dispersa», con un método clásico llamado BM25—: es la fiable cuando busco algo literal como «Rangel 2013» o «DDM-v2», que es justo lo que la búsqueda por significado tiende a diluir.</p>
       <p>¿Cómo junto las dos listas de resultados? Con <strong>Reciprocal Rank Fusion (RRF)</strong>, que es más humilde de lo que suena: no entrena nada ni usa un modelo, solo mira en qué puesto quedó cada resultado en cada lista y premia a los que salen arriba en ambas. Que sea una simple regla aritmética, reproducible y sin entrenamiento, es una virtud.</p>
       <p>Las otras tres tiendas aportan lo que Qdrant no puede. <strong>PostgreSQL</strong> da los hechos del run sin ambigüedad —modelo, caso, paso, recompensa— con un filtro exacto (<code>WHERE case='CASO1' AND step=19</code>). <strong>Neo4j</strong> guarda los postulados de la teoría y de dónde salen, para poder decir contra qué se contrasta lo observado (<code>(exploración)←[POSTULA]—(Rangel 2013)</code>). Y <strong>MinIO</strong> devuelve los entregables ya hechos —informes y figuras— servidos por una dirección web.</p>
+      <p>El desenlace de la diapo es esa fusión: el Orchestrator junta significado, hechos exactos, dominio y artefactos en <strong>un solo contexto</strong> y responde <strong>anclado en la memoria</strong> —no improvisa, se apoya en lo que el sistema ya sabe—.</p>
       <p class="q">Si me preguntan por qué no uso solo búsqueda semántica moderna: porque cada pregunta necesita una mezcla distinta. La semántica se pierde con autores, identificadores y citas literales —ahí gana BM25—, y ni la densa ni la dispersa saben dar un hecho exacto, una relación entre conceptos o un archivo. RRF me deja fundir significado, hechos, dominio y artefactos sin entrenar nada.</p>
     </aside>
   </section>
 
-  <!-- 12 · BUCLE DE DESARROLLO -->
+  <!-- 14 · BUCLE -->
   <section data-slide="bucle">
     <div class="kicker">Desarrollo del trabajo</div>
     <h2>Un nuevo bucle de desarrollo</h2>
@@ -578,7 +634,7 @@
     </aside>
   </section>
 
-  <!-- 15 · REPARTO DE RESPONSABILIDADES -->
+  <!-- 15 · REPARTO -->
   <section data-slide="reparto">
     <div class="kicker">Desarrollo · reparto</div>
     <h2>Quién decide, quién implementa</h2>
@@ -601,7 +657,7 @@
     </aside>
   </section>
 
-  <!-- 15 · VERIFICACIÓN + EVALUACIÓN (fusión) -->
+  <!-- 16 · VERIFICACION -->
   <section data-slide="verificacion">
     <div class="kicker">Desarrollo · verificación y evaluación</div>
     <h2>Verificar el desarrollo, evaluar el sistema</h2>
@@ -644,7 +700,7 @@
     </aside>
   </section>
 
-  <!-- 16 · QUÉ EVALÚA EL JUEZ -->
+  <!-- 17 · ANECDOTA -->
   <section data-slide="anecdota">
     <div class="kicker">Pruebas y evaluación · el juez</div>
     <h2>¿Qué evalúa el juez?</h2>
@@ -675,7 +731,7 @@
     </aside>
   </section>
 
-  <!-- 20 · CIERRE -->
+  <!-- 18 · CIERRE -->
   <section data-slide="cierre">
     <div class="kicker">Conclusiones</div>
     <h2>Lo aprendido</h2>
@@ -716,6 +772,7 @@
     </aside>
   </section>
 
+
 </div>
 </div>
 
@@ -723,8 +780,8 @@
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/highlight.min.js"></script>
 <script src="vendor/highlight-python.min.js"></script>
-<script src="js/animations.js"></script>
-<script src="js/slides-anim.js"></script>
-<script src="js/deck.js"></script>
+<script src="js/animations.js?v=12"></script>
+<script src="js/slides-anim.js?v=12"></script>
+<script src="js/deck.js?v=12"></script>
 </body>
 </html>
