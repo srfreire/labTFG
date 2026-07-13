@@ -418,6 +418,14 @@ class Router:
     ) -> None:
         if self._tracer is None or node_id in self._trace_nodes:
             return
+        if any(
+            event.get("type") == "node_add"
+            and isinstance(event.get("node"), dict)
+            and event["node"].get("id") == node_id
+            for event in self._tracer.events()
+        ):
+            self._trace_nodes.add(node_id)
+            return
         self._trace_nodes.add(node_id)
         node_metadata = dict(metadata or {})
         if status == "running":
@@ -464,6 +472,14 @@ class Router:
             return
         edge_id = self._trace_id("edge", source, edge_type, target)
         if edge_id in self._trace_edges:
+            return
+        if any(
+            event.get("type") == "edge_add"
+            and isinstance(event.get("edge"), dict)
+            and event["edge"].get("id") == edge_id
+            for event in self._tracer.events()
+        ):
+            self._trace_edges.add(edge_id)
             return
         self._trace_edges.add(edge_id)
         self._tracer.edge(
@@ -628,9 +644,6 @@ class Router:
 
     async def _trace_research_artifacts(self) -> None:
         prefix = self.state.research_prefix
-        await self._trace_file_artifact(
-            f"{prefix}/report.md", parent="researcher", artifact_type="report"
-        )
         keys = await self._services.storage.list(f"{prefix}/deep/")
         for key in sorted(k for k in keys if k.endswith(".md")):
             slug = Path(key).stem
@@ -649,6 +662,12 @@ class Router:
             await self._trace_file_artifact(
                 key, parent=sub_id, artifact_type="deep_report"
             )
+        await self._trace_file_artifact(
+            f"{prefix}/report.md",
+            parent="researcher",
+            artifact_type="report",
+            label="Researcher summary report",
+        )
 
     async def _trace_formalization_artifacts(self) -> None:
         prefix = f"{self.state.research_prefix}/formulations/"

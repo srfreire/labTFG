@@ -133,13 +133,20 @@ class DeepResearcher:
 
     async def run(self, paradigm: str) -> str:
         logger.info("DeepResearcher starting — paradigm: %s", paradigm)
+        node_id = agrex_context.trace_id("deep_researcher", slugify(paradigm))
+        await agrex_context.trace_sub_agent_start(
+            node_id,
+            f"DeepResearcher: {slugify(paradigm)}",
+            metadata={"paradigm": slugify(paradigm)},
+        )
         parent_token = agrex_context.set_parent(
-            agrex_context.trace_id("deep_researcher", slugify(paradigm))
+            node_id
         )
         try:
             return await self._run_with_trace_parent(paradigm)
         finally:
             agrex_context.reset_parent(parent_token)
+            await agrex_context.trace_sub_agent_done(node_id)
 
     async def _run_with_trace_parent(self, paradigm: str) -> str:
         messages = [

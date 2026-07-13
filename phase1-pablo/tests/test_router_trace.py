@@ -13,6 +13,7 @@ import agrex
 import pytest
 
 from decisionlab.router import PipelineState, Router, Stage
+from decisionlab.runtime import agrex_context
 from shared.services import Services
 
 
@@ -149,3 +150,48 @@ async def test_finalize_trace_skips_when_storage_unavailable():
     assert router._trace_local_path is None
     # local file is cleaned up regardless
     assert local_path is not None and not local_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_sub_agent_trace_starts_before_child_tool_events():
+    tracer = agrex.create_tracer()
+    bind_tokens = agrex_context.bind(tracer, None)
+    parent_token = agrex_context.set_parent("researcher")
+    try:
+        await agrex_context.trace_sub_agent_start(
+            "deep_researcher:prospect-theory",
+            "DeepResearcher: prospect-theory",
+            metadata={"paradigm": "prospect-theory"},
+        )
+        child_parent_token = agrex_context.set_parent(
+            "deep_researcher:prospect-theory"
+        )
+        try:
+            await agrex_context.trace_tool_start("web_search", {"query": "prospect"})
+        finally:
+            agrex_context.reset_parent(child_parent_token)
+        await agrex_context.trace_sub_agent_done("deep_researcher:prospect-theory")
+    finally:
+        agrex_context.reset_parent(parent_token)
+        agrex_context.reset(bind_tokens)
+
+    events = tracer.events()
+    node_add_index = next(
+        i
+        for i, event in enumerate(events)
+        if event.get("type") == "node_add"
+        and event.get("node", {}).get("id") == "deep_researcher:prospect-theory"
+    )
+    tool_add_index = next(
+        i
+        for i, event in enumerate(events)
+        if event.get("type") == "node_add"
+        and event.get("node", {}).get("id", "").startswith("tool:web_search:")
+    )
+    assert node_add_index < tool_add_index
+    assert any(
+        event.get("type") == "node_update"
+        and event.get("id") == "deep_researcher:prospect-theory"
+        and event.get("status") == "done"
+        for event in events
+    )

@@ -34,8 +34,10 @@ _SUPPRESSED_TOOL_NODES = {"launch_deep_research"}
 
 _STAGE_PARENT = {
     "research": "researcher",
+    "review_research": "researcher",
     "formalize": "formalizer",
     "reason": "reasoner",
+    "review_reason": "reasoner",
     "build": "builder",
     "memory_research": "memory_agent:researcher",
     "memory_formalize": "memory_agent:formalizer",
@@ -74,6 +76,78 @@ def set_parent(parent: str | None):
 
 def reset_parent(token) -> None:
     _PARENT_VAR.reset(token)
+
+
+def _tracer_has_node(tracer: Any, node_id: str) -> bool:
+    return any(
+        event.get("type") == "node_add"
+        and isinstance(event.get("node"), dict)
+        and event["node"].get("id") == node_id
+        for event in tracer.events()
+    )
+
+
+def _tracer_has_edge(tracer: Any, edge_id: str) -> bool:
+    return any(
+        event.get("type") == "edge_add"
+        and isinstance(event.get("edge"), dict)
+        and event["edge"].get("id") == edge_id
+        for event in tracer.events()
+    )
+
+
+async def trace_sub_agent_start(
+    node_id: str,
+    label: str,
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Record a sub-agent before its first tool call.
+
+    Deep researchers run inside the Researcher's tool loop. Recording their
+    node at launch time keeps the persisted trace causal: the child tools have
+    a visible parent before they are emitted.
+    """
+    tracer = _TRACER_VAR.get()
+    if tracer is None or _tracer_has_node(tracer, node_id):
+        return
+
+    parent = _current_parent()
+    node_metadata = dict(metadata or {})
+    node_metadata.setdefault("startedAt", now_ms())
+    tracer.sub_agent(
+        node_id,
+        label,
+        parent=parent,
+        status="running",
+        metadata=node_metadata,
+    )
+    await _emit_last_event(tracer)
+
+    if parent:
+        edge_id = trace_id("edge", parent, "launches", node_id)
+        if not _tracer_has_edge(tracer, edge_id):
+            tracer.edge(
+                id=edge_id,
+                source=parent,
+                target=node_id,
+                type="launches",
+                label="launches",
+            )
+            await _emit_last_event(tracer)
+
+
+async def trace_sub_agent_done(
+    node_id: str,
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Mark a traced sub-agent complete after its work and report save."""
+    tracer = _TRACER_VAR.get()
+    if tracer is None or not _tracer_has_node(tracer, node_id):
+        return
+    tracer.done(node_id, metadata=metadata)
+    await _emit_last_event(tracer)
 
 
 async def _emit_last_event(tracer: Any) -> None:

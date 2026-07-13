@@ -713,11 +713,36 @@ function sanitizeSnapshot(
   return { nodes: [...visibleNodes, ...dbNodes], edges: [...visibleEdges, ...projectedEdges] };
 }
 
+function recoveredDeepResearcherNode(id: string): AgrexNode | undefined {
+  const match = id.match(/^deep_researcher:(.+)$/);
+  if (!match) return undefined;
+  const paradigm = match[1];
+  return {
+    id,
+    type: "sub_agent",
+    label: `DeepResearcher: ${paradigm}`,
+    parentId: "researcher",
+    status: "running",
+    metadata: { paradigm, recovered: true },
+  };
+}
+
 export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
   const noisyHiddenIds = collectNoisyHiddenNodeIds(events);
   const hiddenIds = new Set(noisyHiddenIds);
   const replayState = createSanitizerState();
   const out: AgrexEvent[] = [];
+  const visibleNodeIds = new Set<string>();
+  const recoveredNodeIds = new Set<string>();
+
+  const ensureRecoveredDeepResearcher = (id: string, ts: number) => {
+    if (visibleNodeIds.has(id)) return;
+    const node = recoveredDeepResearcherNode(id);
+    if (!node) return;
+    visibleNodeIds.add(id);
+    recoveredNodeIds.add(id);
+    out.push({ type: "node_add", ts, node } as AgrexEvent);
+  };
 
   for (const ev of events) {
     if (ev.type === "node_add") {
@@ -726,13 +751,29 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
         out.push(ev);
       } else {
         const normalized = normalizeReplayNode(node, replayState);
+        if (typeof normalized.parentId === "string") {
+          ensureRecoveredDeepResearcher(normalized.parentId, ev.ts);
+        }
         if (hiddenIds.has(normalized.id) || shouldHideNode(normalized)) {
           hiddenIds.add(normalized.id);
           projectHiddenMemoryNodeToEvents(normalized, out, replayState, ev.ts);
           if (!noisyHiddenIds.has(normalized.id)) {
             projectVisibleFileReadNodeToEvents(normalized, out, replayState, ev.ts);
           }
+        } else if (visibleNodeIds.has(normalized.id)) {
+          if (recoveredNodeIds.has(normalized.id)) {
+            out.push({
+              type: "node_update",
+              ts: ev.ts,
+              id: normalized.id,
+              status: normalized.status,
+              label: normalized.label,
+              metadata: normalized.metadata,
+            } as AgrexEvent);
+            recoveredNodeIds.delete(normalized.id);
+          }
         } else {
+          visibleNodeIds.add(normalized.id);
           out.push({ ...ev, node: normalized } as AgrexEvent);
           projectVisibleFileReadNodeToEvents(normalized, out, replayState, ev.ts);
         }
@@ -744,23 +785,37 @@ export function sanitizeLabTraceEvents(events: AgrexEvent[]): AgrexEvent[] {
     ) {
       if (ev.type === "node_remove") hiddenIds.delete(ev.id);
     } else if (ev.type === "node_update") {
+      if (typeof ev.id === "string") {
+        ensureRecoveredDeepResearcher(ev.id, ev.ts);
+      }
       out.push(sanitizeNodeUpdateEvent(ev));
     } else if (ev.type === "edge_add") {
       const edge = ev.edge as AgrexEdge | undefined;
       if (!edge || !edgeTouchesHiddenNode(edge, hiddenIds)) out.push(ev);
+    } else if (ev.type === "node_remove") {
+      if (typeof ev.id === "string") {
+        visibleNodeIds.delete(ev.id);
+        recoveredNodeIds.delete(ev.id);
+      }
+      out.push(ev);
     } else if (ev.type === "state_sync") {
       hiddenIds.clear();
       resetReplaySanitizerState(replayState);
+      visibleNodeIds.clear();
+      recoveredNodeIds.clear();
       const snapshot = sanitizeSnapshot(
         (ev.nodes as AgrexNode[] | undefined) ?? [],
         (ev.edges as AgrexEdge[] | undefined) ?? [],
         hiddenIds,
         replayState,
       );
+      for (const node of snapshot.nodes) visibleNodeIds.add(node.id);
       out.push({ ...ev, ...snapshot } as AgrexEvent);
     } else if (ev.type === "graph_clear" || ev.type === "clear") {
       hiddenIds.clear();
       resetReplaySanitizerState(replayState);
+      visibleNodeIds.clear();
+      recoveredNodeIds.clear();
       out.push(ev);
     } else {
       out.push(ev);
@@ -916,7 +971,7 @@ const GRAPH_BOUNDARY_TYPES = new Set([
   "edge_remove",
   "clear",
 ]);
-const EXTRA_BOUNDARY_TYPES = new Set(["stage", "graph_clear", "state_sync"]);
+const EXTRA_BOUNDARY_TYPES = new Set(["graph_clear", "state_sync"]);
 
 export function labStepBoundaries(events: AgrexEvent[]): number[] {
   const boundaries = new Set<number>();

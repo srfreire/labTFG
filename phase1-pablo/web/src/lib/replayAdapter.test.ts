@@ -18,6 +18,11 @@ function ev(
   return { type, ts, ...extra } as AgrexEvent;
 }
 
+function nodeId(event: AgrexEvent): string | undefined {
+  const node = (event as AgrexEvent & { node?: { id?: unknown } }).node;
+  return typeof node?.id === "string" ? node.id : undefined;
+}
+
 describe("extractLabMarkers", () => {
   it("emits a stage marker per stage event with the event's index as cursor", () => {
     const events = [
@@ -90,13 +95,13 @@ describe("extractLabMarkers", () => {
 });
 
 describe("labStepBoundaries", () => {
-  it("emits a boundary after each stage / graph_clear / state_sync event", () => {
+  it("does not create empty steps for stage markers", () => {
     const events = [
       ev("stage", { label: Stage.RESEARCH }),
       ev("graph_clear"),
       ev("state_sync", { nodes: [], edges: [] }),
     ];
-    expect(labStepBoundaries(events)).toEqual([1, 2, 3]);
+    expect(labStepBoundaries(events)).toEqual([2, 3]);
   });
 
   it("includes default agrex boundaries for graph deltas", () => {
@@ -137,6 +142,90 @@ describe("labStepBoundaries", () => {
 });
 
 describe("sanitizeLabTraceEvents", () => {
+  it("recovers deep researcher parents before orphan tools", () => {
+    const deepId = "deep_researcher:prospect-theory";
+    const events = [
+      ev("node_update", { id: deepId, metadata: { tokens: 12 } }, 1),
+      ev(
+        "node_add",
+        {
+          node: {
+            id: "tool:web_search:1",
+            type: "tool",
+            label: "web_search",
+            parentId: deepId,
+          },
+        },
+        2,
+      ),
+      ev(
+        "node_add",
+        {
+          node: {
+            id: deepId,
+            type: "sub_agent",
+            label: "DeepResearcher: prospect-theory",
+            parentId: "researcher",
+            status: "done",
+            metadata: { paradigm: "prospect-theory" },
+          },
+        },
+        3,
+      ),
+      ev(
+        "node_add",
+        {
+          node: {
+            id: "tool:read_report:1",
+            type: "tool",
+            label: "read_report",
+            parentId: "researcher",
+          },
+        },
+        4,
+      ),
+    ];
+
+    const sanitized = sanitizeLabTraceEvents(events);
+    const deepAdds = sanitized.filter(
+      (event) => event.type === "node_add" && nodeId(event) === deepId,
+    );
+    const deepUpdates = sanitized.filter(
+      (event) => event.type === "node_update" && event.id === deepId,
+    );
+
+    expect(deepAdds).toHaveLength(1);
+    expect(deepAdds[0]).toMatchObject({
+      node: {
+        id: deepId,
+        type: "sub_agent",
+        parentId: "researcher",
+        status: "running",
+      },
+    });
+    expect(sanitized[2]).toMatchObject({
+      type: "node_add",
+      node: { id: "tool:web_search:1", parentId: deepId },
+    });
+    expect(deepUpdates).toHaveLength(2);
+    expect(deepUpdates[0]).toMatchObject({
+      type: "node_update",
+      id: deepId,
+      metadata: { tokens: 12 },
+    });
+    expect(deepUpdates[1]).toMatchObject({
+      type: "node_update",
+      id: deepId,
+      status: "done",
+    });
+    expect(
+      sanitized.findIndex(
+        (event) =>
+          event.type === "node_add" && nodeId(event) === "tool:read_report:1",
+      ),
+    ).toBeGreaterThan(sanitized.findIndex((event) => nodeId(event) === deepId));
+  });
+
   it("removes launch_deep_research tool nodes and their updates", () => {
     const events = [
       ev("node_add", {
