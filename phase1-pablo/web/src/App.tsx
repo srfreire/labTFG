@@ -215,6 +215,46 @@ export default function App() {
     stepBoundaries: labStepBoundaries,
     maxPlaybackGapMs: 60_000,
   });
+  const { mode: replayMode, stepBack, stepForward } = replay;
+
+  useEffect(() => {
+    const handleReplayKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
+      if (replayMode !== "replay" && replayMode !== "live-finished") {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepBack();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepForward();
+      }
+    };
+
+    window.addEventListener("keydown", handleReplayKeyDown);
+    return () => window.removeEventListener("keydown", handleReplayKeyDown);
+  }, [replayMode, stepBack, stepForward]);
 
   // Gate replay event ingestion on having seen `run_start` in this session.
   // The mock server re-emits stale `review_request` / `state_sync` on
