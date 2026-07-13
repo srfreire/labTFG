@@ -139,9 +139,7 @@ class DeepResearcher:
             f"DeepResearcher: {slugify(paradigm)}",
             metadata={"paradigm": slugify(paradigm)},
         )
-        parent_token = agrex_context.set_parent(
-            node_id
-        )
+        parent_token = agrex_context.set_parent(node_id)
         try:
             return await self._run_with_trace_parent(paradigm)
         finally:

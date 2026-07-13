@@ -163,9 +163,7 @@ async def test_sub_agent_trace_starts_before_child_tool_events():
             "DeepResearcher: prospect-theory",
             metadata={"paradigm": "prospect-theory"},
         )
-        child_parent_token = agrex_context.set_parent(
-            "deep_researcher:prospect-theory"
-        )
+        child_parent_token = agrex_context.set_parent("deep_researcher:prospect-theory")
         try:
             await agrex_context.trace_tool_start("web_search", {"query": "prospect"})
         finally:
