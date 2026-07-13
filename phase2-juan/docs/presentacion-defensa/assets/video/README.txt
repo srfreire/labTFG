@@ -10,7 +10,8 @@ Para regenerar en 1080p (automático, con Playwright):
      - conduce el flujo mock a 1920x1080 (deviceScaleFactor 2, replay a 1x,
        pacing uniforme sin ralentizar en eventos críticos)
      - espera a que el replay llegue al paso final (data-testid="replay-step")
-       y abre el visor del PDF recorriendo sus páginas; ~57s en total
+       y abre el visor del PDF: scroll continuo del Analyst, recorrido de las
+       páginas y zoom a pantalla completa de una página; ~60s en total
      - imprime VIDEO_PATH=... (un .webm VP8 de Playwright)
   3. Convertir a los formatos finales con ffmpeg:
      ffmpeg -y -i <VIDEO_PATH> -c:v libx264 -crf 20 -preset slow \
@@ -21,7 +22,7 @@ Para regenerar en 1080p (automático, con Playwright):
 El flujo grabado: chip inicial -> "Compara los tres modelos" -> "Lanza la
 simulación" -> "Registra las trayectorias" -> "Analiza los resultados" ->
 "Informe completo, calidad estándar" -> Play en el replay (1x) -> charts +
-visor del PDF (páginas del informe).
+visor del PDF (páginas del informe, con zoom a pantalla completa).
 
 ────────────────────────────────────────────────────────
 

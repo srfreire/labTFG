@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Download, Send, FlaskConical, FileClock, FileText } from 'lucide-react'
+import { Download, Send, FlaskConical, FileClock, FileText, ZoomIn, X } from 'lucide-react'
 import type { AgentState, ChatMessage, ReportArtifact } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
@@ -110,7 +111,7 @@ export function ChatPanel({ messages, thinking, onSend, agents, connected }: Pro
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div ref={scrollRef} className="flex-1 min-h-0 px-8 py-8 overflow-y-auto flex flex-col">
+      <div ref={scrollRef} data-testid="chat-scroll" className="flex-1 min-h-0 px-8 py-8 overflow-y-auto flex flex-col">
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const sameAuthor = prev && prev.from === msg.from && msg.from !== 'user'
@@ -314,6 +315,15 @@ function ReportLinks({ reports, color }: { reports: ReportArtifact[]; color: str
 }
 
 function PdfPreview({ pages, filename, color }: { pages: string[]; filename: string; color: string }) {
+  const [zoomed, setZoomed] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (zoomed === null) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
+
   return (
     <div
       data-testid="pdf-preview"
@@ -334,14 +344,52 @@ function PdfPreview({ pages, filename, color }: { pages: string[]; filename: str
         style={{ background: 'color-mix(in srgb, var(--color-text) 4%, transparent)' }}
       >
         {pages.map((src, i) => (
-          <img
+          <button
             key={src}
-            src={src}
-            alt={`${filename} — página ${i + 1}`}
-            className="w-full max-w-[300px] rounded-[3px] border border-border-subtle shadow-lg shadow-black/20"
-          />
+            type="button"
+            onClick={() => setZoomed(i)}
+            aria-label={`Ampliar ${filename} — página ${i + 1}`}
+            className="group relative block w-full max-w-[300px] cursor-zoom-in rounded-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            style={{ outlineColor: color }}
+          >
+            <img
+              src={src}
+              alt={`${filename} — página ${i + 1}`}
+              className="w-full rounded-[3px] border border-border-subtle shadow-lg shadow-black/20"
+            />
+            <span className="pointer-events-none absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-1 text-[10px] font-medium text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+              <ZoomIn size={11} aria-hidden="true" /> Ampliar
+            </span>
+          </button>
         ))}
       </div>
+
+      {zoomed !== null && createPortal(
+        <div
+          data-testid="pdf-zoom"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${filename} — página ${zoomed + 1} ampliada`}
+          onClick={() => setZoomed(null)}
+          className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/75 p-6 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomed(null)}
+            aria-label="Cerrar"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+          <img
+            src={pages[zoomed]}
+            alt={`${filename} — página ${zoomed + 1}`}
+            onClick={e => e.stopPropagation()}
+            className="max-h-[90vh] w-auto max-w-[92vw] cursor-default rounded-md shadow-2xl shadow-black/50"
+          />
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
