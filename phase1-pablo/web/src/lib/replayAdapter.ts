@@ -1,5 +1,4 @@
 import {
-  defaultStepBoundaries,
   type AgrexEdge,
   type AgrexEvent,
   type AgrexMarker,
@@ -907,15 +906,32 @@ export function extractLabMarkers(events: AgrexEvent[]): AgrexMarker[] {
   return out;
 }
 
-// Step boundaries: advance one visible graph delta per step. Start from the
-// agrex defaults and add `stage` events so scrubbing aligns with pipeline
-// phases.
+// Step boundaries: advance one visible graph delta per step. Metadata-only
+// node updates carry token and cost telemetry, but do not change the graph
+// rendered on screen, so they must not create empty replay steps.
+const GRAPH_BOUNDARY_TYPES = new Set([
+  "node_add",
+  "node_remove",
+  "edge_add",
+  "edge_remove",
+  "clear",
+]);
 const EXTRA_BOUNDARY_TYPES = new Set(["stage", "graph_clear", "state_sync"]);
 
 export function labStepBoundaries(events: AgrexEvent[]): number[] {
-  const boundaries = new Set<number>(defaultStepBoundaries(events));
+  const boundaries = new Set<number>();
   for (let i = 0; i < events.length; i++) {
-    if (EXTRA_BOUNDARY_TYPES.has(events[i].type)) boundaries.add(i + 1);
+    const event = events[i];
+    const visibleNodeUpdate =
+      event.type === "node_update" &&
+      ("status" in event || "label" in event);
+    if (
+      GRAPH_BOUNDARY_TYPES.has(event.type) ||
+      EXTRA_BOUNDARY_TYPES.has(event.type) ||
+      visibleNodeUpdate
+    ) {
+      boundaries.add(i + 1);
+    }
   }
   return [...boundaries].sort((a, b) => a - b);
 }

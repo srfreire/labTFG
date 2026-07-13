@@ -109,6 +109,21 @@ describe("labStepBoundaries", () => {
     expect(boundaries).toContain(2);
   });
 
+  it("skips metadata-only node updates but keeps visible updates", () => {
+    const events = [
+      ev("node_add", { node: { id: "a", type: "agent", label: "x" } }),
+      ev("node_update", { id: "a", metadata: { tokens: 1 } }),
+      ev("node_update", {
+        id: "a",
+        status: "done",
+        metadata: { tokens: 2 },
+      }),
+      ev("node_update", { id: "a", label: "Renamed" }),
+    ];
+
+    expect(labStepBoundaries(events)).toEqual([1, 3, 4]);
+  });
+
   it("returns sorted, deduplicated boundary indices", () => {
     const events = [
       ev("node_add", { node: { id: "a", type: "agent", label: "x" } }),
