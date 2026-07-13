@@ -76,7 +76,7 @@
 
 /* Development loop — clockwise ring of stations around a contract hub */
 .reveal .loopring .loop-ring {
-  fill: none; stroke: color-mix(in srgb, var(--color-text) 20%, transparent);
+  fill: none; stroke: color-mix(in srgb, var(--color-text) 40%, transparent);
   stroke-width: 1.5; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke;
 }
 .reveal .loopring .loop-ring--close {
@@ -100,6 +100,14 @@
 /* 2D simulation mini-grid */
 .reveal .simgrid { display: grid; gap: 3px; background: var(--color-bg); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); }
 .reveal .simgrid .cell { background: rgba(13,15,18,0.04); border-radius: 3px; aspect-ratio: 1; }
+.reveal .simgrid .cell--food { display: flex; align-items: center; justify-content: center; }
+.reveal .dom-food {
+  width: 46%; height: 46%; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%,
+    color-mix(in srgb, var(--color-accent-green-light) 92%, #fff) 0%,
+    var(--color-accent-green) 72%);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--color-accent-green) 45%, transparent);
+}
 .reveal .simdot { position: absolute; border-radius: var(--radius-full); }
 
 /* Layered architecture — horizontal bands, one per layer */

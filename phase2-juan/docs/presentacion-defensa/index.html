@@ -6,9 +6,9 @@
 <title>Defensa TFG · Laboratorio virtual de paradigmas de decisión</title>
 <link rel="stylesheet" href="vendor/reset.css">
 <link rel="stylesheet" href="vendor/reveal.css">
-<link rel="stylesheet" href="css/theme.css">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/diagrams.css">
+<link rel="stylesheet" href="css/theme.css?v=2">
+<link rel="stylesheet" href="css/components.css?v=2">
+<link rel="stylesheet" href="css/diagrams.css?v=2">
 </head>
 <body>
 <div class="reveal">
@@ -16,6 +16,7 @@
 
   <!-- 1 · PORTADA -->
   <section data-slide="portada" class="s-portada">
+    <img class="usc-logo" src="assets/img/logo_usc.png" alt="Universidade de Santiago de Compostela">
     <div class="portada-inner">
       <div class="faces">
         <div class="face agent--orchestrator" data-anim="face"><span class="face__av"><img src="assets/img/faces/orchestrator.svg" alt="Orchestrator"></span><span class="face__name">Orchestrator</span></div>
@@ -24,7 +25,7 @@
         <div class="face agent--analyst" data-anim="face"><span class="face__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span><span class="face__name">Analyst</span></div>
         <div class="face agent--reporter" data-anim="face"><span class="face__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span><span class="face__name">Reporter</span></div>
       </div>
-      <div class="label">TFG · Grao en Enxeñaría Informática · USC</div>
+      <div class="label">Trabajo de Fin de Grado · Grao en Enxeñaría Informática</div>
       <h1>Laboratorio virtual para la simulación<br>y análisis de paradigmas de decisión</h1>
       <p class="hero-sub mono">Agentes inteligentes · Fase 2 — Infraestructura de simulación y análisis</p>
       <div class="hero-meta mono">
@@ -33,14 +34,32 @@
       </div>
     </div>
     <aside class="notes">
-      <p>Presentación breve, ~20 s. El título completo: <strong>laboratorio virtual para simular y analizar paradigmas de toma de decisiones humanas mediante agentes inteligentes</strong>. Yo defiendo la <strong>Fase 2</strong>; tutor Eduardo Sánchez Vila.</p>
-      <p>El proyecto son <strong>dos fases complementarias</strong>: Fase 1 (Pablo) va de un paradigma en lenguaje natural a un modelo Python ejecutable; mi Fase 2 es la <strong>infraestructura</strong> que lo ejecuta, observa, analiza, informa y recuerda.</p>
-      <p>Se articula en <strong>5 agentes</strong>: un Orchestrator coordinador + cuatro especializados (Architect, Tracker, Analyst, Reporter).</p>
-      <p class="q">P: ¿Qué es tuyo y qué de tu compañero? → La frontera son tres métodos (<code>decide/update/get_state</code>). Él construye el modelo; yo lo convierto en un experimento revisable.</p>
+      <p>Esta portada dura poco, unos veinte segundos, pero conviene que yo tenga clarísimo el marco antes de arrancar. El título completo es <strong>«laboratorio virtual para simular y analizar paradigmas de toma de decisiones humanas mediante agentes inteligentes»</strong>. Un <em>paradigma de decisión</em> es, en cristiano, una teoría de cómo alguien (una persona o un animal) elige entre opciones: por ejemplo, ir a por la comida más cercana o guardar energía para más tarde. Yo defiendo <strong>este TFG</strong>, tutorizado por Eduardo Sánchez Vila.</p>
+      <p>Lo primero que debe entender el tribunal es que el trabajo son <strong>dos fases que se complementan</strong>. La Fase 1, de mi compañero Pablo, parte de la descripción de un paradigma en lenguaje natural y produce un <strong>modelo en Python que se puede ejecutar</strong>. Este TFG es la <strong>infraestructura</strong> que coge ese modelo y lo pone a funcionar: lo ejecuta, lo observa, lo analiza, redacta un informe y guarda memoria de lo aprendido.</p>
+      <p>Todo eso lo hacen <strong>cinco agentes</strong> —programas gobernados por un modelo de lenguaje, cada uno con un papel—: un <strong>Orchestrator</strong> que coordina y cuatro especialistas (Architect, Tracker, Analyst, Reporter). Las caras que se ven en la portada son ellos; volverán en cada diapo.</p>
+      <p class="q">Si me preguntan qué es mío y qué de mi compañero: la frontera entre las dos fases son solo <strong>tres funciones</strong> (<code>decide</code>, <code>update</code>, <code>get_state</code>). Él construye el modelo que decide; yo lo convierto en un experimento que se puede observar y revisar. Esa frontera tan fina es una de las decisiones de diseño de las que más orgulloso estoy, y la explico en la diapo cuatro.</p>
     </aside>
   </section>
 
-  <!-- 2 · ORIGEN / MOTIVACIÓN -->
+  <!-- 2 · ÍNDICE DE LA DEFENSA -->
+  <section data-slide="indice">
+    <div class="kicker">Índice de la defensa</div>
+    <h2>Contenidos</h2>
+    <ol class="agenda">
+      <li style="--agent:var(--color-orchestrator)"><span class="agenda__n">01</span><span class="agenda__b"><b>Motivación y problema</b><span class="agenda__s">de una propuesta abierta a un sistema observable</span></span></li>
+      <li style="--agent:var(--color-architect)"><span class="agenda__n">02</span><span class="agenda__b"><b>Visión general</b><span class="agenda__s">las dos fases, el contrato fino y una demo en marcha</span></span></li>
+      <li style="--agent:var(--color-accent-blue)"><span class="agenda__n">03</span><span class="agenda__b"><b>Estado del arte y objetivos</b><span class="agenda__s">sobre qué se construye · seis objetivos</span></span></li>
+      <li style="--agent:var(--color-tracker)"><span class="agenda__n">04</span><span class="agenda__b"><b>Diseño y arquitectura</b><span class="agenda__s">capas · dominio 2D · agentes · Knowledge Backbone</span></span></li>
+      <li style="--agent:var(--color-analyst)"><span class="agenda__n">05</span><span class="agenda__b"><b>Desarrollo asistido por agentes</b><span class="agenda__s">un nuevo bucle · reparto de responsabilidades</span></span></li>
+      <li style="--agent:var(--color-accent-cyan)"><span class="agenda__n">06</span><span class="agenda__b"><b>Verificación y evaluación</b><span class="agenda__s">pruebas como contrato · LLM-as-a-judge · dos casos reales</span></span></li>
+      <li style="--agent:var(--color-reporter)"><span class="agenda__n">07</span><span class="agenda__b"><b>Conclusiones</b><span class="agenda__s">lo que queda y por dónde seguir</span></span></li>
+    </ol>
+    <aside class="notes">
+      <p>Un mapa rápido de la charla, para que el tribunal sepa por dónde voy. Empiezo por la <strong>motivación</strong> y el problema; luego una <strong>visión general</strong> con las dos fases y una demo del sistema funcionando; el <strong>estado del arte</strong> y los objetivos; el <strong>diseño y la arquitectura</strong>; cómo fue el <strong>desarrollo</strong> apoyándome en agentes; la <strong>verificación y evaluación</strong>; y cierro con las <strong>conclusiones</strong>. No me detengo aquí, es solo la hoja de ruta.</p>
+    </aside>
+  </section>
+
+  <!-- 3 · ORIGEN / MOTIVACIÓN -->
   <section data-slide="problema">
     <div class="kicker">Origen · motivación</div>
     <h2>Un problema abierto, iterado entre tres</h2>
@@ -48,7 +67,7 @@
       <div class="xform__side xform__open fragment fade-in-up">
         <div class="xform__tag">El punto de partida</div>
         <div class="xform__title">Una propuesta abierta</div>
-        <p>Idea de <strong>Eduardo Sánchez Vila</strong> a su grupo, a partir de un TFM previo. A Pablo y a mí se nos planteó <strong>sin alcance cerrado</strong>.</p>
+        <p>Idea de <strong>Eduardo Sánchez Vila</strong> a partir de un TFM previo. A mi compañero Pablo y a mí se nos planteó <strong>sin alcance cerrado</strong>.</p>
       </div>
       <div class="xform__arrow fragment fade-in-up">
         <span class="xform__arrow-label">iterado · a tres</span>
@@ -69,30 +88,29 @@
       </div>
     </div>
       <aside class="notes">
-      <p>Partió de una <strong>propuesta abierta de Eduardo Sánchez Vila</strong> a su grupo, apoyada en un <strong>TFM previo</strong> (Denis Yamunaque) con una primera intuición de entorno de simulación y alcance limitado.</p>
-      <p>El alcance, la arquitectura y la división en dos fases <strong>se fueron cerrando en común</strong> —Eduardo, Pablo y yo— en reuniones de diseño. No había especificación cerrada de entrada.</p>
-      <p>El problema concreto: <strong>un modelo que compila y cumple la interfaz todavía no es un experimento</strong>. Falta ejecutarlo en condiciones controladas, observar sus decisiones paso a paso, compararlo y conservar evidencia revisable.</p>
-      <p>Reto técnico central: coordinar ese recorrido <strong>sin acoplar las dos fases</strong>.</p>
-      <p class="q">P: ¿Cómo fijasteis el límite entre fases si la propuesta era abierta? → Con un contrato mínimo de tres métodos, tan pequeño que ninguna fase tuvo que coordinar releases con la otra.</p>
+      <p>Aquí cuento de dónde salió el proyecto, porque explica muchas decisiones posteriores. Nació de una <strong>propuesta abierta de Eduardo Sánchez Vila</strong>, apoyada en un <strong>trabajo de fin de máster previo</strong> (de Denis Yamunaque) que ya intuía la idea de un entorno de simulación, pero con un alcance limitado.</p>
+      <p>La clave es que <strong>no había una especificación cerrada de partida</strong>. El alcance, la arquitectura y la propia división en dos fases se fueron decidiendo <strong>entre los tres</strong> —Eduardo, mi compañero Pablo y yo— en reuniones de diseño. Es honesto decirlo así ante el tribunal: parte del trabajo fue definir el problema, no solo resolverlo.</p>
+      <p>Y el problema concreto que identificamos es este: <strong>un modelo que compila y respeta la interfaz todavía no es un experimento</strong>. Que un programa arranque no dice nada de si su comportamiento es interesante o correcto. Falta ejecutarlo en condiciones controladas, mirar sus decisiones paso a paso, compararlo con otros y conservar evidencia que alguien pueda revisar después. Ese es exactamente el hueco que llena este TFG.</p>
+      <p>El reto técnico central, que menciono de pasada, fue coordinar todo ese recorrido <strong>sin acoplar las dos fases</strong>, es decir, sin que un cambio en el trabajo de mi compañero Pablo me obligara a rehacer el mío.</p>
+      <p class="q">Si me preguntan cómo fijamos el límite entre fases si la propuesta era abierta: con un contrato mínimo de tres funciones, tan pequeño que ninguna de las dos fases tuvo que coordinar sus versiones con la otra. Es la idea de la diapo siguiente.</p>
     </aside>
   </section>
 
   <!-- 3 · DEMO -->
-  <section data-slide="demo" data-background-color="#050505">
+  <section data-slide="demo">
     <div class="demo-wrap">
       <div class="label">Demo · El sistema en marcha</div>
       <div class="shot demo-shot">
-        <video class="demo-video" autoplay controls muted loop playsinline poster="assets/img/ui-01-dashboard-inicial.png">
-          <source src="assets/video/demo.mp4" type="video/mp4">
+        <video class="demo-video" autoplay controls muted loop playsinline poster="assets/img/ui-01-dashboard-light.png">
           <source src="assets/video/demo.webm" type="video/webm">
         </video>
       </div>
     </div>
     <aside class="notes">
-      <p>Enmarco el vídeo: es el <strong>dashboard en modo oscuro</strong> (React 19 / Vite / Tailwind 4). Chat con el Orchestrator, entorno animado con <strong>replay paso a paso</strong>, tarjetas de métricas y eventos críticos del Tracker, y panel con el estado de cada agente.</p>
-      <p>Todo el estado llega por un <strong>único WebSocket</strong> (<code>/ws</code>): la interfaz refleja cada paso del pipeline en cuanto ocurre, sin polling. Eventos <code>agent_status</code> y <code>agent_tool</code> hacen visible el proceso vivo.</p>
-      <p>Recorrido base (CU-01): describo un problema en lenguaje natural → el Orchestrator propone modelos y entorno → Architect genera la especificación → se simula → se observa en vivo → se analiza → Reporter genera el <strong>PDF descargable</strong>.</p>
-      <p class="q">P: ¿Por qué WebSocket y no REST con polling? → El polling añade latencia y duplica consultas; con un canal único el usuario ve un proceso vivo. El precio es mover la sincronización al backend.</p>
+      <p>Antes de arrancar el vídeo lo enmarco para que se sepa qué se está mirando: es el <strong>panel de control (dashboard) de la aplicación web</strong>. A la izquierda, un chat donde converso con el Orchestrator en lenguaje natural; en el centro, el entorno de simulación animado, que puedo <strong>reproducir paso a paso</strong> como si fuera un vídeo; y alrededor, tarjetas con métricas, los eventos que el Tracker marcó como importantes y el estado de cada agente.</p>
+      <p>Un detalle técnico que merece la pena señalar: todo lo que se ve llega por un <strong>único canal permanente</strong> (un WebSocket) entre el navegador y el servidor. Eso significa que la pantalla refleja cada paso del proceso <strong>en el momento en que ocurre</strong>, sin tener que estar preguntando al servidor cada poco. Se ve un proceso vivo, no una pantalla que se refresca.</p>
+      <p>El recorrido que muestra la demo es el caso de uso principal: <strong>describo un problema con mis palabras</strong> → el Orchestrator me propone modelos y un entorno → el Architect genera la especificación de ese entorno → se simula → se observa en directo → se analiza → y el Reporter genera un <strong>informe PDF que puedo descargar</strong>. De extremo a extremo, sin tocar código.</p>
+      <p class="q">Si me preguntan por qué ese canal permanente y no consultar al servidor cada pocos segundos: porque consultar cada poco añade retraso y multiplica las peticiones; con un solo canal el usuario ve el proceso al instante. El precio es que la complejidad de sincronizar se mueve al servidor, y asumo ese coste a conciencia.</p>
     </aside>
   </section>
 
@@ -108,27 +126,27 @@
           <p class="mono dim" style="margin-top:6px;font-size:0.6rem">Researcher · Reasoner · Builder</p>
         </div>
         <div class="panel agent--orchestrator" data-anim="p2" style="padding:16px 20px">
-          <div class="panel__title">Fase 2 · Juan Freire</div>
+          <div class="panel__title">Este TFG · Juan Freire</div>
           <p>Ejecutar · observar · analizar · informar · <strong>recordar</strong>.</p>
-          <p class="mono dim" style="margin-top:6px;font-size:0.6rem">Este TFG · <em>infraestructura</em></p>
+          <p class="mono dim" style="margin-top:6px;font-size:0.6rem">Architect · Tracker · Analyst · Reporter</p>
         </div>
       </div>
       <div class="bridge" data-anim="bridge"></div>
     </div>
-    <div class="grid-2" style="margin-top:1.1rem;align-items:center;gap:var(--space-6)">
-      <pre class="contract" style="max-width:none;font-size:0.72rem;margin:0"><code class="language-python">class DecisionModel(Protocol):
+    <div class="contract-accord">
+      <span class="contract-accord__tag mono">el acuerdo entre ambas fases · DecisionModel</span>
+      <pre class="contract" style="font-size:0.72rem;margin:0"><code class="language-python">class DecisionModel(Protocol):
     def decide(self, perception: dict) -> Action: ...
     def update(self, action, reward, new_perception): ...
-    def get_state(self) -> dict: ...
-</code></pre>
-      <p class="muted" style="font-size:0.8rem">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento. Sin herencia ni dependencias estáticas — ambas fases evolucionan por separado, sin coordinar releases.</p>
+    def get_state(self) -> dict: ...</code></pre>
+      <p class="muted" style="font-size:0.8rem;max-width:680px;text-align:center">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento. Sin herencia ni dependencias estáticas — ambas fases evolucionan por separado, sin coordinar releases.</p>
     </div>
     <aside class="notes">
-      <p>Fase 1: lenguaje natural → modelo Python ejecutable (Researcher/Reasoner/Builder). Fase 2: <strong>ejecutar · observar · analizar · informar · recordar</strong>.</p>
-      <p>Integración por <strong>duck typing</strong> — Protocol <code>runtime_checkable</code>, sin herencia ni dependencias estáticas. Tres métodos: <code>decide(perception)→Action</code>, <code>update(action,reward,new_perception)</code>, <code>get_state()→dict</code> (con la clave <code>q_values</code> que el lab consume para trazas y gráficas).</p>
-      <p>Claves de <code>perception</code>: <code>x, y, grid_width, grid_height, step, resources, last_action_result</code>. El contrato recuerda al de aprendizaje por refuerzo y admite Q-learning, paradigmas no tabulares y estrategias deliberativas.</p>
-      <p>Respaldado por RNF-01 (desacoplamiento), RNF-02 (extensibilidad) y RNF-13 (interoperabilidad).</p>
-      <p class="q">P: ¿Por qué duck typing y no una clase base? → Una clase base crearía dependencia de paquete y obligaría a coordinar versiones. El lab solo comprueba en carga que la clase expone los tres métodos.</p>
+      <p>Esta es la diapo de la integración, la decisión de la que más orgulloso estoy. Recuerdo el reparto: la Fase 1 convierte lenguaje natural en un modelo Python; este TFG lo <strong>ejecuta, observa, analiza, informa y recuerda</strong>.</p>
+      <p>Lo importante es <em>cómo</em> encajan las dos fases. En lugar de que mi código dependa del suyo con herencia o con una librería compartida, uso lo que se llama <strong>«duck typing»</strong>: mi laboratorio no exige que el modelo sea de un tipo concreto, solo comprueba que sepa hacer <strong>tres cosas</strong>. La metáfora es la de siempre: «si camina como un pato y hace cuac como un pato, lo trato como un pato». Da igual quién lo escribió o cómo, mientras cumpla las tres funciones.</p>
+      <p>Esas tres funciones son el contrato entero: <code>decide</code> (mira lo que percibe y elige una acción), <code>update</code> (aprende de la recompensa que recibió) y <code>get_state</code> (enseña sus tripas para que yo pueda dibujarlas). Lo que el modelo «percibe» es una lista corta de datos: su posición, el tamaño del tablero, el paso en que va, los recursos y el resultado de su última acción. A quien conozca el campo le sonará al <em>aprendizaje por refuerzo</em>, y no es casualidad: ese formato admite desde un Q-learning clásico hasta estrategias más deliberativas.</p>
+      <p>Esta decisión responde a tres requisitos no funcionales del proyecto: desacoplamiento, extensibilidad e interoperabilidad. El resultado práctico es que <strong>las dos fases evolucionan por separado, sin coordinar versiones</strong>.</p>
+      <p class="q">Si me preguntan por qué duck typing y no una clase base de la que ambos heredaran: una clase base crearía una dependencia de paquete y nos obligaría a coordinar cada versión. Con el contrato fino, el laboratorio solo comprueba al cargar el modelo que expone las tres funciones, y ya está.</p>
     </aside>
   </section>
 
@@ -136,7 +154,7 @@
   <section data-slide="arte">
     <div class="kicker">Estado del arte</div>
     <h2>Sobre qué se construye</h2>
-    <div class="grid-2" style="margin-top:0.7rem;align-items:start">
+    <div class="grid-2 arte-grid" style="margin-top:0.7rem;align-items:stretch">
       <div class="stack">
         <div class="panel" data-anim="p"><div class="panel__title">Simular para validar</div><p>Un modelo no solo describe un mecanismo: lo <strong>ejecuta</strong> y deja ver sus patrones. Y la validación no acaba cuando compila.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 40" fill="none" aria-hidden="true">
@@ -212,15 +230,15 @@
           <p class="mono dim" style="font-size:0.6rem;margin-top:6px">ReAct · SWE-bench</p></div>
       </div>
     </div>
-    <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
+    <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem;text-align:center;max-width:900px;margin-left:auto;margin-right:auto">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
     <aside class="notes">
-      <p>Cuatro pilares que combino, no invento:</p>
-      <p><strong>(a) Simular para validar</strong> — Epstein (ABM), Railsback &amp; Grimm (implementar/ejecutar/analizar como ciencia), Sargent (verificación vs. validación).</p>
-      <p><strong>(b) Multi-agente LLM</strong> — MetaGPT (roles en orden canónico); survey de Guo et al. (cooperativo/debate/competitivo × Layered/Decentralized/Centralized/Shared Pool).</p>
-      <p><strong>(c) Recuperación + memoria</strong> — RAG (Lewis), BM25 (Robertson), RRF (Cormack) sin entrenar, GraphRAG (Microsoft), grafos (Hogan).</p>
-      <p><strong>(d) Herramientas + coding agents</strong> — ReAct, SWE-bench, Self-Refine, Reflexion.</p>
-      <p>Mi arquitectura se sitúa en <strong>Cooperative · Centralized · Layered</strong>.</p>
-      <p class="q">P: ¿Cuál es la novedad si combinas? → La <strong>integración</strong>: un lab que recibe modelos externos, los ejecuta en un entorno común y deja evidencia persistente y auditable —recorrido que ninguna técnica aislada cubre.</p>
+      <p>Aquí sitúo el trabajo respecto a lo que ya existe. El mensaje que quiero dejar es honesto: <strong>no invento una técnica nueva, combino cuatro líneas que ya estaban ahí</strong>. Las repaso por encima; no hace falta que el tribunal retenga los nombres, solo la idea de cada bloque.</p>
+      <p><strong>(a) Simular para validar.</strong> En ciencia se usan modelos que no solo describen un mecanismo con palabras, sino que lo <strong>ejecutan</strong> para ver qué patrones emergen. Y la validación no termina cuando el programa compila: hay que comprobar que hace lo correcto. Autores de referencia: Epstein, Railsback y Grimm, Sargent.</p>
+      <p><strong>(b) Varios agentes de IA cooperando.</strong> En lugar de un único agente que lo hace todo y no deja nada auditable, se reparte el trabajo en <strong>roles especializados que actúan en un orden fijo</strong>. Es la idea de sistemas como MetaGPT.</p>
+      <p><strong>(c) Recuperación y memoria.</strong> Combinar búsqueda por significado y búsqueda por palabra exacta sobre un grafo de conocimiento, para que el sistema recuerde y consulte lo que ya sabe. Es la base de las técnicas RAG y GraphRAG.</p>
+      <p><strong>(d) Herramientas y agentes que programan.</strong> Modelos que razonan y <strong>actúan llamando a herramientas</strong> cuyo uso queda registrado, e incluso agentes que escriben código sobre repositorios reales. Referencias: ReAct, SWE-bench.</p>
+      <p>Mi arquitectura se coloca en un punto concreto de ese mapa: <strong>cooperativa</strong> (los agentes colaboran, no compiten), <strong>centralizada</strong> (un coordinador manda) y <strong>por capas</strong> (roles en orden).</p>
+      <p class="q">Si me preguntan cuál es la novedad si solo combino: está en la <strong>integración</strong>. Un laboratorio que recibe modelos de fuera, los ejecuta en un entorno común y deja evidencia persistente y auditable de todo el recorrido. Ninguna de esas técnicas por separado cubre ese camino completo.</p>
     </aside>
   </section>
 
@@ -229,7 +247,7 @@
     <div class="kicker">Objetivos</div>
     <h2>Seis objetivos específicos</h2>
     <p class="muted" style="margin-top:-0.2rem;font-size:0.8rem">No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño.</p>
-    <div class="grid-3" style="margin-top:0.9rem">
+    <div class="grid-3" style="margin-top:0.9rem;grid-auto-rows:1fr">
       <div class="panel obj fragment fade-in-up" style="--acc:var(--color-architect)">
         <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
         <div class="panel__title" style="color:var(--acc)">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
@@ -250,9 +268,9 @@
         <div class="panel__title" style="color:var(--acc)">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
     </div>
     <aside class="notes">
-      <p>Seis objetivos específicos (cap. 0): 1) generar la <strong>especificación del entorno</strong> desde lenguaje natural; 2) ejecutar uno o <strong>varios modelos sin acoplar</strong>; 3) <strong>registrar</strong> comportamiento estructurado (eventos, trayectorias, episodios, variables internas); 4) <strong>analizar patrones</strong> y contrastarlos con postulados previos; 5) generar <strong>informe PDF</strong>; 6) persistir <strong>memorias reutilizables</strong>.</p>
-      <p>No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño. Se traducen en 13 RF + 14 RNF (MoSCoW) y 5 casos de uso (CU-01 a CU-05).</p>
-      <p class="q">P: ¿Se cumplieron todos? → Sí, los seis (cap. conclusiones). La evaluación instrumentada CASO1/CASO2 valida además la fidelidad del recorrido de extremo a extremo.</p>
+      <p>Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: <strong>(1)</strong> generar la especificación del entorno a partir de lenguaje natural; <strong>(2)</strong> ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; <strong>(3)</strong> registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); <strong>(4)</strong> analizar patrones y contrastarlos con lo que ya se sabía; <strong>(5)</strong> generar un informe PDF; y <strong>(6)</strong> guardar memorias que se puedan reutilizar en experimentos posteriores.</p>
+      <p>Un matiz honesto que quiero decir en voz alta: estos objetivos <strong>no estaban fijados de antemano</strong>, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.</p>
+      <p class="q">Si me preguntan si se cumplieron todos: sí, los seis, y así lo recojo en las conclusiones. Además, la evaluación instrumentada con dos casos reales (los enseño al final) comprueba que el recorrido completo es fiel de principio a fin, no solo que cada pieza funciona por separado.</p>
     </aside>
   </section>
 
@@ -302,13 +320,13 @@
       </div>
     </div>
     <aside class="notes">
-      <p>Arquitectura por capas:</p>
-      <p><strong>Presentación</strong> — cliente web (dashboard/chat/replay, React 19) + API FastAPI mínima (REST + un WebSocket <code>/ws</code>).</p>
-      <p><strong>Orquestación</strong> — el Orchestrator: estado de sesión, catálogo de tool calls, despacho.</p>
-      <p><strong>Agentes</strong> — Architect, Tracker, Analyst, Reporter.</p>
-      <p><strong>Simulación</strong> — Model loader (duck typing), Runtime 2D (<code>simlab.environment</code>), Charts (<code>simlab.charts</code>).</p>
-      <p><strong>Persistencia</strong> — PostgreSQL (metadatos, <code>simulation_observations</code>), MinIO (artefactos/PDF), Qdrant (memorias denso+sparse), Neo4j (grafo). Externos: OpenRouter, Voyage AI y ZeroEntropy (opcionales). Despliegue con Docker Compose (RNF-07).</p>
-      <p class="q">P: ¿Por qué cuatro almacenes? → Porque no se consultan igual: por ID/fecha (SQL), como archivos (MinIO), por parecido semántico/léxico (Qdrant) o por relaciones (Neo4j). Coherencia con UUIDs y claves compartidas.</p>
+      <p>Presento la arquitectura como una tarta de <strong>cinco capas</strong>, de arriba abajo. La idea que quiero transmitir es que cada capa tiene una única responsabilidad y solo habla con la de al lado.</p>
+      <p><strong>Presentación</strong>: lo que ve el usuario —el panel web con el chat, la simulación y el replay— más una API ligera en el servidor que expone el canal de comunicación.</p>
+      <p><strong>Orquestación</strong>: el Orchestrator, que lleva el estado de la conversación y decide qué agente actúa en cada momento.</p>
+      <p><strong>Agentes</strong>: los cuatro especialistas —Architect, Tracker, Analyst, Reporter—.</p>
+      <p><strong>Simulación</strong>: el cargador que trae los modelos de la Fase 1, el motor que ejecuta el mundo 2D y el módulo que dibuja las gráficas del análisis.</p>
+      <p><strong>Persistencia</strong>: cuatro almacenes de datos distintos —PostgreSQL, MinIO, Qdrant y Neo4j— más algún servicio externo opcional. Todo se despliega con Docker, de forma que montar el laboratorio en otra máquina es un solo comando.</p>
+      <p class="q">Si me preguntan por qué cuatro almacenes y no uno: porque los datos no se consultan igual. Unos se buscan por identificador o fecha (una base de datos clásica), otros son archivos grandes (un almacén de objetos), otros se buscan por parecido (una base vectorial) y otros por sus relaciones (un grafo). Uso la herramienta adecuada a cada pregunta, y las mantengo coherentes con identificadores compartidos. Lo detallo en las dos diapos siguientes.</p>
     </aside>
   </section>
 
@@ -322,17 +340,18 @@
         <div class="simdot" id="dom-agent" style="background:var(--color-architect);box-shadow:0 0 12px var(--color-architect)"></div>
       </div>
       <div class="stack">
+        <div class="panel"><p><strong>El entorno</strong> <span class="dim">(Environment)</span> — una rejilla de <strong>tamaño fijo</strong> (ancho × alto) donde viven los <strong>recursos</strong> que el agente busca.</p></div>
         <div class="panel"><p><strong>El cuerpo</strong> <span class="dim">(Agent)</span> — quién y dónde: posición en la rejilla, energía e historia.</p></div>
         <div class="panel"><p><strong>La política</strong> <span class="dim">(DecisionModel)</span> — cómo decide, separada del cuerpo.</p></div>
-        <p class="dim" style="font-size:0.78rem;line-height:1.5">Sobre recursos, reglas del entorno y <strong>eventos inmutables</strong> — la frontera compartida con la Fase 1.</p>
+        <p class="dim" style="font-size:0.78rem;line-height:1.5">Reglas del entorno y <strong>eventos inmutables</strong> — la frontera compartida con la Fase 1.</p>
       </div>
     </div>
     <aside class="notes">
-      <p>Rejilla 2D común, <strong>deliberadamente acotada</strong>: solo busca un escenario donde paradigmas muy distintos se evalúen en condiciones equivalentes.</p>
-      <p><code>simlab.environment</code> define cinco conceptos: <code>Environment</code>, <code>Agent</code>, <code>Resource</code>, <code>Event</code> (<strong>registro inmutable</strong> por decisión) y <code>DecisionModel</code> (la política de Fase 1).</p>
-      <p>Separación deliberada: el <strong>Agent</strong> es <em>quién y dónde</em> (cuerpo: id, posición, energía, historia); el <strong>DecisionModel</strong> es <em>cómo decide</em>. Así cambio la política sin tocar el entorno y ejecuto varios paradigmas a la vez.</p>
-      <p>El <code>Event</code> guarda por paso: <code>step, agent_id, action, reward, perception, state</code>.</p>
-      <p class="q">P: ¿No es demasiado simple una rejilla 2D? → Es una limitación reconocida y elegida a propósito: la aportación está en la infraestructura de observación, no en la riqueza del entorno. Ampliarlo es línea de continuación.</p>
+      <p>El entorno donde viven los modelos es una <strong>rejilla en dos dimensiones</strong>, como un tablero. Quiero ser transparente: es <strong>deliberadamente sencillo</strong>. No busco un mundo rico, sino un escenario común donde paradigmas muy distintos se puedan medir en las mismas condiciones, que es lo justo para poder compararlos.</p>
+      <p>Ese mundo se compone de cinco conceptos: el <strong>entorno</strong>, el <strong>agente</strong>, los <strong>recursos</strong>, los <strong>eventos</strong> (un registro que, una vez escrito, no se toca nunca más) y el <strong>modelo de decisión</strong>, que es la pieza que aporta la Fase 1.</p>
+      <p>La separación importante, y que conviene explicar despacio, es entre el <strong>cuerpo</strong> y la <strong>mente</strong>. El agente es el cuerpo —quién es y dónde está: su posición, su energía, su historia—. El modelo de decisión es la mente —cómo elige—. Al separarlos, puedo cambiar la forma de decidir sin tocar el mundo, y correr varios paradigmas a la vez en el mismo tablero.</p>
+      <p>Cada evento guarda, por cada paso: en qué momento fue, qué agente actuó, qué acción tomó, qué recompensa recibió, qué percibía y en qué estado interno quedó. Esa es la materia prima de todo lo que viene después.</p>
+      <p class="q">Si me preguntan si no es demasiado simple una rejilla 2D: es una limitación que reconozco y elegí a propósito. Mi aportación está en la infraestructura de observación, no en la riqueza del mundo. Ampliar el entorno —a espacios continuos o multi-agente— es una de las líneas de continuación que propongo al final.</p>
     </aside>
   </section>
 
@@ -360,11 +379,11 @@
       </ul>
     </div>
     <aside class="notes">
-      <p>Es la <strong>única pieza que entiende el pipeline completo</strong>: mantiene el historial del chat, el catálogo de tool calls y despacha cada llamada al agente.</p>
-      <p>La planificación global es una <strong>secuencia canónica</strong> de tool calls; el LLM solo elige <strong>desviaciones puntuales</strong> (una consulta extra, repetir un paso, descartar un intento fallido). No se le delega la planificación completa.</p>
-      <p>Tres responsabilidades exclusivas: <strong>pre-recupera contexto</strong> para Architect y Reporter (el Analyst es la excepción, usa su propia <code>retrieve_context</code>); <strong>difiere la persistencia</strong> vía <code>TrackerMemoryWriter</code> (embeddings Voyage en un batch → PostgreSQL + Qdrant denso + sparse), controlando presupuesto y ventana; <strong>transmite en vivo</strong> por WebSocket.</p>
-      <p>Autocompactación del historial: al superar un umbral, los turnos antiguos se resumen con <strong>plantilla determinista, no con el LLM</strong> (RNF-10).</p>
-      <p class="q">P: Si el LLM apenas planifica, ¿por qué un LLM orquestador? → Aporta interpretar la intención en lenguaje natural y las desviaciones puntuales; la secuencia va codificada para que el pipeline sea auditable y reproducible (Centralized+Layered, à la MetaGPT).</p>
+      <p>El Orchestrator es el director de orquesta: la <strong>única pieza que conoce el proceso completo</strong>. Lleva el hilo de la conversación, sabe qué herramientas hay disponibles y decide a qué agente le toca actuar en cada momento.</p>
+      <p>Un punto que quiero dejar claro porque suele generar preguntas: el orden general <strong>no lo improvisa el modelo de lenguaje</strong>. La secuencia de pasos está escrita de antemano —es una «secuencia canónica»— y al modelo solo se le deja elegir <strong>desviaciones puntuales</strong>: hacer una consulta extra, repetir un paso, descartar un intento que salió mal. No le entrego la planificación completa, precisamente para que el proceso sea auditable y repetible.</p>
+      <p>Tiene tres tareas que no delega en nadie. Primera, <strong>prepara el contexto</strong> antes de llamar a cada agente, buscándole de antemano lo que va a necesitar. Segunda, <strong>agrupa las escrituras en la base de datos</strong> y las hace de golpe al final, para controlar el gasto y no saturar la memoria del modelo. Tercera, <strong>retransmite en directo</strong> todo lo que pasa por el canal permanente.</p>
+      <p>Un detalle fino: cuando la conversación se hace muy larga, los turnos antiguos se resumen con una <strong>plantilla fija, escrita por código, no por el modelo</strong>. Así el resumen es siempre igual de fiable y no introduce alucinaciones.</p>
+      <p class="q">Si me preguntan que, si el modelo apenas planifica, para qué usar un modelo de lenguaje como orquestador: aporta justo lo que el código no sabe hacer —interpretar lo que el usuario quiere en lenguaje natural y decidir esas desviaciones puntuales—. La columna vertebral va codificada a propósito, para que el pipeline sea auditable y reproducible.</p>
     </aside>
   </section>
 
@@ -403,12 +422,12 @@
     </div>
     <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cuatro <strong>cambios de representación</strong> encadenados: del lenguaje al entorno, del entorno a los datos, de los datos al informe.</p>
     <aside class="notes">
-      <p>Cuatro <strong>cambios de representación</strong> encadenados:</p>
-      <p><strong>Architect</strong> — lenguaje natural → especificación JSON validada contra <code>simlab.spec</code> antes de instanciar el <code>Environment</code> (grid, actions con efecto discriminado, resources). No decide qué modelo es correcto: hace el entorno compatible.</p>
-      <p><strong>Tracker</strong> — ejecución → observaciones (eventos, trayectorias, episodios). <strong>Observador puro: no escribe en el backbone</strong>. Detecta lo crítico por <strong>reglas deterministas</strong> antes de que el LLM interprete: consumos, riesgo de hambre, muerte, saltos de energía, cambio de acción dominante, caídas de confianza (Q-values próximos).</p>
-      <p><strong>Analyst</strong> — observaciones → patrones. <strong>Único agente con <code>retrieve_context</code> propia</strong>: contrasta contra postulados del KG y genera las gráficas (<code>simlab.charts</code>), incluida la comparativa multi-modelo.</p>
-      <p><strong>Reporter</strong> — patrones → PDF con LaTeX sobre <code>report_template.tex</code>, compilado con <strong>tectonic (sin fallback)</strong>.</p>
-      <p class="q">P: ¿Por qué separar Tracker de Analyst? → Para mantener la frontera entre hechos de simulación y conclusiones. El Tracker registra sin interpretar; el Analyst interpreta. Y el detector determinista da puntos de atención calculados por código, no episodios inventados por el modelo.</p>
+      <p>La forma más útil de entender los cuatro agentes es verlos como una cadena de <strong>traducciones</strong>: cada uno toma la información en un formato y la deja en otro, más cerca del informe final.</p>
+      <p><strong>Architect</strong>: traduce <em>lenguaje natural → especificación del entorno</em>. Convierte mi petición en la descripción de un tablero 2D concreto (tamaño, acciones, recursos) y la valida antes de construirlo. No juzga si un modelo es correcto; solo se encarga de que el entorno sea compatible con lo que pido.</p>
+      <p><strong>Tracker</strong>: traduce <em>simulación → observaciones</em>. Registra eventos, trayectorias y episodios. Es importante: es un <strong>observador puro, no escribe en la memoria compartida</strong>. Y detecta lo que merece atención con <strong>reglas fijas de código</strong>, antes de que ningún modelo interprete nada: consumos, riesgo de morir de hambre, muertes, saltos bruscos de energía, cambios en la acción dominante, caídas de confianza del modelo.</p>
+      <p><strong>Analyst</strong>: traduce <em>observaciones → patrones</em>. Es el <strong>único agente que consulta la memoria por su cuenta</strong>: contrasta lo observado con lo que la teoría postulaba y genera las gráficas, incluida la comparativa cuando se corren varios modelos a la vez.</p>
+      <p><strong>Reporter</strong>: traduce <em>patrones → PDF</em>. Redacta el informe y lo compila con LaTeX. Y lo hace <strong>sin red de seguridad</strong>: si la compilación falla, falla de verdad, no se inventa un PDF alternativo. Prefiero un error visible a un informe silenciosamente degradado.</p>
+      <p class="q">Si me preguntan por qué separo Tracker y Analyst: para mantener la frontera entre los <strong>hechos</strong> de la simulación y las <strong>conclusiones</strong>. El Tracker registra sin interpretar; el Analyst interpreta. Y como el detector de eventos críticos es código determinista, los puntos de atención los calcula una regla, no se los inventa el modelo.</p>
     </aside>
   </section>
 
@@ -433,13 +452,13 @@
     </div>
     <div class="chips" style="margin-top:0.6rem"><span class="chip">Voyage AI · embeddings</span><span class="chip">ZeroEntropy · reranking</span><span class="chip dim">opcionales · con degradación controlada</span></div>
     <aside class="notes">
-      <p>Capa de persistencia <strong>compartida con Fase 1</strong>; acceso <strong>centralizado vía Orchestrator</strong> (excepto el Analyst). Cuatro tiendas, cada una elegida por <em>cómo se consulta</em> el dato, con un ejemplo real en cada tarjeta:</p>
-      <p><strong>PostgreSQL</strong> — la verdad estructurada: cada decisión, recompensa y estado paso a paso, reproducible (<code>DDM-v2 · CASO1 · paso 19</code>). <code>simulation_observations</code>.</p>
-      <p><strong>MinIO</strong> — los entregables pesados que no caben en una fila: informes y figuras, servidos por URL (<code>informe-caso1.pdf</code>).</p>
-      <p><strong>Qdrant</strong> — la memoria de experiencias: recupera por significado y por término exacto en la misma consulta (denso + sparse BM25 → <strong>RRF</strong>). Esto es lo que amplío en la slide siguiente.</p>
-      <p><strong>Neo4j</strong> — el conocimiento del dominio: paradigmas, autores y papers, con la <strong>procedencia</strong> de cada afirmación (<code>(Rangel 2013)—[POSTULA]→(valor)</code>).</p>
-      <p>Escritura: el <code>TrackerMemoryWriter</code> descompone el JSON del Tracker en hechos e inserta bajo namespace <code>simulation</code> con el <strong>mismo UUID compartido</strong>. <strong>Voyage</strong> y <strong>ZeroEntropy</strong> son opcionales (RNF-05, degradación controlada).</p>
-      <p class="q">P: ¿Y si Voyage/ZeroEntropy no están? → La capa semántica es opcional: el writer no participa, no hay reranking ni escritura indexada, pero simular/observar/analizar/informar sigue funcionando.</p>
+      <p>Esta es la memoria del sistema, compartida con la Fase 1. Se accede a ella de forma <strong>centralizada, a través del Orchestrator</strong> (con la única excepción del Analyst). Lo interesante es que no es un almacén, sino <strong>cuatro</strong>, y cada uno se eligió por <em>cómo se consulta el dato</em>, no por capricho. En cada tarjeta puse un ejemplo real para que se entienda.</p>
+      <p><strong>PostgreSQL</strong> es la <strong>verdad estructurada</strong>: cada decisión, cada recompensa y cada estado, paso a paso y reproducible. Es donde miro si quiero saber exactamente qué pasó en el paso 19 del caso 1.</p>
+      <p><strong>MinIO</strong> guarda los <strong>entregables pesados</strong> que no caben en una fila de una tabla: los informes PDF y sus figuras, que se sirven por una dirección web.</p>
+      <p><strong>Qdrant</strong> es la <strong>memoria de experiencias</strong>: permite recuperar episodios pasados por su significado y por su término exacto en la misma consulta. Es la pieza que amplío en la diapo siguiente, porque es la más técnica.</p>
+      <p><strong>Neo4j</strong> es el <strong>conocimiento del dominio</strong>: un grafo con paradigmas, autores y papers, que además guarda <strong>de dónde sale cada afirmación</strong>. Así, cuando el sistema dice algo, puede citar la fuente (por ejemplo, «esto lo postula Rangel en 2013»).</p>
+      <p>Sobre cómo se llena: cuando el Tracker termina, un componente descompone sus observaciones en hechos pequeños y los guarda bajo una misma etiqueta, con el <strong>mismo identificador compartido</strong> en todos los almacenes, para poder cruzarlos después. Dos servicios externos por API refuerzan la parte semántica: <strong>Voyage AI</strong> genera los <strong>embeddings</strong> —convierte cada texto en un vector para poder buscarlo por significado— y <strong>ZeroEntropy</strong> hace <strong>reranking</strong> —reordena por relevancia los resultados recuperados antes de usarlos—. Ambos son <strong>opcionales</strong>: si sus claves de API no están, esa capa se apaga.</p>
+      <p class="q">Si me preguntan qué pasa si esos servicios externos no están: la capa semántica se apaga con elegancia —no hay memoria indexada ni reordenación de resultados—, pero simular, observar, analizar e informar sigue funcionando igual. Es una degradación controlada, no una caída.</p>
     </aside>
   </section>
 
@@ -478,12 +497,11 @@
     </div>
     <p class="muted" data-anim="foot" style="margin-top:0.9rem;font-size:0.8rem">El Orchestrator funde <strong>significado</strong>, <strong>hechos exactos</strong>, <strong>dominio</strong> y <strong>artefactos</strong> en un solo contexto <span class="mono dim">— Reciprocal Rank Fusion, sin entrenar nada</span>.</p>
     <aside class="notes">
-      <p>Idea central: <strong>una sola consulta del usuario recorre las cuatro tiendas</strong> y el Orchestrator funde los resultados en un único contexto. Cada tienda aporta una cosa distinta que las demás no dan.</p>
-      <p><strong>Qdrant · búsqueda híbrida</strong> — el corazón: memoria de experiencias por <strong>significado</strong> (densa, encuentra <em>drive</em> u homeostasis sin repetir palabras) y por <strong>término exacto</strong> (dispersa BM25, fiable con <code>Rangel 2013</code> o <code>DDM-v2</code> que el vector diluiría). Se combinan con <strong>Reciprocal Rank Fusion</strong>, sin entrenar.</p>
-      <p><strong>PostgreSQL · filtro exacto</strong> — los hechos del run sin ambigüedad: modelo, caso, paso, recompensa (<code>WHERE case='CASO1' AND step=19</code>).</p>
-      <p><strong>Neo4j · grafo de dominio</strong> — los postulados y su procedencia: contra qué teoría se contrasta lo observado (<code>(exploración)←[POSTULA]—(Rangel 2013)</code>).</p>
-      <p><strong>MinIO · artefactos</strong> — los entregables ya generados, servidos por URL (informes, figuras).</p>
-      <p class="q">P: ¿Por qué no solo búsqueda semántica moderna? → Porque cada pregunta necesita una mezcla distinta: la semántica falla con autores, IDs y citas literales (ahí gana BM25), y ni la densa ni la dispersa dan hechos exactos, relaciones de dominio ni archivos. RRF funde significado + hechos + dominio + artefactos sin entrenar nada.</p>
+      <p>La idea de esta diapo es sencilla de contar aunque por dentro tenga varias piezas: <strong>cuando el usuario hace una pregunta, esa misma pregunta se lanza a la vez contra los cuatro almacenes</strong>, y el Orchestrator junta todo lo que devuelven en un único contexto. Cada almacén sabe responder a algo que los otros no saben; por eso uso los cuatro en vez de quedarme con uno.</p>
+      <p>El corazón es <strong>Qdrant</strong>, y aquí conviene ir despacio porque es lo más técnico. Guardo la memoria de experiencias de dos formas que se complementan. La primera es <strong>búsqueda por significado</strong> —en la jerga, «densa»—: cada texto se convierte en una lista de números que captura su sentido, así que si pregunto por «explorar con poca energía» encuentra episodios que hablan de <em>drive</em> o de homeostasis aunque no repitan esas palabras. La segunda es <strong>búsqueda por término exacto</strong> —«dispersa», con un método clásico llamado BM25—: es la fiable cuando busco algo literal como «Rangel 2013» o «DDM-v2», que es justo lo que la búsqueda por significado tiende a diluir.</p>
+      <p>¿Cómo junto las dos listas de resultados? Con <strong>Reciprocal Rank Fusion (RRF)</strong>, que es más humilde de lo que suena: no entrena nada ni usa un modelo, solo mira en qué puesto quedó cada resultado en cada lista y premia a los que salen arriba en ambas. Que sea una simple regla aritmética, reproducible y sin entrenamiento, es una virtud.</p>
+      <p>Las otras tres tiendas aportan lo que Qdrant no puede. <strong>PostgreSQL</strong> da los hechos del run sin ambigüedad —modelo, caso, paso, recompensa— con un filtro exacto (<code>WHERE case='CASO1' AND step=19</code>). <strong>Neo4j</strong> guarda los postulados de la teoría y de dónde salen, para poder decir contra qué se contrasta lo observado (<code>(exploración)←[POSTULA]—(Rangel 2013)</code>). Y <strong>MinIO</strong> devuelve los entregables ya hechos —informes y figuras— servidos por una dirección web.</p>
+      <p class="q">Si me preguntan por qué no uso solo búsqueda semántica moderna: porque cada pregunta necesita una mezcla distinta. La semántica se pierde con autores, identificadores y citas literales —ahí gana BM25—, y ni la densa ni la dispersa saben dar un hecho exacto, una relación entre conceptos o un archivo. RRF me deja fundir significado, hechos, dominio y artefactos sin entrenar nada.</p>
     </aside>
   </section>
 
@@ -494,8 +512,8 @@
     <div class="diagram" style="margin-top:0.6rem">
       <div class="canvas loopring" id="loop-canvas" style="height:440px">
         <svg class="edges" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <ellipse class="loop-ring" cx="50" cy="50" rx="33" ry="38" pathLength="1"/>
-          <path class="loop-ring loop-ring--close" d="M 17 50 A 33 38 0 0 1 50 12" pathLength="1"/>
+          <ellipse class="loop-ring" cx="50" cy="50" rx="33" ry="38"/>
+          <path class="loop-ring loop-ring--close" d="M 17 50 A 33 38 0 0 1 50 12"/>
         </svg>
         <div class="node node--hub loop-hub" data-anim="hub" style="left:50%;top:50%;transform:translate(-50%,-50%);width:238px;text-align:center">
           <div class="loop-hub__cyc">↻</div>
@@ -511,11 +529,11 @@
     </div>
     <p class="muted" style="margin-top:0.4rem;font-size:0.8rem">Implementar deja de ser lo caro; <strong>especificar y verificar</strong> pasan al centro. Cada tarea es un <strong>contrato verificable</strong>.</p>
     <aside class="notes">
-      <p>Anillo de cuatro estaciones alrededor de un mismo centro: <strong>cada tarea es un contrato verificable</strong>. 1 Especificar → 2 Ejecutar → 3 Revisar → 4 Aceptar/Ajustar, y vuelta con la siguiente tarea.</p>
-      <p>Lo que quiero que se vea en el diagrama: de las cuatro estaciones, <strong>tres son mías</strong> (especificar, revisar, aceptar) y solo <strong>Ejecutar es del agente</strong> — y ejecutar es justo lo que <strong>dejó de ser lo caro</strong>. El peso se desplazó a especificar bien y verificar: por eso están en el centro.</p>
-      <p>Especificar dejó de ser «un párrafo de requisitos» y pasó a parecerse a un <strong>plan de implementación</strong>: concreto para que el agente no convierta ambigüedades en decisiones propias. Muchas specs en clave <strong>TDD</strong>.</p>
-      <p>Cada contrato fija: qué comportamiento aparece, qué archivos cambian, qué pruebas se añaden, qué invariantes no se rompen. <strong>Linear</strong> como memoria operativa. Cronograma marzo–junio 2026.</p>
-      <p class="q">P: Si el código lo genera un agente, ¿qué mérito tiene tu ingeniería? → Tres de las cuatro estaciones siguen siendo humanas. Cambió el nivel de abstracción, no la responsabilidad: de «cómo lo escribo» a «qué quiero exactamente que ocurra».</p>
+      <p>Cambio de tercio: esta parte es sobre <strong>cómo desarrollé el trabajo</strong>, no sobre el sistema. Presento un anillo de cuatro estaciones alrededor de un mismo centro, y la idea es que <strong>cada tarea es un contrato verificable</strong>. El ciclo es: 1 especificar → 2 ejecutar → 3 revisar → 4 aceptar o ajustar, y vuelta a empezar con la siguiente tarea.</p>
+      <p>Lo que quiero que se vea en el diagrama es un reparto: de las cuatro estaciones, <strong>tres son mías</strong> (especificar, revisar, aceptar) y solo una, ejecutar, es del agente de IA. Y resulta que <strong>ejecutar —escribir el código— es justo lo que dejó de ser lo caro</strong>. Por eso el peso del trabajo se desplazó a especificar bien y verificar, que es lo que puse en el centro.</p>
+      <p>Esto cambia lo que significa «especificar». Ya no es escribir un párrafo de requisitos, sino algo más parecido a un <strong>plan de implementación</strong>: lo bastante concreto para que el agente no tenga que rellenar huecos con decisiones propias. Muchas de esas especificaciones las escribí en clave de <strong>pruebas primero</strong> (TDD): defino antes qué debe cumplir, y eso hace de contrato.</p>
+      <p>Cada contrato fija cuatro cosas: qué comportamiento nuevo aparece, qué archivos cambian, qué pruebas se añaden y qué invariantes no se pueden romper. Usé Linear como memoria operativa del proyecto, entre marzo y junio de 2026.</p>
+      <p class="q">Si me preguntan qué mérito de ingeniería tiene el trabajo si el código lo genera un agente: tres de las cuatro estaciones siguen siendo humanas. Lo que cambió es el nivel de abstracción, no la responsabilidad: pasé de pensar «cómo escribo esto» a pensar «qué quiero exactamente que ocurra». Esa frase, de hecho, es la que cierra la presentación.</p>
     </aside>
   </section>
 
@@ -530,22 +548,23 @@
     <div class="panel" style="margin-top:1.1rem"><div class="panel__title">El riesgo cambió de sitio</div><p>Ya no es <em>no llegar a escribir</em> una pieza, sino <strong>aceptar una pieza plausible sin comprobar si respeta el sistema</strong>. El <span class="mono">diff</span> se revisa siempre contra la tarea: un cambio puede compilar y aun así rechazarse por ampliar el alcance o meter una abstracción que nadie usa.</p></div>
     <p class="mono dim" style="margin-top:0.9rem;font-size:0.66rem">Codex → backend · persistencia · pruebas &nbsp;·&nbsp; Claude Code → frontend · interacción</p>
     <aside class="notes">
-      <p><strong>El humano decide</strong>: alcance, contratos de integración, diseño visual, prioridades y <strong>aceptación final</strong>. Ninguna salida se aceptó solo por estar generada.</p>
-      <p><strong>El agente implementa</strong>: módulos acotados, pruebas, migraciones, refactores, depuración local —cuando la spec fija el comportamiento.</p>
-      <p>El <strong>riesgo cambió de sitio</strong>: ya no es no llegar a escribir una pieza, sino aceptar una pieza plausible sin comprobar que respeta el sistema. El diff se revisa siempre contra la tarea; un cambio puede compilar y rechazarse por ampliar alcance o meter una abstracción que nadie usa.</p>
-      <p>Ejemplo real: las tool calls asumían un <code>query</code> siempre bien formado; una llamada serializada a medias convertía un error del modelo en excepción del backend. Se pasó a <strong>lectura defensiva</strong> + pruebas de parámetros malformados. El fallo no era del agente: el contrato no fijaba el caso degenerado.</p>
-      <p>Reparto por herramienta: <strong>Codex</strong> → backend/persistencia/pruebas; <strong>Claude Code</strong> → frontend/interacción. No rígido.</p>
-      <p class="q">P: ¿Cómo garantizas no aceptar código incorrecto pero convincente? → Tres capas: pruebas como contrato, revisión combinada (diff humano + subagentes de alta confianza), y verificación manual sobre la app viva.</p>
+      <p>Concreto el reparto de responsabilidades entre el humano y el agente. <strong>El humano decide</strong>: el alcance, los contratos de integración, el diseño visual, las prioridades y —esto es clave— la <strong>aceptación final</strong>. Ninguna salida se aceptó solo por venir generada.</p>
+      <p><strong>El agente implementa</strong>: módulos acotados, pruebas, migraciones de base de datos, refactorizaciones y depuración local. Pero solo cuando la especificación fija bien el comportamiento; si el contrato es ambiguo, el resultado también lo será.</p>
+      <p>La idea que quiero que quede es que <strong>el riesgo cambió de sitio</strong>. Antes el riesgo era no llegar a escribir una pieza a tiempo. Ahora es <strong>aceptar una pieza que parece correcta sin comprobar si respeta el sistema</strong>. Por eso reviso siempre el cambio contra la tarea: un código puede compilar perfectamente y aun así rechazarlo, porque amplía el alcance o mete una abstracción que nadie pidió.</p>
+      <p>Tengo un ejemplo real que cuento si hay tiempo: las llamadas a herramientas daban por hecho que siempre venían bien formadas; una que llegó a medias convirtió un simple error del modelo en una excepción del servidor. La solución fue leer los datos de forma <strong>defensiva</strong> y añadir pruebas con entradas mal formadas. El fallo no era del agente: el contrato no había previsto ese caso raro.</p>
+      <p>En la práctica repartí las herramientas: Codex para el backend, la persistencia y las pruebas; Claude Code para el frontend y la interacción. Nada rígido, pero funcionó bien así.</p>
+      <p class="q">Si me preguntan cómo garantizo no aceptar código incorrecto pero convincente: con tres capas. Las pruebas como contrato, una revisión combinada (mi lectura del cambio más subagentes revisores de alta confianza) y una verificación manual sobre la aplicación ya en marcha.</p>
     </aside>
   </section>
 
   <!-- 15 · VERIFICACIÓN + EVALUACIÓN (fusión) -->
   <section data-slide="verificacion">
     <div class="kicker">Desarrollo · verificación y evaluación</div>
-    <h2>Verificar lo que no tiene una única respuesta correcta</h2>
-    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">Si implementar deja de ser lo caro, el problema se desplaza: <strong>¿qué garantiza que lo generado es correcto?</strong></p>
+    <h2>Verificar el desarrollo, evaluar el sistema</h2>
+    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">Si implementar deja de ser lo caro, el problema se desplaza: <strong>¿qué garantiza que lo generado es correcto?</strong> — en dos momentos: <strong>mientras construyo</strong> y sobre el <strong>resultado final</strong>.</p>
     <div class="grid-2" style="margin-top:0.7rem;align-items:stretch;gap:var(--space-6)">
       <div class="panel fragment fade-in-up">
+        <div class="mono dim" style="font-size:0.58rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px">1 · Durante el desarrollo</div>
         <div class="panel__title">Cómo se verifica</div>
         <div class="vlist">
           <div class="vrow" style="--dot:var(--color-architect)"><span class="vrow__dot"></span><p><b>Pruebas como contrato</b> — pytest + Playwright; sin prueba no está terminado, compuerta de CI en cada push.</p></div>
@@ -554,6 +573,7 @@
         </div>
       </div>
       <div class="panel fragment fade-in-up" style="border-color:color-mix(in srgb,var(--color-accent-cyan) 42%,transparent);background:color-mix(in srgb,var(--color-accent-cyan) 6%,var(--color-surface-frosted))">
+        <div class="mono" style="font-size:0.58rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px;color:color-mix(in srgb,var(--color-accent-cyan) 70%,var(--color-text-dim))">2 · Del sistema terminado</div>
         <div class="panel__title" style="color:var(--color-accent-cyan)">Evaluar lo abierto · LLM-as-a-judge</div>
         <div class="vlist">
           <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Tres familias</b> — código (binario) · juez LLM (salidas abiertas) · revisión humana.</p></div>
@@ -567,19 +587,18 @@
         <div class="panel" style="padding:12px 16px"><div class="panel__title" style="margin-bottom:6px">Caso 1 · valor / forrajeo</div><p style="font-size:0.76rem"><strong>6 paradigmas</strong> <span class="mono dim">· 8×8 · 360 eventos · 15 consumos</span></p></div>
         <div class="panel" style="padding:12px 16px"><div class="panel__title" style="margin-bottom:6px">Caso 2 · homeostasis / interocepción</div><p style="font-size:0.76rem"><strong>4 paradigmas</strong> <span class="mono dim">· 10×10 · 199 eventos · 7 consumos</span></p></div>
       </div>
-      <p class="mono dim" style="margin-top:8px;font-size:0.62rem">dos ejecuciones instrumentadas reales del tutor (Fase 1) — fidelidad de observación de extremo a extremo</p>
     </div>
     <aside class="notes">
-      <p><strong>Verificación (desarrollo)</strong>: <strong>387 pruebas pytest</strong> + Playwright e2e; sin prueba no está terminado. Revisión combinada (diff humano + subagentes) y verificación en vivo. Compuerta de <strong>CI</strong> en cada push (ruff + suites unitarias).</p>
-      <p><strong>Evaluación</strong>: taxonomía de Mohammadi et al. con <strong>tres familias</strong> — código (binario), <strong>LLM-as-a-judge</strong> (salidas abiertas) y revisión humana. Dos principios: la <strong>verdad son los datos de simulación, no la teoría</strong> (se evalúa el anclaje de la observación); y <strong>evaluado ≠ evaluador</strong> —el lab razona con Claude, el juez es Codex, de otra familia. Rúbrica de 6 criterios, /100.</p>
-      <p><strong>Caso 1</strong> (valor/forrajeo): 6 paradigmas, 8×8 con 6 food, <strong>360 eventos</strong>, 15 consumos, tripleta joinable 13=13=13, <strong>88/100</strong> (DDM domina, 10 consumos).</p>
-      <p><strong>Caso 2</strong> (homeostasis/interocepción): 4 paradigmas, <strong>10×10 con 8 food</strong>, 199 eventos, 7 consumos, joinable 9=9=9, <strong>86/100</strong>. Ambos «aprobado con reservas».</p>
-      <p class="q">P: Un LLM juzgando a otro, ¿es fiable? → Tres precauciones: familias distintas (Claude vs Codex), la vara son los datos duros (verificación determinista de anclaje), y el juicio se lee como auditoría de consistencia factual, no como validación científica. La meta-evaluación estadística queda como futuro.</p>
+      <p>Esta diapo une dos cosas: cómo verifiqué el desarrollo y cómo evalué el sistema terminado. Ambas responden a la misma pregunta incómoda: si escribir el código dejó de ser lo caro, <strong>¿qué garantiza que lo generado es correcto?</strong></p>
+      <p>En <strong>verificación</strong>, lo concreto: <strong>387 pruebas automáticas</strong> más pruebas de extremo a extremo en el navegador; mi regla fue que sin prueba una tarea no está terminada. A eso sumo la revisión combinada, la verificación en vivo, y una <strong>puerta automática</strong> que en cada subida de código comprueba estilo y pruebas antes de dejar pasar nada.</p>
+      <p>La <strong>evaluación</strong> es más sutil, porque aquí no hay una única respuesta correcta —no es como comprobar que 2+2 da 4—. Uso tres familias de comprobación: la <strong>automática</strong> (binaria: pasa o no pasa), un <strong>modelo de lenguaje como juez</strong> para las salidas abiertas, y la <strong>revisión humana</strong>. Y me apoyo en dos principios. Primero: <strong>la verdad son los datos de la simulación, no la teoría</strong>; evalúo si la observación es fiel a lo que ocurrió, no si el paradigma acierta sobre el mundo. Segundo: <strong>quien evalúa no es quien fue evaluado</strong> —el laboratorio razona con Claude, así que el juez es Codex, de otra familia—. La nota se da sobre una rúbrica de seis criterios.</p>
+      <p>Conviene decir <strong>de dónde salen los dos casos</strong>, aunque ya no lo ponga en pantalla: no me los inventé para la demo, son <strong>dos ejecuciones instrumentadas reales de modelos de la Fase 1</strong> —los que aporta mi compañero Pablo—, con las que compruebo la <strong>fidelidad de observación de extremo a extremo</strong>. El <strong>caso 1</strong> (valor y forrajeo): 6 paradigmas en un tablero 8×8, 360 eventos, 15 consumos, nota 88 sobre 100. El <strong>caso 2</strong> (homeostasis e interocepción): 4 paradigmas en 10×10, 199 eventos, 7 consumos, nota 86. Ambos «aprobado con reservas».</p>
+      <p class="q">Si me preguntan si es fiable que un modelo juzgue a otro: tomo tres precauciones. Son de familias distintas (Claude frente a Codex), la vara de medir son datos duros verificados por código, y leo el veredicto como una <strong>auditoría de consistencia</strong>, no como una validación científica. Una meta-evaluación estadística más formal la dejo como trabajo futuro.</p>
     </aside>
   </section>
 
   <!-- 16 · QUÉ EVALÚA EL JUEZ -->
-  <section data-slide="anecdota" data-background-color="#f6f7f9">
+  <section data-slide="anecdota">
     <div class="kicker">Pruebas y evaluación · el juez</div>
     <h2>¿Qué evalúa el juez?</h2>
     <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo <span class="mono">Codex</span> —de otra familia— con una rúbrica de 6 criterios, uno por etapa del lab.</p>
@@ -599,24 +618,32 @@
       </div>
     </div>
     <aside class="notes">
-      <p>La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo Codex —de otra familia— con <strong>6 criterios</strong>, uno por etapa: entorno (Architect), observación (Tracker, tripleta joinable + determinismo), análisis (Analyst, anclado en trayectorias), informe (Reporter, sin cifras alucinadas), robustez (pipeline) y juicio global (/100 con evidencia citada).</p>
-      <p><strong>Ejemplo estrella (Caso 2)</strong>: el modelo de <strong>inferencia activa</strong> no defendió su punto de consigna y <strong>murió por inanición en el paso 18</strong> tras un único consumo. El laboratorio <strong>no rellenó su trayectoria</strong>: registró <strong>19 eventos</strong>, marcó la muerte por inanición y siguió comparando. Observa el fallo y lo comunica sin forzar una explicación más cómoda.</p>
-      <p>Veredictos: 88/100 y 86/100, con reservas por imprecisiones puntuales de cita paso a paso.</p>
-      <p class="q">P: ¿Qué demuestra esa muerte por inanición? → Que la observación es fiel incluso cuando el modelo falla: el lab no maquilla, no inventa pasos y reporta el fracaso —que es justo lo que se le pide a una infraestructura de laboratorio.</p>
+      <p>Aquí detallo qué mira el juez, porque es fácil malinterpretarlo. La vara de medir son las <strong>trayectorias de la simulación, no los papers</strong>: se juzga la <strong>fidelidad de la observación</strong> —si el laboratorio contó bien lo que pasó—, no si la teoría acierta. El juez es Codex, de otra familia, y usa seis criterios, uno por cada etapa del laboratorio: entorno, observación, análisis, informe, robustez y un juicio global con nota sobre 100.</p>
+      <p>El ejemplo que más me gusta contar es del caso 2. Uno de los modelos, el de <strong>inferencia activa</strong>, no supo mantener su equilibrio interno y <strong>murió de hambre en el paso 18</strong>, tras comer una sola vez. Lo relevante es lo que hizo el laboratorio: <strong>no rellenó ni maquilló su trayectoria</strong>. Registró los 19 eventos que hubo, marcó la muerte por inanición y siguió comparándolo con los demás. Observó el fallo y lo comunicó tal cual, sin forzar una explicación más cómoda.</p>
+      <p>Los veredictos fueron 88 y 86 sobre 100, con reservas por imprecisiones puntuales al citar pasos concretos.</p>
+      <p class="q">Si me preguntan qué demuestra esa muerte por inanición: que la observación es fiel <strong>incluso cuando el modelo fracasa</strong>. El laboratorio no maquilla, no inventa pasos y reporta el fracaso —que es exactamente lo que se le pide a una infraestructura de laboratorio: contar lo que pasó, no lo que gustaría que hubiera pasado—.</p>
     </aside>
   </section>
 
   <!-- 20 · CIERRE -->
   <section data-slide="cierre">
     <div class="kicker">Conclusiones</div>
-    <h2>Lo que queda</h2>
+    <h2>Lo aprendido</h2>
     <ul class="clean agentic" style="margin-top:0.6rem;max-width:82%">
-      <li class="fragment fade-in-up" style="--agent:var(--color-architect)"><strong>La conexión importa más que la pieza.</strong> Fronteras acotadas, contratos finos.</li>
-      <li class="fragment fade-in-up" style="--agent:var(--color-orchestrator)"><strong>Centralizar el conocimiento compensa.</strong> Control de presupuesto y diagnóstico.</li>
-      <li class="fragment fade-in-up" style="--agent:var(--color-tracker)"><strong>Observar ≠ persistir.</strong> El observador nunca deja memorias a medias.</li>
+      <li class="fragment fade-in-up" style="--agent:var(--color-architect)"><strong>La forma de conectar, más que la pieza.</strong> Contratos finos entre componentes que evolucionan a ritmos distintos.</li>
+      <li class="fragment fade-in-up" style="--agent:var(--color-orchestrator)"><strong>Centralizar el conocimiento compensa.</strong> Merece la pena cuando cada consulta tiene coste.</li>
+      <li class="fragment fade-in-up" style="--agent:var(--color-tracker)"><strong>Observar ≠ persistir.</strong> Separar observación y persistencia mantiene el backbone limpio.</li>
     </ul>
-    <p class="muted fragment fade-in-up" style="margin-top:1rem;font-size:0.74rem">Límites: no valida teorías por sí solo · depende del LLM · dominio 2D. &nbsp;Ampliaciones: más paradigmas y entornos · métricas estandarizadas · reanudación de sesiones.</p>
-    <p class="closing closing--accent fragment fade-in-up" style="margin-top:1.4rem">«De <span class="dim">cómo lo escribo</span> a <strong>qué quiero exactamente que ocurra</strong>.»</p>
+    <div class="grid-2 fragment fade-in-up" style="margin-top:1.1rem;gap:var(--space-7);max-width:94%">
+      <div>
+        <div class="mono dim" style="font-size:0.6rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:5px">Límites</div>
+        <p class="muted" style="font-size:0.74rem;margin:0">No valida teorías por sí solo · depende del LLM y servicios externos · dominio 2D · escritura de conocimiento conservadora.</p>
+      </div>
+      <div>
+        <div class="mono" style="font-size:0.6rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:5px;color:var(--color-architect)">A futuro</div>
+        <p style="font-size:0.74rem;margin:0">Más paradigmas y otros entornos · métricas cuantitativas estandarizadas · reanudación de sesiones · <strong>probarlo con investigadores del grupo (revisión experta)</strong>.</p>
+      </div>
+    </div>
     <div class="cierre-foot fragment fade-in-up">
       <div class="faces faces--mini">
         <div class="face agent--orchestrator"><span class="face__av"><img src="assets/img/faces/orchestrator.svg" alt=""></span></div>
@@ -625,14 +652,14 @@
         <div class="face agent--analyst"><span class="face__av"><img src="assets/img/faces/analyst.svg" alt=""></span></div>
         <div class="face agent--reporter"><span class="face__av"><img src="assets/img/faces/reporter.svg" alt=""></span></div>
       </div>
-      <p class="mono dim" style="font-size:0.7rem;margin:0">Gracias · Juan Freire Alvarez · TFG Fase 2 · USC</p>
+      <p class="mono dim" style="font-size:0.7rem;margin:0">Gracias · Juan Freire Alvarez · Trabajo de Fin de Grado · USC</p>
     </div>
     <aside class="notes">
-      <p>Cierre en tres lecciones (cap. 6): importó más la <strong>forma de conectar</strong> que las decisiones internas de cada pieza.</p>
-      <p><strong>1) Contratos finos</strong> entre componentes que evolucionan a ritmos distintos (la frontera de 3 métodos no exigió coordinar releases). <strong>2) Centralizar el conocimiento compensa</strong> cuando cada consulta tiene coste (presupuesto + diagnóstico). <strong>3) Observar ≠ persistir</strong>: el Tracker es observador puro, no deja memorias a medias.</p>
-      <p><strong>Límites</strong>: no valida teorías por sí solo, depende del LLM/servicios externos, dominio 2D, escritura de conocimiento conservadora (sin nodos Neo4j).</p>
-      <p><strong>Ampliaciones</strong>: más paradigmas y entornos (continuos, multi-agente), <strong>métricas cuantitativas estandarizadas</strong> (benchmark reproducible), <strong>reanudación de sesiones</strong> (el historial ya se persiste; falta rehidratarlo), uso real con el grupo.</p>
-      <p class="q">P: Si tuvieras más tiempo, ¿qué primero? → Una capa común de métricas estandarizadas (recompensa, eficiencia, exploración, estabilidad) para comparativas directas; y la reanudación de sesiones, porque el historial ya está persistido.</p>
+      <p>Cierro con tres lecciones, que son la conclusión del trabajo. La idea de fondo es que importó más <strong>la forma de conectar las piezas</strong> que las decisiones internas de cada una.</p>
+      <p><strong>Una:</strong> los contratos finos entre componentes que evolucionan a ritmos distintos valen mucho —la frontera de tres funciones nunca nos obligó a coordinar versiones—. <strong>Dos:</strong> centralizar el conocimiento compensa cuando cada consulta cuesta dinero y tiempo, porque da control del gasto y facilita el diagnóstico. <strong>Tres:</strong> observar no es lo mismo que guardar —el Tracker observa pero nunca deja memorias a medias—.</p>
+      <p>Soy honesto con los <strong>límites</strong>: el laboratorio no valida teorías por sí solo, depende del modelo de lenguaje y de servicios externos, el dominio es una rejilla 2D, y la escritura de conocimiento es conservadora.</p>
+      <p>Y propongo <strong>ampliaciones</strong>: más paradigmas y entornos (continuos, multi-agente), métricas cuantitativas estandarizadas para comparar de forma directa, poder reanudar sesiones (el historial ya se guarda, falta recuperarlo) y probarlo de verdad con investigadores del grupo —una revisión experta de qué paradigmas estudiarían y qué les ahorra trabajo—.</p>
+      <p class="q">Si me preguntan qué haría primero con más tiempo: una capa común de métricas estandarizadas —recompensa, eficiencia, exploración, estabilidad— para poder comparar modelos de forma directa; y la reanudación de sesiones, porque el historial ya está guardado y solo falta rehidratarlo.</p>
     </aside>
   </section>
 

@@ -69,13 +69,29 @@ SlideAnim.register('arquitectura', el => {
 SlideAnim.register('dominio', el => {
   const grid = el.querySelector('#dom-grid');
   if (grid && !grid.childElementCount) {
-    const resources = new Set([9, 22, 41, 52]);
-    const agentCell = 27;
+    // varios paradigmas a la vez en el mismo tablero → varios agentes de distinto color
+    const agents = [
+      { cell: 27, color: 'var(--color-architect)', main: true },
+      { cell: 20, color: 'var(--color-analyst)' },
+      { cell: 45, color: 'var(--color-tracker)' },
+    ];
+    const food = new Set([9, 13, 34, 38, 41, 52, 58]);
+    const agentAt = new Map(agents.map(a => [a.cell, a]));
     for (let i = 0; i < 64; i++) {
       const c = document.createElement('div');
       c.className = 'cell';
-      if (resources.has(i)) c.style.background = 'color-mix(in srgb, var(--color-accent-green) 55%, transparent)';
-      if (i === agentCell) { c.style.background = 'var(--color-architect)'; c.id = 'dom-agent-cell'; c.style.boxShadow = '0 0 12px var(--color-architect)'; }
+      const a = agentAt.get(i);
+      if (a) {
+        c.classList.add('cell--agent');
+        c.style.background = a.color;
+        c.style.boxShadow = `0 0 12px ${a.color}`;
+        if (a.main) c.id = 'dom-agent-cell';
+      } else if (food.has(i)) {
+        c.classList.add('cell--food');
+        const pellet = document.createElement('span');
+        pellet.className = 'dom-food';
+        c.appendChild(pellet);
+      }
       grid.appendChild(c);
     }
   }
@@ -84,6 +100,8 @@ SlideAnim.register('dominio', el => {
     { opacity: 0 }, { opacity: 1, duration: 0.5, stagger: { each: 0.006, from: 'random' } }, 0);
   const agent = el.querySelector('#dom-agent-cell');
   if (agent) tl.to(agent, { scale: 1.25, duration: 0.7, ease: 'sine.inOut', yoyo: true, repeat: -1, transformOrigin: 'center' }, 0.6);
+  tl.fromTo(grid.querySelectorAll('.dom-food'),
+    { scale: 0.7 }, { scale: 1, duration: 1.1, ease: 'sine.inOut', yoyo: true, repeat: -1, transformOrigin: 'center', stagger: 0.2 }, 0.6);
   return tl;
 });
 
@@ -122,12 +140,16 @@ SlideAnim.register('knowledge', el => {
   return tl;
 });
 
-/* 14 · Bucle de desarrollo — steps in, loop edges draw */
+/* 14 · Bucle de desarrollo — hub, then stations light up clockwise (opacity only:
+   stations are transform-centered, so animating y would clobber their position) */
 SlideAnim.register('bucle', el => {
   const tl = gsap.timeline({ paused: true });
+  const hub = el.querySelector('[data-anim="hub"]');
+  if (hub) tl.fromTo(hub, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, 0);
   const steps = el.querySelectorAll('[data-anim="step"]');
-  tl.fromTo(steps, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.2, ease: 'power2.out' }, 0);
-  drawEdge(tl, '.edge', el, 0.5, 0.9);
+  tl.fromTo(steps, { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.18, ease: 'power2.out' }, 0.15);
+  const next = el.querySelector('.loop-next');
+  if (next) tl.fromTo(next, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.95);
   return tl;
 });
 

@@ -12,6 +12,9 @@ Reveal.initialize({
   controlsTutorial: false,
   slideNumber: 'c/t',
   pdfSeparateFragments: false,
+  // N is repurposed as the speaker-notes toggle (see deck.js), so drop reveal's
+  // default N=next-slide binding — otherwise pressing N both toggles notes and advances.
+  keyboard: { 78: null },
 });
 
 if (window.hljs) hljs.highlightAll();
