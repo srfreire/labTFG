@@ -263,7 +263,18 @@
 .reveal .agtile__flow { font-size: 0.76rem; line-height: 1.4; color: var(--color-text-muted); }
 .reveal .agtile__flow .arw { color: var(--color-text-dim); margin: 0 .28em; transition: color .5s ease; }
 .reveal .agtile__flow .to { transition: color .5s ease; }
-.reveal .agtile__detail { font-size: 0.7rem; line-height: 1.5; color: var(--color-text-muted); max-width: 23ch; }
+.reveal .agtile__detail { font-size: 0.7rem; line-height: 1.5; color: var(--color-text-muted); max-width: 24ch; }
+.reveal .agtile__tag {
+  margin-top: auto; font-family: var(--font-mono); font-size: 0.56rem;
+  letter-spacing: 0.4px; text-transform: uppercase; color: var(--color-text-dim);
+  border: 1px solid var(--color-border); border-radius: 999px; padding: 3px 10px;
+  transition: color .5s ease, border-color .5s ease, background .5s ease;
+}
+.reveal .agtile:has(> .agtile__detail.visible) .agtile__tag {
+  color: var(--agent);
+  border-color: color-mix(in srgb, var(--agent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent) 10%, transparent);
+}
 
 /* active — its detail fragment has been revealed */
 .reveal .agtile:has(> .agtile__detail.visible) {
@@ -280,7 +291,7 @@
 .reveal .agtile:has(> .agtile__detail.visible) .agtile__flow .to,
 .reveal .agtile:has(> .agtile__detail.visible) .agtile__flow .arw { color: var(--agent); }
 
-.reveal .aglink { flex: 0 0 auto; align-self: flex-start; margin-top: 46px; color: var(--color-border); font-size: 1.3rem; }
+.reveal .aglink { flex: 0 0 auto; align-self: center; color: var(--color-border); font-size: 1.3rem; }
 
 /* Orchestrator slide — slate hero + dispatch strip */
 .reveal .orch-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }

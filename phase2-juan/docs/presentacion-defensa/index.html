@@ -6,9 +6,9 @@
 <title>Defensa TFG · Laboratorio virtual de paradigmas de decisión</title>
 <link rel="stylesheet" href="vendor/reset.css">
 <link rel="stylesheet" href="vendor/reveal.css">
-<link rel="stylesheet" href="css/theme.css?v=3">
-<link rel="stylesheet" href="css/components.css?v=3">
-<link rel="stylesheet" href="css/diagrams.css?v=3">
+<link rel="stylesheet" href="css/theme.css?v=6">
+<link rel="stylesheet" href="css/components.css?v=6">
+<link rel="stylesheet" href="css/diagrams.css?v=6">
 </head>
 <body>
 <div class="reveal">
@@ -108,6 +108,7 @@
       <div class="label">Demo · El sistema en marcha</div>
       <div class="shot demo-shot">
         <video class="demo-video" autoplay controls muted loop playsinline poster="assets/img/ui-01-dashboard-light.png">
+          <source src="assets/video/demo.mp4" type="video/mp4">
           <source src="assets/video/demo.webm" type="video/webm">
         </video>
       </div>
@@ -421,28 +422,32 @@
         <span class="agtile__av"><img src="assets/img/faces/architect.svg" alt="Architect"></span>
         <span class="agtile__name">Architect</span>
         <span class="agtile__flow">lenguaje natural <span class="arw">→</span> <span class="to">especificación</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="0">Traduce la petición en un entorno 2D ejecutable y lo valida.</span>
+        <span class="agtile__detail fragment" data-fragment-index="0">Traduce la petición en un entorno 2D concreto —tamaño, acciones, recursos— y lo valida antes de construirlo.</span>
+        <span class="agtile__tag">valida · no juzga el modelo</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
       <div class="agtile agent--tracker" data-anim="tile">
         <span class="agtile__av"><img src="assets/img/faces/tracker.svg" alt="Tracker"></span>
         <span class="agtile__name">Tracker</span>
         <span class="agtile__flow">simulación <span class="arw">→</span> <span class="to">observaciones</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="1">Registra eventos, trayectorias y episodios; detecta lo crítico de forma determinista.</span>
+        <span class="agtile__detail fragment" data-fragment-index="1">Registra eventos, trayectorias y episodios. Marca lo crítico —consumos, inanición, saltos de energía— con reglas deterministas.</span>
+        <span class="agtile__tag">observador puro · no escribe memoria</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
       <div class="agtile agent--analyst" data-anim="tile">
         <span class="agtile__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span>
         <span class="agtile__name">Analyst</span>
         <span class="agtile__flow">observaciones <span class="arw">→</span> <span class="to">patrones</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="2">Contrasta el comportamiento contra los postulados del Knowledge Backbone.</span>
+        <span class="agtile__detail fragment" data-fragment-index="2">Contrasta el comportamiento contra los postulados del Knowledge Backbone y genera las gráficas, incluida la comparativa multi-modelo.</span>
+        <span class="agtile__tag">único que consulta el KB</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
       <div class="agtile agent--reporter" data-anim="tile">
         <span class="agtile__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span>
         <span class="agtile__name">Reporter</span>
         <span class="agtile__flow">patrones <span class="arw">→</span> <span class="to">informe PDF</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="3">Redacta y compila el PDF con LaTeX (<span class="mono">tectonic</span>), sin fallback.</span>
+        <span class="agtile__detail fragment" data-fragment-index="3">Redacta el informe y lo compila con LaTeX (<span class="mono">tectonic</span>). Si la compilación falla, falla de verdad: no inventa un PDF alternativo.</span>
+        <span class="agtile__tag">sin fallback</span>
       </div>
     </div>
     <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cuatro <strong>cambios de representación</strong> encadenados: del lenguaje al entorno, del entorno a los datos, de los datos al informe.</p>

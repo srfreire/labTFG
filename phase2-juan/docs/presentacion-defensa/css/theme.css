@@ -114,8 +114,13 @@ body::before {
    content, so short slides don't leave a big void below while the header stays put. */
 .reveal .slides > section > .s-body {
   flex: 1 1 auto; min-height: 0;
-  display: flex; flex-direction: column; justify-content: center;
+  display: flex; flex-direction: column;
 }
+/* Weighted spacers bias the body slightly upward (top:bottom free space ≈ 1:1.3),
+   a gentle nudge off dead-centre toward the header. On full slides there's no free
+   space, the spacers collapse to 0, and nothing moves. */
+.reveal .slides > section > .s-body::before { content: ""; flex: 1 1 0; }
+.reveal .slides > section > .s-body::after  { content: ""; flex: 1.3 1 0; }
 
 /* Headings */
 .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
@@ -159,6 +164,16 @@ body::before {
 /* Slide index / progress accents */
 .reveal .progress { color: var(--color-text-ghost); height: 3px; }
 .reveal .controls { color: var(--color-text-ghost); }
+/* Navigation arrows: swap reveal's default CSS-bar chevron for a Lucide chevron.
+   The base shape points left; reveal rotates it per direction (right/up/down),
+   so masking the base arrow covers all four buttons. */
+.reveal .controls .controls-arrow::before,
+.reveal .controls .controls-arrow::after { display: none; }
+.reveal .controls .controls-arrow {
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m15 18-6-6 6-6'/></svg>") center / 62% no-repeat;
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><path d='m15 18-6-6 6-6'/></svg>") center / 62% no-repeat;
+}
 
 /* Links */
 .reveal a { color: var(--color-accent-blue); text-decoration: none; }
