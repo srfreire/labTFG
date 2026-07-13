@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Download, Send, FlaskConical, FileClock } from 'lucide-react'
+import { Download, Send, FlaskConical, FileClock, FileText } from 'lucide-react'
 import type { AgentState, ChatMessage, ReportArtifact } from '../types'
 import { SimulationGrid } from './SimulationGrid'
 import { ChartCard } from './ChartCard'
@@ -206,7 +206,9 @@ function MessageBubble({ msg, hideAvatar, showReplay = true }: {
     borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
     border: isUser ? 'none' : `1px solid ${dotColor}20`,
     background: isUser ? 'var(--color-border)' : 'var(--color-surface-hover)',
-    color: isUser ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.8)',
+    // Theme-aware: adapts to light/dark tokens instead of hardcoded white
+    // (white text on the light-mode bubble was unreadable).
+    color: isUser ? 'var(--color-text)' : 'var(--color-text-muted)',
   } as React.CSSProperties
 
   return (
@@ -283,17 +285,15 @@ function ContextSummaryCard({ summary }: { summary: NonNullable<ChatMessage['con
 
 function ReportLinks({ reports, color }: { reports: ReportArtifact[]; color: string }) {
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {reports.map(report => {
-        const href = `/api/reports/download?key=${encodeURIComponent(report.key)}`
-        return (
+    <div className="mt-3 flex flex-col gap-3">
+      {reports.map(report => (
+        <div key={report.key} className="flex flex-col gap-2">
           <a
-            key={report.key}
-            href={href}
+            href={`/api/reports/download?key=${encodeURIComponent(report.key)}`}
             download={report.filename}
             aria-label={`Descargar PDF ${report.filename}`}
             title={`Descargar ${report.filename}`}
-            className="min-h-11 inline-flex items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-text transition-[background-color,color,transform,box-shadow] duration-150 ease-out hover:bg-white/8 hover:text-white active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="min-h-11 inline-flex w-fit items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-text transition-[background-color,color,transform,box-shadow] duration-150 ease-out hover:bg-white/8 hover:text-white active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
               color,
               background: `color-mix(in srgb, ${color} 12%, transparent)`,
@@ -304,8 +304,44 @@ function ReportLinks({ reports, color }: { reports: ReportArtifact[]; color: str
             <Download size={15} strokeWidth={2} aria-hidden="true" />
             <span className="max-w-[240px] truncate">{report.filename}</span>
           </a>
-        )
-      })}
+          {report.preview && report.preview.length > 0 && (
+            <PdfPreview pages={report.preview} filename={report.filename} color={color} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PdfPreview({ pages, filename, color }: { pages: string[]; filename: string; color: string }) {
+  return (
+    <div
+      data-testid="pdf-preview"
+      className="rounded-lg border overflow-hidden"
+      style={{ borderColor: `color-mix(in srgb, ${color} 24%, transparent)`, background: 'var(--color-surface)' }}
+    >
+      <div
+        className="flex items-center gap-2 px-3 py-2 border-b text-[11px] font-medium"
+        style={{ borderColor: 'var(--color-border-subtle)', color: 'var(--color-text-muted)' }}
+      >
+        <FileText size={13} style={{ color }} aria-hidden="true" />
+        <span className="truncate">{filename}</span>
+        <span className="ml-auto text-[10px] text-text-faint">{pages.length} pág.</span>
+      </div>
+      <div
+        data-testid="pdf-preview-scroll"
+        className="max-h-[360px] overflow-y-auto flex flex-col items-center gap-3 p-3"
+        style={{ background: 'color-mix(in srgb, var(--color-text) 4%, transparent)' }}
+      >
+        {pages.map((src, i) => (
+          <img
+            key={src}
+            src={src}
+            alt={`${filename} — página ${i + 1}`}
+            className="w-full max-w-[300px] rounded-[3px] border border-border-subtle shadow-lg shadow-black/20"
+          />
+        ))}
+      </div>
     </div>
   )
 }

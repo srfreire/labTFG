@@ -215,12 +215,16 @@
 .reveal .contract-accord pre.contract code {
   background: transparent; border: none; border-radius: 0; padding: 0; box-shadow: none;
 }
+.reveal .contract-accord > p { margin-top: 0.5rem; }
 
 .reveal .demo-video { width: 100%; height: 100%; }
 
-/* Demo slide */
+/* Demo slide — the video is 16:9 and so is the usable slide area, so the
+   label above is what caps the size. Shrink its footprint and let the shot
+   grow to fill the remaining height (bigger than a fixed width %). */
 .reveal .demo-wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.reveal .demo-shot { width: 82%; max-width: 980px; aspect-ratio: 16 / 9; }
+.reveal [data-slide="demo"] .label { margin-bottom: 0.5rem; }
+.reveal .demo-shot { width: 96%; max-width: 1060px; aspect-ratio: 16 / 9; }
 .reveal .demo-shot .demo-video { object-fit: contain; background: #000; }
 
 /* Dos fases bridge connector */

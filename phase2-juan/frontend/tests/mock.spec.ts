@@ -5,7 +5,7 @@ const CHOOSE_MODELS = 'Compara los tres modelos'
 
 const STEP_SUGGESTIONS = [
   'Lanza la simulación',
-  'Registra las trayectorias con el Tracker',
+  'Registra las trayectorias',
   'Analiza los resultados',
   'Informe completo, calidad estándar',
 ]

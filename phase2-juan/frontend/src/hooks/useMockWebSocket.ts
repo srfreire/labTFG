@@ -84,7 +84,7 @@ export function useMockWebSocket() {
       from: 'orchestrator',
       text: `Simulación completada: **3 agentes** durante **60 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos** — incluida la **muerte por inanición** del modelo de inferencia activa en el paso 18. Puedes explorar el replay; se ralentiza automáticamente en los momentos importantes.\n\nTe recomiendo que el **Tracker** registre las trayectorias antes de analizar.`,
       replay,
-      suggestions: ['Registra las trayectorias con el Tracker'],
+      suggestions: ['Registra las trayectorias'],
     })
     setAgent('Orchestrator', 'done')
   }, [addMsg, setAgent])
@@ -148,6 +148,13 @@ export function useMockWebSocket() {
       reports: [{
         key: 'experiments/caso2/informe_final.pdf',
         filename: 'informe_final.pdf',
+        preview: [
+          '/mock-report/page-01.png',
+          '/mock-report/page-02.png',
+          '/mock-report/page-03.png',
+          '/mock-report/page-04.png',
+          '/mock-report/page-05.png',
+        ],
       }],
     })
     await delay(300)

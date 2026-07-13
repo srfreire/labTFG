@@ -94,20 +94,28 @@ body::before {
 
 .reveal .slides { text-align: left; }
 
-/* Consistent slide canvas so content is vertically balanced and absolute
-   layers line up. Full stage height so justify-content:center truly centers
-   the content block (a shorter canvas anchored high, leaving a gap below). */
+/* Consistent slide canvas. Header (kicker + title) is anchored to the same
+   top position on every content slide via justify-content:flex-start + a fixed
+   top padding, so it never shifts between slides. Portada and demo opt out. */
 .reveal .slides > section {
   height: 100%;
   box-sizing: border-box;
-  padding: 44px 56px;
+  padding: 92px 56px 48px;
   overflow: visible;
-  /* !important beats reveal's inline display:block so content centers vertically */
+  /* !important beats reveal's inline display:block so the flex layout applies */
   display: flex !important;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .reveal .slides > section[data-slide="demo"] { padding: 0; justify-content: stretch; }
+/* Portada is a title slide — keep it vertically centered. */
+.reveal .slides > section.s-portada { padding: 44px 56px; justify-content: center; }
+/* Body wrapper grows to fill the space under the pinned header and centers its
+   content, so short slides don't leave a big void below while the header stays put. */
+.reveal .slides > section > .s-body {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center;
+}
 
 /* Headings */
 .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
@@ -200,12 +208,13 @@ body::before {
   height: 100% !important;
   top: 0 !important;
   box-sizing: border-box;
-  padding: 44px 56px;
+  padding: 92px 56px 48px;
   display: flex !important;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .print-pdf .reveal .slides .pdf-page > section[data-slide="demo"] {
   padding: 0;
   justify-content: stretch !important;
 }
+.print-pdf .reveal .slides .pdf-page > section.s-portada { padding: 44px 56px; justify-content: center; }

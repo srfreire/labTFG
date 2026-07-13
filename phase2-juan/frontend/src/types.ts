@@ -29,6 +29,8 @@ export interface ContextSummary {
 export interface ReportArtifact {
   key: string
   filename: string
+  // Optional page images for an inline PDF preview (mock/demo only).
+  preview?: string[]
 }
 
 export interface ChartSpec {

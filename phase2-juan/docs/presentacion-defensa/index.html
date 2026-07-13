@@ -6,9 +6,9 @@
 <title>Defensa TFG · Laboratorio virtual de paradigmas de decisión</title>
 <link rel="stylesheet" href="vendor/reset.css">
 <link rel="stylesheet" href="vendor/reveal.css">
-<link rel="stylesheet" href="css/theme.css?v=2">
-<link rel="stylesheet" href="css/components.css?v=2">
-<link rel="stylesheet" href="css/diagrams.css?v=2">
+<link rel="stylesheet" href="css/theme.css?v=3">
+<link rel="stylesheet" href="css/components.css?v=3">
+<link rel="stylesheet" href="css/diagrams.css?v=3">
 </head>
 <body>
 <div class="reveal">
@@ -45,7 +45,8 @@
   <section data-slide="indice">
     <div class="kicker">Índice de la defensa</div>
     <h2>Contenidos</h2>
-    <ol class="agenda">
+    <div class="s-body">
+<ol class="agenda">
       <li style="--agent:var(--color-orchestrator)"><span class="agenda__n">01</span><span class="agenda__b"><b>Motivación y problema</b><span class="agenda__s">de una propuesta abierta a un sistema observable</span></span></li>
       <li style="--agent:var(--color-architect)"><span class="agenda__n">02</span><span class="agenda__b"><b>Visión general</b><span class="agenda__s">las dos fases, el contrato fino y una demo en marcha</span></span></li>
       <li style="--agent:var(--color-accent-blue)"><span class="agenda__n">03</span><span class="agenda__b"><b>Estado del arte y objetivos</b><span class="agenda__s">sobre qué se construye · seis objetivos</span></span></li>
@@ -54,6 +55,8 @@
       <li style="--agent:var(--color-accent-cyan)"><span class="agenda__n">06</span><span class="agenda__b"><b>Verificación y evaluación</b><span class="agenda__s">pruebas como contrato · LLM-as-a-judge · dos casos reales</span></span></li>
       <li style="--agent:var(--color-reporter)"><span class="agenda__n">07</span><span class="agenda__b"><b>Conclusiones</b><span class="agenda__s">lo que queda y por dónde seguir</span></span></li>
     </ol>
+    
+</div>
     <aside class="notes">
       <p>Un mapa rápido de la charla, para que el tribunal sepa por dónde voy. Empiezo por la <strong>motivación</strong> y el problema; luego una <strong>visión general</strong> con las dos fases y una demo del sistema funcionando; el <strong>estado del arte</strong> y los objetivos; el <strong>diseño y la arquitectura</strong>; cómo fue el <strong>desarrollo</strong> apoyándome en agentes; la <strong>verificación y evaluación</strong>; y cierro con las <strong>conclusiones</strong>. No me detengo aquí, es solo la hoja de ruta.</p>
     </aside>
@@ -63,7 +66,8 @@
   <section data-slide="problema">
     <div class="kicker">Origen · motivación</div>
     <h2>Un problema abierto, iterado entre tres</h2>
-    <div class="xform">
+    <div class="s-body">
+<div class="xform">
       <div class="xform__side xform__open fragment fade-in-up">
         <div class="xform__tag">El punto de partida</div>
         <div class="xform__title">Una propuesta abierta</div>
@@ -87,7 +91,9 @@
         <p>Convertir la propuesta de investigación en algo que <strong>se ejecuta, se observa y se audita</strong> — con el alcance y la arquitectura repartidos en <strong>dos fases</strong>.</p>
       </div>
     </div>
-      <aside class="notes">
+      
+</div>
+    <aside class="notes">
       <p>Aquí cuento de dónde salió el proyecto, porque explica muchas decisiones posteriores. Nació de una <strong>propuesta abierta de Eduardo Sánchez Vila</strong>, apoyada en un <strong>trabajo de fin de máster previo</strong> (de Denis Yamunaque) que ya intuía la idea de un entorno de simulación, pero con un alcance limitado.</p>
       <p>La clave es que <strong>no había una especificación cerrada de partida</strong>. El alcance, la arquitectura y la propia división en dos fases se fueron decidiendo <strong>entre los tres</strong> —Eduardo, mi compañero Pablo y yo— en reuniones de diseño. Es honesto decirlo así ante el tribunal: parte del trabajo fue definir el problema, no solo resolverlo.</p>
       <p>Y el problema concreto que identificamos es este: <strong>un modelo que compila y respeta la interfaz todavía no es un experimento</strong>. Que un programa arranque no dice nada de si su comportamiento es interesante o correcto. Falta ejecutarlo en condiciones controladas, mirar sus decisiones paso a paso, compararlo con otros y conservar evidencia que alguien pueda revisar después. Ese es exactamente el hueco que llena este TFG.</p>
@@ -118,7 +124,8 @@
   <section data-slide="dos-fases">
     <div class="kicker">Visión general · la integración</div>
     <h2>Dos fases, una frontera fina</h2>
-    <div class="diagram" style="margin-top:0.7rem">
+    <div class="s-body">
+<div class="diagram" style="margin-top:0.7rem">
       <div class="grid-2" style="position:relative">
         <div class="panel agent--architect" data-anim="p1" style="padding:16px 20px">
           <div class="panel__title">Fase 1 · Pablo Pazos</div>
@@ -141,6 +148,8 @@
     def get_state(self) -> dict: ...</code></pre>
       <p class="muted" style="font-size:0.8rem;max-width:680px;text-align:center">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento. Sin herencia ni dependencias estáticas — ambas fases evolucionan por separado, sin coordinar releases.</p>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Esta es la diapo de la integración, la decisión de la que más orgulloso estoy. Recuerdo el reparto: la Fase 1 convierte lenguaje natural en un modelo Python; este TFG lo <strong>ejecuta, observa, analiza, informa y recuerda</strong>.</p>
       <p>Lo importante es <em>cómo</em> encajan las dos fases. En lugar de que mi código dependa del suyo con herencia o con una librería compartida, uso lo que se llama <strong>«duck typing»</strong>: mi laboratorio no exige que el modelo sea de un tipo concreto, solo comprueba que sepa hacer <strong>tres cosas</strong>. La metáfora es la de siempre: «si camina como un pato y hace cuac como un pato, lo trato como un pato». Da igual quién lo escribió o cómo, mientras cumpla las tres funciones.</p>
@@ -154,7 +163,8 @@
   <section data-slide="arte">
     <div class="kicker">Estado del arte</div>
     <h2>Sobre qué se construye</h2>
-    <div class="grid-2 arte-grid" style="margin-top:0.7rem;align-items:stretch">
+    <div class="s-body">
+<div class="grid-2 arte-grid" style="margin-top:0.7rem;align-items:stretch">
       <div class="stack">
         <div class="panel" data-anim="p"><div class="panel__title">Simular para validar</div><p>Un modelo no solo describe un mecanismo: lo <strong>ejecuta</strong> y deja ver sus patrones. Y la validación no acaba cuando compila.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 40" fill="none" aria-hidden="true">
@@ -231,6 +241,8 @@
       </div>
     </div>
     <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem;text-align:center;max-width:900px;margin-left:auto;margin-right:auto">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
+    
+</div>
     <aside class="notes">
       <p>Aquí sitúo el trabajo respecto a lo que ya existe. El mensaje que quiero dejar es honesto: <strong>no invento una técnica nueva, combino cuatro líneas que ya estaban ahí</strong>. Las repaso por encima; no hace falta que el tribunal retenga los nombres, solo la idea de cada bloque.</p>
       <p><strong>(a) Simular para validar.</strong> En ciencia se usan modelos que no solo describen un mecanismo con palabras, sino que lo <strong>ejecutan</strong> para ver qué patrones emergen. Y la validación no termina cuando el programa compila: hay que comprobar que hace lo correcto. Autores de referencia: Epstein, Railsback y Grimm, Sargent.</p>
@@ -247,7 +259,8 @@
     <div class="kicker">Objetivos</div>
     <h2>Seis objetivos específicos</h2>
     <p class="muted" style="margin-top:-0.2rem;font-size:0.8rem">No estaban fijados de antemano: <strong>crecieron con cada iteración</strong> de diseño.</p>
-    <div class="grid-3" style="margin-top:0.9rem;grid-auto-rows:1fr">
+    <div class="s-body">
+<div class="grid-3" style="margin-top:0.9rem;grid-auto-rows:1fr">
       <div class="panel obj fragment fade-in-up" style="--acc:var(--color-architect)">
         <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
         <div class="panel__title" style="color:var(--acc)">01</div><p>Generar la <strong>especificación del entorno</strong> desde lenguaje natural.</p></div>
@@ -267,6 +280,8 @@
         <svg class="obj__ico" viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg>
         <div class="panel__title" style="color:var(--acc)">06</div><p>Persistir <strong>memorias reutilizables</strong> entre experimentos.</p></div>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Seis objetivos específicos, que enuncio brevemente porque estructuran todo lo demás: <strong>(1)</strong> generar la especificación del entorno a partir de lenguaje natural; <strong>(2)</strong> ejecutar uno o varios modelos a la vez sin que se acoplen entre sí; <strong>(3)</strong> registrar su comportamiento de forma ordenada (eventos, trayectorias, episodios, variables internas); <strong>(4)</strong> analizar patrones y contrastarlos con lo que ya se sabía; <strong>(5)</strong> generar un informe PDF; y <strong>(6)</strong> guardar memorias que se puedan reutilizar en experimentos posteriores.</p>
       <p>Un matiz honesto que quiero decir en voz alta: estos objetivos <strong>no estaban fijados de antemano</strong>, crecieron con cada iteración de diseño, coherente con que la propuesta era abierta. Luego se tradujeron en requisitos concretos —13 funcionales y 14 no funcionales, priorizados con el método MoSCoW— y en cinco casos de uso.</p>
@@ -278,7 +293,8 @@
   <section data-slide="arquitectura">
     <div class="kicker">Diseño · arquitectura</div>
     <h2>Una arquitectura por capas</h2>
-    <div class="arch">
+    <div class="s-body">
+<div class="arch">
       <div class="arch__band" data-anim="band">
         <div class="arch__tag">Presentación</div>
         <div class="arch__items">
@@ -319,6 +335,8 @@
         </div>
       </div>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Presento la arquitectura como una tarta de <strong>cinco capas</strong>, de arriba abajo. La idea que quiero transmitir es que cada capa tiene una única responsabilidad y solo habla con la de al lado.</p>
       <p><strong>Presentación</strong>: lo que ve el usuario —el panel web con el chat, la simulación y el replay— más una API ligera en el servidor que expone el canal de comunicación.</p>
@@ -334,7 +352,8 @@
   <section data-slide="dominio">
     <div class="kicker">Diseño · el dominio</div>
     <h2>Una rejilla 2D común</h2>
-    <div class="grid-2" style="margin-top:0.6rem;align-items:center">
+    <div class="s-body">
+<div class="grid-2" style="margin-top:0.6rem;align-items:center">
       <div class="simgrid-wrap" style="position:relative;max-width:340px">
         <div class="simgrid" id="dom-grid" style="grid-template-columns:repeat(8,1fr)"></div>
         <div class="simdot" id="dom-agent" style="background:var(--color-architect);box-shadow:0 0 12px var(--color-architect)"></div>
@@ -346,6 +365,8 @@
         <p class="dim" style="font-size:0.78rem;line-height:1.5">Reglas del entorno y <strong>eventos inmutables</strong> — la frontera compartida con la Fase 1.</p>
       </div>
     </div>
+    
+</div>
     <aside class="notes">
       <p>El entorno donde viven los modelos es una <strong>rejilla en dos dimensiones</strong>, como un tablero. Quiero ser transparente: es <strong>deliberadamente sencillo</strong>. No busco un mundo rico, sino un escenario común donde paradigmas muy distintos se puedan medir en las mismas condiciones, que es lo justo para poder compararlos.</p>
       <p>Ese mundo se compone de cinco conceptos: el <strong>entorno</strong>, el <strong>agente</strong>, los <strong>recursos</strong>, los <strong>eventos</strong> (un registro que, una vez escrito, no se toca nunca más) y el <strong>modelo de decisión</strong>, que es la pieza que aporta la Fase 1.</p>
@@ -359,7 +380,8 @@
   <section data-slide="orchestrator">
     <div class="kicker">Diseño · orquestación</div>
     <h2 style="color:var(--color-orchestrator)">El Orchestrator conduce a los demás</h2>
-    <div class="grid-2" style="margin-top:1.1rem;align-items:center;gap:var(--space-8)">
+    <div class="s-body">
+<div class="grid-2" style="margin-top:1.1rem;align-items:center;gap:var(--space-8)">
       <div class="orch-hero" data-anim="hero">
         <span class="orch-hero__av"><img src="assets/img/faces/orchestrator.svg" alt="Orchestrator"></span>
         <p>Un <strong>único coordinador</strong> decide el orden, pre-carga el contexto y controla el presupuesto. Los cuatro agentes solo transforman.</p>
@@ -378,6 +400,8 @@
         <li class="fragment fade-in-up"><strong>Observabilidad en vivo</strong> — transmite por WebSocket, sin polling.</li>
       </ul>
     </div>
+    
+</div>
     <aside class="notes">
       <p>El Orchestrator es el director de orquesta: la <strong>única pieza que conoce el proceso completo</strong>. Lleva el hilo de la conversación, sabe qué herramientas hay disponibles y decide a qué agente le toca actuar en cada momento.</p>
       <p>Un punto que quiero dejar claro porque suele generar preguntas: el orden general <strong>no lo improvisa el modelo de lenguaje</strong>. La secuencia de pasos está escrita de antemano —es una «secuencia canónica»— y al modelo solo se le deja elegir <strong>desviaciones puntuales</strong>: hacer una consulta extra, repetir un paso, descartar un intento que salió mal. No le entrego la planificación completa, precisamente para que el proceso sea auditable y repetible.</p>
@@ -391,7 +415,8 @@
   <section data-slide="agentes">
     <div class="kicker">Diseño · los agentes</div>
     <h2>Cuatro agentes, cuatro cambios de representación</h2>
-    <div class="agallery">
+    <div class="s-body">
+<div class="agallery">
       <div class="agtile agent--architect" data-anim="tile">
         <span class="agtile__av"><img src="assets/img/faces/architect.svg" alt="Architect"></span>
         <span class="agtile__name">Architect</span>
@@ -421,6 +446,8 @@
       </div>
     </div>
     <p class="muted" style="margin-top:1.6rem;font-size:0.8rem">Cuatro <strong>cambios de representación</strong> encadenados: del lenguaje al entorno, del entorno a los datos, de los datos al informe.</p>
+    
+</div>
     <aside class="notes">
       <p>La forma más útil de entender los cuatro agentes es verlos como una cadena de <strong>traducciones</strong>: cada uno toma la información en un formato y la deja en otro, más cerca del informe final.</p>
       <p><strong>Architect</strong>: traduce <em>lenguaje natural → especificación del entorno</em>. Convierte mi petición en la descripción de un tablero 2D concreto (tamaño, acciones, recursos) y la valida antes de construirlo. No juzga si un modelo es correcto; solo se encarga de que el entorno sea compatible con lo que pido.</p>
@@ -435,7 +462,8 @@
   <section data-slide="knowledge">
     <div class="kicker">Diseño · memoria compartida</div>
     <h2>Knowledge Backbone</h2>
-    <div class="diagram" style="margin-top:0.4rem">
+    <div class="s-body">
+<div class="diagram" style="margin-top:0.4rem">
       <div class="canvas kb-canvas" id="kb-canvas" style="height:470px">
         <svg class="edges" viewBox="0 0 1140 420" preserveAspectRatio="none">
           <line class="edge kb-edge" pathLength="1" x1="541" y1="197" x2="150" y2="60"/>
@@ -451,6 +479,8 @@
       </div>
     </div>
     <div class="chips" style="margin-top:0.6rem"><span class="chip">Voyage AI · embeddings</span><span class="chip">ZeroEntropy · reranking</span><span class="chip dim">opcionales · con degradación controlada</span></div>
+    
+</div>
     <aside class="notes">
       <p>Esta es la memoria del sistema, compartida con la Fase 1. Se accede a ella de forma <strong>centralizada, a través del Orchestrator</strong> (con la única excepción del Analyst). Lo interesante es que no es un almacén, sino <strong>cuatro</strong>, y cada uno se eligió por <em>cómo se consulta el dato</em>, no por capricho. En cada tarjeta puse un ejemplo real para que se entienda.</p>
       <p><strong>PostgreSQL</strong> es la <strong>verdad estructurada</strong>: cada decisión, cada recompensa y cada estado, paso a paso y reproducible. Es donde miro si quiero saber exactamente qué pasó en el paso 19 del caso 1.</p>
@@ -466,7 +496,8 @@
   <section data-slide="retrieval">
     <div class="kicker">Diseño · recuperación</div>
     <h2>Una consulta recorre toda la memoria</h2>
-    <div class="rquery" data-anim="foot">
+    <div class="s-body">
+<div class="rquery" data-anim="foot">
       <span class="rquery__ic">›_</span>
       <span class="rquery__q">«¿qué modelos exploran con poca energía?»</span>
     </div>
@@ -496,6 +527,8 @@
       </div>
     </div>
     <p class="muted" data-anim="foot" style="margin-top:0.9rem;font-size:0.8rem">El Orchestrator funde <strong>significado</strong>, <strong>hechos exactos</strong>, <strong>dominio</strong> y <strong>artefactos</strong> en un solo contexto <span class="mono dim">— Reciprocal Rank Fusion, sin entrenar nada</span>.</p>
+    
+</div>
     <aside class="notes">
       <p>La idea de esta diapo es sencilla de contar aunque por dentro tenga varias piezas: <strong>cuando el usuario hace una pregunta, esa misma pregunta se lanza a la vez contra los cuatro almacenes</strong>, y el Orchestrator junta todo lo que devuelven en un único contexto. Cada almacén sabe responder a algo que los otros no saben; por eso uso los cuatro en vez de quedarme con uno.</p>
       <p>El corazón es <strong>Qdrant</strong>, y aquí conviene ir despacio porque es lo más técnico. Guardo la memoria de experiencias de dos formas que se complementan. La primera es <strong>búsqueda por significado</strong> —en la jerga, «densa»—: cada texto se convierte en una lista de números que captura su sentido, así que si pregunto por «explorar con poca energía» encuentra episodios que hablan de <em>drive</em> o de homeostasis aunque no repitan esas palabras. La segunda es <strong>búsqueda por término exacto</strong> —«dispersa», con un método clásico llamado BM25—: es la fiable cuando busco algo literal como «Rangel 2013» o «DDM-v2», que es justo lo que la búsqueda por significado tiende a diluir.</p>
@@ -509,7 +542,8 @@
   <section data-slide="bucle">
     <div class="kicker">Desarrollo del trabajo</div>
     <h2>Un nuevo bucle de desarrollo</h2>
-    <div class="diagram" style="margin-top:0.6rem">
+    <div class="s-body">
+<div class="diagram" style="margin-top:0.6rem">
       <div class="canvas loopring" id="loop-canvas" style="height:440px">
         <svg class="edges" viewBox="0 0 100 100" preserveAspectRatio="none">
           <ellipse class="loop-ring" cx="50" cy="50" rx="33" ry="38"/>
@@ -528,6 +562,8 @@
       </div>
     </div>
     <p class="muted" style="margin-top:0.4rem;font-size:0.8rem">Implementar deja de ser lo caro; <strong>especificar y verificar</strong> pasan al centro. Cada tarea es un <strong>contrato verificable</strong>.</p>
+    
+</div>
     <aside class="notes">
       <p>Cambio de tercio: esta parte es sobre <strong>cómo desarrollé el trabajo</strong>, no sobre el sistema. Presento un anillo de cuatro estaciones alrededor de un mismo centro, y la idea es que <strong>cada tarea es un contrato verificable</strong>. El ciclo es: 1 especificar → 2 ejecutar → 3 revisar → 4 aceptar o ajustar, y vuelta a empezar con la siguiente tarea.</p>
       <p>Lo que quiero que se vea en el diagrama es un reparto: de las cuatro estaciones, <strong>tres son mías</strong> (especificar, revisar, aceptar) y solo una, ejecutar, es del agente de IA. Y resulta que <strong>ejecutar —escribir el código— es justo lo que dejó de ser lo caro</strong>. Por eso el peso del trabajo se desplazó a especificar bien y verificar, que es lo que puse en el centro.</p>
@@ -541,12 +577,15 @@
   <section data-slide="reparto">
     <div class="kicker">Desarrollo · reparto</div>
     <h2>Quién decide, quién implementa</h2>
-    <div class="grid-2" style="margin-top:0.8rem;align-items:stretch">
+    <div class="s-body">
+<div class="grid-2" style="margin-top:0.8rem;align-items:stretch">
       <div class="panel agent--architect"><div class="panel__title">El humano decide</div><p>Alcance, contratos de integración, diseño visual, prioridades y <strong>aceptación final</strong>.</p></div>
       <div class="panel"><div class="panel__title">El agente implementa</div><p>Módulos acotados, pruebas, migraciones, refactores y depuración local — <strong>cuando el contrato fija el comportamiento</strong>.</p></div>
     </div>
     <div class="panel" style="margin-top:1.1rem"><div class="panel__title">El riesgo cambió de sitio</div><p>Ya no es <em>no llegar a escribir</em> una pieza, sino <strong>aceptar una pieza plausible sin comprobar si respeta el sistema</strong>. El <span class="mono">diff</span> se revisa siempre contra la tarea: un cambio puede compilar y aun así rechazarse por ampliar el alcance o meter una abstracción que nadie usa.</p></div>
     <p class="mono dim" style="margin-top:0.9rem;font-size:0.66rem">Codex → backend · persistencia · pruebas &nbsp;·&nbsp; Claude Code → frontend · interacción</p>
+    
+</div>
     <aside class="notes">
       <p>Concreto el reparto de responsabilidades entre el humano y el agente. <strong>El humano decide</strong>: el alcance, los contratos de integración, el diseño visual, las prioridades y —esto es clave— la <strong>aceptación final</strong>. Ninguna salida se aceptó solo por venir generada.</p>
       <p><strong>El agente implementa</strong>: módulos acotados, pruebas, migraciones de base de datos, refactorizaciones y depuración local. Pero solo cuando la especificación fija bien el comportamiento; si el contrato es ambiguo, el resultado también lo será.</p>
@@ -562,7 +601,8 @@
     <div class="kicker">Desarrollo · verificación y evaluación</div>
     <h2>Verificar el desarrollo, evaluar el sistema</h2>
     <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">Si implementar deja de ser lo caro, el problema se desplaza: <strong>¿qué garantiza que lo generado es correcto?</strong> — en dos momentos: <strong>mientras construyo</strong> y sobre el <strong>resultado final</strong>.</p>
-    <div class="grid-2" style="margin-top:0.7rem;align-items:stretch;gap:var(--space-6)">
+    <div class="s-body">
+<div class="grid-2" style="margin-top:0.7rem;align-items:stretch;gap:var(--space-6)">
       <div class="panel fragment fade-in-up">
         <div class="mono dim" style="font-size:0.58rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px">1 · Durante el desarrollo</div>
         <div class="panel__title">Cómo se verifica</div>
@@ -588,6 +628,8 @@
         <div class="panel" style="padding:12px 16px"><div class="panel__title" style="margin-bottom:6px">Caso 2 · homeostasis / interocepción</div><p style="font-size:0.76rem"><strong>4 paradigmas</strong> <span class="mono dim">· 10×10 · 199 eventos · 7 consumos</span></p></div>
       </div>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Esta diapo une dos cosas: cómo verifiqué el desarrollo y cómo evalué el sistema terminado. Ambas responden a la misma pregunta incómoda: si escribir el código dejó de ser lo caro, <strong>¿qué garantiza que lo generado es correcto?</strong></p>
       <p>En <strong>verificación</strong>, lo concreto: <strong>387 pruebas automáticas</strong> más pruebas de extremo a extremo en el navegador; mi regla fue que sin prueba una tarea no está terminada. A eso sumo la revisión combinada, la verificación en vivo, y una <strong>puerta automática</strong> que en cada subida de código comprueba estilo y pruebas antes de dejar pasar nada.</p>
@@ -602,7 +644,8 @@
     <div class="kicker">Pruebas y evaluación · el juez</div>
     <h2>¿Qué evalúa el juez?</h2>
     <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo <span class="mono">Codex</span> —de otra familia— con una rúbrica de 6 criterios, uno por etapa del lab.</p>
-    <div class="grid-3" style="margin-top:0.8rem;gap:var(--space-4)">
+    <div class="s-body">
+<div class="grid-3" style="margin-top:0.8rem;gap:var(--space-4)">
       <div class="panel jcrit" style="--acc:var(--color-architect)"><div class="panel__title"><span>01 · Entorno</span><span class="jcrit__ag">Architect</span></div><p>¿El <span class="mono">env_spec</span> es coherente con el caso y permite <strong>observar</strong> el comportamiento?</p></div>
       <div class="panel jcrit" style="--acc:var(--color-tracker)"><div class="panel__title"><span>02 · Observación</span><span class="jcrit__ag">Tracker</span></div><p>¿Las trayectorias y eventos <strong>reflejan la simulación</strong>? Tripleta joinable · determinismo.</p></div>
       <div class="panel jcrit" style="--acc:var(--color-analyst)"><div class="panel__title"><span>03 · Análisis</span><span class="jcrit__ag">Analyst</span></div><p>¿Los patrones están <strong>anclados en las trayectorias</strong>, sin inventar?</p></div>
@@ -617,6 +660,8 @@
         <div class="score"><div class="stat__num stat__num--sm" data-to="86">0</div><div class="stat__label">Caso 2 / 100</div></div>
       </div>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Aquí detallo qué mira el juez, porque es fácil malinterpretarlo. La vara de medir son las <strong>trayectorias de la simulación, no los papers</strong>: se juzga la <strong>fidelidad de la observación</strong> —si el laboratorio contó bien lo que pasó—, no si la teoría acierta. El juez es Codex, de otra familia, y usa seis criterios, uno por cada etapa del laboratorio: entorno, observación, análisis, informe, robustez y un juicio global con nota sobre 100.</p>
       <p>El ejemplo que más me gusta contar es del caso 2. Uno de los modelos, el de <strong>inferencia activa</strong>, no supo mantener su equilibrio interno y <strong>murió de hambre en el paso 18</strong>, tras comer una sola vez. Lo relevante es lo que hizo el laboratorio: <strong>no rellenó ni maquilló su trayectoria</strong>. Registró los 19 eventos que hubo, marcó la muerte por inanición y siguió comparándolo con los demás. Observó el fallo y lo comunicó tal cual, sin forzar una explicación más cómoda.</p>
@@ -629,7 +674,8 @@
   <section data-slide="cierre">
     <div class="kicker">Conclusiones</div>
     <h2>Lo aprendido</h2>
-    <ul class="clean agentic" style="margin-top:0.6rem;max-width:82%">
+    <div class="s-body">
+<ul class="clean agentic" style="margin-top:0.6rem;max-width:82%">
       <li class="fragment fade-in-up" style="--agent:var(--color-architect)"><strong>La forma de conectar, más que la pieza.</strong> Contratos finos entre componentes que evolucionan a ritmos distintos.</li>
       <li class="fragment fade-in-up" style="--agent:var(--color-orchestrator)"><strong>Centralizar el conocimiento compensa.</strong> Merece la pena cuando cada consulta tiene coste.</li>
       <li class="fragment fade-in-up" style="--agent:var(--color-tracker)"><strong>Observar ≠ persistir.</strong> Separar observación y persistencia mantiene el backbone limpio.</li>
@@ -654,6 +700,8 @@
       </div>
       <p class="mono dim" style="font-size:0.7rem;margin:0">Gracias · Juan Freire Alvarez · Trabajo de Fin de Grado · USC</p>
     </div>
+    
+</div>
     <aside class="notes">
       <p>Cierro con tres lecciones, que son la conclusión del trabajo. La idea de fondo es que importó más <strong>la forma de conectar las piezas</strong> que las decisiones internas de cada una.</p>
       <p><strong>Una:</strong> los contratos finos entre componentes que evolucionan a ritmos distintos valen mucho —la frontera de tres funciones nunca nos obligó a coordinar versiones—. <strong>Dos:</strong> centralizar el conocimiento compensa cuando cada consulta cuesta dinero y tiempo, porque da control del gasto y facilita el diagnóstico. <strong>Tres:</strong> observar no es lo mismo que guardar —el Tracker observa pero nunca deja memorias a medias—.</p>
