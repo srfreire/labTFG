@@ -82,7 +82,7 @@ export function useMockWebSocket() {
     setSimAgents(ids.map((id, i) => ({ id, color: AGENT_COLORS[i % AGENT_COLORS.length] })))
     addMsg({
       from: 'orchestrator',
-      text: `Simulación completada: **3 agentes** durante **60 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos** — incluida la **muerte por inanición** del modelo de inferencia activa en el paso 18. Puedes explorar el replay; se ralentiza automáticamente en los momentos importantes.\n\nTe recomiendo que el **Tracker** registre las trayectorias antes de analizar.`,
+      text: `Simulación completada: **3 agentes** durante **60 pasos**. Se detectaron **${replay.critical_events?.length ?? 0} eventos críticos** — incluida la **muerte por inanición** del modelo de inferencia activa en el paso 18. Puedes explorar el replay y saltar a cualquier evento crítico desde la barra inferior.\n\nTe recomiendo que el **Tracker** registre las trayectorias antes de analizar.`,
       replay,
       suggestions: ['Registra las trayectorias'],
     })

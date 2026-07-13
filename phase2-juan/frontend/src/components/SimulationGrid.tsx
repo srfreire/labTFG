@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RotateCcw, ChevronLeft, ChevronRight, Play, Pause, Gauge } from 'lucide-react'
 import type { ReplayData, DecisionTrace, CriticalEvent } from '../types'
 import { AGENT_COLORS, withAlpha } from '../constants'
@@ -27,7 +27,6 @@ function SimulationGridInner({ replay }: Props) {
   const [currentStep, setCurrentStep] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speedIdx, setSpeedIdx] = useState(1)
-  const intervalRef = useRef<number | null>(null)
   const TRAIL_LENGTH = 5
   const [activeTrace, setActiveTrace] = useState<{ traces: DecisionTrace[]; criticalEvent?: CriticalEvent } | null>(null)
   const criticalByStep = useMemo(() => {
@@ -54,26 +53,20 @@ function SimulationGridInner({ replay }: Props) {
     }
     return next
   }, [currentStep, replay.frames])
+  // Un único timer por paso, agendado desde el efecto (no dentro del updater de
+  // setState). Programar el setTimeout dentro del updater lo duplicaba bajo
+  // StrictMode —React invoca el updater dos veces— y los timers se multiplicaban
+  // exponencialmente, acelerando y colgando el replay. Con currentStep como
+  // dependencia cada render agenda exactamente un avance y el cleanup lo cancela.
   useEffect(() => {
-    if (!playing) return
-    const tick = () => {
-      setCurrentStep(prev => {
-        if (prev >= replay.total_steps - 1) {
-          setPlaying(false)
-          return prev
-        }
-        const next = prev + 1
-        const isCritical = criticalByStep.has(next)
-        const delay = isCritical ? (600 / speed) : (200 / speed)
-        intervalRef.current = window.setTimeout(tick, delay)
-        return next
-      })
-    }
-    intervalRef.current = window.setTimeout(tick, 200 / speed)
-    return () => {
-      if (intervalRef.current) clearTimeout(intervalRef.current)
-    }
-  }, [playing, speed, replay.total_steps, criticalByStep])
+    if (!playing || currentStep >= replay.total_steps - 1) return
+    const next = currentStep + 1
+    const id = window.setTimeout(() => {
+      setCurrentStep(next)
+      if (next >= replay.total_steps - 1) setPlaying(false) // parar al llegar al final (en el callback async, no en el cuerpo del efecto)
+    }, 200 / speed)
+    return () => clearTimeout(id)
+  }, [playing, currentStep, speed, replay.total_steps])
 
   const togglePlay = useCallback(() => setPlaying(p => !p), [])
   const stepBack = useCallback(() => { setPlaying(false); setCurrentStep(s => Math.max(0, s - 1)) }, [])
@@ -118,7 +111,7 @@ function SimulationGridInner({ replay }: Props) {
         <span className="text-[8px] uppercase tracking-[1px] text-text-dim">
           Simulación
         </span>
-        <span className="text-[9px] text-text-faint">
+        <span data-testid="replay-step" className="text-[9px] text-text-faint">
           Step {currentStep + 1} / {replay.total_steps}
         </span>
       </div>
