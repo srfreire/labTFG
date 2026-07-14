@@ -31,7 +31,7 @@
       <h1>Laboratorio virtual para la simulación<br>y análisis de paradigmas de decisión</h1>
       <p class="hero-sub mono">Agentes inteligentes · Fase 2 — Infraestructura de simulación y análisis</p>
       <div class="hero-meta mono">
-        <span><strong>Juan Freire Alvarez</strong></span>
+        <span><strong>Juan Freire Álvarez</strong></span>
         <span class="dim">Tutor: Eduardo M. Sánchez Vila</span>
       </div>
     </div>
@@ -223,7 +223,7 @@
         <div class="node uc-case uc-case--blue" data-anim="case" style="left:34%;top:78%;width:210px"><div class="node__name">Consultar experimentos</div></div>
         <!-- sistemas externos -->
         <div class="node uc-ext" data-anim="ext" style="left:74%;top:9%;width:220px"><div class="node__name">Primera fase</div><div class="node__sub">modelos aceptados · Python</div></div>
-        <div class="node uc-ext" data-anim="ext" style="left:74%;top:60%;width:220px"><div class="node__name">OpenRouter</div><div class="node__sub">LLM · servicios semánticos</div></div>
+        <div class="node uc-ext" data-anim="ext" style="left:74%;top:60%;width:220px"><div class="node__name">OpenRouter</div><div class="node__sub">modelo de lenguaje (LLM)</div></div>
       </div>
     </div>
     <div class="chips" style="margin-top:0.55rem;justify-content:center;gap:28px"><span class="chip">1 actor humano</span><span class="chip">5 casos de uso</span><span class="chip dim">sistemas externos, fuera del límite</span></div>
@@ -232,7 +232,7 @@
       <ul class="cue">
         <li><strong>Requisitos:</strong> 13 RF + 14 RNF (MoSCoW), 5 casos de uso, 1 solo actor humano (usuario investigador). Lo demás = externo, fuera del límite.</li>
         <li><strong>5 casos</strong> = recorrido de la demo: Ejecutar simulación · Comparar modelos (incluye Ejecutar) · Analizar · Generar informe PDF (incluye Analizar) · Consultar experimentos. Color = agente que los lidera.</li>
-        <li><strong>2 sistemas externos:</strong> Primera fase (aporta modelos) y OpenRouter (LLM + servicios semánticos).</li>
+        <li><strong>2 sistemas externos:</strong> Primera fase (aporta modelos) y OpenRouter (LLM).</li>
       </ul>
     </aside>
   </section>
@@ -301,7 +301,7 @@
             <circle cx="117" cy="20" r="7" fill="none" stroke="#f472b6" stroke-width="2.5"/>
           </svg></div>
           <p class="mono dim" style="font-size:0.6rem;margin-top:6px">MetaGPT · Guo et al.</p></div>
-        <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p>Razonar y actuar con <em>tool calls</em> auditables; agentes que programan sobre repos reales y <strong>revisan sus propias salidas</strong> antes de aceptarlas.</p>
+        <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p><em>Tool calls</em> auditables —el anfitrión valida e invoca, no el modelo— y <strong>coding agents</strong> sobre repos reales, con auto-revisión de código: aquí, subagentes que lo revisan antes de fusionarlo.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 44" fill="none" aria-hidden="true">
             <path d="M39.2 14.3 A12 12 0 1 1 30 10" fill="none" stroke="var(--color-accent-cyan)" stroke-width="2.2" stroke-linecap="round"/>
             <path d="M34 10 L28.5 7 L28.5 13 Z" fill="var(--color-accent-cyan)"/>
@@ -382,7 +382,7 @@
     </div>
     <div class="arch__legend" data-anim="band">
       <span class="arch__env"><span class="arch__env-dot" style="--d:var(--color-accent-blue)"></span><b>Todo desplegado en Railway</b> — un frontend, un backend y los 4 almacenes como servicios</span>
-      <span class="arch__env"><span class="arch__env-dot" style="--d:var(--color-text-dim)"></span><b>Externos</b> · OpenRouter · Voyage · ZeroEntropy</span>
+      <span class="arch__env"><span class="arch__env-dot" style="--d:var(--color-text-dim)"></span><b>Externos</b> · OpenRouter</span>
     </div>
 </div>
     <aside class="notes">
@@ -393,7 +393,7 @@
         <li><strong>Agentes:</strong> Architect · Tracker · Analyst · Reporter.</li>
         <li><strong>Simulación:</strong> loader de modelos Fase 1 + motor 2D + charts.</li>
         <li><strong>Persistencia:</strong> PostgreSQL · MinIO · Qdrant · Neo4j (cada uno por cómo se consulta).</li>
-        <li><strong>Despliegue:</strong> todo en Railway; local = Docker Compose en 1 comando. Externos por API: OpenRouter, Voyage, ZeroEntropy.</li>
+        <li><strong>Despliegue:</strong> todo en Railway; local = Docker Compose en 1 comando. Externos por API: OpenRouter.</li>
       </ul>
     </aside>
   </section>
@@ -533,12 +533,10 @@
         <div class="node node--hub" data-anim="hub" style="left:39%;top:40%;width:200px;text-align:center"><div class="node__name">Orchestrator</div><div class="node__sub">acceso centralizado</div></div>
         <div class="node kb-store" data-anim="store" style="left:1%;top:2%;width:290px;--store:var(--color-accent-blue)"><div class="node__name"><span class="node__dot"></span>PostgreSQL</div><div class="node__use">La verdad estructurada: cada decisión, recompensa y estado del agente, paso a paso y reproducible.</div><div class="node__ex">DDM-v2 · CASO1 · paso 19 · reward −1</div><div class="node__sub">metadatos · historial · simulation_observations</div></div>
         <div class="node kb-store" data-anim="store" style="left:64%;top:2%;width:290px;--store:var(--color-accent-amber)"><div class="node__name"><span class="node__dot"></span>MinIO</div><div class="node__use">Los entregables pesados que no caben en una fila: informes y sus figuras, servidos por URL.</div><div class="node__ex">informe-caso1.pdf · figuras .png</div><div class="node__sub">almacén de objetos (S3)</div></div>
-        <div class="node kb-store" data-anim="store" style="left:1%;top:70%;width:290px;--store:var(--color-analyst)"><div class="node__name"><span class="node__dot"></span>Qdrant</div><div class="node__use">La memoria de experiencias: recupera episodios por significado y por término exacto en la misma consulta.</div><div class="node__ex">vector denso + sparse BM25 → RRF</div><div class="node__sub">búsqueda híbrida sobre memorias</div></div>
+        <div class="node kb-store" data-anim="store" style="left:1%;top:70%;width:290px;--store:var(--color-analyst)"><div class="node__name"><span class="node__dot"></span>Qdrant</div><div class="node__use">La memoria de experiencias: recupera episodios por significado y por término exacto en la misma consulta.</div><div class="node__ex">vector denso + sparse BM25</div><div class="node__sub">búsqueda híbrida sobre memorias</div></div>
         <div class="node kb-store" data-anim="store" style="left:64%;top:70%;width:290px;--store:var(--color-architect)"><div class="node__name"><span class="node__dot"></span>Neo4j</div><div class="node__use">El conocimiento del dominio: paradigmas, autores y papers — y la procedencia de cada afirmación.</div><div class="node__ex">(Rangel 2013)—[POSTULA]→(valor)</div><div class="node__sub">grafo de paradigmas y procedencia</div></div>
       </div>
     </div>
-    <div class="chips" style="margin-top:0.6rem"><span class="chip">Voyage AI · embeddings</span><span class="chip">ZeroEntropy · reranking</span><span class="chip dim">opcionales · con degradación controlada</span></div>
-    
 </div>
     <aside class="notes">
       <ul class="cue">
@@ -547,7 +545,7 @@
         <li><strong>MinIO:</strong> entregables pesados (PDFs, figuras) y los ficheros de los modelos de la Fase 1, servidos por URL.</li>
         <li><strong>Qdrant:</strong> memoria de experiencias (significado + término exacto en la misma consulta). Detalle en la siguiente.</li>
         <li><strong>Neo4j:</strong> conocimiento del dominio (paradigmas, autores, papers + procedencia). Puede citar la fuente.</li>
-        <li><strong>Llenado:</strong> al terminar el Tracker, su escritor de memoria descompone las observaciones en hechos con el mismo id: eventos→PostgreSQL, embeddings→Qdrant; nada en Neo4j. El PDF a MinIO es cosa del Reporter. Voyage (embeddings) + ZeroEntropy (reranking), opcionales.</li>
+        <li><strong>Llenado:</strong> al terminar el Tracker, su escritor de memoria descompone las observaciones en hechos con el mismo id: eventos→PostgreSQL, embeddings→Qdrant; nada en Neo4j. El PDF a MinIO es cosa del Reporter.</li>
       </ul>
     </aside>
   </section>
@@ -596,7 +594,6 @@
         <span class="rfuse__dot" style="--d:var(--color-accent-amber)"></span>
         <span class="rfuse__arrow">→</span>
         <span class="rfuse__one">un solo contexto</span>
-        <span class="rfuse__tag mono">Reciprocal Rank Fusion · sin entrenar nada</span>
       </div>
       <p>El Orchestrator <strong>funde</strong> significado, hechos exactos, dominio y artefactos, y responde <strong>anclado en la memoria</strong>.</p>
     </div>
@@ -606,7 +603,6 @@
       <ul class="cue">
         <li><strong>La idea:</strong> una pregunta va a la vez a los 4 almacenes; el Orchestrator los junta en un contexto. Cada uno responde lo que los otros no.</li>
         <li><strong>Corazón = Qdrant.</strong> 2 formas: densa (por significado — «explorar con poca energía» encuentra drive/homeostasis) y dispersa (BM25, término exacto — «Rangel 2013», «DDM-v2»).</li>
-        <li><strong>Fusión con RRF:</strong> no entrena; premia a los que salen arriba en ambas listas. Regla aritmética reproducible.</li>
         <li><strong>Las otras 3:</strong> PostgreSQL (hechos exactos, <code>WHERE case='CASO1' AND step=19</code>) · Neo4j (postulados y procedencia) · MinIO (artefactos por URL).</li>
         <li><strong>Resultado:</strong> significado + hechos + dominio + artefactos en 1 contexto → respuesta anclada, sin improvisar.</li>
       </ul>
@@ -691,11 +687,10 @@
       </div>
       <div class="panel fragment fade-in-up" style="border-color:color-mix(in srgb,var(--color-accent-cyan) 42%,transparent);background:color-mix(in srgb,var(--color-accent-cyan) 6%,var(--color-surface-frosted))">
         <div class="mono" style="font-size:0.58rem;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:4px;color:color-mix(in srgb,var(--color-accent-cyan) 70%,var(--color-text-dim))">2 · Del sistema terminado</div>
-        <div class="panel__title" style="color:var(--color-accent-cyan)">Evaluar lo abierto · LLM-as-a-judge</div>
+        <div class="panel__title" style="color:var(--color-accent-cyan)">Evaluar lo abierto · dos jueces</div>
         <div class="vlist">
-          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Dos familias</b> — juez LLM (salidas abiertas) · revisión humana experta (Edu, tras el juez: valoración positiva; mejoras de legibilidad).</p></div>
-          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Verdad = datos, no teoría</b> — la vara son las trayectorias; rúbrica de 6 criterios.</p></div>
-          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Evaluado ≠ evaluador</b> — el lab razona con Claude; el juez es Codex, de otra familia.</p></div>
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Juez LLM · Codex</b> — puntúa lo abierto. La vara son los datos, no la teoría (rúbrica de 6 criterios); y evaluado ≠ evaluador: el lab razona con Claude, así que el juez es un modelo distinto.</p></div>
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Juez humano · Edu</b> — revisión experta: probó el sistema, valoración positiva; mejoras de legibilidad.</p></div>
         </div>
       </div>
     </div>
@@ -711,7 +706,7 @@
       <ul class="cue">
         <li><strong>Une dos cosas:</strong> verificar el desarrollo + evaluar el sistema. Misma pregunta: si generar el código ya no es el cuello de botella, ¿qué garantiza que es correcto?</li>
         <li><strong>Verificación:</strong> 387 pruebas + e2e en navegador (sin prueba, tarea no terminada) + revisión combinada + verificación en vivo + puerta de CI.</li>
-        <li><strong>Evaluación:</strong> 2 familias — LLM-as-judge (salidas abiertas), revisión humana. 2 principios: verdad = datos, no teoría; evaluado ≠ evaluador (lab con Claude → juez Codex). Rúbrica de 6 criterios.</li>
+        <li><strong>Evaluación:</strong> 2 jueces — un modelo de lenguaje (salidas abiertas, Codex), una revisión humana (Edu). 2 principios: verdad = datos, no teoría; evaluado ≠ evaluador (lab con Claude → juez Codex, modelo distinto). Rúbrica de 6 criterios.</li>
         <li><strong>Los casos:</strong> 2 ejecuciones reales de Fase 1. Caso 1 (forrajeo): 6 paradigmas, 8×8, 360 ev, 15 cons → 88. Caso 2 (homeostasis): 4 paradigmas, 10×10, 199 ev, 7 cons → 86. Ambos «aprobado con reservas».</li>
       </ul>
     </aside>
@@ -721,7 +716,7 @@
   <section data-slide="anecdota">
     <div class="kicker">Pruebas y evaluación · el juez</div>
     <h2>¿Qué evalúa el juez?</h2>
-    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo <span class="mono">Codex</span> —de otra familia— con una rúbrica de 6 criterios, uno por etapa del lab.</p>
+    <p class="muted" style="margin-top:0.15rem;font-size:0.8rem">La vara de medir son las <strong>trayectorias de la simulación</strong>, no los papers: se juzga la <strong>fidelidad de la observación</strong>, no si la teoría acierta. Juez externo <span class="mono">Codex</span> —un modelo distinto— con una rúbrica de 6 criterios, uno por etapa del lab.</p>
     <div class="s-body">
 <div class="grid-3" style="margin-top:0.8rem;gap:var(--space-4)">
       <div class="panel jcrit" style="--acc:var(--color-architect)"><div class="panel__title"><span>01 · Entorno</span><span class="jcrit__ag">Architect</span></div><p>¿El <span class="mono">env_spec</span> es coherente con el caso y permite <strong>observar</strong> el comportamiento?</p></div>
@@ -743,7 +738,7 @@
     <aside class="notes">
       <ul class="cue">
         <li><strong>Qué mira el juez:</strong> la vara son las trayectorias, no los papers. Se juzga si el lab contó bien lo que pasó, no si la teoría acierta.</li>
-        <li><strong>Juez = Codex</strong> (otra familia), 6 criterios (uno por etapa: entorno, observación, análisis, informe, robustez, juicio global /100).</li>
+        <li><strong>Juez = Codex</strong> (modelo distinto), 6 criterios (uno por etapa: entorno, observación, análisis, informe, robustez, juicio global /100).</li>
         <li><strong>Ejemplo favorito (caso 2):</strong> el modelo de inferencia activa no mantuvo su equilibrio y murió de hambre en el paso 18 (comió una vez). El lab no maquilló: registró los 19 eventos, marcó la inanición y siguió comparándolo.</li>
         <li><strong>Veredictos:</strong> 88 y 86 /100, con reservas por imprecisiones al citar pasos concretos.</li>
       </ul>
@@ -787,9 +782,9 @@
     <aside class="notes">
       <ul class="cue">
         <li><strong>3 lecciones.</strong> Importó más cómo conectar las piezas que las decisiones internas de cada una.</li>
-        <li><strong>1 · Contratos finos</strong> entre componentes que evolucionan a distinto ritmo (la frontera de 3 funciones nunca obligó a coordinar versiones).</li>
-        <li><strong>2 · Centralizar el conocimiento</strong> compensa cuando cada consulta cuesta (control del gasto, diagnóstico).</li>
-        <li><strong>3 · Observar ≠ guardar</strong> (el Tracker observa pero nunca deja memorias a medias).</li>
+        <li><strong>1 · Tres funciones bastaron para integrar dos fases</strong> — el contrato de duck typing (decide/update/get_state) dejó a las dos fases evolucionar sin coordinar versiones.</li>
+        <li><strong>2 · Un único punto de acceso al conocimiento</strong> — enrutar toda consulta por el Orchestrator (salvo el Analyst) dio control del gasto y un solo sitio donde diagnosticar.</li>
+        <li><strong>3 · Un fallo del observador no corrompe la memoria</strong> — el Tracker produce JSON; el writer persiste después, así que nunca quedan memorias a medias.</li>
         <li><strong>Límites:</strong> no valida teorías solo · depende del LLM y externos · dominio 2D · escritura conservadora.</li>
         <li><strong>Ampliaciones:</strong> más paradigmas/entornos (continuos, multi-agente) · métricas cuantitativas · reanudar sesiones · mejoras de legibilidad (nombres de modelos) · evaluarlo con un grupo experto de verdad.</li>
       </ul>
@@ -806,10 +801,9 @@
         <div class="face agent--analyst" data-anim="face"><span class="face__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span><span class="face__name">Analyst</span></div>
         <div class="face agent--reporter" data-anim="face"><span class="face__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span><span class="face__name">Reporter</span></div>
       </div>
-      <h1 data-anim="q" style="text-align:center;font-size:4rem;margin:0">¿Preguntas?</h1>
-      <p class="hero-sub mono" data-anim="q2" style="text-align:center;margin-top:0.9rem">Gracias por vuestra atención</p>
+      <h1 data-anim="q" style="text-align:center;font-size:2.6rem;margin:0">Gracias por vuestra atención</h1>
       <div class="hero-meta mono" data-anim="q2" style="justify-content:center;margin-top:0.6rem">
-        <span><strong>Juan Freire Alvarez</strong></span>
+        <span style="color:#8b8b8b"><strong>Juan Freire Álvarez</strong></span>
       </div>
     </div>
     <aside class="notes">

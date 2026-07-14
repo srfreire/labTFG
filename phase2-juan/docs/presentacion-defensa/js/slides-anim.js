@@ -182,7 +182,13 @@ SlideAnim.register('knowledge', el => {
     tl.fromTo(s, { opacity: 0, x: offs[i][0], y: offs[i][1] },
       { opacity: 1, x: 0, y: 0, duration: 0.45, ease: 'power2.out' }, 0.25 + i * 0.12);
   });
-  drawEdge(tl, '.kb-edge', el, 0.3, 0.8);
+  // cada línea se traza escalonada, justo tras aterrizar su almacén (edge i ↔ store i),
+  // con arranque/parada suaves — así no entran las cuatro de golpe
+  const edges = el.querySelectorAll('.kb-edge');
+  edges.forEach((e, i) => {
+    tl.fromTo(e, { strokeDashoffset: 1, opacity: 0 },
+      { strokeDashoffset: 0, opacity: 1, duration: 1.2, ease: 'sine.inOut' }, 0.5 + i * 0.22);
+  });
   return tl;
 });
 

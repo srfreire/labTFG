@@ -53,7 +53,7 @@ Un matiz: no estaban fijados de antemano, crecieron con cada iteración, coheren
 
 Esos objetivos se aterrizan en requisitos y en cinco casos de uso, con un **único actor humano: el usuario investigador**. Todo lo demás son sistemas externos que no maneja directamente, así que quedan **fuera del límite**.
 
-Los cinco casos son el recorrido de la demo: ejecutar una simulación, comparar modelos, analizar resultados, generar el informe y consultar experimentos anteriores, para contrastar en cada etapa con experimentos pasados. Y dos sistemas externos los alimentan: la **Fase 1** aporta los modelos, y **OpenRouter**, con los servicios semánticos, el músculo de lenguaje.
+Los cinco casos son el recorrido de la demo: ejecutar una simulación, comparar modelos, analizar resultados, generar el informe y consultar experimentos anteriores, para contrastar en cada etapa con experimentos pasados. Y dos sistemas externos los alimentan: la **Fase 1** aporta los modelos, y **OpenRouter** es el músculo de lenguaje.
 
 ---
 
@@ -61,7 +61,7 @@ Los cinco casos son el recorrido de la demo: ejecutar una simulación, comparar 
 
 Hasta aquí, qué hace y para quién; ahora, sobre qué se construye: el marco teórico que da sentido a todo lo anterior. Sitúo el trabajo respecto a lo que ya existe y, aun así, **no invento una técnica nueva, combino cuatro líneas que ya estaban**.
 
-La primera, **simular para validar**: esta fase del TFG nace para validar los modelos de la Fase 1, porque un modelo no solo describe un mecanismo, necesita ejecutarse para ver qué resultados da; y validar no termina cuando compila. La segunda, **recuperación y memoria**: es sobre lo que se construye el núcleo de la memoria compartida que explicaré más tarde; técnicas como el RAG o los grafos de conocimiento se han vuelto ya metodologías de recuperación estándar en este tipo de sistemas agénticos. La tercera, **varios agentes cooperando** en roles con un orden fijo, frente al agente único que no deja nada auditable; es la idea sobre la que monto el sistema de cinco agentes. Y la cuarta, **agentes que razonan, actúan llamando a herramientas y revisan sus propias salidas**; en mi trabajo aparece en dos planos: en el desarrollo, subagentes adversariales que revisan el código antes de fusionarlo; y en los agentes en ejecución, con las llamadas a herramientas y la revisión de sus propias salidas.
+La primera, **simular para validar**: esta fase del TFG nace para validar los modelos de la Fase 1, porque un modelo no solo describe un mecanismo, necesita ejecutarse para ver qué resultados da; y validar no termina cuando compila. La segunda, **recuperación y memoria**: es sobre lo que se construye el núcleo de la memoria compartida que explicaré más tarde; técnicas como el RAG o los grafos de conocimiento se han vuelto ya metodologías de recuperación estándar en este tipo de sistemas agénticos. La tercera, **varios agentes cooperando** en roles con un orden fijo, frente al agente único que no deja nada auditable; es la idea sobre la que monto el sistema de cinco agentes. Y la cuarta, **el uso de herramientas y coding agents**: agentes que razonan y actúan mediante llamadas a herramientas —tool calls auditables, donde el anfitrión valida e invoca, no el modelo— y agentes que programan sobre repos reales. En mi trabajo aparece en dos planos: en el desarrollo, subagentes adversariales que revisan el código antes de fusionarlo; y en los agentes en ejecución, las llamadas a herramientas que el Tracker registra.
 
 Mi arquitectura se coloca en un punto de ese mapa: **cooperativa, centralizada y por capas**.
 
@@ -71,7 +71,7 @@ Mi arquitectura se coloca en un punto de ese mapa: **cooperativa, centralizada y
 
 Con ese mapa detrás, entro en mi arquitectura: una **estructura de cinco capas**, y cada una solo habla con la de al lado. Presentación es lo que ve el usuario, lo que pudisteis ver en la demo anterior, el panel con el chat, la simulación y el replay, más una API ligera que expone el canal. Orquestación es el Orchestrator, que decide qué agente actúa. Agentes son los cuatro especialistas. Simulación tiene el cargador de modelos de la Fase 1, el motor del mundo 2D y las gráficas que utiliza el Analyst. Y persistencia son cuatro almacenes: **PostgreSQL, MinIO, Qdrant y Neo4j**, cada uno elegido por cómo se consulta el dato.
 
-Sobre el despliegue: en producción todo corre en **Railway**; en local, con **Docker Compose** en un comando. Fuera quedan los servicios externos por API: OpenRouter, el modelo de lenguaje, y los semánticos Voyage y ZeroEntropy.
+Sobre el despliegue: en producción todo corre en **Railway**; en local, con **Docker Compose** en un comando. Fuera queda el servicio externo por API: OpenRouter, el modelo de lenguaje.
 
 ---
 
@@ -87,7 +87,7 @@ Tiene cinco piezas: el entorno, el agente, los recursos, los eventos, que una ve
 
 Dentro de esas capas, la que manda es esta. El Orchestrator es el director de orquesta, la única pieza que conoce el proceso entero. Un punto que conviene dejar claro, porque suele generar preguntas: **el orden no lo improvisa el modelo**. La secuencia está escrita de antemano, y al modelo solo le dejo elegir desviaciones puntuales: una consulta extra, repetir un paso, descartar un intento fallido. Y qué modelos simular tampoco lo decide él: **lo elige el usuario**; el Orchestrator solo se los presenta y espera su elección.
 
-Tiene **tres tareas que no delega**: prepara el contexto antes de llamar a cada agente, agrupa las escrituras y las hace de golpe al final para controlar el gasto, y retransmite en directo por el canal. En relación con lo que veis en la diapositiva de la ventana de contexto, está el concepto de **autocompactación**: cuando la conversación se hace muy larga, los turnos antiguos se resumen con una plantilla fija escrita por código, no por el modelo, así el resumen es fiable y no mete alucinaciones.
+Tiene **tres tareas que no delega**: prepara el contexto antes de llamar a cada agente, agrupa las escrituras de la conversación y las persiste por turnos, y retransmite en directo por el canal. El volcado de las memorias de la simulación, en cambio, no es suyo: de eso se encarga el escritor de memoria del Tracker al terminar.
 
 ---
 
@@ -105,7 +105,7 @@ La memoria ha salido ya varias veces; ahora la abro. Es la memoria del sistema, 
 
 **PostgreSQL** es la verdad estructurada: cada decisión, recompensa y estado, paso a paso y reproducible. **MinIO** guarda lo pesado que no cabe en una fila: los PDF con sus figuras y los ficheros de los modelos de la Fase 1. **Qdrant** es la memoria de episodios —un episodio es un tramo de una simulación pasada, con sus decisiones y recompensas— y los recupera por significado; lo amplío en la siguiente. Y **Neo4j** es el conocimiento del dominio: un grafo de paradigmas, autores y papers que guarda de dónde sale cada afirmación, para poder citar la fuente.
 
-¿Cómo se llena? Cuando el Tracker termina, un componente que llamo el **escritor de memoria del Tracker** parte sus observaciones en hechos y los guarda con el mismo identificador en todos los almacenes. Dos servicios externos refuerzan lo semántico y son **opcionales**: Voyage genera los embeddings y ZeroEntropy reordena por relevancia; si no están sus claves, esa capa se apaga.
+¿Cómo se llena? El grueso lo escribe el Tracker: cuando termina, un componente que llamo el **escritor de memoria del Tracker** parte sus observaciones en hechos y los guarda con el mismo identificador en todos los almacenes. El Reporter también aporta, pero solo su parte: deposita en **MinIO** el PDF y sus figuras ya generados.
 
 ---
 
@@ -113,7 +113,7 @@ La memoria ha salido ya varias veces; ahora la abro. Es la memoria del sistema, 
 
 Y esa memoria, ¿cómo se consulta? La idea es sencilla: cuando el usuario pregunta, esa misma pregunta se lanza **a la vez contra los cuatro almacenes**, y el Orchestrator junta lo que devuelven en un solo contexto. Cada uno responde a algo que los otros no.
 
-El corazón es Qdrant, y voy despacio porque es lo más técnico. Guardo la memoria de dos formas complementarias. La **densa, por significado**: cada texto se convierte en una lista de números —un embedding— que captura su sentido, así que «explorar con poca energía» encuentra episodios sobre drive u homeostasis aunque no repitan esas palabras —por ejemplo, aunque hablen de «reservas bajas»—. Y la **dispersa, por término exacto, con BM25**: la fiable para algo literal como «Rangel 2013» o «DDM-v2», que la semántica tiende a diluir. Junto las dos listas con **Reciprocal Rank Fusion**: no entrena nada, solo premia a los que salen arriba en ambas. Que sea una regla aritmética y reproducible es una virtud.
+El corazón es Qdrant, y voy despacio porque es lo más técnico. Guardo la memoria de dos formas complementarias. La **densa, por significado**: cada texto se convierte en una lista de números —un embedding— que captura su sentido, así que «explorar con poca energía» encuentra episodios sobre drive u homeostasis aunque no repitan esas palabras —por ejemplo, aunque hablen de «reservas bajas»—. Y la **dispersa, por término exacto, con BM25**: la fiable para algo literal como «Rangel 2013» o «DDM-v2», que la semántica tiende a diluir.
 
 Y los otros tres completan la respuesta: **PostgreSQL** pone el hecho exacto —paso y recompensa—, **Neo4j** la teoría contra la que se contrasta y de qué paper sale, y **MinIO** el informe o la figura ya generados. El Orchestrator junta las cuatro respuestas en un solo contexto y responde apoyándose en lo que el sistema ya sabe, **sin improvisar**.
 
@@ -129,9 +129,9 @@ Aquí lo importante es el reparto: de las cuatro estaciones, tres son mías, esp
 
 ## 15 · Quién decide, quién implementa
 
-De ese ciclo, concreto una cosa: el reparto entre el humano y el agente. **El humano decide**: el alcance, los contratos, el diseño visual, las prioridades y, sobre todo, la aceptación final. Ninguna salida se aceptó solo por venir generada; nunca puedes fiarte al 100 % de una implementación solo porque parezca correcta. **El agente implementa**: módulos acotados, pruebas, migraciones, refactores y depuración, pero solo cuando la especificación fija bien el comportamiento; si el contrato es ambiguo, el resultado también.
+De ese ciclo concreto el **reparto y su consecuencia**. La frontera es simple: **el agente implementa** lo acotado —módulos, pruebas, migraciones, refactores, depuración—, y **yo decido todo lo demás**: alcance, contratos, diseño, prioridades y la aceptación final. Pero solo funciona si la especificación fija el comportamiento: si el contrato es ambiguo, el resultado también, y **ninguna salida se acepta por venir generada**.
 
-La idea clave es que **el riesgo cambió de sitio**. Antes era no llegar a escribir a tiempo; ahora es **aceptar una pieza que parece correcta sin comprobar si respeta el sistema**, y muchas veces eso depende de una buena planificación. Por eso reviso siempre el cambio contra la tarea: puede compilar y aun así lo rechazo si amplía el alcance o mete una abstracción que nadie pidió. Y no es solo planificar: es granularizar las tareas para que sean sencillas y acotadas, de forma que la implementación sea directa. No puedo ser ambicioso si quiero un resultado perfecto, porque ahí es donde empieza la ambigüedad, y ahí es donde la IA empieza a llevarme a mí, y no yo a ella. En la práctica repartí: **Codex** para backend, persistencia y pruebas; **Claude Code** para frontend e interacción.
+Lo importante es que **el riesgo cambió de sitio**. Antes era no llegar a escribir a tiempo; ahora es **aceptar una pieza que parece correcta pero rompe el sistema**. Por eso reviso cada cambio contra la tarea: puede compilar y aun así lo rechazo si amplía el alcance o mete una abstracción que nadie pidió. La defensa es **granularizar**: tareas pequeñas y acotadas, donde la implementación es directa y no deja hueco a la ambigüedad —que es justo donde la IA empieza a llevarme a mí, y no yo a ella—. En la práctica repartí por terreno: **Codex** en backend, persistencia y pruebas; **Claude Code** en frontend e interacción.
 
 ---
 
@@ -141,9 +141,9 @@ Y si al final soy yo quien acepta cada cambio, hay que asegurarlo. Esta diaposit
 
 En verificación: **387 pruebas automáticas** más pruebas de extremo a extremo en el navegador; mi regla era que **sin prueba una tarea no está terminada**. A eso sumo la revisión combinada, la verificación en vivo y una puerta de **integración continua** en cada subida: un control automático que corre las pruebas y bloquea el cambio si algo falla.
 
-La evaluación es más sutil, porque no hay una única respuesta correcta. Lo primero fue decidir qué quiero evaluar: ¿que el código sea correcto, o que cumpla su función? Lo primero ya lo respondí en el desarrollo —esa primera tarjeta—; lo segundo es lo que viene ahora. Uso **dos familias**: un modelo de lenguaje como juez para lo abierto y, después de ese juez, una **revisión humana experta** (la comprobación automática y binaria ya la conté en la tarjeta de verificación). En esa revisión experta el propio Eduardo probó el sistema, con una valoración muy positiva —entorno intuitivo, simulaciones fáciles y las recomendaciones del chatbot como punto fuerte—, y apuntó sobre todo mejoras de legibilidad, como lo técnicos que resultan los nombres de los modelos. Aun así, una evaluación con un **grupo experto de verdad queda como trabajo futuro**. Con dos principios: **la verdad son los datos de la simulación, no la teoría**; y **quien evalúa no es quien fue evaluado** —el laboratorio razona con Claude, los cinco agentes que habéis visto, así que el juez es **Codex**. En el siguiente slide detallo qué mira ese juez.
+La evaluación es más sutil: al ser un LLM no hay una única respuesta correcta, así que hay que plantear una forma nueva de evaluar algo que cambia en cada ejecución. Uso **dos jueces**. El primero, un **modelo de lenguaje** que puntúa lo abierto, guiado por dos principios: **la verdad son los datos de la simulación, no la teoría**; y **quien evalúa no es quien fue evaluado** —el laboratorio razona con Claude, los cinco agentes que habéis visto, así que el juez es **Codex**, un modelo distinto—. El segundo juez es **humano**: una revisión experta en la que el propio Eduardo probó el sistema, con una valoración muy positiva. En el siguiente slide detallo qué mira el juez automático.
 
-Y los dos casos son reales, ejecuciones instrumentadas de modelos de la Fase 1, de dos casos que nos dio Eduardo y cuyos modelos cubrió mi compañero en MinIO. El caso 1, decisión basada en valor y forrajeo —elegir según la recompensa esperada, ir a por la comida—: seis paradigmas en 8×8, 360 eventos, 15 consumos, **nota 88**. El caso 2, homeostasis —mantener una variable interna, como la energía, en equilibrio—: cuatro paradigmas en 10×10, 199 eventos, 7 consumos, **nota 86**. Los dos, **aprobado con reservas**.
+Y los dos casos son reales y **vienen de fuera**: dos problemas que nos dio Eduardo, ejecutados sobre los modelos de la Fase 1 de mi compañero. El **caso 1** va de elegir según la recompensa esperada —ir a por la comida—; el **caso 2**, de homeostasis —mantener una variable interna, como la energía, en equilibrio—. Los números están en pantalla; no me detengo en ellos.
 
 ---
 
@@ -151,13 +151,11 @@ Y los dos casos son reales, ejecuciones instrumentadas de modelos de la Fase 1, 
 
 Antes mencioné un juez externo; aquí detallo qué mira, porque es fácil malinterpretarlo. La vara son las **trayectorias de la simulación, no los papers**: se juzga si el laboratorio contó bien lo que pasó, no si la teoría acierta. Codex puntúa con una **rúbrica de seis criterios**, uno por cada etapa del laboratorio: si el entorno del Architect permite observar el comportamiento; si las observaciones del Tracker reflejan la simulación; si el análisis del Analyst está anclado en las trayectorias, sin inventar; si el informe del Reporter es fiel a los datos y es el PDF real; la robustez de toda la cadena de agentes de principio a fin; y un juicio global, una valoración de conjunto con la nota sobre 100.
 
-El ejemplo que más me gusta es del caso 2. El modelo de inferencia activa no supo mantener su equilibrio y **murió de hambre en el paso 18**, tras comer una sola vez. Lo interesante es lo que hizo el laboratorio: **no rellenó ni maquilló su trayectoria**; registró los 19 eventos, marcó la inanición y lo siguió comparando. Observó el fallo y lo contó tal cual. Los veredictos fueron 88 y 86, con reservas por imprecisiones al citar pasos concretos.
-
 ---
 
 ## 18 · Lo aprendido
 
-Cierro con tres lecciones. Una: los **contratos finos** entre componentes que evolucionan a ritmos distintos valen mucho; la frontera de tres funciones nunca nos obligó a coordinar versiones ni a estar pendientes el uno del otro: la sencillez gana al acoplamiento fuerte. Dos: **centralizar el conocimiento** compensa cuando cada consulta cuesta, porque da control del gasto, facilita el diagnóstico y hace más sencillo gestionar el contexto. Tres: **observar no es lo mismo que guardar**; el Tracker observa, pero nunca deja memorias a medias.
+Cierro con tres lecciones. Una: **tres funciones bastaron para integrar dos fases**; esa frontera de duck typing entre componentes que evolucionan a ritmos distintos nunca nos obligó a coordinar versiones ni a estar pendientes el uno del otro: la sencillez gana al acoplamiento fuerte. Dos: **un único punto de acceso al conocimiento** compensa cuando cada consulta cuesta, porque da control del gasto, facilita el diagnóstico y hace más sencillo gestionar el contexto. Tres: **un fallo del observador no corrompe la memoria**; el Tracker observa y produce un JSON, pero la escritura ocurre después, así que nunca deja memorias a medias.
 
 Soy honesto con los **límites**: no valida teorías por sí solo, depende del modelo de lenguaje y de servicios externos, el dominio es una rejilla 2D, y la escritura de conocimiento es conservadora. Y propongo **por dónde seguir**: más paradigmas y entornos continuos o multi-agente, métricas cuantitativas estandarizadas, reanudar sesiones, mejoras de legibilidad como nombres de modelos más claros, y evaluarlo con un **grupo experto de verdad**.
 
