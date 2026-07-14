@@ -1,0 +1,31 @@
+@startuml
+skinparam backgroundColor white
+skinparam dpi 210
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ArrowColor #334155
+skinparam activity {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+  DiamondBorderColor #334155
+  DiamondBackgroundColor #FEF9C3
+  StartColor #166534
+  EndColor #7F1D1D
+}
+
+start
+:Hecho aceptado\nconfianza = 0.70;
+if (nodo ya existente?) then (duplicado)
+  :Corroboracion\nconfianza += 0.05;
+else (conflicto)
+  :Contradiccion\nconfianza -= 0.10;
+endif
+:Decaimiento temporal\nconfianza *= 0.95 cada 30 dias;
+if (confianza < 0.20\ny sin uso > 90 dias?) then (si)
+  :Poda: se elimina el nodo;
+  end
+else (no)
+  :Permanece recuperable\nlimites [0.10, 1.00];
+  stop
+endif
+@enduml

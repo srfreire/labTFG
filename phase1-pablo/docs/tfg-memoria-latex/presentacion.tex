@@ -93,13 +93,32 @@ def get_state(self) -> dict: ...
 
 \begin{frame}
   \frametitle{Ejemplo de actualización de la memoria}
-  \begin{center}
-  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-memoria-ejemplo}
-  \end{center}
-
-  \begin{block}{Criterio de entrada}
-    Solo se consolida conocimiento aceptado tras revisión.
-  \end{block}
+  \begin{columns}[c]
+  \begin{column}{0.46\textwidth}
+    \begin{center}
+    \includegraphics[height=0.78\textheight,keepaspectratio]{figuras/phase1-memoria-confianza}
+    \end{center}
+  \end{column}
+  \begin{column}{0.54\textwidth}
+    \footnotesize
+    \begin{table}
+    \begin{tabular}{ll}
+      \toprule
+      Evento & Confianza\\
+      \midrule
+      Alta de hecho aceptado & $= 0.70$\\
+      Corroboración (duplicado) & $+0.05$\\
+      Contradicción (conflicto) & $-0.10$\\
+      Uso en recuperación & $+0.02$\\
+      Decaimiento (cada 30 días) & $\times 0.95$\\
+      Poda ($<0.20$, sin uso, $>90$ d) & se elimina\\
+      \midrule
+      Límites & $[0.10,\ 1.00]$\\
+      \bottomrule
+    \end{tabular}
+    \end{table}
+  \end{column}
+  \end{columns}
 \end{frame}
 
 \section{Metodología}
@@ -167,6 +186,35 @@ def get_state(self) -> dict: ...
   \end{exampleblock}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Evaluaciones científicas: revisión de un experto (CASO1)}
+  \footnotesize
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+  \begin{block}{Paradigmas}
+    \textbf{Aceptados:} pavloviano, regulación homeostática, dirigido a
+    objetivos vs.\ habitual (debería separarse en dos).\\[3pt]
+    \textbf{Rechazados:} drift diffusion model (no aparece en el corpus),
+    cómputo de valor por atributos (es parte de «dirigido a objetivos»),
+    DlPFC (es un área cerebral, no un paradigma).
+  \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+  \begin{block}{Formulaciones}
+    \textbf{Correctas:} homeostático F1/F2, dirigido vs.\ habitual F1/F2.\\[3pt]
+    \textbf{Erróneas:} pavloviano F1--F3, homeostático F3 y dirigido vs.\
+    habitual F3 (mezclan mecanismos de otros paradigmas).
+  \end{block}
+  \end{column}
+  \end{columns}
+
+  \begin{alertblock}{Experto frente a juez LLM}
+    Al trasladar los hallazgos del experto a la misma rúbrica, la puntuación
+    de CASO1 baja a $\sim$64/100 frente al 72/100 del juez LLM. El juez es más
+    indulgente: la validación por expertos sigue siendo necesaria.
+  \end{alertblock}
+\end{frame}
+
 \section{Futuro}
 
 \begin{frame}
@@ -197,10 +245,20 @@ def get_state(self) -> dict: ...
     \item Sistema implementado íntegramente con agentes, con una metodología
           de ingeniería detrás.
   \end{itemize}
+\end{frame}
 
-  \vspace{0.4cm}
+\begin{frame}
   \centering
-  \Large Muchas gracias
+  \vfill
+  {\Huge\usebeamercolor[fg]{structure}Muchas gracias}
+
+  \vspace{0.9cm}
+  \normalsize
+  \begin{tabular}{rl}
+    Repositorio & \texttt{github.com/srfreire/labTFG}\\[4pt]
+    Agrex & \texttt{github.com/ppazosp/agrex}\\
+  \end{tabular}
+  \vfill
 \end{frame}
 
 \end{document}
