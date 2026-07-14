@@ -203,8 +203,8 @@
 .reveal .arte-grid > .panel { padding: var(--space-4) var(--space-5); }
 .reveal .arte-grid .panel__title { margin-bottom: var(--space-2); }
 .reveal .arte-grid .panel p { font-size: 0.78rem; }
-.reveal .arte-grid .panel__fig { margin-top: var(--space-3); }
-.reveal .arte-grid .panel__fig svg { max-height: 40px; }
+.reveal .arte-grid .panel__fig { margin-top: var(--space-4); display: flex; justify-content: center; }
+.reveal .arte-grid .panel__fig svg { max-width: 300px; max-height: 72px; }
 
 /* Conclusiones — 3 lecciones, tratamiento editorial (sin cajas ni bordes) */
 .reveal .lessons { gap: var(--space-8); }

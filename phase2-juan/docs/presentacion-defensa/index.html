@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="vendor/reset.css">
 <link rel="stylesheet" href="vendor/reveal.css">
 <link rel="stylesheet" href="css/theme.css?v=16">
-<link rel="stylesheet" href="css/components.css?v=16">
+<link rel="stylesheet" href="css/components.css?v=17">
 <link rel="stylesheet" href="css/diagrams.css?v=16">
 </head>
 <body>
@@ -54,7 +54,7 @@
       <div class="xform__side xform__open fragment fade-in-up">
         <div class="xform__tag">El punto de partida</div>
         <div class="xform__title">Una propuesta abierta</div>
-        <p>Idea de <strong>Eduardo Sánchez Vila</strong> a partir de un TFM previo. A mi compañero Pablo y a mí se nos planteó <strong>sin alcance cerrado</strong>.</p>
+        <p>Idea de <strong>Eduardo Sánchez Vila</strong> a partir de un TFM previo. <br>A mi compañero Pablo y a mí se nos planteó <strong>sin alcance cerrado</strong>.</p>
       </div>
       <div class="xform__arrow fragment fade-in-up">
         <span class="xform__arrow-label">iterado · a tres</span>
@@ -112,7 +112,7 @@
     def decide(self, perception: dict) -> Action: ...
     def update(self, action, reward, new_perception): ...
     def get_state(self) -> dict: ...</code></pre>
-      <p class="muted" style="font-size:0.8rem;max-width:680px;text-align:center">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento. Sin herencia ni dependencias estáticas — ambas fases evolucionan por separado, sin coordinar releases.</p>
+      <p class="muted" style="font-size:0.8rem;max-width:680px;text-align:center">Integración por <strong>duck typing</strong>: tres métodos, cero acoplamiento.</p>
     </div>
     
 </div>
@@ -136,7 +136,7 @@
           <source src="assets/video/demo.webm?v=4" type="video/webm">
         </video>
       </div>
-      <p class="mono dim" style="text-align:center;margin-top:0.7rem;font-size:0.82rem">Del lenguaje natural al <strong>PDF descargable</strong>, sin tocar código · todo en vivo por un <strong>único canal WebSocket</strong></p>
+      <p class="mono dim" style="text-align:center;margin-top:0.7rem;font-size:0.82rem">Del lenguaje natural al <strong>PDF descargable</strong>, sin tocar código — solo conversando</p>
     </div>
     <aside class="notes">
       <ul class="cue">
@@ -252,8 +252,7 @@
             <polyline points="13,32 34,32 34,20 77,20 77,8 117,8" stroke="var(--color-accent-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <circle cx="13" cy="32" r="3" fill="var(--color-accent-green)"/>
             <rect x="113" y="4" width="8" height="8" rx="1.5" fill="none" stroke="var(--color-accent-green-light)" stroke-width="2"/>
-          </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Epstein · Railsback &amp; Grimm · Sargent (V&amp;V)</p></div>
+          </svg></div></div>
         <div class="panel" data-anim="p"><div class="panel__title">Recuperación + memoria</div><p>Búsqueda híbrida —densa + BM25 disperso— sobre un almacén vectorial (RAG), más un grafo de conocimiento explícito (GraphRAG). Almacenes distintos, fusionados en la consulta.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 46" fill="none" aria-hidden="true">
             <g fill="#4ade80">
@@ -286,8 +285,7 @@
             </g>
             <text x="31" y="39" text-anchor="middle" class="figlabel">denso</text>
             <text x="102" y="39" text-anchor="middle" class="figlabel">disperso · BM25</text>
-          </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">Lewis (RAG) · BM25 (Robertson) · RRF (Cormack) · GraphRAG · Hogan</p></div>
+          </svg></div></div>
         <div class="panel" data-anim="p"><div class="panel__title">Multi-agente LLM</div><p>Roles especializados en orden canónico, frente al agente único que todo lo hace y nada deja auditar.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 40" fill="none" aria-hidden="true">
             <g stroke="var(--color-text-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -299,8 +297,7 @@
             <circle cx="49" cy="20" r="7" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
             <circle cx="83" cy="20" r="7" fill="none" stroke="#a78bfa" stroke-width="2.5"/>
             <circle cx="117" cy="20" r="7" fill="none" stroke="#f472b6" stroke-width="2.5"/>
-          </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">MetaGPT · Guo et al.</p></div>
+          </svg></div></div>
         <div class="panel" data-anim="p"><div class="panel__title">Herramientas + coding agents</div><p><em>Tool calls</em> auditables —el anfitrión valida e invoca, no el modelo— y <strong>coding agents</strong> sobre repos reales, con auto-revisión de código: aquí, subagentes que lo revisan antes de fusionarlo.</p>
           <div class="panel__fig"><svg viewBox="0 0 132 44" fill="none" aria-hidden="true">
             <path d="M39.2 14.3 A12 12 0 1 1 30 10" fill="none" stroke="var(--color-accent-cyan)" stroke-width="2.2" stroke-linecap="round"/>
@@ -311,10 +308,9 @@
             <circle cx="77" cy="11.5" r="1.3" fill="var(--color-accent-cyan)" opacity="0.5"/>
             <path d="M73 23 l5 4 l-5 4" fill="none" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <line x1="86" y1="31" x2="102" y2="31" stroke="var(--color-accent-green-light)" stroke-width="2" stroke-linecap="round"/>
-          </svg></div>
-          <p class="mono dim" style="font-size:0.6rem;margin-top:6px">ReAct · Self-Refine · Reflexion · SWE-bench</p></div>
+          </svg></div></div>
     </div>
-    <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem;text-align:center;max-width:900px;margin-left:auto;margin-right:auto">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong> — cooperativa, centralizada y por etapas <span class="mono dim">(Cooperative · Centralized · Layered)</span>.</p>
+    <p class="muted" data-anim="foot" style="margin-top:1rem;font-size:0.82rem;text-align:center;max-width:900px;margin-left:auto;margin-right:auto">La aportación no es una técnica nueva, sino <strong>combinar estas ideas en una infraestructura concreta</strong></p>
     
 </div>
     <aside class="notes">
@@ -412,8 +408,8 @@
         <div class="panel"><p><strong>El entorno</strong> <span class="dim">(Environment)</span> — una rejilla de <strong>tamaño fijo</strong> (ancho × alto) donde viven los <strong>recursos</strong> que el agente busca.</p></div>
         <div class="panel"><p><strong>El cuerpo</strong> <span class="dim">(Agent)</span> — quién y dónde: posición en la rejilla, energía e historia.</p></div>
         <div class="panel"><p><strong>La política</strong> <span class="dim">(DecisionModel)</span> — cómo decide, separada del cuerpo.</p></div>
-        <p class="dim" style="font-size:0.78rem;line-height:1.5">Reglas del entorno y <strong>eventos inmutables</strong> — la frontera compartida con la Fase 1.</p>
-        <p class="dim" style="font-size:0.78rem;line-height:1.5"><strong>Cada modelo</strong> se encarna en uno o varios agentes sobre la <strong>misma rejilla</strong> — comparación en igualdad de condiciones.</p>
+        <p class="dim" style="font-size:0.78rem;line-height:1.5">Reglas del entorno y <strong>eventos inmutables</strong></p>
+        <p class="dim" style="font-size:0.78rem;line-height:1.5"><strong>Cada modelo</strong> se encarna en uno o varios agentes sobre la <strong>misma rejilla</strong></p>
       </div>
     </div>
     
@@ -436,7 +432,7 @@
 <div class="grid-2" style="margin-top:1.1rem;align-items:center;grid-template-columns:minmax(0,460px) minmax(0,460px);justify-content:center;column-gap:4.75rem">
       <div class="orch-hero" data-anim="hero">
         <span class="orch-hero__av"><img src="assets/img/faces/orchestrator.svg" alt="Orchestrator"></span>
-        <p>Un <strong>único coordinador</strong> decide el orden, pre-carga el contexto y controla el presupuesto. Los cuatro agentes solo transforman.</p>
+        <p>Es <strong>con quien conversas</strong>: un único coordinador que recibe la petición y dirige. Los cuatro agentes solo transforman.</p>
         <div class="orch-dispatch">
           <span class="orch-dispatch__mini agent--architect"><img src="assets/img/faces/architect.svg" alt=""></span>
           <span class="orch-dispatch__mini agent--tracker"><img src="assets/img/faces/tracker.svg" alt=""></span>
@@ -475,7 +471,7 @@
         <span class="agtile__av"><img src="assets/img/faces/architect.svg" alt="Architect"></span>
         <span class="agtile__name">Architect</span>
         <span class="agtile__flow">lenguaje natural <span class="arw">→</span> <span class="to">especificación</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="0">Traduce la petición en un entorno 2D concreto —tamaño, acciones, recursos— y lo valida antes de construirlo.</span>
+        <span class="agtile__detail fragment" data-fragment-index="0">Convierte la petición en un entorno 2D —tamaño, acciones, recursos— y lo valida.</span>
         <span class="agtile__tag">valida · no juzga el modelo</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
@@ -483,7 +479,7 @@
         <span class="agtile__av"><img src="assets/img/faces/tracker.svg" alt="Tracker"></span>
         <span class="agtile__name">Tracker</span>
         <span class="agtile__flow">simulación <span class="arw">→</span> <span class="to">observaciones</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="1">Registra eventos, trayectorias y episodios. Marca lo crítico —consumos, inanición, saltos de energía— con reglas deterministas.</span>
+        <span class="agtile__detail fragment" data-fragment-index="1">Registra eventos y trayectorias, y marca lo crítico con reglas deterministas.</span>
         <span class="agtile__tag">observador puro · no escribe memoria</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
@@ -491,7 +487,7 @@
         <span class="agtile__av"><img src="assets/img/faces/analyst.svg" alt="Analyst"></span>
         <span class="agtile__name">Analyst</span>
         <span class="agtile__flow">observaciones <span class="arw">→</span> <span class="to">patrones</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="2">Contrasta el comportamiento contra los postulados del Knowledge Backbone y genera las gráficas, incluida la comparativa multi-modelo.</span>
+        <span class="agtile__detail fragment" data-fragment-index="2">Contrasta el comportamiento con los postulados del KB y genera las gráficas.</span>
         <span class="agtile__tag">único que consulta el KB</span>
       </div>
       <span class="aglink" data-anim="tile">→</span>
@@ -499,7 +495,7 @@
         <span class="agtile__av"><img src="assets/img/faces/reporter.svg" alt="Reporter"></span>
         <span class="agtile__name">Reporter</span>
         <span class="agtile__flow">patrones <span class="arw">→</span> <span class="to">informe PDF</span></span>
-        <span class="agtile__detail fragment" data-fragment-index="3">Redacta el informe y lo compila con LaTeX (<span class="mono">tectonic</span>). No maquilla los datos: no inventa cifras y, si algo falla, se ve.</span>
+        <span class="agtile__detail fragment" data-fragment-index="3">Redacta y compila el PDF con LaTeX. No inventa cifras: si algo falla, se ve.</span>
         <span class="agtile__tag">sin cifras inventadas</span>
       </div>
     </div>
@@ -690,7 +686,7 @@
         <div class="panel__title" style="color:var(--color-accent-cyan)">Evaluar lo abierto · dos jueces</div>
         <div class="vlist">
           <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Juez LLM · Codex</b> — puntúa lo abierto. La vara son los datos, no la teoría (rúbrica de 6 criterios); y evaluado ≠ evaluador: el lab razona con Claude, así que el juez es un modelo distinto.</p></div>
-          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Juez humano · Edu</b> — revisión experta: probó el sistema, valoración positiva; mejoras de legibilidad.</p></div>
+          <div class="vrow" style="--dot:var(--color-accent-cyan)"><span class="vrow__dot"></span><p><b>Juez humano · Eduardo</b> — revisión experta: probó el sistema, valoración positiva; mejoras de legibilidad.</p></div>
         </div>
       </div>
     </div>
