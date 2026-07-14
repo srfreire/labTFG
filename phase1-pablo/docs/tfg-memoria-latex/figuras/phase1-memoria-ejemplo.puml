@@ -29,7 +29,6 @@ Memory -> MinIO : documento integro (fuente)
 Memory -> PG : revision aceptada, confianza y vigencia
 Memory -> Neo : nodos y relaciones con slugs canonicos
 Memory -> Qd : hecho denso + BM25
-note over Qd : la evidencia se acumula\nhasta un umbral
 
 Run -> Neo : retrieve_knowledge
 Run -> Qd : retrieve_knowledge
