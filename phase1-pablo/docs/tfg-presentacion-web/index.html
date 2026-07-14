@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TFG · Pablo Pazos Parada · Defensa</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%230f172a'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%23f59e0b'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="deck.css" />
+<style>
+/* ═══ Slide-specific styles ═══ */
+
+/* ── Portada ── */
+#sl-portada { justify-content: center; }
+#sl-portada .topbar {
+  position: absolute; top: 44px; left: 72px; right: 72px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#sl-portada .brand { display: flex; align-items: center; gap: 12px; }
+#sl-portada .brand img { height: 44px; }
+#sl-portada .brand span { font-size: 13px; color: var(--ink-muted); max-width: 220px; line-height: 1.3; }
+#sl-portada h1 { font-size: 44px; max-width: 760px; }
+#sl-portada .lead { max-width: 640px; margin-top: 20px; font-size: 18px; }
+#sl-portada .who { margin-top: 40px; display: flex; gap: 40px; }
+#sl-portada .who .k { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-dim); }
+#sl-portada .who .v { font-size: 15.5px; font-weight: 500; margin-top: 3px; }
+#sl-portada .hero-net { position: absolute; right: 30px; top: 130px; width: 400px; height: 480px; opacity: 0.8; }
+#sl-portada .mini-node {
+  position: absolute; --c: var(--ink-dim);
+  border: 2px solid var(--c); border-radius: 10px;
+  background: var(--surface); box-shadow: var(--shadow-node);
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.06em;
+  padding: 8px 12px; color: var(--ink);
+}
+#sl-portada .mini-node em { display: block; font-style: normal; color: var(--c); font-size: 9px; margin-top: 1px; }
+.slide.active #sl-anim, .slide.active .float { animation: floaty 5s ease-in-out infinite; }
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* ── Índice ── */
+#sl-toc .toc { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 18px 64px; }
+#sl-toc .toc li {
+  display: flex; align-items: center; gap: 18px;
+  padding: 18px 6px; border-bottom: 1px solid var(--border);
+  opacity: 0;
+}
+#sl-toc.active .toc li { animation: slide-in 0.5s var(--ease-pop) both; }
+#sl-toc.active .toc li:nth-child(1) { animation-delay: 0.05s; }
+#sl-toc.active .toc li:nth-child(2) { animation-delay: 0.13s; }
+#sl-toc.active .toc li:nth-child(3) { animation-delay: 0.21s; }
+#sl-toc.active .toc li:nth-child(4) { animation-delay: 0.29s; }
+#sl-toc.active .toc li:nth-child(5) { animation-delay: 0.37s; }
+#sl-toc.active .toc li:nth-child(6) { animation-delay: 0.45s; }
+#sl-toc.active .toc li:nth-child(7) { animation-delay: 0.53s; }
+#sl-toc .toc .n { font-family: var(--font-mono); font-size: 13px; color: var(--ink-dim); }
+#sl-toc .toc .t { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+
+/* ── Motivación ── */
+#sl-mot .cols { display: flex; gap: 24px; align-items: stretch; margin-top: 4px; }
+#sl-mot .panel { padding: 20px 24px; flex: 1; }
+#sl-mot .q { font-size: 21px; font-weight: 600; line-height: 1.35; margin: 12px 0 14px; letter-spacing: -0.01em; }
+#sl-mot .gap-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 90px; }
+#sl-mot .gap-arrow .qm { font-family: var(--font-mono); font-size: 30px; font-weight: 600; color: var(--c-running); }
+#sl-mot .gap-arrow svg { width: 60px; }
+#sl-mot .missing { display: flex; flex-wrap: wrap; gap: 7px; }
+#sl-mot .missing .chip { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
+#sl-mot .mini-code { font-family: var(--font-mono); font-size: 13.5px; line-height: 1.8; background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-top: 12px; }
+#sl-mot .mini-code .kw { color: #93c5fd; } #sl-mot .mini-code .fn { color: #fbbf24; }
+#sl-mot .chain { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
+#sl-mot .chain .step {
+  flex: 1; border: 1.5px solid #fcd34d; background: #fffbeb; border-radius: 10px;
+  padding: 10px 14px; font-size: 13.5px; font-weight: 500; text-align: center; line-height: 1.3;
+}
+#sl-mot .chain .sep { color: var(--ink-faint); flex: none; }
+#sl-mot .chain-tag { margin-top: 10px; text-align: center; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #b45309; }
+#sl-mot .resolve {
+  margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 16px;
+  border: 1.5px solid #86efac; background: #f0fdf4; border-radius: 12px; padding: 14px 22px;
+}
+#sl-mot .resolve b { font-size: 17px; }
+#sl-mot .resolve .flow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: #15803d; }
+#sl-mot .resolve .flow span { background: #dcfce7; padding: 4px 12px; border-radius: 999px; }
+
+/* ── Contexto ── */
+#sl-ctx .diagram { height: 296px; margin-top: 2px; }
+#sl-ctx .below { display: flex; gap: 24px; margin-top: 18px; align-items: stretch; }
+#sl-ctx .code { flex: 1.5; font-size: 14px; padding: 14px 20px; }
+#sl-ctx .notes { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+#sl-ctx .notes .chip { align-self: flex-start; }
+
+/* ── Arquitectura del sistema ── */
+#sl-arch .diagram { height: 505px; margin-top: 4px; }
+#sl-arch .node .nl { font-size: 13.5px; }
+#sl-arch .node .ns { font-size: 10px; }
+#sl-arch .node { padding: 8px 10px; }
+
+/* ── Pipeline ── */
+#sl-pipe .diagram { height: 470px; margin-top: 2px; }
+#sl-pipe .loop-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; fill: var(--ink-dim); text-transform: uppercase; }
+#sl-pipe .gate-chip { position: absolute; right: 0; top: -6px; }
+#sl-pipe .gate-chip .chip { border-color: #93c5fd; color: #1d4ed8; background: #eff6ff; }
+/* stacked cards = subagent fan-out */
+#sl-pipe .node.stacked::before, #sl-pipe .node.stacked::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  border: 1.5px solid var(--border); background: var(--surface); z-index: -1;
+}
+#sl-pipe .node.stacked::before { transform: translate(5px, 5px); opacity: 0.7; }
+#sl-pipe .node.stacked::after  { transform: translate(10px, 10px); opacity: 0.35; }
+
+/* ── Memoria ── */
+#sl-mem .diagram { height: 430px; margin-top: 4px; }
+#sl-mem .rule {
+  position: absolute; left: 300px; top: 385px; right: 40px;
+  display: flex; align-items: center; gap: 12px;
+  border: 1.5px solid #86efac; background: #f0fdf4; border-radius: 12px; padding: 11px 18px;
+  font-size: 14.5px;
+}
+#sl-mem .rule b { color: #15803d; }
+
+/* ── Confianza ── */
+#sl-conf .cols { display: flex; gap: 40px; margin-top: 6px; }
+#sl-conf .events { flex: 1.05; display: flex; flex-direction: column; gap: 9px; }
+#sl-conf .ev {
+  display: flex; align-items: center; gap: 14px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--surface); padding: 10px 16px;
+}
+#sl-conf .ev.running { border-color: var(--c-running); background: #fffbeb; box-shadow: none; animation: none; }
+#sl-conf .ev .en { font-weight: 600; font-size: 15px; flex: 1; }
+#sl-conf .ev .en small { display: block; font-weight: 400; font-size: 11.5px; color: var(--ink-muted); }
+#sl-conf .delta { font-family: var(--font-mono); font-size: 13.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px; }
+#sl-conf .delta.up   { color: #15803d; background: #dcfce7; }
+#sl-conf .delta.down { color: #b91c1c; background: #fee2e2; }
+#sl-conf .delta.neu  { color: #92400e; background: #fef3c7; }
+#sl-conf .delta.set  { color: #1e40af; background: #dbeafe; }
+#sl-conf .ev.prune { border-color: #fca5a5; }
+#sl-conf .ev.prune.running { border-color: var(--c-error); background: #fef2f2; }
+#sl-conf .gcol { flex: 1; padding-top: 8px; }
+#sl-conf .gauge-wrap { position: relative; margin: 66px 10px 0; }
+#sl-conf .gauge-zone {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 11.1%;
+  border-radius: 999px 0 0 999px;
+  background: repeating-linear-gradient(-45deg, rgba(220,38,38,0.28) 0 4px, transparent 4px 8px);
+  opacity: 0; transition: opacity 0.5s;
+}
+#sl-conf .gauge-zone.vis { opacity: 1; }
+#sl-conf .zone-tag { position: absolute; left: 0; top: 22px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: #b91c1c; opacity: 0; transition: opacity 0.5s; }
+#sl-conf .zone-tag.vis { opacity: 1; }
+#sl-conf .gticks { display: flex; justify-content: space-between; margin: 30px 10px 0; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-dim); }
+#sl-conf .gauge-val { opacity: 0; transition: opacity 0.3s, left 0.7s var(--ease-pop); }
+#sl-conf .gauge-val.vis { opacity: 1; }
+#sl-conf .gauge-fill { left: 66.7%; transition: left 0.7s var(--ease-pop), opacity 0.4s; opacity: 0; }
+#sl-conf.s1 .gauge-fill { opacity: 1; left: 66.7%; }
+#sl-conf.s2 .gauge-fill { left: 72.2%; }
+#sl-conf.s3 .gauge-fill { left: 61.1%; }
+#sl-conf.s4 .gauge-fill { left: 63.3%; }
+#sl-conf.s5 .gauge-fill { left: 60.0%; }
+#sl-conf .bounds { margin-top: 46px; display: flex; gap: 10px; }
+#sl-conf .story { margin-top: 26px; font-size: 14.5px; color: var(--ink-muted); line-height: 1.55; }
+
+/* ── Metodología ── */
+#sl-met .diagram { height: 480px; margin-top: 2px; }
+#sl-met .split-chip { position: absolute; left: 580px; top: 372px; display: flex; gap: 10px; }
+
+/* ── Evaluaciones memoria ── */
+#sl-evmem .question {
+  padding: 16px 24px; margin-top: 2px;
+  font-size: 19px; font-weight: 600; letter-spacing: -0.01em;
+}
+#sl-evmem .question .chip { margin-right: 14px; vertical-align: 2px; }
+#sl-evmem table.data { margin-top: 22px; font-size: 15.5px; }
+#sl-evmem td.mono { white-space: nowrap; }
+#sl-evmem tr.warn td { background: #fffbeb; }
+#sl-evmem .alertbox {
+  margin-top: 24px; border: 1.5px solid #fcd34d; background: #fffbeb;
+  border-radius: 12px; padding: 14px 20px; font-size: 15px; line-height: 1.5;
+}
+#sl-evmem .alertbox b { color: #b45309; }
+
+/* ── Evaluaciones científicas ── */
+#sl-evsci .method { position: relative; height: 116px; margin-top: 2px; }
+#sl-evsci .method .node { position: absolute; top: 8px; }
+#sl-evsci .cases { display: flex; gap: 24px; margin-top: 30px; }
+#sl-evsci .case { flex: 1; padding: 24px 28px 18px; }
+#sl-evsci .case .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+#sl-evsci .case .head b { font-size: 20px; letter-spacing: -0.01em; }
+#sl-evsci .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#sl-evsci .stat .sv { font-size: 34px; }
+#sl-evsci .stat .sv small { font-size: 16px; color: var(--ink-dim); }
+#sl-evsci .case .foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-dim); display: flex; justify-content: space-between; }
+#sl-evsci .shows {
+  margin-top: 30px; border: 1.5px solid #86efac; background: #f0fdf4; border-radius: 12px;
+  padding: 12px 20px; font-size: 15px;
+}
+#sl-evsci .shows b { color: #15803d; }
+
+/* ── Experto ── */
+#sl-evexp .cols { display: flex; gap: 22px; margin-top: 2px; }
+#sl-evexp .panel { flex: 1; padding: 16px 20px; }
+#sl-evexp .panel h4 { margin: 0 0 10px; font-size: 15px; font-family: var(--font-mono); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); }
+#sl-evexp .row { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; font-size: 15.5px; line-height: 1.4; }
+#sl-evexp .row + .row { border-top: 1px dashed var(--border); }
+#sl-evexp .mark { font-weight: 700; font-family: var(--font-mono); flex: none; width: 16px; }
+#sl-evexp .ok .mark { color: var(--c-done); }
+#sl-evexp .ko .mark { color: var(--c-error); }
+#sl-evexp .row small { color: var(--ink-muted); }
+#sl-evexp .verdict { margin-top: 34px; display: flex; gap: 30px; align-items: center; }
+#sl-evexp .bars { flex: 1.2; display: flex; flex-direction: column; gap: 12px; }
+#sl-evexp .brow { display: flex; align-items: center; gap: 14px; }
+#sl-evexp .brow .bl { width: 120px; font-size: 13.5px; font-weight: 600; text-align: right; }
+#sl-evexp .bar-track { flex: 1; height: 24px; border-radius: 7px; background: rgba(15,23,42,0.05); border: 1px solid var(--border); position: relative; }
+#sl-evexp .bar-fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 6px; transition: width 0.9s var(--ease-pop); display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: white; }
+#sl-evexp .bar-fill.on { width: var(--w); }
+#sl-evexp .bar-fill.judge  { background: var(--c-blue); }
+#sl-evexp .bar-fill.expert { background: var(--ink); }
+#sl-evexp .verdict .msg { flex: 1; border: 1.5px solid #fcd34d; background: #fffbeb; border-radius: 12px; padding: 13px 18px; font-size: 15px; line-height: 1.45; }
+#sl-evexp .verdict .msg b { color: #b45309; }
+
+/* ── Futuro ── */
+#sl-fut .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 24px; }
+#sl-fut .card { display: flex; gap: 16px; align-items: flex-start; padding: 26px 26px; }
+#sl-fut .card:last-child { grid-column: span 2; }
+#sl-fut .card .glyph {
+  flex: none; width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15,23,42,0.05); color: var(--ink);
+}
+#sl-fut .card .glyph svg { width: 19px; height: 19px; }
+#sl-fut .card b { display: block; font-size: 17px; margin-bottom: 3px; letter-spacing: -0.01em; }
+#sl-fut .card p { margin: 0; font-size: 14px; color: var(--ink-muted); line-height: 1.45; }
+
+/* ── Conclusiones ── */
+#sl-conc .idea { padding: 26px 34px; margin-top: 4px; }
+#sl-conc .idea .big { font-size: 27px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.25; }
+#sl-conc .idea .big em { font-style: normal; color: var(--c-blue); }
+#sl-conc .idea p { margin: 10px 0 0; font-size: 16px; color: var(--ink-muted); }
+#sl-conc .transform { display: flex; align-items: center; gap: 16px; margin-top: 24px; justify-content: center; }
+#sl-conc .transform .old { display: flex; gap: 6px; align-items: center; }
+#sl-conc .transform .old .chip { text-decoration: line-through; opacity: 0.55; padding: 3px 8px; font-size: 9px; }
+#sl-conc .transform .new { display: flex; gap: 10px; align-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 14px; color: #15803d; }
+#sl-conc .transform .new span { background: #dcfce7; border: 1.5px solid #86efac; padding: 6px 16px; border-radius: 999px; }
+#sl-conc .points { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+#sl-conc .pt { display: flex; gap: 12px; align-items: flex-start; padding: 14px 18px; font-size: 14.5px; line-height: 1.4; }
+#sl-conc .pt .mk { color: var(--c-done); font-weight: 700; font-family: var(--font-mono); }
+
+/* ── Gracias ── */
+#sl-fin { justify-content: center; align-items: center; text-align: center; }
+#sl-fin h1 { font-size: 72px; }
+#sl-fin .repos { margin-top: 48px; display: flex; gap: 20px; }
+#sl-fin .repo {
+  border: 1px solid rgba(255,255,255,0.22); border-radius: 12px; padding: 14px 24px;
+  font-family: var(--font-mono); font-size: 14px; color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.06);
+}
+#sl-fin .repo em { display: block; font-style: normal; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 5px; }
+.slide.active#sl-fin .repos .repo { animation: slide-in 0.6s var(--ease-pop) both; }
+.slide.active#sl-fin .repos .repo:nth-child(2) { animation-delay: 0.12s; }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- ═══ 1 · Portada ═══ -->
+<section class="slide" id="sl-portada" data-section="">
+  <div class="topbar">
+    <div class="brand">
+      <img src="assets/logo_usc.png" alt="USC" />
+      <span>Universidade de Santiago de Compostela</span>
+    </div>
+    <span class="chip"><span class="dot"></span> TFG · Defensa · Fase 1</span>
+  </div>
+
+  <div class="eyebrow">Grado en Ingeniería Informática</div>
+  <h1>Laboratorio virtual para la simulación y análisis de paradigmas de toma de decisiones humanas mediante agentes inteligentes</h1>
+  <p class="lead">Fase 1 — de la descripción de un problema de decisión a modelos ejecutables, probados y trazables.</p>
+
+  <div class="who">
+    <div><div class="k">Autor</div><div class="v">Pablo Pazos Parada</div></div>
+    <div><div class="k">Tutor</div><div class="v">Eduardo Manuel Sánchez Vila</div></div>
+    <div><div class="k">Fecha</div><div class="v">Julio de 2026</div></div>
+  </div>
+
+  <div class="hero-net float">
+    <svg class="wires" viewBox="0 0 400 480">
+      <defs>
+        <marker id="mh-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrowhead" />
+        </marker>
+      </defs>
+      <path class="wire on" d="M 120 60 C 200 70, 250 100, 290 140" marker-end="url(#mh-n)" />
+      <path class="wire on" d="M 300 190 C 280 240, 220 260, 160 280" marker-end="url(#mh-n)" />
+      <path class="wire on" d="M 120 330 C 160 370, 220 390, 280 410" marker-end="url(#mh-n)" />
+    </svg>
+    <div class="mini-node" style="--c:#3b82f6; left: 20px; top: 30px;">Researcher<em>investiga</em></div>
+    <div class="mini-node" style="--c:#f59e0b; left: 250px; top: 140px;">Formalizer<em>formaliza</em></div>
+    <div class="mini-node" style="--c:#10b981; left: 60px; top: 275px;">Reasoner<em>adapta</em></div>
+    <div class="mini-node" style="--c:#ec4899; left: 240px; top: 405px;">Builder<em>construye</em></div>
+  </div>
+</section>
+
+<!-- ═══ 2 · Índice ═══ -->
+<section class="slide" id="sl-toc" data-section="Índice">
+  <div class="eyebrow">Índice</div>
+  <h2 class="slide-title">Recorrido de la defensa</h2>
+  <ol class="toc">
+    <li><span class="n">01</span><span class="t">Motivación</span></li>
+    <li><span class="n">02</span><span class="t">Contexto</span></li>
+    <li><span class="n">03</span><span class="t">Arquitectura</span></li>
+    <li><span class="n">04</span><span class="t">Metodología</span></li>
+    <li><span class="n">05</span><span class="t">Evaluaciones</span></li>
+    <li><span class="n">06</span><span class="t">Futuro</span></li>
+    <li><span class="n">07</span><span class="t">Conclusiones</span></li>
+  </ol>
+</section>
+
+<!-- ═══ 3 · Divider Motivación ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">01 / 07</div>
+  <h1>Motivación</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 4 · Motivación ═══ -->
+<section class="slide" id="sl-mot" data-section="Motivación">
+  <div class="eyebrow">Motivación</div>
+  <h2 class="slide-title">Del lenguaje natural al modelo ejecutable</h2>
+  <p class="slide-sub">La distancia entre describir un fenómeno y disponer de un modelo computacional verificable se cierra hoy a mano — y eso no escala.</p>
+
+  <div class="cols">
+    <div class="panel">
+      <span class="chip">Petición del investigador</span>
+      <div class="q">«Simular la toma de decisiones basada en regulación homeostática»</div>
+      <div class="missing">
+        <span class="chip" data-frag="1">sin autores</span>
+        <span class="chip" data-frag="1">sin parámetros</span>
+        <span class="chip" data-frag="1">sin variables internas</span>
+        <span class="chip" data-frag="1">sin reglas de actualización</span>
+        <span class="chip" data-frag="1">sin mapeo al entorno</span>
+        <span class="chip" data-frag="1">sin pruebas</span>
+      </div>
+    </div>
+    <div class="gap-arrow">
+      <span class="qm">?</span>
+      <svg viewBox="0 0 60 12"><path d="M 0 6 H 52" stroke="rgba(15,23,42,0.3)" stroke-width="1.6" stroke-dasharray="6 4" fill="none"/><path d="M 50 1.5 L 58 6 L 50 10.5 z" fill="rgba(15,23,42,0.3)"/></svg>
+    </div>
+    <div class="panel" data-frag="2">
+      <span class="chip">Lo que necesita el laboratorio</span>
+      <div class="mini-code"><span class="kw">def</span> <span class="fn">decide</span>(self, perception) -&gt; Action<br /><span class="kw">def</span> <span class="fn">update</span>(self, action, reward, ...)<br /><span class="kw">def</span> <span class="fn">get_state</span>(self) -&gt; dict</div>
+      <div style="margin-top: 12px;"><span class="badge pass">pytest · tests en verde</span></div>
+    </div>
+  </div>
+
+  <div data-frag="3">
+    <div class="chain">
+      <div class="step">Identificar paradigmas científicos</div>
+      <span class="sep">→</span>
+      <div class="step">Traducir postulados a variables y ecuaciones</div>
+      <span class="sep">→</span>
+      <div class="step">Adaptar al entorno de simulación</div>
+      <span class="sep">→</span>
+      <div class="step">Verificar el contrato ejecutable</div>
+    </div>
+    <div class="chain-tag">proceso manual · difícil de auditar · no reutilizable</div>
+  </div>
+
+  <div class="resolve" data-frag="4">
+    <b>El sistema colapsa el proceso en</b>
+    <div class="flow"><span>describir</span> → <span>revisar</span> → <span>usar</span></div>
+    <span style="color: var(--ink-muted); font-size: 14px;">con el criterio humano en cada decisión científica</span>
+  </div>
+</section>
+
+<!-- ═══ 5 · Divider Contexto ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">02 / 07</div>
+  <h1>Contexto</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 6 · Contexto ═══ -->
+<section class="slide" id="sl-ctx" data-section="Contexto">
+  <div class="eyebrow">Contexto</div>
+  <h2 class="slide-title">Dos fases, un contrato</h2>
+  <p class="slide-sub" style="margin-bottom: 12px;">La fase 1 genera los modelos de decisión; la fase 2 (Juan Freire) los simula y analiza. La frontera es un contrato mínimo.</p>
+
+  <div class="diagram">
+    <svg class="wires" viewBox="0 0 1136 296">
+      <defs>
+        <marker id="mc-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+        <marker id="mc-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead read" /></marker>
+        <marker id="mc-w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead write" /></marker>
+      </defs>
+      <!-- Edu -> F1 -->
+      <path class="wire" data-frag="2" d="M 140 140 H 222" marker-end="url(#mc-n)" />
+      <text class="wire-label" data-frag="2" x="181" y="128" text-anchor="middle">describe el paradigma</text>
+      <!-- internal F1 -->
+      <path class="wire static" data-frag="2" d="M 380 114 V 126" marker-end="url(#mc-n)" />
+      <path class="wire static" data-frag="2" d="M 380 184 V 196" marker-end="url(#mc-n)" />
+      <!-- F1 -> F2 -->
+      <path class="wire" data-frag="3" d="M 533 140 H 632" marker-end="url(#mc-n)" />
+      <text class="wire-label" data-frag="3" x="583" y="128" text-anchor="middle">modelos de decisión</text>
+      <!-- internal F2 -->
+      <path class="wire static" data-frag="3" d="M 770 134 V 162" marker-end="url(#mc-n)" />
+      <!-- F2 -> Edu (informes) -->
+      <path class="wire" data-frag="4" d="M 770 282 C 770 332, 62 336, 36 196" marker-end="url(#mc-n)" />
+      <text class="wire-label" data-frag="4" x="430" y="322" text-anchor="middle">informes y observaciones</text>
+      <!-- F1 <-> Mem -->
+      <path class="wire read" data-frag="5" d="M 460 22 C 620 -12, 900 -4, 1038 100" marker-start="url(#mc-r)" marker-end="url(#mc-r)" />
+      <text class="wire-label" data-frag="5" x="766" y="6" text-anchor="middle">conocimiento aceptado</text>
+      <!-- F2 -> Mem -->
+      <path class="wire write" data-frag="5" d="M 902 200 C 940 200, 960 190, 982 172" marker-end="url(#mc-w)" />
+      <text class="wire-label" data-frag="5" x="948" y="222" text-anchor="middle">observaciones</text>
+    </svg>
+
+    <div class="actor" data-frag="1" style="left: 20px; top: 92px; width: 120px;">
+      <div class="head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <span class="nl">Investigador</span>
+      <span class="ns">Eduardo</span>
+    </div>
+
+    <div class="group" data-frag="2" style="left: 232px; top: 26px; width: 296px; height: 256px;">
+      <span class="gt">Fase 1 · Pablo</span>
+    </div>
+    <div class="node" data-frag="2" style="--c: var(--c-researcher); left: 260px; top: 52px; width: 240px;"><span class="nl">Revisión de literatura</span></div>
+    <div class="node" data-frag="2" style="--c: var(--c-formalizer); left: 260px; top: 130px; width: 240px;"><span class="nl">Formalización de modelos</span></div>
+    <div class="node" data-frag="2" style="--c: var(--c-builder); left: 260px; top: 200px; width: 240px;"><span class="nl">Generación de modelos<br/>ejecutables</span></div>
+
+    <div class="group" data-frag="3" style="left: 642px; top: 26px; width: 256px; height: 256px;">
+      <span class="gt">Fase 2 · Juan</span>
+    </div>
+    <div class="node" data-frag="3" style="--c: var(--c-reasoner); left: 672px; top: 76px; width: 196px;"><span class="nl">Simulación</span></div>
+    <div class="node" data-frag="3" style="--c: var(--c-deep); left: 672px; top: 168px; width: 196px;"><span class="nl">Análisis de resultados</span></div>
+
+    <div class="db" data-frag="5" style="--c: #059669; left: 985px; top: 106px; width: 145px;">
+      <div class="cyl"><span class="nl">Memoria</span><span class="ns">cross-ejecución</span></div>
+    </div>
+  </div>
+
+  <div class="below" data-frag="6">
+    <div class="code">
+<span class="kw">def</span> <span class="fn">decide</span>(<span class="arg">self</span>, perception: <span class="ty">dict</span>) -&gt; <span class="ty">Action</span>: ...<br />
+<span class="kw">def</span> <span class="fn">update</span>(<span class="arg">self</span>, action, reward, new_perception) -&gt; <span class="ty">None</span>: ...<br />
+<span class="kw">def</span> <span class="fn">get_state</span>(<span class="arg">self</span>) -&gt; <span class="ty">dict</span>: ...
+    </div>
+    <div class="notes">
+      <span class="chip"><span class="dot" style="background: var(--c-done);"></span> contrato entre fases · duck typing</span>
+      <span class="chip">sin clase base compartida</span>
+      <span class="chip">la fase 2 carga los modelos dinámicamente</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 7 · Divider Arquitectura ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">03 / 07</div>
+  <h1>Arquitectura</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 8 · Arquitectura del sistema ═══ -->
+<section class="slide" id="sl-arch" data-section="Arquitectura">
+  <div class="eyebrow">Arquitectura · sistema</div>
+  <h2 class="slide-title">Arquitectura del sistema</h2>
+
+  <div class="diagram">
+    <svg class="wires" viewBox="0 0 1136 505">
+      <defs>
+        <marker id="ma-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+        <marker id="ma-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead read" /></marker>
+        <marker id="ma-w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead write" /></marker>
+      </defs>
+      <!-- band1 -> band2 -->
+      <path class="wire" data-frag="2" d="M 140 100 V 141" marker-end="url(#ma-n)" />
+      <path class="wire" data-frag="2" d="M 440 100 V 141" marker-end="url(#ma-n)" />
+      <path class="wire" data-frag="2" d="M 740 100 V 141" marker-end="url(#ma-n)" />
+      <text class="wire-label" data-frag="2" x="152" y="126">HTTP</text>
+      <text class="wire-label" data-frag="2" x="452" y="126">WebSocket</text>
+      <text class="wire-label" data-frag="2" x="752" y="126">ejecuciones</text>
+      <!-- internal band2 -->
+      <path class="wire static" data-frag="2" d="M 222 198 H 236" marker-end="url(#ma-n)" />
+      <path class="wire static" data-frag="2" d="M 437 198 H 451" marker-end="url(#ma-n)" />
+      <path class="wire static" data-frag="2" d="M 652 198 H 666" marker-end="url(#ma-n)" />
+      <!-- band2 -> band3 -->
+      <path class="wire write" data-frag="3" d="M 320 228 C 280 262, 200 276, 140 306" marker-end="url(#ma-w)" />
+      <path class="wire write" data-frag="3" d="M 348 228 C 350 258, 350 278, 348 306" marker-end="url(#ma-w)" />
+      <path class="wire read" data-frag="3" d="M 750 228 C 720 262, 640 276, 585 306" marker-end="url(#ma-r)" />
+      <path class="wire read" data-frag="3" d="M 780 228 C 782 258, 782 278, 780 306" marker-end="url(#ma-r)" />
+      <text class="wire-label" data-frag="3" x="212" y="266">estado</text>
+      <text class="wire-label" data-frag="3" x="360" y="266">artefactos</text>
+      <text class="wire-label" data-frag="3" x="620" y="266">grafo</text>
+      <text class="wire-label" data-frag="3" x="792" y="266">vectores</text>
+      <!-- band2 -> externals -->
+      <path class="wire" data-frag="4" d="M 560 176 C 700 128, 820 100, 932 80" marker-end="url(#ma-n)" />
+      <text class="wire-label" data-frag="4" x="770" y="108">prompts y tool calls</text>
+      <path class="wire read" data-frag="4" d="M 882 198 C 902 198, 916 197, 930 196" marker-end="url(#ma-r)" />
+      <path class="wire read" data-frag="4" d="M 878 220 C 902 252, 916 284, 930 314" marker-end="url(#ma-r)" />
+      <path class="wire read" data-frag="4" d="M 874 226 C 902 296, 914 364, 928 428" marker-end="url(#ma-r)" />
+    </svg>
+
+    <div class="group" data-frag="1" style="left: 0; top: 0; width: 880px; height: 100px;">
+      <span class="gt">Equipo del usuario</span>
+    </div>
+    <div class="node" data-frag="1" style="left: 40px; top: 26px; width: 200px;"><span class="nl">CLI</span><span class="ns">decisionlab</span></div>
+    <div class="node" data-frag="1" style="left: 340px; top: 26px; width: 200px;"><span class="nl">Navegador web</span><span class="ns">interfaz Agrex</span></div>
+    <div class="node" data-frag="1" style="left: 640px; top: 26px; width: 200px;"><span class="nl">Evaluaciones</span><span class="ns">suites YAML</span></div>
+
+    <div class="group" data-frag="2" style="left: 0; top: 143px; width: 880px; height: 104px;">
+      <span class="gt">Servidor fase 1</span>
+    </div>
+    <div class="node" data-frag="2" style="--c: var(--c-blue); left: 22px; top: 171px; width: 200px;"><span class="nl">FastAPI</span><span class="ns">REST + WebSocket</span></div>
+    <div class="node" data-frag="2" style="--c: var(--c-blue); left: 237px; top: 171px; width: 200px;"><span class="nl">Router</span><span class="ns">máquina de estados</span></div>
+    <div class="node" data-frag="2" style="--c: var(--c-blue); left: 452px; top: 171px; width: 200px;"><span class="nl">Agentes</span><span class="ns">Researcher · Formalizer · Reasoner · Builder</span></div>
+    <div class="node" data-frag="2" style="--c: var(--c-blue); left: 667px; top: 171px; width: 213px;"><span class="nl">Herramientas</span><span class="ns">búsqueda · ficheros · tests · memoria</span></div>
+
+    <div class="group" data-frag="3" style="left: 0; top: 290px; width: 880px; height: 112px;">
+      <span class="gt">Servicios compartidos</span>
+    </div>
+    <div class="db" data-frag="3" style="--c: #059669; left: 45px; top: 312px; width: 190px;"><div class="cyl"><span class="nl">PostgreSQL</span><span class="ns">runs y metadatos</span></div></div>
+    <div class="db" data-frag="3" style="--c: #059669; left: 255px; top: 312px; width: 190px;"><div class="cyl"><span class="nl">MinIO</span><span class="ns">artefactos</span></div></div>
+    <div class="db" data-frag="3" style="--c: #059669; left: 465px; top: 312px; width: 190px;"><div class="cyl"><span class="nl">Neo4j</span><span class="ns">grafo de conocimiento</span></div></div>
+    <div class="db" data-frag="3" style="--c: #059669; left: 675px; top: 312px; width: 190px;"><div class="cyl"><span class="nl">Qdrant</span><span class="ns">vectores + BM25</span></div></div>
+
+    <div class="group" data-frag="4" style="left: 916px; top: 0; width: 220px; height: 502px;">
+      <span class="gt">APIs externas</span>
+    </div>
+    <div class="node" data-frag="4" style="--c: var(--c-deep); left: 936px; top: 48px; width: 180px;"><span class="nl">Proveedor LLM</span><span class="ns">Anthropic-compatible</span></div>
+    <div class="node" data-frag="4" style="--c: var(--c-deep); left: 936px; top: 168px; width: 180px;"><span class="nl">Búsqueda web</span><span class="ns">DDGS</span></div>
+    <div class="node" data-frag="4" style="--c: var(--c-deep); left: 936px; top: 286px; width: 180px;"><span class="nl">Voyage AI</span><span class="ns">embeddings</span></div>
+    <div class="node" data-frag="4" style="--c: var(--c-deep); left: 936px; top: 402px; width: 180px;"><span class="nl">ZeroEntropy</span><span class="ns">reranking</span></div>
+  </div>
+</section>
+
+<!-- ═══ 9 · Arquitectura del pipeline ═══ -->
+<section class="slide" id="sl-pipe" data-section="Arquitectura">
+  <div class="eyebrow">Arquitectura · pipeline</div>
+  <h2 class="slide-title">Arquitectura del pipeline</h2>
+  <p class="slide-sub">Cada agente reduce un tipo de incertidumbre y deja un artefacto revisable; un error repite solo la etapa afectada.</p>
+
+  <div class="diagram">
+    <div class="gate-chip" data-frag="6"><span class="chip">cada transición pasa revisión humana</span></div>
+
+    <svg class="wires" viewBox="0 0 1136 470">
+      <defs>
+        <marker id="mp-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+        <marker id="mp-r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead read" /></marker>
+        <marker id="mp-w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead write" /></marker>
+      </defs>
+
+      <!-- forward edges -->
+      <path class="wire" data-frag="1" d="M 102 118 H 124" marker-end="url(#mp-n)" />
+      <path class="wire" data-frag="2" d="M 294 118 H 324" marker-end="url(#mp-n)" />
+      <path class="wire" data-frag="3" d="M 494 118 H 524" marker-end="url(#mp-n)" />
+      <path class="wire" data-frag="4" d="M 694 118 H 724" marker-end="url(#mp-n)" />
+      <path class="wire" data-frag="5" d="M 894 118 H 919" marker-end="url(#mp-n)" />
+
+      <!-- artifact labels between stages -->
+      <text class="wire-label" data-frag="2" x="310" y="192" text-anchor="middle"><tspan x="310" dy="0">paradigmas</tspan><tspan x="310" dy="12">aceptados</tspan></text>
+      <text class="wire-label" data-frag="3" x="510" y="192" text-anchor="middle"><tspan x="510" dy="0">formulaciones</tspan><tspan x="510" dy="12">seleccionadas</tspan></text>
+      <text class="wire-label" data-frag="4" x="710" y="192" text-anchor="middle"><tspan x="710" dy="0">specs</tspan><tspan x="710" dy="12">aprobadas</tspan></text>
+      <text class="wire-label" data-frag="5" x="908" y="192" text-anchor="middle"><tspan x="908" dy="0">tests</tspan><tspan x="908" dy="12">en verde</tspan></text>
+
+      <!-- rejection self-loops -->
+      <path class="wire static" data-frag="1" d="M 186 68 C 172 30, 250 30, 236 66" marker-end="url(#mp-n)" />
+      <text class="loop-label" data-frag="1" x="210" y="26" text-anchor="middle">rechazo</text>
+      <path class="wire static" data-frag="2" d="M 386 68 C 372 30, 450 30, 436 66" marker-end="url(#mp-n)" />
+      <text class="loop-label" data-frag="2" x="410" y="26" text-anchor="middle">rechazo</text>
+      <path class="wire static" data-frag="3" d="M 586 68 C 572 30, 650 30, 636 66" marker-end="url(#mp-n)" />
+      <text class="loop-label" data-frag="3" x="610" y="26" text-anchor="middle">invalida</text>
+      <path class="wire static" data-frag="4" d="M 786 68 C 772 30, 850 30, 836 66" marker-end="url(#mp-n)" />
+      <text class="loop-label" data-frag="4" x="810" y="26" text-anchor="middle">reintenta</text>
+
+      <!-- memory edges -->
+      <path class="wire read" data-frag="6" d="M 500 336 C 400 300, 240 250, 212 174" marker-end="url(#mp-r)" />
+      <path class="wire read" data-frag="6" d="M 588 330 C 598 280, 608 230, 610 174" marker-end="url(#mp-r)" />
+      <text class="wire-label" data-frag="6" x="368" y="266" text-anchor="middle">retrieve_knowledge</text>
+      <path class="wire write" data-frag="6" d="M 1022 160 C 1022 300, 850 374, 662 376" marker-end="url(#mp-w)" />
+      <text class="wire-label" data-frag="6" x="920" y="330" text-anchor="middle">consolida artefactos aceptados</text>
+    </svg>
+
+    <div class="actor" data-frag="0" style="left: 8px; top: 82px; width: 96px;">
+      <div class="head" style="width: 52px; height: 52px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <span class="nl">Usuario</span>
+    </div>
+
+    <div class="node stacked" data-frag="1" data-run="1" data-done="2" style="--c: var(--c-researcher); left: 130px; top: 70px; width: 160px;">
+      <span class="tick">✓</span>
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <span class="nl">Researcher</span>
+      <span class="ns">investiga paradigmas</span>
+    </div>
+
+    <div class="node stacked" data-frag="2" data-run="2" data-done="3" style="--c: var(--c-formalizer); left: 330px; top: 70px; width: 160px;">
+      <span class="tick">✓</span>
+      <span class="glyph" style="font-family: var(--font-mono); font-size: 15px; font-weight: 600;">Σ</span>
+      <span class="nl">Formalizer</span>
+      <span class="ns">formulaciones matemáticas</span>
+    </div>
+
+    <div class="node stacked" data-frag="3" data-run="3" data-done="4" style="--c: var(--c-reasoner); left: 530px; top: 70px; width: 160px;">
+      <span class="tick">✓</span>
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+      <span class="nl">Reasoner</span>
+      <span class="ns">adapta al entorno</span>
+    </div>
+
+    <div class="node stacked" data-frag="4" data-run="4" data-done="5" style="--c: var(--c-builder); left: 730px; top: 70px; width: 160px;">
+      <span class="tick">✓</span>
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+      <span class="nl">Builder</span>
+      <span class="ns">código y tests</span>
+    </div>
+
+    <div class="node" data-frag="5" style="--c: var(--c-done); left: 925px; top: 82px; width: 195px;">
+      <span class="glyph" style="--c: var(--c-done);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+      <span class="nl">Modelos registrados</span>
+      <span class="ns">listos para la fase 2</span>
+    </div>
+
+    <div class="db" data-frag="6" style="--c: #059669; left: 470px; top: 330px; width: 180px;">
+      <div class="cyl"><span class="nl">Memoria</span><span class="ns">cross-ejecución</span></div>
+    </div>
+
+    <div style="position: absolute; left: 0; top: 400px;" data-frag="6">
+      <span class="chip">subagentes en paralelo: uno por paradigma · formulación · spec</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 10 · Arquitectura de la memoria ═══ -->
+<section class="slide" id="sl-mem" data-section="Arquitectura">
+  <div class="eyebrow">Arquitectura · memoria</div>
+  <h2 class="slide-title">Arquitectura de la memoria</h2>
+  <p class="slide-sub">Un artefacto aceptado se consolida en tres memorias especializadas; el original queda íntegro y auditable.</p>
+
+  <div class="diagram">
+    <svg class="wires" viewBox="0 0 1136 430">
+      <defs>
+        <marker id="mm-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+        <marker id="mm-w" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead write" /></marker>
+      </defs>
+      <path class="wire" data-frag="2" d="M 262 120 H 348" marker-end="url(#mm-n)" />
+      <path class="wire write" data-frag="3" d="M 610 96 C 700 62, 750 50, 800 44" marker-end="url(#mm-w)" />
+      <text class="wire-label" data-frag="3" x="700" y="40" text-anchor="middle">registra el ciclo de vida</text>
+      <path class="wire write" data-frag="4" d="M 614 122 C 690 130, 740 140, 798 152" marker-end="url(#mm-w)" />
+      <text class="wire-label" data-frag="4" x="696" y="176" text-anchor="middle"><tspan x="696" dy="0">nodos y relaciones</tspan><tspan x="696" dy="13">slugs canónicos</tspan></text>
+      <path class="wire write" data-frag="5" d="M 606 148 C 680 200, 736 240, 798 268" marker-end="url(#mm-w)" />
+      <text class="wire-label" data-frag="5" x="672" y="256" text-anchor="middle">indexa hechos recuperables</text>
+      <path class="wire static" data-frag="6" d="M 145 162 V 232" marker-end="url(#mm-n)" />
+      <text class="wire-label" data-frag="6" x="158" y="202">se conserva íntegro</text>
+    </svg>
+
+    <div class="node" data-frag="1" style="--c: var(--ink); left: 40px; top: 78px; width: 220px;">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+      <span class="nl">Artefacto aceptado</span>
+      <span class="ns">informe · formulación · spec · modelo</span>
+    </div>
+
+    <div class="node" data-frag="2" data-run="2" data-done="6" style="--c: var(--c-memory); left: 358px; top: 72px; width: 250px;">
+      <span class="tick">✓</span>
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></span>
+      <span class="nl">MemoryAgent</span>
+      <span class="ns">extrae · canonicaliza · resuelve · escribe</span>
+    </div>
+
+    <div class="db" data-frag="3" style="--c: #059669; left: 805px; top: 6px; width: 300px;">
+      <div class="cyl"><span class="nl">Memoria relacional · PostgreSQL</span><span class="ns">revisión, confianza, vigencia y supersesión</span></div>
+    </div>
+    <div class="db" data-frag="4" style="--c: #059669; left: 805px; top: 128px; width: 300px;">
+      <div class="cyl"><span class="nl">Memoria de grafo · Neo4j</span><span class="ns">paradigmas, papers, variables y relaciones</span></div>
+    </div>
+    <div class="db" data-frag="5" style="--c: #059669; left: 805px; top: 250px; width: 300px;">
+      <div class="cyl"><span class="nl">Memoria vectorial · Qdrant</span><span class="ns">hechos densos + BM25, con procedencia</span></div>
+    </div>
+    <div class="db" data-frag="6" style="--c: var(--ink-dim); left: 55px; top: 240px; width: 190px;">
+      <div class="cyl"><span class="nl">MinIO</span><span class="ns">artefacto completo · fuente auditable</span></div>
+    </div>
+
+    <div class="rule" data-frag="6">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span><b>Regla de oro:</b> la memoria nunca guarda borradores — solo consolida artefactos que superaron la revisión humana o la validación.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 11 · Ciclo de vida de la confianza ═══ -->
+<section class="slide" id="sl-conf" data-section="Arquitectura">
+  <div class="eyebrow">Arquitectura · memoria</div>
+  <h2 class="slide-title">Ciclo de vida de la confianza en memoria</h2>
+  <p class="slide-sub">Cada hecho lleva una confianza viva: la evidencia la refuerza, el conflicto la castiga y el tiempo la erosiona.</p>
+
+  <div class="cols">
+    <div class="events">
+      <div class="ev" data-frag="1" data-run="1" data-done="2">
+        <span class="en">Alta de hecho aceptado<small>entra en memoria tras la revisión</small></span>
+        <span class="delta set">= 0.70</span>
+      </div>
+      <div class="ev" data-frag="2" data-run="2" data-done="3">
+        <span class="en">Corroboración<small>otro artefacto confirma el hecho</small></span>
+        <span class="delta up">+0.05</span>
+      </div>
+      <div class="ev" data-frag="3" data-run="3" data-done="4">
+        <span class="en">Contradicción<small>se detecta un conflicto</small></span>
+        <span class="delta down">−0.10</span>
+      </div>
+      <div class="ev" data-frag="4" data-run="4" data-done="5">
+        <span class="en">Uso en recuperación<small>el hecho resulta útil</small></span>
+        <span class="delta up">+0.02</span>
+      </div>
+      <div class="ev" data-frag="5" data-run="5" data-done="6">
+        <span class="en">Decaimiento temporal<small>cada 30 días sin refuerzo</small></span>
+        <span class="delta neu">×0.95</span>
+      </div>
+      <div class="ev prune" data-frag="6" data-run="6">
+        <span class="en">Poda<small>confianza &lt; 0.20 · sin uso · &gt; 90 días</small></span>
+        <span class="delta down">se elimina</span>
+      </div>
+    </div>
+
+    <div class="gcol">
+      <div class="gauge-wrap">
+        <span class="gauge-val" data-show-at="1" data-hide-at="2" style="left: 66.7%;">0.70</span>
+        <span class="gauge-val" data-show-at="2" data-hide-at="3" style="left: 72.2%;">0.75</span>
+        <span class="gauge-val" data-show-at="3" data-hide-at="4" style="left: 61.1%;">0.65</span>
+        <span class="gauge-val" data-show-at="4" data-hide-at="5" style="left: 63.3%;">0.67</span>
+        <span class="gauge-val" data-show-at="5" style="left: 60.0%;">0.64</span>
+        <div class="gauge-track">
+          <div class="gauge-zone" data-show-at="6"></div>
+          <div class="gauge-fill"></div>
+        </div>
+        <span class="zone-tag" data-show-at="6">zona de poda &lt; 0.20</span>
+      </div>
+      <div class="gticks"><span>0.10</span><span>0.55</span><span>1.00</span></div>
+      <div class="bounds" data-frag="6">
+        <span class="chip">límites [0.10, 1.00]</span>
+        <span class="chip">PostgreSQL es la fuente de verdad temporal</span>
+      </div>
+      <p class="story">La confianza no es una etiqueta estática: es un valor que evoluciona con cada corroboración, contradicción y uso — y que decide qué conocimiento sobrevive entre ejecuciones.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 12 · Divider Metodología ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">04 / 07</div>
+  <h1>Metodología</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 13 · Metodología ═══ -->
+<section class="slide" id="sl-met" data-section="Metodología">
+  <div class="eyebrow">Metodología</div>
+  <h2 class="slide-title">Metodología basada en agentes</h2>
+  <p class="slide-sub">El sistema se construyó con agentes de programación: el humano decide, los agentes ejecutan, la evidencia cierra cada tarea.</p>
+
+  <div class="diagram">
+    <svg class="wires" viewBox="0 0 1136 480">
+      <defs>
+        <marker id="mt-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+      </defs>
+      <path class="wire" data-frag="2" d="M 172 70 H 332" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="2" x="252" y="58" text-anchor="middle">planifica</text>
+      <path class="wire" data-frag="3" d="M 562 70 H 752" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="3" x="657" y="58" text-anchor="middle">tareas pendientes</text>
+      <path class="wire" data-frag="4" d="M 866 106 C 866 130, 850 150, 830 166" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="4" x="948" y="142" text-anchor="middle">lanza en paralelo</text>
+      <path class="wire" data-frag="5" d="M 556 262 C 480 290, 440 330, 416 372" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="5" x="512" y="316" text-anchor="middle">entregan</text>
+      <path class="wire" data-frag="6" d="M 296 414 H 232" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="6" x="264" y="402" text-anchor="middle">checks</text>
+      <path class="wire" data-frag="7" d="M 118 378 C 88 290, 88 200, 100 128" marker-end="url(#mt-n)" />
+      <text class="wire-label" data-frag="7" x="46" y="250"><tspan x="46" dy="0">acepta o crea</tspan><tspan x="46" dy="13">follow-up</tspan></text>
+    </svg>
+
+    <div class="actor" data-frag="1" style="left: 50px; top: 16px; width: 120px;">
+      <div class="head" style="width: 54px; height: 54px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <span class="nl">Humano</span>
+      <span class="ns">objetivo y criterios de aceptación</span>
+    </div>
+
+    <div class="node" data-frag="2" style="--c: var(--c-blue); left: 342px; top: 38px; width: 210px;">
+      <span class="nl">Linear</span>
+      <span class="ns">tareas, dependencias y prioridad</span>
+    </div>
+
+    <div class="node" data-frag="3" style="--c: var(--c-deep); left: 762px; top: 38px; width: 210px;">
+      <span class="nl">Hydra</span>
+      <span class="ns">orquesta oleadas de tareas</span>
+    </div>
+
+    <div class="group" data-frag="4" style="left: 560px; top: 176px; width: 540px; height: 158px;">
+      <span class="gt">Agentes trabajadores · worktrees separados</span>
+    </div>
+    <div class="node" data-frag="4" data-run="4" style="--c: var(--c-formalizer); left: 588px; top: 208px; width: 130px;"><span class="nl">Agente 1</span><span class="ns">Codex · backend</span></div>
+    <div class="node" data-frag="4" data-run="4" style="--c: var(--c-formalizer); left: 738px; top: 208px; width: 130px;"><span class="nl">Agente 2</span><span class="ns">Claude · frontend</span></div>
+    <div class="node" data-frag="4" data-run="4" style="--c: var(--c-formalizer); left: 888px; top: 208px; width: 130px;"><span class="nl">Agente N</span><span class="ns">en paralelo</span></div>
+    <div style="position: absolute; left: 588px; top: 288px; display: flex; gap: 8px;" data-frag="4">
+      <span class="chip">skills · protocolos reutilizables</span>
+      <span class="chip">instrucciones del repo · convenciones</span>
+    </div>
+
+    <div class="node" data-frag="5" style="--c: var(--c-reasoner); left: 306px; top: 382px; width: 220px;">
+      <span class="nl">Evidencia</span>
+      <span class="ns">tests, logs, capturas y diffs</span>
+    </div>
+
+    <div class="node" data-frag="6" style="--c: var(--c-done); left: 42px; top: 382px; width: 190px;">
+      <span class="nl">CI</span>
+      <span class="ns">lint, formato y tests</span>
+    </div>
+
+    <div class="split-chip" data-frag="7">
+      <span class="chip"><span class="dot" style="background: var(--c-done);"></span> ninguna tarea se cierra sin evidencia</span>
+      <span class="chip">separar decisiones de ejecución</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 14 · Divider Evaluaciones ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">05 / 07</div>
+  <h1>Evaluaciones</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 15 · Evaluaciones de memoria ═══ -->
+<section class="slide" id="sl-evmem" data-section="Evaluaciones">
+  <div class="eyebrow">Evaluaciones · memoria</div>
+  <h2 class="slide-title">Evaluaciones de memoria</h2>
+
+  <div class="panel question">
+    <span class="chip">qué se pregunta</span>
+    ¿El conocimiento se mantiene consistente entre ejecuciones y se recupera cuando hace falta?
+  </div>
+
+  <table class="data">
+    <thead>
+      <tr><th style="width: 220px;">Suite</th><th style="width: 130px;">Resultado</th><th>Criterio de PASS</th><th style="width: 150px;">Tiempo · coste</th></tr>
+    </thead>
+    <tbody>
+      <tr data-frag="1"><td class="mono">retrieval-quality</td><td><span class="badge pass">PASS</span></td><td>Los hechos esperados aparecen en el top-k</td><td class="mono">22.7 s · $0.08</td></tr>
+      <tr data-frag="2"><td class="mono">temporal-correctness</td><td><span class="badge pass">PASS</span></td><td>Vigencia, ausencia y cadena de supersesión correctas</td><td class="mono">0.1 s · $0.00</td></tr>
+      <tr data-frag="3"><td class="mono">cumulative-growth</td><td><span class="badge pass">PASS</span></td><td>El grafo crece sin duplicar entidades</td><td class="mono">—</td></tr>
+      <tr data-frag="4" class="warn"><td class="mono">slug-accuracy</td><td><span class="badge alert">ALERTA</span></td><td>Un mismo concepto mantiene un único slug canónico</td><td class="mono">3646 s · $5.08</td></tr>
+    </tbody>
+  </table>
+
+  <div class="alertbox" data-frag="5">
+    <b>Valor de la alerta:</b> no basta el éxito técnico — hubo que medir identidad científica. La fragmentación de slugs se detectó con evaluaciones, no leyendo logs, y motivó endurecer la canonicalización.
+  </div>
+</section>
+
+<!-- ═══ 16 · Evaluaciones científicas ═══ -->
+<section class="slide" id="sl-evsci" data-section="Evaluaciones">
+  <div class="eyebrow">Evaluaciones · científicas</div>
+  <h2 class="slide-title">Evaluaciones científicas: corpus cerrado</h2>
+
+  <div class="method diagram">
+    <svg class="wires" viewBox="0 0 1136 116">
+      <defs>
+        <marker id="me-n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker>
+      </defs>
+      <path class="wire" data-frag="1" d="M 218 48 H 260" marker-end="url(#me-n)" />
+      <path class="wire" data-frag="1" d="M 520 48 H 562" marker-end="url(#me-n)" />
+      <path class="wire" data-frag="1" d="M 856 48 H 898" marker-end="url(#me-n)" />
+    </svg>
+    <div class="node" data-frag="1" style="--c: var(--ink); left: 0; top: 14px; width: 210px;"><span class="nl">Corpus ZIP</span><span class="ns">3 papers · única fuente visible</span></div>
+    <div class="node" data-frag="1" style="--c: var(--c-blue); left: 268px; top: 14px; width: 244px;"><span class="nl">Pipeline completo</span><span class="ns">sin búsqueda web externa</span></div>
+    <div class="node" data-frag="1" style="--c: var(--c-formalizer); left: 570px; top: 14px; width: 278px;"><span class="nl">Bundle congelado</span><span class="ns">artefactos + PostgreSQL + snapshot del grafo</span></div>
+    <div class="node" data-frag="1" style="--c: var(--c-deep); left: 906px; top: 14px; width: 230px;"><span class="nl">Juez LLM externo</span><span class="ns">Codex / GPT · rúbrica de 6 ejes</span></div>
+  </div>
+
+  <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;" data-frag="1">
+    <span class="chip">fidelidad al corpus</span>
+    <span class="chip">paradigmas</span>
+    <span class="chip">formulaciones</span>
+    <span class="chip">modelos</span>
+    <span class="chip">memoria</span>
+    <span class="chip">trazabilidad</span>
+    <span class="chip">advertencias</span>
+  </div>
+
+  <div class="cases">
+    <div class="panel case" data-frag="2">
+      <div class="head"><b>CASO1</b><span class="badge pass">PASS · con reservas</span></div>
+      <div class="stats">
+        <div class="stat"><div class="sv count" data-frag="2" data-to="6">0</div><div class="sl">paradigmas</div></div>
+        <div class="stat"><div class="sv count" data-frag="2" data-to="15">0</div><div class="sl">modelos ejecutables</div></div>
+        <div class="stat"><div class="sv count" data-frag="2" data-to="433">0</div><div class="sl">nodos en el grafo</div></div>
+        <div class="stat"><div class="sv"><span class="count" data-frag="2" data-to="72">0</span><small>/100</small></div><div class="sl">juez externo</div></div>
+      </div>
+      <div class="foot"><span>3 papers · 18 specs</span><span>6152 s · $33.71</span></div>
+    </div>
+    <div class="panel case" data-frag="3">
+      <div class="head"><b>CASO2</b><span class="badge pass">PASS · con reservas</span></div>
+      <div class="stats">
+        <div class="stat"><div class="sv count" data-frag="3" data-to="4">0</div><div class="sl">paradigmas</div></div>
+        <div class="stat"><div class="sv count" data-frag="3" data-to="12">0</div><div class="sl">modelos ejecutables</div></div>
+        <div class="stat"><div class="sv count" data-frag="3" data-to="272">0</div><div class="sl">nodos en el grafo</div></div>
+        <div class="stat"><div class="sv"><span class="count" data-frag="3" data-to="78">0</span><small>/100</small></div><div class="sl">juez externo</div></div>
+      </div>
+      <div class="foot"><span>3 papers · 12 specs</span><span>4962 s · $24.47</span></div>
+    </div>
+  </div>
+
+  <div class="shows" data-frag="4">
+    <b>Qué demuestra:</b> modelos ejecutables con evidencia auditable y reservas visibles — cada afirmación del juez puede rastrearse hasta el bundle congelado.
+  </div>
+</section>
+
+<!-- ═══ 17 · Revisión de un experto ═══ -->
+<section class="slide" id="sl-evexp" data-section="Evaluaciones">
+  <div class="eyebrow">Evaluaciones · experto humano</div>
+  <h2 class="slide-title">Revisión de un experto (CASO1)</h2>
+
+  <div class="cols">
+    <div class="panel">
+      <h4>Paradigmas</h4>
+      <div class="row ok" data-frag="1"><span class="mark">✓</span><span>Pavloviano</span></div>
+      <div class="row ok" data-frag="1"><span class="mark">✓</span><span>Regulación homeostática</span></div>
+      <div class="row ok" data-frag="1"><span class="mark">✓</span><span>Dirigido a objetivos vs. habitual <small>— debería separarse en dos</small></span></div>
+      <div class="row ko" data-frag="2"><span class="mark">✕</span><span>Drift diffusion model <small>— no aparece en el corpus</small></span></div>
+      <div class="row ko" data-frag="2"><span class="mark">✕</span><span>Cómputo de valor por atributos <small>— es parte de «dirigido a objetivos»</small></span></div>
+      <div class="row ko" data-frag="2"><span class="mark">✕</span><span>DlPFC <small>— es un área cerebral, no un paradigma</small></span></div>
+    </div>
+    <div class="panel">
+      <h4>Formulaciones</h4>
+      <div class="row ok" data-frag="3"><span class="mark">✓</span><span>Homeostático F1 / F2</span></div>
+      <div class="row ok" data-frag="3"><span class="mark">✓</span><span>Dirigido vs. habitual F1 / F2</span></div>
+      <div class="row ko" data-frag="3"><span class="mark">✕</span><span>Pavloviano F1–F3</span></div>
+      <div class="row ko" data-frag="3"><span class="mark">✕</span><span>Homeostático F3 · dirigido vs. habitual F3 <small>— mezclan mecanismos de otros paradigmas</small></span></div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div class="bars">
+      <div class="brow"><span class="bl">Juez LLM</span><div class="bar-track"><div class="bar-fill judge" data-frag="4" style="--w: 72%;">72</div></div></div>
+      <div class="brow"><span class="bl">Experto</span><div class="bar-track"><div class="bar-fill expert" data-frag="4" style="--w: 64%;">~64</div></div></div>
+    </div>
+    <div class="msg" data-frag="4">
+      <b>El juez LLM es más indulgente que el experto.</b> Con la misma rúbrica, la puntuación baja de 72 a ~64/100: la validación por expertos del dominio sigue siendo necesaria.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 18 · Divider Futuro ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">06 / 07</div>
+  <h1>Futuro</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 19 · Futuro ═══ -->
+<section class="slide" id="sl-fut" data-section="Futuro">
+  <div class="eyebrow">Futuro</div>
+  <h2 class="slide-title">Líneas de trabajo futuro</h2>
+
+  <div class="grid">
+    <div class="panel card" data-frag="1">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+      <div><b>Evaluación con expertos del dominio</b><p>Cerrar la validez científica que el juez LLM no puede garantizar por sí solo.</p></div>
+    </div>
+    <div class="panel card" data-frag="2">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg></span>
+      <div><b>Más paradigmas y más entornos</b><p>Ampliar los paradigmas de decisión disponibles y los entornos de simulación.</p></div>
+    </div>
+    <div class="panel card" data-frag="3">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></span>
+      <div><b>Sensibilidad al modelo LLM</b><p>Medir la variación de resultados al cambiar el modelo y su versión.</p></div>
+    </div>
+    <div class="panel card" data-frag="4">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg></span>
+      <div><b>Calidad de la memoria en más dominios</b><p>Medir contradicciones y la calidad de la reinyección de conocimiento.</p></div>
+    </div>
+    <div class="panel card" data-frag="5">
+      <span class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <div><b>Comparar contra implementaciones manuales</b><p>Contrastar los modelos generados con implementaciones de referencia y resultados esperados de la literatura.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 20 · Divider Conclusiones ═══ -->
+<section class="slide divider" data-section="">
+  <div class="sec-num">07 / 07</div>
+  <h1>Conclusiones</h1>
+  <div class="sec-line"></div>
+</section>
+
+<!-- ═══ 21 · Conclusiones ═══ -->
+<section class="slide" id="sl-conc" data-section="Conclusiones">
+  <div class="eyebrow">Conclusiones</div>
+  <h2 class="slide-title">Idea final</h2>
+
+  <div class="panel idea" data-frag="0">
+    <div class="big">El sistema no sustituye al investigador: <em>lo multiplica</em>.</div>
+    <p>Convierte su criterio en un proceso repetible, trazable y acumulativo.</p>
+  </div>
+
+  <div class="transform" data-frag="1">
+    <div class="old">
+      <span class="chip">buscar papers</span>
+      <span class="chip">elegir paradigmas</span>
+      <span class="chip">formalizar</span>
+      <span class="chip">adaptar</span>
+      <span class="chip">programar</span>
+      <span class="chip">probar</span>
+      <span class="chip">documentar</span>
+    </div>
+    <svg width="40" height="12" viewBox="0 0 40 12"><path d="M 0 6 H 32" stroke="rgba(15,23,42,0.35)" stroke-width="1.6" stroke-dasharray="6 4" fill="none"/><path d="M 30 1.5 L 38 6 L 30 10.5 z" fill="rgba(15,23,42,0.35)"/></svg>
+    <div class="new"><span>describir</span><span>revisar</span><span>usar</span></div>
+  </div>
+
+  <div class="points" data-frag="2">
+    <div class="panel pt"><span class="mk">01</span><span>Control humano en cada decisión científica: paradigmas, formulaciones, specs y modelos se aceptan explícitamente.</span></div>
+    <div class="panel pt"><span class="mk">02</span><span>Memoria persistente que reutiliza el conocimiento aceptado entre ejecuciones, con confianza y procedencia.</span></div>
+    <div class="panel pt"><span class="mk">03</span><span>Evidencia auditable de extremo a extremo: artefactos, bundles congelados y un juez externo con rúbrica.</span></div>
+    <div class="panel pt"><span class="mk">04</span><span>Implementado íntegramente con agentes, con una metodología de ingeniería detrás.</span></div>
+  </div>
+</section>
+
+<!-- ═══ 22 · Gracias ═══ -->
+<section class="slide divider" id="sl-fin" data-section="">
+  <h1>Muchas gracias</h1>
+  <div class="repos">
+    <div class="repo"><em>repositorio</em>github.com/srfreire/labTFG</div>
+    <div class="repo"><em>agrex</em>github.com/ppazosp/agrex</div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<div id="progress"></div>
+<div id="section-label"></div>
+<div id="hud"></div>
+
+<script src="deck.js"></script>
+</body>
+</html>

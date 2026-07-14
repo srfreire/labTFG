@@ -1,0 +1,598 @@
+/* ══════════════════════════════════════════════════════════════════
+   TFG defensa · Pablo Pazos Parada
+   White-mode deck reusing the DecisionLab web visual language:
+   Satoshi + IBM Plex Mono, agent role colors, dashed flowing edges,
+   rounded nodes with 2px colored borders, frosted panels.
+   Canvas: fixed 1280×720, scaled to viewport by deck.js.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Fonts (local, offline-safe) ── */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('assets/fonts/satoshi-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('assets/fonts/satoshi-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('assets/fonts/satoshi-700.woff2') format('woff2');
+  font-weight: 600 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('assets/fonts/plexmono-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('assets/fonts/plexmono-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('assets/fonts/plexmono-600.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+
+/* ── Tokens (web app palette, inverted to white mode) ── */
+:root {
+  --font-sans: 'Satoshi', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Monaco, monospace;
+
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --ink-muted: rgba(15, 23, 42, 0.62);
+  --ink-dim: rgba(15, 23, 42, 0.42);
+  --ink-faint: rgba(15, 23, 42, 0.28);
+  --border: rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.16);
+
+  /* Agent role colors — faceColors.ts */
+  --c-researcher: #3b82f6;
+  --c-deep: #8b5cf6;
+  --c-formalizer: #f59e0b;
+  --c-reasoner: #10b981;
+  --c-builder: #ec4899;
+  --c-memory: #8b5cf6;
+
+  /* Status colors — AgentNode.tsx */
+  --c-running: #f59e0b;
+  --c-done: #16a34a;
+  --c-error: #dc2626;
+  --c-blue: #3b82f6;
+  --c-cyan: #0891b2;
+
+  /* Edge colors — Graph.tsx EDGE_COLORS, darkened for white bg */
+  --edge-neutral: rgba(15, 23, 42, 0.30);
+  --edge-write: rgba(217, 119, 6, 0.55);
+  --edge-read: rgba(2, 132, 199, 0.55);
+
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-node: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-panel: 0 12px 40px -12px rgba(15, 23, 42, 0.12);
+
+  --ease-pop: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  height: 100%;
+  background: var(--bg);
+  font-family: var(--font-sans);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+/* ── Stage: fixed canvas scaled to viewport ── */
+#viewport {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#stage {
+  width: 1280px; height: 720px;
+  position: relative;
+  transform-origin: center center;
+}
+
+/* ── Slides ── */
+.slide {
+  position: absolute; inset: 0;
+  background: var(--surface);
+  border-radius: 0;
+  visibility: hidden;
+  opacity: 0;
+  padding: 56px 72px;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide.active {
+  visibility: visible;
+  opacity: 1;
+  animation: slide-in 0.45s var(--ease-pop) both;
+}
+
+.slide.leaving {
+  visibility: visible;
+  z-index: 0;
+  animation: slide-out 0.3s ease both;
+}
+
+.slide.active { z-index: 1; }
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Dot-grid background, echoes the React Flow canvas of the web app */
+.slide::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(15,23,42,0.10) 1.1px, transparent 1.1px);
+  background-size: 24px 24px;
+  background-position: 12px 12px;
+  mask-image: radial-gradient(ellipse 90% 85% at 50% 45%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 45%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+.slide > * { position: relative; }
+
+/* ── Chrome (progress, counter) ── */
+#progress {
+  position: absolute; left: 0; bottom: 0; height: 3px;
+  background: var(--ink);
+  width: 0%;
+  transition: width 0.4s var(--ease-pop);
+  z-index: 10;
+}
+
+#hud {
+  position: absolute; right: 20px; bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+  z-index: 10;
+  letter-spacing: 0.06em;
+}
+
+#section-label {
+  position: absolute; left: 24px; bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  z-index: 10;
+}
+
+/* ── Typography ── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 52px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+h2.slide-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+
+.slide-sub {
+  font-size: 17px;
+  color: var(--ink-muted);
+  margin: 0 0 26px;
+  max-width: 860px;
+}
+
+.lead {
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+/* ── Shared components ── */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--ink-muted);
+  background: var(--surface);
+}
+
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-running); }
+
+.panel {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
+}
+
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.badge.pass  { color: #14532d; background: #dcfce7; border: 1px solid #86efac; }
+.badge.alert { color: #713f12; background: #fef9c3; border: 1px solid #fde047; }
+.badge.fail  { color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5; }
+.badge.info  { color: #1e3a8a; background: #dbeafe; border: 1px solid #93c5fd; }
+
+/* code block — CodeBlock.tsx flavor, light scheme */
+.code {
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  line-height: 1.75;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-panel);
+}
+.code .kw  { color: #93c5fd; }
+.code .fn  { color: #fbbf24; }
+.code .arg { color: #a5b4fc; }
+.code .ty  { color: #6ee7b7; }
+.code .cm  { color: #64748b; }
+
+/* ── Fragments ── */
+[data-frag] {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s var(--ease-pop), transform 0.5s var(--ease-pop);
+}
+[data-frag].on {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Diagram primitives ────────────────────────────────────────── */
+
+.diagram { position: relative; }
+
+.diagram svg.wires {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Edges: dashed + flowing, like the web app's animated ReactFlow edges */
+.wire {
+  fill: none;
+  stroke: var(--edge-neutral);
+  stroke-width: 1.6;
+  stroke-dasharray: 6 4;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.wire.on {
+  opacity: 1;
+  animation: dash-flow 0.8s linear infinite;
+}
+.wire.read  { stroke: var(--edge-read); }
+.wire.write { stroke: var(--edge-write); }
+.wire.static.on { animation: none; }        /* dashed but not flowing */
+
+@keyframes dash-flow {
+  from { stroke-dashoffset: 10; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.arrowhead { fill: var(--edge-neutral); }
+.arrowhead.read  { fill: var(--edge-read); }
+.arrowhead.write { fill: var(--edge-write); }
+
+/* Edge label — white halo so it stays readable over paths */
+.wire-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  fill: var(--ink-dim);
+  stroke: var(--surface);
+  stroke-width: 4px;
+  paint-order: stroke;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 0.5s ease 0.15s;
+}
+.wire-label.on { opacity: 1; }
+
+/* Node — rounded card with 2px colored border (AgentNode.tsx) */
+.node {
+  --c: var(--ink-dim);
+  position: absolute;
+  background: var(--surface);
+  border: 2px solid var(--c);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-node);
+  padding: 10px 14px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.5);
+}
+.node.on {
+  animation: node-pop 0.5s var(--ease-pop) both;
+}
+@keyframes node-pop {
+  from  { opacity: 0; transform: scale(0.5); }
+  60%   { opacity: 1; transform: scale(1.06); }
+  to    { opacity: 1; transform: scale(1); }
+}
+
+.node .nl {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
+  display: block;
+}
+.node .ns {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.node .glyph {
+  display: inline-flex;
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--c) 14%, white);
+  color: var(--c);
+  margin-bottom: 6px;
+}
+.node .glyph svg { width: 15px; height: 15px; }
+
+/* running / done state — running-ring & done border from the web app */
+.node.running {
+  border-color: var(--c-running);
+  animation: node-pop 0.5s var(--ease-pop) both, running-ring 1.5s ease-in-out 0.5s infinite;
+}
+.node.done { border-color: var(--c-done); }
+.node .tick {
+  position: absolute; top: -9px; right: -9px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--c-done); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  opacity: 0; transform: scale(0);
+  transition: opacity 0.3s var(--ease-pop), transform 0.3s var(--ease-pop);
+}
+.node.done .tick { opacity: 1; transform: scale(1); }
+
+@keyframes running-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+  50%      { box-shadow: 0 0 16px 5px rgba(245, 158, 11, 0.35); }
+}
+
+/* Database cylinder */
+.db {
+  --c: var(--c-done);
+  position: absolute;
+  opacity: 0;
+}
+.db.on { animation: node-pop 0.5s var(--ease-pop) both; }
+.db .cyl {
+  position: relative;
+  width: 100%;
+  border: 2px solid var(--c);
+  border-radius: 14px / 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-node);
+  padding: 22px 12px 10px;
+  text-align: center;
+}
+.db .cyl::before {
+  content: '';
+  position: absolute;
+  top: 5px; left: 10px; right: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--c) 45%, white);
+  background: color-mix(in srgb, var(--c) 8%, white);
+}
+.db .nl { font-weight: 700; font-size: 13.5px; display: block; }
+.db .ns { font-size: 10.5px; color: var(--ink-muted); display: block; margin-top: 2px; line-height: 1.35; }
+
+/* Group container (Fase 1 / layers) */
+.group {
+  position: absolute;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  opacity: 0;
+}
+.group.on { animation: group-in 0.55s var(--ease-pop) both; }
+@keyframes group-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.group .gt {
+  position: absolute; top: -11px; left: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  background: var(--surface);
+  color: var(--ink-muted);
+  padding: 1px 8px;
+  border-radius: 6px;
+}
+
+/* Actor (person) */
+.actor {
+  position: absolute;
+  text-align: center;
+  opacity: 0;
+}
+.actor.on { animation: node-pop 0.5s var(--ease-pop) both; }
+.actor .head {
+  width: 64px; height: 64px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-node);
+  display: flex; align-items: center; justify-content: center;
+}
+.actor .head svg { width: 30px; height: 30px; color: var(--ink); }
+.actor .nl { font-weight: 700; font-size: 14px; display: block; }
+.actor .ns { font-size: 11.5px; color: var(--ink-muted); display: block; }
+
+/* ── Tables ── */
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+table.data th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  text-align: left;
+  padding: 8px 14px;
+  border-bottom: 1.5px solid var(--border-strong);
+}
+table.data td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+table.data tr:last-child td { border-bottom: none; }
+table.data td.mono { font-family: var(--font-mono); font-size: 13px; }
+
+tr.hl-row { transition: background 0.4s ease; }
+tr.hl-row.on { background: color-mix(in srgb, var(--c-running) 9%, white); }
+
+/* ── Dividers (section interstitials) ── */
+.slide.divider {
+  justify-content: center;
+  background: var(--ink);
+  color: white;
+}
+.slide.divider::before {
+  background-image: radial-gradient(rgba(255,255,255,0.16) 1.1px, transparent 1.1px);
+}
+.slide.divider .sec-num {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 18px;
+}
+.slide.divider h1 {
+  font-size: 84px;
+  color: white;
+}
+.slide.divider .sec-line {
+  width: 0;
+  height: 3px;
+  background: var(--c-running);
+  margin-top: 28px;
+}
+.slide.divider.active .sec-num { animation: slide-in 0.5s var(--ease-pop) both; }
+.slide.divider.active h1 { animation: slide-in 0.55s var(--ease-pop) 0.08s both; }
+.slide.divider.active .sec-line { animation: line-grow 0.7s var(--ease-pop) 0.25s both; }
+@keyframes line-grow { from { width: 0; } to { width: 132px; } }
+
+/* ── Count-up numbers ── */
+.stat {
+  text-align: left;
+}
+.stat .sv {
+  font-family: var(--font-mono);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.stat .sl {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+/* ── Confidence gauge (slide: ciclo de confianza) ── */
+.gauge-track {
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #fee2e2 0%, #fef9c3 35%, #dcfce7 100%);
+  border: 1px solid var(--border-strong);
+  position: relative;
+}
+.gauge-fill {
+  position: absolute; top: -7px;
+  width: 4px; height: 28px; border-radius: 2px;
+  background: var(--ink);
+  transition: left 0.7s var(--ease-pop);
+}
+.gauge-val {
+  position: absolute; top: -34px;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 14px; font-weight: 600;
+  transition: left 0.7s var(--ease-pop);
+}
+
+/* ── Print ── */
+@media print {
+  html, body { overflow: visible; background: white; }
+  #viewport { position: static; display: block; }
+  #stage { transform: none !important; width: 1280px; height: auto; }
+  .slide {
+    position: relative; inset: auto;
+    visibility: visible; opacity: 1;
+    width: 1280px; height: 720px;
+    page-break-after: always;
+    animation: none !important;
+  }
+  [data-frag] { opacity: 1 !important; transform: none !important; }
+  .node, .db, .group, .actor { opacity: 1 !important; animation: none !important; transform: none !important; }
+  .wire, .wire-label { opacity: 1 !important; animation: none !important; }
+  #progress, #hud, #section-label { display: none; }
+}
