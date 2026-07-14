@@ -408,31 +408,30 @@ h2.slide-title {
   50%      { box-shadow: 0 0 16px 5px rgba(245, 158, 11, 0.35); }
 }
 
-/* Database cylinder */
+/* Database — node card with lucide database glyph, like the web app's memory node */
 .db {
-  --c: var(--c-done);
+  --c: #059669;
   position: absolute;
+  background: var(--surface);
+  border: 2px solid var(--c);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-node);
+  padding: 10px 12px;
+  text-align: center;
   opacity: 0;
+  transform: scale(0.5);
 }
 .db.on { animation: node-pop 0.5s var(--ease-pop) both; }
-.db .cyl {
-  position: relative;
-  width: 100%;
-  border: 2px solid var(--c);
-  border-radius: 14px / 22px;
-  background: var(--surface);
-  box-shadow: var(--shadow-node);
-  padding: 22px 12px 10px;
-  text-align: center;
+.db .glyph {
+  display: inline-flex;
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--c) 14%, white);
+  color: var(--c);
+  margin-bottom: 6px;
 }
-.db .cyl::before {
-  content: '';
-  position: absolute;
-  top: 5px; left: 10px; right: 10px; height: 10px;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--c) 45%, white);
-  background: color-mix(in srgb, var(--c) 8%, white);
-}
+.db .glyph svg { width: 15px; height: 15px; }
 .db .nl { font-weight: 700; font-size: 13.5px; display: block; }
 .db .ns { font-size: 10.5px; color: var(--ink-muted); display: block; margin-top: 2px; line-height: 1.35; }
 
@@ -508,10 +507,10 @@ table.data td.mono { font-family: var(--font-mono); font-size: 13px; }
 tr.hl-row { transition: background 0.4s ease; }
 tr.hl-row.on { background: color-mix(in srgb, var(--c-running) 9%, white); }
 
-/* ── Dividers (section interstitials) ── */
+/* ── Dividers (section interstitials) — pure black, like the web app ── */
 .slide.divider {
   justify-content: center;
-  background: var(--ink);
+  background: #000;
   color: white;
 }
 .slide.divider::before {
