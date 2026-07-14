@@ -230,6 +230,11 @@ const EDGE_COLORS = {
   memory_store: 'rgba(251,191,36,0.55)',
 };
 
+// Once the graph carries more than this many edges, the flowing edge
+// animation turns into noise and costs paint time (memory nodes fan out
+// dozens of edges each). Past the cap we stop animating edges wholesale.
+const MAX_ANIMATED_EDGES = 40;
+
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.max(0, Math.round(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -375,6 +380,11 @@ export default function Graph({
     timelineCollapsedChange?.(collapsed);
   };
 
+  // Stop animating edges once the graph gets busy. The live edge count comes
+  // from the replay instance (or the static `edges` prop in demo mode).
+  const edgeCount = replay?.instance.edges.length ?? edges?.length ?? 0;
+  const animateEdges = edgeCount <= MAX_ANIMATED_EDGES;
+
   // Freeze the context value when the pieces don't change so renderers
   // only re-evaluate when the overlay actually shifts.
   const ctx = useMemo<GraphUIState>(
@@ -408,7 +418,7 @@ export default function Graph({
           showDetailPanel={!demo && showDetailPanel}
           showStats={false}
           fitOnUpdate={!demo}
-          animateEdges
+          animateEdges={animateEdges}
           keyboardShortcuts={!demo}
           showTimeline={!demo}
           timelineProps={{
