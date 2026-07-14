@@ -1,7 +1,7 @@
 # Presentación de defensa — TFG Fase 2
 
 Deck en **reveal.js** con el design system del frontend (tokens propios) y
-animaciones **GSAP** en registro contenido. 20 diapositivas, castellano, ~20 min.
+animaciones **GSAP** en registro contenido. 18 diapositivas, castellano, ~20 min.
 
 ## Servir
 
@@ -41,7 +41,7 @@ Abrir `http://localhost:8080/?print-pdf` e imprimir a PDF desde el navegador
 ## Estructura
 
 ```
-index.html            las 20 slides
+index.html            las 18 slides
 css/tokens.css        copia de frontend/docs/design/tokens.css (fuente de verdad)
 css/theme.css         tema reveal sobre los tokens
 css/components.css     paneles, colores por agente, stats, layout de slides
