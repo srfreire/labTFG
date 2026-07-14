@@ -34,7 +34,7 @@
 \title[Generación de modelos de decisión]{Laboratorio virtual para la simulación y análisis de paradigmas de toma de decisiones humanas\\mediante agentes inteligentes}
 \author[Pablo Pazos Parada]{Pablo Pazos Parada}
 \institute[USC]{Grado en Ingeniería Informática\\Universidade de Santiago de Compostela\\Tutor: Eduardo Manuel Sánchez Vila}
-\date{Junio de 2026}
+\date{Julio de 2026}
 \titlegraphic{\includegraphics[width=0.8cm]{figuras/logo_usc}}
 
 \begin{document}
@@ -48,53 +48,74 @@
   \tableofcontents
 \end{frame}
 
-\section{Problema y objetivo}
+\section{Motivación}
 
 \begin{frame}
-  \frametitle{Problema}
-  \begin{block}{Brecha principal}
-    Convertir literatura científica y descripciones de paradigmas de decisión
-    en modelos ejecutables sigue siendo una tarea manual, lenta y difícil de
-    auditar.
-  \end{block}
-
-  \vspace{0.3cm}
+  \frametitle{Motivación: el investigador hoy}
   \begin{columns}
-    \begin{column}{0.48\textwidth}
-      \begin{alertblock}{Riesgos}
-        \begin{itemize}
-          \item Interpretaciones no trazables.
-          \item Código separado de la formulación.
-          \item Repetición de trabajo entre ejecuciones.
-        \end{itemize}
-      \end{alertblock}
+    \begin{column}{0.56\textwidth}
+      \begin{center}
+      \includegraphics[height=0.72\textheight]{figuras/phase1-investigador-x10}
+      \end{center}
     \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{exampleblock}{Oportunidad}
-        Usar agentes inteligentes con revisión humana, memoria y pruebas para
-        convertir conocimiento científico en modelos simulables.
+    \begin{column}{0.42\textwidth}
+      \begin{alertblock}{Investigador actual}
+        Buscar en muchas fuentes, contrastar, elegir lo útil, entender,
+        interpretar, transformar y usar. Todo manual, lento y difícil de
+        auditar.
+      \end{alertblock}
+      \begin{exampleblock}{Investigador $\times$10}
+        Describir el problema, revisar lo que proponen los agentes y usar el
+        resultado. El trabajo intermedio lo hace el sistema, con revisión
+        humana.
       \end{exampleblock}
     \end{column}
   \end{columns}
 \end{frame}
 
+\section{Contexto}
+
 \begin{frame}
-  \frametitle{Objetivos}
+  \frametitle{Contexto}
+  \begin{block}{El punto de partida}
+    Eduardo es el investigador. Juan y yo queremos multiplicarlo. Elegimos la
+    toma de decisiones humanas: un dominio con paradigmas comparables, ideal
+    para crear agentes que los interpreten y extender el sistema después.
+  \end{block}
+
+  \vspace{0.25cm}
+  \begin{center}
+  \includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{figuras/phase1-contexto-fases}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Dos fases, un laboratorio}
   \begin{columns}
     \begin{column}{0.52\textwidth}
-      \begin{block}{Objetivo general}
-        Diseñar e implementar un sistema de agentes que genere modelos de
-        decisión ejecutables a partir de problemas descritos en lenguaje natural.
+      \begin{block}{Fase 1 (este TFG): objetivos}
+        \begin{itemize}
+          \item Revisión de la literatura científica.
+          \item Formalización de modelos computacionales.
+          \item Sistema de memoria cross ejecución:
+          \begin{itemize}
+            \item para extraer observaciones,
+            \item para mejorar el pipeline.
+          \end{itemize}
+        \end{itemize}
       \end{block}
     \end{column}
     \begin{column}{0.44\textwidth}
-      \begin{itemize}
-        \item Investigar paradigmas científicos.
-        \item Formalizarlos matemáticamente.
-        \item Adaptarlos al entorno.
-        \item Generar código Python probado.
-        \item Reutilizar conocimiento aceptado.
-      \end{itemize}
+      \begin{exampleblock}{Fase 2 (Juan)}
+        \begin{itemize}
+          \item Simulación de los modelos generados.
+          \item Análisis de resultados e informes.
+        \end{itemize}
+      \end{exampleblock}
+      \begin{block}{Frontera entre fases}
+        Contrato \texttt{DecisionModel} por duck typing: \texttt{decide},
+        \texttt{update}, \texttt{get\_state}.
+      \end{block}
     \end{column}
   \end{columns}
 \end{frame}
@@ -102,234 +123,198 @@
 \section{Arquitectura}
 
 \begin{frame}
-  \frametitle{Idea central}
+  \frametitle{Despliegue y arquitectura}
   \begin{center}
-  \includegraphics[height=0.40\textheight]{figuras/phase1-main-transformation}
+  \includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-system-architecture}
   \end{center}
 
-  \vspace{0.4cm}
-  \begin{block}{Tesis de diseño}
-    No se usa un agente monolítico: se usa un pipeline trazable, con artefactos
-    persistentes y revisión humana entre decisiones semánticas.
+  \begin{block}{Lectura}
+    CLI, web y evals atacan la misma API. El Router coordina agentes y
+    herramientas. Cada almacén tiene una responsabilidad propia.
   \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Router como máquina de estados}
+  \frametitle{Pipeline y workflow}
   \begin{columns}
-    \begin{column}{0.52\textwidth}
-      \begin{block}{Responsabilidad del Router}
-        \begin{itemize}
-          \item Coordinar etapas.
-          \item Persistir estado y trazas.
-          \item Pedir revisión humana.
-          \item Activar memoria tras aceptación.
-          \item Permitir reejecución parcial.
-        \end{itemize}
-      \end{block}
+    \begin{column}{0.55\textwidth}
+      \begin{center}
+      \includegraphics[height=0.72\textheight]{figuras/phase1-pipeline-activity}
+      \end{center}
     \end{column}
-    \begin{column}{0.44\textwidth}
-      \scriptsize
-      \begin{tabular}{ll}
-        \textcolor{DecisionGreen}{$\bullet$} & CLASSIFY\_UMBRELLA\\
-        \textcolor{DecisionGreen}{$\bullet$} & RESEARCH\\
-        \textcolor{DecisionBlue}{$\bullet$} & REVIEW\_RESEARCH\\
-        \textcolor{DecisionGreen}{$\bullet$} & MEMORY\_RESEARCH\\
-        \textcolor{DecisionAmber}{$\bullet$} & FORMALIZE\\
-        \textcolor{DecisionBlue}{$\bullet$} & REASON\\
-        \textcolor{DecisionGreen}{$\bullet$} & BUILD\\
-        \textcolor{DecisionGreen}{$\bullet$} & DONE
-      \end{tabular}
-      \vspace{0.3cm}
-
-      \begin{exampleblock}{Clave}
-        Los agentes generan contenido; el Router mantiene control operacional.
+    \begin{column}{0.43\textwidth}
+      \begin{block}{Pipeline trazable}
+        Researcher $\rightarrow$ Formalizer $\rightarrow$ Reasoner
+        $\rightarrow$ Builder, coordinados por un Router determinista
+        (máquina de estados).
+      \end{block}
+      \begin{exampleblock}{Revisión humana}
+        Cada etapa deja artefactos persistentes y pasa por una puerta de
+        revisión antes de avanzar. Si se rechaza, solo se repite la etapa
+        afectada.
       \end{exampleblock}
+      \begin{center}
+        \scriptsize
+        \texttt{deep/*.md} $\rightarrow$ \texttt{formulations/*.md}
+        $\rightarrow$ \texttt{reasoner/*.json} $\rightarrow$
+        \texttt{builder/*\_model.py}
+      \end{center}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}
-  \frametitle{Agentes especializados}
-  \begin{columns}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Researcher}
-        Identifica paradigmas, consulta memoria y lanza investigación profunda.
-      \end{block}
-      \begin{block}{Formalizer}
-        Convierte informes científicos en formulaciones matemáticas comparables.
-      \end{block}
-    \end{column}
-    \begin{column}{0.5\textwidth}
-      \begin{block}{Reasoner}
-        Adapta formulaciones al entorno y produce especificaciones JSON.
-      \end{block}
-      \begin{block}{Builder}
-        Genera código Python autocontenido y tests ejecutables.
-      \end{block}
-    \end{column}
-  \end{columns}
+\section{Memoria}
 
-  \vspace{0.15cm}
+\begin{frame}
+  \frametitle{Justificación de la memoria: los 3 tipos}
   \begin{center}
-    \scriptsize
-    \texttt{deep/*.md} $\rightarrow$ \texttt{formulations/*.md} $\rightarrow$
-    \texttt{reasoner/*.json} $\rightarrow$ \texttt{builder/*\_model.py}
+  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-memoria-tres-tipos}
   \end{center}
+
+  \begin{block}{Por qué 3 representaciones y no una}
+    Relacional para ciclo de vida y confianza; grafo para procedencia y
+    relaciones científicas; vectorial para recuperar hechos por similitud o
+    término exacto. MinIO conserva el artefacto íntegro como fuente auditable.
+  \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Infraestructura y artefactos}
+  \frametitle{Ejemplo de actualización de la memoria}
+  \begin{block}{Criterio de entrada}
+    Solo se consolida conocimiento aceptado tras revisión, nunca borradores.
+  \end{block}
+
   \begin{table}
   \scriptsize
   \begin{tabular}{lll}
     \toprule
-    Capa & Tecnología & Responsabilidad\\
+    Paso & Ejemplo (drift diffusion model) & Escritura\\
     \midrule
-    Artefactos & MinIO & Informes, specs, código, estado y trazas\\
-    Metadatos & PostgreSQL & Runs, modelos y ciclo de vida de memoria\\
-    Grafo & Neo4j & Paradigmas, papers, variables y relaciones\\
-    Recuperación & Qdrant & Hechos densos y BM25\\
+    Artefacto & Deep report aceptado & MinIO guarda el documento\\
+    Entidades & Paradigma, paper, variables & Neo4j crea nodos con slugs\\
+    Hechos & ``La evidencia se acumula hasta un umbral'' & Qdrant indexa denso + BM25\\
+    Control & Confianza, vigencia, supersesión & PostgreSQL registra estado\\
     \bottomrule
   \end{tabular}
   \end{table}
 
-  \begin{block}{Decisión importante}
-    Los artefactos completos se guardan en MinIO. PostgreSQL conserva lo
-    consultable; Neo4j representa relaciones; Qdrant recupera hechos.
-  \end{block}
+  \begin{exampleblock}{Uso posterior}
+    Una run futura sobre un paradigma parecido recupera estos hechos con
+    \texttt{retrieve\_knowledge}: búsqueda híbrida, fusión RRF y reranking,
+    siempre con procedencia.
+  \end{exampleblock}
 \end{frame}
 
-\section{Memoria y recuperación}
+\section{Metodología basada en agentes}
 
 \begin{frame}
-  \frametitle{Sistema de memoria}
+  \frametitle{Metodología: arquitectura de trabajo}
+  \begin{block}{Separar decisiones y ejecución}
+    El humano define objetivo, restricciones y evidencia esperada. Los agentes
+    de programación implementan. La aceptación exige evidencia: tests, logs,
+    CI y artefactos revisables.
+  \end{block}
+
+  \begin{table}
+  \scriptsize
+  \begin{tabular}{lll}
+    \toprule
+    Pieza & Rol & Por qué\\
+    \midrule
+    Linear & Tareas con objetivo y criterios de aceptación & Trabajo en paralelo\\
+    Hydra (workflow) & Orquesta agentes en worktrees separados & Autonomía controlada\\
+    Skills & Protocolos reutilizables (UI, CI, revisión) & Menos variación\\
+    Instrucciones repo & Convenciones y comandos de verificación & Reglas estables\\
+    \bottomrule
+  \end{tabular}
+  \end{table}
+
+  \begin{exampleblock}{La misma idea en ambos planos}
+    Esta metodología es la que implementa el propio sistema: agentes que
+    producen, humanos que aceptan.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Metodología: workflow autónomo}
   \begin{center}
-  \includegraphics[height=0.58\textheight]{figuras/phase1-memory-architecture}
+  \includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
   \end{center}
 
-  \begin{alertblock}{Criterio de entrada}
-    La memoria almacena conocimiento aceptado tras revisión, no todos los
-    borradores generados por el modelo.
-  \end{alertblock}
+  \begin{block}{Clave}
+    Hydra agrupa tareas de Linear y lanza agentes en paralelo; la aceptación
+    final sigue siendo humana y pasa por CI.
+  \end{block}
 \end{frame}
+
+\section{Evals}
 
 \begin{frame}
-  \frametitle{Recuperación híbrida}
-  \begin{columns}
-    \begin{column}{0.52\textwidth}
-      \begin{block}{Señales complementarias}
-        \begin{itemize}
-          \item Densa: similitud semántica.
-          \item BM25: términos exactos, autores y símbolos.
-          \item Grafo: relaciones entre entidades.
-          \item RRF: fusión sin entrenamiento.
-          \item CRAG: corrección cuando hay duda.
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.45\textwidth}
-      \begin{exampleblock}{Flujo}
-        \scriptsize
-        Consulta\\
-        $\downarrow$\\
-        Qdrant denso + Qdrant BM25 + Neo4j\\
-        $\downarrow$\\
-        RRF + reranking\\
-        $\downarrow$\\
-        usar, complementar o fallback web
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\section{Implementación y validación}
-
-\begin{frame}[fragile]
-  \frametitle{Contrato del modelo generado}
-  \begin{block}{Salida de la fase 1}
-    Modelos Python autocontenidos, cargables por duck typing desde el
-    laboratorio de simulación.
+  \frametitle{Evals de memoria}
+  \begin{block}{Qué se pregunta}
+    ¿El conocimiento se mantiene consistente entre ejecuciones y se recupera
+    cuando hace falta?
   \end{block}
 
-\begin{lstlisting}[language=Python]
-def decide(self, perception: dict) -> Action: ...
-def update(self, action, reward, new_perception) -> None: ...
-def get_state(self) -> dict: ...
-\end{lstlisting}
+  \begin{table}
+  \scriptsize
+  \begin{tabular}{llll}
+    \toprule
+    Suite & Estado & Tiempo / coste & Evidencia\\
+    \midrule
+    Retrieval quality & PASS & 22.7 s / \$0.08 & Hechos esperados en top-k\\
+    Temporal correctness & PASS & 0.1 s / \$0.00 & Vigencia y cadena de supersesión\\
+    Cumulative growth & PASS & --- / \$10 & El grafo crece sin fragmentarse\\
+    Slug accuracy & Alerta & 3646 s / \$5.08 & Motivó endurecer canonicalización\\
+    \bottomrule
+  \end{tabular}
+  \end{table}
 
-  \begin{alertblock}{Regla}
-    \texttt{decide} elige acción sin mutar estado; \texttt{update} aprende
-    después de recompensa y nueva percepción.
+  \begin{alertblock}{Valor de la alerta}
+    No basta el éxito técnico: hubo que medir identidad científica. La
+    fragmentación de slugs se detectó con evals, no leyendo logs.
   \end{alertblock}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Validación}
-  \begin{columns}
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Capas de control}
-        \begin{itemize}
-          \item Schemas y Pydantic.
-          \item Validación semántica en Reasoner.
-          \item Revisión humana.
-          \item Tests con \texttt{pytest}.
-          \item Trazas por ejecución.
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{exampleblock}{Evidencia ejecutable}
-        \centering
-        \texttt{spec.json}\\
-        $\downarrow$\\
-        \texttt{model.py + test\_model.py}\\
-        $\downarrow$\\
-        \texttt{uv run pytest}\\
-        $\downarrow$\\
-        modelo registrable
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
-\end{frame}
+  \frametitle{Evals científicas: corpus cerrado}
+  \begin{block}{Método}
+    El sistema solo ve los papers de un ZIP. Un LLM juez independiente revisa
+    el bundle congelado con rúbrica de fidelidad, calidad y trazabilidad.
+  \end{block}
 
-\section{Conclusiones}
+  \begin{table}
+  \scriptsize
+  \begin{tabular}{llll}
+    \toprule
+    Caso & Resultado & Tiempo / coste & Evidencia generada\\
+    \midrule
+    CASO1 & PASS; juez 72/100 & 6152 s / \$33.71 & 15 modelos, KG 433 nodos\\
+    CASO2 & PASS; juez 78/100 & 4962 s / \$24.47 & 12 modelos, KG 272 nodos\\
+    \bottomrule
+  \end{tabular}
+  \end{table}
 
-\begin{frame}
-  \frametitle{Contribuciones}
-  \begin{columns}
-    \begin{column}{0.32\textwidth}
-      \begin{block}{Pipeline}
-        Investigación, formalización, adaptación y construcción como etapas
-        auditables.
-      \end{block}
-    \end{column}
-    \begin{column}{0.32\textwidth}
-      \begin{block}{Memoria}
-        Conocimiento aceptado reutilizable con PostgreSQL, MinIO, Neo4j y Qdrant.
-      \end{block}
-    \end{column}
-    \begin{column}{0.32\textwidth}
-      \begin{block}{Integración}
-        Modelos ejecutables compatibles con el laboratorio virtual.
-      \end{block}
-    \end{column}
-  \end{columns}
+  \begin{exampleblock}{Qué demuestra}
+    El pipeline completa etapas, genera modelos ejecutables y deja una cadena
+    de evidencia auditable. El juez no sustituye al experto: hace visibles las
+    reservas para que la revisión científica sea trazable.
+  \end{exampleblock}
 \end{frame}
 
 \begin{frame}
   \frametitle{Cierre}
   \begin{block}{Idea final}
-    El sistema no sustituye al investigador: convierte su criterio en un
-    proceso repetible, trazable y acumulativo.
+    El sistema no sustituye al investigador: lo multiplica. Convierte su
+    criterio en un proceso repetible, trazable y acumulativo.
   \end{block}
 
   \vspace{0.35cm}
   \begin{itemize}
-    \item Reduce trabajo manual entre literatura y simulación.
-    \item Mantiene control humano en decisiones científicas.
-    \item Reutiliza conocimiento mediante memoria persistente.
-    \item Entrega código probado, no solo texto.
+    \item De 7 pasos manuales a describir, revisar y usar.
+    \item Control humano en cada decisión científica.
+    \item Memoria persistente que reutiliza conocimiento aceptado.
+    \item Código probado y evaluado, no solo texto.
   \end{itemize}
 
   \vspace{0.4cm}
