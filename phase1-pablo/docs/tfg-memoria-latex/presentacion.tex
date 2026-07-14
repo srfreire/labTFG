@@ -16,6 +16,15 @@
 \setbeamerfont{institute}{size=\scriptsize}
 \setbeamerfont{date}{size=\small}
 
+\AtBeginSection[]{
+  \begin{frame}
+    \centering
+    \vfill
+    {\Huge\usebeamercolor[fg]{structure}\insertsection}
+    \vfill
+  \end{frame}
+}
+
 \lstset{
   basicstyle=\ttfamily\scriptsize,
   breaklines=true,
@@ -41,13 +50,6 @@
 \end{frame}
 
 \section{Motivación}
-
-\begin{frame}
-  \centering
-  \vfill
-  {\Huge\usebeamercolor[fg]{structure}Motivación}
-  \vfill
-\end{frame}
 
 \section{Contexto}
 
@@ -120,7 +122,7 @@ def get_state(self) -> dict: ...
   \end{block}
 
   \begin{table}
-  \scriptsize
+  \resizebox{\linewidth}{!}{%
   \begin{tabular}{lll}
     \toprule
     Suite & Resultado & Criterio de PASS\\
@@ -130,7 +132,7 @@ def get_state(self) -> dict: ...
     Cumulative growth & PASS & El grafo crece sin duplicar entidades\\
     Slug accuracy & Alerta & Un mismo concepto mantiene un único slug canónico\\
     \bottomrule
-  \end{tabular}
+  \end{tabular}}
   \end{table}
 
   \begin{alertblock}{Valor de la alerta}
@@ -149,7 +151,7 @@ def get_state(self) -> dict: ...
   \end{block}
 
   \begin{table}
-  \scriptsize
+  \resizebox{\linewidth}{!}{%
   \begin{tabular}{lll}
     \toprule
     Caso & Resultado & Evidencia generada\\
@@ -157,7 +159,7 @@ def get_state(self) -> dict: ...
     CASO1 & PASS; juez 72/100 con reservas & 6 paradigmas, 15 modelos, KG de 433 nodos\\
     CASO2 & PASS; juez 78/100 con reservas & 4 paradigmas, 12 modelos, KG de 272 nodos\\
     \bottomrule
-  \end{tabular}
+  \end{tabular}}
   \end{table}
 
   \begin{exampleblock}{Qué demuestra}
