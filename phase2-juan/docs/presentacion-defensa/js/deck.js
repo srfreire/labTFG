@@ -12,6 +12,11 @@ Reveal.initialize({
   controlsTutorial: false,
   slideNumber: 'c/t',
   pdfSeparateFragments: false,
+  // Sin paso manual: todos los .fragment aparecen (animados) al abrir la diapo,
+  // sin tener que hacer clic. Ver playFragments() más abajo, que re-dispara la
+  // transición fade-in-up en cada entrada. fragments:false desactiva el stepping
+  // y marca todo como .visible una vez al iniciar.
+  fragments: false,
   // N is repurposed as the speaker-notes toggle (see deck.js), so drop reveal's
   // default N=next-slide binding — otherwise pressing N both toggles notes and advances.
   keyboard: { 78: null },
@@ -30,7 +35,26 @@ if (/print-pdf/.test(window.location.search)) {
 
 function idOf(section) { return section && section.dataset ? section.dataset.slide : null; }
 
+const IS_PRINT = /print-pdf/.test(window.location.search);
+
+/* Auto-reveal: con fragments:false reveal deja todos los .fragment visibles. Al
+   entrar en una diapo reiniciamos los suyos (sin transición) y los volvemos a
+   mostrar con un pequeño escalonado, reutilizando la CSS fade-in-up. Así todo
+   aparece animado al abrir la diapo, sin clics. */
+function playFragments(section) {
+  if (IS_PRINT) return;
+  const frags = section.querySelectorAll('.fragment');
+  if (!frags.length) return;
+  frags.forEach(f => { f.classList.add('anim-reset'); f.classList.remove('visible'); });
+  void section.offsetWidth; // fuerza reflow para que el reset surta efecto sin animar
+  frags.forEach((f, i) => {
+    f.classList.remove('anim-reset');
+    setTimeout(() => f.classList.add('visible'), 60 + i * 85);
+  });
+}
+
 function activate(section) {
+  playFragments(section);
   const id = idOf(section);
   if (!id) return;
   const tl = SlideAnim.build(id, section);
@@ -57,11 +81,10 @@ Reveal.on('fragmentshown', ev => {
   if (tl) tl.play();
 });
 
-/* Autoplay hero/demo video when its slide becomes active (browsers block off-DOM autoplay). */
-Reveal.on('slidechanged', ev => {
-  document.querySelectorAll('video').forEach(v => { v.pause(); });
-  const v = ev.currentSlide.querySelector('video');
-  if (v) { v.currentTime = 0; v.play().catch(() => {}); }
+/* Reset every video when the slide changes, but don't autoplay: the demo waits
+   for the presenter's click (native controls / poster play button). */
+Reveal.on('slidechanged', () => {
+  document.querySelectorAll('video').forEach(v => { v.pause(); v.currentTime = 0; });
 });
 
 /* Lightweight speaker-notes viewer — reveal.js 5 ships the Notes plugin as a
