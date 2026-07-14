@@ -8,16 +8,16 @@ El navegador cancela peticiones a medias (rangos de video, recargas), lo que
 hace que http.server escupa BrokenPipeError. Aqui esos cortes se silencian:
 no son errores, la presentacion se sirve bien igualmente.
 """
+import contextlib
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
     def copyfile(self, source, outputfile):
-        try:
+        # el navegador cerro la conexion; no es un fallo
+        with contextlib.suppress(BrokenPipeError, ConnectionResetError):
             super().copyfile(source, outputfile)
-        except (BrokenPipeError, ConnectionResetError):
-            pass  # el navegador cerro la conexion; no es un fallo
 
     def log_message(self, fmt, *args):
         # silencia el 404 de favicon.ico y demas ruido rutinario
