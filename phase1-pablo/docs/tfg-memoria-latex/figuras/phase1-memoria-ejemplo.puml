@@ -1,0 +1,39 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 190
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam component {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+}
+skinparam database {
+  BorderColor #166534
+  BackgroundColor #ECFDF5
+}
+
+component "Deep report aceptado\ndrift diffusion model" as Art
+
+database "MinIO\ndocumento\nintegro" as MinIO
+database "PostgreSQL\nrevision aceptada,\nconfianza y vigencia" as PG
+database "Neo4j\nParadigma ddm,\nPaper, Variable umbral" as Neo
+database "Qdrant\nla evidencia se acumula\nhasta un umbral" as Qd
+
+component "Run futura sobre un paradigma parecido\nrecibe contexto con procedencia" as Run
+
+Art -down-> MinIO : fuente
+Art -down-> PG : ciclo de vida
+Art -down-> Neo : nodos y relaciones\ncon slugs
+Art -down-> Qd : hecho denso + BM25
+
+Neo -down-> Run : retrieve_knowledge
+Qd -down-> Run : retrieve_knowledge
+
+MinIO -[hidden]right- PG
+PG -[hidden]right- Neo
+Neo -[hidden]right- Qd
+@enduml

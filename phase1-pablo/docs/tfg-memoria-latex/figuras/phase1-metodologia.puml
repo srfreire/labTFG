@@ -1,0 +1,52 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 190
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BorderColor #334155
+  BackgroundColor #F8FAFC
+}
+skinparam component {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+}
+skinparam node {
+  BorderColor #334155
+  BackgroundColor #EFF6FF
+}
+
+component "Humano\ndefine objetivo y criterios de aceptacion" as Human
+
+component "Linear\ntareas, dependencias y prioridad" as Linear
+
+component "Hydra (workflow)\norquesta oleadas de tareas" as Hydra
+
+node "Agentes trabajadores (worktrees separados)" as Workers {
+  component "Agente 1" as W1
+  component "Agente 2" as W2
+  component "Agente N" as W3
+  component "Skills\nprotocolos\nreutilizables" as Skills
+  component "Instrucciones del repo\nconvenciones\ny comandos" as Rules
+}
+
+component "Evidencia\ntests, logs, capturas y diffs" as Evidence
+
+component "CI\nlint, formato y tests" as CI
+
+Human -down-> Linear : planifica
+Linear -down-> Hydra : tareas pendientes
+Hydra -down-> Workers : lanza en paralelo
+Workers -down-> Evidence : entregan
+Evidence -down-> CI : checks
+CI -left-> Human : acepta o\ncrea follow-up
+
+W1 -[hidden]right- W2
+W2 -[hidden]right- W3
+W3 -[hidden]right- Skills
+Skills -[hidden]right- Rules
+@enduml

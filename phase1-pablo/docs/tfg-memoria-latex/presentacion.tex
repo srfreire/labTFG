@@ -51,200 +51,83 @@
 \section{Motivación}
 
 \begin{frame}
-  \frametitle{Motivación: el investigador hoy}
-  \begin{columns}
-    \begin{column}{0.56\textwidth}
-      \begin{center}
-      \includegraphics[height=0.72\textheight]{figuras/phase1-investigador-x10}
-      \end{center}
-    \end{column}
-    \begin{column}{0.42\textwidth}
-      \begin{alertblock}{Investigador actual}
-        Buscar en muchas fuentes, contrastar, elegir lo útil, entender,
-        interpretar, transformar y usar. Todo manual, lento y difícil de
-        auditar.
-      \end{alertblock}
-      \begin{exampleblock}{Investigador $\times$10}
-        Describir el problema, revisar lo que proponen los agentes y usar el
-        resultado. El trabajo intermedio lo hace el sistema, con revisión
-        humana.
-      \end{exampleblock}
-    \end{column}
-  \end{columns}
+  \frametitle{Motivación}
+  \begin{center}
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{figuras/phase1-investigador-x10}
+  \end{center}
 \end{frame}
 
 \section{Contexto}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{Contexto}
-  \begin{block}{El punto de partida}
-    Eduardo es el investigador. Juan y yo queremos multiplicarlo. Elegimos la
-    toma de decisiones humanas: un dominio con paradigmas comparables, ideal
-    para crear agentes que los interpreten y extender el sistema después.
-  \end{block}
-
-  \vspace{0.25cm}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.48\textheight,keepaspectratio]{figuras/phase1-contexto-fases}
+  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-contexto-fases}
   \end{center}
-\end{frame}
 
-\begin{frame}
-  \frametitle{Dos fases, un laboratorio}
-  \begin{columns}
-    \begin{column}{0.52\textwidth}
-      \begin{block}{Fase 1 (este TFG): objetivos}
-        \begin{itemize}
-          \item Revisión de la literatura científica.
-          \item Formalización de modelos computacionales.
-          \item Sistema de memoria cross ejecución:
-          \begin{itemize}
-            \item para extraer observaciones,
-            \item para mejorar el pipeline.
-          \end{itemize}
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \begin{column}{0.44\textwidth}
-      \begin{exampleblock}{Fase 2 (Juan)}
-        \begin{itemize}
-          \item Simulación de los modelos generados.
-          \item Análisis de resultados e informes.
-        \end{itemize}
-      \end{exampleblock}
-      \begin{block}{Frontera entre fases}
-        Contrato \texttt{DecisionModel} por duck typing: \texttt{decide},
-        \texttt{update}, \texttt{get\_state}.
-      \end{block}
-    \end{column}
-  \end{columns}
+  \begin{block}{Contrato entre fases: duck typing}
+\begin{lstlisting}[language=Python]
+def decide(self, perception: dict) -> Action: ...
+def update(self, action, reward, new_perception) -> None: ...
+def get_state(self) -> dict: ...
+\end{lstlisting}
+  \end{block}
 \end{frame}
 
 \section{Arquitectura}
 
 \begin{frame}
-  \frametitle{Despliegue y arquitectura}
+  \frametitle{Arquitectura del sistema}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-system-architecture}
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{figuras/phase1-system-architecture}
   \end{center}
-
-  \begin{block}{Lectura}
-    CLI, web y evals atacan la misma API. El Router coordina agentes y
-    herramientas. Cada almacén tiene una responsabilidad propia.
-  \end{block}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Pipeline y workflow}
-  \begin{columns}
-    \begin{column}{0.55\textwidth}
-      \begin{center}
-      \includegraphics[height=0.72\textheight]{figuras/phase1-pipeline-activity}
-      \end{center}
-    \end{column}
-    \begin{column}{0.43\textwidth}
-      \begin{block}{Pipeline trazable}
-        Researcher $\rightarrow$ Formalizer $\rightarrow$ Reasoner
-        $\rightarrow$ Builder, coordinados por un Router determinista
-        (máquina de estados).
-      \end{block}
-      \begin{exampleblock}{Revisión humana}
-        Cada etapa deja artefactos persistentes y pasa por una puerta de
-        revisión antes de avanzar. Si se rechaza, solo se repite la etapa
-        afectada.
-      \end{exampleblock}
-      \begin{center}
-        \scriptsize
-        \texttt{deep/*.md} $\rightarrow$ \texttt{formulations/*.md}
-        $\rightarrow$ \texttt{reasoner/*.json} $\rightarrow$
-        \texttt{builder/*\_model.py}
-      \end{center}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-\section{Memoria}
-
-\begin{frame}
-  \frametitle{Justificación de la memoria: los 3 tipos}
+  \frametitle{Arquitectura del pipeline}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-memoria-tres-tipos}
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{figuras/phase1-pipeline-activity}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Arquitectura de la memoria}
+  \begin{center}
+  \includegraphics[width=\textwidth,height=0.56\textheight,keepaspectratio]{figuras/phase1-memoria-tres-tipos}
   \end{center}
 
   \begin{block}{Por qué 3 representaciones y no una}
     Relacional para ciclo de vida y confianza; grafo para procedencia y
-    relaciones científicas; vectorial para recuperar hechos por similitud o
-    término exacto. MinIO conserva el artefacto íntegro como fuente auditable.
+    relaciones científicas; vectorial para recuperar por similitud o término
+    exacto.
   \end{block}
 \end{frame}
 
 \begin{frame}
   \frametitle{Ejemplo de actualización de la memoria}
+  \begin{center}
+  \includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-memoria-ejemplo}
+  \end{center}
+
   \begin{block}{Criterio de entrada}
-    Solo se consolida conocimiento aceptado tras revisión, nunca borradores.
+    Solo se consolida conocimiento aceptado tras revisión.
   \end{block}
-
-  \begin{table}
-  \scriptsize
-  \begin{tabular}{lll}
-    \toprule
-    Paso & Ejemplo (drift diffusion model) & Escritura\\
-    \midrule
-    Artefacto & Deep report aceptado & MinIO guarda el documento\\
-    Entidades & Paradigma, paper, variables & Neo4j crea nodos con slugs\\
-    Hechos & ``La evidencia se acumula hasta un umbral'' & Qdrant indexa denso + BM25\\
-    Control & Confianza, vigencia, supersesión & PostgreSQL registra estado\\
-    \bottomrule
-  \end{tabular}
-  \end{table}
-
-  \begin{exampleblock}{Uso posterior}
-    Una run futura sobre un paradigma parecido recupera estos hechos con
-    \texttt{retrieve\_knowledge}: búsqueda híbrida, fusión RRF y reranking,
-    siempre con procedencia.
-  \end{exampleblock}
 \end{frame}
 
 \section{Metodología basada en agentes}
 
 \begin{frame}
-  \frametitle{Metodología: arquitectura de trabajo}
-  \begin{block}{Separar decisiones y ejecución}
-    El humano define objetivo, restricciones y evidencia esperada. Los agentes
-    de programación implementan. La aceptación exige evidencia: tests, logs,
-    CI y artefactos revisables.
-  \end{block}
-
-  \begin{table}
-  \scriptsize
-  \begin{tabular}{lll}
-    \toprule
-    Pieza & Rol & Por qué\\
-    \midrule
-    Linear & Tareas con objetivo y criterios de aceptación & Trabajo en paralelo\\
-    Hydra (workflow) & Orquesta agentes en worktrees separados & Autonomía controlada\\
-    Skills & Protocolos reutilizables (UI, CI, revisión) & Menos variación\\
-    Instrucciones repo & Convenciones y comandos de verificación & Reglas estables\\
-    \bottomrule
-  \end{tabular}
-  \end{table}
-
-  \begin{exampleblock}{La misma idea en ambos planos}
-    Esta metodología es la que implementa el propio sistema: agentes que
-    producen, humanos que aceptan.
-  \end{exampleblock}
+  \frametitle{Metodología basada en agentes}
+  \begin{center}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{figuras/phase1-metodologia}
+  \end{center}
 \end{frame}
 
 \begin{frame}
   \frametitle{Metodología: workflow autónomo}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
+  \includegraphics[width=\textwidth,height=0.84\textheight,keepaspectratio]{figuras/phase1-hydra-activity}
   \end{center}
-
-  \begin{block}{Clave}
-    Hydra agrupa tareas de Linear y lanza agentes en paralelo; la aceptación
-    final sigue siendo humana y pasa por CI.
-  \end{block}
 \end{frame}
 
 \section{Evals}
@@ -258,14 +141,14 @@
 
   \begin{table}
   \scriptsize
-  \begin{tabular}{llll}
+  \begin{tabular}{lll}
     \toprule
-    Suite & Estado & Tiempo / coste & Evidencia\\
+    Suite & Resultado & Criterio de PASS\\
     \midrule
-    Retrieval quality & PASS & 22.7 s / \$0.08 & Hechos esperados en top-k\\
-    Temporal correctness & PASS & 0.1 s / \$0.00 & Vigencia y cadena de supersesión\\
-    Cumulative growth & PASS & --- / \$10 & El grafo crece sin fragmentarse\\
-    Slug accuracy & Alerta & 3646 s / \$5.08 & Motivó endurecer canonicalización\\
+    Retrieval quality & PASS & Los hechos esperados aparecen en top-k\\
+    Temporal correctness & PASS & Vigencia, ausencia y cadena de supersesión correctas\\
+    Cumulative growth & PASS & El grafo crece sin duplicar entidades\\
+    Slug accuracy & Alerta & Un mismo concepto mantiene un único slug canónico\\
     \bottomrule
   \end{tabular}
   \end{table}
@@ -280,30 +163,46 @@
   \frametitle{Evals científicas: corpus cerrado}
   \begin{block}{Método}
     El sistema solo ve los papers de un ZIP. Un LLM juez independiente revisa
-    el bundle congelado con rúbrica de fidelidad, calidad y trazabilidad.
+    el bundle congelado con una rúbrica: fidelidad al corpus, calidad de
+    paradigmas, formulaciones y modelos, memoria, trazabilidad y advertencias.
   \end{block}
 
   \begin{table}
   \scriptsize
-  \begin{tabular}{llll}
+  \begin{tabular}{lll}
     \toprule
-    Caso & Resultado & Tiempo / coste & Evidencia generada\\
+    Caso & Resultado & Evidencia generada\\
     \midrule
-    CASO1 & PASS; juez 72/100 & 6152 s / \$33.71 & 15 modelos, KG 433 nodos\\
-    CASO2 & PASS; juez 78/100 & 4962 s / \$24.47 & 12 modelos, KG 272 nodos\\
+    CASO1 & PASS; juez 72/100 con reservas & 6 paradigmas, 15 modelos, KG de 433 nodos\\
+    CASO2 & PASS; juez 78/100 con reservas & 4 paradigmas, 12 modelos, KG de 272 nodos\\
     \bottomrule
   \end{tabular}
   \end{table}
 
   \begin{exampleblock}{Qué demuestra}
-    El pipeline completa etapas, genera modelos ejecutables y deja una cadena
-    de evidencia auditable. El juez no sustituye al experto: hace visibles las
-    reservas para que la revisión científica sea trazable.
+    Modelos ejecutables con evidencia auditable y reservas visibles.
   \end{exampleblock}
 \end{frame}
 
+\section{Futuro}
+
 \begin{frame}
-  \frametitle{Cierre}
+  \frametitle{Futuro}
+  \begin{itemize}
+    \item Evaluación con expertos del dominio para cerrar la validez científica.
+    \item Más paradigmas de decisión y más entornos de simulación.
+    \item Medir la variación de resultados al cambiar modelo LLM y versión.
+    \item Medir contradicciones y calidad de reinyección de memoria en más dominios.
+    \item Comparar contra implementaciones manuales y resultados esperados.
+    \item Usar los resultados de simulación de la fase 2 como feedback para la
+          memoria y la generación.
+  \end{itemize}
+\end{frame}
+
+\section{Conclusiones}
+
+\begin{frame}
+  \frametitle{Conclusiones}
   \begin{block}{Idea final}
     El sistema no sustituye al investigador: lo multiplica. Convierte su
     criterio en un proceso repetible, trazable y acumulativo.
