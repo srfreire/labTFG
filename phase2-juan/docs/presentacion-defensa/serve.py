@@ -8,6 +8,7 @@ El navegador cancela peticiones a medias (rangos de video, recargas), lo que
 hace que http.server escupa BrokenPipeError. Aqui esos cortes se silencian:
 no son errores, la presentacion se sirve bien igualmente.
 """
+
 import contextlib
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
