@@ -10,6 +10,8 @@
 \usepackage{booktabs}
 \usepackage{listings}
 
+\setbeamertemplate{navigation symbols}{}
+
 \lstset{
   basicstyle=\ttfamily\scriptsize,
   breaklines=true,
@@ -54,7 +56,7 @@
 \begin{frame}[fragile]
   \frametitle{Contexto}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-contexto-fases}
+  \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{figuras/phase1-contexto-fases}
   \end{center}
 
   \begin{block}{Contrato entre fases: duck typing}
@@ -71,7 +73,7 @@ def get_state(self) -> dict: ...
 \begin{frame}
   \frametitle{Arquitectura del sistema}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{figuras/phase1-system-architecture}
+  \includegraphics[width=\textwidth,height=0.74\textheight,keepaspectratio]{figuras/phase1-system-architecture}
   \end{center}
 \end{frame}
 
@@ -92,7 +94,7 @@ def get_state(self) -> dict: ...
 \begin{frame}
   \frametitle{Ejemplo de actualización de la memoria}
   \begin{center}
-  \includegraphics[width=\textwidth,height=0.66\textheight,keepaspectratio]{figuras/phase1-memoria-ejemplo}
+  \includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{figuras/phase1-memoria-ejemplo}
   \end{center}
 
   \begin{block}{Criterio de entrada}
@@ -113,6 +115,7 @@ def get_state(self) -> dict: ...
 
 \begin{frame}
   \frametitle{Evals de memoria}
+  \small
   \begin{block}{Qué se pregunta}
     ¿El conocimiento se mantiene consistente entre ejecuciones y se recupera
     cuando hace falta?
@@ -140,6 +143,7 @@ def get_state(self) -> dict: ...
 
 \begin{frame}
   \frametitle{Evals científicas: corpus cerrado}
+  \small
   \begin{block}{Método}
     El sistema solo ve los papers de un ZIP. Un LLM juez independiente revisa
     el bundle congelado con una rúbrica: fidelidad al corpus, calidad de
