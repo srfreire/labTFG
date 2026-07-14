@@ -316,12 +316,21 @@ function ReportLinks({ reports, color }: { reports: ReportArtifact[]; color: str
 
 function PdfPreview({ pages, filename, color }: { pages: string[]; filename: string; color: string }) {
   const [zoomed, setZoomed] = useState<number | null>(null)
+  const zoomScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (zoomed === null) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(null) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
+
+  // al abrir el visor grande, saltar a la página en la que se hizo clic
+  useEffect(() => {
+    if (zoomed === null) return
+    const c = zoomScrollRef.current
+    const target = c?.children[zoomed] as HTMLElement | undefined
+    if (c && target) c.scrollTop = target.offsetTop - 40
   }, [zoomed])
 
   return (
@@ -369,24 +378,33 @@ function PdfPreview({ pages, filename, color }: { pages: string[]; filename: str
           data-testid="pdf-zoom"
           role="dialog"
           aria-modal="true"
-          aria-label={`${filename} — página ${zoomed + 1} ampliada`}
+          aria-label={`${filename} ampliado`}
           onClick={() => setZoomed(null)}
-          className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/75 p-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] cursor-zoom-out bg-black/75 backdrop-blur-sm"
         >
           <button
             type="button"
             onClick={() => setZoomed(null)}
             aria-label="Cerrar"
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <X size={18} aria-hidden="true" />
           </button>
-          <img
-            src={pages[zoomed]}
-            alt={`${filename} — página ${zoomed + 1}`}
+          <div
+            ref={zoomScrollRef}
+            data-testid="pdf-zoom-scroll"
             onClick={e => e.stopPropagation()}
-            className="max-h-[90vh] w-auto max-w-[92vw] cursor-default rounded-md shadow-2xl shadow-black/50"
-          />
+            className="flex h-full flex-col items-center gap-4 overflow-y-auto py-10"
+          >
+            {pages.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`${filename} — página ${i + 1}`}
+                className="h-auto w-auto max-h-[88vh] max-w-[92vw] cursor-default rounded-md shadow-2xl shadow-black/50"
+              />
+            ))}
+          </div>
         </div>,
         document.body,
       )}

@@ -107,36 +107,47 @@ await pause(1600)
 await slowScrollTo('[data-testid="decision-traces"]', 8500) // recorrido fluido hasta las trazas
 await pause(1600)
 
-// 7) informe → abrir de verdad el visor del PDF y recorrer sus páginas
+// 7) informe → abrir el visor a pantalla completa y recorrer las páginas DENTRO de él
 await clickBtn('Informe completo, calidad estándar', () =>
   page.getByRole('button', { name: 'Muéstrame la evolución del drive del modelo drive-dynamics' })
     .waitFor({ timeout: 20_000 }))
 
 const preview = page.getByTestId('pdf-preview').first()
 await preview.waitFor({ state: 'visible', timeout: 20_000 })
-// esperar a que las páginas del PDF terminen de cargar (si no, se ve el visor en blanco)
+// esperar a que las miniaturas del preview terminen de cargar
 await page.waitForFunction(() => {
   const imgs = document.querySelectorAll('[data-testid="pdf-preview"] img')
   return imgs.length > 0 && Array.from(imgs).every(i => i.complete && i.naturalWidth > 0)
 }, null, { timeout: 20_000 }).catch(() => {})
 await smoothTo(preview)
-await pause(1600)
+await pause(1400)
 
-// recorrer las páginas dentro del visor para que se vea "abierto"
-const scroller = page.getByTestId('pdf-preview-scroll').first()
-const maxScroll = await scroller.evaluate(el => el.scrollHeight - el.clientHeight)
-for (let i = 1; i <= 3; i++) {
-  await scroller.evaluate((el, top) => el.scrollTo({ top, behavior: 'smooth' }), (maxScroll * i) / 3)
-  await pause(1300)
-}
-
-// ampliar el PDF: click en una página con contenido → visor grande
-const pages = preview.locator('button')
-await pages.nth(2).click()
+// abrir el PDF a pantalla completa (clic en la 1ª página → el visor arranca arriba)
+await preview.locator('button').first().click()
 await page.getByTestId('pdf-zoom').waitFor({ state: 'visible', timeout: 10_000 })
-await pause(3000)
-await page.keyboard.press('Escape') // cerrar el zoom
-await pause(1200)
+// esperar a que las páginas del visor grande estén cargadas (evita frames en blanco)
+await page.waitForFunction(() => {
+  const imgs = document.querySelectorAll('[data-testid="pdf-zoom-scroll"] img')
+  return imgs.length > 0 && Array.from(imgs).every(i => i.complete && i.naturalWidth > 0)
+}, null, { timeout: 20_000 }).catch(() => {})
+await pause(1600) // beat sobre la primera página, ya con el PDF abierto
+
+// scroll CONTINUO y suave por todas las páginas, con el PDF abierto (mismo easing que el chat)
+await page.evaluate(duration => new Promise(resolve => {
+  const c = document.querySelector('[data-testid="pdf-zoom-scroll"]')
+  if (!c) return resolve()
+  const endTop = c.scrollHeight - c.clientHeight
+  c.scrollTop = 0
+  const t0 = performance.now()
+  const ease = t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+  const step = now => {
+    const p = Math.min(1, (now - t0) / duration)
+    c.scrollTop = endTop * ease(p)
+    if (p < 1) requestAnimationFrame(step); else resolve()
+  }
+  requestAnimationFrame(step)
+}), 9000)
+await pause(2000) // remate sobre la última página, PDF abierto — FIN (sin cerrar)
 
 await context.close()
 await browser.close()
