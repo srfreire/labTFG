@@ -342,3 +342,10 @@ input, button, textarea, select {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
 }
+
+/* Dash the static edges. Animated edges keep their own flowing dash from
+ * ReactFlow; the ones we stop animating past the edge cap (see Graph.tsx)
+ * would otherwise render as flat solid lines, so give them a dashed stroke. */
+.react-flow__edge:not(.animated) .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+}
