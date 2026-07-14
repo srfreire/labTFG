@@ -184,10 +184,11 @@ SlideAnim.register('knowledge', el => {
   });
   // cada línea se traza escalonada, justo tras aterrizar su almacén (edge i ↔ store i),
   // con arranque/parada suaves — así no entran las cuatro de golpe
+  // las líneas ya trazadas (dashoffset 0) simplemente se funden — sin efecto «dibujado»
   const edges = el.querySelectorAll('.kb-edge');
   edges.forEach((e, i) => {
-    tl.fromTo(e, { strokeDashoffset: 1, opacity: 0 },
-      { strokeDashoffset: 0, opacity: 1, duration: 1.2, ease: 'sine.inOut' }, 0.5 + i * 0.22);
+    tl.fromTo(e, { opacity: 0, strokeDashoffset: 0 },
+      { opacity: 1, duration: 0.6, ease: 'power1.out' }, 0.5 + i * 0.1);
   });
   return tl;
 });

@@ -87,7 +87,7 @@ Tiene cinco piezas: el entorno, el agente, los recursos, los eventos, que una ve
 
 Dentro de esas capas, la que manda es esta. El Orchestrator es el director de orquesta, la única pieza que conoce el proceso entero. Un punto que conviene dejar claro, porque suele generar preguntas: **el orden no lo improvisa el modelo**. La secuencia está escrita de antemano, y al modelo solo le dejo elegir desviaciones puntuales: una consulta extra, repetir un paso, descartar un intento fallido. Y qué modelos simular tampoco lo decide él: **lo elige el usuario**; el Orchestrator solo se los presenta y espera su elección.
 
-Tiene **tres tareas que no delega**: prepara el contexto antes de llamar a cada agente, agrupa las escrituras de la conversación y las persiste por turnos, y retransmite en directo por el canal. El volcado de las memorias de la simulación, en cambio, no es suyo: de eso se encarga el escritor de memoria del Tracker al terminar.
+Tiene **tres tareas que no delega**: prepara el contexto antes de llamar a cada agente, agrupa los mensajes de la conversación y los guarda en la base de datos por lotes en vez de uno a uno, y retransmite en directo por el canal.
 
 ---
 
