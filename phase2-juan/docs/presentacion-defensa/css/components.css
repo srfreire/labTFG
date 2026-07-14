@@ -121,7 +121,6 @@
 .reveal .faces--mini { gap: 14px; margin-bottom: 0; justify-content: flex-start; }
 .reveal .faces--mini .face__av { width: 38px; height: 38px; }
 .reveal .faces--mini .face__name { display: none; }
-.reveal .cierre-foot { display: flex; align-items: center; gap: 20px; margin-top: 1.5rem; }
 .reveal .closing--accent { position: relative; padding-left: 18px; }
 .reveal .closing--accent::before {
   content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 3px; border-radius: 3px;
@@ -196,9 +195,37 @@
 }
 .reveal .agenda__b { display: flex; flex-direction: column; gap: 2px; }
 
-/* Estado del arte — 2×2 simétrico: columnas de igual alto, paneles repartidos */
-.reveal .arte-grid > .stack { height: 100%; }
-.reveal .arte-grid > .stack > .panel { flex: 1 1 0; }
+/* Estado del arte — rejilla 2×2. Las filas toman la altura del contenido
+   (grid-auto-rows: auto); las dos celdas de cada fila igualan altura por el
+   align-items:stretch por defecto. NO usar 1fr: en un grid de altura automática
+   colapsa las filas a min-content y el contenido se desborda / se solapa. */
+.reveal .arte-grid { gap: var(--space-4); align-content: start; flex-shrink: 0; }
+.reveal .arte-grid > .panel { padding: var(--space-4) var(--space-5); }
+.reveal .arte-grid .panel__title { margin-bottom: var(--space-2); }
+.reveal .arte-grid .panel p { font-size: 0.78rem; }
+.reveal .arte-grid .panel__fig { margin-top: var(--space-3); }
+.reveal .arte-grid .panel__fig svg { max-height: 40px; }
+
+/* Conclusiones — 3 lecciones, tratamiento editorial (sin cajas ni bordes) */
+.reveal .lessons { gap: var(--space-8); }
+.reveal .lesson { position: relative; padding-top: 18px; }
+.reveal .lesson::before {           /* único acento: hairline superior en color de agente */
+  content: ""; position: absolute; top: 0; left: 2px; width: 30px; height: 2px;
+  border-radius: 2px; background: var(--agent, var(--color-text-dim));
+}
+.reveal .lesson__n {
+  display: block; font-family: var(--font-mono);
+  font-size: 0.72rem; letter-spacing: 2px; font-weight: var(--weight-semibold);
+  color: color-mix(in srgb, var(--agent) 78%, var(--color-text-dim));
+  margin-bottom: 14px;
+}
+.reveal .lesson__t {
+  font-size: 1.28rem; font-weight: var(--weight-semibold); line-height: 1.2;
+  letter-spacing: -0.01em; color: var(--color-text); margin: 0 0 10px;
+}
+.reveal .lesson__d { font-size: 0.82rem; line-height: 1.5; color: var(--color-text-muted); margin: 0; max-width: 32ch; }
+/* separación clara entre las lecciones y la banda Límites / A futuro */
+.reveal .lessons-foot { border-top: 1px solid var(--color-border); padding-top: var(--space-5); }
 .reveal .agenda__b b { color: var(--color-text); font-weight: var(--weight-semibold); font-size: 0.98rem; }
 .reveal .agenda__s { font-size: 0.76rem; color: var(--color-text-muted); }
 

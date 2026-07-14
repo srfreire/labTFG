@@ -181,6 +181,9 @@ body::before {
 /* Fragments: gentle rise-in, matching the app's card entrance */
 .reveal .fragment.fade-in-up { opacity: 0; transform: translateY(10px); transition: all 0.4s var(--ease-out); }
 .reveal .fragment.fade-in-up.visible { opacity: 1; transform: none; }
+/* Reinicio sin transición: playFragments() lo aplica al re-disparar la entrada
+   de cada diapo, para que el reset a estado oculto no produzca un fundido de salida. */
+.reveal .fragment.anim-reset { transition: none !important; }
 
 /* ─── Code (highlight.js) ─── */
 .reveal pre {
