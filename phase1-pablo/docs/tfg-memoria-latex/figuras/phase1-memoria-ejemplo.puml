@@ -1,39 +1,38 @@
 @startuml
-!pragma layout smetana
-top to bottom direction
+!pragma teoz true
+hide footbox
 skinparam backgroundColor white
-skinparam dpi 190
+skinparam dpi 210
 skinparam shadowing false
 skinparam defaultFontName Helvetica
-skinparam componentStyle rectangle
-skinparam packageStyle rectangle
-skinparam component {
-  BorderColor #334155
-  BackgroundColor #EEF2FF
+skinparam sequence {
+  ArrowColor #334155
+  LifeLineBorderColor #94A3B8
+  ParticipantBorderColor #334155
+  ParticipantBackgroundColor #F8FAFC
+  ActorBorderColor #334155
+  ActorBackgroundColor #ECFEFF
+  DatabaseBorderColor #166534
+  DatabaseBackgroundColor #ECFDF5
 }
-skinparam database {
-  BorderColor #166534
-  BackgroundColor #ECFDF5
-}
 
-component "Deep report aceptado\ndrift diffusion model" as Art
+participant "Deep report aceptado\ndrift diffusion model" as Art
+participant "MemoryAgent" as Memory
+database "MinIO" as MinIO
+database "PostgreSQL" as PG
+database "Neo4j" as Neo
+database "Qdrant" as Qd
+participant "Run futura\nparadigma parecido" as Run
 
-database "MinIO\ndocumento\nintegro" as MinIO
-database "PostgreSQL\nrevision aceptada,\nconfianza y vigencia" as PG
-database "Neo4j\nParadigma ddm,\nPaper, Variable umbral" as Neo
-database "Qdrant\nla evidencia se acumula\nhasta un umbral" as Qd
+Art -> Memory : conocimiento aceptado tras revision
+Memory -> MinIO : documento integro (fuente)
+Memory -> PG : revision aceptada, confianza y vigencia
+Memory -> Neo : nodos y relaciones con slugs canonicos
+Memory -> Qd : hecho denso + BM25
+note over Qd : la evidencia se acumula\nhasta un umbral
 
-component "Run futura sobre un paradigma parecido\nrecibe contexto con procedencia" as Run
-
-Art -down-> MinIO : fuente
-Art -down-> PG : ciclo de vida
-Art -down-> Neo : nodos y relaciones\ncon slugs
-Art -down-> Qd : hecho denso + BM25
-
-Neo -down-> Run : retrieve_knowledge
-Qd -down-> Run : retrieve_knowledge
-
-MinIO -[hidden]right- PG
-PG -[hidden]right- Neo
-Neo -[hidden]right- Qd
+Run -> Neo : retrieve_knowledge
+Run -> Qd : retrieve_knowledge
+Neo --> Run : hechos y relaciones
+Qd --> Run : contexto con procedencia
 @enduml
