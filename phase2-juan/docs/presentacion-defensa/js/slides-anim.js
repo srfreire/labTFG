@@ -23,6 +23,19 @@ SlideAnim.register('portada', el => {
   return tl;
 });
 
+/* 19 · Preguntas — closing Q&A: the five agents pop back in, then «¿Preguntas?» */
+SlideAnim.register('preguntas', el => {
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(el.querySelectorAll('[data-anim="face"]'),
+    { opacity: 0, y: 16, scale: 0.9 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.1, ease: 'back.out(1.5)' }, 0);
+  tl.fromTo(el.querySelector('[data-anim="q"]'),
+    { opacity: 0, y: 12, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.4)' }, 0.55);
+  tl.fromTo(el.querySelectorAll('[data-anim="q2"]'),
+    { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.1, ease: 'power2.out' }, 0.9);
+  return tl;
+});
+
 /* 4 · Dos fases */
 SlideAnim.register('dos-fases', el => {
   const tl = gsap.timeline({ paused: true });
@@ -173,16 +186,24 @@ SlideAnim.register('knowledge', el => {
   return tl;
 });
 
-/* 14 · Bucle de desarrollo — hub, then stations light up clockwise (opacity only:
-   stations are transform-centered, so animating y would clobber their position) */
+/* 14 · Bucle de desarrollo — blocks FIRST (hub + stations), THEN the connecting
+   lines: dotted ring fades in and the green return arc draws. (opacity only on the
+   nodes: they're transform-centered, so animating y would clobber their position) */
 SlideAnim.register('bucle', el => {
   const tl = gsap.timeline({ paused: true });
   const hub = el.querySelector('[data-anim="hub"]');
   if (hub) tl.fromTo(hub, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, 0);
   const steps = el.querySelectorAll('[data-anim="step"]');
   tl.fromTo(steps, { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.18, ease: 'power2.out' }, 0.15);
+  // clear beat so the blocks land BEFORE the lines: dotted ellipse and the green
+  // return arc both fade in together at 1.4 (opacity only — the SVG's non-uniform
+  // preserveAspectRatio="none" stretch breaks stroke-dash drawing, see diagrams.css)
+  const ring = el.querySelector('.loop-ring:not(.loop-ring--close)');
+  if (ring) tl.fromTo(ring, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power1.out' }, 1.4);
+  const arc = el.querySelector('.loop-ring--close');
+  if (arc) tl.fromTo(arc, { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'power1.out' }, 1.4);
   const next = el.querySelector('.loop-next');
-  if (next) tl.fromTo(next, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.95);
+  if (next) tl.fromTo(next, { opacity: 0 }, { opacity: 1, duration: 0.4 }, 2.1);
   return tl;
 });
 

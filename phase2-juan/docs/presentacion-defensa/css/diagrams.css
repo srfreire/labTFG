@@ -80,7 +80,12 @@
   stroke-width: 1.5; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke;
 }
 .reveal .loopring .loop-ring--close {
-  stroke: var(--color-architect); stroke-width: 2.5; stroke-dasharray: none;
+  stroke: var(--color-architect); stroke-width: 2.5;
+  /* Trazo SÓLIDO (anulamos el dash punteado de .loop-ring): con preserveAspectRatio="none"
+     el estiramiento no uniforme rompe el patrón de stroke-dasharray, pero una línea
+     continua se pinta bien. Aparece con un fundido de opacidad (JS), no con trazado. */
+  stroke-dasharray: none;
+  opacity: 0;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-architect) 55%, transparent));
 }
 .reveal .loop-hub__cyc { font-size: 1.55rem; line-height: 1; color: var(--color-orchestrator); margin-bottom: 5px; }
