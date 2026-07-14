@@ -1,0 +1,46 @@
+@startuml
+top to bottom direction
+skinparam backgroundColor white
+skinparam dpi 190
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam component {
+  BorderColor #334155
+  BackgroundColor #EEF2FF
+}
+skinparam database {
+  BorderColor #166534
+  BackgroundColor #ECFDF5
+}
+skinparam actor {
+  BorderColor #334155
+  BackgroundColor #F8FAFC
+}
+
+actor "Usuario" as User
+
+component "Researcher\ninvestiga paradigmas" as Res
+component "Formalizer\nformulaciones matematicas" as For
+component "Reasoner\nadapta al entorno" as Rea
+component "Builder\ncodigo y tests" as Bui
+component "Modelos registrados" as Reg
+
+database "Memoria\ncross ejecucion" as Mem
+
+User -down-> Res : describe problema
+Res -down-> For : paradigmas aceptados
+For -down-> Rea : formulaciones seleccionadas
+Rea -down-> Bui : specs aprobadas
+Bui -down-> Reg : tests en verde
+
+Res -> Res : rechazo
+For -> For : rechazo
+Rea -> Rea : invalida
+Bui -> Bui : reintenta
+
+Mem .right.> Res : retrieve_knowledge
+Mem .right.> Rea : retrieve_knowledge
+Reg .left.> Mem : consolida artefactos aceptados
+@enduml
